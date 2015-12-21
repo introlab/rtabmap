@@ -27,6 +27,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_features.h"
+#include "rtabmap/core/Stereo.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -243,7 +245,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 				}
 			}
 		}
-		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)keypoints.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)kptsTmp.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
 		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
 		keypoints = kptsTmp;
 		if(descriptors.rows)
@@ -335,13 +337,74 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> &
 // Feature2D
 /////////////////////
 Feature2D::Feature2D(const ParametersMap & parameters) :
-		maxFeatures_(Parameters::defaultKpWordsPerImage())
+		maxFeatures_(Parameters::defaultKpMaxFeatures()),
+		_wordsMaxDepth(Parameters::defaultKpMaxDepth()),
+		_wordsMinDepth(Parameters::defaultKpMinDepth()),
+		_roiRatios(std::vector<float>(4, 0.0f)),
+		_subPixWinSize(Parameters::defaultKpSubPixWinSize()),
+		_subPixIterations(Parameters::defaultKpSubPixIterations()),
+		_subPixEps(Parameters::defaultKpSubPixEps())
 {
+	_stereo = new Stereo(parameters);
 	this->parseParameters(parameters);
+}
+Feature2D::~Feature2D()
+{
+	delete _stereo;
 }
 void Feature2D::parseParameters(const ParametersMap & parameters)
 {
-	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), maxFeatures_);
+	Parameters::parse(parameters, Parameters::kKpMaxFeatures(), maxFeatures_);
+	Parameters::parse(parameters, Parameters::kKpMaxDepth(), _wordsMaxDepth);
+	Parameters::parse(parameters, Parameters::kKpMinDepth(), _wordsMinDepth);
+	Parameters::parse(parameters, Parameters::kKpSubPixWinSize(), _subPixWinSize);
+	Parameters::parse(parameters, Parameters::kKpSubPixIterations(), _subPixIterations);
+	Parameters::parse(parameters, Parameters::kKpSubPixEps(), _subPixEps);
+
+	// convert ROI from string to vector
+	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kKpRoiRatios())) != parameters.end())
+	{
+		std::list<std::string> strValues = uSplit(iter->second, ' ');
+		if(strValues.size() != 4)
+		{
+			ULOGGER_ERROR("The number of values must be 4 (roi=\"%s\")", iter->second.c_str());
+		}
+		else
+		{
+			std::vector<float> tmpValues(4);
+			unsigned int i=0;
+			for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
+			{
+				tmpValues[i] = uStr2Float(*iter);
+				++i;
+			}
+
+			if(tmpValues[0] >= 0 && tmpValues[0] < 1 && tmpValues[0] < 1.0f-tmpValues[1] &&
+				tmpValues[1] >= 0 && tmpValues[1] < 1 && tmpValues[1] < 1.0f-tmpValues[0] &&
+				tmpValues[2] >= 0 && tmpValues[2] < 1 && tmpValues[2] < 1.0f-tmpValues[3] &&
+				tmpValues[3] >= 0 && tmpValues[3] < 1 && tmpValues[3] < 1.0f-tmpValues[2])
+			{
+				_roiRatios = tmpValues;
+			}
+			else
+			{
+				ULOGGER_ERROR("The roi ratios are not valid (roi=\"%s\")", iter->second.c_str());
+			}
+		}
+	}
+
+	//stereo
+	UASSERT(_stereo != 0);
+	if((iter=parameters.find(Parameters::kStereoOpticalFlow())) != parameters.end())
+	{
+		delete _stereo;
+		_stereo = Stereo::create(parameters);
+	}
+	else
+	{
+		_stereo->parseParameters(parameters);
+	}
 }
 Feature2D * Feature2D::create(const ParametersMap & parameters)
 {
@@ -350,12 +413,6 @@ Feature2D * Feature2D::create(const ParametersMap & parameters)
 	return create((Feature2D::Type)type, parameters);
 }
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
-{
-	int wordsPerImage = Parameters::defaultKpWordsPerImage();
-	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), wordsPerImage);
-	return create(type, wordsPerImage, parameters);
-}
-Feature2D * Feature2D::create(Feature2D::Type type, int wordsPerImage, const ParametersMap & parameters)
 {
 	if(RTABMAP_NONFREE == 0)
 	{
@@ -426,52 +483,154 @@ Feature2D * Feature2D::create(Feature2D::Type type, int wordsPerImage, const Par
 #endif
 
 	}
-
 	return feature2D;
 }
 
-std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, const cv::Rect & roi) const
+std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image) const
 {
+	UASSERT(!image.empty());
+	UASSERT(image.type() == CV_8UC1);
+
 	std::vector<cv::KeyPoint> keypoints;
-	if(!image.empty() && image.channels() == 1 && image.type() == CV_8U)
+	UTimer timer;
+
+	// Get keypoints
+	cv::Rect roi = Feature2D::computeRoi(image, _roiRatios);
+	keypoints = this->generateKeypointsImpl(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows));
+	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
+
+	limitKeypoints(keypoints, maxFeatures_);
+
+	if(roi.x || roi.y)
 	{
-		UTimer timer;
-
-		// Get keypoints
-		keypoints = this->generateKeypointsImpl(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows));
-		ULOGGER_DEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
-
-		limitKeypoints(keypoints, maxFeatures_);
-
-		if(roi.x || roi.y)
+		// Adjust keypoint position to raw image
+		for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
 		{
-			// Adjust keypoint position to raw image
-			for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
-			{
-				iter->pt.x += roi.x;
-				iter->pt.y += roi.y;
-			}
+			iter->pt.x += roi.x;
+			iter->pt.y += roi.y;
 		}
 	}
-	else if(image.empty())
+
+	if(_subPixWinSize > 0 && _subPixIterations > 0)
 	{
-		UERROR("Image is null!");
-	}
-	else
-	{
-		UERROR("Image format must be mono8. Current has %d channels and type = %d, size=%d,%d",
-				image.channels(), image.type(), image.cols, image.rows);
+		std::vector<cv::Point2f> corners;
+		cv::KeyPoint::convert(keypoints, corners);
+		cv::cornerSubPix( image, corners,
+				cv::Size( _subPixWinSize, _subPixWinSize ),
+				cv::Size( -1, -1 ),
+				cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _subPixIterations, _subPixEps ) );
+
+		for(unsigned int i=0;i<corners.size(); ++i)
+		{
+			keypoints[i].pt = corners[i];
+		}
+		UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
 	}
 
 	return keypoints;
 }
 
-cv::Mat Feature2D::generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+cv::Mat Feature2D::generateDescriptors(
+		const cv::Mat & image,
+		std::vector<cv::KeyPoint> & keypoints) const
 {
+	UASSERT(!image.empty());
+	UASSERT(image.type() == CV_8UC1);
 	cv::Mat descriptors = generateDescriptorsImpl(image, keypoints);
 	UASSERT_MSG(descriptors.rows == (int)keypoints.size(), uFormat("descriptors=%d, keypoints=%d", descriptors.rows, (int)keypoints.size()).c_str());
 	UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
 	return descriptors;
+}
+
+std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
+		const SensorData & data,
+		const std::vector<cv::KeyPoint> & keypoints) const
+{
+	std::vector<cv::Point3f> keypoints3D;
+	if(!data.depthOrRightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValid())
+	{
+		//stereo
+		cv::Mat imageMono;
+		// convert to grayscale
+		if(data.imageRaw().channels() > 1)
+		{
+			cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
+		}
+		else
+		{
+			imageMono = data.imageRaw();
+		}
+		//generate a disparity map
+		std::vector<cv::Point2f> leftCorners;
+		cv::KeyPoint::convert(keypoints, leftCorners);
+		std::vector<unsigned char> status;
+
+		std::vector<cv::Point2f> rightCorners;
+		rightCorners = _stereo->computeCorrespondences(
+				imageMono,
+				data.rightRaw(),
+				leftCorners,
+				status);
+
+		if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
+		{
+			UASSERT(status.size() == leftCorners.size() && status.size() == rightCorners.size());
+			for(unsigned int i=0; i<status.size(); ++i)
+			{
+				if(status[i] != 0)
+				{
+					float d = data.stereoCameraModel().computeDepth(leftCorners[i].x - rightCorners[i].x);
+					if((_wordsMinDepth > 0.0f && d < _wordsMinDepth) ||
+					   (_wordsMaxDepth > 0.0f && d > _wordsMaxDepth))
+					{
+						status[i] = 0;
+					}
+				}
+			}
+		}
+
+		keypoints3D = util3d::generateKeypoints3DStereo(
+				leftCorners,
+				rightCorners,
+				data.stereoCameraModel(),
+				status);
+	}
+	else if(!data.depthRaw().empty() && data.cameraModels().size())
+	{
+		keypoints3D = util3d::generateKeypoints3DDepth(
+				keypoints,
+				data.depthOrRightRaw(),
+				data.cameraModels());
+
+		if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
+		{
+			UASSERT(keypoints3D.size() == keypoints.size());
+			bool isInMM = data.depthRaw().type() == CV_16UC1;
+			float bad_point = std::numeric_limits<float>::quiet_NaN ();
+			for(unsigned int i=0; i<keypoints.size(); ++i)
+			{
+				int u = int(keypoints[i].pt.x+0.5f);
+				int v = int(keypoints[i].pt.y+0.5f);
+				bool reject = true;
+				if(u >=0 && u<data.depthRaw().cols && v >=0 && v<data.depthRaw().rows)
+				{
+					float d = isInMM?(float)data.depthRaw().at<uint16_t>(v,u)*0.001f:data.depthRaw().at<float>(v,u);
+					if(uIsFinite(d) && d>_wordsMinDepth && (_wordsMaxDepth <= 0.0f || d < _wordsMaxDepth))
+					{
+						reject = false;
+					}
+				}
+				if(reject)
+				{
+					keypoints3D[i].x = bad_point;
+					keypoints3D[i].y = bad_point;
+					keypoints3D[i].z = bad_point;
+				}
+			}
+		}
+	}
+
+	return keypoints3D;
 }
 
 //////////////////////////
@@ -605,7 +764,6 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 //SIFT
 //////////////////////////
 SIFT::SIFT(const ParametersMap & parameters) :
-	nfeatures_(Parameters::defaultSIFTNFeatures()),
 	nOctaveLayers_(Parameters::defaultSIFTNOctaveLayers()),
 	contrastThreshold_(Parameters::defaultSIFTContrastThreshold()),
 	edgeThreshold_(Parameters::defaultSIFTEdgeThreshold()),
@@ -624,15 +782,14 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kSIFTContrastThreshold(), contrastThreshold_);
 	Parameters::parse(parameters, Parameters::kSIFTEdgeThreshold(), edgeThreshold_);
-	Parameters::parse(parameters, Parameters::kSIFTNFeatures(), nfeatures_);
 	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 
 #if RTABMAP_NONFREE == 1
 #if CV_MAJOR_VERSION < 3
-	_sift = cv::Ptr<CV_SIFT>(new CV_SIFT(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));
+	_sift = cv::Ptr<CV_SIFT>(new CV_SIFT(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));
 #else
-	_sift = CV_SIFT::create(nfeatures_, nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
+	_sift = CV_SIFT::create(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_);
 #endif
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");
@@ -668,7 +825,6 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 //ORB
 //////////////////////////
 ORB::ORB(const ParametersMap & parameters) :
-		nFeatures_(Parameters::defaultKpWordsPerImage()),
 		scaleFactor_(Parameters::defaultORBScaleFactor()),
 		nLevels_(Parameters::defaultORBNLevels()),
 		edgeThreshold_(Parameters::defaultORBEdgeThreshold()),
@@ -691,7 +847,6 @@ void ORB::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
 
-	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), nFeatures_);
 	Parameters::parse(parameters, Parameters::kORBScaleFactor(), scaleFactor_);
 	Parameters::parse(parameters, Parameters::kORBNLevels(), nLevels_);
 	Parameters::parse(parameters, Parameters::kORBEdgeThreshold(), edgeThreshold_);
@@ -727,7 +882,7 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	if(gpu_)
 	{
 #if CV_MAJOR_VERSION < 3
-		_gpuOrb = cv::Ptr<CV_ORB_GPU>(new CV_ORB_GPU(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
+		_gpuOrb = cv::Ptr<CV_ORB_GPU>(new CV_ORB_GPU(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
 		_gpuOrb->setFastParams(fastThreshold_, nonmaxSuppresion_);
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
@@ -738,9 +893,9 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	else
 	{
 #if CV_MAJOR_VERSION < 3
-		_orb = cv::Ptr<CV_ORB>(new CV_ORB(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
+		_orb = cv::Ptr<CV_ORB>(new CV_ORB(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
 #else
-		_orb = CV_ORB::create(nFeatures_, scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
+		_orb = CV_ORB::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
 #endif
 	}
 }
@@ -821,7 +976,6 @@ FAST::FAST(const ParametersMap & parameters) :
 		gpuKeypointsRatio_(Parameters::defaultFASTGpuKeypointsRatio()),
 		minThreshold_(Parameters::defaultFASTMinThreshold()),
 		maxThreshold_(Parameters::defaultFASTMaxThreshold()),
-		maxTotalKeypoints_(Parameters::defaultKpWordsPerImage()),
 		gridRows_(Parameters::defaultFASTGridRows()),
 		gridCols_(Parameters::defaultFASTGridCols())
 {
@@ -843,11 +997,8 @@ void FAST::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kFASTMinThreshold(), minThreshold_);
 	Parameters::parse(parameters, Parameters::kFASTMaxThreshold(), maxThreshold_);
-	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), maxTotalKeypoints_);
 	Parameters::parse(parameters, Parameters::kFASTGridRows(), gridRows_);
 	Parameters::parse(parameters, Parameters::kFASTGridCols(), gridCols_);
-
-	UWARN("minThreshold_=%d", minThreshold_);
 
 	UASSERT_MSG(threshold_ >= minThreshold_, uFormat("%d vs %d", threshold_, minThreshold_).c_str());
 	UASSERT_MSG(threshold_ <= maxThreshold_, uFormat("%d vs %d", threshold_, maxThreshold_).c_str());
@@ -893,7 +1044,7 @@ void FAST::parseParameters(const ParametersMap & parameters)
 		if(gridRows_ > 0 && gridCols_ > 0)
 		{
 			cv::Ptr<cv::FeatureDetector> fastAdjuster = cv::Ptr<cv::FastAdjuster>(new cv::FastAdjuster(threshold_, nonmaxSuppression_, minThreshold_, maxThreshold_));
-			_fast = cv::Ptr<cv::FeatureDetector>(new cv::GridAdaptedFeatureDetector(fastAdjuster, maxTotalKeypoints_, gridRows_, gridCols_));
+			_fast = cv::Ptr<cv::FeatureDetector>(new cv::GridAdaptedFeatureDetector(fastAdjuster, this->getMaxFeatures(), gridRows_, gridCols_));
 		}
 		else
 		{
@@ -1067,7 +1218,6 @@ cv::Mat FAST_ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv:
 //GFTT
 //////////////////////////
 GFTT::GFTT(const ParametersMap & parameters) :
-		_maxCorners(Parameters::defaultKpWordsPerImage()),
 		_qualityLevel(Parameters::defaultGFTTQualityLevel()),
 		_minDistance(Parameters::defaultGFTTMinDistance()),
 		_blockSize(Parameters::defaultGFTTBlockSize()),
@@ -1085,7 +1235,6 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 {
 	Feature2D::parseParameters(parameters);
 
-	Parameters::parse(parameters, Parameters::kKpWordsPerImage(), _maxCorners);
 	Parameters::parse(parameters, Parameters::kGFTTQualityLevel(), _qualityLevel);
 	Parameters::parse(parameters, Parameters::kGFTTMinDistance(), _minDistance);
 	Parameters::parse(parameters, Parameters::kGFTTBlockSize(), _blockSize);
@@ -1093,9 +1242,9 @@ void GFTT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGFTTK(), _k);
 
 #if CV_MAJOR_VERSION < 3
-	_gftt = cv::Ptr<CV_GFTT>(new CV_GFTT(_maxCorners, _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k));
+	_gftt = cv::Ptr<CV_GFTT>(new CV_GFTT(this->getMaxFeatures(), _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k));
 #else
-	_gftt = CV_GFTT::create(_maxCorners, _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k);
+	_gftt = CV_GFTT::create(this->getMaxFeatures(), _qualityLevel, _minDistance, _blockSize, _useHarrisDetector ,_k);
 #endif
 }
 

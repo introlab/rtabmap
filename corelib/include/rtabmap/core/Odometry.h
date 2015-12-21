@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <rtabmap/core/Parameters.h>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/RegistrationVis.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 
@@ -59,11 +61,13 @@ public:
 	float getInlierDistance() const {return _inlierDistance;}
 	int getIterations() const {return _iterations;}
 	int getRefineIterations() const {return _refineIterations;}
+	float getMinDepth() const {return _minDepth;}
 	float getMaxDepth() const {return _maxDepth;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
 	int getEstimationType() const {return _estimationType;}
 	double getPnPReprojError() const {return _pnpReprojError;}
 	int  getPnPFlags() const {return _pnpFlags;}
+	bool  getPnPOpenCV2() const {return _pnpOpenCV2;}
 	const Transform & previousTransform() const {return previousTransform_;}
 	bool isVarianceFromInliersCount() const {return _varianceFromInliersCount;}
 
@@ -79,6 +83,7 @@ private:
 	float _inlierDistance;
 	int _iterations;
 	int _refineIterations;
+	float _minDepth;
 	float _maxDepth;
 	int _resetCountdown;
 	bool _force2D;
@@ -93,6 +98,7 @@ private:
 	int _estimationType;
 	double _pnpReprojError;
 	int _pnpFlags;
+	bool _pnpOpenCV2;
 	bool _varianceFromInliersCount;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;
@@ -119,7 +125,7 @@ public:
 	virtual ~OdometryBOW();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	const std::map<int, pcl::PointXYZ> & getLocalMap() const {return localMap_;}
+	const std::map<int, cv::Point3f> & getLocalMap() const {return localMap_;}
 	const Memory * getMemory() const {return _memory;}
 
 private:
@@ -131,20 +137,18 @@ private:
 	std::string _fixedLocalMapPath;
 
 	Memory * _memory;
-	std::map<int, pcl::PointXYZ> localMap_;
+	std::map<int, cv::Point3f> localMap_;
 };
 
-class RTABMAP_EXP OdometryOpticalFlow : public Odometry
+class RTABMAP_EXP OdometryF2F : public Odometry
 {
 public:
-	OdometryOpticalFlow(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryOpticalFlow();
+	OdometryF2F(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryF2F();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
-	const cv::Mat & getLastFrame() const {return refFrame_;}
-	const std::vector<cv::Point2f> & getLastCorners() const {return refCorners_;}
-	const pcl::PointCloud<pcl::PointXYZ>::Ptr & getLastCorners3D() const {return refCorners3D_;}
+	const Signature & getRefFrame() const {return refFrame_;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
@@ -152,26 +156,13 @@ private:
 private:
 	//Parameters:
 	int keyFrameThr_;
-	int flowWinSize_;
-	int flowIterations_;
-	double flowEps_;
-	int flowMaxLevel_;
-	bool flowGuessFromMotion_;
+	bool guessFromMotion_;
 
-	Stereo * stereo_;
-
-	int subPixWinSize_;
-	int subPixIterations_;
-	double subPixEps_;
-
-	Feature2D * feature2D_;
-
-	cv::Mat refFrame_;
-	std::vector<cv::Point2f> refCorners_;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr refCorners3D_;
-
+	RegistrationVis registration_;
+	Signature refFrame_;
 	Transform motionSinceLastKeyFrame_;
 };
+
 
 class RTABMAP_EXP OdometryMono : public Odometry
 {
@@ -202,7 +193,7 @@ private:
 	cv::Mat refDepthOrRight_;
 	std::map<int, cv::Point2f> cornersMap_;
 	std::map<int, cv::Point3f> localMap_;
-	std::map<int, std::multimap<int, pcl::PointXYZ> > keyFrameWords3D_;
+	std::map<int, std::map<int, cv::Point3f> > keyFrameWords3D_;
 	std::map<int, Transform> keyFramePoses_;
 	float maxVariance_;
 };

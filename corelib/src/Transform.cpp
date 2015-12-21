@@ -67,21 +67,22 @@ Transform::Transform(float x, float y, float z, float roll, float pitch, float y
 	*this = fromEigen3f(t);
 }
 
-Transform::Transform(float x, float y, float z, float qx, float qy, float qz, float qw)
+Transform::Transform(float x, float y, float z, float qx, float qy, float qz, float qw) :
+		data_(cv::Mat::zeros(3,4,CV_32FC1))
 {
 	Eigen::Matrix3f rotation = Eigen::Quaternionf(qw, qx, qy, qz).toRotationMatrix();
 	data()[0] = rotation(0,0);
 	data()[1] = rotation(0,1);
 	data()[2] = rotation(0,2);
-	data()[3] = 0.0f;
+	data()[3] = x;
 	data()[4] = rotation(1,0);
 	data()[5] = rotation(1,1);
 	data()[6] = rotation(1,2);
-	data()[7] = 0.0f;
+	data()[7] = y;
 	data()[8] = rotation(2,0);
 	data()[9] = rotation(2,1);
 	data()[10] = rotation(2,2);
-	data()[11] = 0.0f;
+	data()[11] = z;
 }
 
 Transform::Transform(float x, float y, float theta)
@@ -92,7 +93,8 @@ Transform::Transform(float x, float y, float theta)
 
 bool Transform::isNull() const
 {
-	return (data()[0] == 0.0f &&
+	return (data_.empty() ||
+			(data()[0] == 0.0f &&
 			data()[1] == 0.0f &&
 			data()[2] == 0.0f &&
 			data()[3] == 0.0f &&
@@ -115,7 +117,7 @@ bool Transform::isNull() const
 			uIsNan(data()[8]) ||
 			uIsNan(data()[9]) ||
 			uIsNan(data()[10]) ||
-			uIsNan(data()[11]);
+			uIsNan(data()[11]));
 }
 
 bool Transform::isIdentity() const

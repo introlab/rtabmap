@@ -53,6 +53,9 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Transform & transform);
 
+cv::Point3f RTABMAP_EXP transformPoint(
+		const cv::Point3f & pt,
+		const Transform & transform);
 pcl::PointXYZ RTABMAP_EXP transformPoint(
 		const pcl::PointXYZ & pt,
 		const Transform & transform);

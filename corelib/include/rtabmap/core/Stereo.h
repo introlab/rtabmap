@@ -37,6 +37,9 @@ namespace rtabmap {
 
 class RTABMAP_EXP Stereo {
 public:
+	static Stereo * create(const ParametersMap & parameters = ParametersMap());
+
+public:
 	Stereo(const ParametersMap & parameters = ParametersMap());
 	virtual ~Stereo() {}
 

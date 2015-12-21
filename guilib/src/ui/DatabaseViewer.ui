@@ -17,7 +17,7 @@
    <enum>Qt::LeftToRight</enum>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout_7" stretch="2,0">
+   <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,0,0">
     <property name="spacing">
      <number>0</number>
     </property>
@@ -25,379 +25,369 @@
      <number>0</number>
     </property>
     <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,1">
-      <property name="rightMargin">
+     <layout class="QHBoxLayout" name="horizontalLayout_imageViews" stretch="1,1">
+      <item>
+       <widget class="rtabmap::ImageView" name="graphicsView_A" native="true"/>
+      </item>
+      <item>
+       <widget class="rtabmap::ImageView" name="graphicsView_B" native="true"/>
+      </item>
+     </layout>
+    </item>
+    <item>
+     <layout class="QGridLayout" name="gridLayout_11">
+      <property name="spacing">
        <number>0</number>
       </property>
-      <item>
-       <layout class="QVBoxLayout" name="verticalLayout_6" stretch="1,0,0">
-        <property name="spacing">
-         <number>0</number>
+      <item row="0" column="0">
+       <widget class="QScrollArea" name="scrollArea_2">
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAsNeeded</enum>
         </property>
-        <item>
-         <widget class="rtabmap::ImageView" name="graphicsView_A" native="true"/>
-        </item>
-        <item>
-         <widget class="QScrollArea" name="scrollArea_2">
-          <property name="horizontalScrollBarPolicy">
-           <enum>Qt::ScrollBarAsNeeded</enum>
-          </property>
-          <property name="widgetResizable">
-           <bool>true</bool>
-          </property>
-          <widget class="QWidget" name="scrollAreaWidgetContents_2">
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>181</width>
-             <height>184</height>
-            </rect>
-           </property>
-           <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_parentsA_2">
-              <property name="text">
-               <string>Parents</string>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="label_parentsA">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_childrenA_2">
-              <property name="text">
-               <string>Children</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLabel" name="label_childrenA">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_childrenA_4">
-              <property name="text">
-               <string>Label</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLabel" name="label_labelA">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="QLabel" name="label_childrenA_6">
-              <property name="text">
-               <string>Stamp</string>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="1">
-             <widget class="QLabel" name="label_stampA">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_childrenA_8">
-              <property name="text">
-               <string>Weight</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QLabel" name="label_weightA">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_childrenA_10">
-              <property name="text">
-               <string>Map ID</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QLabel" name="label_mapA">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="label_childrenA_12">
-              <property name="text">
-               <string>Pose</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QLabel" name="label_poseA">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout">
-          <property name="margin">
-           <number>12</number>
-          </property>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_4">
-            <item>
-             <widget class="QLabel" name="label_2">
-              <property name="text">
-               <string>Index :</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_3">
-              <property name="text">
-               <string>Id :</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QVBoxLayout" name="verticalLayout_3">
-            <item>
-             <widget class="QLabel" name="label_indexA">
-              <property name="text">
-               <string>indexA</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_idA">
-              <property name="text">
-               <string>idA</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QSlider" name="horizontalSlider_A">
-            <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="scrollAreaWidgetContents_2">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>189</width>
+           <height>184</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_parentsA_2">
+            <property name="text">
+             <string>Parents</string>
             </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_parentsA">
+            <property name="text">
+             <string/>
             </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksAbove</enum>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_childrenA_2">
+            <property name="text">
+             <string>Children</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_childrenA">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_childrenA_4">
+            <property name="text">
+             <string>Label</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLabel" name="label_labelA">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_childrenA_6">
+            <property name="text">
+             <string>Stamp</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLabel" name="label_stampA">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_childrenA_8">
+            <property name="text">
+             <string>Weight</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="label_weightA">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_childrenA_10">
+            <property name="text">
+             <string>Map ID</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="label_mapA">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_childrenA_12">
+            <property name="text">
+             <string>Pose</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLabel" name="label_poseA">
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>
          </layout>
+        </widget>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QScrollArea" name="scrollArea">
+        <property name="horizontalScrollBarPolicy">
+         <enum>Qt::ScrollBarAsNeeded</enum>
+        </property>
+        <property name="widgetResizable">
+         <bool>true</bool>
+        </property>
+        <widget class="QWidget" name="scrollAreaWidgetContents">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>0</y>
+           <width>187</width>
+           <height>184</height>
+          </rect>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_parentsB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_parentsA_4">
+            <property name="text">
+             <string>Parents</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_childrenA_3">
+            <property name="text">
+             <string>Children</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_childrenB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_childrenA_5">
+            <property name="text">
+             <string>Label</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLabel" name="label_labelB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_childrenA_7">
+            <property name="text">
+             <string>Stamp</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLabel" name="label_stampB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_childrenA_9">
+            <property name="text">
+             <string>Weight</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="label_weightB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_childrenA_11">
+            <property name="text">
+             <string>Map ID</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="label_mapB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_childrenA_13">
+            <property name="text">
+             <string>Pose</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLabel" name="label_poseB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <property name="margin">
+         <number>12</number>
+        </property>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_4">
+          <item>
+           <widget class="QLabel" name="label_2">
+            <property name="text">
+             <string>Index :</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_3">
+            <property name="text">
+             <string>Id :</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <item>
+           <widget class="QLabel" name="label_indexA">
+            <property name="text">
+             <string>indexA</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_idA">
+            <property name="text">
+             <string>idA</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QSlider" name="horizontalSlider_A">
+          <property name="focusPolicy">
+           <enum>Qt::ClickFocus</enum>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="tickPosition">
+           <enum>QSlider::TicksAbove</enum>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
-      <item>
-       <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,0,0">
-        <property name="spacing">
-         <number>0</number>
+      <item row="1" column="1">
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <property name="margin">
+         <number>12</number>
         </property>
         <item>
-         <widget class="rtabmap::ImageView" name="graphicsView_B" native="true"/>
-        </item>
-        <item>
-         <widget class="QScrollArea" name="scrollArea">
-          <property name="horizontalScrollBarPolicy">
-           <enum>Qt::ScrollBarAsNeeded</enum>
-          </property>
-          <property name="widgetResizable">
-           <bool>true</bool>
-          </property>
-          <widget class="QWidget" name="scrollAreaWidgetContents">
-           <property name="geometry">
-            <rect>
-             <x>0</x>
-             <y>0</y>
-             <width>181</width>
-             <height>184</height>
-            </rect>
-           </property>
-           <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
-            <item row="0" column="1">
-             <widget class="QLabel" name="label_parentsB">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0">
-             <widget class="QLabel" name="label_parentsA_4">
-              <property name="text">
-               <string>Parents</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label_childrenA_3">
-              <property name="text">
-               <string>Children</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLabel" name="label_childrenB">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_childrenA_5">
-              <property name="text">
-               <string>Label</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLabel" name="label_labelB">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="QLabel" name="label_childrenA_7">
-              <property name="text">
-               <string>Stamp</string>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="1">
-             <widget class="QLabel" name="label_stampB">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_childrenA_9">
-              <property name="text">
-               <string>Weight</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QLabel" name="label_weightB">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="label_childrenA_11">
-              <property name="text">
-               <string>Map ID</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QLabel" name="label_mapB">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="label_childrenA_13">
-              <property name="text">
-               <string>Pose</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QLabel" name="label_poseB">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-         </widget>
-        </item>
-        <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <property name="margin">
-           <number>12</number>
-          </property>
+         <layout class="QVBoxLayout" name="verticalLayout">
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout">
-            <item>
-             <widget class="QLabel" name="label_5">
-              <property name="text">
-               <string>Index :</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_4">
-              <property name="text">
-               <string>Id :</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Index :</string>
+            </property>
+           </widget>
           </item>
           <item>
-           <layout class="QVBoxLayout" name="verticalLayout_2">
-            <item>
-             <widget class="QLabel" name="label_indexB">
-              <property name="text">
-               <string>indexB</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QLabel" name="label_idB">
-              <property name="text">
-               <string>idB</string>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <widget class="QSlider" name="horizontalSlider_B">
-            <property name="focusPolicy">
-             <enum>Qt::ClickFocus</enum>
-            </property>
-            <property name="orientation">
-             <enum>Qt::Horizontal</enum>
-            </property>
-            <property name="tickPosition">
-             <enum>QSlider::TicksAbove</enum>
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Id :</string>
             </property>
            </widget>
           </item>
          </layout>
+        </item>
+        <item>
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <item>
+           <widget class="QLabel" name="label_indexB">
+            <property name="text">
+             <string>indexB</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="label_idB">
+            <property name="text">
+             <string>idB</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QSlider" name="horizontalSlider_B">
+          <property name="focusPolicy">
+           <enum>Qt::ClickFocus</enum>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="tickPosition">
+           <enum>QSlider::TicksAbove</enum>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
@@ -829,8 +819,15 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_10">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_11">
-       <item>
+      <layout class="QGridLayout" name="gridLayout_4">
+       <item row="0" column="2">
+        <widget class="QLabel" name="label_logger_level">
+         <property name="text">
+          <string>Logger level</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
         <widget class="QComboBox" name="comboBox_logger_level">
          <property name="currentIndex">
           <number>1</number>
@@ -857,10 +854,17 @@
          </item>
         </widget>
        </item>
-       <item>
-        <widget class="QLabel" name="label_logger_level">
+       <item row="1" column="1">
+        <widget class="QCheckBox" name="checkBox_verticalLayout">
          <property name="text">
-          <string>Logger level</string>
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLabel" name="label_logger_level_2">
+         <property name="text">
+          <string>Vertical layout</string>
          </property>
         </widget>
        </item>
@@ -1012,7 +1016,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>261</width>
+          <width>297</width>
           <height>411</height>
          </rect>
         </property>
@@ -1269,7 +1273,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
+          <width>297</width>
           <height>126</height>
          </rect>
         </property>
@@ -1368,7 +1372,7 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-48</y>
+          <y>0</y>
           <width>297</width>
           <height>134</height>
          </rect>
@@ -1613,24 +1617,7 @@
       <number>0</number>
      </property>
      <item>
-      <widget class="rtabmap::ParametersToolBox" name="parameters_toolbox">
-       <property name="currentIndex">
-        <number>0</number>
-       </property>
-       <widget class="QWidget" name="page">
-        <property name="geometry">
-         <rect>
-          <x>0</x>
-          <y>0</y>
-          <width>336</width>
-          <height>76</height>
-         </rect>
-        </property>
-        <attribute name="label">
-         <string>Page 1</string>
-        </attribute>
-       </widget>
-      </widget>
+      <widget class="rtabmap::ParametersToolBox" name="parameters_toolbox" native="true"/>
      </item>
     </layout>
    </widget>
@@ -1770,7 +1757,7 @@
   </customwidget>
   <customwidget>
    <class>rtabmap::ParametersToolBox</class>
-   <extends>QToolBox</extends>
+   <extends>QWidget</extends>
    <header>ParametersToolBox.h</header>
    <container>1</container>
   </customwidget>

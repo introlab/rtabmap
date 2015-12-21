@@ -407,6 +407,29 @@ cv::Mat EpipolarGeometry::findFFromCalibratedStereoCameras(double fx, double fy,
 }
 
 /**
+ * if a=[1 2 3 4 6], b=[1 2 4 5 6], results= [(1,1) (2,2) (4,4) (6,6)]
+ * realPairsCount = 4
+ */
+int EpipolarGeometry::findPairs(
+		const std::map<int, cv::KeyPoint> & wordsA,
+		const std::map<int, cv::KeyPoint> & wordsB,
+		std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > & pairs)
+{
+	int realPairsCount = 0;
+	pairs.clear();
+	for(std::map<int, cv::KeyPoint>::const_iterator i=wordsA.begin(); i!=wordsA.end(); ++i)
+	{
+		std::map<int, cv::KeyPoint>::const_iterator ptB = wordsB.find(i->first);
+		if(ptB != wordsB.end())
+		{
+			pairs.push_back(std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> >(i->first, std::pair<cv::KeyPoint, cv::KeyPoint>(i->second, ptB->second)));
+			++realPairsCount;
+		}
+	}
+	return realPairsCount;
+}
+
+/**
  * if a=[1 2 3 4 6 6], b=[1 1 2 4 5 6 6], results= [(1,1a) (2,2) (4,4) (6a,6a) (6b,6b)]
  * realPairsCount = 5
  */

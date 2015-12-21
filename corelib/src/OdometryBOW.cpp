@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_motion_estimation.h"
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/VWDictionary.h"
+#include "rtabmap/core/util3d.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -59,6 +60,7 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomBowFixedLocalMapPath(), _fixedLocalMapPath);
 
 	ParametersMap customParameters;
+	customParameters.insert(ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(this->getMinDepth())));
 	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
 	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
@@ -66,18 +68,18 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
 	customParameters.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemSaveDepth16Format(), "false"));
-	int nn = Parameters::defaultVisNNType();
-	float nndr = Parameters::defaultVisNNDR();
+	int nn = Parameters::defaultVisCorNNType();
+	float nndr = Parameters::defaultVisCorNNDR();
 	int featureType = Parameters::defaultVisFeatureType();
 	int maxFeatures = Parameters::defaultVisMaxFeatures();
-	Parameters::parse(parameters, Parameters::kVisNNType(), nn);
-	Parameters::parse(parameters, Parameters::kVisNNDR(), nndr);
+	Parameters::parse(parameters, Parameters::kVisCorNNType(), nn);
+	Parameters::parse(parameters, Parameters::kVisCorNNDR(), nndr);
 	Parameters::parse(parameters, Parameters::kVisFeatureType(), featureType);
 	Parameters::parse(parameters, Parameters::kVisMaxFeatures(), maxFeatures);
 	customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(nn)));
 	customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
 	customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
-	customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
+	customParameters.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(maxFeatures)));
 
 	// Memory's stereo parameters, copy from Odometry
 	int subPixWinSize = Parameters::defaultVisSubPixWinSize();
@@ -150,8 +152,8 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 					if(s)
 					{
 						// Transform 3D points accordingly to pose and add them to local map
-						const std::multimap<int, pcl::PointXYZ> & words3D = s->getWords3();
-						for(std::multimap<int, pcl::PointXYZ>::const_iterator pointsIter=words3D.begin();
+						const std::multimap<int, cv::Point3f> & words3D = s->getWords3();
+						for(std::multimap<int, cv::Point3f>::const_iterator pointsIter=words3D.begin();
 							pointsIter!=words3D.end();
 							++pointsIter)
 						{
@@ -255,6 +257,7 @@ Transform OdometryBOW::computeTransform(
 								this->getIterations(),
 								this->getPnPReprojError(),
 								this->getPnPFlags(),
+								this->getPnPOpenCV2(),
 								this->getPose(),
 								uMultimapToMap(newSignature->getWords3()),
 								isVarianceFromInliersCount()?0:&variance, // don't compute variance if we use inliers
@@ -356,10 +359,10 @@ Transform OdometryBOW::computeTransform(
 						// keep old word
 						if(localMap_.find(*iter) == localMap_.end())
 						{
-							const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-							if(pcl::isFinite(pt))
+							const cv::Point3f & pt = newSignature->getWords3().find(*iter)->second;
+							if(util3d::isFinite(pt))
 							{
-								pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
+								cv::Point3f pt2 = util3d::transformPoint(pt, t);
 								localMap_.insert(std::make_pair(*iter, pt2));
 							}
 						}
@@ -391,10 +394,10 @@ Transform OdometryBOW::computeTransform(
 					// Only add unique words
 					if(newSignature->getWords3().count(*iter) == 1)
 					{
-						const pcl::PointXYZ & pt = newSignature->getWords3().find(*iter)->second;
-						if(pcl::isFinite(pt))
+						const cv::Point3f & pt = newSignature->getWords3().find(*iter)->second;
+						if(util3d::isFinite(pt))
 						{
-							pcl::PointXYZ pt2 = util3d::transformPoint(pt, t);
+							cv::Point3f pt2 = util3d::transformPoint(pt, t);
 							localMap_.insert(std::make_pair(*iter, pt2));
 						}
 						else

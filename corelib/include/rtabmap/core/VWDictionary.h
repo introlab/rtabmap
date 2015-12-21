@@ -91,7 +91,7 @@ public:
 
 	void exportDictionary(const char * fileNameReferences, const char * fileNameDescriptors) const;
 
-	void clear();
+	void clear(bool printWarningsIfNotEmpty = true);
 	std::vector<VisualWord *> getUnusedWords() const;
 	std::vector<int> getUnusedWordIds() const;
 	unsigned int getUnusedWordsSize() const {return (int)_unusedWords.size();}

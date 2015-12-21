@@ -1529,8 +1529,8 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			int visualWordId = 0;
 			cv::KeyPoint kpt;
 			std::multimap<int, cv::KeyPoint> visualWords;
-			std::multimap<int, pcl::PointXYZ> visualWords3;
-			pcl::PointXYZ depth(0,0,0);
+			std::multimap<int, cv::Point3f> visualWords3;
+			cv::Point3f depth(0,0,0);
 
 			// Process the result if one
 			rc = sqlite3_step(ppStmt);
@@ -2305,7 +2305,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 			if((*i)->getWords3().size())
 			{
 				std::multimap<int, cv::KeyPoint>::const_iterator w=(*i)->getWords().begin();
-				std::multimap<int, pcl::PointXYZ>::const_iterator p=(*i)->getWords3().begin();
+				std::multimap<int, cv::Point3f>::const_iterator p=(*i)->getWords3().begin();
 				for(; w!=(*i)->getWords().end(); ++w, ++p)
 				{
 					UASSERT(w->first == p->first); // must be same id!
@@ -2316,7 +2316,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 			{
 				for(std::multimap<int, cv::KeyPoint>::const_iterator w=(*i)->getWords().begin(); w!=(*i)->getWords().end(); ++w)
 				{
-					stepKeypoint(ppStmt, (*i)->id(), w->first, w->second, pcl::PointXYZ(0,0,0));
+					stepKeypoint(ppStmt, (*i)->id(), w->first, w->second, cv::Point3f(0,0,0));
 				}
 			}
 		}
@@ -3008,7 +3008,7 @@ std::string DBDriverSqlite3::queryStepKeypoint() const
 {
 	return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z) VALUES(?,?,?,?,?,?,?,?,?,?);";
 }
-void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt, int nodeId, int wordId, const cv::KeyPoint & kp, const pcl::PointXYZ & pt) const
+void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt, int nodeId, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt) const
 {
 	if(!ppStmt)
 	{

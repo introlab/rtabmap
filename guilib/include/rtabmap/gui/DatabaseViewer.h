@@ -60,7 +60,7 @@ class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
 	Q_OBJECT
 
 public:
-	DatabaseViewer(QWidget * parent = 0);
+	DatabaseViewer(const QString & ini = QString(), QWidget * parent = 0);
 	virtual ~DatabaseViewer();
 	bool openDatabase(const QString & path);
 	bool isSavedMaximized() const {return savedMaximized_;}
@@ -111,6 +111,7 @@ private slots:
 	void updateLoggerLevel();
 	void updateStereo();
 	void notifyParametersChanged(const QStringList &);
+	void setupMainLayout(int vertical);
 
 private:
 	QString getIniFilePath() const;
@@ -173,6 +174,7 @@ private:
 
 	bool savedMaximized_;
 	bool firstCall_;
+	QString iniFilePath_;
 };
 
 }

@@ -42,14 +42,14 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
-	virtual Transform computeTransformation(
-			const Signature & from,
-			const Signature & to,
+	virtual Transform computeTransformationMod(
+			Signature & from,
+			Signature & to,
 			Transform guess = Transform::getIdentity(), // guess is ignored for RegistrationVis
 			std::string * rejectedMsg = 0,
-			int * inliersOut = 0,
+			std::vector<int> * inliersOut = 0,
 			float * varianceOut = 0,
-			float * inliersRatioOut = 0);
+			float * inliersRatioOut = 0) const;
 
 	float getBowInlierDistance() const {return _inlierDistance;}
 	int getBowIterations() const {return _iterations;}
@@ -64,8 +64,15 @@ private:
 	bool _force2D;
 	float _epipolarGeometryVar;
 	int _estimationType;
+	bool _forwardEstimateOnly;
 	double _PnPReprojError;
 	int _PnPFlags;
+	bool _PnPOpenCV2;
+	int _correspondencesApproach;
+	int _flowWinSize;
+	int _flowIterations;
+	float _flowEps;
+	int _flowMaxLevel;
 
 	ParametersMap _featureParameters;
 };

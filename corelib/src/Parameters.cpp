@@ -141,6 +141,8 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		// removed parameters
 
 		// 0.11.0
+		removedParameters_.insert(std::make_pair("Kp/WordsPerImage",              std::make_pair(true, Parameters::kKpMaxFeatures())));
+
 		removedParameters_.insert(std::make_pair("Mem/LaserScanVoxelSize",        std::make_pair(false, Parameters::kMemLaserScanDownsampleStepSize())));
 		removedParameters_.insert(std::make_pair("Mem/LocalSpaceLinksKeptInWM",   std::make_pair(false, "")));
 
@@ -161,8 +163,13 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Odom/PnPReprojError",           std::make_pair(true,  Parameters::kVisPnPReprojError())));
 		removedParameters_.insert(std::make_pair("Odom/PnPFlags",                 std::make_pair(true,  Parameters::kVisPnPFlags())));
 
-		removedParameters_.insert(std::make_pair("OdomBow/NNType",                std::make_pair(true,  Parameters::kVisNNType())));
-		removedParameters_.insert(std::make_pair("OdomBow/NNDR",                  std::make_pair(true,  Parameters::kVisNNDR())));
+		removedParameters_.insert(std::make_pair("OdomBow/NNType",                std::make_pair(true,  Parameters::kVisCorNNType())));
+		removedParameters_.insert(std::make_pair("OdomBow/NNDR",                  std::make_pair(true,  Parameters::kVisCorNNDR())));
+
+		removedParameters_.insert(std::make_pair("OdomFlow/WinSize",              std::make_pair(true,  Parameters::kVisCorFlowWinSize())));
+		removedParameters_.insert(std::make_pair("OdomFlow/Iterations",           std::make_pair(true,  Parameters::kVisCorFlowIterations())));
+		removedParameters_.insert(std::make_pair("OdomFlow/Eps",                  std::make_pair(true,  Parameters::kVisCorFlowEps())));
+		removedParameters_.insert(std::make_pair("OdomFlow/MaxLevel",             std::make_pair(true,  Parameters::kVisCorFlowMaxLevel())));
 
 		removedParameters_.insert(std::make_pair("OdomSubPix/WinSize",            std::make_pair(true,  Parameters::kVisSubPixWinSize())));
 		removedParameters_.insert(std::make_pair("OdomSubPix/Iterations",         std::make_pair(true,  Parameters::kVisSubPixIterations())));
@@ -173,8 +180,8 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("LccReextract/MaxWords",          std::make_pair(false,  Parameters::kVisMaxFeatures())));
 		removedParameters_.insert(std::make_pair("LccReextract/MaxDepth",          std::make_pair(false,  Parameters::kVisMaxDepth())));
 		removedParameters_.insert(std::make_pair("LccReextract/RoiRatios",         std::make_pair(false,  Parameters::kVisRoiRatios())));
-		removedParameters_.insert(std::make_pair("LccReextract/NNType",            std::make_pair(false,  Parameters::kVisNNType())));
-		removedParameters_.insert(std::make_pair("LccReextract/NNDR",              std::make_pair(false,  Parameters::kVisNNDR())));
+		removedParameters_.insert(std::make_pair("LccReextract/NNType",            std::make_pair(false,  Parameters::kVisCorNNType())));
+		removedParameters_.insert(std::make_pair("LccReextract/NNDR",              std::make_pair(false,  Parameters::kVisCorNNDR())));
 
 		removedParameters_.insert(std::make_pair("LccBow/EstimationType",           std::make_pair(false,  Parameters::kVisEstimationType())));
 		removedParameters_.insert(std::make_pair("LccBow/InlierDistance",           std::make_pair(false,  Parameters::kVisInlierDistance())));
@@ -235,8 +242,8 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Odom/Type",                        std::make_pair(true, Parameters::kVisFeatureType())));
 		removedParameters_.insert(std::make_pair("Odom/MaxWords",                    std::make_pair(true, Parameters::kVisMaxFeatures())));
 		removedParameters_.insert(std::make_pair("Odom/LocalHistory",                std::make_pair(true, Parameters::kOdomBowLocalHistorySize())));
-		removedParameters_.insert(std::make_pair("Odom/NearestNeighbor",             std::make_pair(true, Parameters::kVisNNType())));
-		removedParameters_.insert(std::make_pair("Odom/NNDR",                        std::make_pair(true, Parameters::kVisNNDR())));
+		removedParameters_.insert(std::make_pair("Odom/NearestNeighbor",             std::make_pair(true, Parameters::kVisCorNNType())));
+		removedParameters_.insert(std::make_pair("Odom/NNDR",                        std::make_pair(true, Parameters::kVisCorNNDR())));
 	}
 	return removedParameters_;
 }
@@ -420,7 +427,10 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 
 				}
 
-				uInsert(parameters, ParametersPair(key, iter->second));
+				if(Parameters::getDefaultParameters().find(key) != Parameters::getDefaultParameters().end())
+				{
+					uInsert(parameters, ParametersPair(key, iter->second));
+				}
 			}
 		}
 	}

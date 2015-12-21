@@ -32,6 +32,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+Stereo * Stereo::create(const ParametersMap & parameters)
+{
+	bool opticalFlow = Parameters::defaultStereoOpticalFlow();
+	Parameters::parse(parameters, Parameters::kStereoOpticalFlow(), opticalFlow);
+	if(opticalFlow)
+	{
+		return new StereoOpticalFlow(parameters);
+	}
+	else
+	{
+		return new Stereo(parameters);
+	}
+}
+
 Stereo::Stereo(const ParametersMap & parameters) :
 		winWidth_(Parameters::defaultStereoWinWidth()),
 		winHeight_(Parameters::defaultStereoWinHeight()),

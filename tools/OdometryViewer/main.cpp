@@ -104,8 +104,8 @@ int main (int argc, char * argv[])
 	bool icp = false;
 	bool flow = false;
 	bool mono = false;
-	int nnType = rtabmap::Parameters::defaultVisNNType();
-	float nndr = rtabmap::Parameters::defaultVisNNDR();
+	int nnType = rtabmap::Parameters::defaultVisCorNNType();
+	float nndr = rtabmap::Parameters::defaultVisCorNNDR();
 	float distance = rtabmap::Parameters::defaultVisInlierDistance();
 	int maxWords = rtabmap::Parameters::defaultVisMaxFeatures();
 	int minInliers = rtabmap::Parameters::defaultVisMinInliers();
@@ -658,7 +658,8 @@ int main (int argc, char * argv[])
 		if(flow)
 		{
 			// Optical Flow
-			odom = new rtabmap::OdometryOpticalFlow(parameters);
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorType(), "1"));
+			odom = new rtabmap::OdometryF2F(parameters);
 		}
 		else
 		{
@@ -666,8 +667,8 @@ int main (int argc, char * argv[])
 			UINFO("Nearest neighbor =         %s", nnName.c_str());
 			UINFO("Nearest neighbor ratio =  %f", nndr);
 			UINFO("Local history =           %d", localHistory);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisNNType(), uNumber2Str(nnType)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisNNDR(), uNumber2Str(nndr)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNType(), uNumber2Str(nnType)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNDR(), uNumber2Str(nndr)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowLocalHistorySize(), uNumber2Str(localHistory)));
 
 			if(mono)

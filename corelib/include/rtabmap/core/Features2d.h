@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/features2d/features2d.hpp>
 #include <list>
 #include "rtabmap/core/Parameters.h"
+#include "rtabmap/core/SensorData.h"
 
 #if CV_MAJOR_VERSION < 3
 namespace cv{
@@ -87,6 +88,8 @@ typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
 
 namespace rtabmap {
 
+class Stereo;
+
 // Feature2D
 class RTABMAP_EXP Feature2D {
 public:
@@ -104,7 +107,6 @@ public:
 
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
-	static Feature2D * create(Feature2D::Type type, int wordsPerImage, const ParametersMap & parameters = ParametersMap()); // for convenience
 
 	static void filterKeypointsByDepth(
 				std::vector<cv::KeyPoint> & keypoints,
@@ -137,10 +139,13 @@ public:
 	int getMaxFeatures() const {return maxFeatures_;}
 
 public:
-	virtual ~Feature2D() {}
+	virtual ~Feature2D();
 
-	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image, const cv::Rect & roi = cv::Rect()) const;
+	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image) const;
 	cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	std::vector<cv::Point3f> generateKeypoints3D(
+			const SensorData & data,
+			const std::vector<cv::KeyPoint> & keypoints) const;
 
 	virtual void parseParameters(const ParametersMap & parameters);
 	virtual Feature2D::Type getType() const = 0;
@@ -154,6 +159,14 @@ private:
 
 private:
 	int maxFeatures_;
+	float _wordsMaxDepth; // 0=inf
+	float _wordsMinDepth;
+	std::vector<float> _roiRatios; // size 4
+	int _subPixWinSize;
+	int _subPixIterations;
+	double _subPixEps;
+	// Stereo stuff
+	Stereo * _stereo;
 };
 
 //SURF
@@ -198,7 +211,6 @@ private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
-	int nfeatures_;
 	int nOctaveLayers_;
 	double contrastThreshold_;
 	double edgeThreshold_;
@@ -222,7 +234,6 @@ private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
-	int nFeatures_;
 	float scaleFactor_;
 	int nLevels_;
 	int edgeThreshold_;
@@ -258,7 +269,6 @@ private:
 	double gpuKeypointsRatio_;
 	int minThreshold_;
 	int maxThreshold_;
-	int maxTotalKeypoints_;
 	int gridRows_;
 	int gridCols_;
 
@@ -337,7 +347,6 @@ private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
 
 private:
-	int _maxCorners;
 	double _qualityLevel;
 	double _minDistance;
 	int _blockSize;

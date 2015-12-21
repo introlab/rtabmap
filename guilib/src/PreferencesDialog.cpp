@@ -208,6 +208,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
+#if CV_MAJOR_VERSION < 3
+	_ui->loopClosure_pnpOpenCV2->setVisible(false);
+	_ui->label_loopClosure_pnpOpenCV2->setVisible(false);
+#endif
+
 	// Default Driver
 	connect(_ui->comboBox_sourceType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(updateRGBDCameraGroupBoxVisibility()));
@@ -520,7 +525,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->surf_doubleSpinBox_nndrRatio->setObjectName(Parameters::kKpNndrRatio().c_str());
 	_ui->surf_doubleSpinBox_maxDepth->setObjectName(Parameters::kKpMaxDepth().c_str());
 	_ui->surf_doubleSpinBox_minDepth->setObjectName(Parameters::kKpMinDepth().c_str());
-	_ui->surf_spinBox_wordsPerImageTarget->setObjectName(Parameters::kKpWordsPerImage().c_str());
+	_ui->surf_spinBox_wordsPerImageTarget->setObjectName(Parameters::kKpMaxFeatures().c_str());
 	_ui->surf_doubleSpinBox_ratioBadSign->setObjectName(Parameters::kKpBadSignRatio().c_str());
 	_ui->checkBox_kp_tfIdfLikelihoodUsed->setObjectName(Parameters::kKpTfIdfLikelihoodUsed().c_str());
 	_ui->checkBox_kp_parallelized->setObjectName(Parameters::kKpParallelized().c_str());
@@ -640,14 +645,19 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_estimationType->setObjectName(Parameters::kVisEstimationType().c_str());
 	connect(_ui->loopClosure_estimationType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_loopClosureEstimation, SLOT(setCurrentIndex(int)));
 	_ui->stackedWidget_loopClosureEstimation->setCurrentIndex(Parameters::defaultVisEstimationType());
+	_ui->loopClosure_forwardEst->setObjectName(Parameters::kVisForwardEstOnly().c_str());
 	_ui->loopClosure_bowEpipolarGeometryVar->setObjectName(Parameters::kVisEpipolarGeometryVar().c_str());
 	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kVisPnPReprojError().c_str());
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kVisPnPFlags().c_str());
+	_ui->loopClosure_pnpOpenCV2->setObjectName(Parameters::kVisPnPOpenCV2().c_str());
 	_ui->loopClosure_bowVarianceFromInliersCount->setObjectName(Parameters::kRegVarianceFromInliersCount().c_str());
 
 	_ui->loopClosure_reextract->setObjectName(Parameters::kRGBDLoopClosureReextractFeatures().c_str());
-	_ui->reextract_nn->setObjectName(Parameters::kVisNNType().c_str());
-	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisNNDR().c_str());
+	_ui->loopClosure_correspondencesType->setObjectName(Parameters::kVisCorType().c_str());
+	connect(_ui->loopClosure_correspondencesType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_loopClosureCorrespondences, SLOT(setCurrentIndex(int)));
+	_ui->stackedWidget_loopClosureCorrespondences->setCurrentIndex(Parameters::defaultVisCorType());
+	_ui->reextract_nn->setObjectName(Parameters::kVisCorNNType().c_str());
+	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
 	_ui->reextract_type->setObjectName(Parameters::kVisFeatureType().c_str());
 	_ui->reextract_maxFeatures->setObjectName(Parameters::kVisMaxFeatures().c_str());
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kVisMaxDepth().c_str());
@@ -685,10 +695,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	//Odometry Optical Flow
 	_ui->odom_flow_keyframeThr->setObjectName(Parameters::kOdomFlowKeyFrameThr().c_str());
-	_ui->odom_flow_winSize->setObjectName(Parameters::kOdomFlowWinSize().c_str());
-	_ui->odom_flow_maxLevel->setObjectName(Parameters::kOdomFlowMaxLevel().c_str());
-	_ui->odom_flow_iterations->setObjectName(Parameters::kOdomFlowIterations().c_str());
-	_ui->odom_flow_eps->setObjectName(Parameters::kOdomFlowEps().c_str());
+	_ui->odom_flow_winSize_2->setObjectName(Parameters::kVisCorFlowWinSize().c_str());
+	_ui->odom_flow_maxLevel_2->setObjectName(Parameters::kVisCorFlowMaxLevel().c_str());
+	_ui->odom_flow_iterations_2->setObjectName(Parameters::kVisCorFlowIterations().c_str());
+	_ui->odom_flow_eps_2->setObjectName(Parameters::kVisCorFlowEps().c_str());
 	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomFlowGuessMotion().c_str());
 
 	//Odometry Mono
@@ -699,6 +709,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	//Odometry particle filter
 	_ui->odom_filteringStrategy->setObjectName(Parameters::kOdomFilteringStrategy().c_str());
+	_ui->stackedWidget_odometryFiltering->setCurrentIndex(_ui->odom_filteringStrategy->currentIndex());
+	connect(_ui->odom_filteringStrategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odometryFiltering, SLOT(setCurrentIndex(int)));
 	_ui->spinBox_particleSize->setObjectName(Parameters::kOdomParticleSize().c_str());
 	_ui->doubleSpinBox_particleNoiseT->setObjectName(Parameters::kOdomParticleNoiseT().c_str());
 	_ui->doubleSpinBox_particleLambdaT->setObjectName(Parameters::kOdomParticleLambdaT().c_str());
@@ -2410,7 +2422,7 @@ void PreferencesDialog::selectSourceDatabase()
 
 void PreferencesDialog::openDatabaseViewer()
 {
-	DatabaseViewer * viewer = new DatabaseViewer(this);
+	DatabaseViewer * viewer = new DatabaseViewer(getIniFilePath(), this);
 	viewer->setWindowModality(Qt::WindowModal);
 	viewer->setAttribute(Qt::WA_DeleteOnClose, true);
 	viewer->showCloseButton();
@@ -2723,7 +2735,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 					}
 					else if(valueInt==1 &&
 							(combo->objectName().toStdString().compare(Parameters::kKpNNStrategy()) == 0 ||
-							 combo->objectName().toStdString().compare(Parameters::kVisNNType()) == 0))
+							 combo->objectName().toStdString().compare(Parameters::kVisCorNNType()) == 0))
 
 					{
 						UWARN("Trying to set \"%s\" to KdTree but RTAB-Map isn't built "
@@ -4112,7 +4124,7 @@ void PreferencesDialog::testOdometry()
 	Odometry * odometry;
 	if(this->getOdomStrategy() == 1)
 	{
-		odometry = new OdometryOpticalFlow(parameters);
+		odometry = new OdometryF2F(parameters);
 	}
 	else if(this->getOdomStrategy() == 2)
 	{

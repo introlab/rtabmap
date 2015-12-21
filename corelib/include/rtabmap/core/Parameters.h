@@ -214,7 +214,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Kp, IncrementalFlann,      bool, true, 		"When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary doubles in size).");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf).");
 	RTABMAP_PARAM(Kp, MinDepth,              float, 0.0, 		"Filter extracted keypoints by depth.");
-	RTABMAP_PARAM(Kp, WordsPerImage,         int, 400, 			"Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
+	RTABMAP_PARAM(Kp, MaxFeatures,           int, 400, 			"Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.5, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
 	RTABMAP_PARAM_COND(Kp, NndrRatio, 	     float, RTABMAP_NONFREE, 0.8, 0.9,		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 	RTABMAP_PARAM_COND(Kp, DetectorStrategy, int, RTABMAP_NONFREE, 0, 2, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
@@ -357,10 +357,6 @@ class RTABMAP_EXP Parameters
 
 	// Odometry Optical Flow
 	RTABMAP_PARAM(OdomFlow, KeyFrameThr,           int, 0,        "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
-	RTABMAP_PARAM(OdomFlow, WinSize,               int, 16,       "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Iterations,            int, 30,       "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, Eps,                   double, 0.01,  "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
-	RTABMAP_PARAM(OdomFlow, MaxLevel,              int, 3,        "Used for optical flow approach. See cv::calcOpticalFlowPyrLK().");
 	RTABMAP_PARAM(OdomFlow, GuessMotion,           bool, true,    "Guess optical flow from the last motion computed.");
 
 	// Common registration parameters
@@ -368,16 +364,16 @@ class RTABMAP_EXP Parameters
 	
 	// Visual registration parameters
 	RTABMAP_PARAM(Vis, EstimationType,           int, 0,    	"Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
+	RTABMAP_PARAM(Vis, ForwardEstOnly,               bool, true, 	"Forward estimation (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
 	RTABMAP_PARAM(Vis, InlierDistance,           float, 0.1,    "[Vis/EstimationType = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.");
 	RTABMAP_PARAM(Vis, RefineIterations,         int, 10,       "[Vis/EstimationType = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
 	RTABMAP_PARAM(Vis, PnPReprojError, 	         double, 5.0,   "[Vis/EstimationType = 1] PnP reprojection error.");
-	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,    	"[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
+	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,        "[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
+	RTABMAP_PARAM(Vis, PnPOpenCV2,               bool, true,    "[Vis/EstimationType = 1] Use OpenCV2 solvePnPRansac() in OpenCV3.");
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
 	RTABMAP_PARAM(Vis, MinInliers,               int, 10, 		"Minimum feature correspondences to compute/accept the transformation.");
 	RTABMAP_PARAM(Vis, Iterations,               int, 100, 		"Maximum iterations to compute the transform.");
 	RTABMAP_PARAM(Vis, Force2D,                  bool, false,   "Force 2D transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.");
-	RTABMAP_PARAM(Vis, NNType, 	                 int, 3,        "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4.");
-	RTABMAP_PARAM(Vis, NNDR,                     float, 0.8,    "NNDR: nearest neighbor distance ratio.");
 	RTABMAP_PARAM(Vis, FeatureType,              int, 6,        "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,     "0 no limits.");
 	RTABMAP_PARAM(Vis, MaxDepth, 	             float, 0.0,    "Max depth of the features (0 means no limit).");
@@ -386,6 +382,13 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, SubPixWinSize,            int, 3,        "See cv::cornerSubPix().");
 	RTABMAP_PARAM(Vis, SubPixIterations,         int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
 	RTABMAP_PARAM(Vis, SubPixEps,                double, 0.02,  "See cv::cornerSubPix().");
+	RTABMAP_PARAM(Vis, CorType,                  int, 0,        "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
+	RTABMAP_PARAM(Vis, CorNNType, 	             int, 3,        "[Vis/CorrespondenceType=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.");
+	RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.8,    "[Vis/CorrespondenceType=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.");
+	RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
+	RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
+	RTABMAP_PARAM(Vis, CorFlowEps,               double, 0.01,  "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
+	RTABMAP_PARAM(Vis, CorFlowMaxLevel,          int, 3,        "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
 
 
 	// ICP registration parameters

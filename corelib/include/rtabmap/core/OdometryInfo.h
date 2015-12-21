@@ -64,15 +64,15 @@ public:
 	Transform transformGroundTruth;
 	float distanceTravelled;
 
-	int type; // 0=BOW, 1=Optical Flow, 2=ICP
+	int type; // 0=BOW, 1=F2F, 2=ICP, 3=Mono
 
-	// BOW odometry
+	// BOW
 	std::multimap<int, cv::KeyPoint> words;
 	std::vector<int> wordMatches;
 	std::vector<int> wordInliers;
 	std::map<int, cv::Point3f> localMap;
 
-	// Optical Flow odometry
+	// F2F && Mono
 	std::vector<cv::Point2f> refCorners;
 	std::vector<cv::Point2f> newCorners;
 	std::vector<int> cornerInliers;

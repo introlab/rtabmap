@@ -42,7 +42,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
-#include <pcl/point_types.h>
 
 namespace rtabmap {
 
@@ -147,7 +146,7 @@ public:
 	SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
 	void getNodeWords(int nodeId,
 			std::multimap<int, cv::KeyPoint> & words,
-			std::multimap<int, pcl::PointXYZ> & words3);
+			std::multimap<int, cv::Point3f> & words3);
 	SensorData getSignatureDataConst(int locationId) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
@@ -161,8 +160,6 @@ public:
 	const Feature2D * getFeature2D() const {return _feature2D;}
 	bool isGraphReduced() const {return _reduceGraph;}
 
-	void setRoi(const std::string & roi);
-
 	void dumpMemoryTree(const char * fileNameTree) const;
 	virtual void dumpMemory(std::string directory) const;
 	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
@@ -172,7 +169,6 @@ public:
 
 	//keypoint stuff
 	const VWDictionary * getVWDictionary() const;
-	Feature2D::Type getFeatureType() const {return _featureType;}
 
 	// RGB-D stuff
 	void getMetricConstraints(
@@ -262,23 +258,12 @@ private:
 	//Keypoint stuff
 	VWDictionary * _vwd;
 	Feature2D * _feature2D;
-	Feature2D::Type _featureType;
 	float _badSignRatio;;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
-	float _wordsMaxDepth; // 0=inf
-	float _wordsMinDepth;
-	std::vector<float> _roiRatios; // size 4
 
 	RegistrationVis * _registrationVis;
 	RegistrationIcp * _registrationIcp;
-
-	// Stereo stuff
-	Stereo * _stereo;
-
-	int _subPixWinSize;
-	int _subPixIterations;
-	double _subPixEps;
 };
 
 } // namespace rtabmap

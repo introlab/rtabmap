@@ -50,18 +50,18 @@ void RTABMAP_EXP findCorrespondences(
 		std::list<std::pair<cv::Point2f, cv::Point2f> > & pairs);
 
 void RTABMAP_EXP findCorrespondences(
-		const std::multimap<int, pcl::PointXYZ> & words1,
-		const std::multimap<int, pcl::PointXYZ> & words2,
-		pcl::PointCloud<pcl::PointXYZ> & inliers1,
-		pcl::PointCloud<pcl::PointXYZ> & inliers2,
+		const std::multimap<int, cv::Point3f> & words1,
+		const std::multimap<int, cv::Point3f> & words2,
+		std::vector<cv::Point3f> & inliers1,
+		std::vector<cv::Point3f> & inliers2,
 		float maxDepth,
 		std::vector<int> * uniqueCorrespondences = 0);
 
 void RTABMAP_EXP findCorrespondences(
-		const std::map<int, pcl::PointXYZ> & words1,
-		const std::map<int, pcl::PointXYZ> & words2,
-		pcl::PointCloud<pcl::PointXYZ> & inliers1,
-		pcl::PointCloud<pcl::PointXYZ> & inliers2,
+		const std::map<int, cv::Point3f> & words1,
+		const std::map<int, cv::Point3f> & words2,
+		std::vector<cv::Point3f> & inliers1,
+		std::vector<cv::Point3f> & inliers2,
 		float maxDepth,
 		std::vector<int> * correspondences = 0);
 

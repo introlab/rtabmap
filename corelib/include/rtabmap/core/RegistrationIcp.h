@@ -42,23 +42,23 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
-	virtual Transform computeTransformation(
-			const Signature & from,
-			const Signature & to,
+	virtual Transform computeTransformationMod(
+			Signature & from,
+			Signature & to,
 			Transform guess = Transform::getIdentity(),
 			std::string * rejectedMsg = 0,
-			int * inliersOut = 0,
+			std::vector<int> * inliersOut = 0,
 			float * varianceOut = 0,
-			float * inliersRatioOut = 0);
+			float * inliersRatioOut = 0) const;
 
 	Transform computeTransformation(
 			const SensorData & from,
 			const SensorData & to,
 			Transform guess = Transform::getIdentity(),
 			std::string * rejectedMsg = 0,
-			int * inliersOut = 0,
+			std::vector<int> * inliersOut = 0,
 			float * varianceOut = 0,
-			float * inliersRatioOut = 0);
+			float * inliersRatioOut = 0) const;
 
 private:
 	float _maxTranslation;

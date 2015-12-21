@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_correspondences.h"
+#include "rtabmap/core/util3d.h"
 
 namespace rtabmap
 {
@@ -40,29 +41,23 @@ namespace rtabmap
 namespace util3d
 {
 
-#if CV_MAJOR_VERSION >= 3
-void solvePnPRansac(cv::InputArray _opoints, cv::InputArray _ipoints,
-		cv::InputArray _cameraMatrix, cv::InputArray _distCoeffs,
-		cv::OutputArray _rvec, cv::OutputArray _tvec, bool useExtrinsicGuess,
-        int iterationsCount, float reprojectionError, int minInliersCount,
-        cv::OutputArray _inliers, int flags);
-#endif
-
 Transform estimateMotion3DTo2D(
-			const std::map<int, pcl::PointXYZ> & words3A,
+			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const CameraModel & cameraModel,
 			int minInliers,
 			int iterations,
 			double reprojError,
 			int flagsPnP,
+			bool pnpOpenCV2,
 			const Transform & guess,
-			const std::map<int, pcl::PointXYZ> & words3B,
+			const std::map<int, cv::Point3f> & words3B,
 			double * varianceOut,
 			std::vector<int> * matchesOut,
 			std::vector<int> * inliersOut)
 {
-
+	UASSERT(cameraModel.isValid());
+	UASSERT(!guess.isNull());
 	Transform transform;
 	std::vector<int> matches, inliers;
 
@@ -79,9 +74,10 @@ Transform estimateMotion3DTo2D(
 	matches.resize(ids.size());
 	for(unsigned int i=0; i<ids.size(); ++i)
 	{
-		if(words3A.find(ids[i]) != words3A.end())
+		std::map<int, cv::Point3f>::const_iterator iter=words3A.find(ids[i]);
+		if(iter != words3A.end() && util3d::isFinite(iter->second))
 		{
-			pcl::PointXYZ pt = words3A.find(ids[i])->second;
+			cv::Point3f pt = words3A.find(ids[i])->second;
 			objectPoints[oi].x = pt.x;
 			objectPoints[oi].y = pt.y;
 			objectPoints[oi].z = pt.z;
@@ -109,11 +105,7 @@ Transform estimateMotion3DTo2D(
 		cv::Mat tvec = (cv::Mat_<double>(1,3) <<
 				(double)guessCameraFrame.x(), (double)guessCameraFrame.y(), (double)guessCameraFrame.z());
 
-#if CV_MAJOR_VERSION >= 3
-		solvePnPRansac(
-#else
-		cv::solvePnPRansac(
-#endif
+		util3d::solvePnPRansac(
 				objectPoints,
 				imagePoints,
 				K,
@@ -125,7 +117,8 @@ Transform estimateMotion3DTo2D(
 				reprojError,
 				0, // min inliers
 				inliers,
-				flagsPnP);
+				flagsPnP,
+				pnpOpenCV2);
 
 		if((int)inliers.size() >= minInliers)
 		{
@@ -143,11 +136,11 @@ Transform estimateMotion3DTo2D(
 				oi = 0;
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
-					std::map<int, pcl::PointXYZ>::const_iterator iter = words3B.find(matches[inliers[i]]);
-					if(iter != words3B.end() && pcl::isFinite(iter->second))
+					std::map<int, cv::Point3f>::const_iterator iter = words3B.find(matches[inliers[i]]);
+					if(iter != words3B.end() && util3d::isFinite(iter->second))
 					{
 						const cv::Point3f & objPt = objectPoints[inliers[i]];
-						pcl::PointXYZ newPt = util3d::transformPoint(iter->second, transform);
+						cv::Point3f newPt = util3d::transformPoint(iter->second, transform);
 						errorSqrdDists[oi++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
 					}
 				}
@@ -191,8 +184,8 @@ Transform estimateMotion3DTo2D(
 }
 
 Transform estimateMotion3DTo3D(
-			const std::map<int, pcl::PointXYZ> & words3A,
-			const std::map<int, pcl::PointXYZ> & words3B,
+			const std::map<int, cv::Point3f> & words3A,
+			const std::map<int, cv::Point3f> & words3B,
 			int minInliers,
 			double inliersDistance,
 			int iterations,
@@ -202,29 +195,43 @@ Transform estimateMotion3DTo3D(
 			std::vector<int> * inliersOut)
 {
 	Transform transform;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1(new pcl::PointCloud<pcl::PointXYZ>); // previous
-	pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2(new pcl::PointCloud<pcl::PointXYZ>); // new
+	std::vector<cv::Point3f> inliers1; // previous
+	std::vector<cv::Point3f> inliers2; // new
 
 	std::vector<int> matches;
 	util3d::findCorrespondences(
 			words3A,
 			words3B,
-			*inliers1,
-			*inliers2,
+			inliers1,
+			inliers2,
 			0,
 			&matches);
+	UASSERT(inliers1.size() == inliers2.size());
 
 	if(varianceOut)
 	{
 		*varianceOut = 1.0;
 	}
 
-	if((int)inliers1->size() >= minInliers)
+	if((int)inliers1.size() >= minInliers)
 	{
 		std::vector<int> inliers;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		inliers1cloud->resize(inliers1.size());
+		inliers2cloud->resize(inliers1.size());
+		for(unsigned int i=0; i<inliers1.size(); ++i)
+		{
+			(*inliers1cloud)[i].x = inliers1[i].x;
+			(*inliers1cloud)[i].y = inliers1[i].y;
+			(*inliers1cloud)[i].z = inliers1[i].z;
+			(*inliers2cloud)[i].x = inliers2[i].x;
+			(*inliers2cloud)[i].y = inliers2[i].y;
+			(*inliers2cloud)[i].z = inliers2[i].z;
+		}
 		Transform t = util3d::transformFromXYZCorrespondences(
-				inliers2,
-				inliers1,
+				inliers2cloud,
+				inliers1cloud,
 				inliersDistance,
 				iterations,
 				refineIterations>0,
@@ -463,88 +470,123 @@ namespace pnpransac
 	cv::Mutex PnPSolver::syncMutex;
 
 }
-
-void solvePnPRansac(cv::InputArray _opoints, cv::InputArray _ipoints,
-		cv::InputArray _cameraMatrix, cv::InputArray _distCoeffs,
-		cv::OutputArray _rvec, cv::OutputArray _tvec, bool useExtrinsicGuess,
-        int iterationsCount, float reprojectionError, int minInliersCount,
-        cv::OutputArray _inliers, int flags)
-{
-    const int _rng_seed = 0;
-    cv::Mat opoints = _opoints.getMat(), ipoints = _ipoints.getMat();
-    cv::Mat cameraMatrix = _cameraMatrix.getMat(), distCoeffs = _distCoeffs.getMat();
-
-    CV_Assert(opoints.isContinuous());
-    CV_Assert(opoints.depth() == CV_32F || opoints.depth() == CV_64F);
-    CV_Assert((opoints.rows == 1 && opoints.channels() == 3) || opoints.cols*opoints.channels() == 3);
-    CV_Assert(ipoints.isContinuous());
-    CV_Assert(ipoints.depth() == CV_32F || ipoints.depth() == CV_64F);
-    CV_Assert((ipoints.rows == 1 && ipoints.channels() == 2) || ipoints.cols*ipoints.channels() == 2);
-
-    _rvec.create(3, 1, CV_64FC1);
-    _tvec.create(3, 1, CV_64FC1);
-    cv::Mat rvec = _rvec.getMat();
-    cv::Mat tvec = _tvec.getMat();
-
-    cv::Mat objectPoints = opoints.reshape(3, 1), imagePoints = ipoints.reshape(2, 1);
-
-    if (minInliersCount <= 0)
-        minInliersCount = objectPoints.cols;
-    pnpransac::Parameters params;
-    params.iterationsCount = iterationsCount;
-    params.minInliersCount = minInliersCount;
-    params.reprojectionError = reprojectionError;
-    params.useExtrinsicGuess = useExtrinsicGuess;
-    params.camera.init(cameraMatrix, distCoeffs);
-    params.flags = flags;
-
-    std::vector<int> localInliers;
-    cv::Mat localRvec, localTvec;
-    rvec.copyTo(localRvec);
-    tvec.copyTo(localTvec);
-    int bestIndex;
-
-    // TBB not used
-    if (objectPoints.cols >= pnpransac::MIN_POINTS_COUNT)
-    {
-    	pnpransac::PnPSolver solver(objectPoints, imagePoints, params,
-							   localRvec, localTvec, localInliers, bestIndex,
-							   _rng_seed);
-    	solver(0, iterationsCount);
-    }
-
-    if (localInliers.size() >= (size_t)pnpransac::MIN_POINTS_COUNT)
-    {
-        if (flags != CV_P3P)
-        {
-            int i, pointsCount = (int)localInliers.size();
-            cv::Mat inlierObjectPoints(1, pointsCount, CV_MAKE_TYPE(opoints.depth(), 3)), inlierImagePoints(1, pointsCount, CV_MAKE_TYPE(ipoints.depth(), 2));
-            for (i = 0; i < pointsCount; i++)
-            {
-                int index = localInliers[i];
-                cv::Mat colInlierImagePoints = inlierImagePoints(cv::Rect(i, 0, 1, 1));
-                imagePoints.col(index).copyTo(colInlierImagePoints);
-                cv::Mat colInlierObjectPoints = inlierObjectPoints(cv::Rect(i, 0, 1, 1));
-                objectPoints.col(index).copyTo(colInlierObjectPoints);
-            }
-            solvePnP(inlierObjectPoints, inlierImagePoints, params.camera.intrinsics, params.camera.distortion, localRvec, localTvec, false, flags);
-        }
-        localRvec.copyTo(rvec);
-        localTvec.copyTo(tvec);
-        if (_inliers.needed())
-        	cv::Mat(localInliers).copyTo(_inliers);
-    }
-    else
-    {
-        tvec.setTo(cv::Scalar(0));
-        cv::Mat R = cv::Mat::eye(3, 3, CV_64F);
-        Rodrigues(R, rvec);
-        if( _inliers.needed() )
-            _inliers.release();
-    }
-    return;
-}
 #endif
+
+void solvePnPRansac(
+		cv::InputArray _opoints,
+		cv::InputArray _ipoints,
+		cv::InputArray _cameraMatrix,
+		cv::InputArray _distCoeffs,
+		cv::OutputArray _rvec,
+		cv::OutputArray _tvec,
+		bool useExtrinsicGuess,
+        int iterationsCount,
+        float reprojectionError,
+        int minInliersCount,
+        cv::OutputArray _inliers,
+        int flags,
+        bool opencv2version)
+{
+#if CV_MAJOR_VERSION >= 3
+	if(opencv2version)
+	{
+		const int _rng_seed = 0;
+		cv::Mat opoints = _opoints.getMat(), ipoints = _ipoints.getMat();
+		cv::Mat cameraMatrix = _cameraMatrix.getMat(), distCoeffs = _distCoeffs.getMat();
+
+		CV_Assert(opoints.isContinuous());
+		CV_Assert(opoints.depth() == CV_32F || opoints.depth() == CV_64F);
+		CV_Assert((opoints.rows == 1 && opoints.channels() == 3) || opoints.cols*opoints.channels() == 3);
+		CV_Assert(ipoints.isContinuous());
+		CV_Assert(ipoints.depth() == CV_32F || ipoints.depth() == CV_64F);
+		CV_Assert((ipoints.rows == 1 && ipoints.channels() == 2) || ipoints.cols*ipoints.channels() == 2);
+
+		_rvec.create(3, 1, CV_64FC1);
+		_tvec.create(3, 1, CV_64FC1);
+		cv::Mat rvec = _rvec.getMat();
+		cv::Mat tvec = _tvec.getMat();
+
+		cv::Mat objectPoints = opoints.reshape(3, 1), imagePoints = ipoints.reshape(2, 1);
+
+		if (minInliersCount <= 0)
+			minInliersCount = objectPoints.cols;
+		pnpransac::Parameters params;
+		params.iterationsCount = iterationsCount;
+		params.minInliersCount = minInliersCount;
+		params.reprojectionError = reprojectionError;
+		params.useExtrinsicGuess = useExtrinsicGuess;
+		params.camera.init(cameraMatrix, distCoeffs);
+		params.flags = flags;
+
+		std::vector<int> localInliers;
+		cv::Mat localRvec, localTvec;
+		rvec.copyTo(localRvec);
+		tvec.copyTo(localTvec);
+		int bestIndex;
+
+		// TBB not used
+		if (objectPoints.cols >= pnpransac::MIN_POINTS_COUNT)
+		{
+			pnpransac::PnPSolver solver(objectPoints, imagePoints, params,
+								   localRvec, localTvec, localInliers, bestIndex,
+								   _rng_seed);
+			solver(0, iterationsCount);
+		}
+
+		if (localInliers.size() >= (size_t)pnpransac::MIN_POINTS_COUNT)
+		{
+			if (flags != CV_P3P)
+			{
+				int i, pointsCount = (int)localInliers.size();
+				cv::Mat inlierObjectPoints(1, pointsCount, CV_MAKE_TYPE(opoints.depth(), 3)), inlierImagePoints(1, pointsCount, CV_MAKE_TYPE(ipoints.depth(), 2));
+				for (i = 0; i < pointsCount; i++)
+				{
+					int index = localInliers[i];
+					cv::Mat colInlierImagePoints = inlierImagePoints(cv::Rect(i, 0, 1, 1));
+					imagePoints.col(index).copyTo(colInlierImagePoints);
+					cv::Mat colInlierObjectPoints = inlierObjectPoints(cv::Rect(i, 0, 1, 1));
+					objectPoints.col(index).copyTo(colInlierObjectPoints);
+				}
+				solvePnP(inlierObjectPoints, inlierImagePoints, params.camera.intrinsics, params.camera.distortion, localRvec, localTvec, false, flags);
+			}
+			localRvec.copyTo(rvec);
+			localTvec.copyTo(tvec);
+			if (_inliers.needed())
+				cv::Mat(localInliers).copyTo(_inliers);
+		}
+		else
+		{
+			tvec.setTo(cv::Scalar(0));
+			cv::Mat R = cv::Mat::eye(3, 3, CV_64F);
+			Rodrigues(R, rvec);
+			if( _inliers.needed() )
+				_inliers.release();
+		}
+	}
+	else
+#endif
+	{
+		cv::solvePnPRansac(
+				_opoints,
+				_ipoints,
+				_cameraMatrix,
+				_distCoeffs,
+				_rvec,
+				_tvec,
+				useExtrinsicGuess,
+				iterationsCount,
+				reprojectionError,
+#if CV_MAJOR_VERSION < 3
+				minInliersCount, // min inliers
+#else
+				0.99, // confidence
+#endif
+				_inliers,
+				flags);
+	}
+    return;
+
+}
 
 }
 

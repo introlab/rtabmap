@@ -68,6 +68,16 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
 	return output;
 }
 
+cv::Point3f transformPoint(
+		const cv::Point3f & point,
+		const Transform & transform)
+{
+	cv::Point3f ret = point;
+	ret.x = transform (0, 0) * point.x + transform (0, 1) * point.y + transform (0, 2) * point.z + transform (0, 3);
+	ret.y = transform (1, 0) * point.x + transform (1, 1) * point.y + transform (1, 2) * point.z + transform (1, 3);
+	ret.z = transform (2, 0) * point.x + transform (2, 1) * point.y + transform (2, 2) * point.z + transform (2, 3);
+	return ret;
+}
 pcl::PointXYZ transformPoint(
 		const pcl::PointXYZ & pt,
 		const Transform & transform)

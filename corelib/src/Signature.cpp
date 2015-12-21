@@ -75,6 +75,22 @@ Signature::Signature(
 	UASSERT(_sensorData.id() == _id);
 }
 
+Signature::Signature(const SensorData & data) :
+	_id(data.id()),
+	_mapId(-1),
+	_stamp(data.stamp()),
+	_weight(0),
+	_label(""),
+	_saved(false),
+	_modified(true),
+	_linksModified(true),
+	_enabled(false),
+	_pose(Transform::getIdentity()),
+	_sensorData(data)
+{
+
+}
+
 Signature::~Signature()
 {
 	//UDEBUG("id=%d", _id);
@@ -175,7 +191,7 @@ void Signature::changeWordsRef(int oldWordId, int activeWordId)
 	std::list<cv::KeyPoint> kps = uValues(_words, oldWordId);
 	if(kps.size())
 	{
-		std::list<pcl::PointXYZ> pts = uValues(_words3, oldWordId);
+		std::list<cv::Point3f> pts = uValues(_words3, oldWordId);
 		_words.erase(oldWordId);
 		_words3.erase(oldWordId);
 		_wordsChanged.insert(std::make_pair(oldWordId, activeWordId));
@@ -183,9 +199,9 @@ void Signature::changeWordsRef(int oldWordId, int activeWordId)
 		{
 			_words.insert(std::pair<int, cv::KeyPoint>(activeWordId, (*iter)));
 		}
-		for(std::list<pcl::PointXYZ>::const_iterator iter=pts.begin(); iter!=pts.end(); ++iter)
+		for(std::list<cv::Point3f>::const_iterator iter=pts.begin(); iter!=pts.end(); ++iter)
 		{
-			_words3.insert(std::pair<int, pcl::PointXYZ>(activeWordId, (*iter)));
+			_words3.insert(std::pair<int, cv::Point3f>(activeWordId, (*iter)));
 		}
 	}
 }

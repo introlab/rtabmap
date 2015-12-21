@@ -57,6 +57,7 @@ public:
 			const std::string & label = std::string(),
 			const Transform & pose = Transform(),
 			const SensorData & sensorData = SensorData());
+	Signature(const SensorData & data);
 	virtual ~Signature();
 
 	/**
@@ -107,10 +108,10 @@ public:
 	const std::map<int, int> & getWordsChanged() const {return _wordsChanged;}
 
 	//metric stuff
-	void setWords3(const std::multimap<int, pcl::PointXYZ> & words3) {_words3 = words3;}
+	void setWords3(const std::multimap<int, cv::Point3f> & words3) {_words3 = words3;}
 	void setPose(const Transform & pose) {_pose = pose;}
 
-	const std::multimap<int, pcl::PointXYZ> & getWords3() const {return _words3;}
+	const std::multimap<int, cv::Point3f> & getWords3() const {return _words3;}
 	const Transform & getPose() const {return _pose;}
 	cv::Mat getPoseCovariance() const;
 
@@ -132,7 +133,7 @@ private:
 	// times in the signature, it will be 2 times in this list)
 	// Words match with the CvSeq keypoints and descriptors
 	std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
-	std::multimap<int, pcl::PointXYZ> _words3; // word <id, keypoint> // in base_link frame (localTransform applied))
+	std::multimap<int, cv::Point3f> _words3; // word <id, keypoint> // in base_link frame (localTransform applied))
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
 

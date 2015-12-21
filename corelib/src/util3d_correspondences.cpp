@@ -315,10 +315,10 @@ void findCorrespondences(
 }
 
 void findCorrespondences(
-		const std::multimap<int, pcl::PointXYZ> & words1,
-		const std::multimap<int, pcl::PointXYZ> & words2,
-		pcl::PointCloud<pcl::PointXYZ> & inliers1,
-		pcl::PointCloud<pcl::PointXYZ> & inliers2,
+		const std::multimap<int, cv::Point3f> & words1,
+		const std::multimap<int, cv::Point3f> & words2,
+		std::vector<cv::Point3f> & inliers1,
+		std::vector<cv::Point3f> & inliers2,
 		float maxDepth,
 		std::vector<int> * uniqueCorrespondences)
 {
@@ -338,8 +338,8 @@ void findCorrespondences(
 		{
 			inliers1[oi] = words1.find(*iter)->second;
 			inliers2[oi] = words2.find(*iter)->second;
-			if(pcl::isFinite(inliers1[oi]) &&
-			   pcl::isFinite(inliers2[oi]) &&
+			if(util3d::isFinite(inliers1[oi]) &&
+			   util3d::isFinite(inliers2[oi]) &&
 			   (inliers1[oi].x != 0 || inliers1[oi].y != 0 || inliers1[oi].z != 0) &&
 			   (inliers2[oi].x != 0 || inliers2[oi].y != 0 || inliers2[oi].z != 0) &&
 			   (maxDepth <= 0 || (inliers1[oi].x > 0 && inliers1[oi].x <= maxDepth && inliers2[oi].x>0 &&inliers2[oi].x<=maxDepth)))
@@ -361,10 +361,10 @@ void findCorrespondences(
 }
 
 void findCorrespondences(
-		const std::map<int, pcl::PointXYZ> & words1,
-		const std::map<int, pcl::PointXYZ> & words2,
-		pcl::PointCloud<pcl::PointXYZ> & inliers1,
-		pcl::PointCloud<pcl::PointXYZ> & inliers2,
+		const std::map<int, cv::Point3f> & words1,
+		const std::map<int, cv::Point3f> & words2,
+		std::vector<cv::Point3f> & inliers1,
+		std::vector<cv::Point3f> & inliers2,
 		float maxDepth,
 		std::vector<int> * correspondences)
 {
@@ -384,8 +384,8 @@ void findCorrespondences(
 		{
 			inliers1[oi] = words1.find(*iter)->second;
 			inliers2[oi] = words2.find(*iter)->second;
-			if(pcl::isFinite(inliers1[oi]) &&
-			   pcl::isFinite(inliers2[oi]) &&
+			if(util3d::isFinite(inliers1[oi]) &&
+			   util3d::isFinite(inliers2[oi]) &&
 			   (inliers1[oi].x != 0 || inliers1[oi].y != 0 || inliers1[oi].z != 0) &&
 			   (inliers2[oi].x != 0 || inliers2[oi].y != 0 || inliers2[oi].z != 0) &&
 			   (maxDepth <= 0 || (inliers1[oi].x > 0 && inliers1[oi].x <= maxDepth && inliers2[oi].x>0 &&inliers2[oi].x<=maxDepth)))

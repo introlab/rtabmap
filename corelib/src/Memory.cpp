@@ -96,24 +96,14 @@ Memory::Memory(const ParametersMap & parameters) :
 	_linksChanged(false),
 	_signaturesAdded(0),
 
-	_featureType((Feature2D::Type)Parameters::defaultKpDetectorStrategy()),
 	_badSignRatio(Parameters::defaultKpBadSignRatio()),
 	_tfIdfLikelihoodUsed(Parameters::defaultKpTfIdfLikelihoodUsed()),
-	_parallelized(Parameters::defaultKpParallelized()),
-	_wordsMaxDepth(Parameters::defaultKpMaxDepth()),
-	_wordsMinDepth(Parameters::defaultKpMinDepth()),
-	_roiRatios(std::vector<float>(4, 0.0f)),
-
-	_subPixWinSize(Parameters::defaultKpSubPixWinSize()),
-	_subPixIterations(Parameters::defaultKpSubPixIterations()),
-	_subPixEps(Parameters::defaultKpSubPixEps())
+	_parallelized(Parameters::defaultKpParallelized())
 {
-	_feature2D = Feature2D::create(_featureType, parameters);
-	_featureType = _feature2D->getType();
+	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
 	_registrationVis = new RegistrationVis(parameters);
 	_registrationIcp = new RegistrationIcp(parameters);
-	_stereo = new Stereo(parameters);
 	this->parseParameters(parameters);
 }
 
@@ -383,10 +373,6 @@ Memory::~Memory()
 	{
 		delete _registrationIcp;
 	}
-	if(_stereo)
-	{
-		delete _stereo;
-	}
 }
 
 void Memory::parseParameters(const ParametersMap & parameters)
@@ -435,17 +421,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
 	Parameters::parse(parameters, Parameters::kKpParallelized(), _parallelized);
 	Parameters::parse(parameters, Parameters::kKpBadSignRatio(), _badSignRatio);
-	Parameters::parse(parameters, Parameters::kKpMaxDepth(), _wordsMaxDepth);
-	Parameters::parse(parameters, Parameters::kKpMinDepth(), _wordsMinDepth);
-
-	Parameters::parse(parameters, Parameters::kKpSubPixWinSize(), _subPixWinSize);
-	Parameters::parse(parameters, Parameters::kKpSubPixIterations(), _subPixIterations);
-	Parameters::parse(parameters, Parameters::kKpSubPixEps(), _subPixEps);
-
-	if((iter=parameters.find(Parameters::kKpRoiRatios())) != parameters.end())
-	{
-		this->setRoi((*iter).second);
-	}
 
 	//Keypoint detector
 	UASSERT(_feature2D != 0);
@@ -461,11 +436,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		{
 			delete _feature2D;
 			_feature2D = 0;
-			_featureType = Feature2D::kFeatureUndef;
 		}
 
 		_feature2D = Feature2D::create(detectorStrategy, parameters);
-		_featureType = _feature2D->getType();
 	}
 	else if(_feature2D)
 	{
@@ -479,26 +452,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	if(_registrationIcp)
 	{
 		_registrationIcp->parseParameters(parameters);
-	}
-
-	//stereo
-	UASSERT(_stereo != 0);
-	if((iter=parameters.find(Parameters::kStereoOpticalFlow())) != parameters.end())
-	{
-		bool opticalFlow = uStr2Bool(iter->second);
-		delete _stereo;
-		if(opticalFlow)
-		{
-			_stereo = new StereoOpticalFlow(parameters);
-		}
-		else
-		{
-			_stereo = new Stereo(parameters);
-		}
-	}
-	else
-	{
-		_stereo->parseParameters(parameters);
 	}
 
 	// do this after all parameters are parsed
@@ -652,39 +605,6 @@ bool Memory::update(
 	UDEBUG("totalTimer = %fs", totalTimer.ticks());
 
 	return true;
-}
-
-
-
-void Memory::setRoi(const std::string & roi)
-{
-	std::list<std::string> strValues = uSplit(roi, ' ');
-	if(strValues.size() != 4)
-	{
-		ULOGGER_ERROR("The number of values must be 4 (roi=\"%s\")", roi.c_str());
-	}
-	else
-	{
-		std::vector<float> tmpValues(4);
-		unsigned int i=0;
-		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
-		{
-			tmpValues[i] = uStr2Float(*iter);
-			++i;
-		}
-
-		if(tmpValues[0] >= 0 && tmpValues[0] < 1 && tmpValues[0] < 1.0f-tmpValues[1] &&
-			tmpValues[1] >= 0 && tmpValues[1] < 1 && tmpValues[1] < 1.0f-tmpValues[0] &&
-			tmpValues[2] >= 0 && tmpValues[2] < 1 && tmpValues[2] < 1.0f-tmpValues[3] &&
-			tmpValues[3] >= 0 && tmpValues[3] < 1 && tmpValues[3] < 1.0f-tmpValues[2])
-		{
-			_roiRatios = tmpValues;
-		}
-		else
-		{
-			ULOGGER_ERROR("The roi ratios are not valid (roi=\"%s\")", roi.c_str());
-		}
-	}
 }
 
 void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance)
@@ -2105,6 +2025,7 @@ Transform Memory::computeVisualTransform(
 	if(fromS && toS)
 	{
 		// compute transform fromId -> toId
+		std::vector<int> inliersV;
 		if(_reextractLoopClosureFeatures)
 		{
 			getNodeData(fromS->id(), true);
@@ -2114,14 +2035,18 @@ Transform Memory::computeVisualTransform(
 			Signature tmpTo = *toS;
 
 			tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
-			tmpFrom.setWords3(std::multimap<int, pcl::PointXYZ>());
+			tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
 			tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
-			tmpTo.setWords3(std::multimap<int, pcl::PointXYZ>());
-			return _registrationVis->computeTransformation(tmpFrom, tmpTo, Transform::getIdentity(), rejectedMsg, inliers, variance);
+			tmpTo.setWords3(std::multimap<int, cv::Point3f>());
+			transform = _registrationVis->computeTransformation(tmpFrom, tmpTo, Transform::getIdentity(), rejectedMsg, &inliersV, variance);
 		}
 		else
 		{
-			return _registrationVis->computeTransformation(*fromS, *toS, Transform::getIdentity(), rejectedMsg, inliers, variance);
+			transform = _registrationVis->computeTransformation(*fromS, *toS, Transform::getIdentity(), rejectedMsg, &inliersV, variance);
+		}
+		if(inliers)
+		{
+			*inliers = (int)inliersV.size();
 		}
 	}
 	else
@@ -2133,7 +2058,7 @@ Transform Memory::computeVisualTransform(
 		}
 		UWARN(msg.c_str());
 	}
-	return Transform();
+	return transform;
 }
 
 // compute transform fromId -> toId
@@ -2179,7 +2104,12 @@ Transform Memory::computeIcpTransform(
 		toS->sensorData().uncompressData(0, 0, &tmp2);
 
 		// compute transform fromId -> toId
-		t = _registrationIcp->computeTransformation(*fromS, *toS, guess, rejectedMsg, inliers, variance, inliersRatio);
+		std::vector<int> inliersV;
+		t = _registrationIcp->computeTransformation(fromS->sensorData(), toS->sensorData(), guess, rejectedMsg, &inliersV, variance, inliersRatio);
+		if(inliers)
+		{
+			*inliers = (int)inliersV.size();
+		}
 	}
 	else
 	{
@@ -2259,8 +2189,12 @@ Transform Memory::computeIcpTransformMulti(
 		}
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
-		Signature toS(0, 0, 0, 0, "", toPose, assembledData);
-		t = _registrationIcp->computeTransformation(*fromS, toS, guess, rejectedMsg, inliers, variance);
+		std::vector<int> inliersV;
+		t = _registrationIcp->computeTransformation(fromS->sensorData(), assembledData, guess, rejectedMsg, &inliersV, variance);
+		if(inliers)
+		{
+			*inliers = (int)inliersV.size();
+		}
 	}
 
 	return t;
@@ -2461,8 +2395,8 @@ void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
 			{
 				if(words3D)
 				{
-					const std::multimap<int, pcl::PointXYZ> & ref = ss->getWords3();
-					for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
+					const std::multimap<int, cv::Point3f> & ref = ss->getWords3();
+					for(std::multimap<int, cv::Point3f>::const_iterator jter=ref.begin(); jter!=ref.end(); ++jter)
 					{
 						//show only valid point according to current parameters
 						if(pcl::isFinite(jter->second) &&
@@ -2851,7 +2785,7 @@ SensorData Memory::getNodeData(int nodeId, bool uncompressedData, bool keepLoade
 
 void Memory::getNodeWords(int nodeId,
 		std::multimap<int, cv::KeyPoint> & words,
-		std::multimap<int, pcl::PointXYZ> & words3)
+		std::multimap<int, cv::Point3f> & words3)
 {
 	UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
@@ -3092,226 +3026,43 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		preUpdateThread.start();
 	}
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr keypoints3D(new pcl::PointCloud<pcl::PointXYZ>);
+	std::vector<cv::Point3f> keypoints3D;
 	if(data.keypoints().size() == 0)
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
-			// Extract features
 			cv::Mat imageMono;
-			// convert to grayscale
-			if(data.imageRaw().channels() > 1)
+			if(data.imageRaw().channels() == 3)
 			{
-				UDEBUG("convert to grayscale...");
-				cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
+				cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
 			}
 			else
 			{
 				imageMono = data.imageRaw();
 			}
-			UDEBUG("Set ROI...");
-			cv::Rect roi = Feature2D::computeRoi(imageMono, _roiRatios);
 
-			if(!data.depthOrRightRaw().empty() && data.stereoCameraModel().isValid())
-			{
-				//stereo
-				bool subPixelOn = false;
-				if(_subPixWinSize > 0 && _subPixIterations > 0)
-				{
-					subPixelOn = true;
-				}
-				UDEBUG("Generating keypoints...");
-				keypoints = _feature2D->generateKeypoints(imageMono, roi);
-				t = timer.ticks();
-				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
-				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
+			keypoints = _feature2D->generateKeypoints(imageMono);
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
-				if(keypoints.size())
-				{
-					// descriptors should be extracted before subpixel
-					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-					t = timer.ticks();
-					if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-
-					std::vector<cv::Point2f> leftCorners;
-					cv::KeyPoint::convert(keypoints, leftCorners);
-					if(subPixelOn)
-					{
-						cv::cornerSubPix( imageMono, leftCorners,
-								cv::Size( _subPixWinSize, _subPixWinSize ),
-								cv::Size( -1, -1 ),
-								cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _subPixIterations, _subPixEps ) );
-
-						for(unsigned int i=0;i<leftCorners.size(); ++i)
-						{
-							keypoints[i].pt = leftCorners[i];
-						}
-						t = timer.ticks();
-						if(stats) stats->addStatistic(Statistics::kTimingMemSubpixel(), t*1000.0f);
-						UDEBUG("time subpix left kpts=%fs", t);
-					}
-
-					UASSERT(keypoints.size() == leftCorners.size());
-
-					//generate a disparity map
-					std::vector<unsigned char> status;
-					std::vector<cv::Point2f> rightCorners;
-					rightCorners = _stereo->computeCorrespondences(
-							imageMono,
-							data.rightRaw(),
-							leftCorners,
-							status);
-					if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
-					{
-						UASSERT(status.size() == leftCorners.size() && status.size() == rightCorners.size());
-						for(unsigned int i=0; i<status.size(); ++i)
-						{
-							if(status[i] != 0)
-							{
-								float d = data.stereoCameraModel().computeDepth(leftCorners[i].x - rightCorners[i].x);
-								if((_wordsMinDepth > 0.0f && d < _wordsMinDepth) ||
-								   (_wordsMaxDepth > 0.0f && d > _wordsMaxDepth))
-								{
-									status[i] = 0;
-								}
-							}
-						}
-					}
-
-
-					t = timer.ticks();
-					if(stats) stats->addStatistic(Statistics::kTimingMemStereo_correspondences(), t*1000.0f);
-					UDEBUG("generate disparity = %fs", t);
-
-					if(keypoints.size())
-					{
-						UASSERT(keypoints.size() == descriptors.rows);
-
-						UASSERT(leftCorners.size() == keypoints.size());
-						keypoints3D = util3d::generateKeypoints3DStereo(
-								leftCorners,
-								rightCorners,
-								data.stereoCameraModel(),
-								status);
-						UASSERT(keypoints.size() == keypoints3D->size());
-
-						t = timer.ticks();
-						if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-						UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
-					}
-				}
-			}
-			else if(!data.depthOrRightRaw().empty() && data.cameraModels().size())
-			{
-				//depth
-				bool subPixelOn = false;
-				if(_subPixWinSize > 0 && _subPixIterations > 0)
-				{
-					subPixelOn = true;
-				}
-				UDEBUG("Generating keypoints...");
-				keypoints = _feature2D->generateKeypoints(imageMono, roi);
-				t = timer.ticks();
-				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
-				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
-
-				if(keypoints.size())
-				{
-					if(subPixelOn)
-					{
-						// descriptors should be extracted before subpixel
-						descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-						t = timer.ticks();
-						if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-						UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-
-						std::vector<cv::Point2f> leftCorners;
-						cv::KeyPoint::convert(keypoints, leftCorners);
-						cv::cornerSubPix( imageMono, leftCorners,
-								cv::Size( _subPixWinSize, _subPixWinSize ),
-								cv::Size( -1, -1 ),
-								cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _subPixIterations, _subPixEps ) );
-
-						for(unsigned int i=0;i<leftCorners.size(); ++i)
-						{
-							keypoints[i].pt = leftCorners[i];
-						}
-
-						t = timer.ticks();
-						if(stats) stats->addStatistic(Statistics::kTimingMemSubpixel(), t*1000.0f);
-						UDEBUG("time subpix left kpts=%fs", t);
-					}
-
-					if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
-					{
-						Feature2D::filterKeypointsByDepth(keypoints, descriptors, data.depthOrRightRaw(), _wordsMinDepth, _wordsMaxDepth);
-						UDEBUG("filter keypoints by depth (%d)", (int)keypoints.size());
-					}
-
-					if(keypoints.size())
-					{
-						if(!subPixelOn)
-						{
-							descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-							t = timer.ticks();
-							if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-							UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-						}
-						UASSERT(keypoints.size() == descriptors.rows);
-
-						keypoints3D = util3d::generateKeypoints3DDepth(
-								keypoints,
-								data.depthOrRightRaw(),
-								data.cameraModels());
-						UASSERT(keypoints.size() == keypoints3D->size());
-						t = timer.ticks();
-						if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-						UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
-					}
-				}
-			}
-			else
-			{
-				//RGB only
-				UDEBUG("Generating keypoints...");
-				keypoints = _feature2D->generateKeypoints(imageMono, roi);
-				t = timer.ticks();
-				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
-				UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
-
-				if(keypoints.size())
-				{
-					descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-					t = timer.ticks();
-					if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-					UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
-
-					if(_subPixWinSize > 0 && _subPixIterations > 0)
-					{
-						std::vector<cv::Point2f> corners;
-						cv::KeyPoint::convert(keypoints, corners);
-						cv::cornerSubPix( imageMono, corners,
-								cv::Size( _subPixWinSize, _subPixWinSize ),
-								cv::Size( -1, -1 ),
-								cv::TermCriteria( CV_TERMCRIT_ITER | CV_TERMCRIT_EPS, _subPixIterations, _subPixEps ) );
-
-						for(unsigned int i=0;i<corners.size(); ++i)
-						{
-							keypoints[i].pt = corners[i];
-						}
-
-						t = timer.ticks();
-						if(stats) stats->addStatistic(Statistics::kTimingMemSubpixel(), t*1000.0f);
-						UDEBUG("time subpix kpts=%fs", t);
-					}
-				}
-			}
+			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+			UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
 			UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
 			if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
 			{
 				descriptors = cv::Mat();
+			}
+			else if((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValid()) ||
+					(!data.rightRaw().empty() && data.stereoCameraModel().isValid()))
+			{
+				keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
+				t = timer.ticks();
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+				UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
 			}
 		}
 		else if(data.imageRaw().empty())
@@ -3332,79 +3083,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		keypoints = data.keypoints();
 		descriptors = data.descriptors().clone();
 
-		// filter by depth
-		if(!data.depthOrRightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValid())
-		{
-			//stereo
-			cv::Mat imageMono;
-			// convert to grayscale
-			if(data.imageRaw().channels() > 1)
-			{
-				cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
-			}
-			else
-			{
-				imageMono = data.imageRaw();
-			}
-			//generate a disparity map
-			std::vector<cv::Point2f> leftCorners;
-			cv::KeyPoint::convert(keypoints, leftCorners);
-			std::vector<unsigned char> status;
-
-			std::vector<cv::Point2f> rightCorners;
-			rightCorners = _stereo->computeCorrespondences(
-					imageMono,
-					data.rightRaw(),
-					leftCorners,
-					status);
-
-			if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
-			{
-				UASSERT(status.size() == leftCorners.size() && status.size() == rightCorners.size());
-				for(unsigned int i=0; i<status.size(); ++i)
-				{
-					if(status[i] != 0)
-					{
-						float d = data.stereoCameraModel().computeDepth(leftCorners[i].x - rightCorners[i].x);
-						if((_wordsMinDepth > 0.0f && d < _wordsMinDepth) ||
-						   (_wordsMaxDepth > 0.0f && d > _wordsMaxDepth))
-						{
-							status[i] = 0;
-						}
-					}
-				}
-			}
-
-			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemStereo_correspondences(), t*1000.0f);
-			UDEBUG("generate disparity = %fs", t);
-
-			keypoints3D = util3d::generateKeypoints3DStereo(
-					leftCorners,
-					rightCorners,
-					data.stereoCameraModel(),
-					status);
-			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
-		}
-		else if(!data.depthOrRightRaw().empty() && data.cameraModels().size())
-		{
-			//depth
-			if(_wordsMaxDepth > 0.0f || _wordsMinDepth > 0.0f)
-			{
-				Feature2D::filterKeypointsByDepth(keypoints, descriptors, _wordsMinDepth, _wordsMaxDepth);
-				UDEBUG("filter keypoints by depth (%d)", (int)keypoints.size());
-			}
-
-			keypoints3D = util3d::generateKeypoints3DDepth(
-					keypoints,
-					data.depthOrRightRaw(),
-					data.cameraModels());
-			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
-		}
+		keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
 	}
 
 	if(_parallelized)
@@ -3439,11 +3118,11 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 
 	std::multimap<int, cv::KeyPoint> words;
-	std::multimap<int, pcl::PointXYZ> words3D;
+	std::multimap<int, cv::Point3f> words3D;
 	if(wordIds.size() > 0)
 	{
 		UASSERT(wordIds.size() == keypoints.size());
-		UASSERT(keypoints3D->size() == 0 || keypoints3D->size() == wordIds.size());
+		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
@@ -3459,9 +3138,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			{
 				words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
 			}
-			if(keypoints3D->size())
+			if(keypoints3D.size())
 			{
-				words3D.insert(std::pair<int, pcl::PointXYZ>(*iter, keypoints3D->at(i)));
+				words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
 			}
 		}
 	}
@@ -3478,9 +3157,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		{
 			Transform cameraTransform = pose.inverse() * previousS->getPose();
 			// compute 3D words by epipolar geometry with the previous signature
-			std::multimap<int, pcl::PointXYZ> inliers = util3d::generateWords3DMono(
-					words,
-					previousS->getWords(),
+			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
+					uMultimapToMapUnique(words),
+					uMultimapToMapUnique(previousS->getWords()),
 					data.cameraModels()[0],
 					cameraTransform);
 
@@ -3488,21 +3167,21 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
-				std::multimap<int, pcl::PointXYZ>::iterator jter=inliers.find(iter->first);
+				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
 				if(jter != inliers.end())
 				{
 					words3D.insert(std::make_pair(iter->first, jter->second));
 				}
 				else
 				{
-					words3D.insert(std::make_pair(iter->first, pcl::PointXYZ(bad_point,bad_point,bad_point)));
+					words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
 				}
 			}
 
 			t = timer.ticks();
 			UASSERT(words3D.size() == words.size());
 			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D->size(), t);
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
 		}
 	}
 

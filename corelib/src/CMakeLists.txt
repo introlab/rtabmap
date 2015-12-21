@@ -56,9 +56,9 @@ SET(SRC_FILES
 	Odometry.cpp
 	OdometryThread.cpp
 	OdometryBOW.cpp
-	OdometryOpticalFlow.cpp
 	OdometryMono.cpp
 	OdometryICP.cpp
+	OdometryF2F.cpp
 	
 	Stereo.cpp
 	StereoDense.cpp

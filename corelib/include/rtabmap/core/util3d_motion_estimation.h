@@ -30,8 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/RtabmapExp.h>
 
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
 
@@ -42,22 +40,23 @@ namespace util3d
 {
 
 Transform RTABMAP_EXP estimateMotion3DTo2D(
-			const std::map<int, pcl::PointXYZ> & words3A,
+			const std::map<int, cv::Point3f> & words3A,
 			const std::map<int, cv::KeyPoint> & words2B,
 			const CameraModel & cameraModel,
 			int minInliers = 10,
 			int iterations = 100,
 			double reprojError = 5.,
 			int flagsPnP = 0,
+			bool pnpOpenCV2 = true,
 			const Transform & guess = Transform::getIdentity(),
-			const std::map<int, pcl::PointXYZ> & words3B = std::map<int, pcl::PointXYZ>(),
+			const std::map<int, cv::Point3f> & words3B = std::map<int, cv::Point3f>(),
 			double * varianceOut = 0, // mean reproj error if words3B is not set
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
 
 Transform RTABMAP_EXP estimateMotion3DTo3D(
-			const std::map<int, pcl::PointXYZ> & words3A,
-			const std::map<int, pcl::PointXYZ> & words3B,
+			const std::map<int, cv::Point3f> & words3A,
+			const std::map<int, cv::Point3f> & words3B,
 			int minInliers = 10,
 			double inliersDistance = 0.1,
 			int iterations = 100,
@@ -65,6 +64,21 @@ Transform RTABMAP_EXP estimateMotion3DTo3D(
 			double * varianceOut = 0,
 			std::vector<int> * matchesOut = 0,
 			std::vector<int> * inliersOut = 0);
+
+void RTABMAP_EXP solvePnPRansac(
+		cv::InputArray _opoints,
+		cv::InputArray _ipoints,
+		cv::InputArray _cameraMatrix,
+		cv::InputArray _distCoeffs,
+		cv::OutputArray _rvec,
+		cv::OutputArray _tvec,
+		bool useExtrinsicGuess,
+        int iterationsCount,
+        float reprojectionError,
+        int minInliersCount,
+        cv::OutputArray _inliers,
+        int flags,
+        bool opencv2version);
 
 } // namespace util3d
 } // namespace rtabmap

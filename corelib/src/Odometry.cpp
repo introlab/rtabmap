@@ -40,6 +40,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_inlierDistance(Parameters::defaultVisInlierDistance()),
 		_iterations(Parameters::defaultVisIterations()),
 		_refineIterations(Parameters::defaultVisRefineIterations()),
+		_minDepth(Parameters::defaultVisMinDepth()),
 		_maxDepth(Parameters::defaultVisMaxDepth()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
 		_force2D(Parameters::defaultVisForce2D()),
@@ -54,6 +55,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_estimationType(Parameters::defaultVisEstimationType()),
 		_pnpReprojError(Parameters::defaultVisPnPReprojError()),
 		_pnpFlags(Parameters::defaultVisPnPFlags()),
+		_pnpOpenCV2(Parameters::defaultVisPnPOpenCV2()),
 		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount()),
 		_kalmanProcessNoise(Parameters::defaultOdomKalmanProcessNoise()),
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
@@ -68,6 +70,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisInlierDistance(), _inlierDistance);
 	Parameters::parse(parameters, Parameters::kVisIterations(), _iterations);
 	Parameters::parse(parameters, Parameters::kVisRefineIterations(), _refineIterations);
+	Parameters::parse(parameters, Parameters::kVisMinDepth(), _minDepth);
 	Parameters::parse(parameters, Parameters::kVisMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kVisRoiRatios(), _roiRatios);
 	Parameters::parse(parameters, Parameters::kVisForce2D(), _force2D);
@@ -76,6 +79,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisEstimationType(), _estimationType);
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _pnpReprojError);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _pnpFlags);
+	Parameters::parse(parameters, Parameters::kVisPnPOpenCV2(), _pnpOpenCV2);
 	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
 	Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);

@@ -33,15 +33,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define PARAMETERSTOOLBOX_H_
 
 #include <rtabmap/core/Parameters.h>
-#include <QToolBox>
+#include <QWidget>
 #include <QSet>
 
 class QVBoxLayout;
-class QAbstractButton;
+class QStackedWidget;
+class QComboBox;
 
 namespace rtabmap {
 
-class ParametersToolBox: public QToolBox
+class ParametersToolBox: public QWidget
 {
 	Q_OBJECT
 
@@ -77,6 +78,8 @@ private:
 	void updateParametersVisibility();
 
 private:
+	QComboBox * comboBox_;
+	QStackedWidget * stackedWidget_;
 	ParametersMap parameters_;
 	QSet<QString> ignoredGroups_;
 };

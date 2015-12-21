@@ -686,16 +686,19 @@ void VWDictionary::update()
 	UDEBUG("");
 }
 
-void VWDictionary::clear()
+void VWDictionary::clear(bool printWarningsIfNotEmpty)
 {
 	ULOGGER_DEBUG("");
-	if(_visualWords.size() && _incrementalDictionary)
+	if(printWarningsIfNotEmpty)
 	{
-		UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", (int)_visualWords.size());
-	}
-	if(_notIndexedWords.size())
-	{
-		UWARN("Not indexed words should be empty here (%d words still not indexed)", (int)_notIndexedWords.size());
+		if(_visualWords.size() && _incrementalDictionary)
+		{
+			UWARN("Visual dictionary would be already empty here (%d words still in dictionary).", (int)_visualWords.size());
+		}
+		if(_notIndexedWords.size())
+		{
+			UWARN("Not indexed words should be empty here (%d words still not indexed)", (int)_notIndexedWords.size());
+		}
 	}
 	for(std::map<int, VisualWord *>::iterator i=_visualWords.begin(); i!=_visualWords.end(); ++i)
 	{

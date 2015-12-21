@@ -72,6 +72,8 @@ public:
 
 	float & operator[](int index) {return data()[index];}
 	const float & operator[](int index) const {return data()[index];}
+	float & operator()(int row, int col) {return data()[row*4 + col];}
+	const float & operator()(int row, int col) const {return data()[row*4 + col];}
 
 	bool isNull() const;
 	bool isIdentity() const;

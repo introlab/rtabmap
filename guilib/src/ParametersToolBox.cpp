@@ -36,11 +36,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QLineEdit>
+#include <QStackedWidget>
+#include <QScrollArea>
 #include <QLabel>
 #include <QGroupBox>
 #include <QCheckBox>
 #include <QVBoxLayout>
 #include <QMessageBox>
+#include <QPushButton>
 #include <stdio.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -49,9 +52,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 ParametersToolBox::ParametersToolBox(QWidget *parent) :
-	QToolBox(parent),
+	QWidget(parent),
+	comboBox_(new QComboBox(this)),
+	stackedWidget_(new QStackedWidget(this)),
 	parameters_(Parameters::getDefaultParameters())
 {
+	QVBoxLayout * layout = new QVBoxLayout(this);
+	this->setLayout(layout);
+
+	layout->addWidget(comboBox_);
+	layout->addWidget(stackedWidget_, 1);
+	QPushButton * resetButton = new QPushButton(this);
+	resetButton->setText(tr("Restore Defaults"));
+	layout->addWidget(resetButton);
+	connect(resetButton, SIGNAL(clicked()), this, SLOT(resetCurrentPage()));
 }
 
 ParametersToolBox::~ParametersToolBox()
@@ -66,14 +80,15 @@ QWidget * ParametersToolBox::getParameterWidget(const QString & key)
 QStringList ParametersToolBox::resetPage(int index)
 {
 	QStringList paramChanged;
-	const QObjectList & children = this->widget(index)->children();
+	const QObjectList & children = stackedWidget_->widget(index)->children().first()->children().first()->children();
 	for(int j=0; j<children.size();++j)
 	{
 		QString key = children.at(j)->objectName();
 		// ignore working memory
 		QString group = key.split("/").first();
-		if(!ignoredGroups_.contains(group))
+		if(!ignoredGroups_.contains(group) && parameters_.find(key.toStdString())!=parameters_.end())
 		{
+			UASSERT_MSG(parameters_.find(key.toStdString()) != parameters_.end(), uFormat("key=%s", key.toStdString().c_str()).c_str());
 			std::string value = Parameters::getDefaultParameters().at(key.toStdString());
 			parameters_.at(key.toStdString()) = value;
 
@@ -125,7 +140,7 @@ QStringList ParametersToolBox::resetPage(int index)
 void ParametersToolBox::resetCurrentPage()
 {
 	this->blockSignals(true);
-	QStringList paramChanged = this->resetPage(this->currentIndex());
+	QStringList paramChanged = this->resetPage(stackedWidget_->currentIndex());
 	this->blockSignals(false);
 	Q_EMIT parametersChanged(paramChanged);
 }
@@ -134,7 +149,7 @@ void ParametersToolBox::resetAllPages()
 {
 	QStringList paramChanged;
 	this->blockSignals(true);
-	for(int i=0; i< this->count(); ++i)
+	for(int i=0; i< stackedWidget_->count(); ++i)
 	{
 		paramChanged.append(this->resetPage(i));
 	}
@@ -190,9 +205,9 @@ void ParametersToolBox::updateParametersVisibility()
 void ParametersToolBox::setupUi(const QSet<QString> & ignoredGroups)
 {
 	ignoredGroups_ = ignoredGroups;
-	this->removeItem(0); // remove dummy page used in .ui
 	QWidget * currentItem = 0;
 	const ParametersMap & parameters = Parameters::getDefaultParameters();
+	QStringList groups;
 	for(ParametersMap::const_iterator iter=parameters.begin();
 			iter!=parameters.end();
 			++iter)
@@ -204,14 +219,16 @@ void ParametersToolBox::setupUi(const QSet<QString> & ignoredGroups)
 			QString name = splitted.last();
 			if(currentItem == 0 || currentItem->objectName().compare(group) != 0)
 			{
-				currentItem = new QWidget(this);
-				this->addItem(currentItem, group);
+				groups.push_back(group);
+				QScrollArea * area = new QScrollArea(this);
+				stackedWidget_->addWidget(area);
+				currentItem = new QWidget();
 				currentItem->setObjectName(group);
 				QVBoxLayout * layout = new QVBoxLayout(currentItem);
-				currentItem->setLayout(layout);
+				layout->setSizeConstraint(QLayout::SetMinimumSize);
 				layout->setContentsMargins(0,0,0,0);
 				layout->setSpacing(0);
-				layout->addSpacerItem(new QSpacerItem(0,0, QSizePolicy::Minimum, QSizePolicy::Expanding));
+				area->setWidget(currentItem);
 
 				addParameter(layout, iter->first, iter->second);
 			}
@@ -221,6 +238,8 @@ void ParametersToolBox::setupUi(const QSet<QString> & ignoredGroups)
 			}
 		}
 	}
+	comboBox_->addItems(groups);
+	connect(comboBox_, SIGNAL(currentIndexChanged(int)), stackedWidget_, SLOT(setCurrentIndex(int)));
 
 	updateParametersVisibility();
 }
@@ -230,6 +249,8 @@ void ParametersToolBox::updateParameter(const std::string & key, const std::stri
 	QString group = QString::fromStdString(key).split("/").first();
 	if(!ignoredGroups_.contains(group))
 	{
+		UASSERT_MSG(parameters_.find(key) != parameters_.end(), uFormat("key=\"%s\"", key.c_str()).c_str());
+		parameters_.at(key) = value;
 		QWidget * widget = this->findChild<QWidget*>(key.c_str());
 		QString type = QString::fromStdString(Parameters::getType(key));
 		if(type.compare("string") == 0)
@@ -340,7 +361,7 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout,
 		widget->setDecimals(3);
 	}
 
-	if(def>=0.0)
+	if(def>0.0)
 	{
 		widget->setMaximum(def*1000000.0);
 	}

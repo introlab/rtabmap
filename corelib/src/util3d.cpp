@@ -381,7 +381,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 			for(int w = 0; w < imageDisparity.cols && w/decimation < (int)cloud->width; w+=decimation)
 			{
 				float disp = float(imageDisparity.at<short>(h,w))/16.0f;
-				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
+				cv::Point3f pt = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
+				cloud->at((h/decimation)*cloud->width + (w/decimation)) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 			}
 		}
 	}
@@ -392,7 +393,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 			for(int w = 0; w < imageDisparity.cols && w/decimation < (int)cloud->width; w+=decimation)
 			{
 				float disp = imageDisparity.at<float>(h,w);
-				cloud->at((h/decimation)*cloud->width + (w/decimation)) = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
+				cv::Point3f pt = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
+				cloud->at((h/decimation)*cloud->width + (w/decimation)) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 			}
 		}
 	}
@@ -451,7 +453,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 			}
 
 			float disp = imageDisparity.type()==CV_16SC1?float(imageDisparity.at<short>(h,w))/16.0f:imageDisparity.at<float>(h,w);
-			pcl::PointXYZ ptXYZ = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
+			cv::Point3f ptXYZ = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
 			pt.x = ptXYZ.x;
 			pt.y = ptXYZ.y;
 			pt.z = ptXYZ.z;
@@ -858,7 +860,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserS
 }
 
 // inspired from ROS image_geometry/src/stereo_camera_model.cpp
-pcl::PointXYZ projectDisparityTo3D(
+cv::Point3f projectDisparityTo3D(
 		const cv::Point2f & pt,
 		float disparity,
 		const StereoCameraModel & model)
@@ -867,13 +869,13 @@ pcl::PointXYZ projectDisparityTo3D(
 	{
 		//Z = baseline * f / (d + cx1-cx0);
 		float W = model.baseline()/(disparity + model.right().cx() - model.left().cx());
-		return pcl::PointXYZ((pt.x - model.left().cx())*W, (pt.y - model.left().cy())*W, model.left().fx()*W);
+		return cv::Point3f((pt.x - model.left().cx())*W, (pt.y - model.left().cy())*W, model.left().fx()*W);
 	}
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
-	return pcl::PointXYZ(bad_point, bad_point, bad_point);
+	return cv::Point3f(bad_point, bad_point, bad_point);
 }
 
-pcl::PointXYZ projectDisparityTo3D(
+cv::Point3f projectDisparityTo3D(
 		const cv::Point2f & pt,
 		const cv::Mat & disparity,
 		const StereoCameraModel & model)
@@ -888,7 +890,12 @@ pcl::PointXYZ projectDisparityTo3D(
 		float d = disparity.type() == CV_16SC1?float(disparity.at<short>(v,u))/16.0f:disparity.at<float>(v,u);
 		return projectDisparityTo3D(pt, d, model);
 	}
-	return pcl::PointXYZ(bad_point, bad_point, bad_point);
+	return cv::Point3f(bad_point, bad_point, bad_point);
+}
+
+bool isFinite(const cv::Point3f & pt)
+{
+	return uIsFinite(pt.x) && uIsFinite(pt.y) && uIsFinite(pt.z);
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr concatenateClouds(const std::list<pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds)
@@ -956,6 +963,25 @@ void savePCDWords(
 		for(std::multimap<int, pcl::PointXYZ>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 		{
 			cloud[i++] = transformPoint(iter->second, transform);
+		}
+		pcl::io::savePCDFile(fileName, cloud);
+	}
+}
+
+void savePCDWords(
+		const std::string & fileName,
+		const std::multimap<int, cv::Point3f> & words,
+		const Transform & transform)
+{
+	if(words.size())
+	{
+		pcl::PointCloud<pcl::PointXYZ> cloud;
+		cloud.resize(words.size());
+		int i=0;
+		for(std::multimap<int, cv::Point3f>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+		{
+			cv::Point3f pt = transformPoint(iter->second, transform);
+			cloud[i++] = pcl::PointXYZ(pt.x, pt.y, pt.z);
 		}
 		pcl::io::savePCDFile(fileName, cloud);
 	}

@@ -78,11 +78,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-DatabaseViewer::DatabaseViewer(QWidget * parent) :
+DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	QMainWindow(parent),
 	dbDriver_(0),
 	savedMaximized_(false),
-	firstCall_(true)
+	firstCall_(true),
+	iniFilePath_(ini)
 {
 	pathDatabase_ = QDir::homePath()+"/Documents/RTAB-Map"; //use home directory by default
 
@@ -99,6 +100,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	ui_->comboBox_logger_level->setVisible(parent==0);
 	ui_->label_logger_level->setVisible(parent==0);
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(updateLoggerLevel()));
+	connect(ui_->checkBox_verticalLayout, SIGNAL(stateChanged(int)), this, SLOT(setupMainLayout(int)));
 
 	QString title("RTAB-Map Database Viewer[*]");
 	this->setWindowTitle(title);
@@ -244,6 +246,7 @@ DatabaseViewer::DatabaseViewer(QWidget * parent) :
 	//connect(ui_->graphicsView_A, SIGNAL(configChanged()), this, SLOT(configModified()));
 	//connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_verticalLayout, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	// Graph view
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -297,6 +300,18 @@ DatabaseViewer::~DatabaseViewer()
 	}
 }
 
+void DatabaseViewer::setupMainLayout(int vertical)
+{
+	if(vertical)
+	{
+		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_imageViews->layout())->setDirection(QBoxLayout::TopToBottom);
+	}
+	else if(!vertical)
+	{
+		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_imageViews->layout())->setDirection(QBoxLayout::LeftToRight);
+	}
+}
+
 void DatabaseViewer::showCloseButton(bool visible)
 {
 	ui_->buttonBox->setVisible(visible);
@@ -309,6 +324,10 @@ void DatabaseViewer::configModified()
 
 QString DatabaseViewer::getIniFilePath() const
 {
+	if(!iniFilePath_.isEmpty())
+	{
+		return iniFilePath_;
+	}
 	QString privatePath = QDir::homePath() + "/.rtabmap";
 	if(!QDir(privatePath).exists())
 	{
@@ -338,6 +357,7 @@ void DatabaseViewer::readSettings()
 	savedMaximized_ = settings.value("maximized", false).toBool();
 
 	ui_->comboBox_logger_level->setCurrentIndex(settings.value("loggerLevel", ui_->comboBox_logger_level->currentIndex()).toInt());
+	ui_->checkBox_verticalLayout->setChecked(settings.value("verticalLayout", ui_->checkBox_verticalLayout->isChecked()).toBool());
 
 	// GraphViewer settings
 	ui_->graphViewer->loadSettings(settings, "GraphView");
@@ -409,6 +429,7 @@ void DatabaseViewer::writeSettings()
 	savedMaximized_ = this->isMaximized();
 
 	settings.setValue("loggerLevel", ui_->comboBox_logger_level->currentIndex());
+	settings.setValue("verticalLayout", ui_->checkBox_verticalLayout->isChecked());
 
 	// save GraphViewer settings
 	ui_->graphViewer->saveSettings(settings, "GraphView");
@@ -2343,10 +2364,10 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 
 		// generate kpts
 		std::vector<cv::KeyPoint> kpts;
-		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
-		uInsert(parameters, ParametersPair(Parameters::kKpWordsPerImage(), parameters.at(Parameters::kVisMaxFeatures())));
+		uInsert(parameters, ParametersPair(Parameters::kKpMaxFeatures(), parameters.at(Parameters::kVisMaxFeatures())));
+		uInsert(parameters, ParametersPair(Parameters::kKpRoiRatios(), std::string(opticalFlow?"0.03 0.03 0.04 0.04":"0 0 0 0")));
 		Feature2D * kptDetector = Feature2D::create(parameters);
-		kpts = kptDetector->generateKeypoints(leftMono, opticalFlow?roi:cv::Rect());
+		kpts = kptDetector->generateKeypoints(leftMono);
 		delete kptDetector;
 
 		float timeKpt = timer.ticks();
@@ -2378,23 +2399,23 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		int negativeDisparityOutliers = 0;
 		for(unsigned int i=0; i<status.size(); ++i)
 		{
-			pcl::PointXYZ pt(bad_point, bad_point, bad_point);
+			cv::Point3f pt(bad_point, bad_point, bad_point);
 			if(status[i])
 			{
 				float disparity = leftCorners[i].x - rightCorners[i].x;
 				if(disparity > 0.0f)
 				{
-					pcl::PointXYZ tmpPt = util3d::projectDisparityTo3D(
+					cv::Point3f tmpPt = util3d::projectDisparityTo3D(
 							leftCorners[i],
 							disparity,
 							data->stereoCameraModel());
 
-					if(pcl::isFinite(tmpPt))
+					if(util3d::isFinite(tmpPt))
 					{
-						pt = pcl::transformPoint(tmpPt, data->stereoCameraModel().left().localTransform().toEigen3f());
+						pt = util3d::transformPoint(tmpPt, data->stereoCameraModel().left().localTransform());
 						status[i] = 100; //blue
 						++inliers;
-						cloud->at(oi++) = pt;
+						cloud->at(oi++) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 					}
 				}
 				else
@@ -2515,8 +2536,17 @@ void DatabaseViewer::updateWordsMatching()
 					// Add lines
 					// Draw lines between corresponding features...
 					float scaleX = ui_->graphicsView_A->viewScale();
-					float deltaX = ui_->graphicsView_A->width()/scaleX;
+					float deltaX = 0;
 					float deltaY = 0;
+
+					if(ui_->checkBox_verticalLayout->isChecked())
+					{
+						deltaY = ui_->graphicsView_A->height()/scaleX;
+					}
+					else
+					{
+						deltaX = ui_->graphicsView_A->width()/scaleX;
+					}
 
 					const KeypointItem * kptA = wordsA.value(ids[i]);
 					const KeypointItem * kptB = wordsB.value(ids[i]);
@@ -2772,18 +2802,18 @@ void DatabaseViewer::updateConstraintView(
 					cloudFrom->resize(sFrom->getWords3().size());
 					cloudTo->resize(sTo->getWords3().size());
 					int i=0;
-					for(std::multimap<int, pcl::PointXYZ>::const_iterator iter=sFrom->getWords3().begin();
+					for(std::multimap<int, cv::Point3f>::const_iterator iter=sFrom->getWords3().begin();
 						iter!=sFrom->getWords3().end();
 						++iter)
 					{
-						cloudFrom->at(i++) = iter->second;
+						cloudFrom->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
 					}
 					i=0;
-					for(std::multimap<int, pcl::PointXYZ>::const_iterator iter=sTo->getWords3().begin();
+					for(std::multimap<int, cv::Point3f>::const_iterator iter=sTo->getWords3().begin();
 						iter!=sTo->getWords3().end();
 						++iter)
 					{
-						cloudTo->at(i++) = iter->second;
+						cloudTo->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
 					}
 
 					if(cloudFrom->size())
@@ -3624,7 +3654,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	Transform t;
 	std::string rejectedMsg;
 	float variance = -1.0f;
-	int inliers = -1;
+	std::vector<int> inliers;
 
 	// Add sensor data to generate features
 	SensorData dataFrom;
@@ -3637,8 +3667,17 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 
 	UDEBUG("");
 	RegistrationVis reg(parameters);
-	t = reg.computeTransformation2(dataFrom, dataTo, Transform::getIdentity(), &rejectedMsg, &inliers, &variance);
+	Signature fromS(dataFrom);
+	Signature toS(dataTo);
+	t = reg.computeTransformationMod(fromS, toS, Transform::getIdentity(), &rejectedMsg, &inliers, &variance);
 	UDEBUG("");
+
+	if(!silent)
+	{
+		ui_->graphicsView_A->setFeatures(fromS.getWords(), dataFrom.depthRaw());
+		ui_->graphicsView_B->setFeatures(toS.getWords(), dataTo.depthRaw());
+		updateWordsMatching();
+	}
 
 	if(!t.isNull())
 	{
@@ -3668,7 +3707,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 		}
 		if(ui_->dockWidget_constraints->isVisible())
 		{
-			this->updateConstraintView(newLink);
+			this->updateConstraintView(newLink, false);
 		}
 	}
 	else if(!silent)
@@ -3702,20 +3741,11 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		UASSERT(!containsLink(linksRefined_, from, to));
 
 		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
-		uInsert(parameters, ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kVisFeatureType())));
-		uInsert(parameters, ParametersPair(Parameters::kKpNNStrategy(), parameters.at(Parameters::kVisNNType())));
-		uInsert(parameters, ParametersPair(Parameters::kKpMaxDepth(), parameters.at(Parameters::kVisMaxDepth())));
-		uInsert(parameters, ParametersPair(Parameters::kKpWordsPerImage(), parameters.at(Parameters::kVisMaxFeatures())));
-		uInsert(parameters, ParametersPair(Parameters::kMemGenerateIds(), "false"));
-		uInsert(parameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0"));
 
 		Transform t;
 		std::string rejectedMsg;
 		float variance = -1.0f;
-		int inliers = -1;
-
-		// create a fake memory to compute the transform
-		Memory tmpMemory(parameters);
+		std::vector<int> inliers;
 
 		// Add sensor data to generate features
 		SensorData dataFrom;
@@ -3725,27 +3755,21 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		dbDriver_->getNodeData(to, dataTo);
 		dataTo.uncompressData();
 
-		if(from > to)
-		{
-			tmpMemory.update(dataTo);
-			tmpMemory.update(dataFrom);
-		}
-		else
-		{
-			tmpMemory.update(dataFrom);
-			tmpMemory.update(dataTo);
-		}
 
-
-		t = tmpMemory.computeVisualTransform(from, to, &rejectedMsg, &inliers, &variance);
+		UDEBUG("");
+		RegistrationVis reg(parameters);
+		Signature fromS(dataFrom);
+		Signature toS(dataTo);
+		t = reg.computeTransformationMod(fromS, toS, Transform::getIdentity(), &rejectedMsg, &inliers, &variance);
+		UDEBUG("");
 
 		if(!silent)
 		{
-			ui_->graphicsView_A->setFeatures(tmpMemory.getSignature(from)->getWords(), dataFrom.depthRaw());
-			ui_->graphicsView_B->setFeatures(tmpMemory.getSignature(to)->getWords(), dataTo.depthRaw());
+			ui_->graphicsView_A->setFeatures(fromS.getWords(), dataFrom.depthRaw());
+			ui_->graphicsView_B->setFeatures(toS.getWords(), dataTo.depthRaw());
 			updateWordsMatching();
 		}
-
+		
 		if(!t.isNull())
 		{
 			// transform is valid, make a link

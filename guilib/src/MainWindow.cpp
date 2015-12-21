@@ -1038,6 +1038,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 		_ui->statsToolBox->updateStat("Odometry/TFpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
 		_ui->statsToolBox->updateStat("Odometry/TFyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
 	}
+	if(odom.info().interval > 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/Interval/ms", (float)odom.data().id(), odom.info().interval*1000.f);
+		_ui->statsToolBox->updateStat("Odometry/Speed/kph", (float)odom.data().id(), x/odom.info().interval*3.6f);
+	}
 
 	if(!odom.info().transformGroundTruth.isNull())
 	{
@@ -1072,11 +1077,6 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 		_ui->statsToolBox->updateStat("Odometry/PGyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 
-	if(odom.info().interval > 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Interval/ms", (float)odom.data().id(), odom.info().interval*1000.f);
-		_ui->statsToolBox->updateStat("Odometry/Speed/kph", (float)odom.data().id(), x/odom.info().interval*3.6f);
-	}
 	if(odom.info().distanceTravelled > 0)
 	{
 		_ui->statsToolBox->updateStat("Odometry/Distance/m", (float)odom.data().id(), odom.info().distanceTravelled);
@@ -1916,7 +1916,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		int oi=0;
 		UASSERT(iter->getWords().size() == iter->getWords3().size());
 		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
-		for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=iter->getWords3().begin();
+		for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->getWords3().begin();
 				jter!=iter->getWords3().end(); ++jter, ++kter, ++oi)
 		{
 			(*cloud)[oi].x = jter->second.x;
@@ -2870,7 +2870,7 @@ void MainWindow::editDatabase()
 	QString path = QFileDialog::getOpenFileName(this, tr("Edit database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
 	if(!path.isEmpty())
 	{
-		DatabaseViewer * viewer = new DatabaseViewer(this);
+		DatabaseViewer * viewer = new DatabaseViewer(_preferencesDialog->getIniFilePath(), this);
 		viewer->setWindowModality(Qt::WindowModal);
 		viewer->setAttribute(Qt::WA_DeleteOnClose, true);
 		viewer->showCloseButton();
@@ -3026,7 +3026,7 @@ void MainWindow::startDetection()
 				Odometry * odom;
 				if(_preferencesDialog->getOdomStrategy() == 1)
 				{
-					odom = new OdometryOpticalFlow(parameters);
+					odom = new OdometryF2F(parameters);
 				}
 				else if(_preferencesDialog->getOdomStrategy() == 2)
 				{
@@ -3065,7 +3065,7 @@ void MainWindow::startDetection()
 			Odometry * odom;
 			if(_preferencesDialog->getOdomStrategy() == 1)
 			{
-				odom = new OdometryOpticalFlow(parameters);
+				odom = new OdometryF2F(parameters);
 			}
 			else if(_preferencesDialog->getOdomStrategy() == 2)
 			{
@@ -3524,16 +3524,16 @@ void MainWindow::postProcessing()
 						if(reextractFeatures)
 						{
 							signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
-							signatureFrom.setWords3(std::multimap<int, pcl::PointXYZ>());
+							signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
 							signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
-							signatureTo.setWords3(std::multimap<int, pcl::PointXYZ>());
+							signatureTo.setWords3(std::multimap<int, cv::Point3f>());
 						}
 
 						Transform transform;
 						std::string rejectedMsg;
-						int inliers = -1;
 						float variance = -1.0f;
 						RegistrationVis registration(parameters);
+						std::vector<int> inliers;
 						transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &rejectedMsg, &inliers, &variance);
 
 						if(!transform.isNull())
@@ -3623,7 +3623,7 @@ void MainWindow::postProcessing()
 					{
 						std::string rejectedMsg;
 						float variance = -1.0f;
-						Transform transform = regIcp.computeTransformation(signatureFrom, signatureTo, iter->second.transform(), &rejectedMsg, 0, &variance);
+						Transform transform = regIcp.computeTransformation(signatureFrom.sensorData(), signatureTo.sensorData(), iter->second.transform(), &rejectedMsg, 0, &variance);
 
 						if(!transform.isNull())
 						{
@@ -5844,7 +5844,7 @@ std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
 					{
 						cloud->resize(s.getWords3().size());
 						int oi=0;
-						for(std::multimap<int, pcl::PointXYZ>::const_iterator jter=s.getWords3().begin(); jter!=s.getWords3().end(); ++jter)
+						for(std::multimap<int, cv::Point3f>::const_iterator jter=s.getWords3().begin(); jter!=s.getWords3().end(); ++jter)
 						{
 							(*cloud)[oi].x = jter->second.x;
 							(*cloud)[oi].y = jter->second.y;

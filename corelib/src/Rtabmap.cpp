@@ -3114,7 +3114,7 @@ void Rtabmap::get3DMap(
 			SensorData data = _memory->getNodeData(*iter);
 			data.setId(*iter);
 			std::multimap<int, cv::KeyPoint> words;
-			std::multimap<int, pcl::PointXYZ> words3;
+			std::multimap<int, cv::Point3f> words3;
 			_memory->getNodeWords(*iter, words, words3);
 			signatures.insert(std::make_pair(*iter,
 					Signature(*iter,

@@ -77,14 +77,14 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_pointToPlaneNormalNeighbors > 0, uFormat("value=%d", _pointToPlaneNormalNeighbors).c_str());
 }
 
-Transform RegistrationIcp::computeTransformation(
-			const Signature & fromSignature,
-			const Signature & toSignature,
+Transform RegistrationIcp::computeTransformationMod(
+			Signature & fromSignature,
+			Signature & toSignature,
 			Transform guess,
 			std::string * rejectedMsg,
-			int * inliersOut,
+			std::vector<int> * inliersOut,
 			float * varianceOut,
-			float * inliersRatioOut)
+			float * inliersRatioOut) const
 {
 	return computeTransformation(
 			fromSignature.sensorData(),
@@ -101,9 +101,9 @@ Transform RegistrationIcp::computeTransformation(
 			const SensorData & dataTo,
 			Transform guess,
 			std::string * rejectedMsg,
-			int * inliersOut,
+			std::vector<int> * inliersOut,
 			float * varianceOut,
-			float * inliersRatioOut)
+			float * inliersRatioOut) const
 {
 	UDEBUG("Guess transform = %s", guess.prettyPrint().c_str());
 	UDEBUG("Voxel size=%f", _voxelSize);
@@ -298,7 +298,7 @@ Transform RegistrationIcp::computeTransformation(
 					}
 					if(inliersOut)
 					{
-						*inliersOut = correspondences;
+						inliersOut->push_back(correspondences);
 					}
 					if(inliersRatioOut)
 					{

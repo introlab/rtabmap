@@ -244,11 +244,9 @@ int main(int argc, char * argv[])
 
 		// generate kpts
 		std::vector<cv::KeyPoint> kpts;
-		cv::Rect roi = Feature2D::computeRoi(leftMono, "0.03 0.03 0.04 0.04");
-		int type;
-		Parameters::parse(parameters, Parameters::kKpDetectorStrategy(), type);
-		Feature2D * kptDetector = Feature2D::create(Feature2D::Type(type), parameters);
-		kpts = kptDetector->generateKeypoints(leftMono, roi);
+		uInsert(parameters, ParametersPair(Parameters::kKpRoiRatios(), "0.03 0.03 0.04 0.04"));
+		Feature2D * kptDetector = Feature2D::create(parameters);
+		kpts = kptDetector->generateKeypoints(leftMono);
 		delete kptDetector;
 
 		timeKpts = timer.ticks();

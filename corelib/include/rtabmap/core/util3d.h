@@ -130,15 +130,17 @@ cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ>
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform = Transform());
 
-pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
+cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
 		float disparity,
 		const StereoCameraModel & model);
 
-pcl::PointXYZ RTABMAP_EXP projectDisparityTo3D(
+cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
 		const cv::Mat & disparity,
 		const StereoCameraModel & model);
+
+bool RTABMAP_EXP isFinite(const cv::Point3f & pt);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP concatenateClouds(
 		const std::list<pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds);
@@ -174,6 +176,11 @@ pcl::IndicesPtr RTABMAP_EXP concatenate(
 void RTABMAP_EXP savePCDWords(
 		const std::string & fileName,
 		const std::multimap<int, pcl::PointXYZ> & words,
+		const Transform & transform = Transform::getIdentity());
+
+void RTABMAP_EXP savePCDWords(
+		const std::string & fileName,
+		const std::multimap<int, cv::Point3f> & words,
 		const Transform & transform = Transform::getIdentity());
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadBINCloud(const std::string & fileName, int dim);

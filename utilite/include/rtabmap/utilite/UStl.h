@@ -494,7 +494,7 @@ inline std::map<K, V> uMultimapToMapUnique(const std::multimap<K, V> & m)
 		if(m.count(*iter) == 1)
 		{
 			typename std::multimap<K, V>::const_iterator jter=m.find(*iter);
-			mapOut.insert(std::pair<K,V>(jter->first, jter->second));
+			mapOut.insert(mapOut.end(), std::pair<K,V>(jter->first, jter->second));
 		}
 	}
 	return mapOut;
