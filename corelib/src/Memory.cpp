@@ -2040,7 +2040,7 @@ Transform Memory::computeVisualTransform(
 			tmpTo.setWords3(std::multimap<int, cv::Point3f>());
 			transform = _registrationVis->computeTransformation(tmpFrom, tmpTo, Transform::getIdentity(), rejectedMsg, &inliersV, variance);
 		}
-		else
+		else if(fromS->getWords().size() && toS->getWords().size())
 		{
 			transform = _registrationVis->computeTransformation(*fromS, *toS, Transform::getIdentity(), rejectedMsg, &inliersV, variance);
 		}
@@ -3310,6 +3310,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		s->sensorData().setLaserScanRaw(laserScan, maxLaserScanMaxPts, data.laserScanMaxRange());
 		s->sensorData().setUserDataRaw(data.userDataRaw());
 	}
+	s->sensorData().setGroundTruth(data.groundTruth());
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);

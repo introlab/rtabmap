@@ -47,7 +47,7 @@ Transform RTABMAP_EXP estimateMotion3DTo2D(
 			int iterations = 100,
 			double reprojError = 5.,
 			int flagsPnP = 0,
-			bool pnpOpenCV2 = true,
+			int pnpRefineIterations = 1,
 			const Transform & guess = Transform::getIdentity(),
 			const std::map<int, cv::Point3f> & words3B = std::map<int, cv::Point3f>(),
 			double * varianceOut = 0, // mean reproj error if words3B is not set
@@ -66,19 +66,20 @@ Transform RTABMAP_EXP estimateMotion3DTo3D(
 			std::vector<int> * inliersOut = 0);
 
 void RTABMAP_EXP solvePnPRansac(
-		cv::InputArray _opoints,
-		cv::InputArray _ipoints,
-		cv::InputArray _cameraMatrix,
-		cv::InputArray _distCoeffs,
-		cv::OutputArray _rvec,
-		cv::OutputArray _tvec,
+		const std::vector<cv::Point3f> & objectPoints,
+		const std::vector<cv::Point2f> & imagePoints,
+		const cv::Mat & cameraMatrix,
+		const cv::Mat & distCoeffs,
+		cv::Mat & rvec,
+		cv::Mat & tvec,
 		bool useExtrinsicGuess,
-        int iterationsCount,
-        float reprojectionError,
-        int minInliersCount,
-        cv::OutputArray _inliers,
-        int flags,
-        bool opencv2version);
+		int iterationsCount,
+		float reprojectionError,
+		int minInliersCount,
+		std::vector<int> & inliers,
+		int flags,
+		int refineIterations = 1,
+		float refineSigma = 3.0f);
 
 } // namespace util3d
 } // namespace rtabmap

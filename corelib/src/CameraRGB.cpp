@@ -174,6 +174,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	}
 
 	// look for calibration files
+	UINFO("calibration folder=%s name=%s", calibrationFolder.c_str(), cameraName.c_str());
 	if(!calibrationFolder.empty() && !cameraName.empty())
 	{
 		if(!_model.load(calibrationFolder, cameraName))
@@ -285,7 +286,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			else if(_groundTruthFormat == 1)
 			{
 				//Match ground truth values with images
-				groundTruth_.resize(stamps_.size(), Transform());
+				groundTruth_.clear();
 				std::map<double, int> stampsToIds;
 				for(std::map<int, double>::iterator iter=stamps.begin(); iter!=stamps.end(); ++iter)
 				{
@@ -293,6 +294,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				}
 				std::vector<double> values = uValues(stamps);
 
+				Transform firstPoseInv;
 				for(std::list<double>::iterator ster=stamps_.begin(); ster!=stamps_.end(); ++ster)
 				{
 					Transform pose; // null transform
@@ -319,7 +321,18 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 								pose = ta.interpolate(t, tb);
 							}
 						}
-
+					}
+					if(!pose.isNull())
+					{
+						if(firstPoseInv.isNull())
+						{
+							firstPoseInv = pose.inverse();
+							pose.setIdentity();
+						}
+						else
+						{
+							pose = firstPoseInv * pose;
+						}
 					}
 					groundTruth_.push_back(pose);
 				}
@@ -328,7 +341,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			{
 				groundTruth_ = uValuesList(poses);
 			}
-			UASSERT(groundTruth_.size() == stamps_.size());
+			UASSERT_MSG(groundTruth_.size() == stamps_.size(), uFormat("%d vs %d", (int)groundTruth_.size(), (int)stamps_.size()).c_str());
 		}
 	}
 

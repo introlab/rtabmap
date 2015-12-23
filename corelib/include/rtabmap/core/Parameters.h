@@ -364,12 +364,12 @@ class RTABMAP_EXP Parameters
 	
 	// Visual registration parameters
 	RTABMAP_PARAM(Vis, EstimationType,           int, 0,    	"Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
-	RTABMAP_PARAM(Vis, ForwardEstOnly,               bool, true, 	"Forward estimation (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
+	RTABMAP_PARAM(Vis, ForwardEstOnly,           bool, true, 	"Forward estimation only (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
 	RTABMAP_PARAM(Vis, InlierDistance,           float, 0.1,    "[Vis/EstimationType = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.");
 	RTABMAP_PARAM(Vis, RefineIterations,         int, 10,       "[Vis/EstimationType = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
 	RTABMAP_PARAM(Vis, PnPReprojError, 	         double, 5.0,   "[Vis/EstimationType = 1] PnP reprojection error.");
 	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,        "[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
-	RTABMAP_PARAM(Vis, PnPOpenCV2,               bool, true,    "[Vis/EstimationType = 1] Use OpenCV2 solvePnPRansac() in OpenCV3.");
+	RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        "[Vis/EstimationType = 1] Refine iterations.");
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
 	RTABMAP_PARAM(Vis, MinInliers,               int, 10, 		"Minimum feature correspondences to compute/accept the transformation.");
 	RTABMAP_PARAM(Vis, Iterations,               int, 100, 		"Maximum iterations to compute the transform.");

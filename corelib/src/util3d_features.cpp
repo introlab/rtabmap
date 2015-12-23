@@ -183,7 +183,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 		int pnpIterations,
 		float pnpReprojError,
 		int pnpFlags,
-		bool pnpOpenCV2,
+		int pnpRefineIterations,
 		float ransacParam1,
 		float ransacParam2,
 		const std::map<int, cv::Point3f> & refGuess3D,
@@ -401,7 +401,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 										0, // min inliers
 										inliersV,
 										pnpFlags,
-										pnpOpenCV2);
+										pnpRefineIterations);
 
 								UDEBUG("PnP inliers = %d / %d", (int)inliersV.size(), (int)objectPoints.size());
 

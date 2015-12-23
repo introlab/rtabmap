@@ -208,11 +208,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
-#if CV_MAJOR_VERSION < 3
-	_ui->loopClosure_pnpOpenCV2->setVisible(false);
-	_ui->label_loopClosure_pnpOpenCV2->setVisible(false);
-#endif
-
 	// Default Driver
 	connect(_ui->comboBox_sourceType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(updateRGBDCameraGroupBoxVisibility()));
@@ -649,7 +644,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_bowEpipolarGeometryVar->setObjectName(Parameters::kVisEpipolarGeometryVar().c_str());
 	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kVisPnPReprojError().c_str());
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kVisPnPFlags().c_str());
-	_ui->loopClosure_pnpOpenCV2->setObjectName(Parameters::kVisPnPOpenCV2().c_str());
+	_ui->loopClosure_pnpRefineIterations->setObjectName(Parameters::kVisPnPRefineIterations().c_str());
 	_ui->loopClosure_bowVarianceFromInliersCount->setObjectName(Parameters::kRegVarianceFromInliersCount().c_str());
 
 	_ui->loopClosure_reextract->setObjectName(Parameters::kRGBDLoopClosureReextractFeatures().c_str());
@@ -683,6 +678,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
+	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odometryType, SLOT(setCurrentIndex(int)));
+	_ui->odom_strategy->setCurrentIndex(Parameters::defaultOdomStrategy());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
 	_ui->odom_holonomic->setObjectName(Parameters::kOdomHolonomic().c_str());
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
@@ -2522,7 +2519,7 @@ void PreferencesDialog::selectSourceRGBDImagesPathGt()
 		{
 			list.push_back(_ui->comboBox_cameraRGBDImages_gtFormat->itemText(i));
 		}
-		QString item = QInputDialog::getItem(this, tr("Ground Truth Format"), tr("Format:"), list);
+		QString item = QInputDialog::getItem(this, tr("Ground Truth Format"), tr("Format:"), list, 0, false);
 		if(!item.isEmpty())
 		{
 			_ui->lineEdit_cameraRGBDImages_gt->setText(path);
@@ -3945,6 +3942,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 				dir = d.absolutePath();
 			}
 		}
+
 		if(!camera->init(useRawImages?"":dir.toStdString(), name.toStdString()))
 		{
 			UWARN("init camera failed... ");

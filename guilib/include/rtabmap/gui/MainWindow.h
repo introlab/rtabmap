@@ -292,6 +292,7 @@ private:
 
 	QMap<int, Signature> _cachedSignatures;
 	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>
+	std::map<int, Transform> _currentGTPosesMap; // <nodeId, pose>
 	std::multimap<int, Link> _currentLinksMap; // <nodeFromId, link>
 	std::map<int, int> _currentMapIds;   // <nodeId, mapId>
 	std::map<int, std::string> _curentLabels; // <nodeId, label>

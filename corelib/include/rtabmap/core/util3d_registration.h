@@ -50,9 +50,8 @@ Transform RTABMAP_EXP transformFromXYZCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud2,
 		double inlierThreshold = 0.02,
 		int iterations = 100,
-		bool refineModel = false,
-		double refineModelSigma = 3.0,
 		int refineModelIterations = 10,
+		double refineModelSigma = 3.0,
 		std::vector<int> * inliers = 0,
 		double * variance = 0);
 

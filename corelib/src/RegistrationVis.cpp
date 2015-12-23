@@ -52,7 +52,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters) :
 		_forwardEstimateOnly(Parameters::defaultVisForwardEstOnly()),
 		_PnPReprojError(Parameters::defaultVisPnPReprojError()),
 		_PnPFlags(Parameters::defaultVisPnPFlags()),
-		_PnPOpenCV2(Parameters::defaultVisPnPOpenCV2()),
+		_PnPRefineIterations(Parameters::defaultVisPnPRefineIterations()),
 		_correspondencesApproach(Parameters::defaultVisCorType()),
 		_flowWinSize(Parameters::defaultVisCorFlowWinSize()),
 		_flowIterations(Parameters::defaultVisCorFlowIterations()),
@@ -96,7 +96,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisEpipolarGeometryVar(), _epipolarGeometryVar);
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _PnPReprojError);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _PnPFlags);
-	Parameters::parse(parameters, Parameters::kVisPnPOpenCV2(), _PnPOpenCV2);
+	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), _PnPRefineIterations);
 	Parameters::parse(parameters, Parameters::kVisCorType(), _correspondencesApproach);
 	Parameters::parse(parameters, Parameters::kVisCorFlowWinSize(), _flowWinSize);
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), _flowIterations);
@@ -557,7 +557,7 @@ Transform RegistrationVis::computeTransformationMod(
 							_iterations,
 							_PnPReprojError,
 							_PnPFlags, // cv::SOLVEPNP_ITERATIVE
-							_PnPOpenCV2,
+							_PnPRefineIterations,
 							1.0f,
 							0.99f,
 							uMultimapToMapUnique(signatureA->getWords3()), // for scale estimation
@@ -635,7 +635,7 @@ Transform RegistrationVis::computeTransformationMod(
 								_iterations,
 								_PnPReprojError,
 								_PnPFlags,
-								_PnPOpenCV2,
+								_PnPRefineIterations,
 								dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
 								uMultimapToMapUnique(signatureA->getWords3()),
 								_varianceFromInliersCount?0:&variances[dir],
@@ -718,16 +718,39 @@ Transform RegistrationVis::computeTransformationMod(
 			}
 			else
 			{
-				transform = transforms[0].interpolate(0.5f, transforms[1]);
-				if(inliersOut)
+				/*if(!guess.isNull())
 				{
-					*inliersOut = inliers[0];
+					// use the transform nearest of the guess
+					int index = 0;
+					if(transforms[0].getDistance(guess) > transforms[1].getDistance(guess))
+					{
+						index = 1;
+					}
+					transform = transforms[index];
+					if(inliersOut)
+					{
+						*inliersOut = inliers[index];
+					}
+
+					variance = variances[index];
+					if(_varianceFromInliersCount)
+					{
+						variance = inliers[index].size() > 0?1.0f/float(inliers[index].size()):1.0f;
+					}
 				}
-				variance = (variances[0]+variances[1])/2.0f;
-				if(_varianceFromInliersCount)
+				else*/
 				{
-					int avg = (inliers[0].size()+inliers[1].size())/2;
-					variance = avg>0?1.0f/float(avg):1.0f;
+					transform = transforms[0].interpolate(0.5f, transforms[1]);
+					if(inliersOut)
+					{
+						*inliersOut = inliers[0];
+					}
+					variance = (variances[0]+variances[1])/2.0f;
+					if(_varianceFromInliersCount)
+					{
+						int avg = (inliers[0].size()+inliers[1].size())/2;
+						variance = avg>0?1.0f/float(avg):1.0f;
+					}
 				}
 			}
 		}

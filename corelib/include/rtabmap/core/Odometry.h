@@ -66,8 +66,8 @@ public:
 	bool isInfoDataFilled() const {return _fillInfoData;}
 	int getEstimationType() const {return _estimationType;}
 	double getPnPReprojError() const {return _pnpReprojError;}
-	int  getPnPFlags() const {return _pnpFlags;}
-	bool  getPnPOpenCV2() const {return _pnpOpenCV2;}
+	int getPnPFlags() const {return _pnpFlags;}
+	int getPnPRefineIterations() const {return _pnpRefineIterations;}
 	const Transform & previousTransform() const {return previousTransform_;}
 	bool isVarianceFromInliersCount() const {return _varianceFromInliersCount;}
 
@@ -98,7 +98,7 @@ private:
 	int _estimationType;
 	double _pnpReprojError;
 	int _pnpFlags;
-	bool _pnpOpenCV2;
+	int _pnpRefineIterations;
 	bool _varianceFromInliersCount;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;

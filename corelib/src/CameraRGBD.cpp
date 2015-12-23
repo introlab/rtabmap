@@ -1690,7 +1690,7 @@ CameraRGBDImages::~CameraRGBDImages()
 bool CameraRGBDImages::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	bool success = false;
-	if(CameraImages::init() && cameraDepth_.init())
+	if(CameraImages::init(calibrationFolder, cameraName) && cameraDepth_.init())
 	{
 		if(this->imagesCount() == cameraDepth_.imagesCount())
 		{

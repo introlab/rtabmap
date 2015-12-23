@@ -67,7 +67,7 @@ private:
 	bool _forwardEstimateOnly;
 	double _PnPReprojError;
 	int _PnPFlags;
-	bool _PnPOpenCV2;
+	bool _PnPRefineIterations;
 	int _correspondencesApproach;
 	int _flowWinSize;
 	int _flowIterations;

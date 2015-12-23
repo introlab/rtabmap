@@ -55,7 +55,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_estimationType(Parameters::defaultVisEstimationType()),
 		_pnpReprojError(Parameters::defaultVisPnPReprojError()),
 		_pnpFlags(Parameters::defaultVisPnPFlags()),
-		_pnpOpenCV2(Parameters::defaultVisPnPOpenCV2()),
+		_pnpRefineIterations(Parameters::defaultVisPnPRefineIterations()),
 		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount()),
 		_kalmanProcessNoise(Parameters::defaultOdomKalmanProcessNoise()),
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
@@ -79,7 +79,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisEstimationType(), _estimationType);
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _pnpReprojError);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _pnpFlags);
-	Parameters::parse(parameters, Parameters::kVisPnPOpenCV2(), _pnpOpenCV2);
+	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), _pnpRefineIterations);
 	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
 	Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);

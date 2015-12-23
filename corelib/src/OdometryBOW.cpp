@@ -257,7 +257,7 @@ Transform OdometryBOW::computeTransform(
 								this->getIterations(),
 								this->getPnPReprojError(),
 								this->getPnPFlags(),
-								this->getPnPOpenCV2(),
+								this->getPnPRefineIterations(),
 								this->getPose(),
 								uMultimapToMap(newSignature->getWords3()),
 								isVarianceFromInliersCount()?0:&variance, // don't compute variance if we use inliers

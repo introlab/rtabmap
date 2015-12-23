@@ -202,7 +202,7 @@ bool importPoses(
 				std::list<std::string> strList = uSplit(str);
 				if(strList.size() ==  8)
 				{
-					double stamp = uStr2Float(strList.front());
+					double stamp = uStr2Double(strList.front());
 					strList.pop_front();
 					str = uJoin(strList, " ");
 					Transform pose = Transform::fromString(str);
@@ -214,6 +214,12 @@ bool importPoses(
 					{
 						stamps->insert(std::make_pair(id, stamp));
 					}
+					// we need to remove optical rotation
+					// z pointing front, x left, y down
+					Transform t( 0, 0, 1, 0,
+								-1, 0, 0, 0,
+								 0,-1, 0, 0);
+					pose = t * pose * t.inverse();
 					poses.insert(std::make_pair(id, pose));
 				}
 				else

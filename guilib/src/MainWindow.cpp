@@ -1099,6 +1099,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	if(uContains(stat.getSignatures(), stat.refImageId()))
 	{
 		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
+		if(!stat.getSignatures().at(stat.refImageId()).sensorData().groundTruth().isNull())
+		{
+			_currentGTPosesMap.insert(std::make_pair(stat.refImageId(), stat.getSignatures().at(stat.refImageId()).sensorData().groundTruth()));
+		}
 	}
 	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
@@ -1633,6 +1637,20 @@ void MainWindow::updateMapCloud(
 			kter->second->push_back(pt);
 		}
 
+		//Ground truth graph?
+		for(std::map<int, Transform>::iterator iter=_currentGTPosesMap.begin(); iter!=_currentGTPosesMap.end(); ++iter)
+		{
+			int mapId = -100;
+			//edges
+			std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator kter = graphs.find(mapId);
+			if(kter == graphs.end())
+			{
+				kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
+			}
+			pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
+			kter->second->push_back(pt);
+		}
+
 		// add graphs
 		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter=graphs.begin(); iter!=graphs.end(); ++iter)
 		{
@@ -1677,6 +1695,8 @@ void MainWindow::updateMapCloud(
 		{
 			_ui->graphicsView_graphView->updateReferentialPosition(currentPose);
 		}
+
+		_ui->graphicsView_graphView->updateGTGraph(_currentGTPosesMap);
 	}
 	cv::Mat map8U;
 	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) && (_createdScans.size() || _preferencesDialog->isGridMapFrom3DCloud()))
@@ -4078,6 +4098,7 @@ void MainWindow::clearTheCache()
 	_ui->widget_cloudViewer->clearTrajectory();
 	_ui->widget_mapVisibility->clear();
 	_currentPosesMap.clear();
+	_currentGTPosesMap.clear();
 	_currentLinksMap.clear();
 	_currentMapIds.clear();
 	_curentLabels.clear();

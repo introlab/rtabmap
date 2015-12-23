@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-366</y>
             <width>633</width>
             <height>2118</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>17</number>
+                <number>13</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -6430,7 +6430,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                 </layout>
                </widget>
                <widget class="QWidget" name="page_23">
-                <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1">
+                <layout class="QVBoxLayout" name="verticalLayout_2">
                  <item>
                   <widget class="QGroupBox" name="groupBox_bayes1">
                    <property name="title">
@@ -6579,6 +6579,145 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       </item>
                      </layout>
                     </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_vh_strategy2">
+                      <property name="minimumSize">
+                       <size>
+                        <width>0</width>
+                        <height>0</height>
+                       </size>
+                      </property>
+                      <property name="title">
+                       <string>Hypothesis Verification</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_3">
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QComboBox" name="comboBox_vh_strategy">
+                           <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContents</enum>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>No verification</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Epipolar constraints</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_50">
+                           <property name="text">
+                            <string>Hypothesis verification.</string>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_vh_epipolar2">
+                         <property name="title">
+                          <string>Epipolar Constraints</string>
+                         </property>
+                         <layout class="QGridLayout" name="gridLayout" columnstretch="0,10">
+                          <item row="0" column="0">
+                           <widget class="QSpinBox" name="surf_spinBox_matchCountMinAccepted">
+                            <property name="minimum">
+                             <number>8</number>
+                            </property>
+                            <property name="maximum">
+                             <number>100000</number>
+                            </property>
+                            <property name="value">
+                             <number>11</number>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="0" column="1">
+                           <widget class="QLabel" name="label_25">
+                            <property name="text">
+                             <string>Minimum match count to accept a loop closure.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="0">
+                           <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam1">
+                            <property name="decimals">
+                             <number>1</number>
+                            </property>
+                            <property name="maximum">
+                             <double>10.000000000000000</double>
+                            </property>
+                            <property name="singleStep">
+                             <double>0.100000000000000</double>
+                            </property>
+                            <property name="value">
+                             <double>3.000000000000000</double>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="1">
+                           <widget class="QLabel" name="label_27">
+                            <property name="text">
+                             <string>Fundamental Matrix : Distance (pixels) for inliers.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="2" column="0">
+                           <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam2">
+                            <property name="decimals">
+                             <number>2</number>
+                            </property>
+                            <property name="maximum">
+                             <double>0.990000000000000</double>
+                            </property>
+                            <property name="singleStep">
+                             <double>0.010000000000000</double>
+                            </property>
+                            <property name="value">
+                             <double>0.990000000000000</double>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="2" column="1">
+                           <widget class="QLabel" name="label_28">
+                            <property name="text">
+                             <string>Fundamental Matrix : Ransac performance.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
                    </layout>
                   </widget>
                  </item>
@@ -6589,164 +6728,8 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
-                     <width>0</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="page_19">
-                <layout class="QVBoxLayout" name="verticalLayout_13">
-                 <item>
-                  <widget class="QGroupBox" name="groupBox_vh_strategy2">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>0</height>
-                    </size>
-                   </property>
-                   <property name="title">
-                    <string>Hypothesis Verification</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_3">
-                    <item>
-                     <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
-                      <item row="0" column="0">
-                       <widget class="QComboBox" name="comboBox_vh_strategy">
-                        <property name="sizeAdjustPolicy">
-                         <enum>QComboBox::AdjustToContents</enum>
-                        </property>
-                        <item>
-                         <property name="text">
-                          <string>No verification</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>Epipolar constraints</string>
-                         </property>
-                        </item>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_50">
-                        <property name="text">
-                         <string>Hypothesis verification.</string>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_vh_epipolar2">
-                      <property name="title">
-                       <string>Epipolar Constraints</string>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout" columnstretch="0,10">
-                       <item row="0" column="0">
-                        <widget class="QSpinBox" name="surf_spinBox_matchCountMinAccepted">
-                         <property name="minimum">
-                          <number>8</number>
-                         </property>
-                         <property name="maximum">
-                          <number>100000</number>
-                         </property>
-                         <property name="value">
-                          <number>11</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_25">
-                         <property name="text">
-                          <string>Minimum match count to accept a loop closure.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam1">
-                         <property name="decimals">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <double>10.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>3.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_27">
-                         <property name="text">
-                          <string>Fundamental Matrix : Distance (pixels) for inliers.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam2">
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="maximum">
-                          <double>0.990000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.990000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_28">
-                         <property name="text">
-                          <string>Fundamental Matrix : Ransac performance.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_3">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>0</width>
-                     <height>0</height>
+                     <width>20</width>
+                     <height>40</height>
                     </size>
                    </property>
                   </spacer>
@@ -6799,7 +6782,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       <item row="0" column="1">
                        <widget class="QLabel" name="label_103">
                         <property name="text">
-                         <string>Odometry strategy. More info corresponding panels.</string>
+                         <string>Odometry strategy.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -6934,6 +6917,365 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                        </widget>
                       </item>
                      </layout>
+                    </item>
+                    <item>
+                     <widget class="QStackedWidget" name="stackedWidget_odometryType">
+                      <property name="currentIndex">
+                       <number>0</number>
+                      </property>
+                      <widget class="QWidget" name="page_52">
+                       <layout class="QVBoxLayout" name="verticalLayout_77">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odometryBOW2">
+                          <property name="title">
+                           <string>Features Map</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_54">
+                           <item>
+                            <widget class="QLabel" name="label_226">
+                             <property name="text">
+                              <string>Features extracted from frames are matached a using nearest neighbor approach. It maintains a local map of features to match to.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,0,1">
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_190">
+                               <property name="text">
+                                <string>Local history size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum words. This will decrease odometry drifting when the camera is not moving.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QLineEdit" name="odom_fixedLocalMapPath"/>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QSpinBox" name="odom_localHistory">
+                               <property name="minimum">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <number>999999</number>
+                               </property>
+                               <property name="singleStep">
+                                <number>1</number>
+                               </property>
+                               <property name="value">
+                                <number>0</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QToolButton" name="toolButton_odomBowFixedLocalMap">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_239">
+                               <property name="text">
+                                <string>Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP pose estimation is activated.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_46">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_58">
+                       <layout class="QVBoxLayout" name="verticalLayout_55">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odometryFlow2">
+                          <property name="title">
+                           <string>Frame to Frame</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_53">
+                           <item>
+                            <widget class="QLabel" name="label_199">
+                             <property name="text">
+                              <string>Features from the last frame are estimated in the new frame (see Visual Registration parameters).</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_196">
+                               <property name="text">
+                                <string>Create a new keyframe when the number of inliers drops under this threshold. Setting value to 0 means that a keyframe is created for each processed frame.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QSpinBox" name="odom_flow_keyframeThr">
+                               <property name="minimum">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <number>999999</number>
+                               </property>
+                               <property name="singleStep">
+                                <number>1</number>
+                               </property>
+                               <property name="value">
+                                <number>0</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_198">
+                               <property name="text">
+                                <string>Guess optical flow based on previous motion.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QCheckBox" name="odom_flow_guessMotion">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_43">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_26">
+                       <layout class="QVBoxLayout" name="verticalLayout_88">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odometryMono2">
+                          <property name="title">
+                           <string>Mono</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_168">
+                           <item>
+                            <widget class="QLabel" name="label_672">
+                             <property name="text">
+                              <string>Mono is for single camera motion estimation (MonoSLAM). On initialization, the camera must be translated on the side until a first transform can be computed.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="label_661">
+                             <property name="text">
+                              <string>Parameters from BOW and OpticalFlow are also used here. PnP parameters on Odometry panel are used too.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_166" columnstretch="0,1">
+                             <item row="0" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_minFlow">
+                               <property name="suffix">
+                                <string> pixels</string>
+                               </property>
+                               <property name="decimals">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <double>1000.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>10.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>100.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_659">
+                               <property name="text">
+                                <string>Minimum optical flow required for the initialization step.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_minTranslation">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.020000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QLabel" name="label_660">
+                               <property name="text">
+                                <string>Minimum translation to add new points to local map. On initialization, translation x 5 is used as the required minimum transformation.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_662">
+                               <property name="text">
+                                <string>Minimum translation required for the initialization step.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_minInitTranslation">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.100000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="1">
+                              <widget class="QLabel" name="label_663">
+                               <property name="text">
+                                <string>Maximum variance to add new points to local map.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_maxVariance">
+                               <property name="suffix">
+                                <string/>
+                               </property>
+                               <property name="decimals">
+                                <number>3</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.001000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.010000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                     </widget>
                     </item>
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryFiltering">
@@ -7282,371 +7624,6 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                  </item>
                 </layout>
                </widget>
-               <widget class="QWidget" name="page_26">
-                <layout class="QVBoxLayout" name="verticalLayout_77">
-                 <item>
-                  <widget class="QGroupBox" name="groupBox_odometryBOW2">
-                   <property name="title">
-                    <string>Features Map</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_54">
-                    <item>
-                     <widget class="QLabel" name="label_226">
-                      <property name="text">
-                       <string>Features extracted from frames are matached a using nearest neighbor approach. It maintains a local map of features to match to.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,0,1">
-                      <item row="0" column="2">
-                       <widget class="QLabel" name="label_190">
-                        <property name="text">
-                         <string>Local history size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum words. This will decrease odometry drifting when the camera is not moving.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLineEdit" name="odom_fixedLocalMapPath"/>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QSpinBox" name="odom_localHistory">
-                        <property name="minimum">
-                         <number>0</number>
-                        </property>
-                        <property name="maximum">
-                         <number>999999</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>1</number>
-                        </property>
-                        <property name="value">
-                         <number>0</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QToolButton" name="toolButton_odomBowFixedLocalMap">
-                        <property name="text">
-                         <string>...</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="2">
-                       <widget class="QLabel" name="label_239">
-                        <property name="text">
-                         <string>Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP pose estimation is activated.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_27">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>670</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="page_28">
-                <layout class="QVBoxLayout" name="verticalLayout_55">
-                 <item>
-                  <widget class="QGroupBox" name="groupBox_odometryFlow2">
-                   <property name="title">
-                    <string>Frame to Frame</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_53">
-                    <item>
-                     <widget class="QLabel" name="label_199">
-                      <property name="text">
-                       <string>Features from the last frame are estimated in the new frame (see Visual Registration parameters).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_196">
-                        <property name="text">
-                         <string>Create a new keyframe when the number of inliers drops under this threshold. Setting value to 0 means that a keyframe is created for each processed frame.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
-                       <widget class="QSpinBox" name="odom_flow_keyframeThr">
-                        <property name="minimum">
-                         <number>0</number>
-                        </property>
-                        <property name="maximum">
-                         <number>999999</number>
-                        </property>
-                        <property name="singleStep">
-                         <number>1</number>
-                        </property>
-                        <property name="value">
-                         <number>0</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_198">
-                        <property name="text">
-                         <string>Guess optical flow based on previous motion.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QCheckBox" name="odom_flow_guessMotion">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_28">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>518</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
-               <widget class="QWidget" name="page_30">
-                <layout class="QVBoxLayout" name="verticalLayout_169">
-                 <item>
-                  <widget class="QGroupBox" name="groupBox_odometryMono2">
-                   <property name="title">
-                    <string>Mono</string>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_168">
-                    <item>
-                     <widget class="QLabel" name="label_672">
-                      <property name="text">
-                       <string>Mono is for single camera motion estimation (MonoSLAM). On initialization, the camera must be translated on the side until a first transform can be computed.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QLabel" name="label_661">
-                      <property name="text">
-                       <string>Parameters from BOW and OpticalFlow are also used here. PnP parameters on Odometry panel are used too.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
-                     <layout class="QGridLayout" name="gridLayout_166" columnstretch="0,1">
-                      <item row="0" column="0">
-                       <widget class="QDoubleSpinBox" name="doubleSpinBox_minFlow">
-                        <property name="suffix">
-                         <string> pixels</string>
-                        </property>
-                        <property name="decimals">
-                         <number>0</number>
-                        </property>
-                        <property name="maximum">
-                         <double>1000.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>10.000000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>100.000000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_659">
-                        <property name="text">
-                         <string>Minimum optical flow required for the initialization step.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QDoubleSpinBox" name="doubleSpinBox_minTranslation">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.020000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_660">
-                        <property name="text">
-                         <string>Minimum translation to add new points to local map. On initialization, translation x 5 is used as the required minimum transformation.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_662">
-                        <property name="text">
-                         <string>Minimum translation required for the initialization step.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QDoubleSpinBox" name="doubleSpinBox_minInitTranslation">
-                        <property name="suffix">
-                         <string> m</string>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.010000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.100000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_663">
-                        <property name="text">
-                         <string>Maximum variance to add new points to local map.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QDoubleSpinBox" name="doubleSpinBox_maxVariance">
-                        <property name="suffix">
-                         <string/>
-                        </property>
-                        <property name="decimals">
-                         <number>3</number>
-                        </property>
-                        <property name="minimum">
-                         <double>0.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.001000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.010000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <spacer name="verticalSpacer_30">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
-               </widget>
                <widget class="QWidget" name="page_46">
                 <layout class="QVBoxLayout" name="verticalLayout_81">
                  <item>
@@ -7844,7 +7821,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_298">
                         <property name="text">
-                         <string>Forward estimation (A-&gt;B). If false, a transformation is also computed in backward direction (B-&gt;A), then the two resulting transforms are merged (middle interpolation between the transforms).</string>
+                         <string>Forward estimation only (A-&gt;B). If false, a transformation is also computed in backward direction (B-&gt;A), then the two resulting transforms are merged (middle interpolation between the transforms).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -7866,10 +7843,13 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_loopClosureCorrespondences">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
+                        <property name="margin">
+                         <number>0</number>
+                        </property>
                         <item>
                          <widget class="QGroupBox" name="groupBox_4">
                           <property name="title">
@@ -7978,6 +7958,9 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
+                        <property name="margin">
+                         <number>0</number>
+                        </property>
                         <item>
                          <widget class="QGroupBox" name="groupBox_7">
                           <property name="title">
@@ -8286,23 +8269,32 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                              </property>
                             </widget>
                            </item>
-                           <item row="2" column="0">
-                            <widget class="QCheckBox" name="loopClosure_pnpOpenCV2">
-                             <property name="text">
-                              <string/>
-                             </property>
-                            </widget>
-                           </item>
                            <item row="2" column="1">
                             <widget class="QLabel" name="label_loopClosure_pnpOpenCV2">
                              <property name="text">
-                              <string>Use OpenCV2 solvePnPRansac() in OpenCV3.</string>
+                              <string>Refine iterations.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
                              </property>
                              <property name="textInteractionFlags">
                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="2" column="0">
+                            <widget class="QSpinBox" name="loopClosure_pnpRefineIterations">
+                             <property name="minimum">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <number>999999</number>
+                             </property>
+                             <property name="singleStep">
+                              <number>1</number>
+                             </property>
+                             <property name="value">
+                              <number>1</number>
                              </property>
                             </widget>
                            </item>

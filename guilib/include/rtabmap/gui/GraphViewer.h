@@ -57,6 +57,7 @@ public:
 	void updateGraph(const std::map<int, Transform> & poses,
 					 const std::multimap<int, Link> & constraints,
 					 const std::map<int, int> & mapIds);
+	void updateGTGraph(const std::map<int, Transform> & poses);
 	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
 	void updatePosterior(const std::map<int, float> & posterior);
@@ -87,6 +88,7 @@ public:
 	const QColor & getRejectedLoopClosureColor() const {return _loopClosureRejectedColor;}
 	const QColor & getLocalPathColor() const {return _localPathColor;}
 	const QColor & getGlobalPathColor() const {return _globalPathColor;}
+	const QColor & getGTColor() const {return _gtPathColor;}
 	const QColor & getIntraSessionLoopColor() const {return _loopIntraSessionColor;}
 	const QColor & getInterSessionLoopColor() const {return _loopInterSessionColor;}
 	bool isIntraInterSessionColorsEnabled() const {return _intraInterSessionColors;}
@@ -112,6 +114,7 @@ public:
 	void setRejectedLoopClosureColor(const QColor & color);
 	void setLocalPathColor(const QColor & color);
 	void setGlobalPathColor(const QColor & color);
+	void setGTColor(const QColor & color);
 	void setIntraSessionLoopColor(const QColor & color);
 	void setInterSessionLoopColor(const QColor & color);
 	void setIntraInterSessionColorsEnabled(bool enabled);
@@ -145,12 +148,15 @@ private:
 	QColor _loopClosureRejectedColor;
 	QColor _localPathColor;
 	QColor _globalPathColor;
+	QColor _gtPathColor;
 	QColor _loopIntraSessionColor;
 	QColor _loopInterSessionColor;
 	bool _intraInterSessionColors;
 	QGraphicsItem * _root;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;
+	QMap<int, NodeItem*> _gtNodeItems;
+	QMultiMap<int, LinkItem*> _gtLinkItems;
 	QMultiMap<int, LinkItem*> _localPathLinkItems;
 	QMultiMap<int, LinkItem*> _globalPathLinkItems;
 	float _nodeRadius;

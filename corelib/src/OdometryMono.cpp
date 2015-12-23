@@ -368,7 +368,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 								0, // min inliers
 								inliersV,
 								this->getPnPFlags(),
-								this->getPnPOpenCV2());
+								this->getPnPRefineIterations());
 
 						UDEBUG("inliers=%d/%d", (int)inliersV.size(), (int)objectPoints.size());
 
@@ -434,7 +434,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 										this->getIterations(),
 										this->getPnPReprojError(),
 										this->getPnPFlags(),
-										this->getPnPOpenCV2(),
+										this->getPnPRefineIterations(),
 										fundMatrixReprojError_,
 										fundMatrixConfidence_,
 										previousGuess,
@@ -897,7 +897,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 										0, // min inliers
 										inliersPnP,
 										this->getPnPFlags(),
-										this->getPnPOpenCV2());
+										this->getPnPRefineIterations());
 
 								UDEBUG("PnP inliers = %d / %d", (int)inliersPnP.size(), (int)objectPoints.size());
 

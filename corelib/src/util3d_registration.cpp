@@ -49,9 +49,8 @@ Transform transformFromXYZCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud2,
 		double inlierThreshold,
 		int iterations,
-		bool refineModel,
-		double refineModelSigma,
-		int refineModelIterations,
+		int refineIterations,
+		double refineSigma,
 		std::vector<int> * inliersOut,
 		double * varianceOut)
 {
@@ -97,11 +96,11 @@ Transform transformFromXYZCorrespondences(
 			sac.getInliers(inliers);
 			sac.getModelCoefficients (model_coefficients);
 
-			if (refineModel)
+			if (refineIterations>0)
 			{
 				double inlier_distance_threshold_sqr = inlierThreshold * inlierThreshold;
 				double error_threshold = inlierThreshold;
-				double sigma_sqr = refineModelSigma * refineModelSigma;
+				double sigma_sqr = refineSigma * refineSigma;
 				int refine_iterations = 0;
 				bool inlier_changed = false, oscillating = false;
 				std::vector<int> new_inliers, prev_inliers = inliers;
@@ -121,7 +120,7 @@ Transform transformFromXYZCorrespondences(
 					if (new_inliers.empty ())
 					{
 						++refine_iterations;
-						if (refine_iterations >= refineModelIterations)
+						if (refine_iterations >= refineIterations)
 						{
 							break;
 						}
@@ -133,7 +132,7 @@ Transform transformFromXYZCorrespondences(
 					error_threshold = sqrt (std::min (inlier_distance_threshold_sqr, sigma_sqr * variance));
 
 					UDEBUG ("RANSAC refineModel: New estimated error threshold: %f (variance=%f) on iteration %d out of %d.",
-						  error_threshold, variance, refine_iterations, refineModelIterations);
+						  error_threshold, variance, refine_iterations, refineIterations);
 					inlier_changed = false;
 					std::swap (prev_inliers, new_inliers);
 
@@ -165,7 +164,7 @@ Transform transformFromXYZCorrespondences(
 						}
 					}
 				}
-				while (inlier_changed && ++refine_iterations < refineModelIterations);
+				while (inlier_changed && ++refine_iterations < refineIterations);
 
 				// If the new set of inliers is empty, we didn't do a good job refining
 				if (new_inliers.empty ())

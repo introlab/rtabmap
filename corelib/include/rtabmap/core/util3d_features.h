@@ -73,7 +73,7 @@ std::map<int, cv::Point3f> RTABMAP_EXP generateWords3DMono(
 		int pnpIterations = 100,
 		float pnpReprojError = 8.0f,
 		int pnpFlags = 0, // cv::SOLVEPNP_ITERATIVE
-		bool pnpOpenCV2 = true,
+		int pnpRefineIterations = 1,
 		float ransacParam1 = 3.0f,
 		float ransacParam2 = 0.99f,
 		const std::map<int, cv::Point3f> & refGuess3D = std::map<int, cv::Point3f>(),

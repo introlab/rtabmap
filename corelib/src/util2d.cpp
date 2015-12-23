@@ -167,7 +167,6 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 		int tmpMaxDisparity = maxDisparity;
 
 		int iterations = 0;
-		std::vector<float> scores;
 		for(int level=maxLevel; level>=0; --level)
 		{
 			UASSERT(level < (int)leftPyramid.size());
@@ -199,7 +198,13 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 					localMinDisparity += maxCol-leftPyramid[level].cols-1;
 				}
 
-				scores = std::vector<float>(localMinDisparity-localMaxDisparity+1, 0.0f);
+				if(localMinDisparity < localMaxDisparity)
+				{
+					localMaxDisparity = localMinDisparity;
+				}
+				int length = localMinDisparity-localMaxDisparity+1;
+				std::vector<float> scores = std::vector<float>(length, 0.0f);
+
 				for(int d=localMinDisparity; d>localMaxDisparity; --d)
 				{
 					++iterations;
@@ -220,6 +225,7 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 				{
 					if(level>0)
 					{
+						UDEBUG("");
 						tmpMaxDisparity = tmpMinDisparity+(bestScoreIndex+1)*(1<<level);
 						tmpMaxDisparity+=tmpMaxDisparity%level;
 						if(tmpMaxDisparity > maxDisparity)
@@ -241,6 +247,7 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 
 		if(bestScoreIndex>=0)
 		{
+			UDEBUG("");
 			//subpixel refining
 			int d = -(tmpMinDisparity+bestScoreIndex);
 
@@ -314,21 +321,20 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 				}
 			}
 
-			if(leftCorners[i].x+float(d) == xc)
-			{
-				++noSubPixel;
-			}
-
 			rightCorners[i] = cv::Point2f(xc, leftCorners[i].y);
 			status[i] = reject?0:1;
 			if(!reject)
 			{
+				if(leftCorners[i].x+float(d) != xc)
+				{
+					++noSubPixel;
+				}
 				++added;
 			}
 		}
 		subpixelTime+=timer.ticks();
 	}
-	UDEBUG("noSubPixel=%d/%d", noSubPixel, added);
+	UDEBUG("SubPixel=%d/%d added (total=%d)", noSubPixel, added, (int)status.size());
 	UDEBUG("totalIterations=%d", totalIterations);
 	UDEBUG("Time pyramid = %f s", pyramidTime);
 	UDEBUG("Time disparity = %f s", disparityTime);

@@ -49,7 +49,7 @@ Transform estimateMotion3DTo2D(
 			int iterations,
 			double reprojError,
 			int flagsPnP,
-			bool pnpOpenCV2,
+			int refineIterations,
 			const Transform & guess,
 			const std::map<int, cv::Point3f> & words3B,
 			double * varianceOut,
@@ -94,6 +94,7 @@ Transform estimateMotion3DTo2D(
 	{
 		//PnPRansac
 		cv::Mat K = cameraModel.K();
+		cv::Mat D = cameraModel.D();
 		Transform guessCameraFrame = (guess * cameraModel.localTransform()).inverse();
 		cv::Mat R = (cv::Mat_<double>(3,3) <<
 				(double)guessCameraFrame.r11(), (double)guessCameraFrame.r12(), (double)guessCameraFrame.r13(),
@@ -109,7 +110,7 @@ Transform estimateMotion3DTo2D(
 				objectPoints,
 				imagePoints,
 				K,
-				cv::Mat(),
+				D,
 				rvec,
 				tvec,
 				true,
@@ -118,7 +119,7 @@ Transform estimateMotion3DTo2D(
 				0, // min inliers
 				inliers,
 				flagsPnP,
-				pnpOpenCV2);
+				refineIterations);
 
 		if((int)inliers.size() >= minInliers)
 		{
@@ -234,9 +235,8 @@ Transform estimateMotion3DTo3D(
 				inliers1cloud,
 				inliersDistance,
 				iterations,
-				refineIterations>0,
-				3.0,
 				refineIterations,
+				3.0,
 				&inliers,
 				varianceOut);
 
@@ -262,329 +262,181 @@ Transform estimateMotion3DTo3D(
 	return transform;
 }
 
-// Don't know why, but the RANSAC implementation in OpenCV 3 gives me far
-// more wrong results than the 2.4x implementation.
-// Here is a copy of the RANSAC implementation from OpenCV 2.4.x version
-#if CV_MAJOR_VERSION >= 3
-namespace pnpransac
+
+std::vector<float> computeReprojErrors(
+		std::vector<cv::Point3f> opoints,
+		std::vector<cv::Point2f> ipoints,
+		const cv::Mat & cameraMatrix,
+		const cv::Mat & distCoeffs,
+		const cv::Mat & rvec,
+		const cv::Mat & tvec,
+		float reprojErrorThreshold,
+		std::vector<int> & inliers)
 {
-	const int MIN_POINTS_COUNT = 4;
+	UASSERT(opoints.size() == ipoints.size());
+	int count = (int)opoints.size();
 
-	static void project3dPoints(const cv::Mat& points, const cv::Mat& rvec, const cv::Mat& tvec, cv::Mat& modif_points)
+	std::vector<cv::Point2f> projpoints;
+	projectPoints(opoints, rvec, tvec, cameraMatrix, distCoeffs, projpoints);
+
+	inliers.resize(count,0);
+	std::vector<float> err(count);
+	int oi=0;
+	for (int i = 0; i < count; ++i)
 	{
-		modif_points.create(1, points.cols, CV_32FC3);
-		cv::Mat R(3, 3, CV_64FC1);
-		cv::Rodrigues(rvec, R);
-		cv::Mat transformation(3, 4, CV_64F);
-		cv::Mat r = transformation.colRange(0, 3);
-		R.copyTo(r);
-		cv::Mat t = transformation.colRange(3, 4);
-		tvec.copyTo(t);
-		transform(points, modif_points, transformation);
-	}
-
-	struct CameraParameters
-	{
-		void init(cv::Mat _intrinsics, cv::Mat _distCoeffs)
+		float e = (float)cv::norm( ipoints[i] - projpoints[i]);
+		if(e <= reprojErrorThreshold)
 		{
-			_intrinsics.copyTo(intrinsics);
-			_distCoeffs.copyTo(distortion);
-		}
-
-		cv::Mat intrinsics;
-		cv::Mat distortion;
-	};
-
-	struct Parameters
-	{
-		int iterationsCount;
-		float reprojectionError;
-		int minInliersCount;
-		bool useExtrinsicGuess;
-		int flags;
-		CameraParameters camera;
-	};
-
-	template <typename OpointType, typename IpointType>
-	static void pnpTask(const int curIndex, const std::vector<char>& pointsMask, const cv::Mat& objectPoints, const cv::Mat& imagePoints,
-				 const Parameters& params, std::vector<int>& inliers, int& bestIndex, cv::Mat& rvec, cv::Mat& tvec,
-				 const cv::Mat& rvecInit, const cv::Mat& tvecInit, cv::Mutex& resultsMutex)
-	{
-		cv::Mat modelObjectPoints(1, MIN_POINTS_COUNT, CV_MAKETYPE(cv::DataDepth<OpointType>::value, 3));
-		cv::Mat modelImagePoints(1, MIN_POINTS_COUNT, CV_MAKETYPE(cv::DataDepth<IpointType>::value, 2));
-		for (int i = 0, colIndex = 0; i < (int)pointsMask.size(); i++)
-		{
-			if (pointsMask[i])
-			{
-				cv::Mat colModelImagePoints = modelImagePoints(cv::Rect(colIndex, 0, 1, 1));
-				imagePoints.col(i).copyTo(colModelImagePoints);
-				cv::Mat colModelObjectPoints = modelObjectPoints(cv::Rect(colIndex, 0, 1, 1));
-				objectPoints.col(i).copyTo(colModelObjectPoints);
-				colIndex = colIndex+1;
-			}
-		}
-
-		//filter same 3d points, hang in solvePnP
-		double eps = 1e-10;
-		int num_same_points = 0;
-		for (int i = 0; i < MIN_POINTS_COUNT; i++)
-			for (int j = i + 1; j < MIN_POINTS_COUNT; j++)
-			{
-				if (norm(modelObjectPoints.at<cv::Vec<OpointType,3> >(0, i) - modelObjectPoints.at<cv::Vec<OpointType,3> >(0, j)) < eps)
-					num_same_points++;
-			}
-		if (num_same_points > 0)
-			return;
-
-		cv::Mat localRvec, localTvec;
-		rvecInit.copyTo(localRvec);
-		tvecInit.copyTo(localTvec);
-
-		// OpenCV 3
-		cv::solvePnP(
-				modelObjectPoints,
-				modelImagePoints,
-				params.camera.intrinsics,
-				params.camera.distortion,
-				localRvec,
-				localTvec,
-				 params.useExtrinsicGuess,
-				 params.flags);
-
-
-		std::vector<cv::Point_<OpointType> > projected_points;
-		projected_points.resize(objectPoints.cols);
-		projectPoints(objectPoints, localRvec, localTvec, params.camera.intrinsics, params.camera.distortion, projected_points);
-
-		cv::Mat rotatedPoints;
-		project3dPoints(objectPoints, localRvec, localTvec, rotatedPoints);
-
-		std::vector<int> localInliers;
-		for (int i = 0; i < objectPoints.cols; i++)
-		{
-			//Although p is a 2D point it needs the same type as the object points to enable the norm calculation
-			cv::Point_<OpointType> p((OpointType)imagePoints.at<cv::Vec<IpointType,2> >(0, i)[0],
-								 (OpointType)imagePoints.at<cv::Vec<IpointType,2> >(0, i)[1]);
-			if ((norm(p - projected_points[i]) < params.reprojectionError)
-				&& (rotatedPoints.at<cv::Vec<OpointType,3> >(0, i)[2] > 0)) //hack
-			{
-				localInliers.push_back(i);
-			}
-		}
-
-		resultsMutex.lock();
-		if ( (localInliers.size() > inliers.size()) || (localInliers.size() == inliers.size() && curIndex > bestIndex))
-		{
-			inliers.clear();
-			inliers.resize(localInliers.size());
-			memcpy(&inliers[0], &localInliers[0], sizeof(int) * localInliers.size());
-			localRvec.copyTo(rvec);
-			localTvec.copyTo(tvec);
-			bestIndex = curIndex;
-		}
-		resultsMutex.unlock();
-	}
-
-	static void pnpTask(const int curIndex, const std::vector<char>& pointsMask, const cv::Mat& objectPoints, const cv::Mat& imagePoints,
-		const Parameters& params, std::vector<int>& inliers, int& bestIndex, cv::Mat& rvec, cv::Mat& tvec,
-		const cv::Mat& rvecInit, const cv::Mat& tvecInit, cv::Mutex& resultsMutex)
-	{
-		CV_Assert(objectPoints.depth() == CV_64F ||  objectPoints.depth() == CV_32F);
-		CV_Assert(imagePoints.depth() == CV_64F ||  imagePoints.depth() == CV_32F);
-		const bool objectDoublePrecision = objectPoints.depth() == CV_64F;
-		const bool imageDoublePrecision = imagePoints.depth() == CV_64F;
-		if(objectDoublePrecision)
-		{
-			if(imageDoublePrecision)
-				pnpTask<double, double>(curIndex, pointsMask, objectPoints, imagePoints, params, inliers, bestIndex, rvec, tvec, rvecInit, tvecInit, resultsMutex);
-			else
-				pnpTask<double, float>(curIndex, pointsMask, objectPoints, imagePoints, params, inliers, bestIndex, rvec, tvec, rvecInit, tvecInit, resultsMutex);
-		}
-		else
-		{
-			if(imageDoublePrecision)
-				pnpTask<float, double>(curIndex, pointsMask, objectPoints, imagePoints, params, inliers, bestIndex, rvec, tvec, rvecInit, tvecInit, resultsMutex);
-			else
-				pnpTask<float, float>(curIndex, pointsMask, objectPoints, imagePoints, params, inliers, bestIndex, rvec, tvec, rvecInit, tvecInit, resultsMutex);
+			inliers[oi] = i;
+			err[oi++] = e;
 		}
 	}
-
-	// TBB removed
-	class PnPSolver
-	{
-	public:
-		void operator()(int begin, int end) const
-		{
-			std::vector<char> pointsMask(objectPoints.cols, 0);
-			for( int i=begin; i!=end; ++i )
-			{
-				memset(&pointsMask[0], 0, objectPoints.cols );
-				memset(&pointsMask[0], 1, MIN_POINTS_COUNT );
-				generateVar(pointsMask, rng_base_seed + i);
-				pnpTask(i, pointsMask, objectPoints, imagePoints, parameters,
-						inliers, bestIndex, rvec, tvec, initRvec, initTvec, syncMutex);
-				if ((int)inliers.size() >= parameters.minInliersCount)
-				{
-					break;
-				}
-			}
-		}
-		PnPSolver(const cv::Mat& _objectPoints, const cv::Mat& _imagePoints, const Parameters& _parameters,
-				cv::Mat& _rvec, cv::Mat& _tvec, std::vector<int>& _inliers, int& _bestIndex, uint64 _rng_base_seed):
-		objectPoints(_objectPoints), imagePoints(_imagePoints), parameters(_parameters),
-		rvec(_rvec), tvec(_tvec), inliers(_inliers), bestIndex(_bestIndex), rng_base_seed(_rng_base_seed)
-		{
-			bestIndex = -1;
-			rvec.copyTo(initRvec);
-			tvec.copyTo(initTvec);
-		}
-	private:
-		PnPSolver& operator=(const PnPSolver&);
-
-		const cv::Mat& objectPoints;
-		const cv::Mat& imagePoints;
-		const Parameters& parameters;
-		cv::Mat &rvec, &tvec;
-		std::vector<int>& inliers;
-		int& bestIndex;
-		const uint64 rng_base_seed;
-		cv::Mat initRvec, initTvec;
-
-		static cv::Mutex syncMutex;
-
-	  void generateVar(std::vector<char>& mask, uint64 rng_seed) const
-		{
-		    cv::RNG generator(rng_seed);
-			int size = (int)mask.size();
-			for (int i = 0; i < size; i++)
-			{
-				int i1 = generator.uniform(0, size);
-				int i2 = generator.uniform(0, size);
-				char curr = mask[i1];
-				mask[i1] = mask[i2];
-				mask[i2] = curr;
-			}
-		}
-	};
-
-	cv::Mutex PnPSolver::syncMutex;
-
+	inliers.resize(oi);
+	err.resize(oi);
+	return err;
 }
-#endif
 
 void solvePnPRansac(
-		cv::InputArray _opoints,
-		cv::InputArray _ipoints,
-		cv::InputArray _cameraMatrix,
-		cv::InputArray _distCoeffs,
-		cv::OutputArray _rvec,
-		cv::OutputArray _tvec,
+		const std::vector<cv::Point3f> & objectPoints,
+		const std::vector<cv::Point2f> & imagePoints,
+		const cv::Mat & cameraMatrix,
+		const cv::Mat & distCoeffs,
+		cv::Mat & rvec,
+		cv::Mat & tvec,
 		bool useExtrinsicGuess,
         int iterationsCount,
         float reprojectionError,
         int minInliersCount,
-        cv::OutputArray _inliers,
+        std::vector<int> & inliers,
         int flags,
-        bool opencv2version)
+        int refineIterations,
+        float refineSigma)
 {
-#if CV_MAJOR_VERSION >= 3
-	if(opencv2version)
-	{
-		const int _rng_seed = 0;
-		cv::Mat opoints = _opoints.getMat(), ipoints = _ipoints.getMat();
-		cv::Mat cameraMatrix = _cameraMatrix.getMat(), distCoeffs = _distCoeffs.getMat();
-
-		CV_Assert(opoints.isContinuous());
-		CV_Assert(opoints.depth() == CV_32F || opoints.depth() == CV_64F);
-		CV_Assert((opoints.rows == 1 && opoints.channels() == 3) || opoints.cols*opoints.channels() == 3);
-		CV_Assert(ipoints.isContinuous());
-		CV_Assert(ipoints.depth() == CV_32F || ipoints.depth() == CV_64F);
-		CV_Assert((ipoints.rows == 1 && ipoints.channels() == 2) || ipoints.cols*ipoints.channels() == 2);
-
-		_rvec.create(3, 1, CV_64FC1);
-		_tvec.create(3, 1, CV_64FC1);
-		cv::Mat rvec = _rvec.getMat();
-		cv::Mat tvec = _tvec.getMat();
-
-		cv::Mat objectPoints = opoints.reshape(3, 1), imagePoints = ipoints.reshape(2, 1);
-
-		if (minInliersCount <= 0)
-			minInliersCount = objectPoints.cols;
-		pnpransac::Parameters params;
-		params.iterationsCount = iterationsCount;
-		params.minInliersCount = minInliersCount;
-		params.reprojectionError = reprojectionError;
-		params.useExtrinsicGuess = useExtrinsicGuess;
-		params.camera.init(cameraMatrix, distCoeffs);
-		params.flags = flags;
-
-		std::vector<int> localInliers;
-		cv::Mat localRvec, localTvec;
-		rvec.copyTo(localRvec);
-		tvec.copyTo(localTvec);
-		int bestIndex;
-
-		// TBB not used
-		if (objectPoints.cols >= pnpransac::MIN_POINTS_COUNT)
-		{
-			pnpransac::PnPSolver solver(objectPoints, imagePoints, params,
-								   localRvec, localTvec, localInliers, bestIndex,
-								   _rng_seed);
-			solver(0, iterationsCount);
-		}
-
-		if (localInliers.size() >= (size_t)pnpransac::MIN_POINTS_COUNT)
-		{
-			if (flags != CV_P3P)
-			{
-				int i, pointsCount = (int)localInliers.size();
-				cv::Mat inlierObjectPoints(1, pointsCount, CV_MAKE_TYPE(opoints.depth(), 3)), inlierImagePoints(1, pointsCount, CV_MAKE_TYPE(ipoints.depth(), 2));
-				for (i = 0; i < pointsCount; i++)
-				{
-					int index = localInliers[i];
-					cv::Mat colInlierImagePoints = inlierImagePoints(cv::Rect(i, 0, 1, 1));
-					imagePoints.col(index).copyTo(colInlierImagePoints);
-					cv::Mat colInlierObjectPoints = inlierObjectPoints(cv::Rect(i, 0, 1, 1));
-					objectPoints.col(index).copyTo(colInlierObjectPoints);
-				}
-				solvePnP(inlierObjectPoints, inlierImagePoints, params.camera.intrinsics, params.camera.distortion, localRvec, localTvec, false, flags);
-			}
-			localRvec.copyTo(rvec);
-			localTvec.copyTo(tvec);
-			if (_inliers.needed())
-				cv::Mat(localInliers).copyTo(_inliers);
-		}
-		else
-		{
-			tvec.setTo(cv::Scalar(0));
-			cv::Mat R = cv::Mat::eye(3, 3, CV_64F);
-			Rodrigues(R, rvec);
-			if( _inliers.needed() )
-				_inliers.release();
-		}
-	}
-	else
-#endif
-	{
-		cv::solvePnPRansac(
-				_opoints,
-				_ipoints,
-				_cameraMatrix,
-				_distCoeffs,
-				_rvec,
-				_tvec,
-				useExtrinsicGuess,
-				iterationsCount,
-				reprojectionError,
+	cv::solvePnPRansac(
+			objectPoints,
+			imagePoints,
+			cameraMatrix,
+			distCoeffs,
+			rvec,
+			tvec,
+			useExtrinsicGuess,
+			iterationsCount,
+			reprojectionError,
 #if CV_MAJOR_VERSION < 3
-				minInliersCount, // min inliers
+			minInliersCount, // min inliers
 #else
-				0.99, // confidence
+			0.99, // confidence
 #endif
-				_inliers,
-				flags);
+			inliers,
+			flags);
+
+	float inlierThreshold = reprojectionError;
+	if(inliers.size() >= 4 && refineIterations>0)
+	{
+		float inlier_distance_threshold_sqr = inlierThreshold * inlierThreshold;
+		float error_threshold = inlierThreshold;
+		float sigma_sqr = refineSigma * refineSigma;
+		int refine_iterations = 0;
+		bool inlier_changed = false, oscillating = false;
+		std::vector<int> new_inliers, prev_inliers = inliers;
+		std::vector<size_t> inliers_sizes;
+		//Eigen::VectorXf new_model_coefficients = model_coefficients;
+		cv::Mat new_model_rvec = rvec;
+		cv::Mat new_model_tvec = tvec;
+
+		do
+		{
+			// Get inliers from the current model
+			std::vector<cv::Point3f> opoints_inliers(prev_inliers.size());
+			std::vector<cv::Point2f> ipoints_inliers(prev_inliers.size());
+			for(unsigned int i=0; i<prev_inliers.size(); ++i)
+			{
+				opoints_inliers[i] = objectPoints[prev_inliers[i]];
+				ipoints_inliers[i] = imagePoints[prev_inliers[i]];
+			}
+
+			UDEBUG("inliers=%d refine_iterations=%d, rvec=%f,%f,%f tvec=%f,%f,%f", (int)prev_inliers.size(), refine_iterations,
+					*new_model_rvec.ptr<double>(0), *new_model_rvec.ptr<double>(1), *new_model_rvec.ptr<double>(2),
+					*new_model_tvec.ptr<double>(0), *new_model_tvec.ptr<double>(1), *new_model_tvec.ptr<double>(2));
+
+			// Optimize the model coefficients
+			cv::solvePnP(opoints_inliers, ipoints_inliers, cameraMatrix, distCoeffs, new_model_rvec, new_model_tvec, true, flags);
+			inliers_sizes.push_back(prev_inliers.size());
+
+			UDEBUG("rvec=%f,%f,%f tvec=%f,%f,%f",
+					*new_model_rvec.ptr<double>(0), *new_model_rvec.ptr<double>(1), *new_model_rvec.ptr<double>(2),
+					*new_model_tvec.ptr<double>(0), *new_model_tvec.ptr<double>(1), *new_model_tvec.ptr<double>(2));
+
+			// Select the new inliers based on the optimized coefficients and new threshold
+			std::vector<float> err = computeReprojErrors(objectPoints, imagePoints, cameraMatrix, distCoeffs, new_model_rvec, new_model_tvec, error_threshold, new_inliers);
+			UDEBUG("RANSAC refineModel: Number of inliers found (before/after): %d/%d, with an error threshold of %f.",
+					(int)prev_inliers.size (), (int)new_inliers.size (), error_threshold);
+
+			if (new_inliers.size() < 4)
+			{
+				++refine_iterations;
+				if (refine_iterations >= refineIterations)
+				{
+					break;
+				}
+				continue;
+			}
+
+			// Estimate the variance and the new threshold
+			float m = uMean(err.data(), err.size());
+			float variance = uVariance(err.data(), err.size());
+			error_threshold = sqrt (std::min (inlier_distance_threshold_sqr, sigma_sqr * variance));
+
+			UDEBUG ("RANSAC refineModel: New estimated error threshold: %f (variance=%f mean=%f) on iteration %d out of %d.",
+				  error_threshold, variance, m, refine_iterations, refineIterations);
+			inlier_changed = false;
+			std::swap (prev_inliers, new_inliers);
+
+			// If the number of inliers changed, then we are still optimizing
+			if (new_inliers.size () != prev_inliers.size ())
+			{
+				// Check if the number of inliers is oscillating in between two values
+				if (inliers_sizes.size () >= 4)
+				{
+					if (inliers_sizes[inliers_sizes.size () - 1] == inliers_sizes[inliers_sizes.size () - 3] &&
+					inliers_sizes[inliers_sizes.size () - 2] == inliers_sizes[inliers_sizes.size () - 4])
+					{
+						oscillating = true;
+						break;
+					}
+				}
+				inlier_changed = true;
+				continue;
+			}
+
+			// Check the values of the inlier set
+			for (size_t i = 0; i < prev_inliers.size (); ++i)
+			{
+				// If the value of the inliers changed, then we are still optimizing
+				if (prev_inliers[i] != new_inliers[i])
+				{
+					inlier_changed = true;
+					break;
+				}
+			}
+		}
+		while (inlier_changed && ++refine_iterations < refineIterations);
+
+		// If the new set of inliers is empty, we didn't do a good job refining
+		if (new_inliers.empty ())
+		{
+			UWARN ("RANSAC refineModel: Refinement failed: got an empty set of inliers!");
+		}
+
+		if (oscillating)
+		{
+			UDEBUG("RANSAC refineModel: Detected oscillations in the model refinement.");
+		}
+
+		std::swap (inliers, new_inliers);
+		rvec = new_model_rvec;
+		tvec = new_model_tvec;
 	}
-    return;
 
 }
 

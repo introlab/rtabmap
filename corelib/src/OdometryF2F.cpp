@@ -84,7 +84,7 @@ Transform OdometryF2F::computeTransform(
 		output = registration_.computeTransformationMod(
 				refFrame_,
 				newFrame,
-				guessFromMotion_?motionSinceLastKeyFrame_*this->previousTransform():Transform::getIdentity(),
+				guessFromMotion_?motionSinceLastKeyFrame_*this->previousTransform():Transform(),
 				&rejectedMsg,
 				&inliers,
 				&variance);
