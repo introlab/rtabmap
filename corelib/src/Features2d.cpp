@@ -354,6 +354,8 @@ Feature2D::~Feature2D()
 }
 void Feature2D::parseParameters(const ParametersMap & parameters)
 {
+	uInsert(parameters_, parameters);
+
 	Parameters::parse(parameters, Parameters::kKpMaxFeatures(), maxFeatures_);
 	Parameters::parse(parameters, Parameters::kKpMaxDepth(), _wordsMaxDepth);
 	Parameters::parse(parameters, Parameters::kKpMinDepth(), _wordsMinDepth);
@@ -399,7 +401,7 @@ void Feature2D::parseParameters(const ParametersMap & parameters)
 	if((iter=parameters.find(Parameters::kStereoOpticalFlow())) != parameters.end())
 	{
 		delete _stereo;
-		_stereo = Stereo::create(parameters);
+		_stereo = Stereo::create(parameters_);
 	}
 	else
 	{

@@ -148,6 +148,7 @@ public:
 			const std::vector<cv::KeyPoint> & keypoints) const;
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual const ParametersMap & getParameters() const {return parameters_;}
 	virtual Feature2D::Type getType() const = 0;
 
 protected:
@@ -158,6 +159,7 @@ private:
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const = 0;
 
 private:
+	ParametersMap parameters_;
 	int maxFeatures_;
 	float _wordsMaxDepth; // 0=inf
 	float _wordsMinDepth;

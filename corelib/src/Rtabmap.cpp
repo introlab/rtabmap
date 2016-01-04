@@ -362,11 +362,13 @@ void Rtabmap::close(bool databaseSaved)
 	}
 	_databasePath.clear();
 	parseParameters(Parameters::getDefaultParameters()); // reset to default parameters
-	_modifiedParameters.clear();
+	_parameters.clear();
 }
 
 void Rtabmap::parseParameters(const ParametersMap & parameters)
 {
+	uInsert(_parameters, parameters);
+
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
@@ -481,7 +483,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 
 	for(ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		uInsert(_modifiedParameters, ParametersPair(iter->first, iter->second));
+		uInsert(_parameters, ParametersPair(iter->first, iter->second));
 	}
 }
 
@@ -776,7 +778,7 @@ void Rtabmap::resetMemory()
 
 	if(_memory)
 	{
-		_memory->init(_databasePath, true, _modifiedParameters, true);
+		_memory->init(_databasePath, true, _parameters, true);
 		if(_memory->getLastWorkingSignature())
 		{
 			optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, _optimizedPoses, &_constraints);

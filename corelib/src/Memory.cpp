@@ -377,6 +377,8 @@ Memory::~Memory()
 
 void Memory::parseParameters(const ParametersMap & parameters)
 {
+	uInsert(parameters_, parameters);
+
 	UDEBUG("");
 	ParametersMap::const_iterator iter;
 
@@ -438,7 +440,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			_feature2D = 0;
 		}
 
-		_feature2D = Feature2D::create(detectorStrategy, parameters);
+		_feature2D = Feature2D::create(detectorStrategy, parameters_);
 	}
 	else if(_feature2D)
 	{

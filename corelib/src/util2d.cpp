@@ -225,7 +225,6 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 				{
 					if(level>0)
 					{
-						UDEBUG("");
 						tmpMaxDisparity = tmpMinDisparity+(bestScoreIndex+1)*(1<<level);
 						tmpMaxDisparity+=tmpMaxDisparity%level;
 						if(tmpMaxDisparity > maxDisparity)
@@ -247,7 +246,6 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 
 		if(bestScoreIndex>=0)
 		{
-			UDEBUG("");
 			//subpixel refining
 			int d = -(tmpMinDisparity+bestScoreIndex);
 

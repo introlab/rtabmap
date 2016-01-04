@@ -3669,7 +3669,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	RegistrationVis reg(parameters);
 	Signature fromS(dataFrom);
 	Signature toS(dataTo);
-	t = reg.computeTransformationMod(fromS, toS, Transform::getIdentity(), &rejectedMsg, &inliers, &variance);
+	t = reg.computeTransformationMod(fromS, toS, currentLink.transform(), &rejectedMsg, &inliers, &variance);
 	UDEBUG("");
 
 	if(!silent)

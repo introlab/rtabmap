@@ -112,6 +112,7 @@ public:
 	void dumpPrediction() const;
 	void dumpData() const;
 	void parseParameters(const ParametersMap & parameters);
+	const ParametersMap & getParameters() const {return _parameters;}
 	void setWorkingDirectory(std::string path);
 	void rejectLoopClosure(int oldId, int newId);
 	void get3DMap(std::map<int, Signature> & signatures,
@@ -215,7 +216,7 @@ private:
 	EpipolarGeometry * _epipolarGeometry;
 	BayesFilter * _bayesFilter;
 	Optimizer * _graphOptimizer;
-	ParametersMap _modifiedParameters;
+	ParametersMap _parameters;
 
 	Memory * _memory;
 

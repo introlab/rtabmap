@@ -450,6 +450,23 @@ inline void uInsert(std::map<K, V> & map, const std::pair<K, V> & pair)
 }
 
 /**
+ * Insert items in the map. Contrary to the insert in the STL,
+ * if the key already exists, the value will be replaced by the new one.
+ */
+template<class K, class V>
+inline void uInsert(std::map<K, V> & map, const std::map<K, V> & items)
+{
+	for(typename std::map<K, V>::const_iterator iter=items.begin(); iter!=items.end(); ++iter)
+	{
+		std::pair<typename std::map<K, V>::iterator, bool> inserted = map.insert(*iter);
+		if(inserted.second == false)
+		{
+			inserted.first->second = iter->second;
+		}
+	}
+}
+
+/**
  * Convert a std::list to a std::vector.
  * @param list the list
  * @return the vector

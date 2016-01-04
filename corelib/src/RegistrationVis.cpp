@@ -60,15 +60,6 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters) :
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel())
 {
 	_featureParameters = Parameters::getDefaultParameters();
-	uInsert(_featureParameters, ParametersPair(Parameters::kMemIncrementalMemory(), "true")); // make sure it is incremental
-	uInsert(_featureParameters, ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-	uInsert(_featureParameters, ParametersPair(Parameters::kMemBinDataKept(), "false"));
-	uInsert(_featureParameters, ParametersPair(Parameters::kMemSTMSize(), "0"));
-	uInsert(_featureParameters, ParametersPair(Parameters::kKpIncrementalDictionary(), "true")); // make sure it is incremental
-	uInsert(_featureParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
-	uInsert(_featureParameters, ParametersPair(Parameters::kKpBadSignRatio(), "0"));
-	uInsert(_featureParameters, ParametersPair(Parameters::kMemGenerateIds(), "true"));
-
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisCorNNType())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNndrRatio(), _featureParameters.at(Parameters::kVisCorNNDR())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpDetectorStrategy(), _featureParameters.at(Parameters::kVisFeatureType())));

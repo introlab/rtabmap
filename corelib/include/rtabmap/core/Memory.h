@@ -67,6 +67,7 @@ public:
 	virtual ~Memory();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual const ParametersMap & getParameters() const {return parameters_;}
 	bool update(const SensorData & data,
 			Statistics * stats = 0);
 	bool update(const SensorData & data,
@@ -222,6 +223,7 @@ protected:
 
 private:
 	// parameters
+	ParametersMap parameters_;
 	float _similarityThreshold;
 	bool _rawDataKept;
 	bool _binDataKept;
