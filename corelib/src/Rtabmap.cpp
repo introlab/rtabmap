@@ -434,7 +434,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 			_graphOptimizer = 0;
 		}
 
-		_graphOptimizer = Optimizer::create(optimizerType, parameters);
+		_graphOptimizer = Optimizer::create(optimizerType, _parameters);
 	}
 	else if(_graphOptimizer)
 	{
@@ -459,7 +459,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	}
 	if(!_epipolarGeometry && vhStrategy == kVhEpipolar)
 	{
-		_epipolarGeometry = new EpipolarGeometry(parameters);
+		_epipolarGeometry = new EpipolarGeometry(_parameters);
 	}
 	else if(_epipolarGeometry && vhStrategy == kVhNone)
 	{
@@ -474,16 +474,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	// Bayes filter, create one if not exists
 	if(!_bayesFilter)
 	{
-		_bayesFilter = new BayesFilter(parameters);
+		_bayesFilter = new BayesFilter(_parameters);
 	}
 	else
 	{
 		_bayesFilter->parseParameters(parameters);
-	}
-
-	for(ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
-	{
-		uInsert(_parameters, ParametersPair(iter->first, iter->second));
 	}
 }
 
