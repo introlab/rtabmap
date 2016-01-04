@@ -760,7 +760,6 @@ CameraStereoImages::CameraStereoImages(
 		if(paths.size() >= 2)
 		{
 			camera2_ = new CameraImages(paths[1]);
-			camera2_->setImagesRectified(rectifyImages);
 		}
 	}
 	else
@@ -808,6 +807,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	}
 
 	//desactivate before init as we will do it in this class instead for convenience
+	bool rectify = this->isImagesRectified();
 	this->setImagesRectified(false);
 
 	bool success = false;
@@ -815,7 +815,6 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	{
 		if(camera2_)
 		{
-			camera2_->setImagesRectified(false);
 			if(camera2_->init())
 			{
 				if(this->imagesCount() == camera2_->imagesCount())
@@ -838,6 +837,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 			success = true;
 		}
 	}
+	this->setImagesRectified(rectify); // reset the flag
 	return success;
 }
 
