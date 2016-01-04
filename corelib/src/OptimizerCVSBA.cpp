@@ -31,11 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UFile.h>
-#include <rtabmap/core/Memory.h>
-#include <pcl/search/kdtree.h>
-#include <pcl/common/eigen.h>
-#include <pcl/common/common.h>
 #include <set>
 
 #include <rtabmap/core/OptimizerCVSBA.h>
@@ -142,7 +137,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 	T.resize(oi);
 	distCoeffs.resize(oi);
 
-	std::map<int, pcl::PointXYZ> points3DMap;
+	std::map<int, cv::Point3f> points3DMap;
 	std::multimap<int, std::pair<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
@@ -175,8 +170,8 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 				Transform pose = frames.at(sFrom.id());
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
-					pcl::PointXYZ p = util3d::transformPoint(sFrom.getWords3().lower_bound(inliers[i])->second, pose);
-					std::map<int, pcl::PointXYZ>::iterator jter = points3DMap.find(inliers[i]);
+					cv::Point3f p = util3d::transformPoint(sFrom.getWords3().lower_bound(inliers[i])->second, pose);
+					std::map<int, cv::Point3f>::iterator jter = points3DMap.find(inliers[i]);
 					if(jter == points3DMap.end())
 					{
 						points3DMap.insert(std::make_pair(inliers[i], p));
@@ -215,10 +210,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 	int i=0;
 	for(std::list<int>::iterator iter = wordReferencesKeys.begin(); iter!=wordReferencesKeys.end(); ++iter)
 	{
-		pcl::PointXYZ & p = points3DMap.at(*iter);
-		points[i].x = p.x;
-		points[i].y = p.y;
-		points[i].z = p.z;
+		points[i] = points3DMap.at(*iter);
 
 		std::multimap<int, std::pair<int, cv::Point2f> >::iterator jter = wordReferences.lower_bound(*iter);
 		while(jter->first == *iter && jter != wordReferences.end())

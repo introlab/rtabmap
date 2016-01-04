@@ -31,11 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UFile.h>
-#include <rtabmap/core/Memory.h>
-#include <pcl/search/kdtree.h>
-#include <pcl/common/eigen.h>
-#include <pcl/common/common.h>
 #include <set>
 
 #include <rtabmap/core/OptimizerTORO.h>
@@ -329,7 +324,7 @@ bool OptimizerTORO::saveGraph(
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			float x,y,z, yaw,pitch,roll;
-			pcl::getTranslationAndEulerAngles(iter->second.toEigen3f(), x,y,z, roll, pitch, yaw);
+			iter->second.getTranslationAndEulerAngles(x,y,z, roll, pitch, yaw);
 			fprintf(file, "VERTEX3 %d %f %f %f %f %f %f\n",
 					iter->first,
 					x,
@@ -344,7 +339,7 @@ bool OptimizerTORO::saveGraph(
 		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			float x,y,z, yaw,pitch,roll;
-			pcl::getTranslationAndEulerAngles(iter->second.transform().toEigen3f(), x,y,z, roll, pitch, yaw);
+			iter->second.transform().getTranslationAndEulerAngles(x,y,z, roll, pitch, yaw);
 			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 					iter->first,
 					iter->second.to(),
@@ -415,7 +410,7 @@ bool OptimizerTORO::loadGraph(
 				float roll = uStr2Float(strList[5]);
 				float pitch = uStr2Float(strList[6]);
 				float yaw = uStr2Float(strList[7]);
-				Transform pose = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
+				Transform pose(x, y, z, roll, pitch, yaw);
 				if(poses.find(id) == poses.end())
 				{
 					poses.insert(std::make_pair(id, pose));
@@ -447,7 +442,7 @@ bool OptimizerTORO::loadGraph(
 				UASSERT_MSG(infX > 0 && infY > 0 && infZ > 0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
 				float transVariance = 1.0f/(infX<=infY && infX<=infZ?infX:infY<=infW?infY:infZ); // maximum variance
 				UINFO("id=%d rotV=%f transV=%f", idFrom, rotVariance, transVariance);
-				Transform transform = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
+				Transform transform(x, y, z, roll, pitch, yaw);
 				if(poses.find(idFrom) != poses.end() && poses.find(idTo) != poses.end())
 				{
 					//Link type is unknown

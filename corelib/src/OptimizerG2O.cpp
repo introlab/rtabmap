@@ -30,11 +30,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UFile.h>
-#include <rtabmap/core/Memory.h>
-#include <pcl/search/kdtree.h>
-#include <pcl/common/eigen.h>
-#include <pcl/common/common.h>
 #include <set>
 
 #include <rtabmap/core/OptimizerG2O.h>
