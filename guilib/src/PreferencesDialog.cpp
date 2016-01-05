@@ -1727,6 +1727,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.beginGroup("Gui");
 
 	settings.beginGroup("General");
+	settings.remove("");
 	settings.setValue("imagesKept",           _ui->general_checkBox_imagesKept->isChecked());
 	settings.setValue("loggerLevel",          _ui->comboBox_loggerLevel->currentIndex());
 	settings.setValue("loggerEventLevel",     _ui->comboBox_loggerEventLevel->currentIndex());
@@ -1793,6 +1794,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	QSettings settings(path, QSettings::IniFormat);
 
 	settings.beginGroup("Camera");
+	settings.remove("");
 	settings.setValue("imgRate", 		 _ui->general_doubleSpinBox_imgRate->value());
 	settings.setValue("mirroring",       _ui->source_mirroring->isChecked());
 	settings.setValue("calibrationName", _ui->lineEdit_calibrationFile->text());
@@ -1903,6 +1905,7 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath) const
 	}
 	QSettings settings(path, QSettings::IniFormat);
 	settings.beginGroup("Core");
+	settings.remove("");
 
 	// save current RTAB-Map version
 	settings.setValue("Version", QString(RTABMAP_VERSION));
