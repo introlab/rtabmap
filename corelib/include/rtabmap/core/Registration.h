@@ -28,12 +28,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef REGISTRATION_H_
 #define REGISTRATION_H_
 
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Signature.h>
 
 namespace rtabmap {
 
-class Registration
+class RTABMAP_EXP Registration
 {
 public:
 	virtual ~Registration() {}

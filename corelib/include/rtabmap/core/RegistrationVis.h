@@ -28,13 +28,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef REGISTRATIONVIS_H_
 #define REGISTRATIONVIS_H_
 
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
 #include <rtabmap/core/Registration.h>
 #include <rtabmap/core/Signature.h>
 
 namespace rtabmap {
 
 // Visual registration
-class RegistrationVis : public Registration
+class RTABMAP_EXP RegistrationVis : public Registration
 {
 public:
 	RegistrationVis(const ParametersMap & parameters = ParametersMap());

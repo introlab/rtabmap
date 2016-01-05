@@ -362,7 +362,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 								int oi=0;
 								for(unsigned int i=0; i<indexes.size(); ++i)
 								{
-									std::multimap<int, cv::Point3f>::iterator iter = words3D.find(indexes[i]);
+									std::map<int, cv::Point3f>::iterator iter = words3D.find(indexes[i]);
 									if(util3d::isFinite(iter->second))
 									{
 										iter->second.x *= scale;

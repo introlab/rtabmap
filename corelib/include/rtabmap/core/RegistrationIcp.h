@@ -28,13 +28,15 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef REGISTRATIONICP_H_
 #define REGISTRATIONICP_H_
 
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
 #include <rtabmap/core/Registration.h>
 #include <rtabmap/core/Signature.h>
 
 namespace rtabmap {
 
 // Geometrical registration
-class RegistrationIcp : public Registration
+class RTABMAP_EXP RegistrationIcp : public Registration
 {
 public:
 	RegistrationIcp(const ParametersMap & parameters = ParametersMap());
