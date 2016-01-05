@@ -2418,6 +2418,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		ULogger::setType((ULogger::Type)_preferencesDialog->getGeneralLoggerType(),
 						 (_preferencesDialog->getWorkingDirectory()+QDir::separator()+LOG_FILE_NAME).toStdString(), true);
 		ULogger::setPrintTime(_preferencesDialog->getGeneralLoggerPrintTime());
+		ULogger::setPrintThreadId(_preferencesDialog->getGeneralLoggerPrintThreadId());
 	}
 }
 

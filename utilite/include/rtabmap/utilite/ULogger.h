@@ -299,6 +299,13 @@ public:
     static bool isPrintWhere() {return printWhere_;}
 
     /**
+	 * Print thread ID: default false.
+	 * @param printThreadId true to print where, otherwise set to false.
+	 */
+	static void setPrintThreadId(bool printThreadId) {printThreadID_ = printThreadId;}
+	static bool isPrintThreadId() {return printThreadID_;}
+
+    /**
      * Print the full path: default true. ULogger::setPrintWhere() must be true to have path printed.
 	 * @param printWhereFullPath true to print the full path, otherwise set to false.
 	 */
@@ -506,6 +513,12 @@ private:
 	 * Default is false.
 	 */
     static bool printWhereFullPath_;
+
+    /*
+	 * If the logger prints the thread ID.
+	 * Default is false.
+	 */
+    static bool printThreadID_;
 
     /*
 	 * If the logger limit the size of the "where" path to

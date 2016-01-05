@@ -329,6 +329,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_loggerEventLevel, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
 	connect(_ui->comboBox_loggerPauseLevel, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
 	connect(_ui->checkBox_logger_printTime, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
+	connect(_ui->checkBox_logger_printThreadId, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
 	connect(_ui->comboBox_loggerType, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
 
 	//Source panel
@@ -1121,6 +1122,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_loggerEventLevel->setCurrentIndex(3);
 		_ui->comboBox_loggerPauseLevel->setCurrentIndex(3);
 		_ui->checkBox_logger_printTime->setChecked(true);
+		_ui->checkBox_logger_printThreadId->setChecked(false);
 		_ui->comboBox_loggerType->setCurrentIndex(1);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_source0->objectName())
@@ -1381,6 +1383,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->comboBox_loggerPauseLevel->setCurrentIndex(settings.value("loggerPauseLevel", _ui->comboBox_loggerPauseLevel->currentIndex()).toInt());
 	_ui->comboBox_loggerType->setCurrentIndex(settings.value("loggerType", _ui->comboBox_loggerType->currentIndex()).toInt());
 	_ui->checkBox_logger_printTime->setChecked(settings.value("loggerPrintTime", _ui->checkBox_logger_printTime->isChecked()).toBool());
+	_ui->checkBox_logger_printThreadId->setChecked(settings.value("loggerPrintThreadId", _ui->checkBox_logger_printThreadId->isChecked()).toBool());
 	_ui->checkBox_verticalLayoutUsed->setChecked(settings.value("verticalLayoutUsed", _ui->checkBox_verticalLayoutUsed->isChecked()).toBool());
 	_ui->checkBox_imageRejectedShown->setChecked(settings.value("imageRejectedShown", _ui->checkBox_imageRejectedShown->isChecked()).toBool());
 	_ui->checkBox_imageHighestHypShown->setChecked(settings.value("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked()).toBool());
@@ -1730,6 +1733,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("loggerPauseLevel",     _ui->comboBox_loggerPauseLevel->currentIndex());
 	settings.setValue("loggerType",           _ui->comboBox_loggerType->currentIndex());
 	settings.setValue("loggerPrintTime",      _ui->checkBox_logger_printTime->isChecked());
+	settings.setValue("loggerPrintThreadId",  _ui->checkBox_logger_printThreadId->isChecked());
 	settings.setValue("verticalLayoutUsed",   _ui->checkBox_verticalLayoutUsed->isChecked());
 	settings.setValue("imageRejectedShown",   _ui->checkBox_imageRejectedShown->isChecked());
 	settings.setValue("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked());
@@ -3442,6 +3446,10 @@ int PreferencesDialog::getGeneralLoggerType() const
 bool PreferencesDialog::getGeneralLoggerPrintTime() const
 {
 	return _ui->checkBox_logger_printTime->isChecked();
+}
+bool PreferencesDialog::getGeneralLoggerPrintThreadId() const
+{
+	return _ui->checkBox_logger_printThreadId->isChecked();
 }
 bool PreferencesDialog::isVerticalLayoutUsed() const
 {

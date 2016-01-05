@@ -132,6 +132,7 @@ public:
 	int getGeneralLoggerPauseLevel() const;
 	int getGeneralLoggerType() const;
 	bool getGeneralLoggerPrintTime() const;
+	bool getGeneralLoggerPrintThreadId() const;
 	bool isVerticalLayoutUsed() const;
 	bool imageRejectedShown() const;
 	bool imageHighestHypShown() const;

@@ -321,7 +321,7 @@ class UTILITE_EXP UThreadC<void>
     }
 
     int Create(
-      int                 & ThreadId,
+      unsigned long       & ThreadId,
       Handle  * const     & H               = 0,
       const bool          & CreateDetached  = false,
       const unsigned int  & StackSize       = 0,
@@ -330,7 +330,9 @@ class UTILITE_EXP UThreadC<void>
     ) const
     {
     	*H = InvalidHandle;
-    	*H = CREATE_THREAD2(StackSize,ThreadMainHandler,this, (LPDWORD)&ThreadId);
+    	int id;
+    	*H = CREATE_THREAD2(StackSize,ThreadMainHandler,this, (LPDWORD)&id);
+    	ThreadId = (unsigned long)id;
 
       if ( *H == CREATE_THREAD_FAILED )
       {

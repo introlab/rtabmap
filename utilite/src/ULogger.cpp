@@ -50,6 +50,7 @@ bool ULogger::printEndline_ = true;
 bool ULogger::printColored_ = true;
 bool ULogger::printWhere_ = true;
 bool ULogger::printWhereFullPath_ = false;
+bool ULogger::printThreadID_ = false;
 bool ULogger::limitWhereLength_ = false;
 bool ULogger::buffered_ = false;
 bool ULogger::exitingState_ = false;
@@ -210,6 +211,7 @@ void ULogger::reset()
 	printColored_ = true;
 	printWhere_ = true;
 	printWhereFullPath_ = false;
+	printThreadID_ = false;
 	limitWhereLength_ = false;
 	level_ = kInfo; // By default, we show all info msgs + upper level (Warning, Error)
 	logFileName_ = ULogger::kDefaultLogFileName;
@@ -383,6 +385,12 @@ void ULogger::write(ULogger::Level level,
 			levelStr.append(" ");
 		}
 
+		std::string pidStr;
+		if(printThreadID_)
+		{
+			pidStr = uFormat("{%lu} ", UThread::currentThreadId());
+		}
+
 		std::string whereStr = "";
 		if(printWhere_ || level == kFatal)
 		{
@@ -449,6 +457,7 @@ void ULogger::write(ULogger::Level level,
 			if(buffered_)
 			{
 				bufferedMsgs_.append(levelStr.c_str());
+				bufferedMsgs_.append(pidStr.c_str());
 				bufferedMsgs_.append(time.c_str());
 				bufferedMsgs_.append(whereStr.c_str());
 				bufferedMsgs_.append(uFormatv(msg, args));
@@ -456,6 +465,7 @@ void ULogger::write(ULogger::Level level,
 			else
 			{
 				ULogger::getInstance()->_writeStr(levelStr.c_str());
+				ULogger::getInstance()->_writeStr(pidStr.c_str());
 				ULogger::getInstance()->_writeStr(time.c_str());
 				ULogger::getInstance()->_writeStr(whereStr.c_str());
 				ULogger::getInstance()->_write(msg, args);
@@ -488,7 +498,7 @@ void ULogger::write(ULogger::Level level,
 
 		if(level >= eventLevel_)
 		{
-			std::string fullMsg = uFormat("%s%s%s", levelStr.c_str(), time.c_str(), whereStr.c_str());
+			std::string fullMsg = uFormat("%s%s%s%s", levelStr.c_str(), pidStr.c_str(), time.c_str(), whereStr.c_str());
 			va_start(args, msg);
 			fullMsg.append(uFormatv(msg, args));
 			va_end(args);
@@ -510,7 +520,7 @@ void ULogger::write(ULogger::Level level,
 			printf("\n*******\n%s message occurred! Application will now exit.\n", levelName_[level]);
 			if(type_ != kTypeConsole)
 			{
-				printf("  %s%s%s", levelStr.c_str(), time.c_str(), whereStr.c_str());
+				printf("  %s%s%s%s", levelStr.c_str(), pidStr.c_str(), time.c_str(), whereStr.c_str());
 				va_start(args, msg);
 				vprintf(msg, args);
 				va_end(args);

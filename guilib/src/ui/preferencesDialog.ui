@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-366</y>
+            <y>0</y>
             <width>633</width>
             <height>2118</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>13</number>
+                <number>2</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1555,7 +1555,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="0">
+                    <item row="5" column="0">
                      <widget class="QComboBox" name="comboBox_loggerType">
                       <property name="currentIndex">
                        <number>1</number>
@@ -1580,7 +1580,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       </item>
                      </widget>
                     </item>
-                    <item row="4" column="1">
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_68">
                       <property name="text">
                        <string>Logger type: 
@@ -1591,6 +1591,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="1">
+                     <widget class="QLabel" name="label_118">
+                      <property name="text">
+                       <string>Logger print thread ID.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="0">
+                     <widget class="QCheckBox" name="checkBox_logger_printThreadId">
+                      <property name="text">
+                       <string/>
+                      </property>
+                      <property name="checked">
+                       <bool>false</bool>
                       </property>
                      </widget>
                     </item>
@@ -10899,7 +10922,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
   <customwidget>
    <class>UPlot</class>
    <extends>QWidget</extends>
-   <header>rtabmap/utilite/UPlot.h</header>
+   <header>../include/rtabmap/utilite/UPlot.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
