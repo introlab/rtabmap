@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryLocalMap.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
@@ -49,7 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
+OdometryLocalMap::OdometryLocalMap(const ParametersMap & parameters) :
 	Odometry(parameters),
 	_localHistoryMaxSize(Parameters::defaultOdomBowLocalHistorySize()),
 	_fixedLocalMapPath(Parameters::defaultOdomBowFixedLocalMapPath()),
@@ -172,14 +172,14 @@ OdometryBOW::OdometryBOW(const ParametersMap & parameters) :
 	}
 }
 
-OdometryBOW::~OdometryBOW()
+OdometryLocalMap::~OdometryLocalMap()
 {
 	delete _memory;
 	UDEBUG("");
 }
 
 
-void OdometryBOW::reset(const Transform & initialPose)
+void OdometryLocalMap::reset(const Transform & initialPose)
 {
 	if(_fixedLocalMapPath.empty())
 	{
@@ -194,7 +194,7 @@ void OdometryBOW::reset(const Transform & initialPose)
 }
 
 // return not null transform if odometry is correctly computed
-Transform OdometryBOW::computeTransform(
+Transform OdometryLocalMap::computeTransform(
 		const SensorData & data,
 		OdometryInfo * info)
 {

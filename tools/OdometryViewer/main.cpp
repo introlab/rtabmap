@@ -29,7 +29,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/OdometryICP.h>
+#include <rtabmap/core/OdometryLocalMap.h>
+#include <rtabmap/core/OdometryF2F.h>
+#include <rtabmap/core/OdometryMono.h>
 #include <rtabmap/core/OdometryThread.h>
 #include <rtabmap/gui/OdometryViewer.h>
 #include <rtabmap/core/CameraThread.h>
@@ -680,7 +683,7 @@ int main (int argc, char * argv[])
 			}
 			else
 			{
-				odom = new rtabmap::OdometryBOW(parameters);
+				odom = new rtabmap::OdometryLocalMap(parameters);
 			}
 		}
 	}

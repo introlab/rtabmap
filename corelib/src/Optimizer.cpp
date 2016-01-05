@@ -67,7 +67,11 @@ Optimizer * Optimizer::create(const ParametersMap & parameters)
 	int optimizerTypeInt = Parameters::defaultOptimizerStrategy();
 	Parameters::parse(parameters, Parameters::kOptimizerStrategy(), optimizerTypeInt);
 	Optimizer::Type type = (Optimizer::Type)optimizerTypeInt;
+	return create(type, parameters);
+}
 
+Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & parameters)
+{
 	if(!OptimizerG2O::available() && type == Optimizer::kTypeG2O)
 	{
 		UWARN("g2o optimizer not available. TORO will be used instead.");
@@ -98,37 +102,6 @@ Optimizer * Optimizer::create(const ParametersMap & parameters)
 	case Optimizer::kTypeTORO:
 	default:
 		optimizer = new OptimizerTORO(parameters);
-		break;
-
-	}
-	return optimizer;
-}
-
-Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & parameters)
-{
-	if(!OptimizerG2O::available() && type == Optimizer::kTypeG2O)
-	{
-		UWARN("g2o optimizer not available. TORO will be used instead.");
-		type = Optimizer::kTypeTORO;
-	}
-	if(!OptimizerGTSAM::available() && type == Optimizer::kTypeGTSAM)
-	{
-		UWARN("GTSAM optimizer not available. TORO will be used instead.");
-		type = Optimizer::kTypeTORO;
-	}
-	Optimizer * optimizer = 0;
-	switch(type)
-	{
-	case Optimizer::kTypeGTSAM:
-		optimizer = new OptimizerGTSAM(parameters);
-		break;
-	case Optimizer::kTypeG2O:
-		optimizer = new OptimizerG2O(parameters);
-		break;
-	case Optimizer::kTypeTORO:
-	default:
-		optimizer = new OptimizerTORO(parameters);
-		type = Optimizer::kTypeTORO;
 		break;
 
 	}

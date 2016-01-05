@@ -55,7 +55,7 @@ SET(SRC_FILES
 	
 	Odometry.cpp
 	OdometryThread.cpp
-	OdometryBOW.cpp
+	OdometryLocalMap.cpp
 	OdometryMono.cpp
 	OdometryICP.cpp
 	OdometryF2F.cpp

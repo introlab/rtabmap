@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryF2F.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/utilite/ULogger.h"

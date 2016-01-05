@@ -4127,19 +4127,7 @@ void PreferencesDialog::testOdometry()
 
 
 	ParametersMap parameters = this->getAllParameters();
-	Odometry * odometry;
-	if(this->getOdomStrategy() == 1)
-	{
-		odometry = new OdometryF2F(parameters);
-	}
-	else if(this->getOdomStrategy() == 2)
-	{
-		odometry = new OdometryMono(parameters);
-	}
-	else
-	{
-		odometry = new OdometryBOW(parameters);
-	}
+	Odometry * odometry = Odometry::create(parameters);
 
 	OdometryThread odomThread(
 			odometry, // take ownership of odometry

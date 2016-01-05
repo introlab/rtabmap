@@ -331,7 +331,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Optimizer, Robust,            bool, true,      "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
 
 	// Odometry
-	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Features Map 1=Frame-to-Frame");
+	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Local Map 1=Frame-to-Frame");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
 	RTABMAP_PARAM(Odom, Holonomic, 		        bool, true,     "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
 	RTABMAP_PARAM(Odom, FillInfoData, 		    bool, true,     "Fill info with data (inliers/outliers features).");

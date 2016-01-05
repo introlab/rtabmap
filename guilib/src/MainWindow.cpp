@@ -3044,19 +3044,7 @@ void MainWindow::startDetection()
 					delete _odomThread;
 					_odomThread = 0;
 				}
-				Odometry * odom;
-				if(_preferencesDialog->getOdomStrategy() == 1)
-				{
-					odom = new OdometryF2F(parameters);
-				}
-				else if(_preferencesDialog->getOdomStrategy() == 2)
-				{
-					odom = new OdometryMono(parameters);
-				}
-				else
-				{
-					odom = new OdometryBOW(parameters);
-				}
+				Odometry * odom = Odometry::create(parameters);
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
@@ -3083,19 +3071,7 @@ void MainWindow::startDetection()
 				UERROR("OdomThread must be already deleted here?!");
 				delete _odomThread;
 			}
-			Odometry * odom;
-			if(_preferencesDialog->getOdomStrategy() == 1)
-			{
-				odom = new OdometryF2F(parameters);
-			}
-			else if(_preferencesDialog->getOdomStrategy() == 2)
-			{
-				odom = new OdometryMono(parameters);
-			}
-			else
-			{
-				odom = new OdometryBOW(parameters);
-			}
+			Odometry * odom = Odometry::create(parameters);
 			_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 			UEventsManager::addHandler(_odomThread);

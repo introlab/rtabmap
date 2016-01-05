@@ -26,6 +26,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryF2F.h"
+#include "rtabmap/core/OdometryLocalMap.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -33,6 +35,31 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/ParticleFilter.h"
 
 namespace rtabmap {
+
+Odometry * Odometry::create(const ParametersMap & parameters)
+{
+	int odomTypeInt = Parameters::defaultOdomStrategy();
+	Parameters::parse(parameters, Parameters::kOdomStrategy(), odomTypeInt);
+	Odometry::Type type = (Odometry::Type)odomTypeInt;
+	return create(type, parameters);
+}
+
+Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & parameters)
+{
+	UDEBUG("type=%d", (int)type);
+	Odometry * odometry = 0;
+	switch(type)
+	{
+	case Odometry::kTypeF2F:
+		odometry = new OdometryF2F(parameters);
+		break;
+	default:
+		odometry = new OdometryLocalMap(parameters);
+		type = Odometry::kTypeLocalMap;
+		break;
+	}
+	return odometry;
+}
 
 Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_roiRatios(Parameters::defaultVisRoiRatios()),

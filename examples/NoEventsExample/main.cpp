@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Rtabmap.h>
 #include <rtabmap/core/CameraStereo.h>
-#include <rtabmap/core/Odometry.h>
+#include <rtabmap/core/OdometryLocalMap.h>
 #include <rtabmap/utilite/UThread.h>
 #include "MapBuilder.h"
 #include <pcl/visualization/cloud_viewer.h>
@@ -103,7 +103,7 @@ int main(int argc, char * argv[])
 
 	if(camera.init(calibrationDir, calibrationName))
 	{
-		OdometryBOW odom;
+		OdometryLocalMap odom;
 		Rtabmap rtabmap;
 		rtabmap.init();
 

@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
-#include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryLocalMap.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
@@ -128,7 +128,7 @@ int main(int argc, char * argv[])
 	MapBuilder mapBuilder(&cameraThread);
 
 	// Create an odometry thread to process camera events, it will send OdometryEvent.
-	OdometryThread odomThread(new OdometryBOW());
+	OdometryThread odomThread(new OdometryLocalMap());
 
 
 	// Create RTAB-Map to process OdometryEvent

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>633</width>
-            <height>2118</height>
+            <y>-232</y>
+            <width>647</width>
+            <height>2050</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>2</number>
+                <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -6849,17 +6849,12 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </property>
                         <item>
                          <property name="text">
-                          <string>Features Map</string>
+                          <string>Local Map</string>
                          </property>
                         </item>
                         <item>
                          <property name="text">
                           <string>Frame to Frame</string>
-                         </property>
-                        </item>
-                        <item>
-                         <property name="text">
-                          <string>Mono</string>
                          </property>
                         </item>
                        </widget>
@@ -6951,7 +6946,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         <item>
                          <widget class="QGroupBox" name="groupBox_odometryBOW2">
                           <property name="title">
-                           <string>Features Map</string>
+                           <string>Local Map</string>
                           </property>
                           <layout class="QVBoxLayout" name="verticalLayout_54">
                            <item>
