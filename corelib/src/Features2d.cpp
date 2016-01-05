@@ -376,9 +376,9 @@ void Feature2D::parseParameters(const ParametersMap & parameters)
 		{
 			std::vector<float> tmpValues(4);
 			unsigned int i=0;
-			for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
+			for(std::list<std::string>::iterator jter = strValues.begin(); jter!=strValues.end(); ++jter)
 			{
-				tmpValues[i] = uStr2Float(*iter);
+				tmpValues[i] = uStr2Float(*jter);
 				++i;
 			}
 

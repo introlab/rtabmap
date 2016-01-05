@@ -209,11 +209,11 @@ Transform RegistrationVis::computeTransformationMod(
 		// just some checks to make sure that input data are ok
 		UASSERT((fromSignature.getWords().empty() && fromSignature.getWords3().empty())||
 				(fromSignature.getWords().size() == fromSignature.getWords3().size()));
-		UASSERT(fromSignature.sensorData().keypoints().size() == fromSignature.sensorData().descriptors().rows ||
+		UASSERT((int)fromSignature.sensorData().keypoints().size() == fromSignature.sensorData().descriptors().rows ||
 				fromSignature.sensorData().descriptors().rows == 0);
 		UASSERT((toSignature.getWords().empty() && toSignature.getWords3().empty())||
 				(toSignature.getWords().size() == toSignature.getWords3().size()));
-		UASSERT(toSignature.sensorData().keypoints().size() == toSignature.sensorData().descriptors().rows ||
+		UASSERT((int)toSignature.sensorData().keypoints().size() == toSignature.sensorData().descriptors().rows ||
 				toSignature.sensorData().descriptors().rows == 0);
 		UASSERT(fromSignature.sensorData().imageRaw().type() == CV_8UC1 ||
 				fromSignature.sensorData().imageRaw().type() == CV_8UC3);
@@ -405,7 +405,7 @@ Transform RegistrationVis::computeTransformationMod(
 			UDEBUG("kptsTo=%d", (int)kptsTo.size());
 			cv::Mat descriptorsFrom;
 			cv::Mat descriptorsTo;
-			if(fromSignature.getWords().empty() && fromSignature.sensorData().descriptors().rows == kptsFrom.size())
+			if(fromSignature.getWords().empty() && fromSignature.sensorData().descriptors().rows == (int)kptsFrom.size())
 			{
 				descriptorsFrom = fromSignature.sensorData().descriptors();
 			}
@@ -413,7 +413,7 @@ Transform RegistrationVis::computeTransformationMod(
 			{
 				descriptorsFrom = detector->generateDescriptors(fromSignature.sensorData().imageRaw(), kptsFrom);
 			}
-			if(toSignature.getWords().empty() && toSignature.sensorData().descriptors().rows == kptsTo.size())
+			if(toSignature.getWords().empty() && toSignature.sensorData().descriptors().rows == (int)kptsTo.size())
 			{
 				descriptorsTo = toSignature.sensorData().descriptors();
 			}

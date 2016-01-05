@@ -177,7 +177,7 @@ int main(int argc, char * argv[])
 		// dymax=0.423
 		// ---
 		std::string calibFile = argv[3];
-		std::ifstream stream(calibFile);
+		std::ifstream stream(calibFile.c_str());
 		std::string line;
 
 		// two first lines are camera intrinsics

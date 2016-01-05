@@ -161,7 +161,6 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 	{
 		int oi=0;
 		float bestScore = -1.0f;
-		float secondBest = -1.0f;
 		int bestScoreIndex = -1;
 		int tmpMinDisparity = minDisparity;
 		int tmpMaxDisparity = maxDisparity;
@@ -175,7 +174,6 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 
 			oi=0;
 			bestScore = -1.0f;
-			secondBest = -1.0f;
 			bestScoreIndex = -1;
 			int localMaxDisparity = -tmpMaxDisparity / (1<<level);
 			int localMinDisparity = -tmpMinDisparity / (1<<level);
@@ -214,7 +212,6 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 					scores[oi] = ssdApproach?ssd(windowLeft, windowRight):sad(windowLeft, windowRight);
 					if(scores[oi] > 0 && (bestScore < 0.0f || scores[oi] < bestScore))
 					{
-						secondBest = bestScore;
 						bestScoreIndex = oi;
 						bestScore = scores[oi];
 					}
