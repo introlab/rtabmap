@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-366</y>
+            <y>-42</y>
             <width>681</width>
             <height>1915</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -6733,7 +6733,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                     <item>
                      <widget class="QLabel" name="label_114">
                       <property name="text">
-                       <string>Odometry is computed as fast as possible up to &quot;Source-&gt;Input rate&quot; parameter. Odometry is not computed if already provided by the source. See &quot;Visual Registration&quot; panel for transformation estimation parameters.</string>
+                       <string>Odometry is computed as fast as possible up to &quot;Source-&gt;Input rate&quot; parameter. Odometry is not computed if already provided by the source.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -6915,7 +6915,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                            <item>
                             <widget class="QLabel" name="label_226">
                              <property name="text">
-                              <string>Features extracted from frames are matached a using nearest neighbor approach. It maintains a local map of features to match to.</string>
+                              <string>The approach maintains a local map of features to match to. It adds incrementally new points to local map up to local history size, then removes old points as new points are added. See &quot;Motion Estimation&quot; panel for registration parameters. Note that only visual registration parameters are used in this approach. If you want to use a different registration pipeline than Visual (e.g. with ICP), use &quot;Frame to Frame&quot; approach instead.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
@@ -7010,7 +7010,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                            <item>
                             <widget class="QLabel" name="label_199">
                              <property name="text">
-                              <string>Features from the last frame are estimated in the new frame (see Visual Registration parameters).</string>
+                              <string>Motion is computed with a frame to key-frame approach. See Motion Estimation panel for registration parameters.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
