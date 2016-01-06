@@ -184,7 +184,6 @@ private:
 	float _rgbdLinearUpdate;
 	float _rgbdAngularUpdate;
 	float _newMapOdomChangeDistance;
-	bool _loopClosureRefining;
 	bool _neighborLinkRefining;
 	bool _proximityByTime;
 	bool _proximityBySpace;

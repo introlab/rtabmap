@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>936</width>
+    <width>979</width>
     <height>655</height>
    </rect>
   </property>
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-232</y>
-            <width>647</width>
-            <height>2050</height>
+            <y>-366</y>
+            <width>681</width>
+            <height>1915</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>11</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1636,13 +1636,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                 </layout>
                </widget>
                <widget class="QWidget" name="page_4">
-                <layout class="QVBoxLayout" name="verticalLayout_27">
+                <layout class="QVBoxLayout" name="verticalLayout_27" stretch="0,1">
                  <item>
                   <widget class="QGroupBox" name="groupBox_source0">
                    <property name="title">
                     <string>Source</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_7">
+                   <layout class="QVBoxLayout" name="verticalLayout_7" stretch="0,0,0,1">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_28" columnstretch="0,1">
                       <item row="1" column="1">
@@ -1884,7 +1884,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -1989,7 +1989,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>6</number>
+                              <number>3</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -2050,9 +2050,57 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </item>
                               </layout>
                              </widget>
-                             <widget class="QWidget" name="page_33"/>
-                             <widget class="QWidget" name="page_34"/>
-                             <widget class="QWidget" name="page_35"/>
+                             <widget class="QWidget" name="page_33">
+                              <layout class="QVBoxLayout" name="verticalLayout_80">
+                               <item>
+                                <spacer name="verticalSpacer_3">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>306</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_34">
+                              <layout class="QVBoxLayout" name="verticalLayout_89">
+                               <item>
+                                <spacer name="verticalSpacer_27">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>306</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_35">
+                              <layout class="QVBoxLayout" name="verticalLayout_90">
+                               <item>
+                                <spacer name="verticalSpacer_28">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>306</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
                              <widget class="QWidget" name="page_36">
                               <layout class="QVBoxLayout" name="verticalLayout_51">
                                <item>
@@ -2455,13 +2503,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="4" column="0">
-                                   <widget class="QToolButton" name="toolButton_cameraRGBDImages_timestamps">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="2" column="2">
                                    <widget class="QLabel" name="label_257">
                                     <property name="text">
@@ -2496,20 +2537,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="7" column="0">
-                                   <widget class="QToolButton" name="toolButton_cameraRGBDImages_path_scans">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="3" column="1">
-                                   <widget class="QCheckBox" name="checkBox_cameraRGBDImages_timestamps">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="1" column="2">
                                    <widget class="QLabel" name="label_254">
                                     <property name="text">
@@ -2536,167 +2563,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="4" column="2">
-                                   <widget class="QLabel" name="label_251">
-                                    <property name="text">
-                                     <string>Optional timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. Not used if &quot;Use RGB file names as timestamps&quot; above is checked. </string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="2">
-                                   <widget class="QLabel" name="label_288">
-                                    <property name="text">
-                                     <string>Optional ground truth file. Select the correct format below.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="3" column="2">
-                                   <widget class="QLabel" name="label_255">
-                                    <property name="text">
-                                     <string>Use RGB file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="6" column="2">
-                                   <widget class="QLabel" name="label_289">
-                                    <property name="text">
-                                     <string>Ground truth format.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraRGBDImages_gt">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="4" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraRGBDImages_timestamps">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="7" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraRGBDImages_path_scans">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="0">
-                                   <widget class="QToolButton" name="toolButton_cameraRGBDImages_gt">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="7" column="2">
-                                   <widget class="QLabel" name="label_293">
-                                    <property name="text">
-                                     <string>Path to directory containing optional laser scans. The directory should have the same size has the left images directory. </string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="6" column="1">
-                                   <widget class="QComboBox" name="comboBox_cameraRGBDImages_gtFormat">
-                                    <item>
-                                     <property name="text">
-                                      <string>Raw</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>RGBD-SLAM</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>KITTI</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>TORO</string>
-                                     </property>
-                                    </item>
-                                   </widget>
-                                  </item>
-                                  <item row="9" column="2">
-                                   <widget class="QLabel" name="label_292">
-                                    <property name="text">
-                                     <string>Maximum laser scan points.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="9" column="1">
-                                   <widget class="QSpinBox" name="spinBox_cameraRGBDImages_max_scan_pts">
-                                    <property name="maximum">
-                                     <number>99999999</number>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="8" column="2">
-                                   <widget class="QLabel" name="label_294">
-                                    <property name="text">
-                                     <string>Local transform from /base_link to /scan_link. Mouse over the box to show formats.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="8" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraRGBDImages_laser_transform">
-                                    <property name="toolTip">
-                                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; Format (3 values): x y z&lt;/p&gt;&lt;p&gt; Format (6 values): x y z roll pitch yaw&lt;/p&gt;&lt;p&gt; Format (7 values): x y z qx qy qz qw&lt;/p&gt;&lt;p&gt; Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;/p&gt;&lt;p&gt; Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                    </property>
-                                    <property name="text">
-                                     <string>0 0 0 0 0 0</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="10" column="1">
+                                  <item row="3" column="1">
                                    <spacer name="verticalSpacer_40">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -2808,8 +2675,40 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <property name="currentIndex">
                               <number>2</number>
                              </property>
-                             <widget class="QWidget" name="page_49"/>
-                             <widget class="QWidget" name="page_48"/>
+                             <widget class="QWidget" name="page_49">
+                              <layout class="QVBoxLayout" name="verticalLayout_91">
+                               <item>
+                                <spacer name="verticalSpacer_30">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>306</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
+                             <widget class="QWidget" name="page_48">
+                              <layout class="QVBoxLayout" name="verticalLayout_92">
+                               <item>
+                                <spacer name="verticalSpacer_47">
+                                 <property name="orientation">
+                                  <enum>Qt::Vertical</enum>
+                                 </property>
+                                 <property name="sizeHint" stdset="0">
+                                  <size>
+                                   <width>20</width>
+                                   <height>306</height>
+                                  </size>
+                                 </property>
+                                </spacer>
+                               </item>
+                              </layout>
+                             </widget>
                              <widget class="QWidget" name="page_53">
                               <layout class="QVBoxLayout" name="verticalLayout_70">
                                <item>
@@ -2824,6 +2723,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>Stereo Images</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_61" columnstretch="0,0,1">
+                                  <item row="2" column="1">
+                                   <widget class="QCheckBox" name="checkBox_stereoImages_rectify">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="0" column="0">
                                    <widget class="QToolButton" name="toolButton_cameraStereoImages_path_left">
                                     <property name="text">
@@ -2831,7 +2737,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="10" column="0">
+                                  <item row="3" column="0">
                                    <spacer name="verticalSpacer_38">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -2843,32 +2749,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      </size>
                                     </property>
                                    </spacer>
-                                  </item>
-                                  <item row="4" column="2">
-                                   <widget class="QLabel" name="label_248">
-                                    <property name="text">
-                                     <string>Optional timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. Not used if &quot;Use left file names as timestamps&quot; above is checked.  </string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="2">
-                                   <widget class="QLabel" name="label_290">
-                                    <property name="text">
-                                     <string>Optional ground truth file. Select the correct format below.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
                                   </item>
                                   <item row="2" column="2">
                                    <widget class="QLabel" name="label_250">
@@ -2896,27 +2776,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="7" column="0">
-                                   <widget class="QToolButton" name="toolButton_cameraStereoImages_path_scans">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="4" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_timestamps">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="4" column="0">
-                                   <widget class="QToolButton" name="toolButton_cameraStereoImages_timestamps">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="0" column="1">
                                    <widget class="QLineEdit" name="lineEdit_cameraStereoImages_path_left">
                                     <property name="text">
@@ -2928,36 +2787,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <widget class="QLabel" name="label_253">
                                     <property name="text">
                                      <string>Path to directory containing right images. The directory should have the same size has the left images directory. </string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="7" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_path_scans">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="8" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_laser_transform">
-                                    <property name="toolTip">
-                                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; Format (3 values): x y z&lt;/p&gt;&lt;p&gt; Format (6 values): x y z roll pitch yaw&lt;/p&gt;&lt;p&gt; Format (7 values): x y z qx qy qz qw&lt;/p&gt;&lt;p&gt; Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;/p&gt;&lt;p&gt; Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                                    </property>
-                                    <property name="text">
-                                     <string>0 0 0 0 0 0</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="8" column="2">
-                                   <widget class="QLabel" name="label_272">
-                                    <property name="text">
-                                     <string>Local transform from /base_link to /scan_link. Mouse over the box to show formats.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -2979,117 +2808,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="text">
                                      <string>...</string>
                                     </property>
-                                   </widget>
-                                  </item>
-                                  <item row="3" column="1">
-                                   <widget class="QCheckBox" name="checkBox_stereoImages_timestamps">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="3" column="2">
-                                   <widget class="QLabel" name="label_256">
-                                    <property name="text">
-                                     <string>Use left file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="7" column="2">
-                                   <widget class="QLabel" name="label_265">
-                                    <property name="text">
-                                     <string>Path to directory containing optional laser scans. The directory should have the same size has the left images directory. </string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="9" column="1">
-                                   <widget class="QSpinBox" name="spinBox_cameraStereoImages_max_scan_pts">
-                                    <property name="maximum">
-                                     <number>99999999</number>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="9" column="2">
-                                   <widget class="QLabel" name="label_274">
-                                    <property name="text">
-                                     <string>Maximum laser scan points.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="2" column="1">
-                                   <widget class="QCheckBox" name="checkBox_stereoImages_rectify">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="6" column="2">
-                                   <widget class="QLabel" name="label_291">
-                                    <property name="text">
-                                     <string>Ground truth format.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="1">
-                                   <widget class="QLineEdit" name="lineEdit_cameraStereoImages_gt">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="0">
-                                   <widget class="QToolButton" name="toolButton_cameraStereoImages_gt">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="6" column="1">
-                                   <widget class="QComboBox" name="comboBox_cameraStereoImages_gtFormat">
-                                    <item>
-                                     <property name="text">
-                                      <string>Raw</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>RGBD-SLAM</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>KITTI</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>TORO</string>
-                                     </property>
-                                    </item>
                                    </widget>
                                   </item>
                                  </layout>
@@ -3571,6 +3289,271 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </item>
                        </layout>
                       </widget>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_sourceImages_optional">
+                      <property name="title">
+                       <string>Directory of images (optional settings)</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_62" columnstretch="0,0,1">
+                       <item row="0" column="1">
+                        <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="2">
+                        <widget class="QLabel" name="label_255">
+                         <property name="text">
+                          <string>Use file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QToolButton" name="toolButton_cameraImages_timestamps">
+                         <property name="text">
+                          <string>...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLineEdit" name="lineEdit_cameraImages_timestamps">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="2">
+                        <widget class="QLabel" name="label_251">
+                         <property name="text">
+                          <string>Timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. Not used if &quot;Use file names as timestamps&quot; above is checked. </string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QToolButton" name="toolButton_cameraImages_gt">
+                         <property name="text">
+                          <string>...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLineEdit" name="lineEdit_cameraImages_gt">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="2">
+                        <widget class="QLabel" name="label_288">
+                         <property name="text">
+                          <string>Ground truth file. Select the correct format below.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QComboBox" name="comboBox_cameraImages_gtFormat">
+                         <item>
+                          <property name="text">
+                           <string>Raw</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>RGBD-SLAM</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>KITTI</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>TORO</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="3" column="2">
+                        <widget class="QLabel" name="label_289">
+                         <property name="text">
+                          <string>Ground truth format.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QToolButton" name="toolButton_cameraImages_path_scans">
+                         <property name="text">
+                          <string>...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="1">
+                        <widget class="QLineEdit" name="lineEdit_cameraImages_path_scans">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="2">
+                        <widget class="QLabel" name="label_293">
+                         <property name="text">
+                          <string>Path to directory containing optional laser scans (*.pcd,*.ply). The directory should have the same size has the images directory. </string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLineEdit" name="lineEdit_cameraImages_laser_transform">
+                         <property name="toolTip">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; Format (3 values): x y z&lt;/p&gt;&lt;p&gt; Format (6 values): x y z roll pitch yaw&lt;/p&gt;&lt;p&gt; Format (7 values): x y z qx qy qz qw&lt;/p&gt;&lt;p&gt; Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;/p&gt;&lt;p&gt; Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
+                         <property name="text">
+                          <string>0 0 0 0 0 0</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="2">
+                        <widget class="QLabel" name="label_294">
+                         <property name="text">
+                          <string>Local transform from /base_link to /scan_link. Mouse over the box to show formats.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="1">
+                        <widget class="QSpinBox" name="spinBox_cameraImages_max_scan_pts">
+                         <property name="maximum">
+                          <number>99999999</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="2">
+                        <widget class="QLabel" name="label_292">
+                         <property name="text">
+                          <string>Maximum laser scan points.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_scanFromDepth">
+                      <property name="title">
+                       <string>Generate laser scan from depth image</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <property name="checked">
+                       <bool>false</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_13">
+                       <item>
+                        <widget class="QLabel" name="label_16">
+                         <property name="text">
+                          <string>If you want to use ICP registration, the sensor data should have laser scan. This option can be used to create a laser scan from the depth image.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_63" columnstretch="0,1">
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_301">
+                           <property name="text">
+                            <string>Maximum depth.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="0">
+                          <widget class="QSpinBox" name="spinBox_cameraScanFromDepth_decimation">
+                           <property name="maximum">
+                            <number>99999</number>
+                           </property>
+                           <property name="value">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_299">
+                           <property name="text">
+                            <string>Decimation (should be a multiple of the image width and height).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraSCanFromDepth_maxDepth">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="maximum">
+                            <double>9999.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
                      </widget>
                     </item>
                    </layout>
@@ -4338,7 +4321,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="1">
+                       <item row="7" column="1">
                         <widget class="QLabel" name="label_space2">
                          <property name="text">
                           <string>Local radius for nodes selection in the local map. This parameter is used in some approaches below.</string>
@@ -4351,7 +4334,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="0">
+                       <item row="6" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_localImmunizationRatio">
                          <property name="suffix">
                           <string/>
@@ -4464,7 +4447,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="1">
+                       <item row="5" column="1">
                         <widget class="QLabel" name="label_scanMatching_3">
                          <property name="text">
                           <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
@@ -4477,10 +4460,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="0">
+                       <item row="5" column="0">
                         <widget class="QSpinBox" name="spinBox_maxLocalLocationsRetrieved"/>
                        </item>
-                       <item row="8" column="0">
+                       <item row="7" column="0">
                         <widget class="QDoubleSpinBox" name="localDetection_radius">
                          <property name="suffix">
                           <string> m</string>
@@ -4490,7 +4473,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="1">
+                       <item row="6" column="1">
                         <widget class="QLabel" name="label_scanMatching_5">
                          <property name="text">
                           <string>Ratio of working memory for which local nodes are immunized from transfer.</string>
@@ -4504,26 +4487,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </widget>
                        </item>
                        <item row="4" column="1">
-                        <widget class="QLabel" name="label_scanMatching_8">
-                         <property name="text">
-                          <string>Loop closure link refining. If the estimated loop closure transformation is refined using ICP (laser scans required!).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QCheckBox" name="loopClosure_icp">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
                         <widget class="QLabel" name="label_scanMatching_9">
                          <property name="text">
                           <string>Re-extract visual features when computing loop closure transformations.</string>
@@ -4536,7 +4499,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="0">
+                       <item row="4" column="0">
                         <widget class="QCheckBox" name="loopClosure_reextract">
                          <property name="text">
                           <string/>
@@ -7649,11 +7612,53 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    <property name="title">
                     <string>Motion Estimation</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_80">
-                    <item>
+                   <layout class="QGridLayout" name="gridLayout_53" columnstretch="0,1">
+                    <item row="0" column="0">
+                     <widget class="QComboBox" name="comboBox_registrationStrategy">
+                      <item>
+                       <property name="text">
+                        <string>Visual</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Geometry (ICP)</string>
+                       </property>
+                      </item>
+                      <item>
+                       <property name="text">
+                        <string>Visual + Geometry (ICP)</string>
+                       </property>
+                      </item>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
                      <widget class="QLabel" name="label_11">
                       <property name="text">
-                       <string>Parameters for each motion estimation approach. See the sub panels.</string>
+                       <string>For the parameters for each registration approach, see the sub panels. Approaches with '+' means that both registrations are done in that order.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QCheckBox" name="loopClosure_bowForce2D">
+                      <property name="text">
+                       <string/>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLabel" name="label_184">
+                      <property name="text">
+                       <string>Force 2D transform (3DoF: x,y and yaw).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -7684,7 +7689,14 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_41" stretch="0,0,0,1">
                     <item>
-                     <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,0">
+                     <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,1">
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="loopClosure_bowVarianceFromInliersCount">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="1">
                        <widget class="QLabel" name="label_149">
                         <property name="text">
@@ -7724,14 +7736,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="loopClosure_bowForce2D">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_262">
                         <property name="text">
                          <string>Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.</string>
@@ -7757,19 +7762,6 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_184">
-                        <property name="text">
-                         <string>Force 2D transform (3DoF: x,y and yaw).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="4" column="0">
                        <widget class="QSpinBox" name="loopClosure_bowIterations">
                         <property name="minimum">
@@ -7783,13 +7775,6 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </property>
                         <property name="value">
                          <number>100</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="6" column="0">
-                       <widget class="QCheckBox" name="loopClosure_bowVarianceFromInliersCount">
-                        <property name="text">
-                         <string/>
                         </property>
                        </widget>
                       </item>
@@ -7836,7 +7821,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </item>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_298">
                         <property name="text">
                          <string>Forward estimation only (A-&gt;B). If false, a transformation is also computed in backward direction (B-&gt;A), then the two resulting transforms are merged (middle interpolation between the transforms).</string>
@@ -7849,7 +7834,7 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="6" column="0">
                        <widget class="QCheckBox" name="loopClosure_forwardEst">
                         <property name="text">
                          <string/>
@@ -8745,14 +8730,14 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_48" columnstretch="0,1">
-                      <item row="8" column="0">
+                      <item row="7" column="0">
                        <widget class="QCheckBox" name="loopClosure_icpPointToPlane">
                         <property name="text">
                          <string/>
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="1">
+                      <item row="2" column="1">
                        <widget class="QLabel" name="label_139">
                         <property name="text">
                          <string>Downsampling step of the cloud. Set to 1 to disable. This is done before uniform sampling.</string>
@@ -8765,7 +8750,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_122">
                         <property name="text">
                          <string>Max distance for point correspondences.</string>
@@ -8791,7 +8776,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="6" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpRatio">
                         <property name="minimum">
                          <double>0.000000000000000</double>
@@ -8807,14 +8792,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
-                       <widget class="QCheckBox" name="loopClosure_icp2D">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_133">
                         <property name="text">
                          <string>Ratio of matching correspondences to accept the transform. If the maximum laser scans is set, this is the minimum ratio of correspondences on laser scan maximum size to accept the transform.</string>
@@ -8827,7 +8805,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_212">
                         <property name="text">
                          <string>Number of neighbors to compute normals for point to plane.</string>
@@ -8840,7 +8818,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="8" column="0">
                        <widget class="QSpinBox" name="loopClosure_icpPointToPlaneNormals">
                         <property name="minimum">
                          <number>1</number>
@@ -8853,7 +8831,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="3" column="1">
                        <widget class="QLabel" name="label_125">
                         <property name="text">
                          <string>Uniform sampling voxel size. Set to 0 to disable.</string>
@@ -8866,7 +8844,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
+                      <item row="2" column="0">
                        <widget class="QSpinBox" name="loopClosure_icpDownsamplingStep">
                         <property name="minimum">
                          <number>1</number>
@@ -8882,7 +8860,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
+                      <item row="3" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpVoxelSize">
                         <property name="suffix">
                          <string> m</string>
@@ -8901,7 +8879,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_124">
                         <property name="text">
                          <string>Max iterations.</string>
@@ -8914,7 +8892,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="5" column="0">
                        <widget class="QSpinBox" name="loopClosure_icpIterations">
                         <property name="minimum">
                          <number>1</number>
@@ -8924,19 +8902,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="value">
                          <number>10</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_150">
-                        <property name="text">
-                         <string>If 2D ICP is done (only 3Dof -&gt; [x, y, yaw]).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -8991,7 +8956,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="4" column="0">
                        <widget class="QDoubleSpinBox" name="loopClosure_icpMaxCorrespondenceDistance">
                         <property name="decimals">
                          <number>3</number>
@@ -9007,7 +8972,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_144">
                         <property name="text">
                          <string>Point to plane ICP. Only for ICP 3D.</string>

@@ -102,8 +102,8 @@ SensorData Camera::takeImage(CameraInfo * info)
 	}
 	if(info)
 	{
-		info->id_ = data.id();
-		info->timeCapture_ = captureTime;
+		info->id = data.id();
+		info->timeCapture = captureTime;
 	}
 	return data;
 }

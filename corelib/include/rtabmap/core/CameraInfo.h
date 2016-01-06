@@ -37,20 +37,22 @@ class CameraInfo
 
 public:
 	CameraInfo() :
-		cameraName_(""),
-		id_(0),
-		timeCapture_(0.0),
-		timeDisparity_(0.0),
-		timeMirroring_(0.0)
+		cameraName(""),
+		id(0),
+		timeCapture(0.0f),
+		timeDisparity(0.0f),
+		timeMirroring(0.0f),
+		timeScanFromDepth(0.0f)
 	{
 	}
 	virtual ~CameraInfo() {}
 
-	std::string cameraName_;
-	int id_;
-	float timeCapture_;
-	float timeDisparity_;
-	float timeMirroring_;
+	std::string cameraName;
+	int id;
+	float timeCapture;
+	float timeDisparity;
+	float timeMirroring;
+	float timeScanFromDepth;
 };
 
 } // namespace rtabmap

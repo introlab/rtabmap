@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/VisualWord.h"
 #include "rtabmap/core/Features2d.h"
 #include "rtabmap/core/RegistrationIcp.h"
+#include "rtabmap/core/Registration.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/util3d_features.h"
@@ -102,7 +103,7 @@ Memory::Memory(const ParametersMap & parameters) :
 {
 	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
-	_registrationVis = new RegistrationVis(parameters);
+	_registrationPipeline = Registration::create(parameters);
 	_registrationIcp = new RegistrationIcp(parameters);
 	this->parseParameters(parameters);
 }
@@ -365,9 +366,9 @@ Memory::~Memory()
 	{
 		delete _vwd;
 	}
-	if(_registrationVis)
+	if(_registrationPipeline)
 	{
-		delete _registrationVis;
+		delete _registrationPipeline;
 	}
 	if(_registrationIcp)
 	{
@@ -447,10 +448,27 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		_feature2D->parseParameters(parameters);
 	}
 
-	if(_registrationVis)
+	Registration::Type regStrategy = Registration::kTypeUndef;
+	if((iter=parameters.find(Parameters::kRegStrategy())) != parameters.end())
 	{
-		_registrationVis->parseParameters(parameters);
+		regStrategy = (Registration::Type)std::atoi((*iter).second.c_str());
 	}
+	if(regStrategy!=Registration::kTypeUndef)
+	{
+		UDEBUG("new registration strategy %d", int(regStrategy));
+		if(_registrationPipeline)
+		{
+			delete _registrationPipeline;
+			_registrationPipeline = 0;
+		}
+
+		_registrationPipeline = Registration::create(regStrategy, parameters_);
+	}
+	else if(_registrationPipeline)
+	{
+		_registrationPipeline->parseParameters(parameters);
+	}
+
 	if(_registrationIcp)
 	{
 		_registrationIcp->parseParameters(parameters);
@@ -2012,12 +2030,10 @@ void Memory::removeLink(int oldId, int newId)
 }
 
 // compute transform fromId -> toId
-Transform Memory::computeVisualTransform(
+Transform Memory::computeTransform(
 		int fromId,
 		int toId,
-		std::string * rejectedMsg,
-		int * inliers,
-		float * variance)
+		RegistrationInfo * info)
 {
 	const Signature * fromS = this->getSignature(fromId);
 	const Signature * toS = this->getSignature(toId);
@@ -2026,37 +2042,49 @@ Transform Memory::computeVisualTransform(
 
 	if(fromS && toS)
 	{
-		// compute transform fromId -> toId
-		std::vector<int> inliersV;
-		if(_reextractLoopClosureFeatures)
+		// make sure we have all data needed
+		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) ||
+		   _registrationPipeline->isScanRequired() ||
+		   _registrationPipeline->isUserDataRequired())
 		{
 			getNodeData(fromS->id(), true);
 			getNodeData(toS->id(), true);
+		}
 
+		// compute transform fromId -> toId
+		std::vector<int> inliersV;
+		if(_reextractLoopClosureFeatures || (fromS->getWords().size() && toS->getWords().size()))
+		{
 			Signature tmpFrom = *fromS;
 			Signature tmpTo = *toS;
 
-			tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
-			tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
-			tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
-			tmpTo.setWords3(std::multimap<int, cv::Point3f>());
-			transform = _registrationVis->computeTransformation(tmpFrom, tmpTo, Transform::getIdentity(), rejectedMsg, &inliersV, variance);
-		}
-		else if(fromS->getWords().size() && toS->getWords().size())
-		{
-			transform = _registrationVis->computeTransformation(*fromS, *toS, Transform::getIdentity(), rejectedMsg, &inliersV, variance);
-		}
-		if(inliers)
-		{
-			*inliers = (int)inliersV.size();
+			if(_reextractLoopClosureFeatures)
+			{
+				tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
+				tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
+				tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
+				tmpTo.setWords3(std::multimap<int, cv::Point3f>());
+			}
+
+			Transform guess = Transform::getIdentity();
+			if(!_registrationPipeline->isImageRequired())
+			{
+				// no visual in the pipeline, make visual registration for guess
+				RegistrationVis regVis(parameters_);
+				guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+			}
+			if(!guess.isNull())
+			{
+				transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+			}
 		}
 	}
 	else
 	{
 		std::string msg = uFormat("Did not find nodes %d and/or %d", fromId, toId);
-		if(rejectedMsg)
+		if(info)
 		{
-			*rejectedMsg = msg;
+			info->rejectedMsg_ = msg;
 		}
 		UWARN(msg.c_str());
 	}
@@ -2068,10 +2096,7 @@ Transform Memory::computeIcpTransform(
 		int fromId,
 		int toId,
 		Transform guess,
-		std::string * rejectedMsg,
-		int * inliers,
-		float * variance,
-		float * inliersRatio)
+		RegistrationInfo * info)
 {
 	Signature * fromS = this->_getSignature(fromId);
 	Signature * toS = this->_getSignature(toId);
@@ -2107,18 +2132,14 @@ Transform Memory::computeIcpTransform(
 
 		// compute transform fromId -> toId
 		std::vector<int> inliersV;
-		t = _registrationIcp->computeTransformation(fromS->sensorData(), toS->sensorData(), guess, rejectedMsg, &inliersV, variance, inliersRatio);
-		if(inliers)
-		{
-			*inliers = (int)inliersV.size();
-		}
+		t = _registrationIcp->computeTransformation(fromS->sensorData(), toS->sensorData(), guess, info);
 	}
 	else
 	{
 		std::string msg = uFormat("Did not find nodes %d and/or %d", fromId, toId);
-		if(rejectedMsg)
+		if(info)
 		{
-			*rejectedMsg = msg;
+			info->rejectedMsg_ = msg;
 		}
 		UWARN(msg.c_str());
 	}
@@ -2130,9 +2151,7 @@ Transform Memory::computeIcpTransformMulti(
 		int fromId,
 		int toId,
 		const std::map<int, Transform> & poses,
-		std::string * rejectedMsg,
-		int * inliers,
-		float * variance)
+		RegistrationInfo * info)
 {
 	UASSERT(uContains(poses, fromId) && uContains(_signatures, fromId));
 	UASSERT(uContains(poses, toId) && uContains(_signatures, toId));
@@ -2192,11 +2211,7 @@ Transform Memory::computeIcpTransformMulti(
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		std::vector<int> inliersV;
-		t = _registrationIcp->computeTransformation(fromS->sensorData(), assembledData, guess, rejectedMsg, &inliersV, variance);
-		if(inliers)
-		{
-			*inliers = (int)inliersV.size();
-		}
+		t = _registrationIcp->computeTransformation(fromS->sensorData(), assembledData, guess, info);
 	}
 
 	return t;

@@ -70,7 +70,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_minDepth(Parameters::defaultVisMinDepth()),
 		_maxDepth(Parameters::defaultVisMaxDepth()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
-		_force2D(Parameters::defaultVisForce2D()),
+		_force2D(Parameters::defaultRegForce3DoF()),
 		_holonomic(Parameters::defaultOdomHolonomic()),
 		_filteringStrategy(Parameters::defaultOdomFilteringStrategy()),
 		_particleSize(Parameters::defaultOdomParticleSize()),
@@ -100,7 +100,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisMinDepth(), _minDepth);
 	Parameters::parse(parameters, Parameters::kVisMaxDepth(), _maxDepth);
 	Parameters::parse(parameters, Parameters::kVisRoiRatios(), _roiRatios);
-	Parameters::parse(parameters, Parameters::kVisForce2D(), _force2D);
+	Parameters::parse(parameters, Parameters::kRegForce3DoF(), _force2D);
 	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
 	Parameters::parse(parameters, Parameters::kVisEstimationType(), _estimationType);

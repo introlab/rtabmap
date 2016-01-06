@@ -158,7 +158,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Odom/RefineIterations",         std::make_pair(true,  Parameters::kVisRefineIterations())));
 		removedParameters_.insert(std::make_pair("Odom/MaxDepth",                 std::make_pair(true,  Parameters::kVisMaxDepth())));
 		removedParameters_.insert(std::make_pair("Odom/RoiRatios",                std::make_pair(true,  Parameters::kVisRoiRatios())));
-		removedParameters_.insert(std::make_pair("Odom/Force2D",                  std::make_pair(true,  Parameters::kVisForce2D())));
+		removedParameters_.insert(std::make_pair("Odom/Force2D",                  std::make_pair(true,  Parameters::kRegForce3DoF())));
 		removedParameters_.insert(std::make_pair("Odom/VarianceFromInliersCount", std::make_pair(true,  Parameters::kRegVarianceFromInliersCount())));
 		removedParameters_.insert(std::make_pair("Odom/PnPReprojError",           std::make_pair(true,  Parameters::kVisPnPReprojError())));
 		removedParameters_.insert(std::make_pair("Odom/PnPFlags",                 std::make_pair(true,  Parameters::kVisPnPFlags())));
@@ -188,13 +188,13 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("LccBow/MinInliers",               std::make_pair(false,  Parameters::kVisMinInliers())));
 		removedParameters_.insert(std::make_pair("LccBow/Iterations",               std::make_pair(false,  Parameters::kVisIterations())));
 		removedParameters_.insert(std::make_pair("LccBow/RefineIterations",         std::make_pair(false,  Parameters::kVisRefineIterations())));
-		removedParameters_.insert(std::make_pair("LccBow/Force2D",                  std::make_pair(false,  Parameters::kVisForce2D())));
+		removedParameters_.insert(std::make_pair("LccBow/Force2D",                  std::make_pair(false,  Parameters::kRegForce3DoF())));
 		removedParameters_.insert(std::make_pair("LccBow/VarianceFromInliersCount", std::make_pair(false,  Parameters::kRegVarianceFromInliersCount())));
 		removedParameters_.insert(std::make_pair("LccBow/PnPReprojError",           std::make_pair(false,  Parameters::kVisPnPReprojError())));
 		removedParameters_.insert(std::make_pair("LccBow/PnPFlags",                 std::make_pair(false,  Parameters::kVisPnPFlags())));
 		removedParameters_.insert(std::make_pair("LccBow/EpipolarGeometryVar",      std::make_pair(true,   Parameters::kVisEpipolarGeometryVar())));
 
-		removedParameters_.insert(std::make_pair("LccIcp/Type",                         std::make_pair(true,  Parameters::kRGBDLoopClosureLinkRefining())));
+		removedParameters_.insert(std::make_pair("LccIcp/Type",                         std::make_pair(false,  Parameters::kRegStrategy())));
 
 		removedParameters_.insert(std::make_pair("LccIcp3/Decimation",                  std::make_pair(false, "")));
 		removedParameters_.insert(std::make_pair("LccIcp3/MaxDepth",                    std::make_pair(false, "")));

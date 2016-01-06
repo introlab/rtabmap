@@ -39,33 +39,25 @@ namespace rtabmap {
 class RTABMAP_EXP RegistrationIcp : public Registration
 {
 public:
-	RegistrationIcp(const ParametersMap & parameters = ParametersMap());
+	// take ownership of child
+	RegistrationIcp(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
 	virtual ~RegistrationIcp() {}
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
-	virtual Transform computeTransformationMod(
+protected:
+	virtual Transform computeTransformationImpl(
 			Signature & from,
 			Signature & to,
-			Transform guess = Transform::getIdentity(),
-			std::string * rejectedMsg = 0,
-			std::vector<int> * inliersOut = 0,
-			float * varianceOut = 0,
-			float * inliersRatioOut = 0) const;
-
-	Transform computeTransformation(
-			const SensorData & from,
-			const SensorData & to,
-			Transform guess = Transform::getIdentity(),
-			std::string * rejectedMsg = 0,
-			std::vector<int> * inliersOut = 0,
-			float * varianceOut = 0,
-			float * inliersRatioOut = 0) const;
+			Transform guess,
+			RegistrationInfo & info) const;
+	virtual bool isImageRequiredImpl() const {return false;}
+	virtual bool isScanRequiredImpl() const {return true;}
+	virtual bool isUserDataRequiredImpl() const {return false;}
 
 private:
 	float _maxTranslation;
 	float _maxRotation;
-	bool _icp2D;
 	float _voxelSize;
 	int _downsamplingStep;
 	float _maxCorrespondenceDistance;

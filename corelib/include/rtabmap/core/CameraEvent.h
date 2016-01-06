@@ -48,7 +48,7 @@ public:
 		UEvent(kCodeData),
 		data_(image, seq, stamp)
 	{
-		cameraInfo_.cameraName_ = cameraName;
+		cameraInfo_.cameraName = cameraName;
 	}
 
 	CameraEvent() :
@@ -66,7 +66,7 @@ public:
 		UEvent(kCodeData),
 		data_(data)
 	{
-		cameraInfo_.cameraName_ = cameraName;
+		cameraInfo_.cameraName = cameraName;
 	}
 	CameraEvent(const SensorData & data, const CameraInfo & cameraInfo) :
 		UEvent(kCodeData),
@@ -77,7 +77,7 @@ public:
 
 	// Image or descriptors
 	const SensorData & data() const {return data_;}
-	const std::string & cameraName() const {return cameraInfo_.cameraName_;}
+	const std::string & cameraName() const {return cameraInfo_.cameraName;}
 	const CameraInfo & info() const {return cameraInfo_;}
 
 	virtual ~CameraEvent() {}

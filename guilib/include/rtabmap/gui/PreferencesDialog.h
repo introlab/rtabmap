@@ -193,9 +193,11 @@ public:
 	bool getSourceDatabaseStampsUsed() const;//Database group
 	bool isSourceRGBDColorOnly() const;
 	bool isSourceStereoDepthGenerated() const;
+	bool isSourceScanFromDepth() const;
+	int getSourceScanFromDepthDecimation() const;
+	double getSourceScanFromDepthMaxDepth() const;
 	Transform getSourceLocalTransform() const;    //Openni group
-	Transform getStereoLaserLocalTransform() const; // stereo images
-	Transform getRGBDLaserLocalTransform() const; // rgbd images
+	Transform getLaserLocalTransform() const; // directory images
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
@@ -259,25 +261,19 @@ private slots:
 	void openDatabaseViewer();
 	void selectSourceDatabase();
 	void selectCalibrationPath();
-	void selectSourceRGBDImagesStamps();
+	void selectSourceImagesStamps();
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
-	void selectSourceRGBDImagesPathScans();
-	void selectSourceRGBDImagesPathGt();
-	void selectSourceStereoImagesStamps();
+	void selectSourceImagesPathScans();
+	void selectSourceImagesPathGt();
 	void selectSourceStereoImagesPathLeft();
 	void selectSourceStereoImagesPathRight();
-	void selectSourceStereoImagesPathScans();
-	void selectSourceStereoImagesPathGt();
 	void selectSourceImagesPath();
 	void selectSourceVideoPath();
 	void selectSourceStereoVideoPath();
 	void selectSourceOniPath();
 	void selectSourceOni2Path();
 	void updateSourceGrpVisibility();
-	void updateRGBDCameraGroupBoxVisibility();
-	void updateRGBCameraGroupBoxVisibility();
-	void updateStereoCameraGroupBoxVisibility();
 	void testOdometry();
 	void testCamera();
 

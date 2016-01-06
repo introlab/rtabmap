@@ -39,10 +39,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-RegistrationIcp::RegistrationIcp(const ParametersMap & parameters) :
+RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration * child) :
+	Registration(parameters, child),
 	_maxTranslation(Parameters::defaultIcpMaxTranslation()),
 	_maxRotation(Parameters::defaultIcpMaxRotation()),
-	_icp2D(Parameters::defaultIcp2D()),
 	_voxelSize(Parameters::defaultIcpVoxelSize()),
 	_downsamplingStep(Parameters::defaultIcpDownsamplingStep()),
 	_maxCorrespondenceDistance(Parameters::defaultIcpMaxCorrespondenceDistance()),
@@ -60,7 +60,6 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kIcpMaxTranslation(), _maxTranslation);
 	Parameters::parse(parameters, Parameters::kIcpMaxRotation(), _maxRotation);
-	Parameters::parse(parameters, Parameters::kIcp2D(), _icp2D);
 	Parameters::parse(parameters, Parameters::kIcpVoxelSize(), _voxelSize);
 	Parameters::parse(parameters, Parameters::kIcpDownsamplingStep(), _downsamplingStep);
 	Parameters::parse(parameters, Parameters::kIcpMaxCorrespondenceDistance(), _maxCorrespondenceDistance);
@@ -77,42 +76,18 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_pointToPlaneNormalNeighbors > 0, uFormat("value=%d", _pointToPlaneNormalNeighbors).c_str());
 }
 
-Transform RegistrationIcp::computeTransformationMod(
+Transform RegistrationIcp::computeTransformationImpl(
 			Signature & fromSignature,
 			Signature & toSignature,
 			Transform guess,
-			std::string * rejectedMsg,
-			std::vector<int> * inliersOut,
-			float * varianceOut,
-			float * inliersRatioOut) const
-{
-	return computeTransformation(
-			fromSignature.sensorData(),
-			toSignature.sensorData(),
-			guess,
-			rejectedMsg,
-			inliersOut,
-			varianceOut,
-			inliersRatioOut);
-}
-
-Transform RegistrationIcp::computeTransformation(
-			const SensorData & dataFrom,
-			const SensorData & dataTo,
-			Transform guess,
-			std::string * rejectedMsg,
-			std::vector<int> * inliersOut,
-			float * varianceOut,
-			float * inliersRatioOut) const
+			RegistrationInfo & info) const
 {
 	UDEBUG("Guess transform = %s", guess.prettyPrint().c_str());
 	UDEBUG("Voxel size=%f", _voxelSize);
-	UDEBUG("2D=%d", _icp2D?1:0);
 	UDEBUG("PointToPlane=%d", _pointToPlane?1:0);
 	UDEBUG("Normal neighborhood=%d", _pointToPlaneNormalNeighbors);
 	UDEBUG("Max corrrespondence distance=%f", _maxCorrespondenceDistance);
 	UDEBUG("Max Iterations=%d", _maxIterations);
-	UDEBUG("Variance from inliers count=%d", _varianceFromInliersCount?1:0);
 	UDEBUG("Correspondence Ratio=%f", _correspondenceRatio);
 	UDEBUG("Max translation=%f", _maxTranslation);
 	UDEBUG("Max rotation=%f", _maxRotation);
@@ -120,6 +95,9 @@ Transform RegistrationIcp::computeTransformation(
 
 	std::string msg;
 	Transform transform;
+
+	SensorData & dataFrom = fromSignature.sensorData();
+	SensorData & dataTo = toSignature.sensorData();
 
 	// ICP with guess transform
 	if(!dataFrom.laserScanRaw().empty() && !dataTo.laserScanRaw().empty())
@@ -157,7 +135,7 @@ Transform RegistrationIcp::computeTransformation(
 			double variance = 1.0;
 			bool correspondencesComputed = false;
 			pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
-			if(!_icp2D) // 3D ICP
+			if(!force3DoF()) // 3D ICP
 			{
 				if(_pointToPlane)
 				{
@@ -287,23 +265,9 @@ Transform RegistrationIcp::computeTransformation(
 							maxLaserScans>0?maxLaserScans:dataTo.laserScanMaxPts()?dataTo.laserScanMaxPts():(int)(toCloud->size()>fromCloud->size()?toCloud->size():fromCloud->size()),
 							correspondencesRatio*100.0f);
 
-					if(_varianceFromInliersCount)
-					{
-						variance = correspondencesRatio > 0?1.0/double(correspondencesRatio):1.0;
-					}
-
-					if(varianceOut)
-					{
-						*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
-					}
-					if(inliersOut)
-					{
-						inliersOut->push_back(correspondences);
-					}
-					if(inliersRatioOut)
-					{
-						*inliersRatioOut = correspondencesRatio;
-					}
+					info.variance = variance>0.0f?variance:0.0001; // epsilon if exact transform
+					info.inliers = correspondences;
+					info.inliersRatio = correspondencesRatio;
 
 					if(correspondencesRatio < _correspondenceRatio)
 					{
@@ -354,10 +318,7 @@ Transform RegistrationIcp::computeTransformation(
 	}
 
 
-	if(rejectedMsg)
-	{
-		*rejectedMsg = msg;
-	}
+	info.rejectedMsg_ = msg;
 
 	UDEBUG("New transform = %s", transform.prettyPrint().c_str());
 	return transform;

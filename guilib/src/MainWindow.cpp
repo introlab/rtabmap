@@ -735,9 +735,10 @@ void MainWindow::handleEvent(UEvent* anEvent)
 
 void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 {
-	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", (float)info.id_, (float)info.timeCapture_*1000.0);
-	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id_, (float)info.timeDisparity_*1000.0);
-	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id_, (float)info.timeMirroring_*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", (float)info.id, (float)info.timeCapture*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id, (float)info.timeDisparity*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id, (float)info.timeMirroring*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", (float)info.id, (float)info.timeScanFromDepth*1000.0);
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
@@ -3014,6 +3015,7 @@ void MainWindow::startDetection()
 		_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 		_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 		_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
+		_camera->setScanFromDepth(_preferencesDialog->isSourceScanFromDepth(), _preferencesDialog->getSourceScanFromDepthDecimation(), _preferencesDialog->getSourceScanFromDepthMaxDepth());
 
 		//Create odometry thread if rgbd slam
 		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
@@ -3527,18 +3529,16 @@ void MainWindow::postProcessing()
 						}
 
 						Transform transform;
-						std::string rejectedMsg;
-						float variance = -1.0f;
+						RegistrationInfo info;
 						RegistrationVis registration(parameters);
-						std::vector<int> inliers;
-						transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &rejectedMsg, &inliers, &variance);
+						transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &info);
 
 						if(!transform.isNull())
 						{
 							UINFO("Added new loop closure between %d and %d.", from, to);
 							addedLinks.insert(from);
 							addedLinks.insert(to);
-							_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, variance, variance)));
+							_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.variance, info.variance)));
 							++loopClosuresAdded;
 							_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 						}
@@ -3618,18 +3618,17 @@ void MainWindow::postProcessing()
 					if(!signatureFrom.sensorData().laserScanRaw().empty() &&
 					   !signatureTo.sensorData().laserScanRaw().empty())
 					{
-						std::string rejectedMsg;
-						float variance = -1.0f;
-						Transform transform = regIcp.computeTransformation(signatureFrom.sensorData(), signatureTo.sensorData(), iter->second.transform(), &rejectedMsg, 0, &variance);
+						RegistrationInfo info;
+						Transform transform = regIcp.computeTransformation(signatureFrom.sensorData(), signatureTo.sensorData(), iter->second.transform(), &info);
 
 						if(!transform.isNull())
 						{
-							Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), variance, variance);
+							Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), info.variance, info.variance);
 							iter->second = newLink;
 						}
 						else
 						{
-							QString str = tr("Cannot refine link %1->%2 (%3").arg(from).arg(to).arg(rejectedMsg.c_str());
+							QString str = tr("Cannot refine link %1->%2 (%3").arg(from).arg(to).arg(info.rejectedMsg_.c_str());
 							_initProgressDialog->appendText(str, Qt::darkYellow);
 							UWARN("%s", str.toStdString().c_str());
 							warn = true;

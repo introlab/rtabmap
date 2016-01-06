@@ -45,6 +45,9 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_mirroring(false),
 		_colorOnly(false),
 		_stereoToDepth(false),
+		_scanFromDepth(false),
+		_scanDecimation(4),
+		_scanMaxDepth(4.0f),
 		_stereoDense(new StereoBM(parameters))
 {
 	UASSERT(_camera != 0);
@@ -103,7 +106,7 @@ void CameraThread::mainLoop()
 				cv::flip(data.depthRaw(), tmpDepth, 1);
 				data.setDepthOrRightRaw(tmpDepth);
 			}
-			info.timeMirroring_ = timer.ticks();
+			info.timeMirroring = timer.ticks();
 		}
 		if(_stereoToDepth && data.stereoCameraModel().isValid() && !data.rightRaw().empty())
 		{
@@ -115,10 +118,31 @@ void CameraThread::mainLoop()
 			data.setCameraModel(data.stereoCameraModel().left());
 			data.setDepthOrRightRaw(depth);
 			data.setStereoCameraModel(StereoCameraModel());
-			info.timeDisparity_ = timer.ticks();
-			UINFO("Computing disparity = %f s", info.timeDisparity_);
+			info.timeDisparity = timer.ticks();
+			UINFO("Computing disparity = %f s", info.timeDisparity);
 		}
-		info.cameraName_ = _camera->getSerial();
+		if(_scanFromDepth &&
+			data.cameraModels().size() &&
+			data.cameraModels().at(0).isValid() &&
+			!data.depthRaw().empty())
+		{
+			if(data.laserScanRaw().empty())
+			{
+				UASSERT(_scanDecimation >= 1);
+				UTimer timer;
+				cv::Mat scan = util3d::laserScanFromPointCloud(*util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth));
+				data.setLaserScanRaw(scan, (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation), _scanMaxDepth);
+				info.timeScanFromDepth = timer.ticks();
+				UINFO("Computing scan from depth = %f s", info.timeScanFromDepth);
+			}
+			else
+			{
+				UWARN("Option to create laser scan from depth image is enabled, but "
+					  "there is already a laser scan in the captured sensor data. Scan from "
+					  "depth will not be created.");
+			}
+		}
+		info.cameraName = _camera->getSerial();
 		this->post(new CameraEvent(data, info));
 	}
 	else if(!this->isKilled())

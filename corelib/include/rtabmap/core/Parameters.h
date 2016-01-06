@@ -311,7 +311,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
 	RTABMAP_PARAM(RGBD, ScanMatchingIdsSavedInLinks, bool, true,      "Save scan matching IDs in link's user data.");
 	RTABMAP_PARAM(RGBD, NeighborLinkRefining,          bool, false,  "When a new node is added to the graph, the transformation of its neighbor link to the previous node is refined using ICP (laser scans required!).");
-	RTABMAP_PARAM(RGBD, LoopClosureLinkRefining,      bool, false, 	"If the estimated loop closure transformation is refined using ICP (laser scans required!).");
 	RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures,  bool, true,    "Extract features even if there are some already in the nodes.");
 
 	// Local/Proximity loop closure detection
@@ -361,6 +360,8 @@ class RTABMAP_EXP Parameters
 
 	// Common registration parameters
 	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
+	RTABMAP_PARAM(Reg, Strategy,                 int, 0,        "0=Vis, 1=Icp, 2=VisIcp");
+	RTABMAP_PARAM(Reg, Force3DoF,                bool, false,   "Force 3 degrees-of-freedom transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.");
 	
 	// Visual registration parameters
 	RTABMAP_PARAM(Vis, EstimationType,           int, 0,    	"Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
@@ -373,7 +374,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
 	RTABMAP_PARAM(Vis, MinInliers,               int, 10, 		"Minimum feature correspondences to compute/accept the transformation.");
 	RTABMAP_PARAM(Vis, Iterations,               int, 100, 		"Maximum iterations to compute the transform.");
-	RTABMAP_PARAM(Vis, Force2D,                  bool, false,   "Force 2D transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.");
 	RTABMAP_PARAM(Vis, FeatureType,              int, 6,        "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,     "0 no limits.");
 	RTABMAP_PARAM(Vis, MaxDepth, 	             float, 0.0,    "Max depth of the features (0 means no limit).");
@@ -394,7 +394,6 @@ class RTABMAP_EXP Parameters
 	// ICP registration parameters
 	RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");
 	RTABMAP_PARAM(Icp, MaxRotation,               float, 0.78,  "Maximum ICP rotation correction accepted (rad).");
-	RTABMAP_PARAM(Icp, 2D,                        bool, true, 	"If 2D ICP is done (only 3Dof -> x,y,yaw).");
 	RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.025, "Uniform sampling voxel size (0=disabled).");
 	RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1, 	    "Downsampling step size (1=no sampling). This is done before uniform sampling.");
 	RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");

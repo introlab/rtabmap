@@ -50,7 +50,7 @@ public:
 
 public:
 	static Odometry * create(const ParametersMap & parameters);
-	static Odometry * create(Type & type, const ParametersMap & parameters);
+	static Odometry * create(Type & type, const ParametersMap & parameters = ParametersMap());
 
 public:
 	virtual ~Odometry();

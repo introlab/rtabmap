@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/BayesFilter.h"
 #include "rtabmap/core/Compression.h"
+#include "rtabmap/core/RegistrationInfo.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UFile.h>
@@ -89,7 +90,6 @@ Rtabmap::Rtabmap() :
 	_rgbdLinearUpdate(Parameters::defaultRGBDLinearUpdate()),
 	_rgbdAngularUpdate(Parameters::defaultRGBDAngularUpdate()),
 	_newMapOdomChangeDistance(Parameters::defaultRGBDNewMapOdomChangeDistance()),
-	_loopClosureRefining(Parameters::defaultRGBDLoopClosureLinkRefining()),
 	_neighborLinkRefining(Parameters::defaultRGBDNeighborLinkRefining()),
 	_proximityByTime(Parameters::defaultRGBDProximityByTime()),
 	_proximityBySpace(Parameters::defaultRGBDProximityBySpace()),
@@ -411,7 +411,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanStuckIterations(), _pathStuckIterations);
 	Parameters::parse(parameters, Parameters::kRGBDPlanLinearVelocity(), _pathLinearVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
-	Parameters::parse(parameters, Parameters::kRGBDLoopClosureLinkRefining(), _loopClosureRefining);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -1009,21 +1008,18 @@ bool Rtabmap::process(
 				{
 					UINFO("Odometry correction by scan matching");
 					Transform guess = signature->getLinks().begin()->second.transform().inverse();
-					float variance = 1.0f;
-					int inliers = 0;
-					float inliersRatio = 0;
-					std::string rejectedMsg;
-					Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &rejectedMsg, &inliers, &variance, &inliersRatio);
+					RegistrationInfo info;
+					Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &info);
 					if(!t.isNull())
 					{
 						UINFO("Scan matching: update neighbor link (%d->%d, variance=%f) from %s to %s",
 								signature->id(),
 								oldId,
-								variance,
+								info.variance,
 								signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
 								t.prettyPrint().c_str());
-						UASSERT(variance > 0.0);
-						_memory->updateLink(oldId, signature->id(), t, variance, variance);
+						UASSERT(info.variance > 0.0);
+						_memory->updateLink(oldId, signature->id(), t, info.variance, info.variance);
 
 						if(_optimizeFromGraphEnd)
 						{
@@ -1043,17 +1039,17 @@ bool Rtabmap::process(
 					}
 					else
 					{
-						UINFO("Scan matching rejected: %s", rejectedMsg.c_str());
-						if(variance > 0)
+						UINFO("Scan matching rejected: %s", info.rejectedMsg_.c_str());
+						if(info.variance > 0)
 						{
-							double sqrtVar = sqrt(variance);
+							double sqrtVar = sqrt(info.variance);
 							_memory->updateLink(signature->id(), oldId, guess, sqrtVar, sqrtVar);
 						}
 					}
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), inliers);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), inliersRatio);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), variance);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), info.inliersRatio);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), info.variance);
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
 				}
 			}
@@ -1161,13 +1157,9 @@ bool Rtabmap::process(
 				{
 					std::string rejectedMsg;
 					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);
-					float variance = 1.0f;
-					int inliers = -1;
-					Transform transform = _memory->computeVisualTransform(signature->id(), *iter, &rejectedMsg, &inliers, &variance);
-					if(!transform.isNull() && _loopClosureRefining)
-					{
-						transform = _memory->computeIcpTransform(signature->id(), *iter, transform, &rejectedMsg, 0, &variance);
-					}
+					RegistrationInfo info;
+					Transform transform = _memory->computeTransform(signature->id(), *iter, &info);
+
 					if(!transform.isNull())
 					{
 						UDEBUG("Add local loop closure in TIME (%d->%d) %s",
@@ -1175,8 +1167,8 @@ bool Rtabmap::process(
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						UASSERT(variance > 0.0);
-						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, variance, variance)))
+						UASSERT(info.variance > 0.0);
+						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, info.variance, info.variance)))
 						{
 							++localLoopClosuresInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
@@ -1718,19 +1710,14 @@ bool Rtabmap::process(
 		float variance = 1.0f;
 		if(_rgbdSlamMode)
 		{
-			std::string rejectedMsg;
-
-			transform = _memory->computeVisualTransform(signature->id(), _loopClosureHypothesis.first, &rejectedMsg, &loopClosureVisualInliers, &variance);
-
-			if(!transform.isNull() && _loopClosureRefining)
-			{
-				transform = _memory->computeIcpTransform(signature->id(), _loopClosureHypothesis.first, transform, &rejectedMsg, 0, &variance);
-			}
+			RegistrationInfo info;
+			transform = _memory->computeTransform(signature->id(), _loopClosureHypothesis.first, &info);
+			loopClosureVisualInliers = info.inliers;
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
 				UWARN("Rejected loop closure %d -> %d: %s",
-						_loopClosureHypothesis.first, signature->id(), rejectedMsg.c_str());
+						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg_.c_str());
 			}
 		}
 		if(!rejectedHypothesis)
@@ -1822,12 +1809,8 @@ bool Rtabmap::process(
 						(_proximityFilteringRadius <= 0.0f ||
 						 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 					{
-						float variance = 1.0f;
-						Transform transform = _memory->computeVisualTransform(signature->id(), nearestId, 0, 0, &variance);
-						if(!transform.isNull() && _loopClosureRefining)
-						{
-							transform  = _memory->computeIcpTransform(signature->id(), nearestId, transform, 0, 0, &variance);
-						}
+						RegistrationInfo info;
+						Transform transform = _memory->computeTransform(signature->id(), nearestId, &info);
 						if(!transform.isNull())
 						{
 							if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
@@ -1836,8 +1819,8 @@ bool Rtabmap::process(
 										signature->id(),
 										nearestId,
 										transform.prettyPrint().c_str());
-								UASSERT(variance > 0.0);
-								_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, variance, variance));
+								UASSERT(info.variance > 0.0);
+								_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, info.variance, info.variance));
 								loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 								if(_loopClosureHypothesis.first == 0)
@@ -1927,8 +1910,8 @@ bool Rtabmap::process(
 								//The nearest will be the reference for a loop closure transform
 								if(signature->getLinks().find(nearestId) == signature->getLinks().end())
 								{
-									float variance = 1.0f;
-									Transform transform = _memory->computeIcpTransformMulti(signature->id(), nearestId, path, 0, 0, &variance);
+									RegistrationInfo info;
+									Transform transform = _memory->computeIcpTransformMulti(signature->id(), nearestId, path, &info);
 									if(!transform.isNull())
 									{
 										if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
@@ -1960,8 +1943,8 @@ bool Rtabmap::process(
 											}
 
 											// set Identify covariance for laser scan matching only
-											UASSERT(variance>0.0);
-											double sqrtVar = sqrt(variance);
+											UASSERT(info.variance>0.0);
+											double sqrtVar = sqrt(info.variance);
 											_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, sqrtVar, sqrtVar, scanMatchingIds));
 											loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 

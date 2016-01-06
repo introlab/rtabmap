@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/OdometryF2F.h"
 #include "rtabmap/core/OdometryInfo.h"
+#include "rtabmap/core/Registration.h"
 #include "rtabmap/core/EpipolarGeometry.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -37,15 +38,16 @@ OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	Odometry(parameters),
 	keyFrameThr_(Parameters::defaultOdomFlowKeyFrameThr()),
 	guessFromMotion_(Parameters::defaultOdomFlowGuessMotion()),
-	registration_(parameters),
 	motionSinceLastKeyFrame_(Transform::getIdentity())
 {
+	registrationPipeline_ = Registration::create(parameters);
 	Parameters::parse(parameters, Parameters::kOdomFlowKeyFrameThr(), keyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomFlowGuessMotion(), guessFromMotion_);
 }
 
 OdometryF2F::~OdometryF2F()
 {
+	delete registrationPipeline_;
 }
 
 void OdometryF2F::reset(const Transform & initialPose)
@@ -74,20 +76,16 @@ Transform OdometryF2F::computeTransform(
 		return output;
 	}
 
-	float variance = 0;
-	std::vector<int> inliers;
+	RegistrationInfo regInfo;
 
 	Signature newFrame(data);
-	if(refFrame_.getWords().size())
+	if(refFrame_.sensorData().isValid())
 	{
-		std::string rejectedMsg;
-		output = registration_.computeTransformationMod(
+		output = registrationPipeline_->computeTransformationMod(
 				refFrame_,
 				newFrame,
 				guessFromMotion_?motionSinceLastKeyFrame_*this->previousTransform():Transform(),
-				&rejectedMsg,
-				&inliers,
-				&variance);
+				&regInfo);
 
 		if(info && this->isInfoDataFilled())
 		{
@@ -106,11 +104,11 @@ Transform OdometryF2F::computeTransform(
 				idToIndex.insert(std::make_pair(iter->first, i));
 				++i;
 			}
-			info->cornerInliers.resize(inliers.size(), 1);
+			info->cornerInliers.resize(regInfo.inliersIndexes_.size(), 1);
 			i=0;
-			for(; i<(int)inliers.size(); ++i)
+			for(; i<(int)regInfo.inliersIndexes_.size(); ++i)
 			{
-				info->cornerInliers[i] = idToIndex.at(inliers[i]);
+				info->cornerInliers[i] = idToIndex.at(regInfo.inliersIndexes_[i]);
 			}
 
 		}
@@ -127,17 +125,24 @@ Transform OdometryF2F::computeTransform(
 		motionSinceLastKeyFrame_ *= output;
 
 		// new key-frame?
-		if(keyFrameThr_ <= 0 || (int)inliers.size() <= keyFrameThr_)
+		if(keyFrameThr_ <= 0 || (int)regInfo.inliers <= keyFrameThr_)
 		{
 			UDEBUG("Update key frame");
-			// only generate features for the first frame
 			Signature newRefFrame(data);
-			Signature dummy;
-			registration_.computeTransformationMod(
-					newRefFrame,
-					dummy);
 
-			if((int)newRefFrame.getWords().size() >= this->getMinInliers())
+			int features = -1;
+			if(registrationPipeline_->isImageRequired())
+			{
+				// this will generate features only for the first frame
+				Signature dummy;
+				registrationPipeline_->computeTransformationMod(
+						newRefFrame,
+						dummy);
+				features = (int)newRefFrame.getWords().size();
+			}
+
+			if((features < 0 || features >= this->getMinInliers()) &&
+			   (!registrationPipeline_->isScanRequired() || newRefFrame.sensorData().laserScanRaw().cols))
 			{
 				refFrame_ = newRefFrame;
 
@@ -146,23 +151,33 @@ Transform OdometryF2F::computeTransform(
 			}
 			else
 			{
-				UWARN("Too low 2D corners (%d), keeping last key frame...",
-						(int)newRefFrame.getWords().size());
+				if(features >= 0 && features < this->getMinInliers())
+				{
+					UWARN("Too low 2D features (%d), keeping last key frame...", features);
+				}
+				if(registrationPipeline_->isScanRequired() && newRefFrame.sensorData().laserScanRaw().cols==0)
+				{
+					UWARN("Too low scan points (%d), keeping last key frame...", newRefFrame.sensorData().laserScanRaw().cols);
+				}
 			}
 		}
+	}
+	else if(!regInfo.rejectedMsg_.empty())
+	{
+		UWARN("Registration failed: \"%s\"", regInfo.rejectedMsg_.c_str());
 	}
 
 	if(info)
 	{
 		info->type = 1;
-		info->variance = variance;
-		info->inliers = (int)inliers.size();
+		info->variance = regInfo.variance;
+		info->inliers = regInfo.inliers;
 	}
 
 	UINFO("Odom update time = %fs lost=%s inliers=%d, ref frame corners=%d, transform accepted=%s",
 			timer.elapsed(),
 			output.isNull()?"true":"false",
-			(int)inliers.size(),
+			(int)regInfo.inliers,
 			(int)refFrame_.getWords().size(),
 			!output.isNull()?"true":"false");
 

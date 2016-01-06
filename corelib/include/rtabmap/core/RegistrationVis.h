@@ -39,31 +39,32 @@ namespace rtabmap {
 class RTABMAP_EXP RegistrationVis : public Registration
 {
 public:
-	RegistrationVis(const ParametersMap & parameters = ParametersMap());
+	// take ownership of child
+	RegistrationVis(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
 	virtual ~RegistrationVis();
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
-	virtual Transform computeTransformationMod(
-			Signature & from,
-			Signature & to,
-			Transform guess = Transform::getIdentity(), // guess is ignored for RegistrationVis
-			std::string * rejectedMsg = 0,
-			std::vector<int> * inliersOut = 0,
-			float * varianceOut = 0,
-			float * inliersRatioOut = 0) const;
-
 	float getBowInlierDistance() const {return _inlierDistance;}
 	int getBowIterations() const {return _iterations;}
 	int getBowMinInliers() const {return _minInliers;}
-	bool getBowForce2D() const {return _force2D;}
+
+protected:
+	virtual Transform computeTransformationImpl(
+			Signature & from,
+			Signature & to,
+			Transform guess,
+			RegistrationInfo & info) const;
+
+	virtual bool isImageRequiredImpl() const {return true;}
+	virtual bool isScanRequiredImpl() const {return false;}
+	virtual bool isUserDataRequiredImpl() const {return false;}
 
 private:
 	int _minInliers;
 	float _inlierDistance;
 	int _iterations;
 	int _refineIterations;
-	bool _force2D;
 	float _epipolarGeometryVar;
 	int _estimationType;
 	bool _forwardEstimateOnly;

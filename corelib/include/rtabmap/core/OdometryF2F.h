@@ -29,9 +29,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYF2F_H_
 
 #include <rtabmap/core/Odometry.h>
-#include <rtabmap/core/RegistrationVis.h>
+#include <rtabmap/core/Signature.h>
 
 namespace rtabmap {
+
+class Registration;
 
 class RTABMAP_EXP OdometryF2F : public Odometry
 {
@@ -51,7 +53,7 @@ private:
 	int keyFrameThr_;
 	bool guessFromMotion_;
 
-	RegistrationVis registration_;
+	Registration * registrationPipeline_;
 	Signature refFrame_;
 	Transform motionSinceLastKeyFrame_;
 };

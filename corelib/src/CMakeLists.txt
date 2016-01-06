@@ -50,6 +50,7 @@ SET(SRC_FILES
 	OptimizerGTSAM.cpp
 	OptimizerCVSBA.cpp
 	
+	Registration.cpp
 	RegistrationIcp.cpp
 	RegistrationVis.cpp
 	
@@ -57,7 +58,6 @@ SET(SRC_FILES
 	OdometryThread.cpp
 	OdometryLocalMap.cpp
 	OdometryMono.cpp
-	OdometryICP.cpp
 	OdometryF2F.cpp
 	
 	Stereo.cpp

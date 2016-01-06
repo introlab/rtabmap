@@ -41,12 +41,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-RegistrationVis::RegistrationVis(const ParametersMap & parameters) :
+RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration * child) :
+		Registration(parameters, child),
 		_minInliers(Parameters::defaultVisMinInliers()),
 		_inlierDistance(Parameters::defaultVisInlierDistance()),
 		_iterations(Parameters::defaultVisIterations()),
 		_refineIterations(Parameters::defaultVisRefineIterations()),
-		_force2D(Parameters::defaultVisForce2D()),
 		_epipolarGeometryVar(Parameters::defaultVisEpipolarGeometryVar()),
 		_estimationType(Parameters::defaultVisEstimationType()),
 		_forwardEstimateOnly(Parameters::defaultVisForwardEstOnly()),
@@ -82,7 +82,6 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisInlierDistance(), _inlierDistance);
 	Parameters::parse(parameters, Parameters::kVisIterations(), _iterations);
 	Parameters::parse(parameters, Parameters::kVisRefineIterations(), _refineIterations);
-	Parameters::parse(parameters, Parameters::kVisForce2D(), _force2D);
 	Parameters::parse(parameters, Parameters::kVisEstimationType(), _estimationType);
 	Parameters::parse(parameters, Parameters::kVisEpipolarGeometryVar(), _epipolarGeometryVar);
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _PnPReprojError);
@@ -154,19 +153,15 @@ RegistrationVis::~RegistrationVis()
 {
 }
 
-Transform RegistrationVis::computeTransformationMod(
+Transform RegistrationVis::computeTransformationImpl(
 			Signature & fromSignature,
 			Signature & toSignature,
 			Transform guess, // guess is only used by Optical Flow correspondences (flowMaxLevel is set to 0 when guess is used)
-			std::string * rejectedMsg,
-			std::vector<int> * inliersOut,
-			float * varianceOut,
-			float * inliersRatioOut) const
+			RegistrationInfo & info) const
 {
 	UDEBUG("%s=%d", Parameters::kVisMinInliers().c_str(), _minInliers);
 	UDEBUG("%s=%f", Parameters::kVisInlierDistance().c_str(), _inlierDistance);
 	UDEBUG("%s=%d", Parameters::kVisIterations().c_str(), _iterations);
-	UDEBUG("%s=%d", Parameters::kVisForce2D().c_str(), _force2D?1:0);
 	UDEBUG("%s=%d", Parameters::kVisEstimationType().c_str(), _estimationType);
 	UDEBUG("%s=%d", Parameters::kVisForwardEstOnly().c_str(), _forwardEstimateOnly);
 	UDEBUG("%s=%f", Parameters::kVisEpipolarGeometryVar().c_str(), _epipolarGeometryVar);
@@ -337,7 +332,7 @@ Transform RegistrationVis::computeTransformationMod(
 				kptsFrom3DKept.resize(ki);
 
 				std::vector<cv::Point3f> kptsTo3D;
-				if(_estimationType == 0 || (_estimationType == 1 && !_varianceFromInliersCount) || !_forwardEstimateOnly)
+				if(_estimationType == 0 || (_estimationType == 1 && !varianceFromInliersCount()) || !_forwardEstimateOnly)
 				{
 					kptsTo3D = detector->generateKeypoints3D(toSignature.sensorData(), kptsTo);
 				}
@@ -433,7 +428,7 @@ Transform RegistrationVis::computeTransformationMod(
 			{
 				kptsFrom3D = uValues(fromSignature.getWords3());
 			}
-			if((_estimationType == 0 || (_estimationType == 1 && !_varianceFromInliersCount) || !_forwardEstimateOnly) &&
+			if((_estimationType == 0 || (_estimationType == 1 && !varianceFromInliersCount()) || !_forwardEstimateOnly) &&
 			   toSignature.getWords3().empty() &&
 			   !toSignature.sensorData().imageRaw().empty())
 			{
@@ -503,6 +498,7 @@ Transform RegistrationVis::computeTransformationMod(
 	/////////////////////
 	Transform transform;
 	float variance = 1.0f;
+	int inliersCount = 0;
 	if(toSignature.getWords().size() || !toSignature.sensorData().imageRaw().empty())
 	{
 		Transform transforms[2];
@@ -629,7 +625,7 @@ Transform RegistrationVis::computeTransformationMod(
 								_PnPRefineIterations,
 								dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
 								uMultimapToMapUnique(signatureA->getWords3()),
-								_varianceFromInliersCount?0:&variances[dir],
+								varianceFromInliersCount()?0:&variances[dir],
 								0,
 								&inliersV);
 						inliers[dir] = inliersV;
@@ -696,68 +692,27 @@ Transform RegistrationVis::computeTransformationMod(
 			if(transforms[0].isNull())
 			{
 				transform = transforms[1];
-				if(inliersOut)
-				{
-					*inliersOut = inliers[1];
-				}
+				info.inliersIndexes_ = inliers[1];
 
 				variance = variances[1];
-				if(_varianceFromInliersCount)
-				{
-					variance = inliers[1].size() > 0?1.0f/float(inliers[1].size()):1.0f;
-				}
+				inliersCount = (int)inliers[1].size();
 			}
 			else
 			{
-				/*if(!guess.isNull())
-				{
-					// use the transform nearest of the guess
-					int index = 0;
-					if(transforms[0].getDistance(guess) > transforms[1].getDistance(guess))
-					{
-						index = 1;
-					}
-					transform = transforms[index];
-					if(inliersOut)
-					{
-						*inliersOut = inliers[index];
-					}
+				transform = transforms[0].interpolate(0.5f, transforms[1]);
+				info.inliersIndexes_ = inliers[0];
 
-					variance = variances[index];
-					if(_varianceFromInliersCount)
-					{
-						variance = inliers[index].size() > 0?1.0f/float(inliers[index].size()):1.0f;
-					}
-				}
-				else*/
-				{
-					transform = transforms[0].interpolate(0.5f, transforms[1]);
-					if(inliersOut)
-					{
-						*inliersOut = inliers[0];
-					}
-					variance = (variances[0]+variances[1])/2.0f;
-					if(_varianceFromInliersCount)
-					{
-						int avg = (inliers[0].size()+inliers[1].size())/2;
-						variance = avg>0?1.0f/float(avg):1.0f;
-					}
-				}
+				variance = (variances[0]+variances[1])/2.0f;
+				inliersCount = (int)(inliers[0].size()+inliers[1].size())/2;
 			}
 		}
 		else
 		{
 			transform = transforms[0];
-			if(inliersOut)
-			{
-				*inliersOut = inliers[0];
-			}
+			info.inliersIndexes_ = inliers[0];
 
 			variance = variances[0];
-			if(_varianceFromInliersCount)
-			{
-				variance = inliers[0].size() > 0?1.0f/float(inliers[0].size()):1.0f;
-			}
+			inliersCount = (int)inliers[0].size();
 		}
 	}
 
@@ -776,21 +731,12 @@ Transform RegistrationVis::computeTransformationMod(
 					roll, pitch, yaw);
 			UWARN(msg.c_str());
 		}
-		else if(_force2D)
-		{
-			UDEBUG("Forcing 2D...");
-			transform = Transform(x,y,0, 0, 0, yaw);
-		}
 	}
 
-	if(rejectedMsg)
-	{
-		*rejectedMsg = msg;
-	}
-	if(varianceOut)
-	{
-		*varianceOut = variance>0.0f?variance:0.0001; // epsilon if exact transform
-	}
+	info.inliers = inliersCount;
+	info.rejectedMsg_ = msg;
+	info.variance = variance>0.0f?variance:0.0001f; // epsilon if exact transform
+
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());
 	return transform;
 }

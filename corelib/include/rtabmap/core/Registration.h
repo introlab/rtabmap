@@ -32,50 +32,75 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Signature.h>
+#include <rtabmap/core/RegistrationInfo.h>
 
 namespace rtabmap {
 
 class RTABMAP_EXP Registration
 {
 public:
-	virtual ~Registration() {}
-	virtual void parseParameters(const ParametersMap & parameters)
-	{
-		Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
-	}
+	enum Type {
+		kTypeUndef = -1,
+		kTypeVis = 0,
+		kTypeIcp = 1,
+		kTypeVisIcp = 2
+	};
+
+public:
+	static Registration * create(const ParametersMap & parameters);
+	static Registration * create(Type & type, const ParametersMap & parameters = ParametersMap());
+
+public:
+	virtual ~Registration();
+	virtual void parseParameters(const ParametersMap & parameters);
+
+	bool isImageRequired() const;
+	bool isScanRequired() const;
+	bool isUserDataRequired() const;
+
+	bool varianceFromInliersCount() const {return varianceFromInliersCount_;}
+	bool force3DoF() const {return force3DoF_;}
+
+	// take ownership!
+	void setChildRegistration(Registration * child);
 
 	Transform computeTransformation(
 			const Signature & from,
 			const Signature & to,
 			Transform guess = Transform::getIdentity(),
-			std::string * rejectedMsg = 0,
-			std::vector<int> * inliersOut = 0,
-			float * varianceOut = 0,
-			float * inliersRatioOut = 0) const
-	{
-		Signature fromCopy(from);
-		Signature toCopy(to);
-		return computeTransformationMod(fromCopy, toCopy, guess, rejectedMsg, inliersOut, varianceOut, inliersRatioOut);
-	}
+			RegistrationInfo * info = 0) const;
+	Transform computeTransformation(
+			const SensorData & from,
+			const SensorData & to,
+			Transform SensorData = Transform::getIdentity(),
+			RegistrationInfo * info = 0) const;
 
-	virtual Transform computeTransformationMod(
+	Transform computeTransformationMod(
 			Signature & from,
 			Signature & to,
 			Transform guess = Transform::getIdentity(),
-			std::string * rejectedMsg = 0,
-			std::vector<int> * inliersOut = 0,
-			float * varianceOut = 0,
-			float * inliersRatioOut = 0) const = 0;
+			RegistrationInfo * info = 0) const;
 
 protected:
-	Registration(const ParametersMap & parameters = ParametersMap()) :
-		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount())
-	{
-		this->parseParameters(parameters);
-	}
+	// take ownership of child
+	Registration(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
 
-protected:
-	bool _varianceFromInliersCount;
+	// It is safe to modify the signatures in the implementation, if so, the
+	// child registration will use these modifications.
+	virtual Transform computeTransformationImpl(
+			Signature & from,
+			Signature & to,
+			Transform guess,
+			RegistrationInfo & info) const = 0;
+
+	virtual bool isImageRequiredImpl() const = 0;
+	virtual bool isScanRequiredImpl() const = 0;
+	virtual bool isUserDataRequiredImpl() const = 0;
+
+private:
+	bool varianceFromInliersCount_;
+	bool force3DoF_;
+	Registration * child_;
 
 };
 

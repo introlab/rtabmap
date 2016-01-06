@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/OdometryICP.h>
 #include <rtabmap/core/OdometryLocalMap.h>
 #include <rtabmap/core/OdometryF2F.h>
 #include <rtabmap/core/OdometryMono.h>
@@ -76,7 +75,6 @@ void showUsage()
 			"\n"
 			"  -d #                      ICP decimation (default 4)\n"
 			"  -v #                      ICP voxel size (default 0.005)\n"
-			"  -s #                      ICP samples (default 0, not used if voxel is set.)\n"
 			"  -cr #.#                   ICP correspondence ratio (default 0.7)\n"
 			"  -p2p                      ICP point to point (default point to plane)"
 			"\n"
@@ -117,7 +115,6 @@ int main (int argc, char * argv[])
 	int resetCountdown = rtabmap::Parameters::defaultOdomResetCountdown();
 	int decimation = 4;
 	float voxel = 0.005;
-	int samples = 10000;
 	float ratio = 0.7f;
 	int maxClouds = 10;
 	int briefBytes = rtabmap::Parameters::defaultBRIEFBytes();
@@ -402,23 +399,6 @@ int main (int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-s") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				samples = std::atoi(argv[i]);
-				if(samples < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
 		if(strcmp(argv[i], "-cr") == 0)
 		{
 			++i;
@@ -689,15 +669,13 @@ int main (int argc, char * argv[])
 	}
 	else if(icp) // ICP
 	{
-		UINFO("ICP maximum correspondences distance = %f", distance);
-		UINFO("ICP iterations =          %d", iterations);
-		UINFO("Cloud decimation =        %d", decimation);
-		UINFO("Cloud voxel size =        %f", voxel);
-		UINFO("Cloud samples =           %d", samples);
-		UINFO("Cloud correspondence ratio = %f", ratio);
-		UINFO("Cloud point to plane =    %s", p2p?"false":"true");
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(distance)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpIterations(), uNumber2Str(iterations)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpVoxelSize(), uNumber2Str(voxel)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpCorrespondenceRatio(), uNumber2Str(ratio)));
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpPointToPlane(), p2p?"false":"true"));
 
-		odom = new rtabmap::OdometryICP(decimation, voxel, samples, distance, iterations, ratio, !p2p);
+		odom = new rtabmap::OdometryF2F(parameters);
 	}
 
 	rtabmap::OdometryThread odomThread(odom);
@@ -811,6 +789,10 @@ int main (int argc, char * argv[])
 			if(camera->isCalibrated())
 			{
 				rtabmap::CameraThread cameraThread(camera);
+				if(icp)
+				{
+					cameraThread.setScanFromDepth(true, decimation, maxDepth);
+				}
 
 				odomThread.start();
 				cameraThread.start();

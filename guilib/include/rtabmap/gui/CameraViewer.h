@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/SensorData.h>
 
 class QSpinBox;
+class QCheckBox;
+class QPushButton;
 
 namespace rtabmap {
 
@@ -59,6 +61,9 @@ private:
 	bool processingImages_;
 	QSpinBox * decimationSpin_;
 	int validDecimationValue_;
+	QPushButton * pause_;
+	QCheckBox * showCloudCheckbox_;
+	QCheckBox * showScanCheckbox_;
 };
 
 } /* namespace rtabmap */

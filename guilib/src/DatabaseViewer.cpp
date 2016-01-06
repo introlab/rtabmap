@@ -3544,9 +3544,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 		}
 	}
 
-
-	float variance = -1.0f;
 	Transform transform;
+	RegistrationInfo info;
 
 	SensorData dataFrom, dataTo;
 	dbDriver_->getNodeData(currentLink.from(), dataFrom);
@@ -3582,12 +3581,12 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	UINFO("Uncompress time: %f s", timer.ticks());
 
 	RegistrationIcp registration(parameters);
-	transform = registration.computeTransformation(dataFrom, dataTo, t, 0, 0, &variance);
+	transform = registration.computeTransformation(dataFrom, dataTo, t, &info);
 	UINFO("Icp time: %f s", timer.ticks());
 
 	if(!transform.isNull())
 	{
-		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, variance, variance);
+		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, info.variance, info.variance);
 
 		bool updated = false;
 		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
@@ -3652,9 +3651,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 
 	Transform t;
-	std::string rejectedMsg;
-	float variance = -1.0f;
-	std::vector<int> inliers;
+	RegistrationInfo info;
 
 	// Add sensor data to generate features
 	SensorData dataFrom;
@@ -3669,7 +3666,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	RegistrationVis reg(parameters);
 	Signature fromS(dataFrom);
 	Signature toS(dataTo);
-	t = reg.computeTransformationMod(fromS, toS, currentLink.transform(), &rejectedMsg, &inliers, &variance);
+	t = reg.computeTransformationMod(fromS, toS, currentLink.transform(), &info);
 	UDEBUG("");
 
 	if(!silent)
@@ -3681,7 +3678,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 
 	if(!t.isNull())
 	{
-		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), t, variance, variance);
+		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), t, info.variance, info.variance);
 
 		bool updated = false;
 		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
@@ -3714,7 +3711,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	{
 		QMessageBox::warning(this,
 				tr("Add link"),
-				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(rejectedMsg.c_str()));
+				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg_.c_str()));
 	}
 }
 
@@ -3743,9 +3740,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 
 		Transform t;
-		std::string rejectedMsg;
-		float variance = -1.0f;
-		std::vector<int> inliers;
+		RegistrationInfo info;
 
 		// Add sensor data to generate features
 		SensorData dataFrom;
@@ -3760,7 +3755,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		RegistrationVis reg(parameters);
 		Signature fromS(dataFrom);
 		Signature toS(dataTo);
-		t = reg.computeTransformationMod(fromS, toS, Transform::getIdentity(), &rejectedMsg, &inliers, &variance);
+		t = reg.computeTransformationMod(fromS, toS, Transform::getIdentity(), &info);
 		UDEBUG("");
 
 		if(!silent)
@@ -3775,11 +3770,11 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			// transform is valid, make a link
 			if(from>to)
 			{
-				linksAdded_.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, variance, variance)));
+				linksAdded_.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.variance, info.variance)));
 			}
 			else
 			{
-				linksAdded_.insert(std::make_pair(to, Link(to, from, Link::kUserClosure, t.inverse(), variance, variance)));
+				linksAdded_.insert(std::make_pair(to, Link(to, from, Link::kUserClosure, t.inverse(), info.variance, info.variance)));
 			}
 			updateSlider = true;
 		}
@@ -3787,7 +3782,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		{
 			QMessageBox::warning(this,
 					tr("Add link"),
-					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(rejectedMsg.c_str()));
+					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg_.c_str()));
 		}
 	}
 	else if(containsLink(linksRemoved_, from, to))

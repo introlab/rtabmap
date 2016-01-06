@@ -97,6 +97,7 @@ public:
 	Transform inverse() const;
 	Transform rotation() const;
 	Transform translation() const;
+	Transform to3DoF() const;
 
 	void getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const;
 	void getEulerAngles(float & roll, float & pitch, float & yaw) const;

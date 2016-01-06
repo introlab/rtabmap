@@ -51,7 +51,8 @@ class VWDictionary;
 class VisualWord;
 class Feature2D;
 class Statistics;
-class RegistrationVis;
+class Registration;
+class RegistrationInfo;
 class RegistrationIcp;
 class Stereo;
 
@@ -178,15 +179,13 @@ public:
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
 
-	Transform computeVisualTransform(int fromId, int toId, std::string * rejectedMsg = 0, int * inliers = 0, float * variance = 0);
-	Transform computeIcpTransform(int fromId, int toId, Transform guess, std::string * rejectedMsg = 0, int * correspondences = 0, float * variance = 0, float * correspondencesRatio = 0);
+	Transform computeTransform(int fromId, int toId, RegistrationInfo * info = 0);
+	Transform computeIcpTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransformMulti(
 			int newId,
 			int oldId,
 			const std::map<int, Transform> & poses,
-			std::string * rejectedMsg = 0,
-			int * inliers = 0,
-			float * variance = 0);
+			RegistrationInfo * info = 0);
 
 private:
 	void preUpdate();
@@ -264,7 +263,7 @@ private:
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
 
-	RegistrationVis * _registrationVis;
+	Registration * _registrationPipeline;
 	RegistrationIcp * _registrationIcp;
 };
 

@@ -173,6 +173,13 @@ Transform Transform::translation() const
 					 0,0,1, data()[11]);
 }
 
+Transform Transform::to3DoF() const
+{
+	float x,y,z,roll,pitch,yaw;
+	this->getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
+	return Transform(x,y,0, 0,0,yaw);
+}
+
 void Transform::getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const
 {
 	pcl::getTranslationAndEulerAngles(toEigen3f(), x, y, z, roll, pitch, yaw);
