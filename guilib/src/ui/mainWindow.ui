@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -77,6 +77,7 @@
     <addaction name="actionDownload_all_clouds"/>
     <addaction name="actionDownload_graph"/>
     <addaction name="actionUpdate_cache_from_database"/>
+    <addaction name="actionAnchor_clouds_to_ground_truth"/>
     <addaction name="actionClear_cache"/>
     <addaction name="separator"/>
     <addaction name="actionView_high_res_point_cloud"/>
@@ -1287,6 +1288,14 @@
   <action name="actionExport_images_RGB_jpg_Depth_png">
    <property name="text">
     <string>Export images (RGB=*.jpg Depth=*.png)...</string>
+   </property>
+  </action>
+  <action name="actionAnchor_clouds_to_ground_truth">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Anchor clouds to ground truth</string>
    </property>
   </action>
  </widget>

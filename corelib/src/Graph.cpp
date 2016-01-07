@@ -192,7 +192,7 @@ bool importPoses(
 			std::string str;
 			std::getline(file, str);
 
-			if(str.at(0) == '#' || str.empty())
+			if(str.empty() || str.at(0) == '#')
 			{
 				continue;
 			}

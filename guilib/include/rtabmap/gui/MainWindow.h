@@ -159,6 +159,7 @@ private slots:
 	void updateCacheFromDatabase();
 	void downloadAllClouds();
 	void downloadPoseGraph();
+	void anchorCloudsToGroundTruth();
 	void clearTheCache();
 	void openPreferences();
 	void openPreferencesSource();

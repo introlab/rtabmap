@@ -770,6 +770,10 @@ void GraphViewer::clearGraph()
 	_localPathLinkItems.clear();
 	qDeleteAll(_globalPathLinkItems);
 	_globalPathLinkItems.clear();
+	qDeleteAll(_gtNodeItems);
+	_gtNodeItems.clear();
+	qDeleteAll(_gtLinkItems);
+	_gtLinkItems.clear();
 
 	_referential->resetTransform();
 	_localRadius->resetTransform();

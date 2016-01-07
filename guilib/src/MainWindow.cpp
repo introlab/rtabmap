@@ -316,6 +316,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionDownload_all_clouds, SIGNAL(triggered()), this , SLOT(downloadAllClouds()));
 	connect(_ui->actionDownload_graph, SIGNAL(triggered()), this , SLOT(downloadPoseGraph()));
 	connect(_ui->actionUpdate_cache_from_database, SIGNAL(triggered()), this, SLOT(updateCacheFromDatabase()));
+	connect(_ui->actionAnchor_clouds_to_ground_truth, SIGNAL(triggered()), this, SLOT(anchorCloudsToGroundTruth()));
 	connect(_ui->menuEdit, SIGNAL(aboutToShow()), this, SLOT(updateEditMenu()));
 	connect(_ui->actionDefault_views, SIGNAL(triggered(bool)), this, SLOT(setDefaultViews()));
 	connect(_ui->actionAuto_screen_capture, SIGNAL(triggered(bool)), this, SLOT(selectScreenCaptureFormat(bool)));
@@ -345,6 +346,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionSave_GUI_config->setShortcut(QKeySequence::Save);
 	_ui->actionReset_Odometry->setEnabled(false);
 	_ui->actionPost_processing->setEnabled(false);
+	_ui->actionAnchor_clouds_to_ground_truth->setEnabled(false);
 
 	QToolButton* toolButton = new QToolButton(this);
 	toolButton->setMenu(_ui->menuSelect_source);
@@ -1103,6 +1105,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(!stat.getSignatures().at(stat.refImageId()).sensorData().groundTruth().isNull())
 		{
 			_currentGTPosesMap.insert(std::make_pair(stat.refImageId(), stat.getSignatures().at(stat.refImageId()).sensorData().groundTruth()));
+			_ui->actionAnchor_clouds_to_ground_truth->setEnabled(true);
 		}
 	}
 	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
@@ -1488,6 +1491,26 @@ void MainWindow::updateMapCloud(
 		posesMask.insert(posesMask.end(), std::make_pair(iter->first, poses.find(iter->first) != poses.end()));
 	}
 	_ui->widget_mapVisibility->setMap(posesIn, posesMask);
+
+	if(_ui->actionAnchor_clouds_to_ground_truth->isChecked() && _currentGTPosesMap.size())
+	{
+		for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			std::map<int, Transform>::iterator gtIter = _currentGTPosesMap.find(iter->first);
+			if(gtIter!=_currentGTPosesMap.end())
+			{
+				iter->second = gtIter->second;
+			}
+			else
+			{
+				UWARN("Not found ground truth pose for node %d", iter->first);
+			}
+		}
+	}
+	else if(_currentGTPosesMap.size() == 0)
+	{
+		_ui->actionAnchor_clouds_to_ground_truth->setChecked(false);
+	}
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
 	UDEBUG("Update map with %d locations (currentPose=%s)", poses.size(), currentPose.prettyPrint().c_str());
@@ -4062,6 +4085,16 @@ void MainWindow::downloadPoseGraph()
 	}
 }
 
+void MainWindow::anchorCloudsToGroundTruth()
+{
+	this->updateMapCloud(
+			std::map<int, Transform>(_currentPosesMap),
+			Transform(),
+			std::multimap<int, Link>(_currentLinksMap),
+			std::map<int, int>(_currentMapIds),
+			std::map<int, std::string>(_curentLabels));
+}
+
 void MainWindow::clearTheCache()
 {
 	_cachedSignatures.clear();
@@ -5977,6 +6010,8 @@ void MainWindow::changeState(MainWindow::State newState)
 	{
 		UWARN("Menu File separators have not the same order.");
 	}
+
+	_ui->actionAnchor_clouds_to_ground_truth->setEnabled(!_currentGTPosesMap.empty());
 
 	switch (newState)
 	{

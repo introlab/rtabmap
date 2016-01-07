@@ -285,6 +285,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			}
 			else if(_groundTruthFormat == 1)
 			{
+				UDEBUG("");
 				//Match ground truth values with images
 				groundTruth_.clear();
 				std::map<double, int> stampsToIds;
@@ -339,6 +340,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			}
 			else
 			{
+				UDEBUG("");
 				groundTruth_ = uValuesList(poses);
 			}
 			UASSERT_MSG(groundTruth_.size() == stamps_.size(), uFormat("%d vs %d", (int)groundTruth_.size(), (int)stamps_.size()).c_str());
