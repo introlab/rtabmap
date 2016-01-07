@@ -3350,9 +3350,15 @@ void PreferencesDialog::updateSourceGrpVisibility()
 
 	_ui->groupBox_scanFromDepth->setVisible(_ui->comboBox_sourceType->currentIndex() <= 1);
 
-	_ui->stackedWidget_rgbd->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && (_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD || _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD));
+	_ui->stackedWidget_rgbd->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 &&
+			(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD));
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
+	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
+	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD);
 
 	_ui->stackedWidget_stereo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && (_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo || _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo));
 	_ui->groupBox_cameraStereoImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo);

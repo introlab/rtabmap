@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-42</y>
-            <width>681</width>
-            <height>1915</height>
+            <y>-335</y>
+            <width>676</width>
+            <height>1982</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>11</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1884,7 +1884,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -1989,7 +1989,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>3</number>
+                              <number>6</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -2472,7 +2472,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <widget class="QWidget" name="page_47">
                               <layout class="QVBoxLayout" name="verticalLayout_79">
                                <item>
-                                <widget class="QGroupBox" name="groupBox_cameraStereoImages_3">
+                                <widget class="QGroupBox" name="groupBox_cameraRGBDImages">
                                  <property name="sizePolicy">
                                   <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
                                    <horstretch>0</horstretch>
@@ -2552,6 +2552,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </item>
                                   <item row="2" column="1">
                                    <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraRGBDImages_scale">
+                                    <property name="toolTip">
+                                     <string>For RGBD-SLAM datasets, it is 5.</string>
+                                    </property>
                                     <property name="decimals">
                                      <number>1</number>
                                     </property>
@@ -2673,7 +2676,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>2</number>
+                              <number>3</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
