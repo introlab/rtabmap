@@ -1039,7 +1039,7 @@ bool Rtabmap::process(
 					}
 					else
 					{
-						UINFO("Scan matching rejected: %s", info.rejectedMsg_.c_str());
+						UINFO("Scan matching rejected: %s", info.rejectedMsg.c_str());
 						if(info.variance > 0)
 						{
 							double sqrtVar = sqrt(info.variance);
@@ -1717,7 +1717,7 @@ bool Rtabmap::process(
 			if(rejectedHypothesis)
 			{
 				UWARN("Rejected loop closure %d -> %d: %s",
-						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg_.c_str());
+						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
 			}
 		}
 		if(!rejectedHypothesis)

@@ -62,15 +62,8 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 }
 
 Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
-		_roiRatios(Parameters::defaultVisRoiRatios()),
-		_minInliers(Parameters::defaultVisMinInliers()),
-		_inlierDistance(Parameters::defaultVisInlierDistance()),
-		_iterations(Parameters::defaultVisIterations()),
-		_refineIterations(Parameters::defaultVisRefineIterations()),
-		_minDepth(Parameters::defaultVisMinDepth()),
-		_maxDepth(Parameters::defaultVisMaxDepth()),
 		_resetCountdown(Parameters::defaultOdomResetCountdown()),
-		_force2D(Parameters::defaultRegForce3DoF()),
+		_force3DoF(Parameters::defaultRegForce3DoF()),
 		_holonomic(Parameters::defaultOdomHolonomic()),
 		_filteringStrategy(Parameters::defaultOdomFilteringStrategy()),
 		_particleSize(Parameters::defaultOdomParticleSize()),
@@ -79,10 +72,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_particleNoiseR(Parameters::defaultOdomParticleNoiseR()),
 		_particleLambdaR(Parameters::defaultOdomParticleLambdaR()),
 		_fillInfoData(Parameters::defaultOdomFillInfoData()),
-		_estimationType(Parameters::defaultVisEstimationType()),
-		_pnpReprojError(Parameters::defaultVisPnPReprojError()),
-		_pnpFlags(Parameters::defaultVisPnPFlags()),
-		_pnpRefineIterations(Parameters::defaultVisPnPRefineIterations()),
 		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount()),
 		_kalmanProcessNoise(Parameters::defaultOdomKalmanProcessNoise()),
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
@@ -92,22 +81,10 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		distanceTravelled_(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
-	Parameters::parse(parameters, Parameters::kVisMinInliers(), _minInliers);
-	UASSERT(_minInliers >= 1);
-	Parameters::parse(parameters, Parameters::kVisInlierDistance(), _inlierDistance);
-	Parameters::parse(parameters, Parameters::kVisIterations(), _iterations);
-	Parameters::parse(parameters, Parameters::kVisRefineIterations(), _refineIterations);
-	Parameters::parse(parameters, Parameters::kVisMinDepth(), _minDepth);
-	Parameters::parse(parameters, Parameters::kVisMaxDepth(), _maxDepth);
-	Parameters::parse(parameters, Parameters::kVisRoiRatios(), _roiRatios);
-	Parameters::parse(parameters, Parameters::kRegForce3DoF(), _force2D);
+
+	Parameters::parse(parameters, Parameters::kRegForce3DoF(), _force3DoF);
 	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
-	Parameters::parse(parameters, Parameters::kVisEstimationType(), _estimationType);
-	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), _pnpReprojError);
-	Parameters::parse(parameters, Parameters::kVisPnPFlags(), _pnpFlags);
-	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), _pnpRefineIterations);
-	UASSERT(_pnpFlags>=0 && _pnpFlags <=2);
 	Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
@@ -159,12 +136,12 @@ void Odometry::reset(const Transform & initialPose)
 	_resetCurrentCount = 0;
 	previousStamp_ = 0;
 	distanceTravelled_ = 0;
-	if(_force2D || filters_.size())
+	if(_force3DoF || filters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
 		initialPose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 
-		if(_force2D)
+		if(_force3DoF)
 		{
 			if(z != 0.0f || roll != 0.0f || pitch != 0.0f)
 			{
@@ -194,7 +171,7 @@ void Odometry::reset(const Transform & initialPose)
 
 		if(_filteringStrategy == 1)
 		{
-			if(_force2D)
+			if(_force3DoF)
 			{
 				kalmanFilter_.statePost.at<float>(0) = x;
 				kalmanFilter_.statePost.at<float>(1) = y;
@@ -262,7 +239,7 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 	{
 		_resetCurrentCount = _resetCountdown;
 
-		if(_force2D || !_holonomic || filters_.size() || _filteringStrategy==1)
+		if(_force3DoF || !_holonomic || filters_.size() || _filteringStrategy==1)
 		{
 			float x,y,z, roll,pitch,yaw;
 			t.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
@@ -313,7 +290,7 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 						}
 					}
 
-					if(!_force2D)
+					if(!_force3DoF)
 					{
 						z = filters_[2]->filter(z);
 						roll = filters_[3]->filter(roll);
@@ -343,7 +320,7 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 					uIsFinite(roll) && uIsFinite(pitch) && uIsFinite(yaw),
 					uFormat("x=%f y=%f z=%f roll=%f pitch=%f yaw=%f org T=%s",
 							x, y, z, roll, pitch, yaw, t.prettyPrint().c_str()).c_str());
-			t = Transform(x,y,_force2D?0:z, _force2D?0:roll,_force2D?0:pitch,yaw);
+			t = Transform(x,y,_force3DoF?0:z, _force3DoF?0:roll,_force3DoF?0:pitch,yaw);
 
 			info->transformFiltered = t;
 		}
@@ -386,7 +363,7 @@ void Odometry::initKalmanFilter()
 	// initialize the Kalman filter
 	int nStates = 18;            // the number of states (x,y,z,x',y',z',x'',y'',z'',roll,pitch,yaw,roll',pitch',yaw',roll'',pitch'',yaw'')
 	int nMeasurements = 6;       // the number of measured states (x,y,z,roll,pitch,yaw)
-	if(_force2D)
+	if(_force3DoF)
 	{
 		nStates = 9;             // the number of states (x,y,x',y',x'',y'',yaw,yaw',yaw'')
 		nMeasurements = 3;       // the number of measured states (x,y,z,roll,pitch,yaw)
@@ -398,7 +375,7 @@ void Odometry::initKalmanFilter()
 	cv::setIdentity(kalmanFilter_.measurementNoiseCov, cv::Scalar::all(_kalmanMeasurementNoise));   // set measurement noise
 	cv::setIdentity(kalmanFilter_.errorCovPost, cv::Scalar::all(1));             // error covariance
 
-	if(_force2D)
+	if(_force3DoF)
 	{
         /* MEASUREMENT MODEL */
 		//  [1 0 0 0 0 0 0 0 0]
@@ -429,7 +406,7 @@ void Odometry::initKalmanFilter()
 void Odometry::updateKalmanFilter(float dt, float & x, float & y, float & z, float & roll, float & pitch, float & yaw)
 {
 	// Set transition matrix with current dt
-	if(_force2D)
+	if(_force3DoF)
 	{
 		// 2D:
 		//  [1 0 dt  0 dt2    0   0    0     0] x
@@ -496,7 +473,7 @@ void Odometry::updateKalmanFilter(float dt, float & x, float & y, float & z, flo
 
 	// Set measurement to predict
 	cv::Mat measurements;
-	if(!_force2D)
+	if(!_force3DoF)
 	{
 		measurements = cv::Mat(6,1,CV_32FC1);
 		measurements.at<float>(0) = x;     // x
@@ -521,7 +498,7 @@ void Odometry::updateKalmanFilter(float dt, float & x, float & y, float & z, flo
 	UDEBUG("Correct");
 	cv::Mat estimated = kalmanFilter_.correct(measurements);
 
-	if(_force2D)
+	if(_force3DoF)
 	{
 		x = estimated.at<float>(0);
 		y = estimated.at<float>(1);

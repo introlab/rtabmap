@@ -51,9 +51,8 @@ protected:
 			Signature & to,
 			Transform guess,
 			RegistrationInfo & info) const;
-	virtual bool isImageRequiredImpl() const {return false;}
 	virtual bool isScanRequiredImpl() const {return true;}
-	virtual bool isUserDataRequiredImpl() const {return false;}
+	virtual float getMinGeometryCorrespondencesRatioImpl() const {return _correspondenceRatio;}
 
 private:
 	float _maxTranslation;

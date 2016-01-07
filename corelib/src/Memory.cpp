@@ -2076,6 +2076,27 @@ Transform Memory::computeTransform(
 			if(!guess.isNull())
 			{
 				transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+
+				if(!transform.isNull())
+				{
+					UDEBUG("");
+					// verify if it is a 180 degree transform, well verify > 90
+					float x,y,z, roll,pitch,yaw;
+					transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+					if(fabs(roll) > CV_PI/2 ||
+					   fabs(pitch) > CV_PI/2 ||
+					   fabs(yaw) > CV_PI/2)
+					{
+						transform.setNull();
+						std::string msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
+								roll, pitch, yaw);
+						UINFO(msg.c_str());
+						if(info)
+						{
+							info->rejectedMsg = msg;
+						}
+					}
+				}
 			}
 		}
 	}
@@ -2084,7 +2105,7 @@ Transform Memory::computeTransform(
 		std::string msg = uFormat("Did not find nodes %d and/or %d", fromId, toId);
 		if(info)
 		{
-			info->rejectedMsg_ = msg;
+			info->rejectedMsg = msg;
 		}
 		UWARN(msg.c_str());
 	}
@@ -2139,7 +2160,7 @@ Transform Memory::computeIcpTransform(
 		std::string msg = uFormat("Did not find nodes %d and/or %d", fromId, toId);
 		if(info)
 		{
-			info->rejectedMsg_ = msg;
+			info->rejectedMsg = msg;
 		}
 		UWARN(msg.c_str());
 	}

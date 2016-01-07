@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
+#include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/core/util3d_correspondences.h"
@@ -51,18 +52,25 @@ namespace rtabmap {
 
 OdometryLocalMap::OdometryLocalMap(const ParametersMap & parameters) :
 	Odometry(parameters),
-	_localHistoryMaxSize(Parameters::defaultOdomBowLocalHistorySize()),
-	_fixedLocalMapPath(Parameters::defaultOdomBowFixedLocalMapPath()),
-	_memory(0)
+	localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
+	fixedLocalMapPath_(Parameters::defaultOdomBowFixedLocalMapPath()),
+	memory_(0),
+	regVis_(new RegistrationVis(parameters))
 {
 	UDEBUG("");
-	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), _localHistoryMaxSize);
-	Parameters::parse(parameters, Parameters::kOdomBowFixedLocalMapPath(), _fixedLocalMapPath);
+	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
+	Parameters::parse(parameters, Parameters::kOdomBowFixedLocalMapPath(), fixedLocalMapPath_);
 
 	ParametersMap customParameters;
-	customParameters.insert(ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(this->getMinDepth())));
-	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
-	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
+	float minDepth = Parameters::defaultVisMinDepth();
+	float maxDepth = Parameters::defaultVisMaxDepth();
+	std::string roi = Parameters::defaultVisRoiRatios();
+	Parameters::parse(parameters, Parameters::kVisMinDepth(), minDepth);
+	Parameters::parse(parameters, Parameters::kVisMaxDepth(), maxDepth);
+	Parameters::parse(parameters, Parameters::kVisRoiRatios(), roi);
+	customParameters.insert(ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(minDepth)));
+	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(maxDepth)));
+	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), roi));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
@@ -103,32 +111,32 @@ OdometryLocalMap::OdometryLocalMap(const ParametersMap & parameters) :
 		}
 	}
 
-	if(_fixedLocalMapPath.empty())
+	if(fixedLocalMapPath_.empty())
 	{
-		_memory = new Memory(customParameters);
-		if(!_memory->init("", false, ParametersMap()))
+		memory_ = new Memory(customParameters);
+		if(!memory_->init("", false, ParametersMap()))
 		{
 			UERROR("Error initializing the memory for BOW Odometry.");
 		}
 	}
 	else
 	{
-		UINFO("Init odometry from a fixed database: \"%s\"", _fixedLocalMapPath.c_str());
+		UINFO("Init odometry from a fixed database: \"%s\"", fixedLocalMapPath_.c_str());
 		// init the local map with a all 3D features contained in the database
 		customParameters.insert(ParametersPair(Parameters::kMemIncrementalMemory(), "false"));
 		customParameters.insert(ParametersPair(Parameters::kMemInitWMWithAllNodes(), "true"));
-		_memory = new Memory(customParameters);
-		if(!_memory->init(_fixedLocalMapPath, false, ParametersMap()))
+		memory_ = new Memory(customParameters);
+		if(!memory_->init(fixedLocalMapPath_, false, ParametersMap()))
 		{
 			UERROR("Error initializing the memory for BOW Odometry.");
 		}
 		else
 		{
 			// get the graph
-			std::map<int, int> ids = _memory->getNeighborsId(_memory->getLastSignatureId(), 0, -1);
+			std::map<int, int> ids = memory_->getNeighborsId(memory_->getLastSignatureId(), 0, -1);
 			std::map<int, Transform> poses;
 			std::multimap<int, Link> links;
-			_memory->getMetricConstraints(uKeysSet(ids), poses, links, true);
+			memory_->getMetricConstraints(uKeysSet(ids), poses, links, true);
 
 			if(poses.size())
 			{
@@ -142,7 +150,7 @@ OdometryLocalMap::OdometryLocalMap(const ParametersMap & parameters) :
 					posesIter!=optimizedPoses.end();
 					++posesIter)
 				{
-					const Signature * s = _memory->getSignature(posesIter->first);
+					const Signature * s = memory_->getSignature(posesIter->first);
 					if(s)
 					{
 						// Transform 3D points accordingly to pose and add them to local map
@@ -161,30 +169,30 @@ OdometryLocalMap::OdometryLocalMap(const ParametersMap & parameters) :
 			}
 			else
 			{
-				UERROR("No pose loaded from database \"%s\"", _fixedLocalMapPath.c_str());
+				UERROR("No pose loaded from database \"%s\"", fixedLocalMapPath_.c_str());
 			}
 		}
-		if((int)localMap_.size() < this->getMinInliers() || localMap_.size() == 0)
+		if((int)localMap_.size() < regVis_->getMinInliers() || localMap_.size() == 0)
 		{
 			UERROR("The loaded fixed map from \"%s\" is too small! Only %d unique features loaded. Odometry won't be computed!",
-					_fixedLocalMapPath.c_str(), (int)localMap_.size());
+					fixedLocalMapPath_.c_str(), (int)localMap_.size());
 		}
 	}
 }
 
 OdometryLocalMap::~OdometryLocalMap()
 {
-	delete _memory;
+	delete memory_;
 	UDEBUG("");
 }
 
 
 void OdometryLocalMap::reset(const Transform & initialPose)
 {
-	if(_fixedLocalMapPath.empty())
+	if(fixedLocalMapPath_.empty())
 	{
 		Odometry::reset(initialPose);
-		_memory->init("", false, ParametersMap());
+		memory_->init("", false, ParametersMap());
 		localMap_.clear();
 	}
 	else
@@ -206,14 +214,12 @@ Transform OdometryLocalMap::computeTransform(
 		info->type = 0;
 	}
 
-	double variance = 0;
-	int inliersCount = 0;
-	int correspondences = 0;
+	RegistrationInfo regInfo;
 	int nFeatures = 0;
 
-	if(_memory->update(data))
+	if(memory_->update(data))
 	{
-		const Signature * newSignature = _memory->getLastWorkingSignature();
+		const Signature * newSignature = memory_->getLastWorkingSignature();
 		if(newSignature)
 		{
 			nFeatures = (int)newSignature->getWords().size();
@@ -226,120 +232,56 @@ Transform OdometryLocalMap::computeTransform(
 		if(localMap_.size() && newSignature)
 		{
 			Transform transform;
-			if((int)localMap_.size() >= this->getMinInliers())
+			if((int)localMap_.size() >= regVis_->getMinInliers())
 			{
-				std::vector<int> matches, inliers;
 				Transform t;
-				if(this->getEstimationType() == 1) // PnP
-				{
-					// 3D to 2D
-					if(data.cameraModels().size() > 1)
-					{
-						UERROR("PnP cannot be used on multi-cameras setup.");
-					}
-					else if((int)newSignature->getWords().size() >= this->getMinInliers())
-					{
-						UASSERT(data.stereoCameraModel().isValid() || (data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()));
-						const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
-
-						UDEBUG("");
-						t = util3d::estimateMotion3DTo2D(
-								localMap_,
-								uMultimapToMap(newSignature->getWords()),
-								cameraModel,
-								this->getMinInliers(),
-								this->getIterations(),
-								this->getPnPReprojError(),
-								this->getPnPFlags(),
-								this->getPnPRefineIterations(),
-								this->getPose(),
-								uMultimapToMap(newSignature->getWords3()),
-								isVarianceFromInliersCount()?0:&variance, // don't compute variance if we use inliers
-								&matches,
-								&inliers);
-					}
-					else
-					{
-						UWARN("Not enough features in the new image (%d < %d)", (int)newSignature->getWords().size(), this->getMinInliers());
-					}
-				}
-				else
-				{
-					// 3D to 3D
-					if((int)newSignature->getWords3().size() >= this->getMinInliers())
-					{
-						t = util3d::estimateMotion3DTo3D(
-								localMap_,
-								uMultimapToMap(newSignature->getWords3()),
-								this->getMinInliers(),
-								this->getInlierDistance(),
-								this->getIterations(),
-								this->getRefineIterations(),
-								&variance,
-								&matches,
-								&inliers);
-					}
-					else
-					{
-						UWARN("Not enough 3D features in the new image (%d < %d)", (int)newSignature->getWords3().size(), this->getMinInliers());
-					}
-				}
-
-				correspondences = matches.size();
-				inliersCount = inliers.size();
-				if(this->isInfoDataFilled() && info)
-				{
-					info->wordMatches = matches;
-					info->wordInliers = inliers;
-				}
+				Signature tmpLocalMap(-1);
+				tmpLocalMap.setWords3(localMap_);
+				t = regVis_->computeTransformation(tmpLocalMap, *newSignature, this->getPose(), &regInfo);
 
 				if(!t.isNull())
 				{
 					// make it incremental
 					transform = this->getPose().inverse() * t;
 				}
-				else if(correspondences < this->getMinInliers())
+				else if(!regInfo.rejectedMsg.empty())
 				{
-					UWARN("Not enough correspondences (%d < %d)", correspondences, this->getMinInliers());
-				}
-				else if(inliersCount < this->getMinInliers())
-				{
-					UWARN("Not enough inliers (%d < %d)", inliersCount, this->getMinInliers());
+					UWARN("Registration failed: \"%s\"", regInfo.rejectedMsg.c_str());
 				}
 				else
 				{
-					UWARN("Unknown estimation error");
+					UWARN("Unknown registration error");
 				}
 			}
 			else
 			{
-				UWARN("Local map too small!? (%d < %d)", (int)localMap_.size(), this->getMinInliers());
+				UWARN("Local map too small!? (%d < %d)", (int)localMap_.size(), regVis_->getMinInliers());
 			}
 
 			if(transform.isNull())
 			{
-				_memory->deleteLocation(newSignature->id());
+				memory_->deleteLocation(newSignature->id());
 			}
-			else if(_fixedLocalMapPath.empty())
+			else if(fixedLocalMapPath_.empty())
 			{
 				output = transform;
 
 				// remove words if history max size is reached
-				while(localMap_.size() && (int)localMap_.size() > _localHistoryMaxSize && _memory->getStMem().size()>1)
+				while(localMap_.size() && (int)localMap_.size() > localHistoryMaxSize_ && memory_->getStMem().size()>1)
 				{
-					int nodeId = *_memory->getStMem().begin();
+					int nodeId = *memory_->getStMem().begin();
 					std::list<int> removedPts;
-					_memory->deleteLocation(nodeId, &removedPts);
+					memory_->deleteLocation(nodeId, &removedPts);
 					for(std::list<int>::iterator iter = removedPts.begin(); iter!=removedPts.end(); ++iter)
 					{
 						localMap_.erase(*iter);
 					}
 				}
 
-				if(_localHistoryMaxSize == 0 && localMap_.size() > 0 && localMap_.size() > newSignature->getWords3().size())
+				if(localHistoryMaxSize_ == 0 && localMap_.size() > 0 && localMap_.size() > newSignature->getWords3().size())
 				{
 					UERROR("Local map should have only words of the last added signature here! (size=%d, max history size=%d, newWords=%d)",
-							(int)localMap_.size(), _localHistoryMaxSize, (int)newSignature->getWords3().size());
+							(int)localMap_.size(), localHistoryMaxSize_, (int)newSignature->getWords3().size());
 				}
 
 				// update local map
@@ -371,14 +313,14 @@ Transform OdometryLocalMap::computeTransform(
 			{
 				// fixed local map, just delete the new signature
 				output = transform;
-				_memory->deleteLocation(newSignature->id());
+				memory_->deleteLocation(newSignature->id());
 			}
 		}
 		else if(newSignature)
 		{
 			int count = 0;
 			std::list<int> uniques = uUniqueKeys(newSignature->getWords3());
-			if(_fixedLocalMapPath.empty() && (int)uniques.size() >= this->getMinInliers())
+			if(fixedLocalMapPath_.empty() && (int)uniques.size() >= regVis_->getMinInliers())
 			{
 				output.setIdentity();
 
@@ -404,33 +346,39 @@ Transform OdometryLocalMap::computeTransform(
 			else
 			{
 				// not enough features, just delete it
-				_memory->deleteLocation(newSignature->id());
+				memory_->deleteLocation(newSignature->id());
 			}
 			UDEBUG("uniques=%d, pt not finite = %d", (int)uniques.size(),count);
 		}
 
-		_memory->emptyTrash();
+		memory_->emptyTrash();
 	}
 
 	if(info)
 	{
-		info->variance = variance;
-		info->inliers = inliersCount;
-		info->matches = correspondences;
+		info->variance = regInfo.variance;
+		info->inliers = regInfo.inliers;
+		info->matches = regInfo.matches;
 		info->features = nFeatures;
 		info->localMapSize = (int)localMap_.size();
+
+		if(this->isInfoDataFilled())
+		{
+			info->wordMatches = regInfo.matchesIDs;
+			info->wordInliers = regInfo.inliersIDs;
+		}
 	}
 
 	UINFO("Odom update time = %fs lost=%s features=%d inliers=%d/%d variance=%f local_map=%d dict=%d nodes=%d",
 			timer.elapsed(),
 			output.isNull()?"true":"false",
 			nFeatures,
-			inliersCount,
-			correspondences,
-			variance,
+			regInfo.inliers,
+			regInfo.matches,
+			regInfo.variance,
 			(int)localMap_.size(),
-			(int)_memory->getVWDictionary()->getVisualWords().size(),
-			(int)_memory->getStMem().size());
+			(int)memory_->getVWDictionary()->getVisualWords().size(),
+			(int)memory_->getStMem().size());
 	return output;
 }
 

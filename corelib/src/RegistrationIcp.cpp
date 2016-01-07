@@ -318,7 +318,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	}
 
 
-	info.rejectedMsg_ = msg;
+	info.rejectedMsg = msg;
 
 	UDEBUG("New transform = %s", transform.prettyPrint().c_str());
 	return transform;

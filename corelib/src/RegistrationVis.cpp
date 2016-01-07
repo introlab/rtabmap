@@ -192,8 +192,10 @@ Transform RegistrationVis::computeTransformationImpl(
 	////////////////////
 	// Find correspondences
 	////////////////////
-	if(fromSignature.getWords().size() && fromSignature.getWords3().size() &&
-	   toSignature.getWords().size() && (_estimationType==1 || toSignature.getWords3().size()))
+	if((_estimationType<2 || fromSignature.getWords().size()) && // required only for 2D->2D
+	   (_estimationType==0 || toSignature.getWords().size()) && // required only for 3D->2D or 2D->2D
+	   fromSignature.getWords3().size() && // required in all estimation approaches
+	   (_estimationType==1 || toSignature.getWords3().size())) // required only for 3D->3D and 2D->2D
 	{
 		// no need to extract new features, we have all the data we need
 		UDEBUG("");
@@ -499,10 +501,12 @@ Transform RegistrationVis::computeTransformationImpl(
 	Transform transform;
 	float variance = 1.0f;
 	int inliersCount = 0;
+	int matchesCount = 0;
 	if(toSignature.getWords().size() || !toSignature.sensorData().imageRaw().empty())
 	{
 		Transform transforms[2];
 		std::vector<int> inliers[2];
+		std::vector<int> matches[2];
 		double variances[2] = {1.0f};
 		for(int dir=0; dir<(!_forwardEstimateOnly?2:1); ++dir)
 		{
@@ -551,7 +555,6 @@ Transform RegistrationVis::computeTransformationImpl(
 							&variances[dir]);
 
 					inliers[dir] = uKeys(inliers3D);
-
 
 					if(!cameraTransform.isNull())
 					{
@@ -614,6 +617,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						const CameraModel & cameraModel = signatureB->sensorData().stereoCameraModel().isValid()?signatureB->sensorData().stereoCameraModel().left():signatureB->sensorData().cameraModels()[0];
 
 						std::vector<int> inliersV;
+						std::vector<int> matchesV;
 						transforms[dir] = util3d::estimateMotion3DTo2D(
 								uMultimapToMapUnique(signatureA->getWords3()),
 								uMultimapToMapUnique(signatureB->getWords()),
@@ -626,9 +630,10 @@ Transform RegistrationVis::computeTransformationImpl(
 								dir==0?(!guess.isNull()?guess:Transform::getIdentity()):!transforms[0].isNull()?transforms[0].inverse():(!guess.isNull()?guess.inverse():Transform::getIdentity()),
 								uMultimapToMapUnique(signatureA->getWords3()),
 								varianceFromInliersCount()?0:&variances[dir],
-								0,
+								&matchesV,
 								&inliersV);
 						inliers[dir] = inliersV;
+						matches[dir] = matchesV;
 						if(transforms[dir].isNull())
 						{
 							msg = uFormat("Not enough inliers %d/%d between %d and %d",
@@ -653,6 +658,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				   (int)signatureB->getWords3().size() >= _minInliers)
 				{
 					std::vector<int> inliersV;
+					std::vector<int> matchesV;
 					transforms[dir] = util3d::estimateMotion3DTo3D(
 							uMultimapToMapUnique(signatureA->getWords3()),
 							uMultimapToMapUnique(signatureB->getWords3()),
@@ -661,9 +667,10 @@ Transform RegistrationVis::computeTransformationImpl(
 							_iterations,
 							_refineIterations,
 							&variances[dir],
-							0,
+							&matchesV,
 							&inliersV);
 					inliers[dir] = inliersV;
+					matches[dir] = matchesV;
 					if(transforms[dir].isNull())
 					{
 						msg = uFormat("Not enough inliers %d/%d between %d and %d",
@@ -692,49 +699,39 @@ Transform RegistrationVis::computeTransformationImpl(
 			if(transforms[0].isNull())
 			{
 				transform = transforms[1];
-				info.inliersIndexes_ = inliers[1];
+				info.inliersIDs = inliers[1];
+				info.matchesIDs = matches[1];
 
 				variance = variances[1];
 				inliersCount = (int)inliers[1].size();
+				matchesCount = (int)matches[1].size();
 			}
 			else
 			{
 				transform = transforms[0].interpolate(0.5f, transforms[1]);
-				info.inliersIndexes_ = inliers[0];
+				info.inliersIDs = inliers[0];
+				info.matchesIDs = matches[0];
 
 				variance = (variances[0]+variances[1])/2.0f;
 				inliersCount = (int)(inliers[0].size()+inliers[1].size())/2;
+				matchesCount = (int)(matches[0].size()+matches[1].size())/2;
 			}
 		}
 		else
 		{
 			transform = transforms[0];
-			info.inliersIndexes_ = inliers[0];
+			info.inliersIDs = inliers[0];
+			info.matchesIDs = matches[0];
 
 			variance = variances[0];
 			inliersCount = (int)inliers[0].size();
-		}
-	}
-
-	if(!transform.isNull())
-	{
-		UDEBUG("");
-		// verify if it is a 180 degree transform, well verify > 90
-		float x,y,z, roll,pitch,yaw;
-		transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-		if(fabs(roll) > CV_PI/2 ||
-		   fabs(pitch) > CV_PI/2 ||
-		   fabs(yaw) > CV_PI/2)
-		{
-			transform.setNull();
-			msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
-					roll, pitch, yaw);
-			UWARN(msg.c_str());
+			matchesCount = (int)matches[0].size();
 		}
 	}
 
 	info.inliers = inliersCount;
-	info.rejectedMsg_ = msg;
+	info.matches = matchesCount;
+	info.rejectedMsg = msg;
 	info.variance = variance>0.0f?variance:0.0001f; // epsilon if exact transform
 
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());

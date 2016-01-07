@@ -59,18 +59,7 @@ public:
 
 	//getters
 	const Transform & getPose() const {return _pose;}
-	const std::string & getRoiRatios() const {return _roiRatios;}
-	int getMinInliers() const {return _minInliers;}
-	float getInlierDistance() const {return _inlierDistance;}
-	int getIterations() const {return _iterations;}
-	int getRefineIterations() const {return _refineIterations;}
-	float getMinDepth() const {return _minDepth;}
-	float getMaxDepth() const {return _maxDepth;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
-	int getEstimationType() const {return _estimationType;}
-	double getPnPReprojError() const {return _pnpReprojError;}
-	int getPnPFlags() const {return _pnpFlags;}
-	int getPnPRefineIterations() const {return _pnpRefineIterations;}
 	const Transform & previousTransform() const {return previousTransform_;}
 	bool isVarianceFromInliersCount() const {return _varianceFromInliersCount;}
 
@@ -81,15 +70,8 @@ private:
 	void updateKalmanFilter(float dt, float & x, float & y, float & z, float & roll, float & pitch, float & yaw);
 
 private:
-	std::string _roiRatios;
-	int _minInliers;
-	float _inlierDistance;
-	int _iterations;
-	int _refineIterations;
-	float _minDepth;
-	float _maxDepth;
 	int _resetCountdown;
-	bool _force2D;
+	bool _force3DoF;
 	bool _holonomic;
 	int _filteringStrategy;
 	int _particleSize;
@@ -98,10 +80,6 @@ private:
 	float _particleNoiseR;
 	float _particleLambdaR;
 	bool _fillInfoData;
-	int _estimationType;
-	double _pnpReprojError;
-	int _pnpFlags;
-	int _pnpRefineIterations;
 	bool _varianceFromInliersCount;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;

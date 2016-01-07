@@ -104,11 +104,11 @@ Transform OdometryF2F::computeTransform(
 				idToIndex.insert(std::make_pair(iter->first, i));
 				++i;
 			}
-			info->cornerInliers.resize(regInfo.inliersIndexes_.size(), 1);
+			info->cornerInliers.resize(regInfo.inliersIDs.size(), 1);
 			i=0;
-			for(; i<(int)regInfo.inliersIndexes_.size(); ++i)
+			for(; i<(int)regInfo.inliersIDs.size(); ++i)
 			{
-				info->cornerInliers[i] = idToIndex.at(regInfo.inliersIndexes_[i]);
+				info->cornerInliers[i] = idToIndex.at(regInfo.inliersIDs[i]);
 			}
 
 		}
@@ -130,8 +130,8 @@ Transform OdometryF2F::computeTransform(
 			UDEBUG("Update key frame");
 			Signature newRefFrame(data);
 
-			int features = -1;
-			if(registrationPipeline_->isImageRequired())
+			int features = 0;
+			if(registrationPipeline_->getMinVisualCorrespondences()>0)
 			{
 				// this will generate features only for the first frame
 				Signature dummy;
@@ -141,8 +141,10 @@ Transform OdometryF2F::computeTransform(
 				features = (int)newRefFrame.getWords().size();
 			}
 
-			if((features < 0 || features >= this->getMinInliers()) &&
-			   (!registrationPipeline_->isScanRequired() || newRefFrame.sensorData().laserScanRaw().cols))
+			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&
+			   (registrationPipeline_->getMinGeometryCorrespondencesRatio()==0.0f ||
+					   (newRefFrame.sensorData().laserScanRaw().cols &&
+					   (newRefFrame.sensorData().laserScanMaxPts() == 0 || float(newRefFrame.sensorData().laserScanRaw().cols)/float(newRefFrame.sensorData().laserScanMaxPts())>=registrationPipeline_->getMinGeometryCorrespondencesRatio()))))
 			{
 				refFrame_ = newRefFrame;
 
@@ -151,20 +153,25 @@ Transform OdometryF2F::computeTransform(
 			}
 			else
 			{
-				if(features >= 0 && features < this->getMinInliers())
+				if(features < registrationPipeline_->getMinVisualCorrespondences())
 				{
 					UWARN("Too low 2D features (%d), keeping last key frame...", features);
 				}
-				if(registrationPipeline_->isScanRequired() && newRefFrame.sensorData().laserScanRaw().cols==0)
+
+				if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newRefFrame.sensorData().laserScanRaw().cols==0)
 				{
 					UWARN("Too low scan points (%d), keeping last key frame...", newRefFrame.sensorData().laserScanRaw().cols);
+				}
+				else if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newRefFrame.sensorData().laserScanMaxPts() != 0 && float(newRefFrame.sensorData().laserScanRaw().cols)/float(newRefFrame.sensorData().laserScanMaxPts())<registrationPipeline_->getMinGeometryCorrespondencesRatio())
+				{
+					UWARN("Too low scan points ratio (%d < %d), keeping last key frame...", float(newRefFrame.sensorData().laserScanRaw().cols)/float(newRefFrame.sensorData().laserScanMaxPts()), registrationPipeline_->getMinGeometryCorrespondencesRatio());
 				}
 			}
 		}
 	}
-	else if(!regInfo.rejectedMsg_.empty())
+	else if(!regInfo.rejectedMsg.empty())
 	{
-		UWARN("Registration failed: \"%s\"", regInfo.rejectedMsg_.c_str());
+		UWARN("Registration failed: \"%s\"", regInfo.rejectedMsg.c_str());
 	}
 
 	if(info)

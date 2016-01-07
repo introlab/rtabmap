@@ -50,6 +50,11 @@ private:
 	int flowIterations_;
 	double flowEps_;
 	int flowMaxLevel_;
+	int minInliers_;
+	int iterations_;
+	double pnpReprojError_;
+	int pnpFlags_;
+	int pnpRefineIterations_;
 
 	Stereo * stereo_;
 

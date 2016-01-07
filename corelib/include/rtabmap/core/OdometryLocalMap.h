@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 class Memory;
+class RegistrationVis;
 
 class RTABMAP_EXP OdometryLocalMap : public Odometry
 {
@@ -41,19 +42,20 @@ public:
 	virtual ~OdometryLocalMap();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	const std::map<int, cv::Point3f> & getLocalMap() const {return localMap_;}
-	const Memory * getMemory() const {return _memory;}
+	const std::multimap<int, cv::Point3f> & getLocalMap() const {return localMap_;}
+	const Memory * getMemory() const {return memory_;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
 
 private:
 	//Parameters
-	int _localHistoryMaxSize;
-	std::string _fixedLocalMapPath;
+	int localHistoryMaxSize_;
+	std::string fixedLocalMapPath_;
 
-	Memory * _memory;
-	std::map<int, cv::Point3f> localMap_;
+	Memory * memory_;
+	RegistrationVis * regVis_;
+	std::multimap<int, cv::Point3f> localMap_;
 };
 
 }

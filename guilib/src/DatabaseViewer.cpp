@@ -3711,7 +3711,7 @@ void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, boo
 	{
 		QMessageBox::warning(this,
 				tr("Add link"),
-				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg_.c_str()));
+				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
 	}
 }
 
@@ -3782,7 +3782,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		{
 			QMessageBox::warning(this,
 					tr("Add link"),
-					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg_.c_str()));
+					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
 		}
 	}
 	else if(containsLink(linksRemoved_, from, to))

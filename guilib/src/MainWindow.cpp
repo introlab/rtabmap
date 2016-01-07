@@ -3628,7 +3628,7 @@ void MainWindow::postProcessing()
 						}
 						else
 						{
-							QString str = tr("Cannot refine link %1->%2 (%3").arg(from).arg(to).arg(info.rejectedMsg_.c_str());
+							QString str = tr("Cannot refine link %1->%2 (%3").arg(from).arg(to).arg(info.rejectedMsg.c_str());
 							_initProgressDialog->appendText(str, Qt::darkYellow);
 							UWARN("%s", str.toStdString().c_str());
 							warn = true;

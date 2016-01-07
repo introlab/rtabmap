@@ -45,9 +45,9 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
-	float getBowInlierDistance() const {return _inlierDistance;}
-	int getBowIterations() const {return _iterations;}
-	int getBowMinInliers() const {return _minInliers;}
+	float getInlierDistance() const {return _inlierDistance;}
+	int getIterations() const {return _iterations;}
+	int getMinInliers() const {return _minInliers;}
 
 protected:
 	virtual Transform computeTransformationImpl(
@@ -57,8 +57,7 @@ protected:
 			RegistrationInfo & info) const;
 
 	virtual bool isImageRequiredImpl() const {return true;}
-	virtual bool isScanRequiredImpl() const {return false;}
-	virtual bool isUserDataRequiredImpl() const {return false;}
+	virtual int getMinVisualCorrespondencesImpl() const {return _minInliers;}
 
 private:
 	int _minInliers;

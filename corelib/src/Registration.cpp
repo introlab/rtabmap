@@ -115,6 +115,34 @@ bool Registration::isUserDataRequired() const
 	return val;
 }
 
+int Registration::getMinVisualCorrespondences() const
+{
+	int min = this->getMinVisualCorrespondencesImpl();
+	if(child_)
+	{
+		int childMin = child_->getMinVisualCorrespondences();
+		if(min == 0 || childMin > min)
+		{
+			min = childMin;
+		}
+	}
+	return min;
+}
+
+float Registration::getMinGeometryCorrespondencesRatio() const
+{
+	float min = this->getMinGeometryCorrespondencesRatioImpl();
+	if(child_)
+	{
+		float childMin = child_->getMinGeometryCorrespondencesRatio();
+		if(min == 0 || childMin > min)
+		{
+			min = childMin;
+		}
+	}
+	return min;
+}
+
 void Registration::setChildRegistration(Registration * child)
 {
 	if(child_)

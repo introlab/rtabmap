@@ -17,15 +17,18 @@ public:
 	RegistrationInfo() :
 		variance(0),
 		inliers(0),
-		inliersRatio(0)
+		inliersRatio(0),
+		matches(0)
 	{
 	}
 
 	float variance;
 	int inliers;
 	float inliersRatio;
-	std::vector<int> inliersIndexes_;
-	std::string rejectedMsg_;
+	std::vector<int> inliersIDs;
+	int matches;
+	std::vector<int> matchesIDs;
+	std::string rejectedMsg;
 };
 
 }

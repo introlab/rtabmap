@@ -54,6 +54,11 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	flowIterations_(Parameters::defaultVisCorFlowIterations()),
 	flowEps_(Parameters::defaultVisCorFlowEps()),
 	flowMaxLevel_(Parameters::defaultVisCorFlowMaxLevel()),
+	minInliers_(Parameters::defaultVisMinInliers()),
+	iterations_(Parameters::defaultVisIterations()),
+	pnpReprojError_(Parameters::defaultVisPnPReprojError()),
+	pnpFlags_(Parameters::defaultVisPnPFlags()),
+	pnpRefineIterations_(Parameters::defaultVisPnPRefineIterations()),
 	localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
 	initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
 	initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
@@ -66,6 +71,12 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), flowIterations_);
 	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), flowEps_);
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), flowMaxLevel_);
+	Parameters::parse(parameters, Parameters::kVisMinInliers(), minInliers_);
+	UASSERT(minInliers_ >= 1);
+	Parameters::parse(parameters, Parameters::kVisIterations(), iterations_);
+	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), pnpReprojError_);
+	Parameters::parse(parameters, Parameters::kVisPnPFlags(), pnpFlags_);
+	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), pnpRefineIterations_);
 	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
 
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
@@ -78,8 +89,15 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 
 	// Setup memory
 	ParametersMap customParameters;
-	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
-	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
+	float minDepth = Parameters::defaultVisMinDepth();
+	float maxDepth = Parameters::defaultVisMaxDepth();
+	std::string roi = Parameters::defaultVisRoiRatios();
+	Parameters::parse(parameters, Parameters::kVisMinDepth(), minDepth);
+	Parameters::parse(parameters, Parameters::kVisMaxDepth(), maxDepth);
+	Parameters::parse(parameters, Parameters::kVisRoiRatios(), roi);
+	customParameters.insert(ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(minDepth)));
+	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(maxDepth)));
+	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), roi));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
@@ -217,7 +235,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 				const Signature * newS = memory_->getLastWorkingSignature();
 				UDEBUG("newWords=%d", (int)newS->getWords().size());
 				nFeatures = (int)newS->getWords().size();
-				if((int)newS->getWords().size() > this->getMinInliers())
+				if((int)newS->getWords().size() > minInliers_)
 				{
 					cv::Mat K = cameraModel.K();
 					Transform guess = (this->getPose() * cameraModel.localTransform()).inverse();
@@ -347,9 +365,9 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					}
 					correspondences = (int)matches.size();
 
-					if((int)matches.size() < this->getMinInliers())
+					if((int)matches.size() < minInliers_)
 					{
-						UWARN("not enough matches (%d < %d)...", (int)matches.size(), this->getMinInliers());
+						UWARN("not enough matches (%d < %d)...", (int)matches.size(), minInliers_);
 					}
 					else
 					{
@@ -363,19 +381,19 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 								rvec,
 								tvec,
 								true,
-								this->getIterations(),
-								this->getPnPReprojError(),
+								iterations_,
+								pnpReprojError_,
 								0, // min inliers
 								inliersV,
-								this->getPnPFlags(),
-								this->getPnPRefineIterations());
+								pnpFlags_,
+								pnpRefineIterations_);
 
 						UDEBUG("inliers=%d/%d", (int)inliersV.size(), (int)objectPoints.size());
 
 						inliers = (int)inliersV.size();
-						if((int)inliersV.size() < this->getMinInliers())
+						if((int)inliersV.size() < minInliers_)
 						{
-							UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+							UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), minInliers_);
 						}
 						else
 						{
@@ -431,19 +449,19 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 										uMultimapToMapUnique(newS->getWords()),
 										cameraModel,
 										cameraTransform,
-										this->getIterations(),
-										this->getPnPReprojError(),
-										this->getPnPFlags(),
-										this->getPnPRefineIterations(),
+										iterations_,
+										pnpReprojError_,
+										pnpFlags_,
+										pnpRefineIterations_,
 										fundMatrixReprojError_,
 										fundMatrixConfidence_,
 										previousGuess,
 										&variance);
 
-								if((int)inliers3D.size() < this->getMinInliers())
+								if((int)inliers3D.size() < minInliers_)
 								{
 									UWARN("Epipolar geometry not enough inliers (%d < %d), rejecting the transform (%s)...",
-									(int)inliers3D.size(), this->getMinInliers(), cameraTransform.prettyPrint().c_str());
+									(int)inliers3D.size(), minInliers_, cameraTransform.prettyPrint().c_str());
 								}
 								else if(variance == 0 || variance > maxVariance_)
 								{
@@ -612,7 +630,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 
 			UDEBUG("Filtering optical flow outliers...done! (inliers=%d/%d)", oi, (int)statusFlowInliers.size());
 
-			if(flow > initMinFlow_ && oi > this->getMinInliers())
+			if(flow > initMinFlow_ && oi > minInliers_)
 			{
 				UDEBUG("flow=%f", flow);
 				// compute fundamental matrix
@@ -665,7 +683,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					}
 					UDEBUG("Filtering fundamental matrix outliers...done! (inliers=%d/%d)", oi, (int)statusFInliers.size());
 
-					if((int)refCorners.size() > this->getMinInliers())
+					if((int)refCorners.size() > minInliers_)
 					{
 						std::vector<cv::Point2f> refCornersRefined;
 						std::vector<cv::Point2f> newCornersRefined;
@@ -892,12 +910,12 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 										rvec,
 										tvec,
 										false,
-										this->getIterations(),
-										this->getPnPReprojError(),
+										iterations_,
+										pnpReprojError_,
 										0, // min inliers
 										inliersPnP,
-										this->getPnPFlags(),
-										this->getPnPRefineIterations());
+										pnpFlags_,
+										pnpRefineIterations_);
 
 								UDEBUG("PnP inliers = %d / %d", (int)inliersPnP.size(), (int)objectPoints.size());
 
@@ -946,7 +964,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					}
 					else
 					{
-						UWARN("Not enough inliers %d/%d", (int)refCorners.size(), this->getMinInliers());
+						UWARN("Not enough inliers %d/%d", (int)refCorners.size(), minInliers_);
 					}
 				}
 				else
@@ -969,7 +987,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 		if(memory_->update(SensorData(newFrame)))
 		{
 			const std::multimap<int, cv::KeyPoint> & words = memory_->getLastWorkingSignature()->getWords();
-			if((int)words.size() > this->getMinInliers())
+			if((int)words.size() > minInliers_)
 			{
 				for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 				{

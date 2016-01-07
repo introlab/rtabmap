@@ -58,6 +58,9 @@ public:
 	bool isScanRequired() const;
 	bool isUserDataRequired() const;
 
+	int getMinVisualCorrespondences() const;
+	float getMinGeometryCorrespondencesRatio() const;
+
 	bool varianceFromInliersCount() const {return varianceFromInliersCount_;}
 	bool force3DoF() const {return force3DoF_;}
 
@@ -93,9 +96,11 @@ protected:
 			Transform guess,
 			RegistrationInfo & info) const = 0;
 
-	virtual bool isImageRequiredImpl() const = 0;
-	virtual bool isScanRequiredImpl() const = 0;
-	virtual bool isUserDataRequiredImpl() const = 0;
+	virtual bool isImageRequiredImpl() const {return false;}
+	virtual bool isScanRequiredImpl() const {return false;}
+	virtual bool isUserDataRequiredImpl() const {return false;}
+	virtual int getMinVisualCorrespondencesImpl() const {return 0;}
+	virtual float getMinGeometryCorrespondencesRatioImpl() const {return 0.0f;}
 
 private:
 	bool varianceFromInliersCount_;
