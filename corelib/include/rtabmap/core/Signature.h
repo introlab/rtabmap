@@ -56,6 +56,7 @@ public:
 			double stamp = 0.0,
 			const std::string & label = std::string(),
 			const Transform & pose = Transform(),
+			const Transform & groundTruthPose = Transform(),
 			const SensorData & sensorData = SensorData());
 	Signature(const SensorData & data);
 	virtual ~Signature();
@@ -110,10 +111,12 @@ public:
 	//metric stuff
 	void setWords3(const std::multimap<int, cv::Point3f> & words3) {_words3 = words3;}
 	void setPose(const Transform & pose) {_pose = pose;}
+	void setGroundTruthPose(const Transform & pose) {_groundTruthPose = pose;}
 
 	const std::multimap<int, cv::Point3f> & getWords3() const {return _words3;}
 	const Transform & getPose() const {return _pose;}
 	cv::Mat getPoseCovariance() const;
+	const Transform & getGroundTruthPose() const {return _groundTruthPose;}
 
 	SensorData & sensorData() {return _sensorData;}
 	const SensorData & sensorData() const {return _sensorData;}
@@ -138,6 +141,7 @@ private:
 	bool _enabled;
 
 	Transform _pose;
+	Transform _groundTruthPose;
 
 	SensorData _sensorData;
 };

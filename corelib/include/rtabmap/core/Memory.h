@@ -137,12 +137,14 @@ public:
 	std::string getDatabaseVersion() const;
 	double getDbSavingTime() const;
 	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
+	Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
 	bool getNodeInfo(int signatureId,
 			Transform & odomPose,
 			int & mapId,
 			int & weight,
 			std::string & label,
 			double & stamp,
+			Transform & groundTruth,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
 	SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);

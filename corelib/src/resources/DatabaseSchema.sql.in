@@ -19,6 +19,7 @@ CREATE TABLE Node (
 	weight INTEGER,
 	stamp FLOAT,
 	pose BLOB,
+	ground_truth_pose BLOB,
 	label TEXT,
 	time_enter DATE,
 	PRIMARY KEY (id)

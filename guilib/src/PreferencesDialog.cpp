@@ -990,7 +990,7 @@ void PreferencesDialog::clicked(const QModelIndex & current, const QModelIndex &
 void PreferencesDialog::closeEvent(QCloseEvent *event)
 {
 	UDEBUG("");
-	_parameters.clear();
+	_modifiedParameters.clear();
 	_obsoletePanels = kPanelDummy;
 	this->readGuiSettings(getTmpIniFilePath());
 	this->readCameraSettings(getTmpIniFilePath());
@@ -1005,7 +1005,7 @@ void PreferencesDialog::closeDialog ( QAbstractButton * button )
 	switch(role)
 	{
 	case QDialogButtonBox::RejectRole:
-		_parameters.clear();
+		_modifiedParameters.clear();
 		_obsoletePanels = kPanelDummy;
 		this->readGuiSettings(getTmpIniFilePath());
 		this->readCameraSettings(getTmpIniFilePath());
@@ -1014,7 +1014,7 @@ void PreferencesDialog::closeDialog ( QAbstractButton * button )
 
 	case QDialogButtonBox::AcceptRole:
 		updateBasicParameter();// make that changes without editing finished signal are updated.
-		if((_obsoletePanels & kPanelAll) || _parameters.size())
+		if((_obsoletePanels & kPanelAll) || _modifiedParameters.size())
 		{
 			if(validateForm())
 			{
@@ -1327,6 +1327,7 @@ void PreferencesDialog::readSettings(const QString & filePath)
 	if(!readCoreSettings(filePath))
 	{
 		_parameters.clear();
+		_modifiedParameters.clear();
 		_obsoletePanels = kPanelDummy;
 
 		// only keep GUI settings
@@ -1690,11 +1691,11 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 	writeCameraSettings(filePath);
 	writeCoreSettings(filePath);
 
-	UDEBUG("_obsoletePanels=%d parameters=%d", (int)_obsoletePanels, (int)_parameters.size());
+	UDEBUG("_obsoletePanels=%d modified parameters=%d", (int)_obsoletePanels, (int)_modifiedParameters.size());
 
-	if(_parameters.size())
+	if(_modifiedParameters.size())
 	{
-		emit settingsChanged(_parameters);
+		emit settingsChanged(_modifiedParameters);
 	}
 
 	if(_obsoletePanels)
@@ -1702,7 +1703,9 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 		emit settingsChanged(_obsoletePanels);
 	}
 
-	_parameters.clear();
+	uInsert(_parameters, _modifiedParameters); // update cached parameters
+
+	_modifiedParameters.clear();
 	_obsoletePanels = kPanelDummy;
 }
 
@@ -2349,6 +2352,11 @@ QString PreferencesDialog::loadCustomConfig(const QString & section, const QStri
 	return value;
 }
 
+const rtabmap::ParametersMap & PreferencesDialog::getAllParameters() const
+{
+	UASSERT(_parameters.size() == Parameters::getDefaultParameters().size());
+	return _parameters;
+}
 
 void PreferencesDialog::selectSourceDriver(Src src)
 {
@@ -2626,6 +2634,7 @@ void PreferencesDialog::selectSourceOni2Path()
 void PreferencesDialog::setParameter(const std::string & key, const std::string & value)
 {
 	UDEBUG("%s=%s", key.c_str(), value.c_str());
+	uInsert(_parameters, ParametersPair(key, value));
 	QWidget * obj = _ui->stackedWidget->findChild<QWidget*>(key.c_str());
 	if(obj)
 	{
@@ -2795,13 +2804,6 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 {
 	if(object)
 	{
-		// Make sure the value is inserted, check if the same key already exists
-		rtabmap::ParametersMap::iterator iter = _parameters.find(object->objectName().toStdString());
-		if(iter != _parameters.end())
-		{
-			_parameters.erase(iter);
-		}
-
 		const QComboBox * comboBox = qobject_cast<const QComboBox*>(object);
 		const QSpinBox * spinbox = qobject_cast<const QSpinBox*>(object);
 		if(comboBox || spinbox)
@@ -2879,7 +2881,7 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 				}
 			}
 			// Add parameter
-			_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
+			uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
 		}
 		else
 		{
@@ -2897,20 +2899,13 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 {
 	if(object)
 	{
-		// Make sure the value is inserted, check if the same key already exists
-		rtabmap::ParametersMap::iterator iter = _parameters.find(object->objectName().toStdString());
-		if(iter != _parameters.end())
-		{
-			_parameters.erase(iter);
-		}
-
 		const QCheckBox * checkbox = qobject_cast<const QCheckBox*>(object);
 		const QRadioButton * radio = qobject_cast<const QRadioButton*>(object);
 		const QGroupBox * groupBox = qobject_cast<const QGroupBox*>(object);
 		if(checkbox || radio || groupBox)
 		{
 			// Add parameter
-			_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), uBool2Str(value)));
+			uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), uBool2Str(value)));
 
 			// RGBD panel
 			if(value && checkbox == _ui->general_checkBox_activateRGBD)
@@ -2955,14 +2950,7 @@ void PreferencesDialog::addParameter(const QObject * object, double value)
 {
 	if(object)
 	{
-		// Make sure the value is inserted, check if the same key already exists
-		rtabmap::ParametersMap::iterator iter = _parameters.find(object->objectName().toStdString());
-		if(iter != _parameters.end())
-		{
-			_parameters.erase(iter);
-		}
-		_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
-		//ULOGGER_DEBUG("PreferencesDialog::addParameter(object, double) Added [\"%s\",\"%s\"]", object->objectName().toStdString().c_str(), QString::number(value).toStdString().c_str());
+		uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
 	}
 	else
 	{
@@ -2975,12 +2963,7 @@ void PreferencesDialog::addParameter(const QObject * object, const QString & val
 	if(object)
 	{
 		// Make sure the value is inserted, check if the same key already exists
-		rtabmap::ParametersMap::iterator iter = _parameters.find(object->objectName().toStdString());
-		if(iter != _parameters.end())
-		{
-			_parameters.erase(iter);
-		}
-		_parameters.insert(rtabmap::ParametersPair(object->objectName().toStdString(), value.toStdString()));
+		uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), value.toStdString()));
 		//ULOGGER_DEBUG("PreferencesDialog::addParameter(object, QString) Added [\"%s\",\"%s\"]", object->objectName().toStdString().c_str(), QString::number(value).toStdString().c_str());
 	}
 	else
@@ -3160,23 +3143,6 @@ void PreferencesDialog::makeObsoleteLoggingPanel()
 void PreferencesDialog::makeObsoleteSourcePanel()
 {
 	_obsoletePanels = _obsoletePanels | kPanelSource;
-}
-
-rtabmap::ParametersMap PreferencesDialog::getAllParameters()
-{
-	rtabmap::ParametersMap result;
-	rtabmap::ParametersMap tmpParameters = _parameters;
-	_parameters.clear();
-
-	QList<QGroupBox*> boxes = this->getGroupBoxes();
-	for(int i=0; i<boxes.size(); ++i)
-	{
-		this->addParameters(boxes.at(i));
-	}
-
-	result = _parameters;
-	_parameters = tmpParameters;
-	return result;
 }
 
 QList<QGroupBox*> PreferencesDialog::getGroupBoxes()

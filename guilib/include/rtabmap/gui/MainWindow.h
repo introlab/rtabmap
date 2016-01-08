@@ -229,9 +229,11 @@ private:
 			const std::multimap<int, Link> & constraints,
 			const std::map<int, int> & mapIds,
 			const std::map<int, std::string> & labels,
+			const std::map<int, Transform> & groundTruths,
 			bool verboseProgress = false);
 	void createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
+	Transform alignPosesToGroundTruth(std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceMenu();
@@ -296,7 +298,7 @@ private:
 	std::map<int, Transform> _currentGTPosesMap; // <nodeId, pose>
 	std::multimap<int, Link> _currentLinksMap; // <nodeFromId, link>
 	std::map<int, int> _currentMapIds;   // <nodeId, mapId>
-	std::map<int, std::string> _curentLabels; // <nodeId, label>
+	std::map<int, std::string> _currentLabels; // <nodeId, label>
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>

@@ -333,7 +333,7 @@ QString DatabaseViewer::getIniFilePath() const
 	{
 		QDir::home().mkdir(".rtabmap");
 	}
-	return privatePath + "/dbviewer.ini";
+	return privatePath + "/rtabmap.ini";
 }
 
 void DatabaseViewer::readSettings()
@@ -515,6 +515,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			graphes_.clear();
 			graphLinks_.clear();
 			poses_.clear();
+			groundTruthPoses_.clear();
 			mapIds_.clear();
 			links_.clear();
 			linksAdded_.clear();
@@ -711,14 +712,16 @@ void DatabaseViewer::exportDatabase()
 			std::vector<double> delays(ids_.size());
 			int oi=0;
 			std::map<int, Transform> poses;
+			std::map<int, double> stamps;
+			std::map<int, Transform> groundTruths;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
-				Transform odomPose;
+				Transform odomPose, groundTruth;
 				int weight = -1;
 				int mapId = -1;
 				std::string label;
 				double stamp = 0;
-				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp))
+				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -736,6 +739,8 @@ void DatabaseViewer::exportDatabase()
 							previousStamp = stamp;
 
 							poses.insert(std::make_pair(ids_[i], odomPose));
+							stamps.insert(std::make_pair(ids_[i], stamp));
+							groundTruths.insert(std::make_pair(ids_[i], groundTruth));
 						}
 					}
 					if(sessionExported >= 0 && mapId > sessionExported)
@@ -791,8 +796,8 @@ void DatabaseViewer::exportDatabase()
 							rgb,
 							depth,
 							data.cameraModels(),
-							data.id(),
-							data.stamp(),
+							id,
+							stamps.at(id),
 							userData);
 					}
 					else
@@ -804,10 +809,11 @@ void DatabaseViewer::exportDatabase()
 							rgb,
 							depth,
 							data.stereoCameraModel(),
-							data.id(),
-							data.stamp(),
+							id,
+							stamps.at(id),
 							userData);
 					}
+					sensorData.setGroundTruth(groundTruths.at(id));
 
 					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
 
@@ -970,6 +976,7 @@ void DatabaseViewer::updateIds()
 	idToIndex_.clear();
 	mapIds_.clear();
 	poses_.clear();
+	groundTruthPoses_.clear();
 	links_.clear();
 	linksAdded_.clear();
 	linksRefined_.clear();
@@ -991,12 +998,12 @@ void DatabaseViewer::updateIds()
 	{
 		idToIndex_.insert(ids_[i], i);
 
-		Transform p;
+		Transform p, g;
 		int w;
 		std::string l;
 		double s;
 		int mapId;
-		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s);
+		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 
 		if(i>0)
@@ -1053,6 +1060,10 @@ void DatabaseViewer::updateIds()
 		if(addPose)
 		{
 			poses_.insert(std::make_pair(ids_[i], p));
+			if(!g.isNull())
+			{
+				groundTruthPoses_.insert(std::make_pair(ids_[i], g));
+			}
 		}
 
 		if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
@@ -1075,6 +1086,7 @@ void DatabaseViewer::updateIds()
 	ui_->textEdit_info->append(tr("LTM:\t\t%1 nodes and %2 words").arg(ids.size()).arg(dbDriver_->getTotalDictionarySize()));
 	ui_->textEdit_info->append(tr("WM:\t\t%1 nodes and %2 words").arg(dbDriver_->getLastNodesSize()).arg(dbDriver_->getLastDictionarySize()));
 	ui_->textEdit_info->append(tr("Global graph:\t%1 poses and %2 links").arg(poses_.size()).arg(links_.size()));
+	ui_->textEdit_info->append(tr("Ground truth:\t%1 poses").arg(groundTruthPoses_.size()));
 	ui_->textEdit_info->append("");
 	ui_->textEdit_info->append(tr("Database size:\t%1 MB").arg(dbDriver_->getMemoryUsed()/1000000));
 	ui_->textEdit_info->append(tr("Images size:\t%1 MB").arg(dbDriver_->getImagesMemoryUsed()/1000000));
@@ -1456,10 +1468,10 @@ void DatabaseViewer::view3DMap()
 						{
 							QColor color = Qt::red;
 							int mapId, weight;
-							Transform odomPose;
+							Transform odomPose, groundTruth;
 							std::string label;
 							double stamp;
-							if(dbDriver_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp))
+							if(dbDriver_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, groundTruth))
 							{
 								color = (Qt::GlobalColor)(mapId % 12 + 7 );
 							}
@@ -1561,10 +1573,10 @@ void DatabaseViewer::view3DLaserScans()
 					{
 						QColor color = Qt::red;
 						int mapId, weight;
-						Transform odomPose;
+						Transform odomPose, groundTruth;
 						std::string label;
 						double stamp;
-						if(dbDriver_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp))
+						if(dbDriver_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, groundTruth))
 						{
 							color = (Qt::GlobalColor)(mapId % 12 + 7 );
 						}
@@ -2103,11 +2115,11 @@ void DatabaseViewer::update(int value,
 					signatures.clear();
 				}
 
-				Transform odomPose;
+				Transform odomPose, g;
 				int w;
 				std::string l;
 				double s;
-				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s);
+				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g);
 
 				weight->setNum(w);
 				label->setText(l.c_str());
@@ -3211,6 +3223,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			UINFO("Update local maps list... done");
 		}
 
+		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_);
 		if(graph.size() && localMaps_.size() && ui_->graphViewer->isGridMapVisible())
 		{
@@ -3256,6 +3269,7 @@ void DatabaseViewer::updateGraphView()
 {
 	ui_->label_loopClosures->clear();
 	ui_->label_poses->clear();
+
 	if(poses_.size())
 	{
 		int fromId = ui_->spinBox_optimizationsFrom->value();
@@ -3428,6 +3442,20 @@ void DatabaseViewer::updateGraphView()
 		if(posesOut.size() && finalPoses.empty())
 		{
 			QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+		}
+
+		if(uContains(groundTruthPoses_, fromId) && uContains(posesOut, fromId))
+		{
+			// adjust the ground truth to fit the root
+			Transform t = posesOut.at(fromId) * groundTruthPoses_.at(fromId).inverse();
+			for(std::map<int, Transform>::iterator iter=groundTruthPoses_.begin(); iter!=groundTruthPoses_.end(); ++iter)
+			{
+				iter->second = t * iter->second;
+			}
+		}
+		else if(groundTruthPoses_.size())
+		{
+			UWARN("Could not find ground truth for root node %d", fromId);
 		}
 	}
 	if(graphes_.size())

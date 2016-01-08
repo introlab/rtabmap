@@ -55,6 +55,7 @@ Signature::Signature(
 		double stamp,
 		const std::string & label,
 		const Transform & pose,
+		const Transform & groundTruthPose,
 		const SensorData & sensorData):
 	_id(id),
 	_mapId(mapId),
@@ -66,6 +67,7 @@ Signature::Signature(
 	_linksModified(true),
 	_enabled(false),
 	_pose(pose),
+	_groundTruthPose(groundTruthPose),
 	_sensorData(sensorData)
 {
 	if(_sensorData.id() == 0)
@@ -86,6 +88,7 @@ Signature::Signature(const SensorData & data) :
 	_linksModified(true),
 	_enabled(false),
 	_pose(Transform::getIdentity()),
+	_groundTruthPose(data.groundTruth()),
 	_sensorData(data)
 {
 

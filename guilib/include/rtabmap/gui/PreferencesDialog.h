@@ -124,7 +124,7 @@ public:
 	void saveCustomConfig(const QString & section, const QString & key, const QString & value);
 	QString loadCustomConfig(const QString & section, const QString & key);
 
-	rtabmap::ParametersMap getAllParameters();
+	const rtabmap::ParametersMap & getAllParameters() const;
 
 	//General panel
 	int getGeneralLoggerLevel() const;
@@ -315,6 +315,7 @@ private:
 
 protected:
 	rtabmap::ParametersMap _parameters;
+	rtabmap::ParametersMap _modifiedParameters;
 	PANEL_FLAGS _obsoletePanels;
 
 private:

@@ -166,6 +166,7 @@ private:
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::multimap<int, rtabmap::Link> graphLinks_;
 	std::map<int, rtabmap::Transform> poses_;
+	std::map<int, rtabmap::Transform> groundTruthPoses_;
 	std::multimap<int, rtabmap::Link> links_;
 	std::multimap<int, rtabmap::Link> linksRefined_;
 	std::multimap<int, rtabmap::Link> linksAdded_;

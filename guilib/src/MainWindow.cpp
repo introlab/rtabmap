@@ -1102,11 +1102,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	if(uContains(stat.getSignatures(), stat.refImageId()))
 	{
 		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
-		if(!stat.getSignatures().at(stat.refImageId()).sensorData().groundTruth().isNull())
-		{
-			_currentGTPosesMap.insert(std::make_pair(stat.refImageId(), stat.getSignatures().at(stat.refImageId()).sensorData().groundTruth()));
-			_ui->actionAnchor_clouds_to_ground_truth->setEnabled(true);
-		}
 	}
 	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
 	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
@@ -1330,24 +1325,35 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			// update pose only if odometry is not received
 			std::map<int, int> mapIds;
+			std::map<int, Transform> groundTruth;
 			std::map<int, std::string> labels;
 			for(std::map<int, Signature>::const_iterator iter=stat.getSignatures().begin(); iter!=stat.getSignatures().end();++iter)
 			{
 				mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
+				if(!iter->second.getGroundTruthPose().isNull())
+				{
+					groundTruth.insert(std::make_pair(iter->first, iter->second.getGroundTruthPose()));
+				}
 				if(!iter->second.getLabel().empty())
 				{
 					labels.insert(std::make_pair(iter->first, iter->second.getLabel()));
 				}
 			}
-			updateMapCloud(stat.poses(),
-					_odometryReceived||stat.poses().size()==0?Transform():stat.poses().rbegin()->second,
+
+			std::map<int, Transform> poses = stat.poses();
+			Transform groundTruthOffset = alignPosesToGroundTruth(poses, groundTruth);
+
+			updateMapCloud(
+					poses,
+					_odometryReceived||poses.size()==0?Transform():poses.rbegin()->second,
 					stat.constraints(),
 					mapIds,
-					labels);
+					labels,
+					groundTruth);
 
 			_odometryReceived = false;
 
-			_odometryCorrection = stat.mapCorrection();
+			_odometryCorrection = groundTruthOffset * stat.mapCorrection();
 
 			UDEBUG("time= %d ms", time.restart());
 			_ui->statsToolBox->updateStat("/Gui RGB-D cloud/ms", stat.refImageId(), int(timerVis.elapsed()*1000.0f));
@@ -1433,6 +1439,7 @@ void MainWindow::updateMapCloud(
 		const std::multimap<int, Link> & constraints,
 		const std::map<int, int> & mapIdsIn,
 		const std::map<int, std::string> & labels,
+		const std::map<int, Transform> & groundTruths, // ground truth should contain only valid transforms
 		bool verboseProgress)
 {
 	UDEBUG("posesIn=%d constraints=%d mapIdsIn=%d labelsIn=%d currentPose=%s",
@@ -1442,12 +1449,14 @@ void MainWindow::updateMapCloud(
 		_currentPosesMap = posesIn;
 		_currentLinksMap = constraints;
 		_currentMapIds = mapIdsIn;
-		_curentLabels = labels;
+		_currentLabels = labels;
+		_currentGTPosesMap = groundTruths;
 		if(_state != kMonitoring && _state != kDetecting)
 		{
 			_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 			_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
 		}
+		_ui->actionAnchor_clouds_to_ground_truth->setEnabled(!_currentGTPosesMap.empty());
 	}
 
 	// filter duplicated poses
@@ -1492,7 +1501,7 @@ void MainWindow::updateMapCloud(
 	}
 	_ui->widget_mapVisibility->setMap(posesIn, posesMask);
 
-	if(_ui->actionAnchor_clouds_to_ground_truth->isChecked() && _currentGTPosesMap.size())
+	if(_currentGTPosesMap.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
 	{
 		for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
@@ -2063,6 +2072,55 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 	}
 }
 
+Transform MainWindow::alignPosesToGroundTruth(
+		std::map<int, Transform> & poses,
+		const std::map<int, Transform> & groundTruth)
+{
+	Transform t = Transform::getIdentity();
+	if(groundTruth.size())
+	{
+		if(uContains(_preferencesDialog->getAllParameters(), Parameters::kRGBDOptimizeFromGraphEnd()))
+		{
+			bool optimizeFromGraphEnd = uStr2Bool(_preferencesDialog->getAllParameters().at(Parameters::kRGBDOptimizeFromGraphEnd()));
+			// Align poses to ground truth
+			int rootId = 0;
+			if(!optimizeFromGraphEnd)
+			{
+				for(std::map<int, Transform>::const_iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
+				{
+					std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
+					if(iter2!=poses.end())
+					{
+						rootId = iter->first;
+						break;
+					}
+				}
+			}
+			else
+			{
+				for(std::map<int, Transform>::const_reverse_iterator iter=groundTruth.rbegin(); iter!=groundTruth.rend(); ++iter)
+				{
+					std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
+					if(iter2!=poses.end())
+					{
+						rootId = iter->first;
+						break;
+					}
+				}
+			}
+			if(rootId>0)
+			{
+				t = groundTruth.at(rootId) * poses.at(rootId).inverse();
+				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					iter->second = t * iter->second;
+				}
+			}
+		}
+	}
+	return t;
+}
+
 void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 {
 	if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
@@ -2253,12 +2311,17 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 
 		int addedSignatures = 0;
 		std::map<int, int> mapIds;
+		std::map<int, Transform> groundTruth;
 		std::map<int, std::string> labels;
 		for(std::map<int, Signature>::const_iterator iter = event.getSignatures().begin();
 			iter!=event.getSignatures().end();
 			++iter)
 		{
 			mapIds.insert(std::make_pair(iter->first, iter->second.mapId()));
+			if(!iter->second.getGroundTruthPose().isNull())
+			{
+				groundTruth.insert(std::make_pair(iter->first, iter->second.getGroundTruthPose()));
+			}
 			if(!iter->second.getLabel().empty())
 			{
 				labels.insert(std::make_pair(iter->first, iter->second.getLabel()));
@@ -2283,7 +2346,9 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
 			QApplication::processEvents();
-			this->updateMapCloud(event.getPoses(), Transform(), event.getConstraints(), mapIds, labels, true);
+			std::map<int, Transform> poses = event.getPoses();
+			alignPosesToGroundTruth(poses, groundTruth);
+			this->updateMapCloud(poses, Transform(), event.getConstraints(), mapIds, labels, groundTruth, true);
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
@@ -2430,7 +2495,8 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 					Transform(),
 					std::multimap<int, Link>(_currentLinksMap),
 					std::map<int, int>(_currentMapIds),
-					std::map<int, std::string>(_curentLabels));
+					std::map<int, std::string>(_currentLabels),
+					std::map<int, Transform>(_currentGTPosesMap));
 		}
 	}
 
@@ -2935,6 +3001,7 @@ void MainWindow::editDatabase()
 
 void MainWindow::startDetection()
 {
+	UDEBUG("");
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
 	// verify source with input rates
 	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
@@ -3726,11 +3793,14 @@ void MainWindow::postProcessing()
 	}
 
 	_initProgressDialog->appendText(tr("Updating map..."));
+	alignPosesToGroundTruth(optimizedPoses, _currentGTPosesMap);
 	this->updateMapCloud(
-			optimizedPoses, Transform(),
+			optimizedPoses,
+			Transform(),
 			std::multimap<int, Link>(_currentLinksMap),
 			std::map<int, int>(_currentMapIds),
-			std::map<int, std::string>(_curentLabels),
+			std::map<int, std::string>(_currentLabels),
+			std::map<int, Transform>(_currentGTPosesMap),
 			false);
 	_initProgressDialog->appendText(tr("Updating map... done!"));
 
@@ -4092,7 +4162,8 @@ void MainWindow::anchorCloudsToGroundTruth()
 			Transform(),
 			std::multimap<int, Link>(_currentLinksMap),
 			std::map<int, int>(_currentMapIds),
-			std::map<int, std::string>(_curentLabels));
+			std::map<int, std::string>(_currentLabels),
+			std::map<int, Transform>(_currentGTPosesMap));
 }
 
 void MainWindow::clearTheCache()
@@ -4110,7 +4181,7 @@ void MainWindow::clearTheCache()
 	_currentGTPosesMap.clear();
 	_currentLinksMap.clear();
 	_currentMapIds.clear();
-	_curentLabels.clear();
+	_currentLabels.clear();
 	_odometryCorrection = Transform::getIdentity();
 	_lastOdomPose.setNull();
 	//disable save cloud action

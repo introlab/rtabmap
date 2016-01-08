@@ -994,7 +994,8 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		int & mapId,
 		int & weight,
 		std::string & label,
-		double & stamp) const
+		double & stamp,
+		Transform & groundTruthPose) const
 {
 	bool found = false;
 	if(_ppDb && signatureId)
@@ -1003,7 +1004,14 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.8.5") >= 0)
+		if(uStrNumCmp(_version, "0.11.1") >= 0)
+		{
+			query << "SELECT pose, map_id, weight, label, stamp, ground_truth_pose "
+					 "FROM Node "
+					 "WHERE id = " << signatureId <<
+					 ";";
+		}
+		else if(uStrNumCmp(_version, "0.8.5") >= 0)
 		{
 			query << "SELECT pose, map_id, weight, label, stamp "
 					 "FROM Node "
@@ -1048,6 +1056,16 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 					label = reinterpret_cast<const char*>(p); // label
 				}
 				stamp = sqlite3_column_double(ppStmt, index++); // stamp
+			}
+
+			if(uStrNumCmp(_version, "0.11.1") >= 0)
+			{
+				data = sqlite3_column_blob(ppStmt, index); // ground_truh_pose
+				dataSize = sqlite3_column_bytes(ppStmt, index++);
+				if((unsigned int)dataSize == groundTruthPose.size()*sizeof(float) && data)
+				{
+					memcpy(groundTruthPose.data(), data, dataSize);
+				}
 			}
 
 			rc = sqlite3_step(ppStmt); // next result...
@@ -1414,7 +1432,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 		unsigned int loaded = 0;
 
 		// Load nodes information
-		if(uStrNumCmp(_version, "0.8.5") >= 0)
+		if(uStrNumCmp(_version, "0.11.1") >= 0)
+		{
+			query << "SELECT id, map_id, weight, pose, stamp, label, ground_truth_pose "
+				  << "FROM Node "
+				  << "WHERE id=?;";
+		}
+		else if(uStrNumCmp(_version, "0.8.5") >= 0)
 		{
 			query << "SELECT id, map_id, weight, pose, stamp, label "
 				  << "FROM Node "
@@ -1442,6 +1466,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			double stamp = 0.0;
 			int weight = 0;
 			Transform pose;
+			Transform groundTruthPose;
 			const void * data = 0;
 			int dataSize = 0;
 			std::string label;
@@ -1472,6 +1497,16 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					}
 				}
 
+				if(uStrNumCmp(_version, "0.11.1") >= 0)
+				{
+					data = sqlite3_column_blob(ppStmt, index); // pose
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if((unsigned int)dataSize == groundTruthPose.size()*sizeof(float) && data)
+					{
+						memcpy(groundTruthPose.data(), data, dataSize);
+					}
+				}
+
 				rc = sqlite3_step(ppStmt);
 			}
 			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
@@ -1486,7 +1521,8 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						weight,
 						stamp,
 						label,
-						pose);
+						pose,
+						groundTruthPose);
 				s->setSaved(true);
 				nodes.push_back(s);
 				++loaded;
@@ -2507,7 +2543,11 @@ void DBDriverSqlite3::updateLinkQuery(const Link & link) const
 
 std::string DBDriverSqlite3::queryStepNode() const
 {
-	if(uStrNumCmp(_version, "0.10.1") >= 0)
+	if(uStrNumCmp(_version, "0.11.1") >= 0)
+	{
+		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label, ground_truth_pose) VALUES(?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.10.1") >= 0)
 	{
 		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label) VALUES(?,?,?,?,?,?);";
 	}
@@ -2573,6 +2613,12 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 			rc = sqlite3_bind_blob(ppStmt, index++, s->sensorData().userDataCompressed().data, (int)s->sensorData().userDataCompressed().cols, SQLITE_STATIC);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 		}
+	}
+
+	if(uStrNumCmp(_version, "0.11.1") >= 0)
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, s->getGroundTruthPose().data(), s->getGroundTruthPose().size()*sizeof(float), SQLITE_STATIC);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error: %s", sqlite3_errmsg(_ppDb)).c_str());
 	}
 
 	//step

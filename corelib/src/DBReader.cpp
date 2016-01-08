@@ -211,8 +211,8 @@ void DBReader::mainLoop()
 				std::string label;
 				double stamp;
 				int mapId;
-				Transform localTransform, pose;
-				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
+				Transform localTransform, pose, groundTruth;
+				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth);
 				if(previousStamp && stamp && stamp > previousStamp)
 				{
 					delay = stamp - previousStamp;
@@ -285,7 +285,8 @@ OdometryEvent DBReader::getNextData()
 			int weight;
 			std::string label;
 			double stamp;
-			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp);
+			Transform groundTruth;
+			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth);
 
 			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)
@@ -369,6 +370,7 @@ OdometryEvent DBReader::getNextData()
 				data.uncompressData();
 				data.setId(seq);
 				data.setStamp(stamp);
+				data.setGroundTruth(groundTruth);
 				UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",
 						data.laserScanRaw().empty()?0:1,
 						data.imageRaw().empty()?0:1,

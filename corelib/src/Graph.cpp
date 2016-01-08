@@ -220,6 +220,10 @@ bool importPoses(
 								-1, 0, 0, 0,
 								 0,-1, 0, 0);
 					pose = t * pose * t.inverse();
+					t = Transform( 0, 0, 1, 0,
+								   0, -1, 0, 0,
+								   1, 0, 0, 0);
+					pose = t*pose;
 					poses.insert(std::make_pair(id, pose));
 				}
 				else

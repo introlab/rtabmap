@@ -552,7 +552,8 @@ bool DBDriver::getNodeInfo(
 		int & mapId,
 		int & weight,
 		std::string & label,
-		double & stamp) const
+		double & stamp,
+		Transform & groundTruthPose) const
 {
 	bool found = false;
 	// look in the trash
@@ -564,6 +565,7 @@ bool DBDriver::getNodeInfo(
 		weight = _trashSignatures.at(signatureId)->getWeight();
 		label = _trashSignatures.at(signatureId)->getLabel();
 		stamp = _trashSignatures.at(signatureId)->getStamp();
+		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -571,7 +573,7 @@ bool DBDriver::getNodeInfo(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;

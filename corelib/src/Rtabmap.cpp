@@ -743,11 +743,11 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				Transform o;
+				Transform o,g;
 				int m, w;
 				std::string l;
 				double stamp = 0.0;
-				_memory->getNodeInfo(iter->first, o, m, w, l, stamp, true);
+				_memory->getNodeInfo(iter->first, o, m, w, l, stamp, g, true);
 				stamps.insert(std::make_pair(iter->first, stamp));
 			}
 		}
@@ -2471,15 +2471,17 @@ bool Rtabmap::process(
 			int mapId = -1;
 			std::string label;
 			double stamp = 0;
+			Transform groundTruth;
 			std::vector<unsigned char> userData;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, false);
+			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, groundTruth, false);
 			signatures.insert(std::make_pair(iter->first,
 					Signature(iter->first,
 							mapId,
 							weight,
 							stamp,
 							label,
-							odomPose)));
+							odomPose,
+							groundTruth)));
 		}
 		statistics_.setPoses(poses);
 		statistics_.setConstraints(constraints);
@@ -3090,7 +3092,8 @@ void Rtabmap::get3DMap(
 			int mapId = -1;
 			std::string label;
 			double stamp = 0;
-			_memory->getNodeInfo(*iter, odomPose, mapId, weight, label, stamp, true);
+			Transform groundTruth;
+			_memory->getNodeInfo(*iter, odomPose, mapId, weight, label, stamp, groundTruth, true);
 			SensorData data = _memory->getNodeData(*iter);
 			data.setId(*iter);
 			std::multimap<int, cv::KeyPoint> words;
@@ -3103,6 +3106,7 @@ void Rtabmap::get3DMap(
 							stamp,
 							label,
 							odomPose,
+							groundTruth,
 							data)));
 			signatures.at(*iter).setWords(words);
 			signatures.at(*iter).setWords3(words3);
@@ -3156,14 +3160,16 @@ void Rtabmap::getGraph(
 				int mapId = -1;
 				std::string label;
 				double stamp = 0;
-				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, global);
+				Transform groundTruth;
+				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, groundTruth, global);
 				signatures->insert(std::make_pair(iter->first,
 						Signature(iter->first,
 							mapId,
 							weight,
 							stamp,
 							label,
-							odomPose)));
+							odomPose,
+							groundTruth)));
 			}
 		}
 	}

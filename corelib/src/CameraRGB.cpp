@@ -295,7 +295,6 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				}
 				std::vector<double> values = uValues(stamps);
 
-				Transform firstPoseInv;
 				for(std::list<double>::iterator ster=stamps_.begin(); ster!=stamps_.end(); ++ster)
 				{
 					Transform pose; // null transform
@@ -323,17 +322,9 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 							}
 						}
 					}
-					if(!pose.isNull())
+					if(pose.isNull())
 					{
-						if(firstPoseInv.isNull())
-						{
-							firstPoseInv = pose.inverse();
-							pose.setIdentity();
-						}
-						else
-						{
-							pose = firstPoseInv * pose;
-						}
+						UWARN("Ground truth pose not found for stamp %f", *ster);
 					}
 					groundTruth_.push_back(pose);
 				}

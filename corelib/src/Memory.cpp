@@ -2727,12 +2727,22 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 
 Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 {
-	Transform pose;
+	Transform pose, groundTruth;
 	int mapId, weight;
 	std::string label;
 	double stamp;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, lookInDatabase);
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, lookInDatabase);
 	return pose;
+}
+
+Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
+{
+	Transform pose, groundTruth;
+	int mapId, weight;
+	std::string label;
+	double stamp;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, lookInDatabase);
+	return groundTruth;
 }
 
 bool Memory::getNodeInfo(int signatureId,
@@ -2741,6 +2751,7 @@ bool Memory::getNodeInfo(int signatureId,
 		int & weight,
 		std::string & label,
 		double & stamp,
+		Transform & groundTruth,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -2751,11 +2762,12 @@ bool Memory::getNodeInfo(int signatureId,
 		weight = s->getWeight();
 		label = s->getLabel();
 		stamp = s->getStamp();
+		groundTruth = s->getGroundTruthPose();
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth);
 	}
 	return false;
 }
@@ -3289,6 +3301,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.stamp(),
 			"",
 			pose,
+			data.groundTruth(),
 			stereoCameraModel.isValid()?
 				SensorData(
 						ctDepth2d.getCompressedData(),
@@ -3319,6 +3332,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.stamp(),
 			"",
 			pose,
+			data.groundTruth(),
 			stereoCameraModel.isValid()?
 				SensorData(
 						cv::Mat(),
@@ -3339,6 +3353,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						id,
 						0));
 	}
+
 	s->setWords(words);
 	s->setWords3(words3D);
 	if(this->isRawDataKept())

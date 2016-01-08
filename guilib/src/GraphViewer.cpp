@@ -104,13 +104,13 @@ class LinkItem: public QGraphicsLineItem
 {
 public:
 	// in meter
-	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, Link::Type type, bool interSessionClosure) :
+	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, const Link & link, bool interSessionClosure) :
 		QGraphicsLineItem(-poseA.y(), -poseA.x(), -poseB.y(), -poseB.x()),
 		_from(from),
 		_to(to),
 		_poseA(poseA),
 		_poseB(poseB),
-		_type(type),
+		_link(link),
 		_interSession(interSessionClosure)
 	{
 		this->setAcceptHoverEvents(true);
@@ -140,7 +140,7 @@ public:
 		return _poseB;
 	}
 
-	Link::Type linkType() const {return _type;}
+	Link::Type linkType() const {return _link.type();}
 	bool isInterSession() const {return _interSession;}
 	int from() const {return _from;}
 	int to() const {return _to;}
@@ -148,7 +148,12 @@ public:
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
 	{
-		this->setToolTip(QString("%1->%2 %3 m").arg(_from).arg(_to).arg(_poseA.getDistance(_poseB)));
+		QString str = QString("%1->%2 (%3 m)").arg(_from).arg(_to).arg(_poseA.getDistance(_poseB));
+		if(!_link.transform().isNull())
+		{
+			str.append(QString("\n%1\n%2 %3").arg(_link.transform().prettyPrint().c_str()).arg(_link.transVariance()).arg(_link.rotVariance()));
+		}
+		this->setToolTip(str);
 		QPen pen = this->pen();
 		pen.setWidthF(pen.widthF()+0.02);
 		this->setPen(pen);
@@ -168,7 +173,7 @@ private:
 	int _to;
 	Transform _poseA;
 	Transform _poseB;
-	Link::Type _type;
+	Link _link;
 	bool _interSession;
 };
 
@@ -333,7 +338,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				if(linkItem == 0)
 				{
 					//create a link item
-					linkItem = new LinkItem(idFrom, idTo, poseA, poseB, iter->second.type(), interSessionClosure);
+					linkItem = new LinkItem(idFrom, idTo, poseA, poseB, iter->second, interSessionClosure);
 					QPen p = linkItem->pen();
 					p.setWidthF(_linkWidth);
 					linkItem->setPen(p);
@@ -526,7 +531,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 				if(linkItem == 0)
 				{
 					//create a link item
-					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link::kUndef, 1);
+					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1);
 					QPen p = linkItem->pen();
 					p.setWidthF(_linkWidth);
 					linkItem->setPen(p);
@@ -655,7 +660,7 @@ void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & 
 			//create a link item
 			int idFrom = globalPath[i].first;
 			int idTo = globalPath[i+1].first;
-			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link::kUndef, false);
+			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link(), false);
 			QPen p = item->pen();
 			p.setWidthF(_linkWidth);
 			item->setPen(p);
@@ -731,7 +736,7 @@ void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 				if(!updated)
 				{
 					//create a link item
-					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link::kUndef, false);
+					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link(), false);
 					QPen p = item->pen();
 					p.setWidthF(_linkWidth);
 					item->setPen(p);

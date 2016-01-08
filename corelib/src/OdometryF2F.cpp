@@ -179,6 +179,7 @@ Transform OdometryF2F::computeTransform(
 		info->type = 1;
 		info->variance = regInfo.variance;
 		info->inliers = regInfo.inliers;
+		info->matches = regInfo.matches;
 	}
 
 	UINFO("Odom update time = %fs lost=%s inliers=%d, ref frame corners=%d, transform accepted=%s",
