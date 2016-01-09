@@ -54,9 +54,22 @@ public:
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
 	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
+	void setImageDecimation(int decimation) {_imageDecimation = decimation;}
 	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
-	void setScanFromDepth(bool enabled, int decimation=4, float maxDepth=4.0f)
-	{_scanFromDepth = enabled; _scanDecimation=decimation; _scanMaxDepth = maxDepth;}
+
+	void setScanFromDepth(
+			bool enabled,
+			int decimation=4,
+			float maxDepth=4.0f,
+			float voxelSize = 0.0f,
+			int normalsK = 0)
+	{
+		_scanFromDepth = enabled;
+		_scanDecimation=decimation;
+		_scanMaxDepth = maxDepth;
+		_scanVoxelSize = voxelSize;
+		_scanNormalsK = normalsK;
+	}
 
 	//getters
 	bool isPaused() const {return !this->isRunning();}
@@ -73,10 +86,13 @@ private:
 	Camera * _camera;
 	bool _mirroring;
 	bool _colorOnly;
+	int _imageDecimation;
 	bool _stereoToDepth;
 	bool _scanFromDepth;
 	int _scanDecimation;
 	float _scanMaxDepth;
+	float _scanVoxelSize;
+	int _scanNormalsK;
 	StereoDense * _stereoDense;
 };
 

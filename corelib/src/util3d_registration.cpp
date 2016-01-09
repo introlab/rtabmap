@@ -293,12 +293,20 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  double maxCorrespondenceDistance,
 			  int maximumIterations,
 			  bool & hasConverged,
-			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered)
+			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
+			  bool icp2D)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
 	// Set the input source and target
 	icp.setInputTarget (cloud_target);
 	icp.setInputSource (cloud_source);
+
+	if(icp2D)
+	{
+		pcl::registration::TransformationEstimation2D<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
+		est.reset(new pcl::registration::TransformationEstimation2D<pcl::PointXYZ, pcl::PointXYZ>);
+		icp.setTransformationEstimation(est);
+	}
 
 	// Set the max correspondence distance to 5cm (e.g., correspondences with higher distances will be ignored)
 	icp.setMaxCorrespondenceDistance (maxCorrespondenceDistance);
@@ -349,40 +357,6 @@ Transform icpPointToPlane(
 	hasConverged = icp.hasConverged();
 	return Transform::fromEigen4f(icp.getFinalTransformation());
 }
-
-// return transform from source to target (All points must be finite!!!)
-Transform icp2D(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
-			  const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
-			  double maxCorrespondenceDistance,
-			  int maximumIterations,
-			  bool & hasConverged,
-			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered)
-{
-	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
-	// Set the input source and target
-	icp.setInputTarget (cloud_target);
-	icp.setInputSource (cloud_source);
-
-	pcl::registration::TransformationEstimation2D<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
-	est.reset(new pcl::registration::TransformationEstimation2D<pcl::PointXYZ, pcl::PointXYZ>);
-	icp.setTransformationEstimation(est);
-
-	// Set the max correspondence distance to 5cm (e.g., correspondences with higher distances will be ignored)
-	icp.setMaxCorrespondenceDistance (maxCorrespondenceDistance);
-	// Set the maximum number of iterations (criterion 1)
-	icp.setMaximumIterations (maximumIterations);
-	// Set the transformation epsilon (criterion 2)
-	//icp.setTransformationEpsilon (1e-8);
-	// Set the euclidean distance difference epsilon (criterion 3)
-	//icp.setEuclideanFitnessEpsilon (1);
-	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);
-
-	// Perform the alignment
-	icp.align (cloud_source_registered);
-	hasConverged = icp.hasConverged();
-	return Transform::fromEigen4f(icp.getFinalTransformation());
-}
-
 
 // If "voxel" > 0, "samples" is ignored
 pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(

@@ -80,16 +80,22 @@ public:
 			const QColor & color = QColor());
 
 	bool updateCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool updateCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool updateCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool addOrUpdateCloud(
 			const std::string & id,
@@ -98,10 +104,16 @@ public:
 			const QColor & color = QColor());
 
 	bool addOrUpdateCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool addOrUpdateCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool addOrUpdateCloud(
 			const std::string & id,

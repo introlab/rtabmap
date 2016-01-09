@@ -62,10 +62,6 @@ CameraModel::CameraModel(
 	UASSERT(D_.rows == 1 && (D_.cols == 4 || D_.cols == 5 || D_.cols == 8));
 	UASSERT(R_.rows == 3 && R_.cols == 3);
 	UASSERT(P_.rows == 3 && P_.cols == 4);
-
-	// init rectification map
-	UINFO("Initialize rectify map");
-	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
 }
 
 CameraModel::CameraModel(
@@ -126,6 +122,14 @@ CameraModel::CameraModel(
 	K_.at<double>(1,1) = fy;
 	K_.at<double>(0,2) = cx;
 	K_.at<double>(1,2) = cy;
+}
+
+void CameraModel::initRectificationMap()
+{
+	UASSERT(imageSize_.height > 0 && imageSize_.width > 0);
+	// init rectification map
+	UINFO("Initialize rectify map");
+	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
 }
 
 bool CameraModel::load(const std::string & directory, const std::string & cameraName)
@@ -191,9 +195,7 @@ bool CameraModel::load(const std::string & directory, const std::string & camera
 
 		if(imageSize_.height > 0 && imageSize_.width > 0)
 		{
-			// init rectification map
-			UINFO("Initialize rectify map");
-			cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
+			initRectificationMap();
 		}
 
 		return true;
@@ -261,20 +263,31 @@ bool CameraModel::save(const std::string & directory) const
 	return false;
 }
 
-void CameraModel::scale(double scale)
+CameraModel CameraModel::scaled(double scale) const
 {
+	CameraModel scaledModel = *this;
 	UASSERT(scale > 0.0);
-	// has only effect on K and P
-	imageSize_.width *= scale;
-	imageSize_.height *= scale;
-	K_.at<double>(0,0) *= scale;
-	K_.at<double>(1,1) *= scale;
-	K_.at<double>(0,2) *= scale;
-	K_.at<double>(1,2) *= scale;
-	P_.at<double>(0,0) *= scale;
-	P_.at<double>(1,1) *= scale;
-	P_.at<double>(0,2) *= scale;
-	P_.at<double>(1,2) *= scale;
+	if(this->isValid())
+	{
+		// has only effect on K and P
+		cv::Mat K = K_.clone();
+		K.at<double>(0,0) *= scale;
+		K.at<double>(1,1) *= scale;
+		K.at<double>(0,2) *= scale;
+		K.at<double>(1,2) *= scale;
+
+		cv::Mat P = P_.clone();
+		P.at<double>(0,0) *= scale;
+		P.at<double>(1,1) *= scale;
+		P.at<double>(0,2) *= scale;
+		P.at<double>(1,2) *= scale;
+		scaledModel = CameraModel(name_, cv::Size(double(imageSize_.width)*scale, double(imageSize_.height)*scale), K, D_, R_, P, localTransform_);
+	}
+	else
+	{
+		UWARN("Trying to scale a camera model not valid! Ignoring scaling...");
+	}
+	return scaledModel;
 }
 
 double CameraModel::horizontalFOV() const

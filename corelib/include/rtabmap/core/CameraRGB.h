@@ -79,11 +79,21 @@ public:
 	void setScanPath(
 			const std::string & dir,
 			int maxScanPts = 0,
+			int downsampleStep = 1,
+			float voxelSize = 0.0f,
+			int normalsK = 0, // compute normals if > 0
 			const Transform & localTransform=Transform::getIdentity())
 	{
 		_scanPath = dir;
 		_scanLocalTransform = localTransform;
 		_scanMaxPts = maxScanPts;
+		_scanDownsampleStep = downsampleStep;
+		_scanNormalsK = normalsK;
+		_scanVoxelSize = voxelSize;
+		if(_scanDownsampleStep>1)
+		{
+			_scanMaxPts /= _scanDownsampleStep;
+		}
 	}
 
 	void setGroundTruthPath(const std::string & filePath, int format = 0)
@@ -120,6 +130,9 @@ private:
 	std::string _scanPath;
 	Transform _scanLocalTransform;
 	int _scanMaxPts;
+	int _scanDownsampleStep;
+	float _scanVoxelSize;
+	int _scanNormalsK;
 
 	bool _filenamesAreTimestamps;
 	std::string timestampsPath_;

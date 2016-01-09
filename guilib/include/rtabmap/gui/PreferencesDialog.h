@@ -192,10 +192,13 @@ public:
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
 	bool isSourceRGBDColorOnly() const;
+	int getSourceImageDecimation() const;
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceScanFromDepth() const;
 	int getSourceScanFromDepthDecimation() const;
 	double getSourceScanFromDepthMaxDepth() const;
+	double getSourceScanVoxelSize() const;
+	int getSourceScanNormalsK() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
 	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null

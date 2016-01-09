@@ -53,8 +53,6 @@ cv::Mat downsample(
 		const cv::Mat & cloud,
 		int step)
 {
-	// 2D or 3D point clouds (laser scans)
-	UASSERT(cloud.type() == CV_32FC2 || cloud.type() == CV_32FC3);
 	UASSERT(step > 0);
 	cv::Mat output;
 	if(step == 1)
@@ -151,6 +149,18 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
 	UASSERT(voxelSize > 0.0f);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
+	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
+	filter.setInputCloud(cloud);
+	filter.filter(*output);
+	return output;
+}
+pcl::PointCloud<pcl::PointNormal>::Ptr voxelize(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float voxelSize)
+{
+	UASSERT(voxelSize > 0.0f);
+	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
+	pcl::VoxelGrid<pcl::PointNormal> filter;
 	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
 	filter.setInputCloud(cloud);
 	filter.filter(*output);

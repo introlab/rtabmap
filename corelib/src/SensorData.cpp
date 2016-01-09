@@ -159,7 +159,7 @@ SensorData::SensorData(
 	}
 }
 
-// RGB-D constructor + 2d laser scan
+// RGB-D constructor + laser scan
 SensorData::SensorData(
 		const cv::Mat & laserScan,
 		int laserScanMaxPts,
@@ -199,7 +199,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3)
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6))
 	{
 		_laserScanRaw = laserScan;
 	}
@@ -266,7 +266,7 @@ SensorData::SensorData(
 	}
 }
 
-// Multi-cameras RGB-D constructor + 2d laser scan
+// Multi-cameras RGB-D constructor + laser scan
 SensorData::SensorData(
 		const cv::Mat & laserScan,
 		int laserScanMaxPts,
@@ -306,7 +306,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3)
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6))
 	{
 		_laserScanRaw = laserScan;
 	}
@@ -412,7 +412,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = right;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3)
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6))
 	{
 		_laserScanRaw = laserScan;
 	}

@@ -72,7 +72,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_particleNoiseR(Parameters::defaultOdomParticleNoiseR()),
 		_particleLambdaR(Parameters::defaultOdomParticleLambdaR()),
 		_fillInfoData(Parameters::defaultOdomFillInfoData()),
-		_varianceFromInliersCount(Parameters::defaultRegVarianceFromInliersCount()),
 		_kalmanProcessNoise(Parameters::defaultOdomKalmanProcessNoise()),
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
 		_resetCurrentCount(0),
@@ -85,7 +84,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kRegForce3DoF(), _force3DoF);
 	Parameters::parse(parameters, Parameters::kOdomHolonomic(), _holonomic);
 	Parameters::parse(parameters, Parameters::kOdomFillInfoData(), _fillInfoData);
-	Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), _varianceFromInliersCount);
 	Parameters::parse(parameters, Parameters::kOdomFilteringStrategy(), _filteringStrategy);
 	Parameters::parse(parameters, Parameters::kOdomParticleSize(), _particleSize);
 	Parameters::parse(parameters, Parameters::kOdomParticleNoiseT(), _particleNoiseT);
@@ -330,11 +328,6 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 		{
 			distanceTravelled_ += t.getNorm();
 			info->distanceTravelled = distanceTravelled_;
-
-			if(_varianceFromInliersCount)
-			{
-				info->variance = info->inliers > 0?1.0/double(info->inliers):1.0;
-			}
 		}
 
 		return _pose *= t; // updated

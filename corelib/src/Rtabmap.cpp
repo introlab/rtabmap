@@ -1048,7 +1048,7 @@ bool Rtabmap::process(
 					}
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), info.inliersRatio);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), info.icpInliersRatio);
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), info.variance);
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
 				}

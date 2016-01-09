@@ -179,6 +179,7 @@ Transform OdometryF2F::computeTransform(
 		info->type = 1;
 		info->variance = regInfo.variance;
 		info->inliers = regInfo.inliers;
+		info->icpInliersRatio = regInfo.icpInliersRatio;
 		info->matches = regInfo.matches;
 	}
 

@@ -126,9 +126,14 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 
 // return CV_32FC3
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
+// return CV_32FC6
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform = Transform());
 // return CV_32FC2
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
+// For laserScan of type CV_32FC2, z is set to null.
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform = Transform());
+// For laserScan of type CV_32FC2 or CV_32FC3, normals are set to null.
+pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP laserScanToPointCloudNormal(const cv::Mat & laserScan, const Transform & transform = Transform());
 
 cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
@@ -184,6 +189,15 @@ void RTABMAP_EXP savePCDWords(
 		const Transform & transform = Transform::getIdentity());
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadBINCloud(const std::string & fileName, int dim);
+
+// Load *.pcd, *.ply or *.bin (KITTI format) with optional filtering.
+// If normals are computed (normalsK>0), the returned scan type is CV_32FC6 instead of CV_32FC3
+cv::Mat RTABMAP_EXP loadScan(
+		const std::string & path,
+		const Transform & transform = Transform::getIdentity(),
+		int downsampleStep = 1,
+		float voxelSize = 0.0f,
+		int normalsK = 0);
 
 } // namespace util3d
 } // namespace rtabmap

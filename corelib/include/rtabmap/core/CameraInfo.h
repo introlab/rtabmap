@@ -42,6 +42,7 @@ public:
 		timeCapture(0.0f),
 		timeDisparity(0.0f),
 		timeMirroring(0.0f),
+		timeImageDecimation(0.0f),
 		timeScanFromDepth(0.0f)
 	{
 	}
@@ -52,6 +53,7 @@ public:
 	float timeCapture;
 	float timeDisparity;
 	float timeMirroring;
+	float timeImageDecimation;
 	float timeScanFromDepth;
 };
 

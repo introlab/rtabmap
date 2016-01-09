@@ -72,6 +72,8 @@ public:
 
 	virtual ~CameraModel() {}
 
+	void initRectificationMap();
+
 	bool isValid() const {return !K_.empty() &&
 									!D_.empty() &&
 									!R_.empty() &&
@@ -104,7 +106,7 @@ public:
 	bool load(const std::string & directory, const std::string & cameraName);
 	bool save(const std::string & directory) const;
 
-	void scale(double scale);
+	CameraModel scaled(double scale) const;
 
 	double horizontalFOV() const; // in degrees
 	double verticalFOV() const;   // in degrees

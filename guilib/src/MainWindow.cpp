@@ -738,6 +738,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 {
 	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", (float)info.id, (float)info.timeCapture*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", (float)info.id, (float)info.timeImageDecimation*1000.0);
 	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id, (float)info.timeDisparity*1000.0);
 	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id, (float)info.timeMirroring*1000.0);
 	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", (float)info.id, (float)info.timeScanFromDepth*1000.0);
@@ -745,6 +746,7 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 {
+	UDEBUG("");
 	_processingOdometry = true;
 	UTimer time;
 	// Process Data
@@ -989,6 +991,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	{
 		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)odom.data().id(), (float)odom.info().inliers);
 	}
+	if(odom.info().icpInliersRatio >= 0)
+	{
+		_ui->statsToolBox->updateStat("Odometry/ICP_Inliers_Ratio/", (float)odom.data().id(), (float)odom.info().icpInliersRatio);
+	}
 	if(odom.info().matches >= 0)
 	{
 		_ui->statsToolBox->updateStat("Odometry/Matches/", (float)odom.data().id(), (float)odom.info().matches);
@@ -1003,11 +1009,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	}
 	if(odom.info().timeEstimation > 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
+		_ui->statsToolBox->updateStat("Odometry/Time_Estimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
 	}
 	if(odom.info().timeParticleFiltering > 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
+		_ui->statsToolBox->updateStat("Odometry/Time_Filtering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
 	}
 	if(odom.info().features >=0)
 	{
@@ -1015,7 +1021,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	}
 	if(odom.info().localMapSize >=0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Local_map_size/", (float)odom.data().id(), (float)odom.info().localMapSize);
+		_ui->statsToolBox->updateStat("Odometry/Local_Map_Size/", (float)odom.data().id(), (float)odom.info().localMapSize);
 	}
 	_ui->statsToolBox->updateStat("Odometry/ID/", (float)odom.data().id(), (float)odom.data().id());
 
@@ -1085,7 +1091,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 		_ui->statsToolBox->updateStat("Odometry/Distance/m", (float)odom.data().id(), odom.info().distanceTravelled);
 	}
 
-	_ui->statsToolBox->updateStat("/Gui refresh odom/ms", (float)odom.data().id(), time.elapsed()*1000.0);
+	_ui->statsToolBox->updateStat("/Gui Refresh Odom/ms", (float)odom.data().id(), time.elapsed()*1000.0);
 	_processingOdometry = false;
 }
 
@@ -1414,7 +1420,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Updating GUI time = %fs", elapsedTime/1000.0f);
-	_ui->statsToolBox->updateStat("/Gui refresh stats/ms", stat.refImageId(), elapsedTime);
+	_ui->statsToolBox->updateStat("/Gui Refresh Stats/ms", stat.refImageId(), elapsedTime);
 	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
 	{
 		this->captureScreen(_autoScreenCaptureRAM);
@@ -1562,7 +1568,6 @@ void MainWindow::updateMapCloud(
 			}
 			else if(viewerClouds.contains(cloudName))
 			{
-				UDEBUG("Hide cloud %s", cloudName.c_str());
 				_ui->widget_cloudViewer->setCloudVisibility(cloudName.c_str(), false);
 			}
 
@@ -1603,7 +1608,6 @@ void MainWindow::updateMapCloud(
 			}
 			else if(viewerClouds.contains(scanName))
 			{
-				UDEBUG("Hide scan %s", scanName.c_str());
 				_ui->widget_cloudViewer->setCloudVisibility(scanName.c_str(), false);
 			}
 
@@ -2034,37 +2038,65 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 
 	if(!iter->sensorData().laserScanCompressed().empty())
 	{
-		cv::Mat depth2D;
-		iter->sensorData().uncompressData(0, 0, &depth2D);
+		cv::Mat scan;
+		iter->sensorData().uncompressData(0, 0, &scan);
 
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-		cloud = util3d::laserScanToPointCloud(depth2D);
 		if(_preferencesDialog->getDownsamplingStepScan(0) > 0)
 		{
-			cloud = util3d::downsample(cloud, _preferencesDialog->getDownsamplingStepScan(0));
+			scan = util3d::downsample(scan, _preferencesDialog->getDownsamplingStepScan(0));
 		}
-		if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+
+		if(scan.channels() == 6)
 		{
-			cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
-		}
-		QColor color = Qt::gray;
-		if(mapId >= 0)
-		{
-			color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
-		}
-		if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose, color))
-		{
-			UERROR("Adding cloud %d to viewer failed!", nodeId);
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+			cloud = util3d::laserScanToPointCloudNormal(scan);
+			if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+			{
+				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
+			}
+			QColor color = Qt::gray;
+			if(mapId >= 0)
+			{
+				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+			}
+			if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose, color))
+			{
+				UERROR("Adding cloud %d to viewer failed!", nodeId);
+			}
+			else
+			{
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudXYZ(new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::copyPointCloud(*cloud, *cloudXYZ);
+				_createdScans.insert(std::make_pair(nodeId, cloudXYZ));
+			}
 		}
 		else
 		{
-			_createdScans.insert(std::make_pair(nodeId, cloud));
-
-			if(depth2D.channels() == 2)
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+			cloud = util3d::laserScanToPointCloud(scan);
+			if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
 			{
-				cv::Mat ground, obstacles;
-				util3d::occupancy2DFromLaserScan(depth2D, ground, obstacles, _preferencesDialog->getGridMapResolution());
-				_gridLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
+			}
+			QColor color = Qt::gray;
+			if(mapId >= 0)
+			{
+				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+			}
+			if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose, color))
+			{
+				UERROR("Adding cloud %d to viewer failed!", nodeId);
+			}
+			else
+			{
+				_createdScans.insert(std::make_pair(nodeId, cloud));
+
+				if(scan.channels() == 2)
+				{
+					cv::Mat ground, obstacles;
+					util3d::occupancy2DFromLaserScan(scan, ground, obstacles, _preferencesDialog->getGridMapResolution());
+					_gridLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+				}
 			}
 		}
 		_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
@@ -2117,6 +2149,7 @@ Transform MainWindow::alignPosesToGroundTruth(
 				}
 			}
 		}
+		UDEBUG("t=%s", t.prettyPrint().c_str());
 	}
 	return t;
 }
@@ -3104,8 +3137,14 @@ void MainWindow::startDetection()
 		_camera = new CameraThread(camera, parameters);
 		_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
 		_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
+		_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
 		_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
-		_camera->setScanFromDepth(_preferencesDialog->isSourceScanFromDepth(), _preferencesDialog->getSourceScanFromDepthDecimation(), _preferencesDialog->getSourceScanFromDepthMaxDepth());
+		_camera->setScanFromDepth(
+				_preferencesDialog->isSourceScanFromDepth(),
+				_preferencesDialog->getSourceScanFromDepthDecimation(),
+				_preferencesDialog->getSourceScanFromDepthMaxDepth(),
+				_preferencesDialog->getSourceScanVoxelSize(),
+				_preferencesDialog->getSourceScanNormalsK());
 
 		//Create odometry thread if rgbd slam
 		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))

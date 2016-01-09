@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <rtabmap/core/util3d.h>
-#include <pcl/io/pcd_io.h>
+#include <rtabmap/core/util3d_filtering.h>
 
 #include <iostream>
 #include <cmath>
@@ -61,6 +61,9 @@ CameraImages::CameraImages() :
 		_countScan(0),
 		_scanDir(0),
 		_scanMaxPts(0),
+		_scanDownsampleStep(1),
+		_scanVoxelSize(0.0f),
+		_scanNormalsK(0),
 		_filenamesAreTimestamps(false),
 		_groundTruthFormat(0)
 	{}
@@ -79,6 +82,9 @@ CameraImages::CameraImages(const std::string & path,
 	_countScan(0),
 	_scanDir(0),
 	_scanMaxPts(0),
+	_scanDownsampleStep(1),
+	_scanVoxelSize(0.0f),
+	_scanNormalsK(0),
 	_filenamesAreTimestamps(false),
 	_groundTruthFormat(0)
 {
@@ -140,7 +146,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	if(!_scanPath.empty())
 	{
 		UINFO("scan path=%s", _scanPath.c_str());
-		_scanDir = new UDirectory(_scanPath, "pcd bin"); // "bin" is for KITTI format
+		_scanDir = new UDirectory(_scanPath, "pcd bin ply"); // "bin" is for KITTI format
 		if(_scanPath[_scanPath.size()-1] != '\\' && _scanPath[_scanPath.size()-1] != '/')
 		{
 			_scanPath.append("/");
@@ -407,16 +413,8 @@ SensorData CameraImages::captureImage()
 					{
 						_lastScanFileName = *scanFileNames.rbegin();
 						std::string fullPath = _scanPath + _lastScanFileName;
-						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-						if(UFile::getExtension(_lastScanFileName).compare("bin") == 0)
-						{
-							cloud = util3d::loadBINCloud(fullPath, 4); // Assume KITTI velodyne format
-						}
-						else
-						{
-							pcl::io::loadPCDFile(fullPath, *cloud);
-						}
-						scan = util3d::laserScanFromPointCloud(*cloud, _scanLocalTransform);
+
+						scan = util3d::loadScan(fullPath, _scanLocalTransform, _scanDownsampleStep, _scanVoxelSize, _scanNormalsK);
 					}
 				}
 			}
@@ -508,17 +506,7 @@ SensorData CameraImages::captureImage()
 					}
 					if(fileName.size())
 					{
-						UDEBUG("Loading scan : %s", fullPath.c_str());
-						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-						if(UFile::getExtension(fileName).compare("bin") == 0)
-						{
-							cloud = util3d::loadBINCloud(fullPath, 4); // Assume KITTI velodyne format
-						}
-						else
-						{
-							pcl::io::loadPCDFile(fullPath, *cloud);
-						}
-						scan = util3d::laserScanFromPointCloud(*cloud, _scanLocalTransform);
+						scan = util3d::loadScan(fullPath, _scanLocalTransform, _scanDownsampleStep, _scanVoxelSize, _scanNormalsK);
 					}
 				}
 			}

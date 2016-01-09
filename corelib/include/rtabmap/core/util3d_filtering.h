@@ -54,6 +54,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP downsample(
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize);
+pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP voxelize(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float voxelSize);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float voxelSize);

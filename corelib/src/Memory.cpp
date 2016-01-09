@@ -3013,7 +3013,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
 						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
-	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3);
+	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3 || data.laserScanRaw().type() == CV_32FC(6));
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().size() == 0 &&
@@ -3247,7 +3247,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		depthOrRightImage = util2d::decimate(depthOrRightImage, _imageDecimation);
 		for(unsigned int i=0; i<cameraModels.size(); ++i)
 		{
-			cameraModels[i].scale(1.0/double(_imageDecimation));
+			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imageDecimation));
 		}
 		if(stereoCameraModel.isValid())
 		{

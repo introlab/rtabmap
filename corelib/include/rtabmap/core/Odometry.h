@@ -61,7 +61,6 @@ public:
 	const Transform & getPose() const {return _pose;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
 	const Transform & previousTransform() const {return previousTransform_;}
-	bool isVarianceFromInliersCount() const {return _varianceFromInliersCount;}
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
@@ -80,7 +79,6 @@ private:
 	float _particleNoiseR;
 	float _particleLambdaR;
 	bool _fillInfoData;
-	bool _varianceFromInliersCount;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;
 	Transform _pose;

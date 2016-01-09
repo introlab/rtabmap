@@ -359,6 +359,26 @@ bool CloudViewer::updateCloud(
 
 bool CloudViewer::updateCloud(
 		const std::string & id,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	if(_addedClouds.contains(id))
+	{
+		UDEBUG("Updating %s with %d points", id.c_str(), (int)cloud->size());
+		int index = _visualizer->getColorHandlerIndex(id);
+		this->removeCloud(id);
+		if(this->addCloud(id, cloud, pose, color))
+		{
+			_visualizer->updateColorHandlerIndex(id, index);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool CloudViewer::updateCloud(
+		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & pose,
 		const QColor & color)
@@ -393,6 +413,19 @@ bool CloudViewer::addOrUpdateCloud(
 bool CloudViewer::addOrUpdateCloud(
 		const std::string & id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	if(!updateCloud(id, cloud, pose, color))
+	{
+		return addCloud(id, cloud, pose, color);
+	}
+	return true;
+}
+
+bool CloudViewer::addOrUpdateCloud(
+		const std::string & id,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Transform & pose,
 		const QColor & color)
 {

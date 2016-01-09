@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-335</y>
+            <y>0</y>
             <width>676</width>
             <height>1982</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>14</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1357,6 +1357,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        </item>
                        <item row="10" column="1">
                         <widget class="QSpinBox" name="spinBox_downsamplingScan_odom">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
                          <property name="maximum">
                           <number>9999</number>
                          </property>
@@ -1364,6 +1367,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        </item>
                        <item row="10" column="0">
                         <widget class="QSpinBox" name="spinBox_downsamplingScan">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
                          <property name="maximum">
                           <number>9999</number>
                          </property>
@@ -1655,6 +1661,82 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_42">
+                        <property name="text">
+                         <string>Local transform from /base_link to /camera_link. Mouse over the box to show formats.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_19">
+                        <property name="text">
+                         <string>Source type. Select specific driver below.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_39">
+                        <property name="text">
+                         <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_244">
+                        <property name="text">
+                         <string>Create a simple calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of a source of rectified or registered images.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,1">
+                        <item>
+                         <widget class="QToolButton" name="toolButton_source_path_calibration">
+                          <property name="text">
+                           <string>...</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QLineEdit" name="lineEdit_calibrationFile">
+                          <property name="minimumSize">
+                           <size>
+                            <width>100</width>
+                            <height>0</height>
+                           </size>
+                          </property>
+                          <property name="text">
+                           <string/>
+                          </property>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
                       <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_imgRate">
                         <property name="suffix">
@@ -1697,49 +1779,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <item row="3" column="0">
                        <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
                         <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; Format (3 values): x y z&lt;/p&gt;&lt;p&gt; Format (6 values): x y z roll pitch yaw&lt;/p&gt;&lt;p&gt; Format (7 values): x y z qx qy qz qw&lt;/p&gt;&lt;p&gt; Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;/p&gt;&lt;p&gt; Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 1 -1 0 0 0 -1 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="text">
                          <string>0 0 1 -1 0 0 0 -1 0</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_42">
-                        <property name="text">
-                         <string>Local transform from /base_link to /camera_link. Mouse over the box to show formats.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_19">
-                        <property name="text">
-                         <string>Source type. Select specific driver below.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_39">
-                        <property name="text">
-                         <string>ID of the device, which might be a serial number, bus@address or the index of the device. If empty, the first device found is taken.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -1770,7 +1813,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </item>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QPushButton" name="pushButton_test_camera">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1783,7 +1826,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QPushButton" name="pushButton_calibrate">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1796,7 +1839,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_24">
                         <property name="text">
                          <string>Calibration files are saved in &quot;camera_info&quot; folder of the working directory.</string>
@@ -1816,7 +1859,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QPushButton" name="pushButton_calibrate_simple">
                         <property name="sizePolicy">
                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -1829,10 +1872,23 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
-                       <widget class="QLabel" name="label_244">
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_18">
                         <property name="text">
-                         <string>Create a simple calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of a source of rectified or registered images.</string>
+                         <string>Calibration file path (*.yaml). If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_36">
+                        <property name="text">
+                         <string>Image decimation. RGB/Mono and depth images will be resized according to this value (size*1/decimation). Note that if depth images are captured, decimation should be a multiple of the depth image size.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -1843,39 +1899,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        </widget>
                       </item>
                       <item row="5" column="0">
-                       <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,1">
-                        <item>
-                         <widget class="QToolButton" name="toolButton_source_path_calibration">
-                          <property name="text">
-                           <string>...</string>
-                          </property>
-                         </widget>
-                        </item>
-                        <item>
-                         <widget class="QLineEdit" name="lineEdit_calibrationFile">
-                          <property name="minimumSize">
-                           <size>
-                            <width>100</width>
-                            <height>0</height>
-                           </size>
-                          </property>
-                          <property name="text">
-                           <string/>
-                          </property>
-                         </widget>
-                        </item>
-                       </layout>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_18">
-                        <property name="text">
-                         <string>Calibration file path (*.yaml). If empty, the GUID of the camera is used (for those having one). OpenNI and Freenect drivers use factory calibration by default (so they ignore this parameter). A calibrated camera is required for RGB-D SLAM mode.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                       <widget class="QSpinBox" name="spinBox_source_imageDecimation">
+                        <property name="minimum">
+                         <number>1</number>
                         </property>
                        </widget>
                       </item>
@@ -3299,7 +3325,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <property name="title">
                        <string>Directory of images (optional settings)</string>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_62" columnstretch="0,0,1">
+                      <layout class="QGridLayout" name="gridLayout_67" columnstretch="0,0,1">
                        <item row="0" column="1">
                         <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
                          <property name="text">
@@ -3428,7 +3454,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item row="4" column="2">
                         <widget class="QLabel" name="label_293">
                          <property name="text">
-                          <string>Path to directory containing optional laser scans (*.pcd,*.ply). The directory should have the same size has the images directory. </string>
+                          <string>Path to directory containing optional laser scans (*.pcd, *.ply, *.bin [KITTI format]). The directory should have the same size has the images directory. </string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -3441,7 +3467,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item row="5" column="1">
                         <widget class="QLineEdit" name="lineEdit_cameraImages_laser_transform">
                          <property name="toolTip">
-                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt; Format (3 values): x y z&lt;/p&gt;&lt;p&gt; Format (6 values): x y z roll pitch yaw&lt;/p&gt;&lt;p&gt; Format (7 values): x y z qx qy qz qw&lt;/p&gt;&lt;p&gt; Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;/p&gt;&lt;p&gt; Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /scan = -0.27 0 0.08 0 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                          </property>
                          <property name="text">
                           <string>0 0 0 0 0 0</string>
@@ -3463,6 +3489,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        </item>
                        <item row="6" column="1">
                         <widget class="QSpinBox" name="spinBox_cameraImages_max_scan_pts">
+                         <property name="toolTip">
+                          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         </property>
                          <property name="maximum">
                           <number>99999999</number>
                          </property>
@@ -3485,12 +3514,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                      </widget>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox_scanFromDepth">
+                     <widget class="QGroupBox" name="groupBox_scan">
                       <property name="title">
-                       <string>Generate laser scan from depth image</string>
+                       <string>Laser scans</string>
                       </property>
                       <property name="checkable">
-                       <bool>true</bool>
+                       <bool>false</bool>
                       </property>
                       <property name="checked">
                        <bool>false</bool>
@@ -3499,7 +3528,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <item>
                         <widget class="QLabel" name="label_16">
                          <property name="text">
-                          <string>If you want to use ICP registration, the sensor data should have laser scan. This option can be used to create a laser scan from the depth image.</string>
+                          <string>If you want to use ICP registration, the sensor data should have laser scan. Laser scans can be created from the depth images (see option below) or loaded from the source selected. The latter parameters can be used to reduce the point cloud size directly in the capturing thread.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -3507,34 +3536,88 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                         </widget>
                        </item>
                        <item>
-                        <layout class="QGridLayout" name="gridLayout_63" columnstretch="0,1">
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_301">
-                           <property name="text">
-                            <string>Maximum depth.</string>
+                        <widget class="QGroupBox" name="groupBox_scanFromDepth">
+                         <property name="title">
+                          <string>Generate laser scan from depth image</string>
+                         </property>
+                         <property name="checkable">
+                          <bool>true</bool>
+                         </property>
+                         <property name="checked">
+                          <bool>false</bool>
+                         </property>
+                         <layout class="QGridLayout" name="gridLayout_63" columnstretch="0,1">
+                          <item row="0" column="0">
+                           <widget class="QSpinBox" name="spinBox_cameraScanFromDepth_decimation">
+                            <property name="maximum">
+                             <number>99999</number>
+                            </property>
+                            <property name="value">
+                             <number>1</number>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="0" column="1">
+                           <widget class="QLabel" name="label_299">
+                            <property name="text">
+                             <string>Decimation (should be a multiple of the image size). Note that it is done after general image decimation above.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="0">
+                           <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraSCanFromDepth_maxDepth">
+                            <property name="suffix">
+                             <string> m</string>
+                            </property>
+                            <property name="maximum">
+                             <double>9999.000000000000000</double>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="1">
+                           <widget class="QLabel" name="label_301">
+                            <property name="text">
+                             <string>Maximum depth.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                            <property name="textInteractionFlags">
+                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_62" columnstretch="0,1">
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="spinBox_cameraImages_scanNormalsK">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
+                           <property name="minimum">
+                            <number>0</number>
                            </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="0">
-                          <widget class="QSpinBox" name="spinBox_cameraScanFromDepth_decimation">
                            <property name="maximum">
-                            <number>99999</number>
+                            <number>99999999</number>
                            </property>
                            <property name="value">
-                            <number>1</number>
+                            <number>0</number>
                            </property>
                           </widget>
                          </item>
                          <item row="0" column="1">
-                          <widget class="QLabel" name="label_299">
+                          <widget class="QLabel" name="label_300">
                            <property name="text">
-                            <string>Decimation (should be a multiple of the image width and height).</string>
+                            <string>Downsample step size for laser scans. If you laser scans are created from depth images, use Decimation above instead (faster).</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -3545,12 +3628,57 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           </widget>
                          </item>
                          <item row="1" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraSCanFromDepth_maxDepth">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraImages_scanVoxelSize">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
                            <property name="suffix">
                             <string> m</string>
                            </property>
+                           <property name="decimals">
+                            <number>3</number>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.010000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="0">
+                          <widget class="QSpinBox" name="spinBox_cameraImages_scanDownsampleStep">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
                            <property name="maximum">
-                            <double>9999.000000000000000</double>
+                            <number>99999999</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_302">
+                           <property name="text">
+                            <string>Voxel size for uniform sampling. Note that it is done after downsampling.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_304">
+                           <property name="text">
+                            <string>K nearest neighbors for normals computation (0=disabled, 20 can be a good default value). Useful if the ICP registration approach is point to plane.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
@@ -8811,7 +8939,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <item row="8" column="1">
                        <widget class="QLabel" name="label_212">
                         <property name="text">
-                         <string>Number of neighbors to compute normals for point to plane.</string>
+                         <string>Number of neighbors to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

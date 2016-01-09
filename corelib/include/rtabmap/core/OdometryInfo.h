@@ -37,21 +37,23 @@ class OdometryInfo
 public:
 	OdometryInfo() :
 		lost(true),
-		matches(-1),
-		inliers(-1),
-		variance(-1),
-		features(-1),
-		localMapSize(-1),
-		timeEstimation(-1),
-		timeParticleFiltering(-1),
+		matches(0),
+		inliers(0),
+		icpInliersRatio(0.0f),
+		variance(0.0f),
+		features(0),
+		localMapSize(0),
+		timeEstimation(0.0f),
+		timeParticleFiltering(0.0f),
 		stamp(0),
 		interval(0),
-		distanceTravelled(0),
-		type(-1)
+		distanceTravelled(0.0f),
+		type(0)
 	{}
 	bool lost;
 	int matches;
 	int inliers;
+	int icpInliersRatio;
 	float variance;
 	int features;
 	int localMapSize;

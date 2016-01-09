@@ -181,6 +181,10 @@ Transform Registration::computeTransformationMod(
 		RegistrationInfo * infoOut) const
 {
 	RegistrationInfo info;
+	if(infoOut)
+	{
+		info = *infoOut;
+	}
 	Transform t = computeTransformationImpl(from, to, guess, info);
 	if(child_)
 	{
@@ -196,9 +200,9 @@ Transform Registration::computeTransformationMod(
 
 	if(varianceFromInliersCount_)
 	{
-		if(info.inliersRatio)
+		if(info.icpInliersRatio)
 		{
-			info.variance = info.inliersRatio > 0?1.0/double(info.inliersRatio):1.0;
+			info.variance = info.icpInliersRatio > 0?1.0/double(info.icpInliersRatio):1.0;
 		}
 		else
 		{

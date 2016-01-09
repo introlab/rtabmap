@@ -72,7 +72,7 @@ public:
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
 
-	// RGB-D constructor + 2d laser scan
+	// RGB-D constructor + laser scan
 	SensorData(
 			const cv::Mat & laserScan,
 			int laserScanMaxPts,
@@ -93,7 +93,7 @@ public:
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
 
-	// Multi-cameras RGB-D constructor + 2d laser scan
+	// Multi-cameras RGB-D constructor + laser scan
 	SensorData(
 			const cv::Mat & laserScan,
 			int laserScanMaxPts,
@@ -114,7 +114,7 @@ public:
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
 
-	// Stereo constructor + 2d laser scan
+	// Stereo constructor + laser scan
 	SensorData(
 			const cv::Mat & laserScan,
 			int laserScanMaxPts,
@@ -206,7 +206,7 @@ private:
 
 	cv::Mat _imageRaw;          // CV_8UC1 or CV_8UC3
 	cv::Mat _depthOrRightRaw;   // depth CV_16UC1 or CV_32FC1, right image CV_8UC1
-	cv::Mat _laserScanRaw;      // CV_32FC2
+	cv::Mat _laserScanRaw;      // CV_32FC2 or CV_32FC3
 
 	std::vector<CameraModel> _cameraModels;
 	StereoCameraModel _stereoCameraModel;

@@ -162,8 +162,8 @@ bool StereoCameraModel::save(const std::string & directory, bool ignoreStereoTra
 
 void StereoCameraModel::scale(double scale)
 {
-	left_.scale(scale);
-	right_.scale(scale);
+	left_ = left_.scaled(scale);
+	right_ = right_.scaled(scale);
 }
 
 float StereoCameraModel::computeDepth(float disparity) const

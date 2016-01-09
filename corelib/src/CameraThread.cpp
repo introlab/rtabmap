@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/StereoDense.h"
 
 #include <rtabmap/utilite/UTimer.h>
@@ -44,10 +45,13 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_camera(camera),
 		_mirroring(false),
 		_colorOnly(false),
+		_imageDecimation(1),
 		_stereoToDepth(false),
 		_scanFromDepth(false),
 		_scanDecimation(4),
 		_scanMaxDepth(4.0f),
+		_scanVoxelSize(0.0f),
+		_scanNormalsK(0),
 		_stereoDense(new StereoBM(parameters))
 {
 	UASSERT(_camera != 0);
@@ -84,13 +88,47 @@ void CameraThread::mainLoop()
 		{
 			data.setDepthOrRightRaw(cv::Mat());
 		}
+		if(_imageDecimation>1 && !data.imageRaw().empty())
+		{
+			UDEBUG("");
+			UTimer timer;
+			if(!data.depthRaw().empty() &&
+			   !(data.depthRaw().rows % _imageDecimation == 0 && data.depthRaw().cols % _imageDecimation == 0))
+			{
+				UERROR("Decimation of depth images should be exact (decimation=%d, size=(%d,%d))! "
+					   "Images won't be resized.", _imageDecimation, data.depthRaw().cols, data.depthRaw().rows);
+			}
+			else
+			{
+				data.setImageRaw(util2d::decimate(data.imageRaw(), _imageDecimation));
+				data.setDepthOrRightRaw(util2d::decimate(data.depthOrRightRaw(), _imageDecimation));
+				std::vector<CameraModel> models = data.cameraModels();
+				for(unsigned int i=0; i<models.size(); ++i)
+				{
+					if(models[i].isValid())
+					{
+						models[i] = models[i].scaled(1.0/double(_imageDecimation));
+					}
+				}
+				data.setCameraModels(models);
+				StereoCameraModel stereoModel = data.stereoCameraModel();
+				if(stereoModel.isValid())
+				{
+					stereoModel.scale(1.0/double(_imageDecimation));
+					data.setStereoCameraModel(stereoModel);
+				}
+			}
+			info.timeImageDecimation = timer.ticks();
+		}
 		if(_mirroring && data.cameraModels().size() == 1)
 		{
+			UDEBUG("");
 			UTimer timer;
 			cv::Mat tmpRgb;
 			cv::flip(data.imageRaw(), tmpRgb, 1);
 			data.setImageRaw(tmpRgb);
-			if(data.cameraModels()[0].cx())
+			UASSERT_MSG(data.cameraModels().size() <= 1 && !data.stereoCameraModel().isValid(), "Only single RGBD cameras are supported for mirroring.");
+			if(data.cameraModels().size() && data.cameraModels()[0].cx())
 			{
 				CameraModel tmpModel(
 						data.cameraModels()[0].fx(),
@@ -110,6 +148,7 @@ void CameraThread::mainLoop()
 		}
 		if(_stereoToDepth && data.stereoCameraModel().isValid() && !data.rightRaw().empty())
 		{
+			UDEBUG("");
 			UTimer timer;
 			cv::Mat depth = util2d::depthFromDisparity(
 					_stereoDense->computeDisparity(data.imageRaw(), data.rightRaw()),
@@ -126,11 +165,21 @@ void CameraThread::mainLoop()
 			data.cameraModels().at(0).isValid() &&
 			!data.depthRaw().empty())
 		{
+			UDEBUG("");
 			if(data.laserScanRaw().empty())
 			{
 				UASSERT(_scanDecimation >= 1);
 				UTimer timer;
-				cv::Mat scan = util3d::laserScanFromPointCloud(*util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth));
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth, _scanVoxelSize);
+				cv::Mat scan;
+				if(_scanNormalsK>0)
+				{
+					scan = util3d::laserScanFromPointCloud(*util3d::computeNormals(cloud, _scanNormalsK));
+				}
+				else
+				{
+					scan = util3d::laserScanFromPointCloud(*cloud);
+				}
 				data.setLaserScanRaw(scan, (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation), _scanMaxDepth);
 				info.timeScanFromDepth = timer.ticks();
 				UINFO("Computing scan from depth = %f s", info.timeScanFromDepth);
@@ -142,6 +191,7 @@ void CameraThread::mainLoop()
 					  "depth will not be created.");
 			}
 		}
+
 		info.cameraName = _camera->getSerial();
 		this->post(new CameraEvent(data, info));
 	}

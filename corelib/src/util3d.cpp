@@ -28,12 +28,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_surface.h>
 #include <rtabmap/core/util2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UFile.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 #include <pcl/common/transforms.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
@@ -807,6 +809,36 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, co
 	return laserScan;
 }
 
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform)
+{
+	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(6));
+	bool nullTransform = transform.isNull();
+	Eigen::Affine3f transform3f = transform.toEigen3f();
+	for(unsigned int i=0; i<cloud.size(); ++i)
+	{
+		if(!nullTransform)
+		{
+			pcl::PointNormal pt = pcl::transformPoint(cloud.at(i), transform3f);
+			laserScan.at<cv::Vec6f>(i)[0] = pt.x;
+			laserScan.at<cv::Vec6f>(i)[1] = pt.y;
+			laserScan.at<cv::Vec6f>(i)[2] = pt.z;
+			laserScan.at<cv::Vec6f>(i)[3] = pt.normal_x;
+			laserScan.at<cv::Vec6f>(i)[4] = pt.normal_y;
+			laserScan.at<cv::Vec6f>(i)[5] = pt.normal_z;
+		}
+		else
+		{
+			laserScan.at<cv::Vec6f>(i)[0] = cloud.at(i).x;
+			laserScan.at<cv::Vec6f>(i)[1] = cloud.at(i).y;
+			laserScan.at<cv::Vec6f>(i)[2] = cloud.at(i).z;
+			laserScan.at<cv::Vec6f>(i)[3] = cloud.at(i).normal_x;
+			laserScan.at<cv::Vec6f>(i)[4] = cloud.at(i).normal_y;
+			laserScan.at<cv::Vec6f>(i)[5] = cloud.at(i).normal_z;
+		}
+	}
+	return laserScan;
+}
+
 cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform)
 {
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC2);
@@ -832,7 +864,7 @@ cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, 
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform)
 {
-	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3);
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6));
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	output->resize(laserScan.cols);
@@ -845,12 +877,58 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserS
 			output->at(i).x = laserScan.at<cv::Vec2f>(i)[0];
 			output->at(i).y = laserScan.at<cv::Vec2f>(i)[1];
 		}
-		else
+		else if(laserScan.type() == CV_32FC3)
 		{
 			output->at(i).x = laserScan.at<cv::Vec3f>(i)[0];
 			output->at(i).y = laserScan.at<cv::Vec3f>(i)[1];
 			output->at(i).z = laserScan.at<cv::Vec3f>(i)[2];
 		}
+		else
+		{
+			output->at(i).x = laserScan.at<cv::Vec6f>(i)[0];
+			output->at(i).y = laserScan.at<cv::Vec6f>(i)[1];
+			output->at(i).z = laserScan.at<cv::Vec6f>(i)[2];
+		}
+
+		if(!nullTransform)
+		{
+			output->at(i) = pcl::transformPoint(output->at(i), transform3f);
+		}
+	}
+	return output;
+}
+
+pcl::PointCloud<pcl::PointNormal>::Ptr laserScanToPointCloudNormal(const cv::Mat & laserScan, const Transform & transform)
+{
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6));
+
+	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
+	output->resize(laserScan.cols);
+	bool nullTransform = transform.isNull();
+	Eigen::Affine3f transform3f = transform.toEigen3f();
+	for(int i=0; i<laserScan.cols; ++i)
+	{
+		if(laserScan.type() == CV_32FC2)
+		{
+			output->at(i).x = laserScan.at<cv::Vec2f>(i)[0];
+			output->at(i).y = laserScan.at<cv::Vec2f>(i)[1];
+		}
+		else if(laserScan.type() == CV_32FC3)
+		{
+			output->at(i).x = laserScan.at<cv::Vec3f>(i)[0];
+			output->at(i).y = laserScan.at<cv::Vec3f>(i)[1];
+			output->at(i).z = laserScan.at<cv::Vec3f>(i)[2];
+		}
+		else
+		{
+			output->at(i).x = laserScan.at<cv::Vec6f>(i)[0];
+			output->at(i).y = laserScan.at<cv::Vec6f>(i)[1];
+			output->at(i).z = laserScan.at<cv::Vec6f>(i)[2];
+			output->at(i).normal_x = laserScan.at<cv::Vec6f>(i)[3];
+			output->at(i).normal_y = laserScan.at<cv::Vec6f>(i)[4];
+			output->at(i).normal_z = laserScan.at<cv::Vec6f>(i)[5];
+		}
+
 		if(!nullTransform)
 		{
 			output->at(i) = pcl::transformPoint(output->at(i), transform3f);
@@ -865,10 +943,15 @@ cv::Point3f projectDisparityTo3D(
 		float disparity,
 		const StereoCameraModel & model)
 {
-	if(disparity != 0.0f && model.baseline() > 0.0f && model.left().fx() > 0.0f)
+	if(disparity > 0.0f && model.baseline() > 0.0f && model.left().fx() > 0.0f)
 	{
 		//Z = baseline * f / (d + cx1-cx0);
-		float W = model.baseline()/(disparity + model.right().cx() - model.left().cx());
+		float c = 0.0f;
+		if(model.right().cx()>0.0f && model.left().cx()>0.0f)
+		{
+			c = model.right().cx() - model.left().cx();
+		}
+		float W = model.baseline()/(disparity + c);
 		return cv::Point3f((pt.x - model.left().cx())*W, (pt.y - model.left().cy())*W, model.left().fx()*W);
 	}
 	float bad_point = std::numeric_limits<float>::quiet_NaN ();
@@ -1021,6 +1104,53 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadBINCloud(const std::string & fileName, i
 	}
 
 	return cloud;
+}
+
+cv::Mat loadScan(
+		const std::string & path,
+		const Transform & transform,
+		int downsampleStep,
+		float voxelSize,
+		int normalsK)
+{
+	cv::Mat scan;
+	UDEBUG("Loading scan (step=%d, voxel=%f m, normalsK=%d) : %s", downsampleStep, voxelSize, normalsK, path.c_str());
+	std::string fileName = UFile::getName(path);
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+	if(UFile::getExtension(fileName).compare("bin") == 0)
+	{
+		cloud = util3d::loadBINCloud(path, 4); // Assume KITTI velodyne format
+	}
+	else if(UFile::getExtension(fileName).compare("pcd") == 0)
+	{
+		pcl::io::loadPCDFile(path, *cloud);
+	}
+	else
+	{
+		pcl::io::loadPLYFile(path, *cloud);
+	}
+	int previousSize = (int)cloud->size();
+	if(downsampleStep > 1 && cloud->size())
+	{
+		cloud = util3d::downsample(cloud, downsampleStep);
+		UDEBUG("Downsampling scan (step=%d): %d -> %d", downsampleStep, previousSize, (int)cloud->size());
+	}
+	previousSize = (int)cloud->size();
+	if(voxelSize > 0.0f && cloud->size())
+	{
+		cloud = util3d::voxelize(cloud, voxelSize);
+		UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d", voxelSize, previousSize, (int)cloud->size());
+	}
+	if(normalsK > 0 && cloud->size())
+	{
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, normalsK);
+		scan = util3d::laserScanFromPointCloud(*cloudNormals, transform);
+	}
+	else
+	{
+		scan = util3d::laserScanFromPointCloud(*cloud, transform);
+	}
+	return scan;
 }
 
 }
