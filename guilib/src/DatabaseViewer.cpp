@@ -3582,7 +3582,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 
 	UTimer timer;
-	if(!ui_->checkBox_icp_laserScan->isChecked())
+	if(ui_->checkBox_icp_laserScan->isChecked())
 	{
 		// generate laser scans from depth image
 		cv::Mat tmpA, tmpB, tmpC, tmpD;
@@ -3599,6 +3599,12 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 		int maxLaserScans = cloudFrom->size();
 		dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0);
 		dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0);
+
+		if(!dataFrom.laserScanCompressed().empty() || !dataTo.laserScanCompressed().empty())
+		{
+			UWARN("There are laser scans in data, but generate laser scan from "
+				  "depth image option is activated. Ignoring saved laser scans...");
+		}
 	}
 	else
 	{

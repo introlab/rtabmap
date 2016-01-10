@@ -3284,15 +3284,15 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 		rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
 		rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
-		rtabmap::CompressionThread ctDepth2d(laserScan);
+		rtabmap::CompressionThread ctLaserScan(laserScan);
 		rtabmap::CompressionThread ctUserData(data.userDataRaw());
 		ctImage.start();
 		ctDepth.start();
-		ctDepth2d.start();
+		ctLaserScan.start();
 		ctUserData.start();
 		ctImage.join();
 		ctDepth.join();
-		ctDepth2d.join();
+		ctLaserScan.join();
 		ctUserData.join();
 
 		s = new Signature(id,
@@ -3304,7 +3304,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValid()?
 				SensorData(
-						ctDepth2d.getCompressedData(),
+						ctLaserScan.getCompressedData(),
 						maxLaserScanMaxPts,
 						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),
@@ -3314,7 +3314,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						0,
 						ctUserData.getCompressedData()):
 				SensorData(
-						ctDepth2d.getCompressedData(),
+						ctLaserScan.getCompressedData(),
 						maxLaserScanMaxPts,
 						data.laserScanMaxRange(),
 						ctImage.getCompressedData(),

@@ -101,7 +101,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 	SensorData & dataFrom = fromSignature.sensorData();
 	SensorData & dataTo = toSignature.sensorData();
 
-	UDEBUG("size from=%d to=%d", dataFrom.laserScanRaw().cols, dataTo.laserScanRaw().cols);
+	UDEBUG("size from=%d (channels=%d) to=%d (channels=%d)",
+			dataFrom.laserScanRaw().cols,
+			dataFrom.laserScanRaw().channels(),
+			dataTo.laserScanRaw().cols,
+			dataTo.laserScanRaw().channels());
 
 	// ICP with guess transform
 	if(!dataFrom.laserScanRaw().empty() && !dataTo.laserScanRaw().empty())
@@ -116,9 +120,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 			maxLaserScans/=_downsamplingStep;
 			UDEBUG("Downsampling time (step=%d) = %f s", _downsamplingStep, timer.ticks());
 		}
-
-
-		UDEBUG("Conversion time = %f s", timer.ticks());
 
 		if(fromScan.cols && toScan.cols)
 		{
@@ -137,6 +138,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 				//special case if we have already normals computed and there is no filtering
 				pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::laserScanToPointCloudNormal(fromScan, Transform());
 				pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess);
+				UDEBUG("Conversion time = %f s", timer.ticks());
 				pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
 				icpT = util3d::icpPointToPlane(
 						fromCloudNormals,
@@ -159,6 +161,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloud = util3d::laserScanToPointCloud(fromScan, Transform());
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloud = util3d::laserScanToPointCloud(toScan, guess);
+				UDEBUG("Conversion time = %f s", timer.ticks());
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudFiltered = fromCloud;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
 				bool filtered = false;
