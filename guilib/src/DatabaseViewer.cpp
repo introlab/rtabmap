@@ -3059,7 +3059,11 @@ void DatabaseViewer::updateConstraintView(
 
 		ui_->constraintsViewer->addOrUpdateCoordinate("from_coordinate", Transform::getIdentity(), 0.2);
 		ui_->constraintsViewer->addOrUpdateCoordinate("to_coordinate", t, 0.2);
-
+		if(uContains(groundTruthPoses_, link.from()) && uContains(groundTruthPoses_, link.to()))
+		{
+			ui_->constraintsViewer->addOrUpdateCoordinate("to_coordinate_gt",
+					groundTruthPoses_.at(link.from()).inverse()*groundTruthPoses_.at(link.to()), 0.1);
+		}
 
 		ui_->constraintsViewer->clearTrajectory();
 
