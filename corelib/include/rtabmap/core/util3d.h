@@ -145,6 +145,26 @@ cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Mat & disparity,
 		const StereoCameraModel & model);
 
+// Register point cloud to camera (return registered depth image)
+cv::Mat RTABMAP_EXP projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK,  // /base_link -> /camera_link
+		const cv::Mat & laserScan,      // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform);
+
+// Register point cloud to camera (return registered depth image)
+cv::Mat RTABMAP_EXP projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK,                       // /base_link -> /camera_link
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan, // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform);
+
+// Direction vertical (>=0), horizontal (<0)
+void RTABMAP_EXP fillProjectedCloudHoles(
+		cv::Mat & depthRegistered,
+		bool verticalDirection,
+		bool fillToBorder);
+
 bool RTABMAP_EXP isFinite(const cv::Point3f & pt);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP concatenateClouds(
@@ -198,6 +218,12 @@ cv::Mat RTABMAP_EXP loadScan(
 		int downsampleStep = 1,
 		float voxelSize = 0.0f,
 		int normalsK = 0);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadCloud(
+		const std::string & path,
+		const Transform & transform = Transform::getIdentity(),
+		int downsampleStep = 1,
+		float voxelSize = 0.0f);
 
 } // namespace util3d
 } // namespace rtabmap

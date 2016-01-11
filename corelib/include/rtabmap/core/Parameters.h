@@ -397,7 +397,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.025, "Uniform sampling voxel size (0=disabled).");
 	RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1, 	    "Downsampling step size (1=no sampling). This is done before uniform sampling.");
 	RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");
-	RTABMAP_PARAM(Icp, Iterations,                int, 30, 		"Max iterations.");
+	RTABMAP_PARAM(Icp, Iterations,                int, 10, 		"Max iterations.");
 	RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.3,   "Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(Icp, PointToPlane,              bool, false, 	"Use point to plane ICP.");
 	RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");

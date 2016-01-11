@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_surface.h>
 
 #include <iostream>
 #include <cmath>
@@ -64,6 +65,7 @@ CameraImages::CameraImages() :
 		_scanDownsampleStep(1),
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
+		_depthFromScan(false),
 		_filenamesAreTimestamps(false),
 		_groundTruthFormat(0)
 	{}
@@ -85,6 +87,7 @@ CameraImages::CameraImages(const std::string & path,
 	_scanDownsampleStep(1),
 	_scanVoxelSize(0.0f),
 	_scanNormalsK(0),
+	_depthFromScan(false),
 	_filenamesAreTimestamps(false),
 	_groundTruthFormat(0)
 {
@@ -381,6 +384,7 @@ SensorData CameraImages::captureImage()
 	cv::Mat scan;
 	double stamp = UTimer::now();
 	Transform groundTruthPose;
+	cv::Mat depthFromScan;
 	UDEBUG("");
 	if(_dir->isValid())
 	{
@@ -392,6 +396,8 @@ SensorData CameraImages::captureImage()
 				_scanDir->update();
 			}
 		}
+		std::string imageFilePath;
+		std::string scanFilePath;
 		if(_startAt < 0)
 		{
 			const std::list<std::string> & fileNames = _dir->getFileNames();
@@ -400,8 +406,7 @@ SensorData CameraImages::captureImage()
 				if(_lastFileName.empty() || uStrNumCmp(_lastFileName,*fileNames.rbegin()) < 0)
 				{
 					_lastFileName = *fileNames.rbegin();
-					std::string fullPath = _path + _lastFileName;
-					img = cv::imread(fullPath.c_str());
+					imageFilePath = _path + _lastFileName;
 				}
 			}
 			if(_scanDir)
@@ -412,109 +417,148 @@ SensorData CameraImages::captureImage()
 					if(_lastScanFileName.empty() || uStrNumCmp(_lastScanFileName,*scanFileNames.rbegin()) < 0)
 					{
 						_lastScanFileName = *scanFileNames.rbegin();
-						std::string fullPath = _scanPath + _lastScanFileName;
-
-						scan = util3d::loadScan(fullPath, _scanLocalTransform, _scanDownsampleStep, _scanVoxelSize, _scanNormalsK);
+						scanFilePath = _scanPath + _lastScanFileName;
 					}
 				}
 			}
 		}
 		else
 		{
-			if(stamps_.size())
-			{
-				stamp = stamps_.front();
-				stamps_.pop_front();
-				if(groundTruth_.size())
-				{
-					groundTruthPose = groundTruth_.front();
-					groundTruth_.pop_front();
-				}
-			}
-
 			std::string fileName;
-			std::string fullPath;
 			fileName = _dir->getNextFileName();
-			if(fileName.size())
+			if(!fileName.empty())
 			{
-				fullPath = _path + fileName;
+				imageFilePath = _path + fileName;
 				while(_count++ < _startAt && (fileName = _dir->getNextFileName()).size())
 				{
-					fullPath = _path + fileName;
-				}
-				if(fileName.size())
-				{
-					ULOGGER_DEBUG("Loading image : %s", fullPath.c_str());
-
-#if CV_MAJOR_VERSION >2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
-					img = cv::imread(fullPath.c_str(), cv::IMREAD_UNCHANGED);
-#else
-					img = cv::imread(fullPath.c_str(), -1);
-#endif
-					UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d",
-							img.cols, img.rows, img.channels(), img.elemSize(), img.total());
-
-					if(_isDepth)
-					{
-						if(img.type() != CV_16UC1 && img.type() != CV_32FC1)
-						{
-							UERROR("Depth is on and the loaded image has not a format supported (file = \"%s\"). "
-									"Formats supported are 16 bits 1 channel and 32 bits 1 channel.",
-									fileName.c_str());
-							img = cv::Mat();
-						}
-
-						if(_depthScaleFactor > 1.0f)
-						{
-							img /= _depthScaleFactor;
-						}
-					}
-					else
-					{
-#if CV_MAJOR_VERSION < 3
-						// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
-						if(img.depth() != CV_8U)
-						{
-							// The depth should be 8U
-							UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
-							IplImage * i = cvLoadImage(fullPath.c_str());
-							img = cv::Mat(i, true);
-							cvReleaseImage(&i);
-						}
-#endif
-
-						if(img.channels()>3)
-						{
-							UWARN("Conversion from 4 channels to 3 channels (file=%s)", fullPath.c_str());
-							cv::Mat out;
-							cv::cvtColor(img, out, CV_BGRA2BGR);
-							img = out;
-						}
-					}
+					imageFilePath = _path + fileName;
 				}
 			}
-
 			if(_scanDir)
 			{
 				fileName = _scanDir->getNextFileName();
-				if(fileName.size())
+				if(!fileName.empty())
 				{
-					fullPath = _scanPath + fileName;
+					scanFilePath = _scanPath + fileName;
 					while(++_countScan < _startAt && (fileName = _scanDir->getNextFileName()).size())
 					{
-						fullPath = _scanPath + fileName;
-					}
-					if(fileName.size())
-					{
-						scan = util3d::loadScan(fullPath, _scanLocalTransform, _scanDownsampleStep, _scanVoxelSize, _scanNormalsK);
+						scanFilePath = _scanPath + fileName;
 					}
 				}
 			}
 		}
 
-		if(!img.empty() && _model.isValid() && _rectifyImages)
+		if(stamps_.size())
 		{
-			img = _model.rectifyImage(img);
+			stamp = stamps_.front();
+			stamps_.pop_front();
+			if(groundTruth_.size())
+			{
+				groundTruthPose = groundTruth_.front();
+				groundTruth_.pop_front();
+			}
+		}
+
+		if(!imageFilePath.empty())
+		{
+			ULOGGER_DEBUG("Loading image : %s", imageFilePath.c_str());
+
+#if CV_MAJOR_VERSION >2 || (CV_MAJOR_VERSION >=2 && CV_MINOR_VERSION >=4)
+			img = cv::imread(imageFilePath.c_str(), cv::IMREAD_UNCHANGED);
+#else
+			img = cv::imread(imageFilePath.c_str(), -1);
+#endif
+			UDEBUG("width=%d, height=%d, channels=%d, elementSize=%d, total=%d",
+					img.cols, img.rows, img.channels(), img.elemSize(), img.total());
+
+			if(_isDepth)
+			{
+				if(img.type() != CV_16UC1 && img.type() != CV_32FC1)
+				{
+					UERROR("Depth is on and the loaded image has not a format supported (file = \"%s\"). "
+							"Formats supported are 16 bits 1 channel and 32 bits 1 channel.",
+							imageFilePath.c_str());
+					img = cv::Mat();
+				}
+
+				if(_depthScaleFactor > 1.0f)
+				{
+					img /= _depthScaleFactor;
+				}
+			}
+			else
+			{
+#if CV_MAJOR_VERSION < 3
+				// FIXME : it seems that some png are incorrectly loaded with opencv c++ interface, where c interface works...
+				if(img.depth() != CV_8U)
+				{
+					// The depth should be 8U
+					UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
+					IplImage * i = cvLoadImage(fullPath.c_str());
+					img = cv::Mat(i, true);
+					cvReleaseImage(&i);
+				}
+#endif
+
+				if(img.channels()>3)
+				{
+					UWARN("Conversion from 4 channels to 3 channels (file=%s)", imageFilePath.c_str());
+					cv::Mat out;
+					cv::cvtColor(img, out, CV_BGRA2BGR);
+					img = out;
+				}
+			}
+
+			if(!img.empty() && _model.isValid() && _rectifyImages)
+			{
+				img = _model.rectifyImage(img);
+			}
+		}
+
+		if(!scanFilePath.empty())
+		{
+			// load without filtering
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::loadCloud(scanFilePath, _scanLocalTransform);
+			UDEBUG("Loaded scan=%d points", (int)cloud->size());
+			if(_depthFromScan && !img.empty())
+			{
+				UDEBUG("Computing depth from scan...");
+				if(!_model.isValid())
+				{
+					UWARN("Depth from laser scan: Camera model should be valid.");
+				}
+				else if(_isDepth)
+				{
+					UWARN("Depth from laser scan: Loading already a depth image.");
+				}
+				else
+				{
+					depthFromScan = util3d::projectCloudToCamera(img.size(), _model.K(), cloud, _model.localTransform());
+					util3d::fillProjectedCloudHoles(depthFromScan, _depthFromScanFillHolesVertical, _depthFromScanFillHolesFromBorder);
+				}
+			}
+			// filter the scan after registration
+			int previousSize = (int)cloud->size();
+			if(_scanDownsampleStep > 1 && cloud->size())
+			{
+				cloud = util3d::downsample(cloud, _scanDownsampleStep);
+				UDEBUG("Downsampling scan (step=%d): %d -> %d", _scanDownsampleStep, previousSize, (int)cloud->size());
+			}
+			previousSize = (int)cloud->size();
+			if(_scanVoxelSize > 0.0f && cloud->size())
+			{
+				cloud = util3d::voxelize(cloud, _scanVoxelSize);
+				UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d", _scanVoxelSize, previousSize, (int)cloud->size());
+			}
+			if(_scanNormalsK > 0 && cloud->size())
+			{
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, _scanNormalsK);
+				scan = util3d::laserScanFromPointCloud(*cloudNormals);
+			}
+			else
+			{
+				scan = util3d::laserScanFromPointCloud(*cloud);
+			}
 		}
 	}
 	else
@@ -522,7 +566,7 @@ SensorData CameraImages::captureImage()
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
-	SensorData data(scan, scan.empty()?0:_scanMaxPts, 0, _isDepth?cv::Mat():img, _isDepth?img:cv::Mat(), _model, this->getNextSeqID(), stamp);
+	SensorData data(scan, scan.empty()?0:_scanMaxPts, 0, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
 	data.setGroundTruth(groundTruthPose);
 	return data;
 }

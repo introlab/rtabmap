@@ -787,7 +787,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform)
 {
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC3);
-	bool nullTransform = transform.isNull();
+	bool nullTransform = transform.isNull() || transform.isIdentity();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
@@ -812,7 +812,7 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, co
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform)
 {
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(6));
-	bool nullTransform = transform.isNull();
+	bool nullTransform = transform.isNull() || transform.isIdentity();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
@@ -976,6 +976,201 @@ cv::Point3f projectDisparityTo3D(
 	return cv::Point3f(bad_point, bad_point, bad_point);
 }
 
+// Register point cloud to camera (return registered depth image)
+cv::Mat projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK, // /base_link -> /camera_link
+		const cv::Mat & laserScan,     // assuming laser scan points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform)
+{
+	UASSERT(!cameraTransform.isNull());
+	UASSERT(!laserScan.empty());
+	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6));
+	UASSERT(cameraMatrixK.type() == CV_64FC1 && cameraMatrixK.cols == 3 && cameraMatrixK.cols == 3);
+
+	float fx = cameraMatrixK.at<double>(0,0);
+	float fy = cameraMatrixK.at<double>(1,1);
+	float cx = cameraMatrixK.at<double>(0,2);
+	float cy = cameraMatrixK.at<double>(1,2);
+
+	cv::Mat registered = cv::Mat::zeros(imageSize, CV_32FC1);
+	Transform t = cameraTransform.inverse();
+
+	int count = 0;
+	for(int i=0; i<laserScan.cols; ++i)
+	{
+		// Get 3D from laser scan
+		cv::Point3f ptScan;
+		if(laserScan.type() == CV_32FC2)
+		{
+			ptScan.x = laserScan.at<cv::Vec2f>(i)[0];
+			ptScan.y = laserScan.at<cv::Vec2f>(i)[1];
+			ptScan.z = 0;
+		}
+		else if(laserScan.type() == CV_32FC3)
+		{
+			ptScan.x = laserScan.at<cv::Vec3f>(i)[0];
+			ptScan.y = laserScan.at<cv::Vec3f>(i)[1];
+			ptScan.z = laserScan.at<cv::Vec3f>(i)[2];
+		}
+		else
+		{
+			ptScan.x = laserScan.at<cv::Vec6f>(i)[0];
+			ptScan.y = laserScan.at<cv::Vec6f>(i)[1];
+			ptScan.z = laserScan.at<cv::Vec6f>(i)[2];
+		}
+		ptScan = util3d::transformPoint(ptScan, t);
+
+		// re-project in camera frame
+		float z = ptScan.z;
+		float invZ = 1.0f/z;
+		int dx = (fx*ptScan.x)*invZ + cx;
+		int dy = (fy*ptScan.y)*invZ + cy;
+
+		if(z > 0.0f && uIsInBounds(dx, 0, registered.cols) && uIsInBounds(dy, 0, registered.rows))
+		{
+			++count;
+			float &zReg = registered.at<float>(dy, dx);
+			if(zReg == 0 || z < zReg)
+			{
+				zReg = z;
+			}
+		}
+	}
+	UDEBUG("Points in camera=%d/%d", count, laserScan.cols);
+
+	return registered;
+}
+
+cv::Mat projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK, // /base_link -> /camera_link
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan,  // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform)
+{
+	UASSERT(!cameraTransform.isNull());
+	UASSERT(!laserScan->empty());
+	UASSERT(cameraMatrixK.type() == CV_64FC1 && cameraMatrixK.cols == 3 && cameraMatrixK.cols == 3);
+
+	float fx = cameraMatrixK.at<double>(0,0);
+	float fy = cameraMatrixK.at<double>(1,1);
+	float cx = cameraMatrixK.at<double>(0,2);
+	float cy = cameraMatrixK.at<double>(1,2);
+
+	cv::Mat registered = cv::Mat::zeros(imageSize, CV_32FC1);
+	Transform t = cameraTransform.inverse();
+
+	int count = 0;
+	for(int i=0; i<(int)laserScan->size(); ++i)
+	{
+		// Get 3D from laser scan
+		pcl::PointXYZ ptScan = laserScan->at(i);
+		ptScan = util3d::transformPoint(ptScan, t);
+
+		// re-project in camera frame
+		float z = ptScan.z;
+		float invZ = 1.0f/z;
+		int dx = (fx*ptScan.x)*invZ + cx;
+		int dy = (fy*ptScan.y)*invZ + cy;
+
+		if(z > 0.0f && uIsInBounds(dx, 0, registered.cols) && uIsInBounds(dy, 0, registered.rows))
+		{
+			++count;
+			float &zReg = registered.at<float>(dy, dx);
+			if(zReg == 0 || z < zReg)
+			{
+				zReg = z;
+			}
+		}
+	}
+	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->size());
+
+	return registered;
+}
+
+void fillProjectedCloudHoles(cv::Mat & registeredDepth, bool verticalDirection, bool fillToBorder)
+{
+	UASSERT(registeredDepth.type() == CV_32FC1);
+	if(verticalDirection)
+	{
+		// vertical, for each column
+		for(int x=0; x<registeredDepth.cols; ++x)
+		{
+			float valueA = 0.0f;
+			int indexA = -1;
+			for(int y=0; y<registeredDepth.rows; ++y)
+			{
+				float v = registeredDepth.at<float>(y,x);
+				if(fillToBorder && y == registeredDepth.rows-1 && v<=0.0f && indexA>=0)
+				{
+					v = valueA;
+				}
+				if(v > 0.0f)
+				{
+					if(fillToBorder && indexA < 0)
+					{
+						indexA = 0;
+						valueA = v;
+					}
+					if(indexA >=0)
+					{
+						int range = y-indexA;
+						if(range > 1)
+						{
+							float slope = (v-valueA)/(range);
+							for(int k=1; k<range; ++k)
+							{
+								registeredDepth.at<float>(indexA+k,x) = valueA+slope*float(k);
+							}
+						}
+					}
+					valueA = v;
+					indexA = y;
+				}
+			}
+		}
+	}
+	else
+	{
+		// horizontal, for each row
+		for(int y=0; y<registeredDepth.rows; ++y)
+		{
+			float valueA = 0.0f;
+			int indexA = -1;
+			for(int x=0; x<registeredDepth.cols; ++x)
+			{
+				float v = registeredDepth.at<float>(y,x);
+				if(fillToBorder && x == registeredDepth.cols-1 && v<=0.0f && indexA>=0)
+				{
+					v = valueA;
+				}
+				if(v > 0.0f)
+				{
+					if(fillToBorder && indexA < 0)
+					{
+						indexA = 0;
+						valueA = v;
+					}
+					if(indexA >=0)
+					{
+						int range = x-indexA;
+						if(range > 1)
+						{
+							float slope = (v-valueA)/(range);
+							for(int k=1; k<range; ++k)
+							{
+								registeredDepth.at<float>(y,indexA+k) = valueA+slope*float(k);
+							}
+						}
+					}
+					valueA = v;
+					indexA = x;
+				}
+			}
+		}
+	}
+}
+
 bool isFinite(const cv::Point3f & pt)
 {
 	return uIsFinite(pt.x) && uIsFinite(pt.y) && uIsFinite(pt.z);
@@ -1114,7 +1309,28 @@ cv::Mat loadScan(
 		int normalsK)
 {
 	cv::Mat scan;
-	UDEBUG("Loading scan (step=%d, voxel=%f m, normalsK=%d) : %s", downsampleStep, voxelSize, normalsK, path.c_str());
+	UDEBUG("Loading scan (normalsK=%d) : %s", normalsK, path.c_str());
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = loadCloud(path, Transform::getIdentity(), downsampleStep, voxelSize);
+	if(normalsK > 0 && cloud->size())
+	{
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, normalsK);
+		scan = util3d::laserScanFromPointCloud(*cloudNormals, transform);
+	}
+	else
+	{
+		scan = util3d::laserScanFromPointCloud(*cloud, transform);
+	}
+	return scan;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr loadCloud(
+		const std::string & path,
+		const Transform & transform,
+		int downsampleStep,
+		float voxelSize)
+{
+	UASSERT(!transform.isNull());
+	UDEBUG("Loading cloud (step=%d, voxel=%f m) : %s", downsampleStep, voxelSize, path.c_str());
 	std::string fileName = UFile::getName(path);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	if(UFile::getExtension(fileName).compare("bin") == 0)
@@ -1141,16 +1357,11 @@ cv::Mat loadScan(
 		cloud = util3d::voxelize(cloud, voxelSize);
 		UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d", voxelSize, previousSize, (int)cloud->size());
 	}
-	if(normalsK > 0 && cloud->size())
+	if(transform.isIdentity())
 	{
-		pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, normalsK);
-		scan = util3d::laserScanFromPointCloud(*cloudNormals, transform);
+		return cloud;
 	}
-	else
-	{
-		scan = util3d::laserScanFromPointCloud(*cloud, transform);
-	}
-	return scan;
+	return util3d::transformPointCloud(cloud, transform);
 }
 
 }

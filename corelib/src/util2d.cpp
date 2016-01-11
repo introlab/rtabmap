@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
@@ -1077,7 +1078,7 @@ cv::Mat decimate(const cv::Mat & image, int decimation)
 	return out;
 }
 
-// Registration Depth to RGB
+// Registration Depth to RGB (return registered depth image)
 cv::Mat registerDepth(
 		const cv::Mat & depth,
 		const cv::Mat & depthK,
@@ -1086,7 +1087,7 @@ cv::Mat registerDepth(
 {
 	UASSERT(!transform.isNull());
 	UASSERT(!depth.empty());
-	UASSERT(depth.type() == CV_16UC1); // mm
+	UASSERT(depth.type() == CV_16UC1 || depth.type() == CV_32FC1); // mm or m
 	UASSERT(depthK.type() == CV_64FC1 && depthK.cols == 3 && depthK.cols == 3);
 	UASSERT(colorK.type() == CV_64FC1 && colorK.cols == 3 && colorK.cols == 3);
 
@@ -1105,12 +1106,13 @@ cv::Mat registerDepth(
 	P4[3] = 1;
 	cv::Mat registered = cv::Mat::zeros(depth.rows, depth.cols, depth.type());
 
+	bool depthInMM = depth.type() == CV_16UC1;
 	for(int y=0; y<depth.rows; ++y)
 	{
 		for(int x=0; x<depth.cols; ++x)
 		{
 			//filtering
-			float dz = float(depth.at<unsigned short>(y,x))*0.001f; // put in meter for projection
+			float dz = depthInMM?float(depth.at<unsigned short>(y,x))*0.001f:depth.at<float>(y,x); // put in meter for projection
 			if(dz>=0.0f)
 			{
 				// Project to 3D
@@ -1126,11 +1128,22 @@ cv::Mat registerDepth(
 
 				if(uIsInBounds(dx, 0, registered.cols) && uIsInBounds(dy, 0, registered.rows))
 				{
-					unsigned short z16 = z * 1000; //mm
-					unsigned short &zReg = registered.at<unsigned short>(dy, dx);
-					if(zReg == 0 || z16 < zReg)
+					if(depthInMM)
 					{
-						zReg = z16;
+						unsigned short z16 = z * 1000; //mm
+						unsigned short &zReg = registered.at<unsigned short>(dy, dx);
+						if(zReg == 0 || z16 < zReg)
+						{
+							zReg = z16;
+						}
+					}
+					else
+					{
+						float &zReg = registered.at<float>(dy, dx);
+						if(zReg == 0 || z < zReg)
+						{
+							zReg = z;
+						}
 					}
 				}
 			}

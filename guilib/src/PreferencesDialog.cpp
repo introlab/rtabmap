@@ -405,6 +405,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_cameraImages_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_gt, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraImages_gtFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->groupBox_depthFromScan, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthFromScan_vertical, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_depthFromScan_fillBorders, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraStereoImages_path_left, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPathLeft()));
 	connect(_ui->toolButton_cameraStereoImages_path_right, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPathRight()));
@@ -1215,6 +1218,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->setValue(4.0);
 		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.0f);
 		_ui->spinBox_cameraImages_scanNormalsK->setValue(0);
+
+		_ui->groupBox_depthFromScan->setChecked(false);
+		_ui->checkBox_depthFromScan_vertical->setChecked(true);
+		_ui->checkBox_depthFromScan_fillBorders->setChecked(false);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_rtabmap_basic0->objectName())
 	{
@@ -1536,6 +1543,12 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(settings.value("voxelSize", _ui->doubleSpinBox_cameraImages_scanVoxelSize->value()).toDouble());
 	_ui->spinBox_cameraImages_scanNormalsK->setValue(settings.value("normalsK", _ui->spinBox_cameraImages_scanNormalsK->value()).toInt());
 	settings.endGroup();//ScanFromDepth
+
+	settings.beginGroup("DepthFromScan");
+	_ui->groupBox_depthFromScan->setChecked(settings.value("depthFromScan", _ui->groupBox_depthFromScan->isChecked()).toBool());
+	_ui->checkBox_depthFromScan_vertical->setChecked(settings.value("depthFromScanVertical", _ui->checkBox_depthFromScan_vertical->isChecked()).toBool());
+	_ui->checkBox_depthFromScan_fillBorders->setChecked(settings.value("depthFromScanFillBorders", _ui->checkBox_depthFromScan_fillBorders->isChecked()).toBool());
+	settings.endGroup();
 
 	settings.beginGroup("Database");
 	_ui->source_database_lineEdit_path->setText(settings.value("path",_ui->source_database_lineEdit_path->text()).toString());
@@ -1892,6 +1905,12 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("maxDepth", 			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value());
 	settings.setValue("voxelSize", 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value());
 	settings.setValue("normalsK", 			_ui->spinBox_cameraImages_scanNormalsK->value());
+	settings.endGroup();
+
+	settings.beginGroup("DepthFromScan");
+	settings.setValue("depthFromScan", _ui->groupBox_depthFromScan->isChecked());
+	settings.setValue("depthFromScanVertical", _ui->checkBox_depthFromScan_vertical->isChecked());
+	settings.setValue("depthFromScanFillBorders", _ui->checkBox_depthFromScan_fillBorders->isChecked());
 	settings.endGroup();
 
 	settings.beginGroup("Database");
@@ -3356,9 +3375,11 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_sourceImages_optional->setVisible(
 			(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD) ||
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo) ||
-			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->comboBox_sourceType->currentIndex() == kSrcImages-kSrcRGB));
+			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB));
 
 	_ui->groupBox_scan->setVisible(_ui->comboBox_sourceType->currentIndex() != 3);
+
+	_ui->groupBox_depthFromScan->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB);
 }
 
 /*** GETTERS ***/
@@ -3879,7 +3900,9 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 		((CameraImages*)camera)->setDirRefreshed(_ui->source_images_refreshDir->isChecked());
 		((CameraImages*)camera)->setImagesRectified(_ui->checkBox_rgbImages_rectify->isChecked());
 
-		((CameraRGBDImages*)camera)->setGroundTruthPath(_ui->lineEdit_cameraImages_gt->text().toStdString(), _ui->comboBox_cameraImages_gtFormat->currentIndex());
+		((CameraRGBDImages*)camera)->setGroundTruthPath(
+				_ui->lineEdit_cameraImages_gt->text().toStdString(),
+				_ui->comboBox_cameraImages_gtFormat->currentIndex());
 		((CameraRGBDImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
@@ -3887,7 +3910,13 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
 						this->getLaserLocalTransform());
-		((CameraRGBDImages*)camera)->setTimestamps(_ui->checkBox_cameraImages_timestamps->isChecked(), _ui->lineEdit_cameraImages_timestamps->text().toStdString());
+		((CameraRGBDImages*)camera)->setDepthFromScan(
+				_ui->groupBox_depthFromScan->isChecked(),
+				_ui->checkBox_depthFromScan_vertical->isChecked(),
+				_ui->checkBox_depthFromScan_fillBorders->isChecked());
+		((CameraRGBDImages*)camera)->setTimestamps(
+				_ui->checkBox_cameraImages_timestamps->isChecked(),
+				_ui->lineEdit_cameraImages_timestamps->text().toStdString());
 	}
 	else if(driver == kSrcDatabase)
 	{
@@ -3903,11 +3932,12 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		// don't set calibration folder if we want raw images
 		QString dir = this->getCameraInfoDir();
-		QString name = QFileInfo(_ui->lineEdit_calibrationFile->text()
-				.remove("_left.yaml")
-				.remove("_right.yaml")
-				.remove("_pose.yaml")
-				.remove(".yaml")).baseName();
+		QString calibrationFile = _ui->lineEdit_calibrationFile->text();
+		if(!(driver >= kSrcRGB && driver <= kSrcVideo))
+		{
+			calibrationFile.remove("_left.yaml").remove("_right.yaml").remove("_pose.yaml");
+		}
+		QString name = QFileInfo(calibrationFile.remove(".yaml")).baseName();
 		if(!_ui->lineEdit_calibrationFile->text().isEmpty())
 		{
 			QDir d = QFileInfo(_ui->lineEdit_calibrationFile->text()).dir();

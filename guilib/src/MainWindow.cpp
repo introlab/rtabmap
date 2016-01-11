@@ -742,6 +742,7 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id, (float)info.timeDisparity*1000.0);
 	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id, (float)info.timeMirroring*1000.0);
 	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", (float)info.id, (float)info.timeScanFromDepth*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time depth from scan/ms", (float)info.id, (float)info.timeDepthFromScan*1000.0);
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)

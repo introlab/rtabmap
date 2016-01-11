@@ -96,6 +96,13 @@ public:
 		}
 	}
 
+	void setDepthFromScan(bool enabled, bool fillHolesVertical = true, bool fillHolesFromBorder = false)
+	{
+		_depthFromScan = enabled;
+		_depthFromScanFillHolesVertical = fillHolesVertical;
+		_depthFromScanFillHolesFromBorder = fillHolesFromBorder;
+	}
+
 	void setGroundTruthPath(const std::string & filePath, int format = 0)
 	{
 		groundTruthPath_ = filePath;
@@ -133,6 +140,10 @@ private:
 	int _scanDownsampleStep;
 	float _scanVoxelSize;
 	int _scanNormalsK;
+
+	bool _depthFromScan;
+	bool _depthFromScanFillHolesVertical;
+	bool _depthFromScanFillHolesFromBorder;
 
 	bool _filenamesAreTimestamps;
 	std::string timestampsPath_;
