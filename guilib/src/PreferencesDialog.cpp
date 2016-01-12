@@ -2953,11 +2953,11 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 			{
 				// add all RGBD parameters!
 				this->addParameters(_ui->groupBox_slam_update);
-				this->addParameters(_ui->groupBox_graphOptimization);
-				this->addParameters(_ui->groupBox_localDetection_time);
-				this->addParameters(_ui->groupBox_localDetection_space);
+				this->addParameters(_ui->groupBox_graphOptimization2);
+				this->addParameters(_ui->groupBox_proximityDetection2);
 				this->addParameters(_ui->groupBox_visualTransform2);
 				this->addParameters(_ui->groupBox_icp2);
+				this->addParameters(_ui->groupBox_pathPlanning2);
 			}
 
 			if(groupBox)

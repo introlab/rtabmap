@@ -2566,14 +2566,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 		{
 			if(parametersModified.erase(Parameters::kRtabmapWorkingDirectory()))
 			{
-				if(_state == kMonitoring || _state == kMonitoringPaused)
-				{
-					QMessageBox::information(this, tr("Working memory changed"), tr("The remote working directory can't be changed while the interface is in monitoring mode."));
-				}
-				else
-				{
-					QMessageBox::information(this, tr("Working memory changed"), tr("The working directory can't be changed while the detector is running. This will be applied when the detector will stop."));
-				}
+				QMessageBox::information(this, tr("Working memory changed"), tr("The working directory can't be changed while the detector is running. This will be applied when the detector will stop."));
 			}
 			if(postParamEvent)
 			{
