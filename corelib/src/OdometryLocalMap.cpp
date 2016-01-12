@@ -232,7 +232,8 @@ Transform OdometryLocalMap::computeTransform(
 		if(localMap_.size() && newSignature)
 		{
 			Transform transform;
-			if((int)localMap_.size() >= regVis_->getMinInliers())
+			if((int)localMap_.size() >= regVis_->getMinInliers() &&
+			   (int)newSignature->getWords().size()>=regVis_->getMinInliers())
 			{
 				Transform t;
 				Signature tmpLocalMap(-1);
@@ -252,6 +253,10 @@ Transform OdometryLocalMap::computeTransform(
 				{
 					UWARN("Unknown registration error");
 				}
+			}
+			else if((int)newSignature->getWords().size()<regVis_->getMinInliers())
+			{
+				UWARN("New signature has too low extracted features (%d < %d)", (int)newSignature->getWords().size(), regVis_->getMinInliers());
 			}
 			else
 			{
