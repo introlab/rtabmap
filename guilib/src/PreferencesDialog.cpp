@@ -2394,7 +2394,8 @@ QString PreferencesDialog::loadCustomConfig(const QString & section, const QStri
 
 const rtabmap::ParametersMap & PreferencesDialog::getAllParameters() const
 {
-	UASSERT(_parameters.size() == Parameters::getDefaultParameters().size());
+	UASSERT_MSG(_parameters.size() == Parameters::getDefaultParameters().size(),
+			uFormat("%d vs %d", (int)_parameters.size(), (int)Parameters::getDefaultParameters().size()).c_str());
 	return _parameters;
 }
 

@@ -488,7 +488,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
 
 	// update loop closure viewer parameters
-	ParametersMap parameters = _preferencesDialog->getAllParameters();
 	_ui->widget_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
 	_ui->widget_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
