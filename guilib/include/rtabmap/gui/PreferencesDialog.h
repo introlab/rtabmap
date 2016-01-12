@@ -109,6 +109,7 @@ public:
 	virtual ~PreferencesDialog();
 
 	virtual QString getIniFilePath() const;
+	virtual QString getTmpIniFilePath() const;
 	void init();
 	void setCurrentPanelToSource();
 
@@ -295,8 +296,6 @@ protected:
 	virtual void writeGuiSettings(const QString & filePath = QString()) const;
 	virtual void writeCameraSettings(const QString & filePath = QString()) const;
 	virtual void writeCoreSettings(const QString & filePath = QString()) const;
-
-	virtual QString getTmpIniFilePath() const;
 
 private:
 	void readSettings(const QString & filePath = QString());
