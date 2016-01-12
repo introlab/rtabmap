@@ -494,7 +494,7 @@ SensorData CameraImages::captureImage()
 				{
 					// The depth should be 8U
 					UWARN("Cannot read the image correctly, falling back to old OpenCV C interface...");
-					IplImage * i = cvLoadImage(fullPath.c_str());
+					IplImage * i = cvLoadImage(imageFilePath.c_str());
 					img = cv::Mat(i, true);
 					cvReleaseImage(&i);
 				}
