@@ -288,12 +288,10 @@ protected:
 
 	virtual QString getParamMessage();
 
-	virtual void readSettings(const QString & filePath = QString());
 	virtual void readGuiSettings(const QString & filePath = QString());
 	virtual void readCameraSettings(const QString & filePath = QString());
 	virtual bool readCoreSettings(const QString & filePath = QString());
 
-	virtual void writeSettings(const QString & filePath = QString());
 	virtual void writeGuiSettings(const QString & filePath = QString()) const;
 	virtual void writeCameraSettings(const QString & filePath = QString()) const;
 	virtual void writeCoreSettings(const QString & filePath = QString()) const;
@@ -301,6 +299,8 @@ protected:
 	virtual QString getTmpIniFilePath() const;
 
 private:
+	void readSettings(const QString & filePath = QString());
+	void writeSettings(const QString & filePath = QString());
 	bool validateForm();
 	void setupSignals();
 	void setupKpRoiPanel();
@@ -317,11 +317,11 @@ private:
 	void readSettingsBegin();
 
 protected:
-	rtabmap::ParametersMap _parameters;
-	rtabmap::ParametersMap _modifiedParameters;
 	PANEL_FLAGS _obsoletePanels;
 
 private:
+	rtabmap::ParametersMap _modifiedParameters;
+	rtabmap::ParametersMap _parameters;
 	Ui_preferencesDialog * _ui;
 	QStandardItemModel * _indexModel;
 	bool _initialized;

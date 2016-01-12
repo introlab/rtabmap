@@ -1344,7 +1344,6 @@ void PreferencesDialog::readSettings(const QString & filePath)
 	readCameraSettings(filePath);
 	if(!readCoreSettings(filePath))
 	{
-		_parameters.clear();
 		_modifiedParameters.clear();
 		_obsoletePanels = kPanelDummy;
 
@@ -2395,7 +2394,7 @@ QString PreferencesDialog::loadCustomConfig(const QString & section, const QStri
 const rtabmap::ParametersMap & PreferencesDialog::getAllParameters() const
 {
 	UASSERT_MSG(_parameters.size() == Parameters::getDefaultParameters().size(),
-			uFormat("%d vs %d", (int)_parameters.size(), (int)Parameters::getDefaultParameters().size()).c_str());
+			uFormat("%d vs %d (Is PreferencesDialog::init() called?)", (int)_parameters.size(), (int)Parameters::getDefaultParameters().size()).c_str());
 	return _parameters;
 }
 
