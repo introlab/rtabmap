@@ -185,18 +185,8 @@ Transform Registration::computeTransformationMod(
 	{
 		info = *infoOut;
 	}
+
 	Transform t = computeTransformationImpl(from, to, guess, info);
-	if(child_)
-	{
-		if(!t.isNull())
-		{
-			t = child_->computeTransformationMod(from, to, force3DoF_?t.to3DoF():t, &info);
-		}
-	}
-	else if(!t.isNull() && force3DoF_)
-	{
-		t = t.to3DoF();
-	}
 
 	if(varianceFromInliersCount_)
 	{
@@ -211,11 +201,22 @@ Transform Registration::computeTransformationMod(
 		info.variance = info.variance>0.0f?info.variance:0.0001f; // epsilon if exact transform
 	}
 
+	if(child_)
+	{
+		if(!t.isNull())
+		{
+			t = child_->computeTransformationMod(from, to, force3DoF_?t.to3DoF():t, &info);
+		}
+	}
+	else if(!t.isNull() && force3DoF_)
+	{
+		t = t.to3DoF();
+	}
+
 	if(infoOut)
 	{
 		*infoOut = info;
 	}
-
 	return t;
 }
 

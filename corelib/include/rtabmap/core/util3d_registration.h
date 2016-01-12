@@ -75,6 +75,7 @@ Transform RTABMAP_EXP icp(
 		int maximumIterations,
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
+		double epsilon = 0,
 		bool icp2D = false);
 
 Transform RTABMAP_EXP icpPointToPlane(

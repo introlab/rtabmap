@@ -88,13 +88,13 @@ void EdgeSE2MaxMixture::computeError()
 
 }
 
-
+/*
 // ================================================
 #ifdef G2O_HAVE_OPENGL
   EdgeSE2MaxMixtureDrawAction::EdgeSE2MaxMixtureDrawAction(): DrawAction(typeid(EdgeSE2MaxMixture).name()){}
 
   g2o::HyperGraphElementAction* EdgeSE2MaxMixtureDrawAction::operator()(g2o::HyperGraph::HyperGraphElement* element,
-               g2o::HyperGraphElementAction::Parameters* /*params_*/){
+               g2o::HyperGraphElementAction::Parameters* ){
     if (typeid(*element).name()!=_typeName)
       return 0;
     EdgeSE2MaxMixture* e =  static_cast<EdgeSE2MaxMixture*>(element);
@@ -117,6 +117,6 @@ void EdgeSE2MaxMixture::computeError()
     return this;
   }
 #endif
-
+*/
 
 

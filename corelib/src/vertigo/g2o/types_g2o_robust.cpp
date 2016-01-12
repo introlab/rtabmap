@@ -14,9 +14,10 @@ G2O_REGISTER_TYPE(EDGE_SE2_SWITCHABLE, EdgeSE2Switchable);
 G2O_REGISTER_TYPE(EDGE_SE3_SWITCHABLE, EdgeSE3Switchable);
 G2O_REGISTER_TYPE(VERTEX_SWITCH, VertexSwitchLinear);
 
+/*
 #ifdef G2O_HAVE_OPENGL
   G2O_REGISTER_ACTION(EdgeSE2SwitchableDrawAction);
   //G2O_REGISTER_ACTION(EdgeSE2MaxMixtureDrawAction);
   G2O_REGISTER_ACTION(EdgeSE3SwitchableDrawAction);
 #endif
-
+*/

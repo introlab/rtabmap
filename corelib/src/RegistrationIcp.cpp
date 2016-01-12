@@ -48,6 +48,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_downsamplingStep(Parameters::defaultIcpDownsamplingStep()),
 	_maxCorrespondenceDistance(Parameters::defaultIcpMaxCorrespondenceDistance()),
 	_maxIterations(Parameters::defaultIcpIterations()),
+	_epsilon(Parameters::defaultIcpEpsilon()),
 	_correspondenceRatio(Parameters::defaultIcpCorrespondenceRatio()),
 	_pointToPlane(Parameters::defaultIcpPointToPlane()),
 	_pointToPlaneNormalNeighbors(Parameters::defaultIcpPointToPlaneNormalNeighbors())
@@ -65,6 +66,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpDownsamplingStep(), _downsamplingStep);
 	Parameters::parse(parameters, Parameters::kIcpMaxCorrespondenceDistance(), _maxCorrespondenceDistance);
 	Parameters::parse(parameters, Parameters::kIcpIterations(), _maxIterations);
+	Parameters::parse(parameters, Parameters::kIcpEpsilon(), _epsilon);
 	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), _correspondenceRatio);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _pointToPlane);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneNormalNeighbors(), _pointToPlaneNormalNeighbors);
@@ -73,6 +75,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_downsamplingStep >= 0, uFormat("value=%d", _downsamplingStep).c_str());
 	UASSERT_MSG(_maxCorrespondenceDistance > 0.0f, uFormat("value=%f", _maxCorrespondenceDistance).c_str());
 	UASSERT_MSG(_maxIterations > 0, uFormat("value=%d", _maxIterations).c_str());
+	UASSERT(_epsilon >= 0.0f);
 	UASSERT_MSG(_correspondenceRatio >=0.0f && _correspondenceRatio <=1.0f, uFormat("value=%f", _correspondenceRatio).c_str());
 	UASSERT_MSG(_pointToPlaneNormalNeighbors > 0, uFormat("value=%d", _pointToPlaneNormalNeighbors).c_str());
 }
@@ -219,6 +222,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						   _maxIterations,
 						   hasConverged,
 						   *fromCloudRegistered,
+						   _epsilon,
 						   !this->force3DoF()); // icp2D
 				}
 

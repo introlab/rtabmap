@@ -102,12 +102,12 @@ void EdgeSE2Switchable::computeError()
     _error = delta.toVector() * v3->estimate();
 }
 
-
+/*
 #ifdef G2O_HAVE_OPENGL
   EdgeSE2SwitchableDrawAction::EdgeSE2SwitchableDrawAction(): DrawAction(typeid(EdgeSE2Switchable).name()){}
 
   g2o::HyperGraphElementAction* EdgeSE2SwitchableDrawAction::operator()(g2o::HyperGraph::HyperGraphElement* element,
-               g2o::HyperGraphElementAction::Parameters* /*params_*/){
+               g2o::HyperGraphElementAction::Parameters* ){
     if (typeid(*element).name()!=_typeName)
       return 0;
     EdgeSE2Switchable* e =  static_cast<EdgeSE2Switchable*>(element);
@@ -128,4 +128,4 @@ void EdgeSE2Switchable::computeError()
     return this;
   }
 #endif
-
+*/

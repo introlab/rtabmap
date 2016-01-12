@@ -671,7 +671,7 @@ bool TreePoseGraph<Ops>::sanityCheck(){
     const EdgeList& children=it->second->children;
     for (typename EdgeList::const_iterator lt=children.begin(); lt!=children.end(); lt++){
       if ((*lt)->v1!=v){
-	std::cerr << "wrong direction of the edges" << std::cerr;
+	std::cerr << "wrong direction of the edges" << std::endl;
 	return false;
       }
     }

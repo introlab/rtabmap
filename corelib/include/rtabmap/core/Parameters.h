@@ -398,6 +398,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1, 	    "Downsampling step size (1=no sampling). This is done before uniform sampling.");
 	RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");
 	RTABMAP_PARAM(Icp, Iterations,                int, 10, 		"Max iterations.");
+	RTABMAP_PARAM(Icp, Epsilon,                   float, 0.0,   "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
 	RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.3,   "Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(Icp, PointToPlane,              bool, false, 	"Use point to plane ICP.");
 	RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");

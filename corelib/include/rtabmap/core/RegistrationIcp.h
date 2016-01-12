@@ -61,6 +61,7 @@ private:
 	int _downsamplingStep;
 	float _maxCorrespondenceDistance;
 	int _maxIterations;
+	float _epsilon;
 	float _correspondenceRatio;
 	bool _pointToPlane;
 	int _pointToPlaneNormalNeighbors;

@@ -53,7 +53,7 @@ public:
 	bool lost;
 	int matches;
 	int inliers;
-	int icpInliersRatio;
+	float icpInliersRatio;
 	float variance;
 	int features;
 	int localMapSize;
