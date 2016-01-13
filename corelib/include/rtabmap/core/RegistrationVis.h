@@ -75,6 +75,7 @@ private:
 	int _flowIterations;
 	float _flowEps;
 	int _flowMaxLevel;
+	bool _useDepthAsMask;
 
 	ParametersMap _featureParameters;
 };

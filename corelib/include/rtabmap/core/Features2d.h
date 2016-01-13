@@ -141,8 +141,12 @@ public:
 public:
 	virtual ~Feature2D();
 
-	std::vector<cv::KeyPoint> generateKeypoints(const cv::Mat & image) const;
-	cv::Mat generateDescriptors(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+	std::vector<cv::KeyPoint> generateKeypoints(
+			const cv::Mat & image,
+			const cv::Mat & mask = cv::Mat()) const;
+	cv::Mat generateDescriptors(
+			const cv::Mat & image,
+			std::vector<cv::KeyPoint> & keypoints) const;
 	std::vector<cv::Point3f> generateKeypoints3D(
 			const SensorData & data,
 			const std::vector<cv::KeyPoint> & keypoints) const;
@@ -155,14 +159,14 @@ protected:
 	Feature2D(const ParametersMap & parameters = ParametersMap());
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const = 0;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const = 0;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const = 0;
 
 private:
 	ParametersMap parameters_;
 	int maxFeatures_;
-	float _wordsMaxDepth; // 0=inf
-	float _wordsMinDepth;
+	float _maxDepth; // 0=inf
+	float _minDepth;
 	std::vector<float> _roiRatios; // size 4
 	int _subPixWinSize;
 	int _subPixIterations;
@@ -182,7 +186,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureSurf;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -209,7 +213,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureSift;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -232,7 +236,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureOrb;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:
@@ -262,7 +266,7 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
 
 private:
 	int threshold_;
@@ -346,7 +350,7 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
 
 private:
 	double _qualityLevel;
@@ -427,7 +431,7 @@ public:
 	virtual Feature2D::Type getType() const {return kFeatureBrisk;}
 
 private:
-	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi) const;
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
 	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
 
 private:

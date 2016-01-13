@@ -57,7 +57,8 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowWinSize(Parameters::defaultVisCorFlowWinSize()),
 		_flowIterations(Parameters::defaultVisCorFlowIterations()),
 		_flowEps(Parameters::defaultVisCorFlowEps()),
-		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel())
+		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
+		_useDepthAsMask(Parameters::defaultVisUseDepthAsMask())
 {
 	_featureParameters = Parameters::getDefaultParameters();
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisCorNNType())));
@@ -92,6 +93,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), _flowIterations);
 	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), _flowEps);
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
+	Parameters::parse(parameters, Parameters::kVisUseDepthAsMask(), _useDepthAsMask);
 
 	UASSERT_MSG(_minInliers >= 1, uFormat("value=%d", _minInliers).c_str());
 	UASSERT_MSG(_inlierDistance > 0.0f, uFormat("value=%f", _inlierDistance).c_str());
@@ -230,7 +232,9 @@ Transform RegistrationVis::computeTransformationImpl(
 					fromSignature.sensorData().setImageRaw(tmp);
 				}
 
-				kptsFrom = detector->generateKeypoints(fromSignature.sensorData().imageRaw());
+				kptsFrom = detector->generateKeypoints(
+						fromSignature.sensorData().imageRaw(),
+						_useDepthAsMask&&!fromSignature.sensorData().depthRaw().empty()?fromSignature.sensorData().depthRaw():cv::Mat());
 			}
 			else
 			{
@@ -385,7 +389,9 @@ Transform RegistrationVis::computeTransformationImpl(
 						cv::cvtColor(toSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
 						toSignature.sensorData().setImageRaw(tmp);
 					}
-					kptsTo = detector->generateKeypoints(toSignature.sensorData().imageRaw());
+					kptsTo = detector->generateKeypoints(
+							toSignature.sensorData().imageRaw(),
+							_useDepthAsMask&&!toSignature.sensorData().depthRaw().empty()?toSignature.sensorData().depthRaw():cv::Mat());
 				}
 				else
 				{

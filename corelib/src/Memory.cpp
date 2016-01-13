@@ -89,6 +89,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
+	_useDepthAsMask(Parameters::defaultMemUseDepthAsMask()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -402,6 +403,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
+	Parameters::parse(parameters, Parameters::kMemUseDepthAsMask(), _useDepthAsMask);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -3091,7 +3093,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				imageMono = data.imageRaw();
 			}
 
-			keypoints = _feature2D->generateKeypoints(imageMono);
+			keypoints = _feature2D->generateKeypoints(
+					imageMono,
+					_useDepthAsMask&&!data.depthRaw().empty()?data.depthRaw():cv::Mat());
 			t = timer.ticks();
 			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
 			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);

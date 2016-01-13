@@ -65,12 +65,15 @@ OdometryLocalMap::OdometryLocalMap(const ParametersMap & parameters) :
 	float minDepth = Parameters::defaultVisMinDepth();
 	float maxDepth = Parameters::defaultVisMaxDepth();
 	std::string roi = Parameters::defaultVisRoiRatios();
+	bool useDepthAsMask = Parameters::defaultVisUseDepthAsMask();
 	Parameters::parse(parameters, Parameters::kVisMinDepth(), minDepth);
 	Parameters::parse(parameters, Parameters::kVisMaxDepth(), maxDepth);
 	Parameters::parse(parameters, Parameters::kVisRoiRatios(), roi);
+	Parameters::parse(parameters, Parameters::kVisUseDepthAsMask(), useDepthAsMask);
 	customParameters.insert(ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(minDepth)));
 	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(maxDepth)));
 	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), roi));
+	customParameters.insert(ParametersPair(Parameters::kMemUseDepthAsMask(), uBool2Str(useDepthAsMask)));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));

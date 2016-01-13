@@ -494,7 +494,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_localSpaceScanMatchingIDsSaved->setObjectName(Parameters::kRGBDScanMatchingIdsSavedInLinks().c_str());
 	_ui->spinBox_imageDecimation->setObjectName(Parameters::kMemImageDecimation().c_str());
 	_ui->general_spinBox_laserScanDownsample->setObjectName(Parameters::kMemLaserScanDownsampleStepSize().c_str());
-
+	_ui->checkBox_useDepthAsMask->setObjectName(Parameters::kMemUseDepthAsMask().c_str());
 
 	// Database
 	_ui->checkBox_dbInMemory->setObjectName(Parameters::kDbSqlite3InMemory().c_str());
@@ -646,6 +646,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kVisPnPReprojError().c_str());
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kVisPnPFlags().c_str());
 	_ui->loopClosure_pnpRefineIterations->setObjectName(Parameters::kVisPnPRefineIterations().c_str());
+	_ui->loopClosure_useDepthAsMask->setObjectName(Parameters::kVisUseDepthAsMask().c_str());
 
 	_ui->loopClosure_bowVarianceFromInliersCount->setObjectName(Parameters::kRegVarianceFromInliersCount().c_str());
 	_ui->comboBox_registrationStrategy->setObjectName(Parameters::kRegStrategy().c_str());
