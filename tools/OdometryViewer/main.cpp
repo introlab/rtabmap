@@ -121,7 +121,7 @@ int main (int argc, char * argv[])
 	int fastThr = rtabmap::Parameters::defaultFASTThreshold();
 	float sec = 0.0f;
 	bool gpu = false;
-	int localHistory = rtabmap::Parameters::defaultOdomBowLocalHistorySize();
+	int localHistory = rtabmap::Parameters::defaultOdomLocalMapHistorySize();
 	bool p2p = false;
 
 	for(int i=1; i<argc; ++i)
@@ -652,7 +652,7 @@ int main (int argc, char * argv[])
 			UINFO("Local history =           %d", localHistory);
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNType(), uNumber2Str(nnType)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNDR(), uNumber2Str(nndr)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomBowLocalHistorySize(), uNumber2Str(localHistory)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomLocalMapHistorySize(), uNumber2Str(localHistory)));
 
 			if(mono)
 			{
