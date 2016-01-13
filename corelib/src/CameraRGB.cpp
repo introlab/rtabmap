@@ -66,8 +66,12 @@ CameraImages::CameraImages() :
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
 		_depthFromScan(false),
+		_depthFromScanFillHolesVertical(true),
+		_depthFromScanFillHolesFromBorder(false),
 		_filenamesAreTimestamps(false),
-		_groundTruthFormat(0)
+		syncImageRateWithStamps_(true),
+		_groundTruthFormat(0),
+		_captureDelay(0.0)
 	{}
 CameraImages::CameraImages(const std::string & path,
 					 float imageRate,
@@ -88,8 +92,12 @@ CameraImages::CameraImages(const std::string & path,
 	_scanVoxelSize(0.0f),
 	_scanNormalsK(0),
 	_depthFromScan(false),
+	_depthFromScanFillHolesVertical(true),
+	_depthFromScanFillHolesFromBorder(false),
 	_filenamesAreTimestamps(false),
-	_groundTruthFormat(0)
+	syncImageRateWithStamps_(true),
+	_groundTruthFormat(0),
+	_captureDelay(0.0)
 {
 
 }
@@ -113,6 +121,8 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	_lastScanFileName.clear();
 	_count = 0;
 	_countScan = 0;
+	_captureDelay = 0.0;
+	_captureTimer.restart();
 
 	UDEBUG("");
 	if(_dir)
@@ -383,6 +393,38 @@ std::vector<std::string> CameraImages::filenames() const
 
 SensorData CameraImages::captureImage()
 {
+	double actualDelay = 0.0;
+	if(syncImageRateWithStamps_ && _captureDelay>0.0)
+	{
+		int sleepTime = (1000*_captureDelay - 1000.0f*_captureTimer.getElapsedTime());
+		if(sleepTime > 2)
+		{
+			uSleep(sleepTime-2);
+		}
+		else if(sleepTime < 0)
+		{
+			if(this->getImageRate() > 0.0f)
+			{
+				UWARN("CameraImages: Cannot read images as fast as their timestamps (delay=%f s). Disable "
+					  "source image rate or disable synchronization of capture time with timestamps.", _captureDelay);
+			}
+			else
+			{
+				UWARN("CameraImages: Cannot read images as fast as their timestamps (delay=%f s).", _captureDelay);
+			}
+		}
+
+		actualDelay = 1.0/(_captureTimer.getElapsedTime());
+
+		// Add precision at the cost of a small overhead
+		while(_captureTimer.getElapsedTime() < _captureDelay-0.000001)
+		{
+			//
+		}
+		_captureTimer.start();
+	}
+	_captureDelay = 0.0;
+
 	cv::Mat img;
 	cv::Mat scan;
 	double stamp = UTimer::now();
@@ -455,6 +497,10 @@ SensorData CameraImages::captureImage()
 		{
 			stamp = stamps_.front();
 			stamps_.pop_front();
+			if(stamps_.size())
+			{
+				_captureDelay = stamps_.front() - stamp;
+			}
 			if(groundTruth_.size())
 			{
 				groundTruthPose = groundTruth_.front();

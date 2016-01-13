@@ -31,13 +31,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/highgui/highgui.hpp>
 #include "rtabmap/core/Camera.h"
+#include "rtabmap/utilite/UTimer.h"
 #include <set>
 #include <stack>
 #include <list>
 #include <vector>
 
 class UDirectory;
-class UTimer;
 
 namespace rtabmap
 {
@@ -70,10 +70,11 @@ public:
 	void setDirRefreshed(bool enabled) {_refreshDir = enabled;}
 	void setImagesRectified(bool enabled) {_rectifyImages = enabled;}
 
-	void setTimestamps(bool fileNamesAreStamps, const std::string & filePath = "")
+	void setTimestamps(bool fileNamesAreStamps, const std::string & filePath = "", bool syncImageRateWithStamps=true)
 	{
 		_filenamesAreTimestamps = fileNamesAreStamps;
 		timestampsPath_=filePath;
+		syncImageRateWithStamps_ = syncImageRateWithStamps;
 	}
 
 	void setScanPath(
@@ -147,6 +148,7 @@ private:
 
 	bool _filenamesAreTimestamps;
 	std::string timestampsPath_;
+	bool syncImageRateWithStamps_;
 
 	std::string groundTruthPath_;
 	int _groundTruthFormat;
@@ -154,6 +156,9 @@ private:
 	std::list<double> stamps_;
 	std::list<Transform> groundTruth_;
 	CameraModel _model;
+
+	UTimer _captureTimer;
+	double _captureDelay;
 };
 
 

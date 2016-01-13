@@ -397,6 +397,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraRGBDImages_path_rgb, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraRGBDImages_path_depth, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_cameraImages_timestamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_cameraImages_syncTimeStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_cameraRGBDImages_scale, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_path_scans, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_laser_transform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1206,6 +1207,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_stereoVideo_rectify->setChecked(false);
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
+		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
 		_ui->lineEdit_cameraImages_timestamps->setText("");
 		_ui->lineEdit_cameraImages_path_scans->setText("");
 		_ui->lineEdit_cameraImages_laser_transform->setText("0 0 0 0 0 0");
@@ -1522,6 +1524,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->checkBox_rgbImages_rectify->setChecked(settings.value("rectify",_ui->checkBox_rgbImages_rectify->isChecked()).toBool());
 
 	_ui->checkBox_cameraImages_timestamps->setChecked(settings.value("filenames_as_stamps",_ui->checkBox_cameraImages_timestamps->isChecked()).toBool());
+	_ui->checkBox_cameraImages_syncTimeStamps->setChecked(settings.value("sync_stamps",_ui->checkBox_cameraImages_syncTimeStamps->isChecked()).toBool());
 	_ui->lineEdit_cameraImages_timestamps->setText(settings.value("stamps", _ui->lineEdit_cameraImages_timestamps->text()).toString());
 	_ui->lineEdit_cameraImages_path_scans->setText(settings.value("path_scans", _ui->lineEdit_cameraImages_path_scans->text()).toString());
 	_ui->lineEdit_cameraImages_laser_transform->setText(settings.value("scan_transform", _ui->lineEdit_cameraImages_laser_transform->text()).toString());
@@ -1885,6 +1888,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("refreshDir", 	_ui->source_images_refreshDir->isChecked());
 	settings.setValue("rectify", 	    _ui->checkBox_rgbImages_rectify->isChecked());
 	settings.setValue("filenames_as_stamps", _ui->checkBox_cameraImages_timestamps->isChecked());
+	settings.setValue("sync_stamps",    _ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 	settings.setValue("stamps",              _ui->lineEdit_cameraImages_timestamps->text());
 	settings.setValue("path_scans",          _ui->lineEdit_cameraImages_path_scans->text());
 	settings.setValue("scan_transform",      _ui->lineEdit_cameraImages_laser_transform->text());
@@ -3826,7 +3830,10 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
 						this->getLaserLocalTransform());
-		((CameraRGBDImages*)camera)->setTimestamps(_ui->checkBox_cameraImages_timestamps->isChecked(), _ui->lineEdit_cameraImages_timestamps->text().toStdString());
+		((CameraRGBDImages*)camera)->setTimestamps(
+				_ui->checkBox_cameraImages_timestamps->isChecked(),
+				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
+				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 	}
 	else if(driver == kSrcDC1394)
 	{
@@ -3866,7 +3873,10 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
 						this->getLaserLocalTransform());
-		((CameraStereoImages*)camera)->setTimestamps(_ui->checkBox_cameraImages_timestamps->isChecked(), _ui->lineEdit_cameraImages_timestamps->text().toStdString());
+		((CameraStereoImages*)camera)->setTimestamps(
+				_ui->checkBox_cameraImages_timestamps->isChecked(),
+				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
+				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 	}
 	else if(driver == kSrcStereoVideo)
 	{
@@ -3918,7 +3928,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 				_ui->checkBox_depthFromScan_fillBorders->isChecked());
 		((CameraRGBDImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
-				_ui->lineEdit_cameraImages_timestamps->text().toStdString());
+				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
+				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 	}
 	else if(driver == kSrcDatabase)
 	{
