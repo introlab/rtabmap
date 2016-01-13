@@ -261,8 +261,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, GridRows,           int, 4,         "Grid rows (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
 	RTABMAP_PARAM(FAST, GridCols,           int, 4,         "Grid cols (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
 
-	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.002, "");
-	RTABMAP_PARAM(GFTT, MinDistance, double, 10, "");
+	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.001, "");
+	RTABMAP_PARAM(GFTT, MinDistance, double, 5, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
 	RTABMAP_PARAM(GFTT, K, double, 0.04, "");
@@ -369,7 +369,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, ForwardEstOnly,           bool, true, 	"Forward estimation only (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
 	RTABMAP_PARAM(Vis, InlierDistance,           float, 0.1,    "[Vis/EstimationType = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.");
 	RTABMAP_PARAM(Vis, RefineIterations,         int, 10,       "[Vis/EstimationType = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
-	RTABMAP_PARAM(Vis, PnPReprojError, 	         float, 5.0,   "[Vis/EstimationType = 1] PnP reprojection error.");
+	RTABMAP_PARAM(Vis, PnPReprojError, 	         float, 2.0,   "[Vis/EstimationType = 1] PnP reprojection error.");
 	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,        "[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 	RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        "[Vis/EstimationType = 1] Refine iterations.");
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
