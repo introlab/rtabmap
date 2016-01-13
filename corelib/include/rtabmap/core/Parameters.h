@@ -346,8 +346,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, KalmanMeasurementNoise, float, 0.01,      "Process measurement covariance value.");
 
 	// Odometry Bag-of-words
-	RTABMAP_PARAM(OdomBow, LocalHistorySize,       int, 1000,   "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
-	RTABMAP_PARAM_STR(OdomBow, FixedLocalMapPath,   "",         "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
+	RTABMAP_PARAM(OdomLocalMap, HistorySize,       int, 1000,   "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
+	RTABMAP_PARAM_STR(OdomLocalMap, FixedMapPath,   "",         "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
 
 	// Odometry Mono
 	RTABMAP_PARAM(OdomMono, InitMinFlow,            float, 100,  "Minimum optical flow required for the initialization step.");
@@ -356,8 +356,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01, "Maximum variance to add new points to local map.");
 
 	// Odometry Optical Flow
-	RTABMAP_PARAM(OdomFlow, KeyFrameThr,           int, 0,        "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
-	RTABMAP_PARAM(OdomFlow, GuessMotion,           bool, true,    "Guess optical flow from the last motion computed.");
+	RTABMAP_PARAM(OdomF2F, KeyFrameThr,           int, 0,        "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
+	RTABMAP_PARAM(OdomF2F, GuessMotion,           bool, true,    "Guess next transformation from the last motion computed.");
 
 	// Common registration parameters
 	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");

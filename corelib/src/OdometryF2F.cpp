@@ -36,13 +36,13 @@ namespace rtabmap {
 
 OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	Odometry(parameters),
-	keyFrameThr_(Parameters::defaultOdomFlowKeyFrameThr()),
-	guessFromMotion_(Parameters::defaultOdomFlowGuessMotion()),
+	keyFrameThr_(Parameters::defaultOdomF2FKeyFrameThr()),
+	guessFromMotion_(Parameters::defaultOdomF2FGuessMotion()),
 	motionSinceLastKeyFrame_(Transform::getIdentity())
 {
 	registrationPipeline_ = Registration::create(parameters);
-	Parameters::parse(parameters, Parameters::kOdomFlowKeyFrameThr(), keyFrameThr_);
-	Parameters::parse(parameters, Parameters::kOdomFlowGuessMotion(), guessFromMotion_);
+	Parameters::parse(parameters, Parameters::kOdomF2FKeyFrameThr(), keyFrameThr_);
+	Parameters::parse(parameters, Parameters::kOdomF2FGuessMotion(), guessFromMotion_);
 }
 
 OdometryF2F::~OdometryF2F()

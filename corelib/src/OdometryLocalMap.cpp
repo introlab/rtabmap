@@ -52,14 +52,14 @@ namespace rtabmap {
 
 OdometryLocalMap::OdometryLocalMap(const ParametersMap & parameters) :
 	Odometry(parameters),
-	localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
-	fixedLocalMapPath_(Parameters::defaultOdomBowFixedLocalMapPath()),
+	localHistoryMaxSize_(Parameters::defaultOdomLocalMapHistorySize()),
+	fixedLocalMapPath_(Parameters::defaultOdomLocalMapFixedMapPath()),
 	memory_(0),
 	regVis_(new RegistrationVis(parameters))
 {
 	UDEBUG("");
-	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
-	Parameters::parse(parameters, Parameters::kOdomBowFixedLocalMapPath(), fixedLocalMapPath_);
+	Parameters::parse(parameters, Parameters::kOdomLocalMapHistorySize(), localHistoryMaxSize_);
+	Parameters::parse(parameters, Parameters::kOdomLocalMapFixedMapPath(), fixedLocalMapPath_);
 
 	ParametersMap customParameters;
 	float minDepth = Parameters::defaultVisMinDepth();

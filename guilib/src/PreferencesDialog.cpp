@@ -689,17 +689,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
 
 	//Odometry BOW
-	_ui->odom_localHistory->setObjectName(Parameters::kOdomBowLocalHistorySize().c_str());
-	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomBowFixedLocalMapPath().c_str());
+	_ui->odom_localHistory->setObjectName(Parameters::kOdomLocalMapHistorySize().c_str());
+	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomLocalMapFixedMapPath().c_str());
 	connect(_ui->toolButton_odomBowFixedLocalMap, SIGNAL(clicked()), this, SLOT(changeOdomBowFixedLocalMapPath()));
 
 	//Odometry Optical Flow
-	_ui->odom_flow_keyframeThr->setObjectName(Parameters::kOdomFlowKeyFrameThr().c_str());
+	_ui->odom_flow_keyframeThr->setObjectName(Parameters::kOdomF2FKeyFrameThr().c_str());
 	_ui->odom_flow_winSize_2->setObjectName(Parameters::kVisCorFlowWinSize().c_str());
 	_ui->odom_flow_maxLevel_2->setObjectName(Parameters::kVisCorFlowMaxLevel().c_str());
 	_ui->odom_flow_iterations_2->setObjectName(Parameters::kVisCorFlowIterations().c_str());
 	_ui->odom_flow_eps_2->setObjectName(Parameters::kVisCorFlowEps().c_str());
-	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomFlowGuessMotion().c_str());
+	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomF2FGuessMotion().c_str());
 
 	//Odometry Mono
 	_ui->doubleSpinBox_minFlow->setObjectName(Parameters::kOdomMonoInitMinFlow().c_str());

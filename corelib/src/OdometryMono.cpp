@@ -59,7 +59,7 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	pnpReprojError_(Parameters::defaultVisPnPReprojError()),
 	pnpFlags_(Parameters::defaultVisPnPFlags()),
 	pnpRefineIterations_(Parameters::defaultVisPnPRefineIterations()),
-	localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
+	localHistoryMaxSize_(Parameters::defaultOdomLocalMapHistorySize()),
 	initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
 	initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
 	minTranslation_(Parameters::defaultOdomMonoMinTranslation()),
@@ -77,7 +77,7 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), pnpReprojError_);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), pnpFlags_);
 	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), pnpRefineIterations_);
-	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
+	Parameters::parse(parameters, Parameters::kOdomLocalMapHistorySize(), localHistoryMaxSize_);
 
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinTranslation(), initMinTranslation_);
