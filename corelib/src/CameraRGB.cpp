@@ -219,12 +219,15 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			const std::list<std::string> & filenames = _dir->getFileNames();
 			for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
 			{
-				// format is 12234456.12334.png
+				// format is text_12234456.12334_text.png
 				std::list<std::string> list = uSplit(*iter, '.');
 				if(list.size() == 3)
 				{
 					list.pop_back(); // remove extension
-					double stamp = uStr2Double(uJoin(list, "."));
+					std::string decimals = uSplitNumChar(list.back()).front();
+					list.pop_back();
+					std::string sec = uSplitNumChar(list.back()).back();
+					double stamp = uStr2Double(sec + "." + decimals);
 					if(stamp > 0.0)
 					{
 						stamps_.push_back(stamp);

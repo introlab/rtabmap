@@ -19,7 +19,7 @@
      <item row="0" column="0">
       <widget class="QDoubleSpinBox" name="doubleSpinBox_fx">
        <property name="decimals">
-        <number>4</number>
+        <number>6</number>
        </property>
        <property name="maximum">
         <double>99999.000000000000000</double>
@@ -36,7 +36,7 @@
      <item row="1" column="0">
       <widget class="QDoubleSpinBox" name="doubleSpinBox_fy">
        <property name="decimals">
-        <number>4</number>
+        <number>6</number>
        </property>
        <property name="maximum">
         <double>99999.000000000000000</double>
@@ -53,7 +53,7 @@
      <item row="2" column="0">
       <widget class="QDoubleSpinBox" name="doubleSpinBox_cx">
        <property name="decimals">
-        <number>4</number>
+        <number>6</number>
        </property>
        <property name="maximum">
         <double>99999.000000000000000</double>
@@ -70,7 +70,7 @@
      <item row="3" column="0">
       <widget class="QDoubleSpinBox" name="doubleSpinBox_cy">
        <property name="decimals">
-        <number>4</number>
+        <number>6</number>
        </property>
        <property name="maximum">
         <double>99999.000000000000000</double>
@@ -87,7 +87,7 @@
      <item row="4" column="0">
       <widget class="QDoubleSpinBox" name="doubleSpinBox_baseline">
        <property name="decimals">
-        <number>4</number>
+        <number>6</number>
        </property>
        <property name="minimum">
         <double>0.000000000000000</double>
