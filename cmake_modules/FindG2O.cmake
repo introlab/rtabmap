@@ -1,6 +1,8 @@
 #Pre-requisites: Look for csparse
-FIND_PATH(CSPARSE_INCLUDE_DIR NAMES cs.h PATH_SUFFIXES suitesparse )
-FIND_LIBRARY(CSPARSE_LIBRARY NAMES cxsparse)
+FIND_PATH(CSPARSE_INCLUDE_DIR NAMES cs.h PATH_SUFFIXES suitesparse csparse 
+  PATHS "C:\\Program Files\\g2o\\include\\EXTERNAL")
+FIND_LIBRARY(CSPARSE_LIBRARY NAMES cxsparse g2o_ext_csparse 
+  PATHS "C:\\Program Files\\g2o\\lib")
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(CSPARSE DEFAULT_MSG CSPARSE_INCLUDE_DIR CSPARSE_LIBRARY)
@@ -8,7 +10,8 @@ find_package_handle_standard_args(CSPARSE DEFAULT_MSG CSPARSE_INCLUDE_DIR CSPARS
 
 # G2O: Find the header files
 
-FIND_PATH(G2O_INCLUDE_DIR g2o/core/base_vertex.h)
+FIND_PATH(G2O_INCLUDE_DIR g2o/core/base_vertex.h 
+  PATHS "C:\\Program Files\\g2o\\include")
 
 # Macro to unify finding both the debug and release versions of the
 # libraries; this is adapted from the OpenSceneGraph FIND_LIBRARY
@@ -18,11 +21,11 @@ MACRO(FIND_G2O_LIBRARY MYLIBRARY MYLIBRARYNAME)
 
   FIND_LIBRARY("${MYLIBRARY}_DEBUG"
     NAMES "g2o_${MYLIBRARYNAME}_d"
-    )
+	PATHS "C:\\Program Files\\g2o\\lib")
   
   FIND_LIBRARY(${MYLIBRARY}
     NAMES "g2o_${MYLIBRARYNAME}"
-    )
+	PATHS "C:\\Program Files\\g2o\\lib")
   
   IF(NOT ${MYLIBRARY}_DEBUG)
     IF(MYLIBRARY)
@@ -66,19 +69,25 @@ ENDIF(G2O_SOLVER_CHOLMOD OR G2O_SOLVER_CSPARSE OR G2O_SOLVER_DENSE OR G2O_SOLVER
 
 # G2O itself declared found if we found the core libraries and at least one solver
 SET(G2O_FOUND "NO")
+SET(G2O_CHOMOLD_FOUND "NO")
 FIND_LIBRARY(CHOLMOD_LIB cholmod)
 IF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_SOLVERS_FOUND AND CSPARSE_FOUND)
   SET(G2O_INCLUDE_DIRS ${G2O_INCLUDE_DIR} ${CSPARSE_INCLUDE_DIR})
   SET(G2O_LIBRARIES 
 	${G2O_STUFF_LIBRARY} 
 	${G2O_CORE_LIBRARY}
-	${G2O_SOLVER_CHOLMOD}
 	${G2O_SOLVER_CSPARSE} 
 	${G2O_SOLVER_CSPARSE_EXTENSION}
 	${G2O_TYPES_SLAM2D} 
 	${G2O_TYPES_SLAM3D} 
-	${CSPARSE_LIBRARY}
-	${CHOLMOD_LIB})
+	${CSPARSE_LIBRARY})
+  IF(G2O_SOLVER_CHOLMOD)
+    SET(G2O_LIBRARIES 
+	  ${G2O_LIBRARIES}
+	  ${G2O_SOLVER_CHOLMOD}
+	  ${CHOLMOD_LIB})
+	SET(G2O_CHOMOLD_FOUND "YES")
+  ENDIF(G2O_SOLVER_CHOLMOD)
   SET(G2O_FOUND "YES")
 ELSEIF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR)
   MESSAGE(STATUS "g2o core libraries found but some solvers are missing. Make sure to install \"libsuitesparse-dev\" before building/installing g2o.")

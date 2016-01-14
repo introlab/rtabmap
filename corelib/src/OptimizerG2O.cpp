@@ -42,8 +42,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/core/optimization_algorithm_gauss_newton.h"
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
-#include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #include "g2o/solvers/pcg/linear_solver_pcg.h"
+#ifdef WITH_G2O_CHOMOLD
+#include "g2o/solvers/cholmod/linear_solver_cholmod.h"
+#endif
 #include "g2o/types/slam3d/vertex_se3.h"
 #include "g2o/types/slam3d/edge_se3.h"
 #include "g2o/types/slam2d/vertex_se2.h"
@@ -51,8 +53,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
 typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSparseSolver;
-typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
 typedef g2o::LinearSolverPCG<SlamBlockSolver::PoseMatrixType> SlamLinearPCGSolver;
+#ifdef WITH_G2O_CHOMOLD
+typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
+#endif
 
 #include "vertigo/g2o/edge_switchPrior.h"
 #include "vertigo/g2o/edge_se2Switchable.h"
@@ -94,23 +98,28 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int optimizationApproach = 1;
 
 		SlamBlockSolver * blockSolver;
-		if(solverApproach == 1)
+#ifdef WITH_G2O_CHOMOLD
+		if(solverApproach == 0)
+		{
+			//chmold
+			SlamLinearCholmodSolver * linearSolver = new SlamLinearCholmodSolver();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = new SlamBlockSolver(linearSolver);
+		}
+		else if
+#else
+		if
+#endif
+			(solverApproach == 1)
 		{
 			//pcg
 			SlamLinearPCGSolver * linearSolver = new SlamLinearPCGSolver();
 			blockSolver = new SlamBlockSolver(linearSolver);
 		}
-		else if(solverApproach == 2)
+		else
 		{
 			//csparse
 			SlamLinearCSparseSolver* linearSolver = new SlamLinearCSparseSolver();
-			linearSolver->setBlockOrdering(false);
-			blockSolver = new SlamBlockSolver(linearSolver);
-		}
-		else
-		{
-			//chmold
-			SlamLinearCholmodSolver * linearSolver = new SlamLinearCholmodSolver();
 			linearSolver->setBlockOrdering(false);
 			blockSolver = new SlamBlockSolver(linearSolver);
 		}

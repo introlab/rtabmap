@@ -8,12 +8,11 @@
 
 #include "edge_se2MaxMixture.h"
 
-#include <GL/gl.h>
 using namespace std;
 using namespace Eigen;
 
 // ================================================
-EdgeSE2MaxMixture::EdgeSE2MaxMixture() : g2o::EdgeSE2::EdgeSE2()
+EdgeSE2MaxMixture::EdgeSE2MaxMixture()
 {
   nullHypothesisMoreLikely = false;
 }
@@ -89,6 +88,7 @@ void EdgeSE2MaxMixture::computeError()
 }
 
 /*
+#include <GL/gl.h>
 // ================================================
 #ifdef G2O_HAVE_OPENGL
   EdgeSE2MaxMixtureDrawAction::EdgeSE2MaxMixtureDrawAction(): DrawAction(typeid(EdgeSE2MaxMixture).name()){}

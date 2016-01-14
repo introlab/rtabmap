@@ -157,6 +157,9 @@ IF(FlyCapture2_FOUND)
 ENDIF(FlyCapture2_FOUND)
 
 IF(G2O_FOUND)
+	IF(G2O_CHOMOLD_FOUND)
+		ADD_DEFINITIONS("-DWITH_G2O_CHOMOLD")
+	ENDIF(G2O_CHOMOLD_FOUND)
 	ADD_DEFINITIONS("-DWITH_G2O")
 	SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 
@@ -169,7 +172,6 @@ IF(G2O_FOUND)
 	
 	SET(SRC_FILES
     	${SRC_FILES}
-		vertigo/g2o/edge_se2MaxMixture.cpp
 		vertigo/g2o/edge_se2Switchable.cpp
 		vertigo/g2o/edge_se3Switchable.cpp
 		vertigo/g2o/edge_switchPrior.cpp

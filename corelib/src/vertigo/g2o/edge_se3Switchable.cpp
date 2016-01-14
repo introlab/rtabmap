@@ -10,7 +10,6 @@
 
 #include "vertigo/g2o/edge_se3Switchable.h"
 #include "vertigo/g2o/vertex_switchLinear.h"
-#include <GL/gl.h>
 #include "g2o/types/slam3d/vertex_se3.h"
 #include "g2o/types/slam3d/isometry3d_gradients.h"
 
@@ -93,6 +92,7 @@ void EdgeSE3Switchable::computeError()
 }
 
 /*
+#include <GL/gl.h>
 #ifdef G2O_HAVE_OPENGL
   EdgeSE3SwitchableDrawAction::EdgeSE3SwitchableDrawAction(): DrawAction(typeid(EdgeSE3Switchable).name()){}
 

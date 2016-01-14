@@ -10,7 +10,6 @@
 
 #include "vertigo/g2o/edge_se2Switchable.h"
 #include "vertigo/g2o/vertex_switchLinear.h"
-#include <GL/gl.h>
 
 using namespace std;
 using namespace Eigen;
@@ -103,6 +102,7 @@ void EdgeSE2Switchable::computeError()
 }
 
 /*
+#include <GL/gl.h>
 #ifdef G2O_HAVE_OPENGL
   EdgeSE2SwitchableDrawAction::EdgeSE2SwitchableDrawAction(): DrawAction(typeid(EdgeSE2Switchable).name()){}
 
