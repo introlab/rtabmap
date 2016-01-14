@@ -1735,8 +1735,15 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 		emit settingsChanged(_obsoletePanels);
 	}
 
-	uInsert(_parameters, _modifiedParameters); // update cached parameters
+	for(ParametersMap::iterator iter = _modifiedParameters.begin(); iter!=_modifiedParameters.end(); ++iter)
+	{
+		if( _parameters.at(iter->first).compare(iter->second) != 0)
+		{
+			UINFO("modified %s = %s->%s", iter->first.c_str(),  _parameters.at(iter->first).c_str(), iter->second.c_str());
+		}
+	}
 
+	uInsert(_parameters, _modifiedParameters); // update cached parameters
 	_modifiedParameters.clear();
 	_obsoletePanels = kPanelDummy;
 }
@@ -2683,6 +2690,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 	QWidget * obj = _ui->stackedWidget->findChild<QWidget*>(key.c_str());
 	if(obj)
 	{
+		bool oldState = obj->blockSignals(true);
 		QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
 		QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
 		QComboBox * combo = qobject_cast<QComboBox *>(obj);
@@ -2790,6 +2798,7 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		{
 			ULOGGER_WARN("QObject called %s can't be cast to a supported widget", key.c_str());
 		}
+		obj->blockSignals(oldState);
 	}
 	else
 	{
@@ -2853,6 +2862,10 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 		const QSpinBox * spinbox = qobject_cast<const QSpinBox*>(object);
 		if(comboBox || spinbox)
 		{
+			// Add parameter
+			UDEBUG("modify param %s=%s", object->objectName().toStdString().c_str(), uNumber2Str(value).c_str());
+			uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
+
 			if(comboBox)
 			{
 				// Add related panels to parameters
@@ -2925,8 +2938,6 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 					this->addParameters(_ui->groupBox_icp2);
 				}
 			}
-			// Add parameter
-			uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
 		}
 		else
 		{
@@ -2950,6 +2961,7 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 		if(checkbox || radio || groupBox)
 		{
 			// Add parameter
+			UDEBUG("modify param %s=%s", object->objectName().toStdString().c_str(), uBool2Str(value).c_str());
 			uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), uBool2Str(value)));
 
 			// RGBD panel
@@ -2966,16 +2978,6 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 
 			if(groupBox)
 			{
-				// RGBD panel
-				if(value && groupBox == _ui->groupBox_localDetection_time)
-				{
-					this->addParameters(_ui->groupBox_visualTransform2);
-				}
-				if(value && groupBox == _ui->groupBox_localDetection_space)
-				{
-					this->addParameters(_ui->groupBox_icp2);
-				}
-
 				this->addParameters(groupBox);
 			}
 		}
@@ -2995,6 +2997,7 @@ void PreferencesDialog::addParameter(const QObject * object, double value)
 {
 	if(object)
 	{
+		UDEBUG("modify param %s=%s", object->objectName().toStdString().c_str(), uBool2Str(value).c_str());
 		uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
 	}
 	else
@@ -3007,9 +3010,8 @@ void PreferencesDialog::addParameter(const QObject * object, const QString & val
 {
 	if(object)
 	{
-		// Make sure the value is inserted, check if the same key already exists
+		UDEBUG("modify param %s=%s", object->objectName().toStdString().c_str(), value.toStdString().c_str());
 		uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), value.toStdString()));
-		//ULOGGER_DEBUG("PreferencesDialog::addParameter(object, QString) Added [\"%s\",\"%s\"]", object->objectName().toStdString().c_str(), QString::number(value).toStdString().c_str());
 	}
 	else
 	{

@@ -574,12 +574,15 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 		}
 	}
 
-	this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
-
-	if(wasEmpty)
+	if(_gtNodeItems.size() || _gtLinkItems.size())
 	{
-		QRectF rect = this->scene()->itemsBoundingRect();
-		this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
+		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+
+		if(wasEmpty)
+		{
+			QRectF rect = this->scene()->itemsBoundingRect();
+			this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
+		}
 	}
 
 	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d", _gtNodeItems.size(), _gtLinkItems.size());
