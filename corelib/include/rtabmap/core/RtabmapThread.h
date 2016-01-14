@@ -106,6 +106,7 @@ private:
 	float _rate;
 	bool _createIntermediateNodes;
 	UTimer * _frameRateTimer;
+	double _previousStamp;
 
 	Rtabmap * _rtabmap;
 	bool _paused;

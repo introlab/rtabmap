@@ -48,6 +48,7 @@ RtabmapThread::RtabmapThread(Rtabmap * rtabmap) :
 		_rate(Parameters::defaultRtabmapDetectionRate()),
 		_createIntermediateNodes(Parameters::defaultRtabmapCreateIntermediateNodes()),
 		_frameRateTimer(new UTimer()),
+		_previousStamp(0.0),
 		_rtabmap(rtabmap),
 		_paused(false),
 		lastPose_(Transform::getIdentity()),
@@ -91,6 +92,7 @@ void RtabmapThread::clearBufferedData()
 		lastPose_.setIdentity();
 		_rotVariance = 0;
 		_transVariance = 0;
+		_previousStamp = 0;
 	}
 	_dataMutex.unlock();
 
@@ -508,7 +510,8 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		bool ignoreFrame = false;
 		if(_rate>0.0f)
 		{
-			if(_frameRateTimer->getElapsedTime() < 1.0f/_rate)
+			if((_previousStamp>0.0 && odomEvent.data().stamp()>_previousStamp && odomEvent.data().stamp() - _previousStamp < 1.0f/_rate) ||
+			   ((_previousStamp<=0.0 || odomEvent.data().stamp()<=_previousStamp) && _frameRateTimer->getElapsedTime() < 1.0f/_rate))
 			{
 				ignoreFrame = true;
 			}
@@ -528,6 +531,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		else if(!ignoreFrame)
 		{
 			_frameRateTimer->start();
+			_previousStamp = odomEvent.data().stamp();
 		}
 
 		lastPose_ = odomEvent.pose();

@@ -405,12 +405,14 @@ SensorData CameraImages::captureImage()
 		{
 			if(this->getImageRate() > 0.0f)
 			{
-				UWARN("CameraImages: Cannot read images as fast as their timestamps (delay=%f s). Disable "
-					  "source image rate or disable synchronization of capture time with timestamps.", _captureDelay);
+				UWARN("CameraImages: Cannot read images as fast as their timestamps (target delay=%fs, capture time=%fs). Disable "
+					  "source image rate or disable synchronization of capture time with timestamps.", 
+					  _captureDelay, _captureTimer.getElapsedTime());
 			}
 			else
 			{
-				UWARN("CameraImages: Cannot read images as fast as their timestamps (delay=%f s).", _captureDelay);
+				UWARN("CameraImages: Cannot read images as fast as their timestamps (target delay=%fs, capture time=%fs).", 
+					_captureDelay, _captureTimer.getElapsedTime());
 			}
 		}
 
