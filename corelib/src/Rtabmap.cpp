@@ -2059,6 +2059,15 @@ bool Rtabmap::process(
 
 			UINFO("Update map correction");
 			std::map<int, Transform> poses = _optimizedPoses;
+			
+			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
+			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
+			if((normMapCorrection > 0.001f && _optimizeFromGraphEnd) ||
+				(normMapCorrection < 0.001f && !_optimizeFromGraphEnd))
+			{
+				poses.clear();
+			}
+
 			std::multimap<int, Link> constraints;
 			optimizeCurrentMap(signature->id(), false, poses, &constraints, &optimizationError, &optimizationIterations);
 
