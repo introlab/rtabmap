@@ -752,6 +752,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	// Process Data
 	if(!odom.data().imageRaw().empty())
 	{
+		// Set color code as tooltip
+		if(_ui->imageView_odometry->toolTip().isEmpty())
+		{
+			_ui->imageView_odometry->setToolTip(
+				"Dark Red	= Odometry Lost\n"
+				"Dark Yellow	= Low Inliers");
+		}
+
 		Transform pose = odom.pose();
 		bool lost = false;
 		bool lostStateChanged = false;
@@ -1176,6 +1184,24 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		else if(smallMovement)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::gray);
+		}
+		// Set color code as tooltip
+		if(_ui->imageView_source->toolTip().isEmpty())
+		{
+			_ui->imageView_source->setToolTip(
+				"Blue		= Weight Update Merged\n"
+				"Dark Blue	= Weight Update\n"
+				"Dark Yellow	= Proximity Detection in Time\n"
+				"Dark Cyan	= Neighbor Link Refined\n"
+				"Gray		= Small Movement");
+		}
+		// Set color code as tooltip
+		if(_ui->imageView_loopClosure->toolTip().isEmpty())
+		{
+			_ui->imageView_loopClosure->setToolTip(
+				"Green	= Accepted Loop Closure Detection\n"
+				"Red	= Rejected Loop Closure Detection\n"
+				"Yellow	= Proximity Detection in Space");
 		}
 
 		UDEBUG("time= %d ms", time.restart());
