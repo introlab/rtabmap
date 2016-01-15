@@ -629,12 +629,12 @@ inline bool uIsDigit(const char c)
  * @param str the string
  * @return true if the string is a integer number
  */
-inline bool uIsInteger(const std::string & str)
+inline bool uIsInteger(const std::string & str, bool checkForSign = true)
 {
 	bool isInteger = str.size()!=0;
 	for(unsigned int i=0; i<str.size() && isInteger; ++i)
 	{
-		isInteger = i==0&&str[i]=='-'||uIsDigit(str[i]);
+		isInteger = (checkForSign && i==0 && str[i]=='-') || uIsDigit(str[i]);
 	}
 	return isInteger;
 }
@@ -653,7 +653,7 @@ inline bool uIsNumber(const std::string & str)
 	}
 	else if(list.size() == 2)
 	{
-		return uIsInteger(list.front()) && uIsInteger(list.back());
+		return uIsInteger(list.front()) && uIsInteger(list.back(), false);
 	}
 	return false;
 }
