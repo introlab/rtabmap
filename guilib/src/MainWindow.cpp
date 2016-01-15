@@ -2134,45 +2134,45 @@ Transform MainWindow::alignPosesToGroundTruth(
 		std::map<int, Transform> & poses,
 		const std::map<int, Transform> & groundTruth)
 {
+	UDEBUG("");
 	Transform t = Transform::getIdentity();
-	if(groundTruth.size())
+	if(groundTruth.size() && poses.size())
 	{
-		if(uContains(_preferencesDialog->getAllParameters(), Parameters::kRGBDOptimizeFromGraphEnd()))
+		unsigned int maxSize = poses.size()>groundTruth.size()?poses.size():groundTruth.size();
+		pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
+		cloud1.resize(maxSize);
+		cloud2.resize(maxSize);
+		int oi = 0;
+		int idFirst = 0;
+		for(std::map<int, Transform>::const_iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
 		{
-			bool optimizeFromGraphEnd = uStr2Bool(_preferencesDialog->getAllParameters().at(Parameters::kRGBDOptimizeFromGraphEnd()));
-			// Align poses to ground truth
-			int rootId = 0;
-			if(!optimizeFromGraphEnd)
+			std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
+			if(iter2!=poses.end())
 			{
-				for(std::map<int, Transform>::const_iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
+				if(oi==0)
 				{
-					std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
-					if(iter2!=poses.end())
-					{
-						rootId = iter->first;
-						break;
-					}
+					idFirst = iter->first;
 				}
+				cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+				cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
 			}
-			else
+		}
+		if(oi>1)
+		{
+			cloud1.resize(oi);
+			cloud2.resize(oi);
+		
+			t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
+		}
+		else if(oi==1)
+		{
+			t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
+		}
+		if(!t.isIdentity())
+		{
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				for(std::map<int, Transform>::const_reverse_iterator iter=groundTruth.rbegin(); iter!=groundTruth.rend(); ++iter)
-				{
-					std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
-					if(iter2!=poses.end())
-					{
-						rootId = iter->first;
-						break;
-					}
-				}
-			}
-			if(rootId>0)
-			{
-				t = groundTruth.at(rootId) * poses.at(rootId).inverse();
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					iter->second = t * iter->second;
-				}
+				iter->second = t * iter->second;
 			}
 		}
 		UDEBUG("t=%s", t.prettyPrint().c_str());

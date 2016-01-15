@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/registration/icp.h>
 #include <pcl/registration/transformation_estimation_2D.h>
+#include <pcl/registration/transformation_estimation_svd.h>
 #include <pcl/sample_consensus/sac_model_registration.h>
 #include <pcl/sample_consensus/ransac.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -42,6 +43,19 @@ namespace rtabmap
 
 namespace util3d
 {
+
+// Get transform from cloud2 to cloud1
+Transform transformFromXYZCorrespondencesSVD(
+	const pcl::PointCloud<pcl::PointXYZ> & cloud1,
+	const pcl::PointCloud<pcl::PointXYZ> & cloud2)
+{
+	pcl::registration::TransformationEstimationSVD<pcl::PointXYZ, pcl::PointXYZ> svd;
+
+	// Perform the alignment
+	Eigen::Matrix4f matrix;
+	svd.estimateRigidTransformation(cloud1, cloud2, matrix);
+	return Transform::fromEigen4f(matrix);
+}
 
 // Get transform from cloud2 to cloud1
 Transform transformFromXYZCorrespondences(

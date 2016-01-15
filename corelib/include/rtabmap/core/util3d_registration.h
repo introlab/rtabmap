@@ -45,6 +45,10 @@ int RTABMAP_EXP getCorrespondencesCount(const pcl::PointCloud<pcl::PointXYZ>::Co
 							const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_target,
 							float maxDistance);
 
+Transform RTABMAP_EXP transformFromXYZCorrespondencesSVD(
+	const pcl::PointCloud<pcl::PointXYZ> & cloud1,
+	const pcl::PointCloud<pcl::PointXYZ> & cloud2);
+
 Transform RTABMAP_EXP transformFromXYZCorrespondences(
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud1,
 		const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud2,

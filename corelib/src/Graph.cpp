@@ -153,7 +153,7 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=GPS (t,x,y)
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1
@@ -197,7 +197,49 @@ bool importPoses(
 				continue;
 			}
 
-			if(format == 1) // rgbd-slam format
+			if(format == 5) // GPS format
+			{
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  3 || strList.size() ==  4)
+				{
+					if( uIsNumber(uReplaceChar(strList[0], ' ', "")) && 
+						uIsNumber(uReplaceChar(strList[1], ' ', "")) && 
+						uIsNumber(uReplaceChar(strList[2], ' ', "")) &&
+						(strList.size()==3 || uIsNumber(uReplaceChar(strList[3], ' ', ""))))
+					{
+						double stamp = uStr2Double(uReplaceChar(strList[0], ' ', ""));
+						double x = uStr2Double(uReplaceChar(strList[1], ' ', ""));
+						double y = uStr2Double(uReplaceChar(strList[2], ' ', ""));
+
+						if(stamps)
+						{
+							stamps->insert(std::make_pair(id, stamp));
+						}
+						float yaw = 0.0f; 
+						if(strList.size()==4)
+						{
+							yaw = uStr2Double(uReplaceChar(strList[3], ' ', ""));
+						}
+						else if(uContains(poses, id-1))
+						{
+							// set yaw depending on successive poses
+							Transform & previousPose = poses.at(id-1);
+							yaw = atan2(y-previousPose.y(),x-previousPose.x());
+							previousPose = Transform(previousPose.x(), previousPose.y(), yaw);
+						}
+						poses.insert(std::make_pair(id, Transform(x,y,0,0,0,yaw)));
+					}
+					else
+					{
+						UDEBUG("Not valid values detected:  \"%s\"", str.c_str());
+					}
+				}
+				else
+				{
+					UERROR("Error parsing \"%s\" with GPS format (should have 3 values: stamp x y)", str.c_str());
+				}
+			}
+			else if(format == 1) // rgbd-slam format
 			{
 				std::list<std::string> strList = uSplit(str);
 				if(strList.size() ==  8)
@@ -210,21 +252,24 @@ bool importPoses(
 					{
 						UWARN("Null transform read!? line parsed: \"%s\"", str.c_str());
 					}
-					if(stamps)
+					else
 					{
-						stamps->insert(std::make_pair(id, stamp));
+						if(stamps)
+						{
+							stamps->insert(std::make_pair(id, stamp));
+						}
+						// we need to remove optical rotation
+						// z pointing front, x left, y down
+						Transform t( 0, 0, 1, 0,
+									-1, 0, 0, 0,
+									 0,-1, 0, 0);
+						pose = t * pose * t.inverse();
+						t = Transform( 0, 0, 1, 0,
+									   0, -1, 0, 0,
+									   1, 0, 0, 0);
+						pose = t*pose;
+						poses.insert(std::make_pair(id, pose));
 					}
-					// we need to remove optical rotation
-					// z pointing front, x left, y down
-					Transform t( 0, 0, 1, 0,
-								-1, 0, 0, 0,
-								 0,-1, 0, 0);
-					pose = t * pose * t.inverse();
-					t = Transform( 0, 0, 1, 0,
-								   0, -1, 0, 0,
-								   1, 0, 0, 0);
-					pose = t*pose;
-					poses.insert(std::make_pair(id, pose));
 				}
 				else
 				{

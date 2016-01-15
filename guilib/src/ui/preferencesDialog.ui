@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-946</y>
-            <width>676</width>
-            <height>1919</height>
+            <y>-499</y>
+            <width>680</width>
+            <height>1171</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -3432,6 +3432,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <property name="text">
                              <string>TORO</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>g2o</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GPS</string>
                             </property>
                            </item>
                           </widget>

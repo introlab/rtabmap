@@ -293,19 +293,19 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				UERROR("Cannot read ground truth file \"%s\".", groundTruthPath_.c_str());
 				success = false;
 			}
-			else if(_groundTruthFormat != 1 && poses.size() != this->imagesCount())
+			else if((_groundTruthFormat != 1 && _groundTruthFormat != 5) && poses.size() != this->imagesCount())
 			{
 				UERROR("The ground truth count is not the same as the images (%d vs %d)! Please remove "
 						"the ground truth file path if you don't want to use it (current file path=%s).",
 						(int)poses.size(), this->imagesCount(), groundTruthPath_.c_str());
 				success = false;
 			}
-			else if(_groundTruthFormat == 1 && stamps_.size() == 0)
+			else if((_groundTruthFormat == 1 || _groundTruthFormat == 5) && stamps_.size() == 0)
 			{
-				UERROR("When using rgbd-slam format for ground truth, images must have timestamps!");
+				UERROR("When using RGBD-SLAM and GPS formats for ground truth, images must have timestamps!");
 				success = false;
 			}
-			else if(_groundTruthFormat == 1)
+			else if(_groundTruthFormat == 1 || _groundTruthFormat == 5)
 			{
 				UDEBUG("");
 				//Match ground truth values with images
@@ -317,10 +317,12 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				}
 				std::vector<double> values = uValues(stamps);
 
+				int validPoses = 0;
 				for(std::list<double>::iterator ster=stamps_.begin(); ster!=stamps_.end(); ++ster)
 				{
 					Transform pose; // null transform
 					std::map<double, int>::iterator endIter = stampsToIds.lower_bound(*ster);
+					bool warned = false;
 					if(endIter != stampsToIds.end())
 					{
 						if(endIter->first == *ster)
@@ -335,20 +337,36 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 							double stampBeg = beginIter->first;
 							double stampEnd = endIter->first;
 							UASSERT(stampEnd > stampBeg && *ster>stampBeg && *ster < stampEnd);
-							float t = (*ster - stampBeg) / (stampEnd-stampBeg);
-							Transform & ta = poses.at(beginIter->second);
-							Transform & tb = poses.at(endIter->second);
-							if(!ta.isNull() && !tb.isNull())
+							if(stampEnd - stampBeg > 10.0)
 							{
-								pose = ta.interpolate(t, tb);
+								warned = true;
+								UDEBUG("Cannot interpolate ground truth pose for stamp %f between %f and %f (>10 sec)", 
+									*ster,
+									stampBeg,
+									stampEnd);
+							}
+							else
+							{
+								float t = (*ster - stampBeg) / (stampEnd-stampBeg);
+								Transform & ta = poses.at(beginIter->second);
+								Transform & tb = poses.at(endIter->second);
+								if(!ta.isNull() && !tb.isNull())
+								{
+									++validPoses;
+									pose = ta.interpolate(t, tb);
+								}
 							}
 						}
 					}
-					if(pose.isNull())
+					if(pose.isNull() && !warned)
 					{
-						UWARN("Ground truth pose not found for stamp %f", *ster);
+						UDEBUG("Ground truth pose not found for stamp %f", *ster);
 					}
 					groundTruth_.push_back(pose);
+				}
+				if(validPoses != (int)stamps.size())
+				{
+					UWARN("%d valid ground truth poses of %d stamps", validPoses, (int)stamps_.size());
 				}
 			}
 			else

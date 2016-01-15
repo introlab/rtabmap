@@ -625,7 +625,7 @@ inline bool uIsDigit(const char c)
 }
 
 /**
- * Check if a string is a interger number.
+ * Check if a string is a integer number.
  * @param str the string
  * @return true if the string is a integer number
  */
@@ -634,10 +634,30 @@ inline bool uIsInteger(const std::string & str)
 	bool isInteger = str.size()!=0;
 	for(unsigned int i=0; i<str.size() && isInteger; ++i)
 	{
-		isInteger = uIsDigit(str[i]);
+		isInteger = i==0&&str[i]=='-'||uIsDigit(str[i]);
 	}
 	return isInteger;
 }
+
+/**
+ * Check if a string is a number (integer or float).
+ * @param str the string
+ * @return true if the string is a number
+ */
+inline bool uIsNumber(const std::string & str)
+{
+	std::list<std::string> list = uSplit(str, '.');
+	if(list.size() == 1)
+	{
+		return uIsInteger(str);
+	}
+	else if(list.size() == 2)
+	{
+		return uIsInteger(list.front()) && uIsInteger(list.back());
+	}
+	return false;
+}
+
 
 /**
  * Split a string into number and character strings.

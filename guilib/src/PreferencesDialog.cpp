@@ -164,6 +164,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->reextract_type->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 	}
+	_ui->comboBox_cameraImages_gtFormat->setItemData(4, 0, Qt::UserRole - 1);
 	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 	{
 		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
