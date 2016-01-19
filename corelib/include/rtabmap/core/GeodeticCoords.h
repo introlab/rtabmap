@@ -50,7 +50,7 @@ public:
 	void setAltitude(const double & value) {altitude_ = value;}
 
 	cv::Point3d toGeocentric_WGS84() const;
-	cv::Point3d toENU_WGS84(const GeodeticCoords & origin) const;
+	cv::Point3d toENU_WGS84(const GeodeticCoords & origin) const; // East=X, North=Y
 
 private:
 	double latitude_;  // deg

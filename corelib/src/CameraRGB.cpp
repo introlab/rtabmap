@@ -382,7 +382,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 					}
 					groundTruth_.push_back(pose);
 				}
-				if(validPoses != (int)stamps.size())
+				if(validPoses != (int)stamps_.size())
 				{
 					UWARN("%d valid ground truth poses of %d stamps", validPoses, (int)stamps_.size());
 				}
