@@ -422,8 +422,14 @@ SensorData CameraStereoDC1394::captureImage()
 		if(!left.empty() && !right.empty())
 		{
 			// Rectification
-			left = stereoModel_.left().rectifyImage(left);
-			right = stereoModel_.right().rectifyImage(right);
+			if(stereoModel_.left().isValidForRectification())
+			{
+				left = stereoModel_.left().rectifyImage(left);
+			}
+			if(stereoModel_.right().isValidForRectification())
+			{
+				right = stereoModel_.right().rectifyImage(right);
+			}
 			StereoCameraModel model;
 			if(stereoModel_.isValid())
 			{
@@ -740,7 +746,6 @@ CameraStereoImages::CameraStereoImages(
 		camera2_(new CameraImages(pathRightImages))
 {
 	this->setImagesRectified(rectifyImages);
-	camera2_->setImagesRectified(rectifyImages);
 }
 
 CameraStereoImages::CameraStereoImages(
@@ -800,7 +805,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 
 	stereoModel_.setLocalTransform(this->getLocalTransform());
 	stereoModel_.setName(cameraName);
-	if(this->isImagesRectified() && !stereoModel_.isValid())
+	if(this->isImagesRectified() && !stereoModel_.isValidForRectification())
 	{
 		UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
 		return false;
@@ -815,6 +820,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	{
 		if(camera2_)
 		{
+			camera2_->setBayerMode(this->getBayerMode());
 			if(camera2_->init())
 			{
 				if(this->imagesCount() == camera2_->imagesCount())
@@ -879,11 +885,12 @@ SensorData CameraStereoImages::captureImage()
 				cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
 				rightImage = tmp;
 			}
-			if(this->isImagesRectified() && stereoModel_.left().isValid() && stereoModel_.right().isValid())
+			if(this->isImagesRectified() && stereoModel_.isValidForRectification())
 			{
 				leftImage = stereoModel_.left().rectifyImage(leftImage);
 				rightImage = stereoModel_.right().rectifyImage(rightImage);
 			}
+
 			data = SensorData(left.laserScanRaw(), left.laserScanMaxPts(), 0, leftImage, rightImage, stereoModel_, left.id()/(camera2_?1:2), left.stamp());
 			data.setGroundTruth(left.groundTruth());
 		}
@@ -952,7 +959,7 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 		}
 
 		stereoModel_.setLocalTransform(this->getLocalTransform());
-		if(rectifyImages_ && !stereoModel_.isValid())
+		if(rectifyImages_ && !stereoModel_.isValidForRectification())
 		{
 			UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
 			return false;
@@ -991,6 +998,7 @@ SensorData CameraStereoVideo::captureImage()
 				rightImage = tmp;
 				rightCvt = true;
 			}
+
 			if(rectifyImages_ && stereoModel_.left().isValid() && stereoModel_.right().isValid())
 			{
 				leftImage = stereoModel_.left().rectifyImage(leftImage);

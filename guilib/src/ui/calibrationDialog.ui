@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1314</width>
-    <height>795</height>
+    <height>860</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -404,11 +404,22 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_calibrate">
-         <property name="text">
-          <string>Calibrate</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="1,0">
+         <item>
+          <widget class="QPushButton" name="pushButton_calibrate">
+           <property name="text">
+            <string>Calibrate</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_unlock">
+           <property name="text">
+            <string>Unlock</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QGroupBox" name="groupBox_3">
@@ -707,6 +718,9 @@
     </widget>
    </item>
   </layout>
+  <zorder>buttonBox</zorder>
+  <zorder>groupBox</zorder>
+  <zorder></zorder>
  </widget>
  <customwidgets>
   <customwidget>

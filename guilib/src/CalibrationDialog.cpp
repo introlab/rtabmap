@@ -75,6 +75,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->pushButton_restart, SIGNAL(clicked()), this, SLOT(restart()));
 	connect(ui_->pushButton_save, SIGNAL(clicked()), this, SLOT(save()));
 	connect(ui_->checkBox_switchImages, SIGNAL(stateChanged(int)), this, SLOT(restart()));
+	connect(ui_->checkBox_unlock, SIGNAL(stateChanged(int)), SLOT(unlock()));
 
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
@@ -506,27 +507,27 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 	if(!stereo_ && readyToCalibrate[0])
 	{
-		ui_->pushButton_calibrate->setEnabled(true);
+		unlock();
 	}
 	else if(stereo_ && readyToCalibrate[0] && readyToCalibrate[1] && stereoImagePoints_[0].size())
 	{
-		ui_->pushButton_calibrate->setEnabled(true);
+		unlock();
 	}
 
 	if(ui_->radioButton_rectified->isChecked())
 	{
-		if(models_[0].isValid())
+		if(models_[0].isValidForRectification())
 		{
 			images[0] = models_[0].rectifyImage(images[0]);
 		}
-		if(models_[1].isValid())
+		if(models_[1].isValidForRectification())
 		{
 			images[1] = models_[1].rectifyImage(images[1]);
 		}
 	}
 	else if(ui_->radioButton_stereoRectified->isChecked() &&
-			(stereoModel_.left().isValid() &&
-			stereoModel_.right().isValid()&&
+			(stereoModel_.left().isValidForRectification() &&
+			stereoModel_.right().isValidForRectification()&&
 			(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0)))
 	{
 		images[0] = stereoModel_.left().rectifyImage(images[0]);
@@ -576,7 +577,7 @@ void CalibrationDialog::restart()
 	minIrs_[1] = 0x0000;
 	maxIrs_[1] = 0x7fff;
 
-	ui_->pushButton_calibrate->setEnabled(false);
+	ui_->pushButton_calibrate->setEnabled(ui_->checkBox_unlock->isChecked());
 	ui_->pushButton_save->setEnabled(false);
 	ui_->radioButton_raw->setChecked(true);
 	ui_->radioButton_rectified->setEnabled(false);
@@ -615,6 +616,11 @@ void CalibrationDialog::restart()
 	ui_->lineEdit_D_2->clear();
 	ui_->lineEdit_R_2->clear();
 	ui_->lineEdit_P_2->clear();
+}
+
+void CalibrationDialog::unlock()
+{
+	ui_->pushButton_calibrate->setEnabled(true);
 }
 
 void CalibrationDialog::calibrate()
@@ -845,17 +851,17 @@ void CalibrationDialog::calibrate()
 	}
 
 	if(stereo_ &&
-		stereoModel_.left().isValid() &&
-		stereoModel_.right().isValid()&&
-		(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0))
+		stereoModel_.isValidForRectification())
 	{
+		stereoModel_.initRectificationMap();
 		ui_->radioButton_rectified->setEnabled(true);
 		ui_->radioButton_stereoRectified->setEnabled(true);
 		ui_->radioButton_stereoRectified->setChecked(true);
 		ui_->pushButton_save->setEnabled(true);
 	}
-	else if(models_[0].isValid())
+	else if(models_[0].isValidForRectification())
 	{
+		models_[0].initRectificationMap();
 		ui_->radioButton_rectified->setEnabled(true);
 		ui_->radioButton_rectified->setChecked(true);
 		ui_->pushButton_save->setEnabled(!stereo_);

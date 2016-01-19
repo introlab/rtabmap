@@ -180,6 +180,16 @@ Transform Transform::to3DoF() const
 	return Transform(x,y,0, 0,0,yaw);
 }
 
+cv::Mat Transform::rotationMatrix() const
+{
+	return data_.colRange(0, 3).clone();
+}
+
+cv::Mat Transform::translationMatrix() const
+{
+	return data_.col(3).clone();
+}
+
 void Transform::getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const
 {
 	pcl::getTranslationAndEulerAngles(toEigen3f(), x, y, z, roll, pitch, yaw);
@@ -402,6 +412,19 @@ Transform Transform::fromString(const std::string & string)
 					  numbers[8], numbers[9], numbers[10], numbers[11]);
 	}
 	return t;
+}
+
+/**
+ * Format (3 values): x y z
+ * Format (6 values): x y z roll pitch yaw
+ * Format (7 values): x y z qx qy qz qw
+ * Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33
+ * Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+ */
+bool Transform::canParseString(const std::string & string)
+{
+	std::list<std::string> list = uSplit(string, ' ');
+	return list.size() == 3 || list.size() == 6 || list.size() == 7 || list.size() == 9 || list.size() == 12;
 }
 
 }

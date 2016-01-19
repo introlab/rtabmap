@@ -26,6 +26,7 @@ SET(SRC_FILES
     Signature.cpp
 	Features2d.cpp
 	Transform.cpp
+	GeodeticCoords.cpp
 	
 	util2d.cpp
 	

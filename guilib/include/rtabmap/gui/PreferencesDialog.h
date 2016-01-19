@@ -61,6 +61,7 @@ class Signature;
 class LoopClosureViewer;
 class Camera;
 class CalibrationDialog;
+class CreateSimpleCalibrationDialog;
 
 class RTABMAPGUI_EXP PreferencesDialog : public QDialog
 {
@@ -125,7 +126,7 @@ public:
 	void saveCustomConfig(const QString & section, const QString & key, const QString & value);
 	QString loadCustomConfig(const QString & section, const QString & key);
 
-	const rtabmap::ParametersMap & getAllParameters() const;
+	rtabmap::ParametersMap getAllParameters() const;
 
 	//General panel
 	int getGeneralLoggerLevel() const;
@@ -330,6 +331,7 @@ private:
 
 	//calibration
 	CalibrationDialog * _calibrationDialog;
+	CreateSimpleCalibrationDialog * _createCalibrationDialog;
 
 	QVector<QCheckBox*> _3dRenderingShowClouds;
 	QVector<QDoubleSpinBox*> _3dRenderingVoxelSize;

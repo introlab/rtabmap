@@ -34,6 +34,123 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+StereoCameraModel::StereoCameraModel(
+		const std::string & name,
+		const cv::Size & imageSize1,
+		const cv::Mat & K1, const cv::Mat & D1, const cv::Mat & R1, const cv::Mat & P1,
+		const cv::Size & imageSize2,
+		const cv::Mat & K2, const cv::Mat & D2, const cv::Mat & R2, const cv::Mat & P2,
+		const cv::Mat & R, const cv::Mat & T, const cv::Mat & E, const cv::Mat & F,
+		const Transform & localTransform) :
+	left_(name+"_left", imageSize1, K1, D1, R1, P1, localTransform),
+	right_(name+"_right", imageSize2, K2, D2, R2, P2, localTransform),
+	name_(name),
+	R_(R),
+	T_(T),
+	E_(E),
+	F_(F)
+{
+	UASSERT(R_.empty() || (R_.rows == 3 && R_.cols == 3 && R_.type() == CV_64FC1));
+	UASSERT(T_.empty() || (T_.rows == 3 && T_.cols == 1 && T_.type() == CV_64FC1));
+	UASSERT(E_.empty() || (E_.rows == 3 && E_.cols == 3 && E_.type() == CV_64FC1));
+	UASSERT(F_.empty() || (F_.rows == 3 && F_.cols == 3 && F_.type() == CV_64FC1));
+}
+
+StereoCameraModel::StereoCameraModel(
+		const std::string & name,
+		const CameraModel & leftCameraModel,
+		const CameraModel & rightCameraModel,
+		const cv::Mat & R,
+		const cv::Mat & T,
+		const cv::Mat & E,
+		const cv::Mat & F) :
+				left_(leftCameraModel),
+				right_(rightCameraModel),
+				name_(name),
+				R_(R),
+				T_(T),
+				E_(E),
+				F_(F)
+{
+	left_.setName(name+"_left");
+	right_.setName(name+"_right");
+	UASSERT(R_.empty() || (R_.rows == 3 && R_.cols == 3 && R_.type() == CV_64FC1));
+	UASSERT(T_.empty() || (T_.rows == 3 && T_.cols == 1 && T_.type() == CV_64FC1));
+	UASSERT(E_.empty() || (E_.rows == 3 && E_.cols == 3 && E_.type() == CV_64FC1));
+	UASSERT(F_.empty() || (F_.rows == 3 && F_.cols == 3 && F_.type() == CV_64FC1));
+
+	if(!R_.empty() && !T_.empty())
+	{
+		UASSERT(leftCameraModel.isValidForRectification() && rightCameraModel.isValidForRectification());
+
+		cv::Mat R1,R2,P1,P2,Q;
+		cv::stereoRectify(left_.K(), left_.D(),
+				right_.K(), right_.D(),
+				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+
+		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K(), left_.D(), R1, P1, left_.localTransform());
+		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K(), right_.D(), R2, P2, right_.localTransform());
+	}
+}
+
+StereoCameraModel::StereoCameraModel(
+		const std::string & name,
+		const CameraModel & leftCameraModel,
+		const CameraModel & rightCameraModel,
+		const Transform & extrinsics) :
+				left_(leftCameraModel),
+				right_(rightCameraModel),
+				name_(name)
+{
+	left_.setName(name+"_left");
+	right_.setName(name+"_right");
+
+	if(!extrinsics.isNull())
+	{
+		UASSERT(leftCameraModel.isValidForRectification() && rightCameraModel.isValidForRectification());
+
+		extrinsics.rotationMatrix().convertTo(R_, CV_64FC1);
+		extrinsics.translationMatrix().convertTo(T_, CV_64FC1);
+
+		cv::Mat R1,R2,P1,P2,Q;
+		cv::stereoRectify(left_.K(), left_.D(),
+				right_.K(), right_.D(),
+				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
+				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
+
+		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K(), left_.D(), R1, P1, left_.localTransform());
+		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K(), right_.D(), R2, P2, right_.localTransform());
+	}
+}
+
+StereoCameraModel::StereoCameraModel(
+		double fx,
+		double fy,
+		double cx,
+		double cy,
+		double baseline,
+		const Transform & localTransform) :
+	left_(fx, fy, cx, cy, localTransform),
+	right_(fx, fy, cx, cy, localTransform, baseline*-fx)
+{
+}
+
+//minimal to be saved
+StereoCameraModel::StereoCameraModel(
+		const std::string & name,
+		double fx,
+		double fy,
+		double cx,
+		double cy,
+		double baseline,
+		const Transform & localTransform) :
+	left_(name+"_left", fx, fy, cx, cy, localTransform),
+	right_(name+"_right", fx, fy, cx, cy, localTransform, baseline*-fx),
+	name_(name)
+{
+}
+
 void StereoCameraModel::setName(const std::string & name)
 {
 	name_=name;
@@ -53,6 +170,8 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 		//load rotation, translation
 		R_ = cv::Mat();
 		T_ = cv::Mat();
+		E_ = cv::Mat();
+		F_ = cv::Mat();
 
 		std::string filePath = directory+"/"+cameraName+"_pose.yaml";
 		if(UFile::exists(filePath))
@@ -60,44 +179,82 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 			UINFO("Reading stereo calibration file \"%s\"", filePath.c_str());
 			cv::FileStorage fs(filePath, cv::FileStorage::READ);
 
-			name_ = (int)fs["camera_name"];
+			cv::FileNode n;
+
+			n = fs["camera_name"];
+			if(n.type() != cv::FileNode::NONE)
+			{
+				name_ = (int)n;
+			}
+			else
+			{
+				UWARN("Missing \"camera_name\" field in \"%s\"", filePath.c_str());
+			}
 
 			// import from ROS calibration format
-			cv::FileNode n = fs["rotation_matrix"];
-			int rows = (int)n["rows"];
-			int cols = (int)n["cols"];
-			std::vector<double> data;
-			n["data"] >> data;
-			UASSERT(rows*cols == (int)data.size());
-			UASSERT(rows == 3 && cols == 3);
-			R_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			n = fs["rotation_matrix"];
+			if(n.type() != cv::FileNode::NONE)
+			{
+				int rows = (int)n["rows"];
+				int cols = (int)n["cols"];
+				std::vector<double> data;
+				n["data"] >> data;
+				UASSERT(rows*cols == (int)data.size());
+				UASSERT(rows == 3 && cols == 3);
+				R_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			}
+			else
+			{
+				UWARN("Missing \"rotation_matrix\" field in \"%s\"", filePath.c_str());
+			}
 
-			n = fs["translation_matrix"];
-			rows = (int)n["rows"];
-			cols = (int)n["cols"];
-			data.clear();
-			n["data"] >> data;
-			UASSERT(rows*cols == (int)data.size());
-			UASSERT(rows == 3 && cols == 1);
-			T_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			if(n.type() != cv::FileNode::NONE)
+			{
+				n = fs["translation_matrix"];
+				int rows = (int)n["rows"];
+				int cols = (int)n["cols"];
+				std::vector<double> data;
+				n["data"] >> data;
+				UASSERT(rows*cols == (int)data.size());
+				UASSERT(rows == 3 && cols == 1);
+				T_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			}
+			else
+			{
+				UWARN("Missing \"translation_matrix\" field in \"%s\"", filePath.c_str());
+			}
 
-			n = fs["essential_matrix"];
-			rows = (int)n["rows"];
-			cols = (int)n["cols"];
-			data.clear();
-			n["data"] >> data;
-			UASSERT(rows*cols == (int)data.size());
-			UASSERT(rows == 3 && cols == 3);
-			E_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			if(n.type() != cv::FileNode::NONE)
+			{
+				n = fs["essential_matrix"];
+				int rows = (int)n["rows"];
+				int cols = (int)n["cols"];
+				std::vector<double> data;
+				n["data"] >> data;
+				UASSERT(rows*cols == (int)data.size());
+				UASSERT(rows == 3 && cols == 3);
+				E_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			}
+			else
+			{
+				UWARN("Missing \"essential_matrix\" field in \"%s\"", filePath.c_str());
+			}
 
 			n = fs["fundamental_matrix"];
-			rows = (int)n["rows"];
-			cols = (int)n["cols"];
-			data.clear();
-			n["data"] >> data;
-			UASSERT(rows*cols == (int)data.size());
-			UASSERT(rows == 3 && cols == 3);
-			F_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			if(n.type() != cv::FileNode::NONE)
+			{
+				int rows = (int)n["rows"];
+				int cols = (int)n["cols"];
+				std::vector<double> data;
+				n["data"] >> data;
+				UASSERT(rows*cols == (int)data.size());
+				UASSERT(rows == 3 && cols == 3);
+				F_ = cv::Mat(rows, cols, CV_64FC1, data.data()).clone();
+			}
+			else
+			{
+				UWARN("Missing \"fundamental_matrix\" field in \"%s\"", filePath.c_str());
+			}
 
 			fs.release();
 
@@ -119,42 +276,61 @@ bool StereoCameraModel::save(const std::string & directory, bool ignoreStereoTra
 			return true;
 		}
 		std::string filePath = directory+"/"+name_+"_pose.yaml";
-		if(!filePath.empty() && !name_.empty() && !R_.empty() && !T_.empty())
+		if(!filePath.empty() && (!R_.empty() && !T_.empty()))
 		{
 			UINFO("Saving stereo calibration to file \"%s\"", filePath.c_str());
 			cv::FileStorage fs(filePath, cv::FileStorage::WRITE);
 
 			// export in ROS calibration format
 
-			fs << "camera_name" << name_;
+			if(!name_.empty())
+			{
+				fs << "camera_name" << name_;
+			}
 
-			fs << "rotation_matrix" << "{";
-			fs << "rows" << R_.rows;
-			fs << "cols" << R_.cols;
-			fs << "data" << std::vector<double>((double*)R_.data, ((double*)R_.data)+(R_.rows*R_.cols));
-			fs << "}";
+			if(!R_.empty())
+			{
+				fs << "rotation_matrix" << "{";
+				fs << "rows" << R_.rows;
+				fs << "cols" << R_.cols;
+				fs << "data" << std::vector<double>((double*)R_.data, ((double*)R_.data)+(R_.rows*R_.cols));
+				fs << "}";
+			}
 
-			fs << "translation_matrix" << "{";
-			fs << "rows" << T_.rows;
-			fs << "cols" << T_.cols;
-			fs << "data" << std::vector<double>((double*)T_.data, ((double*)T_.data)+(T_.rows*T_.cols));
-			fs << "}";
+			if(!T_.empty())
+			{
+				fs << "translation_matrix" << "{";
+				fs << "rows" << T_.rows;
+				fs << "cols" << T_.cols;
+				fs << "data" << std::vector<double>((double*)T_.data, ((double*)T_.data)+(T_.rows*T_.cols));
+				fs << "}";
+			}
 
-			fs << "essential_matrix" << "{";
-			fs << "rows" << E_.rows;
-			fs << "cols" << E_.cols;
-			fs << "data" << std::vector<double>((double*)E_.data, ((double*)E_.data)+(E_.rows*E_.cols));
-			fs << "}";
+			if(!E_.empty())
+			{
+				fs << "essential_matrix" << "{";
+				fs << "rows" << E_.rows;
+				fs << "cols" << E_.cols;
+				fs << "data" << std::vector<double>((double*)E_.data, ((double*)E_.data)+(E_.rows*E_.cols));
+				fs << "}";
+			}
 
-			fs << "fundamental_matrix" << "{";
-			fs << "rows" << F_.rows;
-			fs << "cols" << F_.cols;
-			fs << "data" << std::vector<double>((double*)F_.data, ((double*)F_.data)+(F_.rows*F_.cols));
-			fs << "}";
+			if(!F_.empty())
+			{
+				fs << "fundamental_matrix" << "{";
+				fs << "rows" << F_.rows;
+				fs << "cols" << F_.cols;
+				fs << "data" << std::vector<double>((double*)F_.data, ((double*)F_.data)+(F_.rows*F_.cols));
+				fs << "}";
+			}
 
 			fs.release();
 
 			return true;
+		}
+		else
+		{
+			UERROR("Failed saving stereo extrinsics (they are null).");
 		}
 	}
 	return false;

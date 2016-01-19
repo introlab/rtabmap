@@ -53,9 +53,7 @@ bool ULogger::printWhereFullPath_ = false;
 bool ULogger::printThreadID_ = false;
 bool ULogger::limitWhereLength_ = false;
 bool ULogger::buffered_ = false;
-bool ULogger::exitingState_ = false;
 ULogger::Level ULogger::level_ = kInfo; // By default, we show all info msgs + upper level (Warning, Error)
-ULogger::Level ULogger::exitLevel_ = kFatal;
 ULogger::Level ULogger::eventLevel_ = kFatal;
 const char * ULogger::levelName_[5] = {"DEBUG", " INFO", " WARN", "ERROR", "FATAL"};
 ULogger* ULogger::instance_ = 0;
@@ -313,18 +311,13 @@ void ULogger::write(ULogger::Level level,
 		const char* msg,
 		...)
 {
-	if(exitingState_)
-	{
-		// Ignore messages after a fatal exit...
-		return;
-	}
 	loggerMutex_.lock();
 	if(type_ == kTypeNoLog && level < kFatal)
 	{
 		loggerMutex_.unlock();
 		return;
 	}
-	if(strlen(msg) == 0 && !printWhere_ && level < exitLevel_)
+	if(strlen(msg) == 0 && !printWhere_ && level < kFatal)
 	{
 		loggerMutex_.unlock();
 		// No need to show an empty message if we don't print where.
@@ -502,11 +495,10 @@ void ULogger::write(ULogger::Level level,
 			va_start(args, msg);
 			fullMsg.append(uFormatv(msg, args));
 			va_end(args);
-			if(level >= exitLevel_)
+			if(level >= kFatal)
 			{
 				// Send it synchronously, then receivers
 				// can do something before the code (exiting) below is executed.
-				exitingState_ = true;
 				UEventsManager::post(new ULogEvent(fullMsg, kFatal), false);
 			}
 			else
@@ -515,23 +507,23 @@ void ULogger::write(ULogger::Level level,
 			}
 		}
 
-		if(level >= exitLevel_)
+		if(level >= kFatal)
 		{
-			printf("\n*******\n%s message occurred! Application will now exit.\n", levelName_[level]);
-			if(type_ != kTypeConsole)
+			std::string fullMsg = uFormat("%s%s%s%s", levelStr.c_str(), pidStr.c_str(), time.c_str(), whereStr.c_str());
+			va_start(args, msg);
+			fullMsg.append(uFormatv(msg, args));
+			va_end(args);
+
+			if(instance_)
 			{
-				printf("  %s%s%s%s", levelStr.c_str(), pidStr.c_str(), time.c_str(), whereStr.c_str());
-				va_start(args, msg);
-				vprintf(msg, args);
-				va_end(args);
+				destroyer_.setDoomed(0);
+				delete instance_; // If a FileLogger is used, this will close the file.
+				instance_ = 0;
 			}
-			printf("\n*******\n");
-			destroyer_.setDoomed(0);
-			delete instance_; // If a FileLogger is used, this will close the file.
-			instance_ = 0;
 			//========================================================================
-			//                          EXIT APPLICATION
-			exit(1);
+			//                          Throw exception
+			loggerMutex_.unlock();
+			 throw UException(fullMsg);
 			//========================================================================
 		}
     }

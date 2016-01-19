@@ -165,8 +165,9 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		}
 	}
 
-	cloudView_->setVisible(showCloudCheckbox_->isEnabled() || showScanCheckbox_->isEnabled());
-	if(showCloudCheckbox_->isEnabled() || showScanCheckbox_->isEnabled())
+	cloudView_->setVisible((showCloudCheckbox_->isEnabled() && showCloudCheckbox_->isChecked()) ||
+						   (showScanCheckbox_->isEnabled() && showScanCheckbox_->isChecked()));
+	if(cloudView_->isVisible())
 	{
 		cloudView_->update();
 	}

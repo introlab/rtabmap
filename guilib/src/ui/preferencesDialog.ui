@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>979</width>
-    <height>655</height>
+    <width>984</width>
+    <height>662</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-499</y>
-            <width>680</width>
-            <height>1171</height>
+            <y>-855</y>
+            <width>681</width>
+            <height>1919</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -1703,7 +1703,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <item row="9" column="1">
                        <widget class="QLabel" name="label_244">
                         <property name="text">
-                         <string>Create a simple calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of a source of rectified or registered images.</string>
+                         <string>Create a calibration file with known intrinsics (fx, fy, cx, cy). Useful if you already know the intrinsics of the source of images.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -1868,7 +1868,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </sizepolicy>
                         </property>
                         <property name="text">
-                         <string>Simple calibration</string>
+                         <string>Create calibration</string>
                         </property>
                        </widget>
                       </item>
@@ -3331,21 +3331,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        </property>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_68" columnstretch="0,0,1">
-                         <item row="5" column="1">
-                          <widget class="QLineEdit" name="lineEdit_cameraImages_path_scans">
-                           <property name="text">
-                            <string/>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
-                           <property name="text">
-                            <string/>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="2">
+                         <item row="1" column="2">
                           <widget class="QLabel" name="label_255">
                            <property name="text">
                             <string>Use file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;</string>
@@ -3358,48 +3344,28 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
+                         <item row="3" column="0">
                           <widget class="QToolButton" name="toolButton_cameraImages_timestamps">
                            <property name="text">
                             <string>...</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
+                         <item row="3" column="1">
                           <widget class="QLineEdit" name="lineEdit_cameraImages_timestamps">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="2">
-                          <widget class="QLabel" name="label_251">
-                           <property name="text">
-                            <string>Timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. Not used if &quot;Use file names as timestamps&quot; above is checked. </string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="0">
-                          <widget class="QToolButton" name="toolButton_cameraImages_gt">
-                           <property name="text">
-                            <string>...</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="1">
+                         <item row="4" column="1">
                           <widget class="QLineEdit" name="lineEdit_cameraImages_gt">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="2">
+                         <item row="4" column="2">
                           <widget class="QLabel" name="label_288">
                            <property name="text">
                             <string>Ground truth file. Select the correct format below.</string>
@@ -3412,8 +3378,94 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="1">
+                         <item row="5" column="2">
+                          <widget class="QLabel" name="label_289">
+                           <property name="text">
+                            <string>Ground truth format. See tool tip for more details on formats. Note that formats without stamps should have the same number of values than the source images.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="8" column="2">
+                          <widget class="QLabel" name="label_292">
+                           <property name="text">
+                            <string>Maximum laser scan points.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="2">
+                          <widget class="QLabel" name="label_256">
+                           <property name="text">
+                            <string>Synchronize capture rate with timestamps.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QCheckBox" name="checkBox_cameraImages_syncTimeStamps">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="6" column="1">
+                          <widget class="QLineEdit" name="lineEdit_cameraImages_path_scans">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="2">
+                          <widget class="QLabel" name="label_251">
+                           <property name="text">
+                            <string>Timestamps file (*.txt). The file should contain one column. The number of rows should be the same than the number of images in the folder. Not used if &quot;Use file names as timestamps&quot; above is checked. </string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
+                          <widget class="QToolButton" name="toolButton_cameraImages_gt">
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="5" column="1">
                           <widget class="QComboBox" name="comboBox_cameraImages_gtFormat">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Raw Format (3 values): x y z&lt;br/&gt;Raw Format (6 values): x y z roll pitch yaw&lt;br/&gt;Raw Format (7 values): x y z qx qy qz qw&lt;br/&gt;Raw Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Raw Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;RGBD-SLAM (stamp tx ty tz qx qy qz qw)&lt;br/&gt;KITTI (stamp + 12 values transform)&lt;br/&gt;TORO&lt;br/&gt;g2o&lt;br/&gt;NewCollege (stamp x y)&lt;br/&gt;Malaga Urban (GPS)&lt;br/&gt;St Lucia Stereo (INS)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContents</enum>
+                           </property>
                            <item>
                             <property name="text">
                              <string>Raw</string>
@@ -3441,32 +3493,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </item>
                            <item>
                             <property name="text">
-                             <string>GPS</string>
+                             <string>NewCollege</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Malaga Urban</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>St Lucia Stereo</string>
                             </property>
                            </item>
                           </widget>
                          </item>
-                         <item row="4" column="2">
-                          <widget class="QLabel" name="label_289">
-                           <property name="text">
-                            <string>Ground truth format.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="0">
+                         <item row="6" column="0">
                           <widget class="QToolButton" name="toolButton_cameraImages_path_scans">
                            <property name="text">
                             <string>...</string>
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="2">
+                         <item row="6" column="2">
                           <widget class="QLabel" name="label_293">
                            <property name="text">
                             <string>Path to directory containing optional laser scans (*.pcd, *.ply, *.bin [KITTI format]). The directory should have the same size has the images directory. </string>
@@ -3479,7 +3528,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="1">
+                         <item row="7" column="1">
                           <widget class="QLineEdit" name="lineEdit_cameraImages_laser_transform">
                            <property name="toolTip">
                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /scan = -0.27 0 0.08 0 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -3489,7 +3538,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="2">
+                         <item row="7" column="2">
                           <widget class="QLabel" name="label_294">
                            <property name="text">
                             <string>Local transform from /base_link to /scan_link. Mouse over the box to show formats.</string>
@@ -3502,7 +3551,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="1">
+                         <item row="8" column="1">
                           <widget class="QSpinBox" name="spinBox_cameraImages_max_scan_pts">
                            <property name="toolTip">
                             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -3512,10 +3561,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="7" column="2">
-                          <widget class="QLabel" name="label_292">
+                         <item row="0" column="2">
+                          <widget class="QLabel" name="label_265">
                            <property name="text">
-                            <string>Maximum laser scan points.</string>
+                            <string>Bayer mode. For convenience, if the images are bayered.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -3525,24 +3574,36 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="2">
-                          <widget class="QLabel" name="label_256">
-                           <property name="text">
-                            <string>Synchronize capture rate with timestamps.</string>
+                         <item row="0" column="1">
+                          <widget class="QComboBox" name="comboBox_cameraImages_bayerMode">
+                           <property name="sizeAdjustPolicy">
+                            <enum>QComboBox::AdjustToContents</enum>
                            </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QCheckBox" name="checkBox_cameraImages_syncTimeStamps">
-                           <property name="text">
-                            <string/>
-                           </property>
+                           <item>
+                            <property name="text">
+                             <string>Disabled</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>BG</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GB</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>RG</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GR</string>
+                            </property>
+                           </item>
                           </widget>
                          </item>
                         </layout>

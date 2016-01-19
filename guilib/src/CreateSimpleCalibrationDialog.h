@@ -47,7 +47,11 @@ public:
 
 	virtual ~CreateSimpleCalibrationDialog();
 
+	void setCameraInfoDir(const QString & folder) {savingFolder_ = folder;}
+	const QString & cameraName() const {return cameraName_;}
+
 private slots:
+	void updateStereoView();
 	void updateSaveStatus();
 	void saveCalibration();
 

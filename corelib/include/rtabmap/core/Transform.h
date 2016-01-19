@@ -81,6 +81,7 @@ public:
 	void setNull();
 	void setIdentity();
 
+	const cv::Mat & dataMatrix() const {return data_;}
 	const float * data() const {return (const float *)data_.data;}
 	float * data() {return (float *)data_.data;}
 	int size() const {return 12;}
@@ -98,6 +99,9 @@ public:
 	Transform rotation() const;
 	Transform translation() const;
 	Transform to3DoF() const;
+
+	cv::Mat rotationMatrix() const;
+	cv::Mat translationMatrix() const;
 
 	void getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const;
 	void getEulerAngles(float & roll, float & pitch, float & yaw) const;
@@ -139,6 +143,7 @@ public:
 	 * Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
 	 */
 	static Transform fromString(const std::string & string);
+	static bool canParseString(const std::string & string);
 
 private:
 	cv::Mat data_;

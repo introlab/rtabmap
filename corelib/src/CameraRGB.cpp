@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_surface.h>
 
 #include <iostream>
+#include <fstream>
 #include <cmath>
 
 namespace rtabmap
@@ -55,6 +56,7 @@ CameraImages::CameraImages() :
 		_startAt(0),
 		_refreshDir(false),
 		_rectifyImages(false),
+		_bayerMode(-1),
 		_isDepth(false),
 		_depthScaleFactor(1.0f),
 		_count(0),
@@ -81,6 +83,7 @@ CameraImages::CameraImages(const std::string & path,
 	_startAt(0),
 	_refreshDir(false),
 	_rectifyImages(false),
+	_bayerMode(-1),
 	_isDepth(false),
 	_depthScaleFactor(1.0f),
 	_count(0),
@@ -259,24 +262,39 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 		}
 		else if(timestampsPath_.size())
 		{
-			FILE * file = 0;
-#ifdef _MSC_VER
-			fopen_s(&file, timestampsPath_.c_str(), "r");
-#else
-			file = fopen(timestampsPath_.c_str(), "r");
-#endif
-			if(file)
+			std::ifstream file;
+			file.open(timestampsPath_.c_str(), std::ifstream::in);
+			while(file.good())
 			{
-				char line[16];
-				while ( fgets (line , 16 , file) != NULL )
+				std::string str;
+				std::getline(file, str);
+
+				if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
 				{
-					stamps_.push_back(uStr2Double(uReplaceChar(line, '\n', 0)));
+					continue;
 				}
-				fclose(file);
+
+				std::list<std::string> strList = uSplit(str, ' ');
+				std::string stampStr = strList.front();
+				if(strList.size() == 2)
+				{
+					// format "seconds millisec"
+					// the millisec str needs 0-padding if size < 6
+					std::string millisecStr = strList.back();
+					while(millisecStr.size() < 6)
+					{
+						millisecStr = "0" + millisecStr;
+					}
+					stampStr = stampStr+'.'+millisecStr;
+				}
+				stamps_.push_back(uStr2Double(stampStr));
 			}
+
+			file.close();
+
 			if(stamps_.size() != this->imagesCount())
 			{
-				UERROR("The stamps count is not the same as the images (%d vs %d)! Please remove "
+				UERROR("The stamps count (%d) is not the same as the images (%d)! Please remove "
 						"the timestamps file path if you don't want to use them (current file path=%s).",
 						(int)stamps_.size(), this->imagesCount(), timestampsPath_.c_str());
 				stamps_.clear();
@@ -293,19 +311,19 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 				UERROR("Cannot read ground truth file \"%s\".", groundTruthPath_.c_str());
 				success = false;
 			}
-			else if((_groundTruthFormat != 1 && _groundTruthFormat != 5) && poses.size() != this->imagesCount())
+			else if((_groundTruthFormat != 1 && _groundTruthFormat != 5 && _groundTruthFormat != 6 && _groundTruthFormat != 7) && poses.size() != this->imagesCount())
 			{
 				UERROR("The ground truth count is not the same as the images (%d vs %d)! Please remove "
 						"the ground truth file path if you don't want to use it (current file path=%s).",
 						(int)poses.size(), this->imagesCount(), groundTruthPath_.c_str());
 				success = false;
 			}
-			else if((_groundTruthFormat == 1 || _groundTruthFormat == 5) && stamps_.size() == 0)
+			else if((_groundTruthFormat == 1 || _groundTruthFormat == 5 || _groundTruthFormat == 6 || _groundTruthFormat == 7) && stamps_.size() == 0)
 			{
-				UERROR("When using RGBD-SLAM and GPS formats for ground truth, images must have timestamps!");
+				UERROR("When using RGBD-SLAM, GPS, MALAGA and ST LUCIA formats for ground truth, images must have timestamps!");
 				success = false;
 			}
-			else if(_groundTruthFormat == 1 || _groundTruthFormat == 5)
+			else if(_groundTruthFormat == 1 || _groundTruthFormat == 5 || _groundTruthFormat == 6 || _groundTruthFormat == 7)
 			{
 				UDEBUG("");
 				//Match ground truth values with images
@@ -568,7 +586,6 @@ SensorData CameraImages::captureImage()
 					cvReleaseImage(&i);
 				}
 #endif
-
 				if(img.channels()>3)
 				{
 					UWARN("Conversion from 4 channels to 3 channels (file=%s)", imageFilePath.c_str());
@@ -576,6 +593,20 @@ SensorData CameraImages::captureImage()
 					cv::cvtColor(img, out, CV_BGRA2BGR);
 					img = out;
 				}
+				else if(_bayerMode >= 0 && _bayerMode <=3)
+				{
+					cv::Mat debayeredImg;
+					try
+					{
+						cv::cvtColor(img, debayeredImg, CV_BayerBG2BGR + _bayerMode);
+						img = debayeredImg;
+					}
+					catch(const cv::Exception & e)
+					{
+						UWARN("Error debayering images: \"%s\". Please set bayer mode to -1 if images are not bayered!", e.what());
+					}
+				}
+
 			}
 
 			if(!img.empty() && _model.isValid() && _rectifyImages)

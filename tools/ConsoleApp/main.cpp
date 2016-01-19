@@ -63,8 +63,6 @@ void showUsage()
 			"  -debug                          Set Log level to Debug (Default Error)\n"
 			"  -info                           Set Log level to Info (Default Error)\n"
 			"  -warn                           Set Log level to Warning (Default Error)\n"
-			"  -exit_warn                      Set exit level to Warning (Default Fatal)\n"
-			"  -exit_error                     Set exit level to Error (Default Fatal)\n"
 			"  -log_console                    Log to console\n"
 			"  -v                              Get version of RTAB-Map\n"
 			"  -input \"path\"                 Load previous database if it exists.\n");
@@ -118,7 +116,6 @@ int main(int argc, char * argv[])
 	int startAt = 1;
 	ParametersMap pm;
 	ULogger::Level logLevel = ULogger::kError;
-	ULogger::Level exitLevel = ULogger::kFatal;
 	bool logConsole = false;
 
 	for(int i=1; i<argc; ++i)
@@ -240,16 +237,6 @@ int main(int argc, char * argv[])
 			logLevel = ULogger::kWarning;
 			continue;
 		}
-		if(strcmp(argv[i], "-exit_warn") == 0)
-		{
-			exitLevel = ULogger::kWarning;
-			continue;
-		}
-		if(strcmp(argv[i], "-exit_error") == 0)
-		{
-			exitLevel = ULogger::kError;
-			continue;
-		}
 		if(strcmp(argv[i], "-log_console") == 0)
 		{
 			logConsole = true;
@@ -351,7 +338,6 @@ int main(int argc, char * argv[])
 	//ULogger::setType(ULogger::kTypeFile, rtabmap.getWorkingDir()+"/LogConsole.txt", false);
 	//ULogger::setBuffered(true);
 	ULogger::setLevel(logLevel);
-	ULogger::setExitLevel(exitLevel);
 
 	UTimer timer;
 	timer.start();

@@ -73,6 +73,7 @@ private slots:
 	void restart();
 	void calibrate();
 	bool save();
+	void unlock();
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);

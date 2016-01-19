@@ -74,21 +74,25 @@ public:
 
 	void initRectificationMap();
 
-	bool isValid() const {return !K_.empty() &&
-									!D_.empty() &&
-									!R_.empty() &&
-									!P_.empty() &&
-									fx()>0.0 &&
-									fy()>0.0;}
+	bool isValid() const {return (!K_.empty() || !P_.empty()) && fx()>0.0 && fy()>0.0;}
+	bool isValidForRectification() const
+	{
+		return imageSize_.width>0 &&
+			   imageSize_.height>0 &&
+			   !K_.empty() &&
+			   !D_.empty() &&
+			   !R_.empty() &&
+			   !P_.empty();
+	}
 
 	void setName(const std::string & name) {name_=name;}
 	const std::string & name() const {return name_;}
 
-	double fx() const {return P_.at<double>(0,0);}
-	double fy() const {return P_.at<double>(1,1);}
-	double cx() const {return P_.at<double>(0,2);}
-	double cy() const {return P_.at<double>(1,2);}
-	double Tx() const {return P_.at<double>(0,3);}
+	double fx() const {return P_.empty()?K_.empty()?0.0:K_.at<double>(0,0):P_.at<double>(0,0);}
+	double fy() const {return P_.empty()?K_.empty()?0.0:K_.at<double>(1,1):P_.at<double>(1,1);}
+	double cx() const {return P_.empty()?K_.empty()?0.0:K_.at<double>(0,2):P_.at<double>(0,2);}
+	double cy() const {return P_.empty()?K_.empty()?0.0:K_.at<double>(1,2):P_.at<double>(1,2);}
+	double Tx() const {return P_.empty()?0.0:P_.at<double>(0,3);}
 
 	const cv::Mat & K() const {return K_;} //intrinsic camera matrix
 	const cv::Mat & D() const {return D_;} //intrinsic distorsion matrix

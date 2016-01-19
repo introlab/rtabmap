@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UFile.h>
+#include <rtabmap/core/GeodeticCoords.h>
 #include <rtabmap/core/Memory.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
@@ -153,7 +154,7 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=GPS (t,x,y)
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1
@@ -187,20 +188,106 @@ bool importPoses(
 			return false;
 		}
 		int id=1;
+		GeodeticCoords origin;
+		Transform originPose;
 		while(file.good())
 		{
 			std::string str;
 			std::getline(file, str);
 
-			if(str.empty() || str.at(0) == '#')
+			if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
 			{
 				continue;
 			}
 
-			if(format == 5) // GPS format
+			if(format == 7) // St Lucia format
 			{
 				std::vector<std::string> strList = uListToVector(uSplit(str));
-				if(strList.size() ==  3 || strList.size() ==  4)
+				if(strList.size() ==  12)
+				{
+					// Data Type
+					//0=Timestamp (seconds)
+					//1=Timestamp (millisec)
+					//2=Latitude (deg)
+					//3=Longitude (deg)
+					//4=Altitude (m)
+					//5=Height AMSL (m)
+					//6=vENU X
+					//7=vENU Y
+					//8=vENU Z
+					//9=Roll (rad)
+					//10=Pitch (rad)
+					//11=Yaw (rad)
+
+					// the millisec str needs 0-padding if size < 6
+					std::string millisecStr = strList[1];
+					while(millisecStr.size() < 6)
+					{
+						millisecStr = "0" + millisecStr;
+					}
+					double stamp = uStr2Double(strList[0] + "." + millisecStr);
+
+					// conversion GPS to local coordinate XYZ
+					double longitude = uStr2Double(strList[2]);
+					double latitude = uStr2Double(strList[3]);
+					double altitude = uStr2Double(strList[4]);
+					if(poses.empty())
+					{
+						origin = GeodeticCoords(longitude, latitude, altitude);
+					}
+					cv::Point3d coordENU = GeodeticCoords(longitude, latitude, altitude).toENU_WGS84(origin);
+					double roll = uStr2Double(strList[10]);
+					double pitch = uStr2Double(strList[9]);
+					double yaw = -(uStr2Double(strList[11])-M_PI_2);
+					if(stamps)
+					{
+						stamps->insert(std::make_pair(id, stamp));
+					}
+					poses.insert(std::make_pair(id, Transform(coordENU.x,coordENU.y,coordENU.z, roll,pitch,yaw)));
+				}
+				else
+				{
+					UERROR("Error parsing \"%s\" with St Lucia format (should have 12 values, e.g., 101215_153851_Ins0.log)", str.c_str());
+				}
+			}
+			else if(format == 6) // MALAGA URBAN format
+			{
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  25)
+				{
+					// 0=Time
+					// Lat Lon Alt fix #sats speed dir
+					// 8=Local_X
+					// 9=Local_Y
+					// 10=Local_Z
+					// rawlog_ID Geocen_X Geocen_Y Geocen_Z GPS_X GPS_Y GPS_Z GPS_VX GPS_VY GPS_VZ Local_VX Local_VY Local_VZ SAT_Time
+					double stamp = uStr2Double(strList[0]);
+					double x = uStr2Double(strList[8]);
+					double y = uStr2Double(strList[9]);
+					double z = uStr2Double(strList[10]);
+					if(stamps)
+					{
+						stamps->insert(std::make_pair(id, stamp));
+					}
+					float yaw = 0.0f;
+					if(uContains(poses, id-1))
+					{
+						// set yaw depending on successive poses
+						Transform & previousPose = poses.at(id-1);
+						yaw = atan2(y-previousPose.y(),x-previousPose.x());
+						previousPose = Transform(previousPose.x(), previousPose.y(), yaw);
+					}
+					poses.insert(std::make_pair(id, Transform(x,y,z,0,0,yaw)));
+				}
+				else
+				{
+					UERROR("Error parsing \"%s\" with Malaga Urban format (should have 25 values, *_GPS.txt)", str.c_str());
+				}
+			}
+			else if(format == 5) // NewCollege format
+			{
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  3)
 				{
 					if( uIsNumber(uReplaceChar(strList[0], ' ', "")) && 
 						uIsNumber(uReplaceChar(strList[1], ' ', "")) && 
@@ -216,18 +303,20 @@ bool importPoses(
 							stamps->insert(std::make_pair(id, stamp));
 						}
 						float yaw = 0.0f; 
-						if(strList.size()==4)
-						{
-							yaw = uStr2Double(uReplaceChar(strList[3], ' ', ""));
-						}
-						else if(uContains(poses, id-1))
+						if(uContains(poses, id-1))
 						{
 							// set yaw depending on successive poses
 							Transform & previousPose = poses.at(id-1);
 							yaw = atan2(y-previousPose.y(),x-previousPose.x());
 							previousPose = Transform(previousPose.x(), previousPose.y(), yaw);
 						}
-						poses.insert(std::make_pair(id, Transform(x,y,0,0,0,yaw)));
+						Transform pose = Transform(x,y,0,0,0,yaw);
+						if(poses.size() == 0)
+						{
+							originPose = pose.inverse();
+						}
+						pose = originPose * pose; // transform in local coordinate where first value is the origin
+						poses.insert(std::make_pair(id, pose));
 					}
 					else
 					{
@@ -236,7 +325,7 @@ bool importPoses(
 				}
 				else
 				{
-					UERROR("Error parsing \"%s\" with GPS format (should have 3 values: stamp x y)", str.c_str());
+					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y)", str.c_str());
 				}
 			}
 			else if(format == 1) // rgbd-slam format

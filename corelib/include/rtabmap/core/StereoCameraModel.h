@@ -43,16 +43,9 @@ public:
 			const cv::Size & imageSize2,
 			const cv::Mat & K2, const cv::Mat & D2, const cv::Mat & R2, const cv::Mat & P2,
 			const cv::Mat & R, const cv::Mat & T, const cv::Mat & E, const cv::Mat & F,
-			const Transform & localTransform = Transform::getIdentity()) :
-		left_(name+"_left", imageSize1, K1, D1, R1, P1, localTransform),
-		right_(name+"_right", imageSize2, K2, D2, R2, P2, localTransform),
-		name_(name),
-		R_(R),
-		T_(T),
-		E_(E),
-		F_(F)
-	{
-	}
+			const Transform & localTransform = Transform::getIdentity());
+
+	// if R and T are not null, left and right camera models should be valid to be rectified.
 	StereoCameraModel(
 			const std::string & name,
 			const CameraModel & leftCameraModel,
@@ -60,18 +53,14 @@ public:
 			const cv::Mat & R = cv::Mat(),
 			const cv::Mat & T = cv::Mat(),
 			const cv::Mat & E = cv::Mat(),
-			const cv::Mat & F = cv::Mat()) :
-		left_(leftCameraModel),
-		right_(rightCameraModel),
-		name_(name),
-		R_(R),
-		T_(T),
-		E_(E),
-		F_(F)
-	{
-		left_.setName(name+"_left");
-		right_.setName(name+"_right");
-	}
+			const cv::Mat & F = cv::Mat());
+	// if extrinsics transform is not null, left and right camera models should be valid to be rectified.
+	StereoCameraModel(
+			const std::string & name,
+			const CameraModel & leftCameraModel,
+			const CameraModel & rightCameraModel,
+			const Transform & extrinsics);
+
 	//minimal
 	StereoCameraModel(
 			double fx,
@@ -79,11 +68,7 @@ public:
 			double cx,
 			double cy,
 			double baseline,
-			const Transform & localTransform = Transform::getIdentity()) :
-		left_(fx, fy, cx, cy, localTransform),
-		right_(fx, fy, cx, cy, localTransform, baseline*-fx)
-	{
-	}
+			const Transform & localTransform = Transform::getIdentity());
 	//minimal to be saved
 	StereoCameraModel(
 			const std::string & name,
@@ -92,15 +77,13 @@ public:
 			double cx,
 			double cy,
 			double baseline,
-			const Transform & localTransform = Transform::getIdentity()) :
-		left_(name+"_left", fx, fy, cx, cy, localTransform),
-		right_(name+"_right", fx, fy, cx, cy, localTransform, baseline*-fx),
-		name_(name)
-	{
-	}
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~StereoCameraModel() {}
 
 	bool isValid() const {return left_.isValid() && right_.isValid() && baseline() > 0.0;}
+	bool isValidForRectification() const {return left_.isValidForRectification() && right_.isValidForRectification();}
+
+	void initRectificationMap() {left_.initRectificationMap(); right_.initRectificationMap();}
 
 	void setName(const std::string & name);
 	const std::string & name() const {return name_;}
@@ -108,7 +91,7 @@ public:
 	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
 	bool save(const std::string & directory, bool ignoreStereoTransform = true) const;
 
-	double baseline() const {return -right_.Tx()/right_.fx();}
+	double baseline() const {return right_.fx()!=0.0?-right_.Tx()/right_.fx():0.0;}
 
 	float computeDepth(float disparity) const;
 	float computeDisparity(float depth) const; // m

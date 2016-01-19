@@ -92,7 +92,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui(0),
 	_indexModel(0),
 	_initialized(false),
-	_calibrationDialog(new CalibrationDialog(false, ".", this))
+	_calibrationDialog(new CalibrationDialog(false, ".", this)),
+	_createCalibrationDialog(new CreateSimpleCalibrationDialog(".", "", this))
 {
 	ULOGGER_DEBUG("");
 	_calibrationDialog->setWindowFlags(Qt::Window);
@@ -354,6 +355,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_images_spinBox_startPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_images_refreshDir, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_rgbImages_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_cameraImages_bayerMode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//video group
 	connect(_ui->source_video_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceVideoPath()));
 	connect(_ui->source_video_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1142,6 +1144,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_images_spinBox_startPos->setValue(0);
 		_ui->source_images_refreshDir->setChecked(false);
 		_ui->checkBox_rgbImages_rectify->setChecked(false);
+		_ui->comboBox_cameraImages_bayerMode->setCurrentIndex(0);
 		_ui->checkBox_rgbVideo_rectify->setChecked(false);
 
 		_ui->source_checkBox_ignoreOdometry->setChecked(false);
@@ -1523,6 +1526,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_images_spinBox_startPos->setValue(settings.value("startPos",_ui->source_images_spinBox_startPos->value()).toInt());
 	_ui->source_images_refreshDir->setChecked(settings.value("refreshDir",_ui->source_images_refreshDir->isChecked()).toBool());
 	_ui->checkBox_rgbImages_rectify->setChecked(settings.value("rectify",_ui->checkBox_rgbImages_rectify->isChecked()).toBool());
+	_ui->comboBox_cameraImages_bayerMode->setCurrentIndex(settings.value("bayerMode",_ui->comboBox_cameraImages_bayerMode->currentIndex()).toInt());
 
 	_ui->checkBox_cameraImages_timestamps->setChecked(settings.value("filenames_as_stamps",_ui->checkBox_cameraImages_timestamps->isChecked()).toBool());
 	_ui->checkBox_cameraImages_syncTimeStamps->setChecked(settings.value("sync_stamps",_ui->checkBox_cameraImages_syncTimeStamps->isChecked()).toBool());
@@ -1895,6 +1899,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("startPos", 		_ui->source_images_spinBox_startPos->value());
 	settings.setValue("refreshDir", 	_ui->source_images_refreshDir->isChecked());
 	settings.setValue("rectify", 	    _ui->checkBox_rgbImages_rectify->isChecked());
+	settings.setValue("bayerMode", 	    _ui->comboBox_cameraImages_bayerMode->currentIndex());
 	settings.setValue("filenames_as_stamps", _ui->checkBox_cameraImages_timestamps->isChecked());
 	settings.setValue("sync_stamps",    _ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 	settings.setValue("stamps",              _ui->lineEdit_cameraImages_timestamps->text());
@@ -2404,11 +2409,15 @@ QString PreferencesDialog::loadCustomConfig(const QString & section, const QStri
 	return value;
 }
 
-const rtabmap::ParametersMap & PreferencesDialog::getAllParameters() const
+rtabmap::ParametersMap PreferencesDialog::getAllParameters() const
 {
 	UASSERT_MSG(_parameters.size() == Parameters::getDefaultParameters().size(),
 			uFormat("%d vs %d (Is PreferencesDialog::init() called?)", (int)_parameters.size(), (int)Parameters::getDefaultParameters().size()).c_str());
-	return _parameters;
+
+	ParametersMap parameters = _parameters;
+	uInsert(parameters, _modifiedParameters);
+
+	return parameters;
 }
 
 void PreferencesDialog::selectSourceDriver(Src src)
@@ -2497,6 +2506,10 @@ void PreferencesDialog::selectCalibrationPath()
 	{
 		dir = getWorkingDirectory()+"/camera_info";
 	}
+	else if(!dir.contains('.'))
+	{
+		dir = getWorkingDirectory()+"/camera_info/"+dir;
+	}
 	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Calibration file (*.yaml)"));
 	if(path.size())
 	{
@@ -2568,7 +2581,7 @@ void PreferencesDialog::selectSourceImagesPathGt()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ground Truth (*.txt)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ground Truth (*.txt *.log *.toro *.g2o)"));
 	if(path.size())
 	{
 		QStringList list;
@@ -2691,7 +2704,6 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 	QWidget * obj = _ui->stackedWidget->findChild<QWidget*>(key.c_str());
 	if(obj)
 	{
-		bool oldState = obj->blockSignals(true);
 		QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
 		QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
 		QComboBox * combo = qobject_cast<QComboBox *>(obj);
@@ -2799,7 +2811,6 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		{
 			ULOGGER_WARN("QObject called %s can't be cast to a supported widget", key.c_str());
 		}
-		obj->blockSignals(oldState);
 	}
 	else
 	{
@@ -2866,79 +2877,6 @@ void PreferencesDialog::addParameter(const QObject * object, int value)
 			// Add parameter
 			UDEBUG("modify param %s=%s", object->objectName().toStdString().c_str(), uNumber2Str(value).c_str());
 			uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
-
-			if(comboBox)
-			{
-				// Add related panels to parameters
-				if(comboBox == _ui->comboBox_vh_strategy)
-				{
-					if(value == 0) // 0 none
-					{
-						// No panel related...
-					}
-					else if(value == 1) // 2 epipolar
-					{
-						this->addParameters(_ui->groupBox_vh_epipolar2);
-					}
-				}
-				else if(comboBox == _ui->comboBox_detector_strategy ||
-						comboBox == _ui->reextract_type)
-				{
-					if(value == 0) //  surf
-					{
-						this->addParameters(_ui->groupBox_detector_surf2);
-					}
-					else if(value == 1) //  sift
-					{
-						this->addParameters(_ui->groupBox_detector_sift2);
-					}
-					else if(value == 2) //  orb
-					{
-						this->addParameters(_ui->groupBox_detector_orb2);
-					}
-					else if(value == 3) //  fast+freak
-					{
-						this->addParameters(_ui->groupBox_detector_fast2);
-						this->addParameters(_ui->groupBox_detector_freak2);
-					}
-					else if(value == 4) //  fast+brief
-					{
-						this->addParameters(_ui->groupBox_detector_fast2);
-						this->addParameters(_ui->groupBox_detector_brief2);
-					}
-					else if(value == 5) //  gftt+freak
-					{
-						this->addParameters(_ui->groupBox_detector_gftt2);
-						this->addParameters(_ui->groupBox_detector_freak2);
-					}
-					else if(value == 6) //  gftt+brief
-					{
-						this->addParameters(_ui->groupBox_detector_gftt2);
-						this->addParameters(_ui->groupBox_detector_brief2);
-					}
-					else if(value == 7) //  brisk
-					{
-						this->addParameters(_ui->groupBox_detector_brisk2);
-					}
-				}
-				else if(comboBox == _ui->loopClosure_estimationType)
-				{
-					this->addParameters(_ui->stackedWidget_loopClosureEstimation, _ui->loopClosure_estimationType->currentIndex());
-				}
-				else if(comboBox == _ui->graphOptimization_type)
-				{
-					this->addParameter(_ui->graphOptimization_iterations,        _ui->graphOptimization_iterations->value());
-					this->addParameter(_ui->graphOptimization_covarianceIgnored, _ui->graphOptimization_covarianceIgnored->isChecked());
-					this->addParameter(_ui->graphOptimization_slam2d,            _ui->graphOptimization_slam2d->isChecked());
-					this->addParameter(_ui->graphOptimization_stopEpsilon,       _ui->graphOptimization_stopEpsilon->value());
-					this->addParameter(_ui->graphOptimization_robust,            _ui->graphOptimization_robust->isChecked());
-				}
-				else if(comboBox == _ui->comboBox_registrationStrategy)
-				{
-					this->addParameters(_ui->groupBox_visualTransform2);
-					this->addParameters(_ui->groupBox_icp2);
-				}
-			}
 		}
 		else
 		{
@@ -2964,23 +2902,6 @@ void PreferencesDialog::addParameter(const QObject * object, bool value)
 			// Add parameter
 			UDEBUG("modify param %s=%s", object->objectName().toStdString().c_str(), uBool2Str(value).c_str());
 			uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), uBool2Str(value)));
-
-			// RGBD panel
-			if(value && checkbox == _ui->general_checkBox_activateRGBD)
-			{
-				// add all RGBD parameters!
-				this->addParameters(_ui->groupBox_slam_update);
-				this->addParameters(_ui->groupBox_graphOptimization2);
-				this->addParameters(_ui->groupBox_proximityDetection2);
-				this->addParameters(_ui->groupBox_visualTransform2);
-				this->addParameters(_ui->groupBox_icp2);
-				this->addParameters(_ui->groupBox_pathPlanning2);
-			}
-
-			if(groupBox)
-			{
-				this->addParameters(groupBox);
-			}
 		}
 		else
 		{
@@ -3825,6 +3746,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 			_ui->doubleSpinBox_cameraRGBDImages_scale->value(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraRGBDImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
 		((CameraRGBDImages*)camera)->setGroundTruthPath(_ui->lineEdit_cameraImages_gt->text().toStdString(), _ui->comboBox_cameraImages_gtFormat->currentIndex());
 		((CameraRGBDImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
@@ -3865,9 +3787,10 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 		camera = new CameraStereoImages(
 			_ui->lineEdit_cameraStereoImages_path_left->text().append(QDir::separator()).toStdString(),
 			_ui->lineEdit_cameraStereoImages_path_right->text().append(QDir::separator()).toStdString(),
-			_ui->checkBox_stereoImages_rectify->isChecked(),
+			_ui->checkBox_stereoImages_rectify->isChecked() && !useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraStereoImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
 		((CameraStereoImages*)camera)->setGroundTruthPath(_ui->lineEdit_cameraImages_gt->text().toStdString(), _ui->comboBox_cameraImages_gtFormat->currentIndex());
 		((CameraStereoImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
@@ -3885,7 +3808,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		camera = new CameraStereoVideo(
 			_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
-			_ui->checkBox_stereoVideo_rectify->isChecked(),
+			_ui->checkBox_stereoVideo_rectify->isChecked() && !useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -3900,7 +3823,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		camera = new CameraVideo(
 			_ui->source_video_lineEdit_path->text().toStdString(),
-			_ui->checkBox_rgbVideo_rectify->isChecked(),
+			_ui->checkBox_rgbVideo_rectify->isChecked() && !useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -3913,23 +3836,24 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 
 		((CameraImages*)camera)->setStartIndex(_ui->source_images_spinBox_startPos->value());
 		((CameraImages*)camera)->setDirRefreshed(_ui->source_images_refreshDir->isChecked());
-		((CameraImages*)camera)->setImagesRectified(_ui->checkBox_rgbImages_rectify->isChecked());
+		((CameraImages*)camera)->setImagesRectified(_ui->checkBox_rgbImages_rectify->isChecked() && !useRawImages);
 
-		((CameraRGBDImages*)camera)->setGroundTruthPath(
+		((CameraImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
+		((CameraImages*)camera)->setGroundTruthPath(
 				_ui->lineEdit_cameraImages_gt->text().toStdString(),
 				_ui->comboBox_cameraImages_gtFormat->currentIndex());
-		((CameraRGBDImages*)camera)->setScanPath(
+		((CameraImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
 						_ui->spinBox_cameraImages_scanDownsampleStep->value(),
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
 						this->getLaserLocalTransform());
-		((CameraRGBDImages*)camera)->setDepthFromScan(
+		((CameraImages*)camera)->setDepthFromScan(
 				_ui->groupBox_depthFromScan->isChecked(),
 				_ui->checkBox_depthFromScan_vertical->isChecked(),
 				_ui->checkBox_depthFromScan_fillBorders->isChecked());
-		((CameraRGBDImages*)camera)->setTimestamps(
+		((CameraImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
@@ -4303,8 +4227,11 @@ void PreferencesDialog::calibrate()
 
 void PreferencesDialog::calibrateSimple()
 {
-	CreateSimpleCalibrationDialog dialog(this->getCameraInfoDir(), "", this);
-	dialog.exec();
+	_createCalibrationDialog->setCameraInfoDir(this->getCameraInfoDir());
+	if(_createCalibrationDialog->exec() == QMessageBox::Accepted)
+	{
+		_ui->lineEdit_calibrationFile->setText(_createCalibrationDialog->cameraName());
+	}
 }
 
 }

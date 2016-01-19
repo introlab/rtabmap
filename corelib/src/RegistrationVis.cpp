@@ -698,8 +698,11 @@ Transform RegistrationVis::computeTransformationImpl(
 			transforms[1] = transforms[1].inverse();
 		}
 
-		UDEBUG("t1=%s", transforms[0].prettyPrint().c_str());
-		UDEBUG("t2=%s", transforms[1].prettyPrint().c_str());
+		if(!_forwardEstimateOnly)
+		{
+			UDEBUG("from->to=%s", transforms[0].prettyPrint().c_str());
+			UDEBUG("from->from=%s", transforms[1].prettyPrint().c_str());
+		}
 		if(!transforms[1].isNull())
 		{
 			if(transforms[0].isNull())

@@ -1395,7 +1395,7 @@ SensorData CameraFreenect2::captureImage()
 			else
 			{
 				//rgb + ir or rgb + depth
-				if(stereoModel_.isValid())
+				if(stereoModel_.isValidForRectification())
 				{
 					cv::Mat rgbMatC4((int)rgbFrame->height, (int)rgbFrame->width, CV_8UC4, rgbFrame->data);
 					cv::Mat rgbMat; // rtabmap uses 3 channels RGB

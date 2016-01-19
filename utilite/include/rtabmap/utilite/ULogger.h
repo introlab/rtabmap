@@ -25,6 +25,7 @@
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/UDestroyer.h"
 #include "rtabmap/utilite/UEvent.h"
+#include "rtabmap/utilite/UException.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -51,14 +52,15 @@
 #define ULOGGER_INFO(...)    ULOGGER_LOG(ULogger::kInfo,    __VA_ARGS__)
 #define ULOGGER_WARN(...) 	 ULOGGER_LOG(ULogger::kWarning, __VA_ARGS__)
 #define ULOGGER_ERROR(...)   ULOGGER_LOG(ULogger::kError,   __VA_ARGS__)
-#define ULOGGER_FATAL(...)   ULOGGER_LOG(ULogger::kFatal,   __VA_ARGS__)
+#define ULOGGER_FATAL(...)   ULOGGER_LOG(ULogger::kFatal,   __VA_ARGS__) // Throw UException
 
 #define UDEBUG(...)   ULOGGER_DEBUG(__VA_ARGS__)
 #define UINFO(...)    ULOGGER_INFO(__VA_ARGS__)
 #define UWARN(...) 	  ULOGGER_WARN(__VA_ARGS__)
 #define UERROR(...)   ULOGGER_ERROR(__VA_ARGS__)
-#define UFATAL(...)   ULOGGER_FATAL(__VA_ARGS__)
+#define UFATAL(...)   ULOGGER_FATAL(__VA_ARGS__) // Throw UException
 
+// Throw UException
 #define UASSERT(condition) if(!(condition)) ULogger::write(ULogger::kFatal, __FILE__, __LINE__, __FUNCTION__, "Condition (%s) not met!", #condition)
 #define UASSERT_MSG(condition, msg_str) if(!(condition)) ULogger::write(ULogger::kFatal, __FILE__, __LINE__, __FUNCTION__, "Condition (%s) not met! [%s]", #condition, msg_str)
 
@@ -335,15 +337,6 @@ public:
     static void setLevel(ULogger::Level level) {level_ = level;}
     static ULogger::Level level() {return level_;}
 
-    /**
-	 * Make application to exit when a log with level is written (useful for debugging). The message is printed to
-	 * console (whatever the logger type) and an ULogEvent is sent (synchronously... see UEventsManager::post()) before exiting.
-	 *
-	 * Note : A kFatal level will always exit whatever the level specified here.
-	 */
-	static void setExitLevel(ULogger::Level exitLevel) {exitLevel_ = exitLevel;}
-	static ULogger::Level exitLevel() {return exitLevel_;}
-
 	/**
 	 * An ULogEvent is sent on each message logged at the specified level.
 	 * Note : On message with level >= exitLevel, the event is sent synchronously (see UEventsManager::post()).
@@ -386,7 +379,7 @@ public:
     		int line,
     		const char *function,
     		const char* msg,
-    		...);
+    		...) throw(UException);
 
     /**
      * Get the time in the format "2008-7-13 12:23:44".
@@ -539,12 +532,6 @@ private:
     static Level level_;
 
     /*
-     * The severity at which the application exits.
-     * Note : A FATAL level will always exit whatever the level specified here.
-     */
-    static Level exitLevel_;
-
-    /*
 	 * The severity at which the message is also sent in a ULogEvent.
 	 */
 	static Level eventLevel_;
@@ -563,14 +550,6 @@ private:
 	static bool buffered_;
 
 	static std::string bufferedMsgs_;
-
-	/*
-	 * State attribute. This state happens when an exit level
-	 * message is received.
-	 * Messages received during this state are not logged.
-	 * @see exitLevel_
-	 */
-	static bool exitingState_;
 };
 
 #endif // ULOGGER_H

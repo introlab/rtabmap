@@ -63,12 +63,14 @@ public:
 	unsigned int imagesCount() const;
 	std::vector<std::string> filenames() const;
 	bool isImagesRectified() const {return _rectifyImages;}
+	int getBayerMode() const {return _bayerMode;}
 	const CameraModel & cameraModel() const {return _model;}
 
 	void setPath(const std::string & dir) {_path=dir;}
 	void setStartIndex(int index) {_startAt = index;} // negative means last
 	void setDirRefreshed(bool enabled) {_refreshDir = enabled;}
 	void setImagesRectified(bool enabled) {_rectifyImages = enabled;}
+	void setBayerMode(int mode) {_bayerMode = mode;} // -1=disabled (default) 0=BayerBG, 1=BayerGB, 2=BayerRG, 3=BayerGR
 
 	void setTimestamps(bool fileNamesAreStamps, const std::string & filePath = "", bool syncImageRateWithStamps=true)
 	{
@@ -126,6 +128,7 @@ private:
 	// on each call of takeImage()
 	bool _refreshDir;
 	bool _rectifyImages;
+	int _bayerMode;
 	bool _isDepth;
 	float _depthScaleFactor;
 	int _count;
