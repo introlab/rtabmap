@@ -379,7 +379,7 @@ public:
     		int line,
     		const char *function,
     		const char* msg,
-    		...) throw(UException);
+    		...);
 
     /**
      * Get the time in the format "2008-7-13 12:23:44".

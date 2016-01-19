@@ -42,9 +42,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/GeodeticCoords.h"
 
-#include <math.h>
+#include <cmath>
+#ifndef M_PI
+#define M_PI       3.14159265358979323846
+#endif
 
 namespace rtabmap {
+
 
 inline double DEG2RAD(const double x) { return x*M_PI/180.0;}
 inline double square(const double & value) {return value*value;}

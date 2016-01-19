@@ -31,11 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/RtabmapExp.h>
 
-#include <opencv2/core/types.hpp>
+#include <opencv2/core/core.hpp>
 
-namespace RTABMAP_EXP rtabmap {
+namespace rtabmap {
 
-class GeodeticCoords
+class RTABMAP_EXP GeodeticCoords
 {
 public:
 	GeodeticCoords();
