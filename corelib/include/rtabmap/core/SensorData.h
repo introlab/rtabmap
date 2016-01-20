@@ -139,7 +139,7 @@ public:
 			_laserScanRaw.empty() &&
 			_laserScanCompressed.empty() &&
 			_cameraModels.size() == 0 &&
-			!_stereoCameraModel.isValid() &&
+			!_stereoCameraModel.isValidForProjection() &&
 			_userDataRaw.empty() &&
 			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&

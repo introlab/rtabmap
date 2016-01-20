@@ -866,7 +866,7 @@ void DatabaseViewer::extractImages()
 				{
 					UERROR("Cannot save calibration file, database name is empty!");
 				}
-				else if(data.stereoCameraModel().isValid())
+				else if(data.stereoCameraModel().isValidForProjection())
 				{
 					std::string cameraName = uSplit(databaseFileName_, '.').front();
 					StereoCameraModel model(
@@ -913,7 +913,7 @@ void DatabaseViewer::extractImages()
 				{
 					UERROR("Only one camera calibration can be saved at this time (%d detected)", (int)data.cameraModels().size());
 				}
-				else if(data.cameraModels().size() == 1 && data.cameraModels().front().isValid())
+				else if(data.cameraModels().size() == 1 && data.cameraModels().front().isValidForProjection())
 				{
 					std::string cameraName = uSplit(databaseFileName_, '.').front();
 					CameraModel model(cameraName,
@@ -2349,7 +2349,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		!data->imageRaw().empty() &&
 		!data->depthOrRightRaw().empty() &&
 		data->depthOrRightRaw().type() == CV_8UC1 &&
-		data->stereoCameraModel().isValid())
+		data->stereoCameraModel().isValidForProjection())
 	{
 		cv::Mat leftMono;
 		if(data->imageRaw().channels() == 3)

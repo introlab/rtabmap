@@ -56,7 +56,7 @@ Transform estimateMotion3DTo2D(
 			std::vector<int> * matchesOut,
 			std::vector<int> * inliersOut)
 {
-	UASSERT(cameraModel.isValid());
+	UASSERT(cameraModel.isValidForProjection());
 	UASSERT(!guess.isNull());
 	Transform transform;
 	std::vector<int> matches, inliers;

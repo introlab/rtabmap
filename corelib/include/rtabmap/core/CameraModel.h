@@ -74,7 +74,7 @@ public:
 
 	void initRectificationMap();
 
-	bool isValid() const {return (!K_.empty() || !P_.empty()) && fx()>0.0 && fy()>0.0;}
+	bool isValidForProjection() const {return fx()>0.0 && fy()>0.0;}
 	bool isValidForRectification() const
 	{
 		return imageSize_.width>0 &&
@@ -94,10 +94,12 @@ public:
 	double cy() const {return P_.empty()?K_.empty()?0.0:K_.at<double>(1,2):P_.at<double>(1,2);}
 	double Tx() const {return P_.empty()?0.0:P_.at<double>(0,3);}
 
-	const cv::Mat & K() const {return K_;} //intrinsic camera matrix
-	const cv::Mat & D() const {return D_;} //intrinsic distorsion matrix
-	const cv::Mat & R() const {return R_;} //rectification matrix
-	const cv::Mat & P() const {return P_;} //projection matrix
+	cv::Mat K_raw() const {return K_;} //intrinsic camera matrix (before rectification)
+	cv::Mat D_raw() const {return D_;} //intrinsic distorsion matrix (before rectification)
+	cv::Mat K() const {return !P_.empty()?P_.colRange(0,3):K_;} // if P exists, return rectified version
+	cv::Mat D() const {return P_.empty()&&!D_.empty()?D_:cv::Mat::zeros(1,4,CV_64FC1);} // if P exists, return rectified version
+	cv::Mat R() const {return R_;} //rectification matrix
+	cv::Mat P() const {return P_;} //projection matrix
 
 	void setLocalTransform(const Transform & transform) {localTransform_ = transform;}
 	const Transform & localTransform() const {return localTransform_;}

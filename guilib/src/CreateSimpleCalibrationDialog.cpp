@@ -171,7 +171,7 @@ void CreateSimpleCalibrationDialog::saveCalibration()
 					ui_->doubleSpinBox_fy->value(),
 					ui_->doubleSpinBox_cx->value(),
 					ui_->doubleSpinBox_cy->value());
-			UASSERT(modelLeft.isValid());
+			UASSERT(modelLeft.isValidForProjection());
 		}
 		else
 		{
@@ -216,8 +216,9 @@ void CreateSimpleCalibrationDialog::saveCalibration()
 						ui_->doubleSpinBox_cy->value(),
 						Transform::getIdentity(),
 						ui_->doubleSpinBox_baseline->value()*-ui_->doubleSpinBox_fx->value());
-				UASSERT(modelRight.isValid());
+				UASSERT(modelRight.isValidForProjection());
 				stereoModel = StereoCameraModel(name.toStdString(), modelLeft, modelRight, Transform());
+				UASSERT(stereoModel.isValidForProjection());
 			}
 			else if(ui_->comboBox_advanced->currentIndex() == 1)
 			{
@@ -250,6 +251,7 @@ void CreateSimpleCalibrationDialog::saveCalibration()
 
 				UASSERT(Transform::canParseString(ui_->lineEdit_RT->text().trimmed().toStdString()));
 				stereoModel = StereoCameraModel(name.toStdString(), modelLeft, modelRight, Transform::fromString(ui_->lineEdit_RT->text().toStdString()));
+				UASSERT(stereoModel.isValidForRectification());
 			}
 
 			std::string base = (dir+QDir::separator()+name).toStdString();

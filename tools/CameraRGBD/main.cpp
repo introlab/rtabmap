@@ -254,7 +254,7 @@ int main(int argc, char * argv[])
 				data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows);
 	}
 	pcl::visualization::CloudViewer * viewer = 0;
-	if(!data.stereoCameraModel().isValid() && (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
+	if(!data.stereoCameraModel().isValidForProjection() && (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValidForProjection()))
 	{
 		UWARN("Camera not calibrated! The registered cloud cannot be shown.");
 	}
@@ -328,7 +328,7 @@ int main(int argc, char * argv[])
 
 			if(rgb.cols == depth.cols && rgb.rows == depth.rows &&
 					data.cameraModels().size() &&
-					data.cameraModels()[0].isValid())
+					data.cameraModels()[0].isValidForProjection())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(
 						rgb, depth,
@@ -342,7 +342,7 @@ int main(int argc, char * argv[])
 			}
 			else if(!depth.empty() &&
 					data.cameraModels().size() &&
-					data.cameraModels()[0].isValid())
+					data.cameraModels()[0].isValidForProjection())
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(
 						depth,
@@ -369,7 +369,7 @@ int main(int argc, char * argv[])
 			cv::imshow("Left", rgb); // show frame
 			cv::imshow("Right", right);
 
-			if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModel().isValid())
+			if(rgb.cols == right.cols && rgb.rows == right.rows && data.stereoCameraModel().isValidForProjection())
 			{
 				if(right.channels() == 3)
 				{

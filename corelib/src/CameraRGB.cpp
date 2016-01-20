@@ -216,7 +216,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	_model.setName(cameraName);
 
 	_model.setLocalTransform(this->getLocalTransform());
-	if(_rectifyImages && !_model.isValid())
+	if(_rectifyImages && !_model.isValidForRectification())
 	{
 		UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
 		return false;
@@ -401,7 +401,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 
 bool CameraImages::isCalibrated() const
 {
-	return _model.isValid();
+	return _model.isValidForProjection();
 }
 
 std::string CameraImages::getSerial() const
@@ -609,7 +609,7 @@ SensorData CameraImages::captureImage()
 
 			}
 
-			if(!img.empty() && _model.isValid() && _rectifyImages)
+			if(!img.empty() && _model.isValidForRectification() && _rectifyImages)
 			{
 				img = _model.rectifyImage(img);
 			}
@@ -623,7 +623,7 @@ SensorData CameraImages::captureImage()
 			if(_depthFromScan && !img.empty())
 			{
 				UDEBUG("Computing depth from scan...");
-				if(!_model.isValid())
+				if(!_model.isValidForProjection())
 				{
 					UWARN("Depth from laser scan: Camera model should be valid.");
 				}
@@ -760,7 +760,7 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 			}
 		}
 		_model.setLocalTransform(this->getLocalTransform());
-		if(_rectifyImages && !_model.isValid())
+		if(_rectifyImages && !_model.isValidForRectification())
 		{
 			UERROR("Parameter \"rectifyImages\" is set, but no camera model is loaded or valid.");
 			return false;
@@ -771,7 +771,7 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 
 bool CameraVideo::isCalibrated() const
 {
-	return _model.isValid();
+	return _model.isValidForProjection();
 }
 
 std::string CameraVideo::getSerial() const
@@ -786,7 +786,7 @@ SensorData CameraVideo::captureImage()
 	{
 		if(_capture.read(img))
 		{
-			if(_model.isValid() && (_src != kVideoFile || _rectifyImages))
+			if(_model.isValidForRectification() && (_src != kVideoFile || _rectifyImages))
 			{
 				img = _model.rectifyImage(img);
 			}

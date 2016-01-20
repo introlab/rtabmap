@@ -109,7 +109,7 @@ public:
 			if(data.depthOrRightRaw().cols == data.imageRaw().cols &&
 			   data.depthOrRightRaw().rows == data.imageRaw().rows &&
 			   !data.depthOrRightRaw().empty() &&
-			   (data.stereoCameraModel().isValid() || data.cameraModels().size()))
+			   (data.stereoCameraModel().isValidForProjection() || data.cameraModels().size()))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
 					data,

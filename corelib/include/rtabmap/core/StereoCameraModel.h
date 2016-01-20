@@ -80,7 +80,7 @@ public:
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~StereoCameraModel() {}
 
-	bool isValid() const {return left_.isValid() && right_.isValid() && baseline() > 0.0;}
+	bool isValidForProjection() const {return left_.isValidForProjection() && right_.isValidForProjection() && baseline() > 0.0;}
 	bool isValidForRectification() const {return left_.isValidForRectification() && right_.isValidForRectification();}
 
 	void initRectificationMap() {left_.initRectificationMap(); right_.initRectificationMap();}

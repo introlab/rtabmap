@@ -524,7 +524,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		int subImageWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
-			if(sensorData.cameraModels()[i].isValid())
+			if(sensorData.cameraModels()[i].isValidForProjection())
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr tmp = util3d::cloudFromDepth(
 						cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows)),
@@ -579,7 +579,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 			cloud = util3d::voxelize(cloud, voxelSize);
 		}
 	}
-	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValid())
+	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
 	{
 		//stereo
 		UASSERT(sensorData.rightRaw().type() == CV_8UC1);
@@ -636,7 +636,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 {
 	UASSERT(!sensorData.imageRaw().empty());
 	UASSERT((!sensorData.depthRaw().empty() && sensorData.cameraModels().size()) ||
-			(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValid()));
+			(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection()));
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
 	if(!sensorData.depthRaw().empty() && sensorData.cameraModels().size())
@@ -648,7 +648,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		int subImageWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
-			if(sensorData.cameraModels()[i].isValid())
+			if(sensorData.cameraModels()[i].isValidForProjection())
 			{
 				if(subImageWidth % decimation != 0 || sensorData.depthRaw().rows % decimation != 0)
 				{
@@ -711,7 +711,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 			cloud = util3d::voxelize(cloud, voxelSize);
 		}
 	}
-	else if(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValid())
+	else if(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
 	{
 		//stereo
 		UDEBUG("");

@@ -807,7 +807,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 				if(odom.data().depthOrRightRaw().cols == odom.data().imageRaw().cols &&
 				   odom.data().depthOrRightRaw().rows == odom.data().imageRaw().rows &&
 				   !odom.data().depthOrRightRaw().empty() &&
-				   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValid()) &&
+				   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValidForProjection()) &&
 				   _preferencesDialog->isCloudsShown(1))
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
@@ -5097,11 +5097,11 @@ bool MainWindow::getExportedClouds(
 					{
 						const Signature & s = _cachedSignatures.value(jter->first);
 						CameraModel model;
-						if(s.sensorData().stereoCameraModel().isValid())
+						if(s.sensorData().stereoCameraModel().isValidForProjection())
 						{
 							model = s.sensorData().stereoCameraModel().left();
 						}
-						else if(s.sensorData().cameraModels().size() == 1 && s.sensorData().cameraModels()[0].isValid())
+						else if(s.sensorData().cameraModels().size() == 1 && s.sensorData().cameraModels()[0].isValidForProjection())
 						{
 							model = s.sensorData().cameraModels()[0];
 						}
@@ -5110,7 +5110,7 @@ bool MainWindow::getExportedClouds(
 						{
 							s.sensorData().uncompressDataConst(&image, 0, 0, 0);
 						}
-						if(!jter->second.isNull() && model.isValid() && !image.empty())
+						if(!jter->second.isNull() && model.isValidForProjection() && !image.empty())
 						{
 							cameraPoses.insert(std::make_pair(jter->first, jter->second));
 							cameraModels.insert(std::make_pair(jter->first, model));
@@ -5171,7 +5171,7 @@ void MainWindow::exportImages()
 			QDir dir;
 			dir.mkdir(QString("%1/left").arg(path));
 			dir.mkdir(QString("%1/right").arg(path));
-			if(data.stereoCameraModel().isValid())
+			if(data.stereoCameraModel().isValidForProjection())
 			{
 				std::string cameraName = "calibration";
 				StereoCameraModel model(
@@ -5214,7 +5214,7 @@ void MainWindow::exportImages()
 			{
 				UERROR("Only one camera calibration can be saved at this time (%d detected)", (int)data.cameraModels().size());
 			}
-			else if(data.cameraModels().size() == 1 && data.cameraModels().front().isValid())
+			else if(data.cameraModels().size() == 1 && data.cameraModels().front().isValidForProjection())
 			{
 				std::string cameraName = "calibration";
 				CameraModel model(cameraName,
@@ -5313,8 +5313,8 @@ void MainWindow::exportBundlerFormat()
 			{
 				UWARN("Missing image in cache for node %d", iter->first);
 			}
-			else if((_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 && _cachedSignatures[iter->first].sensorData().cameraModels().at(0).isValid()) ||
-			         _cachedSignatures[iter->first].sensorData().stereoCameraModel().isValid())
+			else if((_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 && _cachedSignatures[iter->first].sensorData().cameraModels().at(0).isValidForProjection()) ||
+			         _cachedSignatures[iter->first].sensorData().stereoCameraModel().isValidForProjection())
 			{
 				poses.insert(*iter);
 			}

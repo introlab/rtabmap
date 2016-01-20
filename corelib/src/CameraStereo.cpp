@@ -396,7 +396,7 @@ bool CameraStereoDC1394::init(const std::string & calibrationFolder, const std::
 
 bool CameraStereoDC1394::isCalibrated() const
 {
-	return stereoModel_.isValid();
+	return stereoModel_.isValidForProjection();
 }
 
 std::string CameraStereoDC1394::getSerial() const
@@ -431,7 +431,7 @@ SensorData CameraStereoDC1394::captureImage()
 				right = stereoModel_.right().rectifyImage(right);
 			}
 			StereoCameraModel model;
-			if(stereoModel_.isValid())
+			if(stereoModel_.isValidForProjection())
 			{
 				model = StereoCameraModel(
 						stereoModel_.left().fx(), //fx
@@ -849,7 +849,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 
 bool CameraStereoImages::isCalibrated() const
 {
-	return stereoModel_.isValid();
+	return stereoModel_.isValidForProjection();
 }
 
 std::string CameraStereoImages::getSerial() const
@@ -970,7 +970,7 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 
 bool CameraStereoVideo::isCalibrated() const
 {
-	return stereoModel_.isValid();
+	return stereoModel_.isValidForProjection();
 }
 
 std::string CameraStereoVideo::getSerial() const
@@ -999,7 +999,7 @@ SensorData CameraStereoVideo::captureImage()
 				rightCvt = true;
 			}
 
-			if(rectifyImages_ && stereoModel_.left().isValid() && stereoModel_.right().isValid())
+			if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
 			{
 				leftImage = stereoModel_.left().rectifyImage(leftImage);
 				rightImage = stereoModel_.right().rectifyImage(rightImage);

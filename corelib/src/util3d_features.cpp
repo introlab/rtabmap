@@ -53,7 +53,7 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 		const cv::Mat & depth,
 		const CameraModel & cameraModel)
 {
-	UASSERT(cameraModel.isValid());
+	UASSERT(cameraModel.isValidForProjection());
 	std::vector<CameraModel> models;
 	models.push_back(cameraModel);
 	return generateKeypoints3DDepth(keypoints, depth, models);
@@ -107,7 +107,7 @@ std::vector<cv::Point3f> generateKeypoints3DDisparity(
 		const StereoCameraModel & stereoCameraModel)
 {
 	UASSERT(!disparity.empty() && (disparity.type() == CV_16SC1 || disparity.type() == CV_32F));
-	UASSERT(stereoCameraModel.isValid());
+	UASSERT(stereoCameraModel.isValidForProjection());
 	std::vector<cv::Point3f> keypoints3d;
 	keypoints3d.resize(keypoints.size());
 	for(unsigned int i=0; i!=keypoints.size(); ++i)
@@ -189,7 +189,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 		const std::map<int, cv::Point3f> & refGuess3D,
 		double * varianceOut)
 {
-	UASSERT(cameraModel.isValid());
+	UASSERT(cameraModel.isValidForProjection());
 	std::map<int, cv::Point3f> words3D;
 	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
 	if(EpipolarGeometry::findPairs(refWords, nextWords, pairs) > 8)

@@ -84,13 +84,13 @@ StereoCameraModel::StereoCameraModel(
 		UASSERT(leftCameraModel.isValidForRectification() && rightCameraModel.isValidForRectification());
 
 		cv::Mat R1,R2,P1,P2,Q;
-		cv::stereoRectify(left_.K(), left_.D(),
-				right_.K(), right_.D(),
+		cv::stereoRectify(left_.K_raw(), left_.D_raw(),
+				right_.K_raw(), right_.D_raw(),
 				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
 				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
 
-		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K(), left_.D(), R1, P1, left_.localTransform());
-		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K(), right_.D(), R2, P2, right_.localTransform());
+		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
+		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
 	}
 }
 
@@ -114,13 +114,13 @@ StereoCameraModel::StereoCameraModel(
 		extrinsics.translationMatrix().convertTo(T_, CV_64FC1);
 
 		cv::Mat R1,R2,P1,P2,Q;
-		cv::stereoRectify(left_.K(), left_.D(),
-				right_.K(), right_.D(),
+		cv::stereoRectify(left_.K_raw(), left_.D_raw(),
+				right_.K_raw(), right_.D_raw(),
 				left_.imageSize(), R_, T_, R1, R2, P1, P2, Q,
 				cv::CALIB_ZERO_DISPARITY, 0, left_.imageSize());
 
-		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K(), left_.D(), R1, P1, left_.localTransform());
-		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K(), right_.D(), R2, P2, right_.localTransform());
+		left_ = CameraModel(left_.name(), left_.imageSize(), left_.K_raw(), left_.D_raw(), R1, P1, left_.localTransform());
+		right_ = CameraModel(right_.name(), right_.imageSize(), right_.K_raw(), right_.D_raw(), R2, P2, right_.localTransform());
 	}
 }
 
@@ -345,7 +345,7 @@ void StereoCameraModel::scale(double scale)
 float StereoCameraModel::computeDepth(float disparity) const
 {
 	//depth = baseline * f / (disparity + cx1-cx0);
-	UASSERT(this->isValid());
+	UASSERT(this->isValidForProjection());
 	if(disparity == 0.0f)
 	{
 		return 0.0f;
@@ -356,7 +356,7 @@ float StereoCameraModel::computeDepth(float disparity) const
 float StereoCameraModel::computeDisparity(float depth) const
 {
 	// disparity = (baseline * fx / depth) - (cx1-cx0);
-	UASSERT(this->isValid());
+	UASSERT(this->isValidForProjection());
 	if(depth == 0.0f)
 	{
 		return 0.0f;
@@ -367,7 +367,7 @@ float StereoCameraModel::computeDisparity(float depth) const
 float StereoCameraModel::computeDisparity(unsigned short depth) const
 {
 	// disparity = (baseline * fx / depth) - (cx1-cx0);
-	UASSERT(this->isValid());
+	UASSERT(this->isValidForProjection());
 	if(depth == 0)
 	{
 		return 0.0f;

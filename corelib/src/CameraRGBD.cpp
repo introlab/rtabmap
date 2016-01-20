@@ -1373,7 +1373,7 @@ SensorData CameraFreenect2::captureImage()
 				cv::flip(rgb, rgb, 1);
 				cv::flip(depth, depth, 1);
 
-				if(stereoModel_.isValid())
+				if(stereoModel_.isValidForRectification())
 				{
 					//rectify
 					rgb = stereoModel_.left().rectifyImage(rgb);
@@ -1708,7 +1708,7 @@ bool CameraRGBDImages::init(const std::string & calibrationFolder, const std::st
 
 bool CameraRGBDImages::isCalibrated() const
 {
-	return this->cameraModel().isValid();
+	return this->cameraModel().isValidForProjection();
 }
 
 std::string CameraRGBDImages::getSerial() const

@@ -192,7 +192,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 
 	if(!odom.data().imageRaw().empty() &&
 		!odom.data().depthOrRightRaw().empty() &&
-		(odom.data().stereoCameraModel().isValid() || odom.data().cameraModels().size()))
+		(odom.data().stereoCameraModel().isValidForProjection() || odom.data().cameraModels().size()))
 	{
 		UDEBUG("New pose = %s, quality=%d", odom.pose().prettyPrint().c_str(), quality);
 

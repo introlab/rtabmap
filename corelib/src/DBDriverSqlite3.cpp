@@ -2726,7 +2726,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 		cy = sensorData.cameraModels()[0].cy();
 		localTransform = sensorData.cameraModels()[0].localTransform();
 	}
-	else if(sensorData.stereoCameraModel().isValid())
+	else if(sensorData.stereoCameraModel().isValidForProjection())
 	{
 		fx = sensorData.stereoCameraModel().left().fx();
 		fyOrBaseline = sensorData.stereoCameraModel().baseline();
@@ -2855,7 +2855,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 			memcpy(calibration.data()+i*(4+localTransform.size())+4, localTransform.data(), localTransform.size()*sizeof(float));
 		}
 	}
-	else if(sensorData.stereoCameraModel().isValid())
+	else if(sensorData.stereoCameraModel().isValidForProjection())
 	{
 		const Transform & localTransform = sensorData.stereoCameraModel().left().localTransform();
 		calibration.resize(5+localTransform.size());

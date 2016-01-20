@@ -105,7 +105,7 @@ void OdometryThread::addData(const SensorData & data)
 {
 	if(dynamic_cast<OdometryMono*>(_odometry) == 0 && dynamic_cast<OdometryLocalMap*>(_odometry) == 0)
 	{
-		if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValid()))
+		if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
 		{
 			ULOGGER_ERROR("Missing some information (images empty or missing calibration)!?");
 			return;
@@ -114,7 +114,7 @@ void OdometryThread::addData(const SensorData & data)
 	else
 	{
 		// Mono and BOW can accept RGB only
-		if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValid()))
+		if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
 		{
 			ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
 			return;

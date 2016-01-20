@@ -213,7 +213,7 @@ int main(int argc, char * argv[])
 				CameraModel(K[0].at<double>(0,0), K[0].at<double>(1,1), K[0].at<double>(0,2), K[0].at<double>(1,2)),
 				CameraModel(K[1].at<double>(0,0), K[1].at<double>(1,1), K[1].at<double>(0,2), K[1].at<double>(1,2), Transform::getIdentity(), -baseline/K[1].at<double>(0,0)));
 
-		UASSERT(model.isValid());
+		UASSERT(model.isValidForProjection());
 
 		UINFO("Processing...");
 

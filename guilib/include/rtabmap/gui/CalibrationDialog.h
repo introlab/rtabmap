@@ -51,7 +51,7 @@ public:
 	CalibrationDialog(bool stereo = false, const QString & savingDirectory = ".", bool switchImages = false, QWidget * parent = 0);
 	virtual ~CalibrationDialog();
 
-	bool isCalibrated() const {return models_[0].isValid() && (stereo_?models_[1].isValid():true);}
+	bool isCalibrated() const {return models_[0].isValidForProjection() && (stereo_?models_[1].isValidForProjection():true);}
 	const rtabmap::CameraModel & getLeftCameraModel() const {return models_[0];}
 	const rtabmap::CameraModel & getRightCameraModel() const {return models_[1];}
 	const rtabmap::StereoCameraModel & getStereoCameraModel() const {return stereoModel_;}

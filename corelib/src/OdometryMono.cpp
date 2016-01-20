@@ -189,14 +189,14 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 		return output;
 	}
 
-	if(!(((data.cameraModels().size() == 1 && data.cameraModels()[0].isValid()) || data.stereoCameraModel().isValid())))
+	if(!(((data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForProjection()) || data.stereoCameraModel().isValidForProjection())))
 	{
 		UERROR("Odometry cannot be done without calibration or on multi-camera!");
 		return output;
 	}
 
 
-	const CameraModel & cameraModel = data.stereoCameraModel().isValid()?data.stereoCameraModel().left():data.cameraModels()[0];
+	const CameraModel & cameraModel = data.stereoCameraModel().isValidForProjection()?data.stereoCameraModel().left():data.cameraModels()[0];
 
 	UTimer timer;
 

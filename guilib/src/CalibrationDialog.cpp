@@ -200,10 +200,9 @@ void CalibrationDialog::setSquareSize(double size)
 
 void CalibrationDialog::closeEvent(QCloseEvent* event)
 {
-	if(!savedCalibration_ && models_[0].isValid() &&
+	if(!savedCalibration_ && models_[0].isValidForRectification() &&
 			(!stereo_ ||
-					(stereoModel_.left().isValid() &&
-					stereoModel_.right().isValid()&&
+					(stereoModel_.isValidForRectification() &&
 					(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0))))
 	{
 		QMessageBox::StandardButton b = QMessageBox::question(this, tr("Save calibration?"),
@@ -737,7 +736,7 @@ void CalibrationDialog::calibrate()
 		}
 	}
 
-	if(stereo_ && models_[0].isValid() && models_[1].isValid())
+	if(stereo_ && models_[0].isValidForRectification() && models_[1].isValidForRectification())
 	{
 		UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
 		cv::Size imageSize = imageSize_[0].width > imageSize_[1].width?imageSize_[0]:imageSize_[1];
@@ -758,8 +757,8 @@ void CalibrationDialog::calibrate()
 				objectPoints,
 				stereoImagePoints_[0],
 				stereoImagePoints_[1],
-				models_[0].K(), models_[0].D(),
-				models_[1].K(), models_[1].D(),
+				models_[0].K_raw(), models_[0].D_raw(),
+				models_[1].K_raw(), models_[1].D_raw(),
 				imageSize, R, T, E, F,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
 				cv::CALIB_FIX_INTRINSIC);
@@ -768,72 +767,66 @@ void CalibrationDialog::calibrate()
 				objectPoints,
 				stereoImagePoints_[0],
 				stereoImagePoints_[1],
-				models_[0].K(), models_[0].D(),
-				models_[1].K(), models_[1].D(),
+				models_[0].K_raw(), models_[0].D_raw(),
+				models_[1].K_raw(), models_[1].D_raw(),
 				imageSize, R, T, E, F,
 				cv::CALIB_FIX_INTRINSIC,
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
 #endif
 		UINFO("stereo calibration... done with RMS error=%f", rms);
 
-		double err = 0;
-		int npoints = 0;
-		std::vector<cv::Vec3f> lines[2];
-		UINFO("Computing avg re-projection error...");
-		for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
+		if(imageSize_[0] == imageSize_[1])
 		{
-			int npt = (int)stereoImagePoints_[0][i].size();
-			cv::Mat imgpt[2];
-			for(int k = 0; k < 2; k++ )
+			//Stereo, compute stereo rectification
+
+			cv::Mat R1, R2, P1, P2, Q;
+			cv::stereoRectify(models_[0].K_raw(), models_[0].D_raw(),
+							models_[1].K_raw(), models_[1].D_raw(),
+							imageSize, R, T, R1, R2, P1, P2, Q,
+							cv::CALIB_ZERO_DISPARITY, 0, imageSize);
+
+			double err = 0;
+			int npoints = 0;
+			std::vector<cv::Vec3f> lines[2];
+			UINFO("Computing avg re-projection error...");
+			for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
 			{
-				imgpt[k] = cv::Mat(stereoImagePoints_[k][i]);
-				cv::undistortPoints(imgpt[k], imgpt[k], models_[k].K(), models_[k].D(), cv::Mat(), models_[k].K());
-				computeCorrespondEpilines(imgpt[k], k+1, F, lines[k]);
+				int npt = (int)stereoImagePoints_[0][i].size();
+
+					cv::Mat imgpt0 = cv::Mat(stereoImagePoints_[0][i]);
+					cv::Mat imgpt1 = cv::Mat(stereoImagePoints_[1][i]);
+					cv::undistortPoints(imgpt0, imgpt0, models_[0].K_raw(), models_[0].D_raw(), R1, P1);
+					cv::undistortPoints(imgpt1, imgpt1, models_[1].K_raw(), models_[1].D_raw(), R2, P2);
+					computeCorrespondEpilines(imgpt0, 1, F, lines[0]);
+					computeCorrespondEpilines(imgpt1, 2, F, lines[1]);
+
+				for(int j = 0; j < npt; j++ )
+				{
+					double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
+										stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
+								   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
+										stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
+					err += errij;
+				}
+				npoints += npt;
 			}
-			for(int j = 0; j < npt; j++ )
-			{
-				double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
-									stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
-							   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
-									stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
-				err += errij;
-			}
-			npoints += npt;
-		}
-		double totalAvgErr = err/(double)npoints;
+			double totalAvgErr = err/(double)npoints;
+			UINFO("stereo avg re projection error = %f", totalAvgErr);
 
-		UINFO("stereo avg re projection error = %f", totalAvgErr);
-
-		cv::Mat R1, R2, P1, P2, Q;
-		cv::Rect validRoi[2];
-
-		cv::stereoRectify(models_[0].K(), models_[0].D(),
-						models_[1].K(), models_[1].D(),
-						imageSize, R, T, R1, R2, P1, P2, Q,
-						cv::CALIB_ZERO_DISPARITY, 0, imageSize, &validRoi[0], &validRoi[1]);
-
-		UINFO("Valid ROI1 = %d,%d,%d,%d  ROI2 = %d,%d,%d,%d newImageSize=%d/%d",
-				validRoi[0].x, validRoi[0].y, validRoi[0].width, validRoi[0].height,
-				validRoi[1].x, validRoi[1].y, validRoi[1].width, validRoi[1].height,
-				imageSize.width, imageSize.height);
-
-		if(imageSize_[0].width == imageSize_[1].width)
-		{
-			//Stereo, keep new extrinsic projection matrix
 			stereoModel_ = StereoCameraModel(
-					cameraName_.toStdString(),
-					imageSize_[0], models_[0].K(), models_[0].D(), R1, P1,
-					imageSize_[1], models_[1].K(), models_[1].D(), R2, P2,
-					R, T, E, F);
+							cameraName_.toStdString(),
+							imageSize_[0], models_[0].K_raw(), models_[0].D_raw(), R1, P1,
+							imageSize_[1], models_[1].K_raw(), models_[1].D_raw(), R2, P2,
+							R, T, E, F);
 		}
 		else
 		{
-			//Kinect
+			//Kinect, ignore the stereo rectification
 			stereoModel_ = StereoCameraModel(
-					cameraName_.toStdString(),
-					imageSize_[0], models_[0].K(), models_[0].D(), cv::Mat::eye(3,3,CV_64FC1), models_[0].P(),
-					imageSize_[1], models_[1].K(), models_[1].D(), cv::Mat::eye(3,3,CV_64FC1), models_[1].P(),
-					R, T, E, F);
+							cameraName_.toStdString(),
+							imageSize_[0], models_[0].K_raw(), models_[0].D_raw(), models_[0].R(), models_[0].P(),
+							imageSize_[1], models_[1].K_raw(), models_[1].D_raw(), models_[1].R(), models_[1].P(),
+							R, T, E, F);
 		}
 
 		std::stringstream strR1, strP1, strR2, strP2;
@@ -854,6 +847,8 @@ void CalibrationDialog::calibrate()
 		stereoModel_.isValidForRectification())
 	{
 		stereoModel_.initRectificationMap();
+		models_[0].initRectificationMap();
+		models_[1].initRectificationMap();
 		ui_->radioButton_rectified->setEnabled(true);
 		ui_->radioButton_stereoRectified->setEnabled(true);
 		ui_->radioButton_stereoRectified->setChecked(true);
@@ -877,7 +872,7 @@ bool CalibrationDialog::save()
 	processingData_ = true;
 	if(!stereo_)
 	{
-		UASSERT(models_[0].isValid());
+		UASSERT(models_[0].isValidForRectification());
 		QString cameraName = models_[0].name().c_str();
 		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_+"/"+cameraName+".yaml", "*.yaml");
 
@@ -901,8 +896,8 @@ bool CalibrationDialog::save()
 	}
 	else
 	{
-		UASSERT(stereoModel_.left().isValid() &&
-				stereoModel_.right().isValid()&&
+		UASSERT(stereoModel_.left().isValidForRectification() &&
+				stereoModel_.right().isValidForRectification() &&
 				(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0));
 		QString cameraName = stereoModel_.name().c_str();
 		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_ + "/" + cameraName, "*.yaml");

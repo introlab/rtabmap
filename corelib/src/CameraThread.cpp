@@ -105,14 +105,14 @@ void CameraThread::mainLoop()
 				std::vector<CameraModel> models = data.cameraModels();
 				for(unsigned int i=0; i<models.size(); ++i)
 				{
-					if(models[i].isValid())
+					if(models[i].isValidForProjection())
 					{
 						models[i] = models[i].scaled(1.0/double(_imageDecimation));
 					}
 				}
 				data.setCameraModels(models);
 				StereoCameraModel stereoModel = data.stereoCameraModel();
-				if(stereoModel.isValid())
+				if(stereoModel.isValidForProjection())
 				{
 					stereoModel.scale(1.0/double(_imageDecimation));
 					data.setStereoCameraModel(stereoModel);
@@ -127,7 +127,7 @@ void CameraThread::mainLoop()
 			cv::Mat tmpRgb;
 			cv::flip(data.imageRaw(), tmpRgb, 1);
 			data.setImageRaw(tmpRgb);
-			UASSERT_MSG(data.cameraModels().size() <= 1 && !data.stereoCameraModel().isValid(), "Only single RGBD cameras are supported for mirroring.");
+			UASSERT_MSG(data.cameraModels().size() <= 1 && !data.stereoCameraModel().isValidForProjection(), "Only single RGBD cameras are supported for mirroring.");
 			if(data.cameraModels().size() && data.cameraModels()[0].cx())
 			{
 				CameraModel tmpModel(
@@ -146,7 +146,7 @@ void CameraThread::mainLoop()
 			}
 			info.timeMirroring = timer.ticks();
 		}
-		if(_stereoToDepth && data.stereoCameraModel().isValid() && !data.rightRaw().empty())
+		if(_stereoToDepth && data.stereoCameraModel().isValidForProjection() && !data.rightRaw().empty())
 		{
 			UDEBUG("");
 			UTimer timer;
@@ -162,7 +162,7 @@ void CameraThread::mainLoop()
 		}
 		if(_scanFromDepth &&
 			data.cameraModels().size() &&
-			data.cameraModels().at(0).isValid() &&
+			data.cameraModels().at(0).isValidForProjection() &&
 			!data.depthRaw().empty())
 		{
 			UDEBUG("");

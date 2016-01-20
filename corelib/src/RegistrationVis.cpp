@@ -532,17 +532,17 @@ Transform RegistrationVis::computeTransformationImpl(
 			if(_estimationType == 2) // Epipolar Geometry
 			{
 				UDEBUG("");
-				if(!signatureB->sensorData().stereoCameraModel().isValid() &&
+				if(!signatureB->sensorData().stereoCameraModel().isValidForProjection() &&
 				   (signatureB->sensorData().cameraModels().size() != 1 ||
-					!signatureB->sensorData().cameraModels()[0].isValid()))
+					!signatureB->sensorData().cameraModels()[0].isValidForProjection()))
 				{
 					UERROR("Calibrated camera required (multi-cameras not supported).");
 				}
 				else if((int)signatureA->getWords().size() >= _minInliers &&
 						(int)signatureB->getWords().size() >= _minInliers)
 				{
-					UASSERT(signatureA->sensorData().stereoCameraModel().isValid() || (signatureA->sensorData().cameraModels().size() == 1 && signatureA->sensorData().cameraModels()[0].isValid()));
-					const CameraModel & cameraModel = signatureA->sensorData().stereoCameraModel().isValid()?signatureA->sensorData().stereoCameraModel().left():signatureA->sensorData().cameraModels()[0];
+					UASSERT(signatureA->sensorData().stereoCameraModel().isValidForProjection() || (signatureA->sensorData().cameraModels().size() == 1 && signatureA->sensorData().cameraModels()[0].isValidForProjection()));
+					const CameraModel & cameraModel = signatureA->sensorData().stereoCameraModel().isValidForProjection()?signatureA->sensorData().stereoCameraModel().left():signatureA->sensorData().cameraModels()[0];
 
 					// we only need the camera transform, send guess words3 for scale estimation
 					Transform cameraTransform;
@@ -602,14 +602,14 @@ Transform RegistrationVis::computeTransformationImpl(
 			else if(_estimationType == 1) // PnP
 			{
 				UDEBUG("");
-				if(!signatureB->sensorData().stereoCameraModel().isValid() &&
+				if(!signatureB->sensorData().stereoCameraModel().isValidForProjection() &&
 				   (signatureB->sensorData().cameraModels().size() != 1 ||
-					!signatureB->sensorData().cameraModels()[0].isValid()))
+					!signatureB->sensorData().cameraModels()[0].isValidForProjection()))
 				{
 					UERROR("Calibrated camera required (multi-cameras not supported). Id=%d Models=%d StereoModel=%d weight=%d",
 							signatureB->id(),
 							(int)signatureB->sensorData().cameraModels().size(),
-							signatureB->sensorData().stereoCameraModel().isValid()?1:0,
+							signatureB->sensorData().stereoCameraModel().isValidForProjection()?1:0,
 							signatureB->getWeight());
 				}
 				else
@@ -619,8 +619,8 @@ Transform RegistrationVis::computeTransformationImpl(
 					if((int)signatureA->getWords3().size() >= _minInliers &&
 					   (int)signatureB->getWords().size() >= _minInliers)
 					{
-						UASSERT(signatureB->sensorData().stereoCameraModel().isValid() || (signatureB->sensorData().cameraModels().size() == 1 && signatureB->sensorData().cameraModels()[0].isValid()));
-						const CameraModel & cameraModel = signatureB->sensorData().stereoCameraModel().isValid()?signatureB->sensorData().stereoCameraModel().left():signatureB->sensorData().cameraModels()[0];
+						UASSERT(signatureB->sensorData().stereoCameraModel().isValidForProjection() || (signatureB->sensorData().cameraModels().size() == 1 && signatureB->sensorData().cameraModels()[0].isValidForProjection()));
+						const CameraModel & cameraModel = signatureB->sensorData().stereoCameraModel().isValidForProjection()?signatureB->sensorData().stereoCameraModel().left():signatureB->sensorData().cameraModels()[0];
 
 						std::vector<int> inliersV;
 						std::vector<int> matchesV;

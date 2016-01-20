@@ -201,8 +201,8 @@ Transform Odometry::process(const SensorData & data, OdometryInfo * info)
 
 	UASSERT(!data.imageRaw().empty());
 
-	if(!data.stereoCameraModel().isValid() &&
-	   (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValid()))
+	if(!data.stereoCameraModel().isValidForProjection() &&
+	   (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValidForProjection()))
 	{
 		UERROR("Rectified images required! Calibrate your camera.");
 		return Transform();

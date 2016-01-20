@@ -346,7 +346,7 @@ CameraModel CameraModel::scaled(double scale) const
 {
 	CameraModel scaledModel = *this;
 	UASSERT(scale > 0.0);
-	if(this->isValid())
+	if(this->isValidForProjection())
 	{
 		// has only effect on K and P
 		cv::Mat K;
@@ -397,6 +397,7 @@ double CameraModel::verticalFOV() const
 
 cv::Mat CameraModel::rectifyImage(const cv::Mat & raw, int interpolation) const
 {
+	UDEBUG("");
 	if(!mapX_.empty() && !mapY_.empty())
 	{
 		cv::Mat rectified;
@@ -413,6 +414,7 @@ cv::Mat CameraModel::rectifyImage(const cv::Mat & raw, int interpolation) const
 //inspired from https://github.com/code-iai/iai_kinect2/blob/master/depth_registration/src/depth_registration_cpu.cpp
 cv::Mat CameraModel::rectifyDepth(const cv::Mat & raw) const
 {
+	UDEBUG("");
 	UASSERT(raw.type() == CV_16UC1);
 	if(!mapX_.empty() && !mapY_.empty())
 	{

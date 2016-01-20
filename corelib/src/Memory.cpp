@@ -3019,7 +3019,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().size() == 0 &&
-		!data.stereoCameraModel().isValid())
+		!data.stereoCameraModel().isValidForProjection())
 	{
 		UERROR("Rectified images required! Calibrate your camera.");
 		return 0;
@@ -3110,8 +3110,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			{
 				descriptors = cv::Mat();
 			}
-			else if((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValid()) ||
-					(!data.rightRaw().empty() && data.stereoCameraModel().isValid()))
+			else if((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
+					(!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
 			{
 				keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
 				t = timer.ticks();
@@ -3253,7 +3253,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		{
 			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imageDecimation));
 		}
-		if(stereoCameraModel.isValid())
+		if(stereoCameraModel.isValidForProjection())
 		{
 			stereoCameraModel.scale(1.0/double(_imageDecimation));
 		}
@@ -3306,7 +3306,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			"",
 			pose,
 			data.groundTruth(),
-			stereoCameraModel.isValid()?
+			stereoCameraModel.isValidForProjection()?
 				SensorData(
 						ctLaserScan.getCompressedData(),
 						maxLaserScanMaxPts,
@@ -3337,7 +3337,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			"",
 			pose,
 			data.groundTruth(),
-			stereoCameraModel.isValid()?
+			stereoCameraModel.isValidForProjection()?
 				SensorData(
 						cv::Mat(),
 						0,

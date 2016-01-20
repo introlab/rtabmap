@@ -139,7 +139,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 	}
 
 	if(!data.depthOrRightRaw().empty() &&
-	   (data.stereoCameraModel().isValid() || (data.cameraModels().size() && data.cameraModels().at(0).isValid())))
+	   (data.stereoCameraModel().isValidForProjection() || (data.cameraModels().size() && data.cameraModels().at(0).isValidForProjection())))
 	{
 		if(showCloudCheckbox_->isChecked())
 		{
