@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-855</y>
+            <y>-269</y>
             <width>681</width>
             <height>1919</height>
            </rect>
@@ -1868,7 +1868,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          </sizepolicy>
                         </property>
                         <property name="text">
-                         <string>Create calibration</string>
+                         <string>Create Calibration</string>
                         </property>
                        </widget>
                       </item>
@@ -3504,6 +3504,11 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <property name="text">
                              <string>St Lucia Stereo</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Karlsruhe</string>
                             </property>
                            </item>
                           </widget>

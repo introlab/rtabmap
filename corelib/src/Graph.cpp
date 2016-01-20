@@ -154,12 +154,12 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
 		std::map<int, double> * stamps) // optional for format 1
 {
-	UDEBUG("%s", filePath.c_str());
+	UDEBUG("%s format=%d", filePath.c_str(), format);
 	if(format==3) // TORO
 	{
 		std::multimap<int, Link> constraintsTmp;
@@ -200,7 +200,39 @@ bool importPoses(
 				continue;
 			}
 
-			if(format == 7) // St Lucia format
+			if(format == 8) // Karlsruhe format
+			{
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  10)
+				{
+					// timestamp,lat,lon,alt,x,y,z,roll,pitch,yaw
+
+					// stamp is 1252400096825289728, transform to 125240009.6825289728
+					double stamp = uStr2Double(strList[0].insert(10, 1, '.'));
+					double x = uStr2Double(strList[4]);
+					double y = uStr2Double(strList[5]);
+					double z = uStr2Double(strList[6]);
+					double roll = uStr2Double(strList[8]);
+					double pitch = uStr2Double(strList[7]);
+					double yaw = -(uStr2Double(strList[9])-M_PI_2);
+					if(stamps)
+					{
+						stamps->insert(std::make_pair(id, stamp));
+					}
+					Transform pose = Transform(x,y,z,roll,pitch,yaw);
+					if(poses.size() == 0)
+					{
+						originPose = pose.inverse();
+					}
+					pose = originPose * pose; // transform in local coordinate where first value is the origin
+					poses.insert(std::make_pair(id, pose));
+				}
+				else
+				{
+					UERROR("Error parsing \"%s\" with Karlsruhe format (should have 10 values)", str.c_str());
+				}
+			}
+			else if(format == 7) // St Lucia format
 			{
 				std::vector<std::string> strList = uListToVector(uSplit(str));
 				if(strList.size() ==  12)

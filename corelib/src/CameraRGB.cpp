@@ -391,6 +391,14 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			{
 				UDEBUG("");
 				groundTruth_ = uValuesList(poses);
+				if(stamps_.size() == 0 && stamps.size() == poses.size())
+				{
+					stamps_ = uValuesList(stamps);
+				}
+				else if(_groundTruthFormat==8 && stamps_.size() == 0 && stamps.size()>0 && stamps.size() != poses.size())
+				{
+					UERROR("With Karlsruhe ground truth format, timestamps (%d) and poses (%d) should match!", (int)stamps.size(), (int)poses.size());
+				}
 			}
 			UASSERT_MSG(groundTruth_.size() == stamps_.size(), uFormat("%d vs %d", (int)groundTruth_.size(), (int)stamps_.size()).c_str());
 		}
