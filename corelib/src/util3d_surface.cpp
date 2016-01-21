@@ -36,7 +36,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/features/normal_3d.h>
 #include <pcl/surface/mls.h>
 #include <pcl/surface/texture_mapping.h>
+
+#ifndef DISABLE_VTK
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
+#endif
 
 namespace rtabmap
 {
@@ -367,11 +370,16 @@ void adjustNormalsToViewPoints(
 
 pcl::PolygonMesh::Ptr meshDecimation(const pcl::PolygonMesh::Ptr & mesh, float factor)
 {
+	pcl::PolygonMesh::Ptr output(new pcl::PolygonMesh);
+#ifndef DISABLE_VTK
 	pcl::MeshQuadricDecimationVTK mqd;
 	mqd.setTargetReductionFactor(factor);
 	mqd.setInputMesh(mesh);
-	pcl::PolygonMesh::Ptr output(new pcl::PolygonMesh);
 	mqd.process (*output);
+#else
+	UWARN("RTAB-Map is not built with VTK module so mesh decimation cannot be used!");
+	*output = *mesh;
+#endif
 	return output;
 }
 

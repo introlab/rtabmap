@@ -42,6 +42,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef HAVE_OPENNI
 #include <pcl/io/openni_grabber.h>
 #include <pcl/io/oni_grabber.h>
+#include <pcl/io/openni_camera/openni_depth_image.h>
+#include <pcl/io/openni_camera/openni_image.h>
 #endif
 
 #ifdef WITH_FREENECT

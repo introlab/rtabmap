@@ -245,8 +245,10 @@ private:
     //Methods from UThread<void> class hided
     static int Join( Handle H )
 	  { return UThreadC<void>::Join(H); }
+#ifndef ANDROID
 	static int Kill( Handle H )
 	  { return UThreadC<void>::Kill(H); }
+#endif
 	static int Detach( Handle H )
 	  { return UThreadC<void>::Detach(H); }
 

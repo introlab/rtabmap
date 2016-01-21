@@ -84,9 +84,10 @@ class UThreadC
 
     static void Exit()
       { pthread_exit(0); }
-
+#ifndef ANDROID
     static void TestCancel()
       { pthread_testcancel(); }
+#endif
 
     static Handle Self()
       { return (Handle)pthread_self(); }
@@ -163,8 +164,10 @@ class UThreadC
     static int Join( Handle H )
       { return pthread_join(H,0); }
 
+#ifndef ANDROID
     static int Kill( Handle H )
       { return pthread_cancel(H); }
+#endif
 
     static int Detach( Handle H )
       { return pthread_detach(H); }
@@ -180,6 +183,7 @@ class UThreadC
       Thread_T  Data(I.Data);
       S_Create().release();
 
+#ifndef ANDROID
       if ( I.Flags & 1 /*CancelEnable*/ )
       {
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
@@ -193,6 +197,7 @@ class UThreadC
       {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
       }
+#endif
 
       if ( I.Owner )
         I.Owner->ThreadMain(Data);
@@ -237,8 +242,10 @@ class UThreadC<void>
     static void Exit()
       { pthread_exit(0); }
 
+#ifndef ANDROID
     static void TestCancel()
       { pthread_testcancel(); }
+#endif
 
     static Handle Self()
       { return (Handle)pthread_self(); }
@@ -347,8 +354,10 @@ class UThreadC<void>
     static int Join( Handle H )
       { return pthread_join(H,0); }
 
+#ifndef ANDROID
     static int Kill( Handle H )
       { return pthread_cancel(H); }
+#endif
 
     static int Detach( Handle H )
       { return pthread_detach(H); }
@@ -363,6 +372,7 @@ class UThreadC<void>
       Instance  I(*Param);
       S_Create().release();
 
+#ifndef ANDROID
       if ( I.Flags & 1 /*CancelEnable*/ )
       {
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE,NULL);
@@ -376,6 +386,7 @@ class UThreadC<void>
       {
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE,NULL);
       }
+#endif
 
       if ( I.Owner )
         I.Owner->ThreadMain();

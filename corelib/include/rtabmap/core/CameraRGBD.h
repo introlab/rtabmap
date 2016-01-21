@@ -35,9 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraRGB.h"
 
-#include <pcl/io/openni_camera/openni_depth_image.h>
-#include <pcl/io/openni_camera/openni_image.h>
-
 #include <boost/signals2/connection.hpp>
 
 namespace openni

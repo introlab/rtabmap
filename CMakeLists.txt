@@ -119,6 +119,9 @@ set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
 IF(APPLE)
 	OPTION(BUILD_AS_BUNDLE "Set to ON to build as bundle (DragNDrop)" OFF)
 ENDIF(APPLE)
+OPTION(BUILD_APP "Build main application" ON)
+OPTION(BUILD_TOOLS "Build tools" ON)
+OPTION(BUILD_EXAMPLES "Build examples" ON)
 
 ####### DEPENDENCIES #######
 
@@ -135,6 +138,20 @@ option(WITH_FLYCAPTURE2   "Include FlyCapture2/Triclops support" ON)
 FIND_PACKAGE(OpenCV REQUIRED QUIET)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET)
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
+
+# OpenMP ("-fopenmp" should be added for flann included in PCL)
+# the gcc-4.2.1 coming with MacOS X is not compatible with the OpenMP pragmas we use, so disabling OpenMP for it
+if((NOT APPLE) OR (NOT CMAKE_COMPILER_IS_GNUCXX) OR (GCC_VERSION VERSION_GREATER 4.2.1) OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
+  find_package(OpenMP)
+endif()
+if(OPENMP_FOUND)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  message (STATUS "Found OpenMP")
+else(OPENMP_FOUND)
+  message (STATUS "Not found OpenMP")
+endif()
+
 IF(OpenCV_FOUND)
    MESSAGE(STATUS "Found OpenCV: ${OpenCV_INCLUDE_DIRS}")
 ENDIF(OpenCV_FOUND)
@@ -272,13 +289,19 @@ ADD_SUBDIRECTORY( corelib )
 
 IF(Qt5_FOUND OR (QT4_FOUND AND QT_QTCORE_FOUND AND QT_QTGUI_FOUND))
    ADD_SUBDIRECTORY( guilib )
-   ADD_SUBDIRECTORY( app )
+   IF(BUILD_APP)
+      ADD_SUBDIRECTORY( app )
+   ENDIF(BUILD_APP)
 ELSEIF(WITH_QT)
    MESSAGE(WARNING "Qt not found, the GUI lib and the stand-alone application will not be compiled...")
 ENDIF()
 
-ADD_SUBDIRECTORY( tools )
-ADD_SUBDIRECTORY( examples )
+IF(BUILD_TOOLS)
+   ADD_SUBDIRECTORY( tools )
+ENDIF(BUILD_TOOLS)
+IF(BUILD_EXAMPLES)
+   ADD_SUBDIRECTORY( examples )
+ENDIF(BUILD_EXAMPLES)
 
 #######################
 # Uninstall target, for "make uninstall"
@@ -303,7 +326,11 @@ set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/corelib/include"
 					  "${PROJECT_SOURCE_DIR}/guilib/include" 
 					  "${PROJECT_SOURCE_DIR}/utilite/include")
 set(CONF_LIB_DIR "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}")
-set(CONF_WITH_GUI ${WITH_QT})
+IF(QT4_FOUND OR Qt5_FOUND)
+   set(CONF_WITH_GUI ON)
+ELSE()
+   set(CONF_WITH_GUI OFF)
+ENDIF()
 configure_file(RTABMapConfig.cmake.in
   "${PROJECT_BINARY_DIR}/RTABMapConfig.cmake" @ONLY)
   
@@ -412,6 +439,9 @@ MESSAGE(STATUS "Info :")
 MESSAGE(STATUS "  Version : ${RTABMAP_VERSION}")
 MESSAGE(STATUS "  CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 MESSAGE(STATUS "  CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+MESSAGE(STATUS "  BUILD_APP = ${BUILD_APP}")
+MESSAGE(STATUS "  BUILD_TOOLS = ${BUILD_TOOLS}")
+MESSAGE(STATUS "  BUILD_EXAMPLES = ${BUILD_EXAMPLES}")
 IF(NOT WIN32)
 	# see comment above for the BUILD_SHARED_LIBS option on Windows
 	MESSAGE(STATUS "  BUILD_SHARED_LIBS = ${BUILD_SHARED_LIBS}")

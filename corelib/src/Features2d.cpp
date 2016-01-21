@@ -40,7 +40,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/opencv_modules.hpp>
 
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 #include <opencv2/gpu/gpu.hpp>
+#endif
 #else
 #include <opencv2/core/cuda.hpp>
 #endif
@@ -891,11 +893,19 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kFASTNonmaxSuppression(), nonmaxSuppresion_);
 
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
 	{
 		UWARN("GPU version of ORB not available! Using CPU version instead...");
 		gpu_ = false;
 	}
+#else
+	if(gpu_)
+	{
+		UWARN("GPU version of ORB not available (OpenCV not built with gpu/cuda module)! Using CPU version instead...");
+		gpu_ = false;
+	}
+#endif
 #else
 #ifndef HAVE_OPENCV_CUDAFEATURES2D
 	if(gpu_)
@@ -913,8 +923,12 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	if(gpu_)
 	{
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 		_gpuOrb = cv::Ptr<CV_ORB_GPU>(new CV_ORB_GPU(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
 		_gpuOrb->setFastParams(fastThreshold_, nonmaxSuppresion_);
+#else
+		UFATAL("not supposed to be here");
+#endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
 		UFATAL("not implemented");
@@ -945,9 +959,13 @@ std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, cons
 	if(gpu_)
 	{
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 		cv::gpu::GpuMat imgGpu(imgRoi);
 		cv::gpu::GpuMat maskGpu(maskRoi);
 		(*_gpuOrb.obj)(imgGpu, maskGpu, keypoints);
+#else
+		UERROR("Cannot use ORBGPU because OpenCV is not built with gpu module.");
+#endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
 		UFATAL("not implemented");
@@ -974,17 +992,10 @@ cv::Mat ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyP
 	if(gpu_)
 	{
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 		cv::gpu::GpuMat imgGpu(image);
 		cv::gpu::GpuMat descriptorsGPU;
 		(*_gpuOrb.obj)(imgGpu, cv::gpu::GpuMat(), keypoints, descriptorsGPU);
-#else
-		cv::cuda::GpuMat imgGpu(image);
-		cv::cuda::GpuMat descriptorsGPU;
-#ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
-#endif
-#endif
-
 		// Download descriptors
 		if (descriptorsGPU.empty())
 			descriptors = cv::Mat();
@@ -994,6 +1005,16 @@ cv::Mat ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyP
 			descriptors = cv::Mat(descriptorsGPU.size(), CV_32F);
 			descriptorsGPU.download(descriptors);
 		}
+#else
+		UERROR("GPU version of ORB not available (OpenCV not built with gpu/cuda module)! Using CPU version instead...");
+#endif
+#else
+		cv::cuda::GpuMat imgGpu(image);
+		cv::cuda::GpuMat descriptorsGPU;
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
+		UFATAL("not implemented");
+#endif
+#endif
 	}
 	else
 	{
@@ -1041,34 +1062,42 @@ void FAST::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(threshold_ <= maxThreshold_, uFormat("%d vs %d", threshold_, maxThreshold_).c_str());
 
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 	if(gpu_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
 	{
 		UWARN("GPU version of FAST not available! Using CPU version instead...");
 		gpu_ = false;
 	}
 #else
+	if(gpu_)
+	{
+		UWARN("GPU version of FAST not available (OpenCV not built with gpu/cuda module)! Using CPU version instead...");
+		gpu_ = false;
+	}
+#endif
+#else
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
 	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
 	{
 		UWARN("GPU version of FAST not available! Using CPU version instead...");
 		gpu_ = false;
 	}
-#ifndef HAVE_OPENCV_CUDAFEATURES2D
+#else
 	if(gpu_)
 	{
 		UWARN("GPU version of FAST not available (OpenCV cudafeatures2d module)! Using CPU version instead...");
 		gpu_ = false;
 	}
 #endif
-	if(gpu_)
-	{
-		UWARN("GPU version of FAST is available but not yet implemented! Using CPU version instead...");
-	}
-	gpu_ = false;
 #endif
 	if(gpu_)
 	{
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 		_gpuFast = new CV_FAST_GPU(threshold_, nonmaxSuppression_, gpuKeypointsRatio_);
+#else
+		UFATAL("not supposed to be here!");
+#endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
 		UFATAL("not implemented");
@@ -1116,9 +1145,13 @@ std::vector<cv::KeyPoint> FAST::generateKeypointsImpl(const cv::Mat & image, con
 	if(gpu_)
 	{
 #if CV_MAJOR_VERSION < 3
+#ifdef HAVE_OPENCV_GPU
 		cv::gpu::GpuMat imgGpu(imgRoi);
 		cv::gpu::GpuMat maskGpu(maskRoi);
 		(*_gpuFast.obj)(imgGpu, maskGpu, keypoints);
+#else
+		UERROR("Cannot use FAST GPU because OpenCV is not built with gpu module.");
+#endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
 		UFATAL("not implemented");

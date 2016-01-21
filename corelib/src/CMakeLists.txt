@@ -223,12 +223,24 @@ SET(RESOURCES_HEADERS
 	${CMAKE_CURRENT_BINARY_DIR}/DatabaseSchema_sql.h 
 )
 
+IF(ANDROID)
+IF(NOT URESOURCEGENERATOR)
+   MESSAGE( FATAL_ERROR "URESOURCEGENERATOR is not defined (it should point out on \"uresourcegenerator\" application created by a non-Android build), CMake will exit." )
+ENDIF(NOT URESOURCEGENERATOR)
+ADD_CUSTOM_COMMAND(
+   OUTPUT ${RESOURCES_HEADERS}
+   COMMAND ${URESOURCEGENERATOR} -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+   COMMENT "[Creating resources]"
+   DEPENDS ${R}
+)
+ELSE()
 ADD_CUSTOM_COMMAND(
    OUTPUT ${RESOURCES_HEADERS}
    COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/uresourcegenerator -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
    COMMENT "[Creating resources]"
    DEPENDS ${R} uresourcegenerator
 )
+ENDIF()
 
 ####################################
 # Generate resources files END

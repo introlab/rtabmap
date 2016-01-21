@@ -437,7 +437,6 @@ std::vector<std::string> CameraImages::filenames() const
 
 SensorData CameraImages::captureImage()
 {
-	double actualDelay = 0.0;
 	if(syncImageRateWithStamps_ && _captureDelay>0.0)
 	{
 		int sleepTime = (1000*_captureDelay - 1000.0f*_captureTimer.getElapsedTime());
@@ -459,8 +458,6 @@ SensorData CameraImages::captureImage()
 					_captureDelay, _captureTimer.getElapsedTime());
 			}
 		}
-
-		actualDelay = 1.0/(_captureTimer.getElapsedTime());
 
 		// Add precision at the cost of a small overhead
 		while(_captureTimer.getElapsedTime() < _captureDelay-0.000001)
