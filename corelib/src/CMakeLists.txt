@@ -224,22 +224,27 @@ SET(RESOURCES_HEADERS
 )
 
 IF(ANDROID)
-IF(NOT URESOURCEGENERATOR)
-   MESSAGE( FATAL_ERROR "URESOURCEGENERATOR is not defined (it should point out on \"uresourcegenerator\" application created by a non-Android build), CMake will exit." )
-ENDIF(NOT URESOURCEGENERATOR)
-ADD_CUSTOM_COMMAND(
-   OUTPUT ${RESOURCES_HEADERS}
-   COMMAND ${URESOURCEGENERATOR} -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
-   COMMENT "[Creating resources]"
-   DEPENDS ${R}
-)
+
+   IF(NOT RTABMAP_RES_TOOL)
+      find_host_program(RTABMAP_RES_TOOL rtabmap-res_tool)
+      IF(NOT RTABMAP_RES_TOOL)
+         MESSAGE( FATAL_ERROR "RTABMAP_RES_TOOL is not defined (it is the path to \"rtabmap-res_tool\" application created by a non-Android build)." )
+      ENDIF(NOT RTABMAP_RES_TOOL)
+   ENDIF(NOT RTABMAP_RES_TOOL)
+
+   ADD_CUSTOM_COMMAND(
+      OUTPUT ${RESOURCES_HEADERS}
+      COMMAND ${RTABMAP_RES_TOOL} -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+      COMMENT "[Creating resources]"
+      DEPENDS ${R}
+   )
 ELSE()
-ADD_CUSTOM_COMMAND(
-   OUTPUT ${RESOURCES_HEADERS}
-   COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/uresourcegenerator -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
-   COMMENT "[Creating resources]"
-   DEPENDS ${R} uresourcegenerator
-)
+   ADD_CUSTOM_COMMAND(
+      OUTPUT ${RESOURCES_HEADERS}
+      COMMAND ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/rtabmap-res_tool -n rtabmap -p ${CMAKE_CURRENT_BINARY_DIR} ${RESOURCES}
+      COMMENT "[Creating resources]"
+      DEPENDS ${R} res_tool
+   )
 ENDIF()
 
 ####################################
