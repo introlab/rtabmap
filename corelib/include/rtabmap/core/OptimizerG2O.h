@@ -38,6 +38,8 @@ class RTABMAP_EXP OptimizerG2O : public Optimizer
 {
 public:
 	static bool available();
+	static bool isCSparseAvailable();
+	static bool isCholmodAvailable();
 	static bool saveGraph(
 			const std::string & fileName,
 			const std::map<int, Transform> & poses,
@@ -45,19 +47,18 @@ public:
 			bool useRobustConstraints = false);
 
 public:
-	OptimizerG2O(
-			int iterations         = Parameters::defaultOptimizerIterations(),
-			bool slam2d            = Parameters::defaultOptimizerSlam2D(),
-			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
-			double epsilon         = Parameters::defaultOptimizerEpsilon(),
-			bool robust            = Parameters::defaultOptimizerRobust()) :
-		Optimizer(iterations, slam2d, covarianceIgnored, epsilon, robust) {}
-
 	OptimizerG2O(const ParametersMap & parameters) :
-		Optimizer(parameters) {}
+		Optimizer(parameters),
+		solver_(Parameters::defaultg2oSolver()),
+		optimizer_(Parameters::defaultg2oOptimizer())
+	{
+		parseParameters(parameters);
+	}
 	virtual ~OptimizerG2O() {}
 
 	virtual Type type() const {return kTypeG2O;}
+
+	virtual void parseParameters(const ParametersMap & parameters);
 
 	virtual std::map<int, Transform> optimize(
 			int rootId,
@@ -66,6 +67,10 @@ public:
 			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
 			double * finalError = 0,
 			int * iterationsDone = 0);
+
+private:
+	int solver_;
+	int optimizer_;
 };
 
 } /* namespace rtabmap */

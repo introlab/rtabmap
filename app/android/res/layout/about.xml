@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TableLayout
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	android:layout_width="wrap_content"
+	android:layout_height="wrap_content"
+	android:stretchColumns="*">
+	<TableRow>
+		<ImageView 
+	    	android:layout_width="wrap_content"
+	    	android:layout_height="wrap_content" 
+	    	android:src="@drawable/ic_launcher"
+	    	android:scaleType="fitCenter"
+	    	android:layout_gravity="center"/>
+		<TextView
+			android:id="@+id/info_text"
+			android:gravity="center"
+			android:layout_gravity="center"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content" />
+	</TableRow>
+</TableLayout>

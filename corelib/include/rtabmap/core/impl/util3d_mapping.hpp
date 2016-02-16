@@ -20,6 +20,7 @@ namespace util3d{
 template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const typename pcl::IndicesPtr & indices,
 		pcl::IndicesPtr & ground,
 		pcl::IndicesPtr & obstacles,
 		float normalRadiusSearch,
@@ -35,6 +36,7 @@ void segmentObstaclesFromGround(
 		// Find the ground
 		pcl::IndicesPtr flatSurfaces = normalFiltering(
 				cloud,
+				indices,
 				groundNormalAngle,
 				Eigen::Vector4f(0,0,1,0),
 				normalRadiusSearch*2.0f,
@@ -78,7 +80,7 @@ void segmentObstaclesFromGround(
 		if(ground->size() != cloud->size())
 		{
 			// Remove ground
-			pcl::IndicesPtr otherStuffIndices = util3d::extractNegativeIndices(cloud, ground);
+			pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, ground, true);
 
 			//Cluster remaining stuff (obstacles)
 			std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
@@ -94,8 +96,31 @@ void segmentObstaclesFromGround(
 }
 
 template<typename PointT>
+void segmentObstaclesFromGround(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		pcl::IndicesPtr & ground,
+		pcl::IndicesPtr & obstacles,
+		float normalRadiusSearch,
+		float groundNormalAngle,
+		int minClusterSize,
+		bool segmentFlatObstacles)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	segmentObstaclesFromGround(
+			cloud,
+			indices,
+			ground,
+			obstacles,
+			normalRadiusSearch,
+			groundNormalAngle,
+			minClusterSize,
+			segmentFlatObstacles);
+}
+
+template<typename PointT>
 void occupancy2DFromCloud3D(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
 		float cellSize,
@@ -108,7 +133,9 @@ void occupancy2DFromCloud3D(
 	}
 	pcl::IndicesPtr groundIndices, obstaclesIndices;
 
-	segmentObstaclesFromGround<PointT>(cloud,
+	segmentObstaclesFromGround<PointT>(
+			cloud,
+			indices,
 			groundIndices,
 			obstaclesIndices,
 			cellSize,
@@ -157,6 +184,19 @@ void occupancy2DFromCloud3D(
 			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloud->at(i).y;
 		}
 	}
+}
+
+template<typename PointT>
+void occupancy2DFromCloud3D(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize,
+		float groundNormalAngle,
+		int minClusterSize)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	occupancy2DFromCloud3D<PointT>(cloud, indices, ground, obstacles, cellSize, groundNormalAngle, minClusterSize);
 }
 
 }

@@ -100,7 +100,6 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), roi));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
-	customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
 	customParameters.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
@@ -872,7 +871,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							else if(inliersRef.size())
 							{
 								// find centroid of the cloud and set it to 1 meter
-								Eigen::Vector4f centroid;
+								Eigen::Vector4f centroid(0,0,0,0);
 								pcl::PointCloud<pcl::PointXYZ> inliersRefCloud;
 								inliersRefCloud.resize(inliersRef.size());
 								for(unsigned int i=0; i<inliersRef.size(); ++i)

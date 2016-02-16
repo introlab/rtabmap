@@ -168,6 +168,7 @@ private:
 	QGraphicsEllipseItem * _localRadius;
 	float _loopClosureOutlierThr;
 	float _maxLinkLength;
+	int _coordinateSystem;
 };
 
 } /* namespace rtabmap */

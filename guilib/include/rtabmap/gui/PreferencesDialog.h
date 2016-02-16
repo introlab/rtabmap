@@ -145,9 +145,7 @@ public:
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
-	bool isCloudMeshing() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
-	double getCloudVoxelSize(int index) const; // 0=map, 1=odom
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
 	double getCloudOpacity(int index) const;   // 0=map, 1=odom
@@ -159,23 +157,24 @@ public:
 	double getScanOpacity(int index) const;    // 0=map, 1=odom
 	int getScanPointSize(int index) const;     // 0=map, 1=odom
 
-	int getMeshNormalKSearch() const;
-	double getMeshGP3Radius() const;
-	double getMeshGP3Mu() const;
-	bool getMeshSmoothing() const;
-	double getMeshSmoothingRadius() const;
-
 	bool isCloudFiltering() const;
 	bool isSubtractFiltering() const;
 	double getCloudFilteringRadius() const;
 	double getCloudFilteringAngle() const;
-	int getSubstractFilteringMinPts() const;
+	int getSubtractFilteringMinPts() const;
+	double getSubtractFilteringRadius() const;
+	double getSubtractFilteringAngle() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;
 	bool isGridMapFrom3DCloud() const;
 	bool isGridMapEroded() const;
 	double getGridMapOpacity() const;
+
+	bool isCloudMeshing() const;
+	double getCloudMeshingAngle() const;
+	bool isCloudMeshingQuad() const;
+	int getCloudMeshingTriangleSize();
 
 	QString getWorkingDirectory() const;
 
@@ -257,6 +256,7 @@ private slots:
 	void addParameter(const QString & value);
 	void updatePredictionPlot();
 	void updateKpROI();
+	void updateG2oVisibility();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void changeOdomBowFixedLocalMapPath();
@@ -334,7 +334,6 @@ private:
 	CreateSimpleCalibrationDialog * _createCalibrationDialog;
 
 	QVector<QCheckBox*> _3dRenderingShowClouds;
-	QVector<QDoubleSpinBox*> _3dRenderingVoxelSize;
 	QVector<QSpinBox*> _3dRenderingDecimation;
 	QVector<QDoubleSpinBox*> _3dRenderingMaxDepth;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacity;

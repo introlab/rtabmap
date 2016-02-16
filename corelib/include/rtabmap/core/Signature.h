@@ -107,6 +107,8 @@ public:
 	void setEnabled(bool enabled) {_enabled = enabled;}
 	const std::multimap<int, cv::KeyPoint> & getWords() const {return _words;}
 	const std::map<int, int> & getWordsChanged() const {return _wordsChanged;}
+	const std::multimap<int, cv::Mat> & getWordsDescriptors() const {return _wordsDescriptors;}
+	void setWordsDescriptors(const std::multimap<int, cv::Mat> & descriptors) {_wordsDescriptors = descriptors;}
 
 	//metric stuff
 	void setWords3(const std::multimap<int, cv::Point3f> & words3) {_words3 = words3;}
@@ -136,7 +138,8 @@ private:
 	// times in the signature, it will be 2 times in this list)
 	// Words match with the CvSeq keypoints and descriptors
 	std::multimap<int, cv::KeyPoint> _words; // word <id, keypoint>
-	std::multimap<int, cv::Point3f> _words3; // word <id, keypoint> // in base_link frame (localTransform applied))
+	std::multimap<int, cv::Point3f> _words3; // word <id, point> // in base_link frame (localTransform applied))
+	std::multimap<int, cv::Mat> _wordsDescriptors;
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
 

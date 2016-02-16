@@ -175,7 +175,7 @@ protected slots:
 					pcl::PointXYZRGB anchor(255, 0, 0);
 					cloud->push_back(anchor);
 					//UWARN("level %d -> %d pose=%s size=%d", level, iter->second.first, wifiPose.prettyPrint().c_str(), (int)cloud->size());
-					if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, wifiPose, Qt::yellow))
+					if(!cloudViewer_->addCloud(cloudName, cloud, wifiPose, Qt::yellow))
 					{
 						UERROR("Adding cloud %d to viewer failed!", id);
 					}

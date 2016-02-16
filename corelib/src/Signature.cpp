@@ -195,8 +195,10 @@ void Signature::changeWordsRef(int oldWordId, int activeWordId)
 	if(kps.size())
 	{
 		std::list<cv::Point3f> pts = uValues(_words3, oldWordId);
+		std::list<cv::Mat> descriptors = uValues(_wordsDescriptors, oldWordId);
 		_words.erase(oldWordId);
 		_words3.erase(oldWordId);
+		_wordsDescriptors.erase(oldWordId);
 		_wordsChanged.insert(std::make_pair(oldWordId, activeWordId));
 		for(std::list<cv::KeyPoint>::const_iterator iter=kps.begin(); iter!=kps.end(); ++iter)
 		{
@@ -205,6 +207,10 @@ void Signature::changeWordsRef(int oldWordId, int activeWordId)
 		for(std::list<cv::Point3f>::const_iterator iter=pts.begin(); iter!=pts.end(); ++iter)
 		{
 			_words3.insert(std::pair<int, cv::Point3f>(activeWordId, (*iter)));
+		}
+		for(std::list<cv::Mat>::const_iterator iter=descriptors.begin(); iter!=descriptors.end(); ++iter)
+		{
+			_wordsDescriptors.insert(std::pair<int, cv::Mat>(activeWordId, (*iter)));
 		}
 	}
 }
@@ -218,12 +224,14 @@ void Signature::removeAllWords()
 {
 	_words.clear();
 	_words3.clear();
+	_wordsDescriptors.clear();
 }
 
 void Signature::removeWord(int wordId)
 {
 	_words.erase(wordId);
 	_words3.erase(wordId);
+	_wordsDescriptors.clear();
 }
 
 cv::Mat Signature::getPoseCovariance() const

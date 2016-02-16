@@ -146,12 +146,12 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 			if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
 			{
 				showCloudCheckbox_->setEnabled(true);
-				cloudView_->addOrUpdateCloud("cloud", util3d::cloudRGBFromSensorData(data, validDecimationValue_));
+				cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(data, validDecimationValue_));
 			}
 			else if(!data.depthOrRightRaw().empty())
 			{
 				showCloudCheckbox_->setEnabled(true);
-				cloudView_->addOrUpdateCloud("cloud", util3d::cloudFromSensorData(data, validDecimationValue_));
+				cloudView_->addCloud("cloud", util3d::cloudFromSensorData(data, validDecimationValue_));
 			}
 		}
 	}
@@ -161,7 +161,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		showScanCheckbox_->setEnabled(true);
 		if(showScanCheckbox_->isChecked())
 		{
-			cloudView_->addOrUpdateCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), validDecimationValue_), Transform::getIdentity(), Qt::yellow);
+			cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), validDecimationValue_), Transform::getIdentity(), Qt::yellow);
 		}
 	}
 

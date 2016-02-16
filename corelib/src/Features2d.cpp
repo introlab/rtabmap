@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/Stereo.h"
+#include "rtabmap/core/util2d.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -626,20 +627,18 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 		if(_maxDepth > 0.0f || _minDepth > 0.0f)
 		{
 			UASSERT(keypoints3D.size() == keypoints.size());
-			bool isInMM = data.depthRaw().type() == CV_16UC1;
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			for(unsigned int i=0; i<keypoints.size(); ++i)
 			{
-				int u = int(keypoints[i].pt.x+0.5f);
-				int v = int(keypoints[i].pt.y+0.5f);
+				float d = util2d::getDepth(
+						data.depthRaw(),
+						keypoints[i].pt.x/float((data.imageRaw().cols/data.depthRaw().cols)),
+						keypoints[i].pt.y/float((data.imageRaw().rows/data.depthRaw().rows)),
+						false);
 				bool reject = true;
-				if(u >=0 && u<data.depthRaw().cols && v >=0 && v<data.depthRaw().rows)
+				if(uIsFinite(d) && d>_minDepth && (_maxDepth <= 0.0f || d < _maxDepth))
 				{
-					float d = isInMM?(float)data.depthRaw().at<uint16_t>(v,u)*0.001f:data.depthRaw().at<float>(v,u);
-					if(uIsFinite(d) && d>_minDepth && (_maxDepth <= 0.0f || d < _maxDepth))
-					{
-						reject = false;
-					}
+					reject = false;
 				}
 				if(reject)
 				{

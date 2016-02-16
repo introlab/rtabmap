@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_features.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/core/Features2d.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -71,6 +72,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixEps(), _featureParameters.at(Parameters::kVisSubPixWinSize())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixIterations(), _featureParameters.at(Parameters::kVisSubPixIterations())));
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpSubPixWinSize(), _featureParameters.at(Parameters::kVisSubPixEps())));
+	uInsert(_featureParameters, ParametersPair(Parameters::kKpNewWordsComparedTogether(), "false"));
 
 	this->parseParameters(parameters);
 }
@@ -175,17 +177,19 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%f", Parameters::kVisCorFlowEps().c_str(), _flowEps);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowMaxLevel().c_str(), _flowMaxLevel);
 
-	UDEBUG("Input(%d): from=%d words, %d 3D words, %d kpts, %d descriptors",
+	UDEBUG("Input(%d): from=%d words, %d 3D words, %d words descriptors,  %d kpts, %d descriptors",
 			fromSignature.id(),
 			(int)fromSignature.getWords().size(),
 			(int)fromSignature.getWords3().size(),
+			(int)fromSignature.getWordsDescriptors().size(),
 			(int)fromSignature.sensorData().keypoints().size(),
 			fromSignature.sensorData().descriptors().rows);
 
-	UDEBUG("Input(%d): to=%d words, %d 3D words, %d kpts, %d descriptors",
+	UDEBUG("Input(%d): to=%d words, %d 3D words, %d words descriptors, %d kpts, %d descriptors",
 			toSignature.id(),
 			(int)toSignature.getWords().size(),
 			(int)toSignature.getWords3().size(),
+			(int)toSignature.getWordsDescriptors().size(),
 			(int)toSignature.sensorData().keypoints().size(),
 			toSignature.sensorData().descriptors().rows);
 
@@ -194,7 +198,9 @@ Transform RegistrationVis::computeTransformationImpl(
 	////////////////////
 	// Find correspondences
 	////////////////////
-	if((_estimationType<2 || fromSignature.getWords().size()) && // required only for 2D->2D
+	//recompute correspondences if descriptors are provided
+	if((fromSignature.getWordsDescriptors().empty() && toSignature.getWordsDescriptors().empty()) &&
+	   (_estimationType<2 || fromSignature.getWords().size()) && // required only for 2D->2D
 	   (_estimationType==0 || toSignature.getWords().size()) && // required only for 3D->2D or 2D->2D
 	   fromSignature.getWords3().size() && // required in all estimation approaches
 	   (_estimationType==1 || toSignature.getWords3().size())) // required only for 3D->3D and 2D->2D
@@ -209,11 +215,15 @@ Transform RegistrationVis::computeTransformationImpl(
 		UASSERT((fromSignature.getWords().empty() && fromSignature.getWords3().empty())||
 				(fromSignature.getWords().size() == fromSignature.getWords3().size()));
 		UASSERT((int)fromSignature.sensorData().keypoints().size() == fromSignature.sensorData().descriptors().rows ||
-				fromSignature.sensorData().descriptors().rows == 0);
+				fromSignature.getWords().size() == fromSignature.getWordsDescriptors().size() ||
+				fromSignature.sensorData().descriptors().rows == 0 ||
+				fromSignature.getWordsDescriptors().size() == 0);
 		UASSERT((toSignature.getWords().empty() && toSignature.getWords3().empty())||
 				(toSignature.getWords().size() == toSignature.getWords3().size()));
 		UASSERT((int)toSignature.sensorData().keypoints().size() == toSignature.sensorData().descriptors().rows ||
-				toSignature.sensorData().descriptors().rows == 0);
+				toSignature.getWords().size() == toSignature.getWordsDescriptors().size() ||
+				toSignature.sensorData().descriptors().rows == 0 ||
+				toSignature.getWordsDescriptors().size() == 0);
 		UASSERT(fromSignature.sensorData().imageRaw().type() == CV_8UC1 ||
 				fromSignature.sensorData().imageRaw().type() == CV_8UC3);
 		UASSERT(toSignature.sensorData().imageRaw().type() == CV_8UC1 ||
@@ -232,9 +242,20 @@ Transform RegistrationVis::computeTransformationImpl(
 					fromSignature.sensorData().setImageRaw(tmp);
 				}
 
+				cv::Mat depthMask;
+				if(_useDepthAsMask && !fromSignature.sensorData().depthRaw().empty())
+				{
+					if(fromSignature.sensorData().imageRaw().rows % fromSignature.sensorData().depthRaw().rows == 0 &&
+						fromSignature.sensorData().imageRaw().cols % fromSignature.sensorData().depthRaw().cols == 0 &&
+						fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows == fromSignature.sensorData().imageRaw().cols/fromSignature.sensorData().depthRaw().cols)
+					{
+						depthMask = util2d::interpolate(fromSignature.sensorData().depthRaw(), fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows, 0.1f);
+					}
+				}
+
 				kptsFrom = detector->generateKeypoints(
 						fromSignature.sensorData().imageRaw(),
-						_useDepthAsMask&&!fromSignature.sensorData().depthRaw().empty()?fromSignature.sensorData().depthRaw():cv::Mat());
+						depthMask);
 			}
 			else
 			{
@@ -325,8 +346,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				for(unsigned int i=0; i<status.size(); ++i)
 				{
 					if(status[i] &&
-					   uIsInBounds(cornersTo[i].x, 0.0f, float(toSignature.sensorData().depthOrRightRaw().cols)) &&
-					   uIsInBounds(cornersTo[i].y, 0.0f, float(toSignature.sensorData().depthOrRightRaw().rows)))
+					   uIsInBounds(cornersTo[i].x, 0.0f, float(toSignature.sensorData().imageRaw().cols)) &&
+					   uIsInBounds(cornersTo[i].y, 0.0f, float(toSignature.sensorData().imageRaw().rows)))
 					{
 						kptsFrom[ki] = cv::KeyPoint(cornersFrom[i], 1);
 						kptsFrom3DKept[ki] = kptsFrom3D[i];
@@ -389,9 +410,21 @@ Transform RegistrationVis::computeTransformationImpl(
 						cv::cvtColor(toSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
 						toSignature.sensorData().setImageRaw(tmp);
 					}
+
+					cv::Mat depthMask;
+					if(_useDepthAsMask && !fromSignature.sensorData().depthRaw().empty())
+					{
+						if(fromSignature.sensorData().imageRaw().rows % fromSignature.sensorData().depthRaw().rows == 0 &&
+							fromSignature.sensorData().imageRaw().cols % fromSignature.sensorData().depthRaw().cols == 0 &&
+							fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows == fromSignature.sensorData().imageRaw().cols/fromSignature.sensorData().depthRaw().cols)
+						{
+							depthMask = util2d::interpolate(fromSignature.sensorData().depthRaw(), fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows, 0.1f);
+						}
+					}
+
 					kptsTo = detector->generateKeypoints(
 							toSignature.sensorData().imageRaw(),
-							_useDepthAsMask&&!toSignature.sensorData().depthRaw().empty()?toSignature.sensorData().depthRaw():cv::Mat());
+							depthMask);
 				}
 				else
 				{
@@ -407,22 +440,55 @@ Transform RegistrationVis::computeTransformationImpl(
 			UDEBUG("kptsFrom=%d", (int)kptsFrom.size());
 			UDEBUG("kptsTo=%d", (int)kptsTo.size());
 			cv::Mat descriptorsFrom;
+			if(kptsFrom.size())
+			{
+				if(fromSignature.getWordsDescriptors().size() == (int)kptsFrom.size())
+				{
+					descriptorsFrom = cv::Mat(fromSignature.getWordsDescriptors().size(),
+							fromSignature.getWordsDescriptors().begin()->second.cols,
+							fromSignature.getWordsDescriptors().begin()->second.type());
+					int i=0;
+					for(std::multimap<int, cv::Mat>::const_iterator iter=fromSignature.getWordsDescriptors().begin();
+						iter!=fromSignature.getWordsDescriptors().end();
+						++iter, ++i)
+					{
+						iter->second.copyTo(descriptorsFrom.row(i));
+					}
+				}
+				else if(fromSignature.sensorData().descriptors().rows == (int)kptsFrom.size())
+				{
+					descriptorsFrom = fromSignature.sensorData().descriptors();
+				}
+				else if(!fromSignature.sensorData().imageRaw().empty())
+				{
+					descriptorsFrom = detector->generateDescriptors(fromSignature.sensorData().imageRaw(), kptsFrom);
+				}
+			}
+
 			cv::Mat descriptorsTo;
-			if(fromSignature.getWords().empty() && fromSignature.sensorData().descriptors().rows == (int)kptsFrom.size())
+			if(kptsTo.size())
 			{
-				descriptorsFrom = fromSignature.sensorData().descriptors();
-			}
-			else
-			{
-				descriptorsFrom = detector->generateDescriptors(fromSignature.sensorData().imageRaw(), kptsFrom);
-			}
-			if(toSignature.getWords().empty() && toSignature.sensorData().descriptors().rows == (int)kptsTo.size())
-			{
-				descriptorsTo = toSignature.sensorData().descriptors();
-			}
-			else if(!toSignature.sensorData().imageRaw().empty())
-			{
-				descriptorsTo = detector->generateDescriptors(toSignature.sensorData().imageRaw(), kptsTo);
+				if(toSignature.getWordsDescriptors().size() == (int)kptsTo.size())
+				{
+					descriptorsTo = cv::Mat(toSignature.getWordsDescriptors().size(),
+							toSignature.getWordsDescriptors().begin()->second.cols,
+							toSignature.getWordsDescriptors().begin()->second.type());
+					int i=0;
+					for(std::multimap<int, cv::Mat>::const_iterator iter=toSignature.getWordsDescriptors().begin();
+						iter!=toSignature.getWordsDescriptors().end();
+						++iter, ++i)
+					{
+						iter->second.copyTo(descriptorsTo.row(i));
+					}
+				}
+				else if(toSignature.sensorData().descriptors().rows == (int)kptsTo.size())
+				{
+					descriptorsTo = toSignature.sensorData().descriptors();
+				}
+				else if(!toSignature.sensorData().imageRaw().empty())
+				{
+					descriptorsTo = detector->generateDescriptors(toSignature.sensorData().imageRaw(), kptsTo);
+				}
 			}
 
 			// create 3D keypoints

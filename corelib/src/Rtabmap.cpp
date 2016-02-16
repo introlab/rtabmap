@@ -83,6 +83,7 @@ Rtabmap::Rtabmap() :
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_maxLocalRetrieved(Parameters::defaultRGBDMaxLocalRetrieved()),
+	_rawDataKept(Parameters::defaultMemImageKept()),
 	_statisticLogsBufferedInRAM(Parameters::defaultRtabmapStatisticLogsBufferedInRAM()),
 	_statisticLogged(Parameters::defaultRtabmapStatisticLogged()),
 	_statisticLoggedHeaders(Parameters::defaultRtabmapStatisticLoggedHeaders()),
@@ -120,7 +121,7 @@ Rtabmap::Rtabmap() :
 	_memory(0),
 	_foutFloat(0),
 	_foutInt(0),
-	_wDir("."),
+	_wDir(""),
 	_mapCorrection(Transform::getIdentity()),
 	_lastLocalizationNodeId(0),
 	_pathStatus(0),
@@ -151,7 +152,7 @@ void Rtabmap::setupLogFiles(bool overwrite)
 		_foutInt = 0;
 	}
 
-	if(_statisticLogged)
+	if(_statisticLogged && !_wDir.empty())
 	{
 		std::string attributes = "a+"; // append to log files
 		if(overwrite)
@@ -234,6 +235,10 @@ void Rtabmap::setupLogFiles(bool overwrite)
 	}
 	else
 	{
+		if(_statisticLogged)
+		{
+			UWARN("Working directory is not set, log disabled!");
+		}
 		UDEBUG("Log disabled!");
 	}
 }
@@ -314,7 +319,7 @@ void Rtabmap::init(const std::string & configFile, const std::string & databaseP
 
 void Rtabmap::close(bool databaseSaved)
 {
-	UINFO("");
+	UINFO("databaseSaved=%d", databaseSaved?1:0);
 	_highestHypothesis = std::make_pair(0,0.0f);
 	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;
@@ -386,6 +391,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapLoopRatio(), _loopRatio);
 	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
 	Parameters::parse(parameters, Parameters::kRGBDMaxLocalRetrieved(), _maxLocalRetrieved);
+	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
 	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogsBufferedInRAM(), _statisticLogsBufferedInRAM);
 	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogged(), _statisticLogged);
 	Parameters::parse(parameters, Parameters::kRtabmapStatisticLoggedHeaders(), _statisticLoggedHeaders);
@@ -1073,6 +1079,7 @@ bool Rtabmap::process(
 			newPose = _mapCorrection * signature->getPose();
 		}
 
+		UDEBUG("Added pose %s", newPose.prettyPrint().c_str());
 		// Update Poses and Constraints
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
@@ -1707,10 +1714,10 @@ bool Rtabmap::process(
 	{
 		//Compute transform if metric data are present
 		Transform transform;
-		float variance = 1.0f;
+		RegistrationInfo info;
+		info.variance = 1.0f;
 		if(_rgbdSlamMode)
 		{
-			RegistrationInfo info;
 			transform = _memory->computeTransform(signature->id(), _loopClosureHypothesis.first, &info);
 			loopClosureVisualInliers = info.inliers;
 			rejectedHypothesis = transform.isNull();
@@ -1723,8 +1730,8 @@ bool Rtabmap::process(
 		if(!rejectedHypothesis)
 		{
 			// Make the new one the parent of the old one
-			UASSERT(variance > 0.0);
-			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, variance, variance));
+			UASSERT(info.variance > 0.0);
+			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, info.variance, info.variance));
 			if(!rejectedHypothesis)
 			{
 				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
@@ -1798,42 +1805,51 @@ bool Rtabmap::process(
 					iter!=nearestPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
 					++iter)
 				{
-					const std::map<int, Transform> & path = *iter;
+					std::map<int, Transform> path = *iter;
 					UASSERT(path.size());
-					//find the nearest pose on the path
+
+					//find the nearest pose on the path looking in the same direction
+					path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
+					path = graph::getPosesInRadius(signature->id(), path, _localRadius, M_PI/4);
 					int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
-					UASSERT(nearestId > 0);
-
-					// nearest pose must not be linked to current location and enough
-					if(!signature->hasLink(nearestId) &&
-						(_proximityFilteringRadius <= 0.0f ||
-						 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
+					if(nearestId > 0)
 					{
-						RegistrationInfo info;
-						Transform transform = _memory->computeTransform(signature->id(), nearestId, &info);
-						if(!transform.isNull())
+						// nearest pose must not be linked to current location and enough
+						if(!signature->hasLink(nearestId) &&
+							(_proximityFilteringRadius <= 0.0f ||
+							 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 						{
-							if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
+							RegistrationInfo info;
+							Transform transform = _memory->computeTransform(signature->id(), nearestId, &info);
+							if(!transform.isNull())
 							{
-								UINFO("[Visual] Add local loop closure in SPACE (%d->%d) %s",
-										signature->id(),
-										nearestId,
-										transform.prettyPrint().c_str());
-								UASSERT(info.variance > 0.0);
-								_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, info.variance, info.variance));
-								loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
-
-								if(_loopClosureHypothesis.first == 0)
+								if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
 								{
-									++localSpaceClosuresAddedVisually;
-									lastLocalSpaceClosureId = nearestId;
+									UINFO("[Visual] Add local loop closure in SPACE (%d->%d) %s",
+											signature->id(),
+											nearestId,
+											transform.prettyPrint().c_str());
+									UASSERT(info.variance > 0.0);
+									_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, info.variance, info.variance));
+									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
+
+									if(loopClosureVisualInliers == 0)
+									{
+										loopClosureVisualInliers = info.inliers;
+									}
+
+									if(_loopClosureHypothesis.first == 0)
+									{
+										++localSpaceClosuresAddedVisually;
+										lastLocalSpaceClosureId = nearestId;
+									}
 								}
-							}
-							else
-							{
-								UWARN("Ignoring local loop closure with %d because resulting "
-									  "transform is to large!? (%fm > %fm)",
-										nearestId, transform.getNorm(), _proximityFilteringRadius);
+								else
+								{
+									UWARN("Ignoring local loop closure with %d because resulting "
+										  "transform is to large!? (%fm > %fm)",
+											nearestId, transform.getNorm(), _proximityFilteringRadius);
+								}
 							}
 						}
 					}
@@ -2283,6 +2299,10 @@ bool Rtabmap::process(
 	{
 		lastSignatureData = *signature;
 	}
+	if(!_rawDataKept)
+	{
+		_memory->removeRawData(signature->id());
+	}
 
 	// remove last signature if the memory is not incremental or is a bad signature (if bad signatures are ignored)
 	int signatureRemoved = _memory->cleanup();
@@ -2453,10 +2473,12 @@ bool Rtabmap::process(
 		// place after transfer because the memory/local graph may have changed
 		statistics_.addStatistic(Statistics::kMemoryWorking_memory_size(), _memory->getWorkingMem().size());
 		statistics_.addStatistic(Statistics::kMemoryShort_time_memory_size(), _memory->getStMem().size());
+		statistics_.addStatistic(Statistics::kMemoryDatabase_memory_used(), _memory->getDatabaseMemoryUsed());
 
 		std::map<int, Signature> signatures;
 		if(_publishLastSignatureData)
 		{
+			UINFO("Adding data %d (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
 			signatures.insert(std::make_pair(lastSignatureData.id(), lastSignatureData));
 		}
 		// Set local graph
@@ -2618,6 +2640,11 @@ void Rtabmap::setWorkingDirectory(std::string path)
 			}
 		}
 	}
+	else if(path.empty())
+	{
+		_wDir.clear();
+		setupLogFiles();
+	}
 	else
 	{
 		ULOGGER_ERROR("Directory \"%s\" doesn't exist!", path.c_str());
@@ -2647,7 +2674,14 @@ void Rtabmap::dumpData() const
 	UDEBUG("");
 	if(_memory)
 	{
-		_memory->dumpMemory(this->getWorkingDir());
+		if(this->getWorkingDir().empty())
+		{
+			UERROR("Working directory not set.");
+		}
+		else
+		{
+			_memory->dumpMemory(this->getWorkingDir());
+		}
 	}
 }
 
@@ -3003,6 +3037,11 @@ void Rtabmap::dumpPrediction() const
 {
 	if(_memory && _bayesFilter)
 	{
+		if(this->getWorkingDir().empty())
+		{
+			UERROR("Working directory not set.");
+			return;
+		}
 		std::list<int> signaturesToCompare;
 		for(std::map<int, double>::const_iterator iter=_memory->getWorkingMem().begin();
 			iter!=_memory->getWorkingMem().end();

@@ -82,10 +82,14 @@ public:
 	void setDataBufferSize(unsigned int bufferSize);
 	void createIntermediateNodes(bool enabled);
 
+	// this will delete rtabmap object if set
+	void close(bool databaseSaved);
+
 protected:
 	virtual void handleEvent(UEvent * anEvent);
 
 private:
+	virtual void mainLoopBegin();
 	virtual void mainLoop();
 	virtual void mainLoopKill();
 	void process();

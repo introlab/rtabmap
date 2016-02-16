@@ -29,7 +29,7 @@ CREATE TABLE Data (
 	id INTEGER NOT NULL,
 	image BLOB,               -- compressed image (Grayscale or RGB)
 	depth BLOB,               -- compressed image (Depth or Right image)
-	calibration BLOB,         -- fx, fy, cx, cy [,baseline] local_transform
+	calibration BLOB,         -- fx, fy, cx, cy, [baseline,] width, height, local_transform
 	scan BLOB,                -- compressed data (Laser scan)
 	scan_max_pts INTEGER,     -- Laser scan max points
 	scan_max_range FLOAT,     -- Laser max range
@@ -70,6 +70,8 @@ CREATE TABLE Map_Node_Word (
 	depth_x FLOAT,
 	depth_y FLOAT,
 	depth_z FLOAT,
+	descriptor_size INTEGER,
+	descriptor BLOB,
 	FOREIGN KEY (node_id) REFERENCES Node(id),
 	FOREIGN KEY (word_id) REFERENCES Word(id)
 );

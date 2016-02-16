@@ -739,6 +739,18 @@ void ImageView::setImage(const QImage & image)
 void ImageView::setImageDepth(const QImage & imageDepth)
 {
 	_imageDepth = QPixmap::fromImage(imageDepth);
+
+	if( _image.width() > 0 &&
+		_image.width() > _imageDepth.width() &&
+		_image.height() > _imageDepth.height() &&
+		_image.width() % _imageDepth.width() == 0 &&
+		_image.height() % _imageDepth.height() == 0 &&
+		_image.width() / _imageDepth.width() == _image.height() / _imageDepth.height())
+	{
+		// scale depth to rgb
+		_imageDepth = _imageDepth.scaledToWidth(_image.width());
+	}
+
 	if(_graphicsView->isVisible())
 	{
 		if(_imageDepthItem)
@@ -755,7 +767,10 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 	}
 	else
 	{
-		this->setSceneRect(imageDepth.rect());
+		if(_image.isNull())
+		{
+			this->setSceneRect(imageDepth.rect());
+		}
 		this->update();
 	}
 }

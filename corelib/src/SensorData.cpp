@@ -481,10 +481,11 @@ void SensorData::setUserData(const cv::Mat & userData)
 
 void SensorData::uncompressData()
 {
-	uncompressData(_imageCompressed.empty()?0:&_imageRaw,
-				_depthOrRightCompressed.empty()?0:&_depthOrRightRaw,
-				_laserScanCompressed.empty()?0:&_laserScanRaw,
-				_userDataCompressed.empty()?0:&_userDataRaw);
+	cv::Mat tmpA, tmpB, tmpC, tmpD;
+	uncompressData(_imageCompressed.empty()?0:&tmpA,
+				_depthOrRightCompressed.empty()?0:&tmpB,
+				_laserScanCompressed.empty()?0:&tmpC,
+				_userDataCompressed.empty()?0:&tmpD);
 }
 
 void SensorData::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat * laserScanRaw, cv::Mat * userDataRaw)
@@ -493,6 +494,18 @@ void SensorData::uncompressData(cv::Mat * imageRaw, cv::Mat * depthRaw, cv::Mat 
 	if(imageRaw && !imageRaw->empty() && _imageRaw.empty())
 	{
 		_imageRaw = *imageRaw;
+		//backward compatibility, set image size in camera model if not set
+		if(!_imageRaw.empty() && _cameraModels.size())
+		{
+			cv::Size size(_imageRaw.cols/_cameraModels.size(), _imageRaw.rows/_cameraModels.size());
+			for(unsigned int i=0; i<_cameraModels.size(); ++i)
+			{
+				if(_cameraModels[i].isValidForProjection() && _cameraModels[i].imageWidth() == 0)
+				{
+					_cameraModels[i].setImageSize(size);
+				}
+			}
+		}
 	}
 	if(depthRaw && !depthRaw->empty() && _depthOrRightRaw.empty())
 	{

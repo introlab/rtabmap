@@ -97,7 +97,7 @@ int main(int argc, char * argv[])
 	// Appearance-based only, disable RGB-D mode
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDEnabled(), "false"));
 
-	std::string databasePath = rtabmap::Parameters::defaultRtabmapWorkingDirectory()+"/"+rtabmap::Parameters::getDefaultDatabaseName();
+	std::string databasePath = rtabmap::Parameters::createDefaultWorkingDirectory()+"/"+rtabmap::Parameters::getDefaultDatabaseName();
 	if(localizationMode)
 	{
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));

@@ -51,8 +51,8 @@ using namespace std;
 
 namespace AISNavigation {
 
-#define DEBUG(i) \
-        if (verboseLevel>i) cerr
+//#define DEBUG(i) \
+//        if (verboseLevel>i) cerr
 
 /** \brief A class (struct) to compute the parameterization of the vertex v **/
 struct ParameterPropagator{
@@ -83,9 +83,9 @@ void TreeOptimizer2::initializeTreeParameters(){
 void TreeOptimizer2::initializeOptimization(){
   // compute the size of the preconditioning matrix
   int sz=maxIndex()+1;
-  DEBUG(1) << "Size= " << sz << endl;
+  //DEBUG(1) << "Size= " << sz << endl;
   M.resize(sz);
-  DEBUG(1) << "allocating M(" << sz << ")" << endl;
+  //DEBUG(1) << "allocating M(" << sz << ")" << endl;
   iteration=1;
 
   // sorting edges
@@ -99,9 +99,9 @@ void TreeOptimizer2::initializeOptimization(){
 void TreeOptimizer2::initializeOnlineOptimization(){
   // compute the size of the preconditioning matrix
   int sz=maxIndex()+1;
-  DEBUG(1) << "Size= " << sz << endl;
+  //DEBUG(1) << "Size= " << sz << endl;
   M.resize(sz);
-  DEBUG(1) << "allocating M(" << sz << ")" << endl;
+  //DEBUG(1) << "allocating M(" << sz << ")" << endl;
   iteration=1;
 }
 
@@ -114,8 +114,8 @@ void TreeOptimizer2::computePreconditioner(){
   int edgeCount=0;
   for (EdgeSet::iterator it=sortedEdges->begin(); it!=sortedEdges->end(); it++){
     edgeCount++;
-    if (! (edgeCount%10000))
-      DEBUG(1) << "m";
+    //if (! (edgeCount%10000))
+    //  DEBUG(1) << "m";
 
     Edge* e=*it;
     Transformation t=e->transformation;
@@ -166,7 +166,7 @@ void TreeOptimizer2::propagateErrors(){
   
   for (EdgeSet::iterator it=sortedEdges->begin(); it!=sortedEdges->end(); it++){
       edgeCount++;
-      if (! (edgeCount%10000)) 	DEBUG(1) << "c";
+      //if (! (edgeCount%10000)) 	DEBUG(1) << "c";
       
       Edge* e=*it;
       Vertex* top=e->top;
@@ -176,13 +176,13 @@ void TreeOptimizer2::propagateErrors(){
       Vertex* v2=e->v2;
 
       double l=e->length;
-      DEBUG(2) << "Edge: " << v1->id << " " << v2->id << ", top=" << top->id << ", length="<< l <<endl;
+      //DEBUG(2) << "Edge: " << v1->id << " " << v2->id << ", top=" << top->id << ", length="<< l <<endl;
       
       Pose p1=getPose(v1, top);
       Pose p2=getPose(v2, top);
 
-      DEBUG(2) << " p1=" << p1.x() << " " << p1.y() << " " << p1.theta() << endl;
-      DEBUG(2) << " p2=" << p2.x() << " " << p2.y() << " " << p2.theta() << endl;
+      //DEBUG(2) << " p1=" << p1.x() << " " << p1.y() << " " << p1.theta() << endl;
+      //DEBUG(2) << " p2=" << p2.x() << " " << p2.y() << " " << p2.theta() << endl;
       
       Transformation et=e->transformation;
       Transformation t1(p1);
@@ -191,13 +191,13 @@ void TreeOptimizer2::propagateErrors(){
       Transformation t12=t1*et;
     
       Pose p12=t12.toPoseType();
-      DEBUG(2) << " pt2=" << p12.x() << " " << p12.y() << " " << p12.theta() << endl;
+      //DEBUG(2) << " pt2=" << p12.x() << " " << p12.y() << " " << p12.theta() << endl;
 
       Pose r(p12.x()-p2.x(), p12.y()-p2.y(), p12.theta()-p2.theta());
       double angle=r.theta();
       angle=atan2(sin(angle),cos(angle));
       r.theta()=angle;
-      DEBUG(2) << " e=" << r.x() << " " << r.y() << " " << r.theta() << endl;
+      //DEBUG(2) << " e=" << r.x() << " " << r.y() << " " << r.theta() << endl;
     
       InformationMatrix S=e->informationMatrix;
       InformationMatrix R;
@@ -216,7 +216,7 @@ void TreeOptimizer2::propagateErrors(){
       InformationMatrix W=R*S*R.transpose();
       Pose d=W*r*2.;
 
-      DEBUG(2) << " d=" << d.x() << " " << d.y() << " " << d.theta() << endl;
+      //DEBUG(2) << " d=" << d.x() << " " << d.y() << " " << d.theta() << endl;
     
       assert(l>0);
 
@@ -239,8 +239,8 @@ void TreeOptimizer2::propagateErrors(){
       beta[1]=(fabs(beta[1])>fabs(r.values[1]))?r.values[1]:beta[1];
       beta[2]=(fabs(beta[2])>fabs(r.values[2]))?r.values[2]:beta[2];
 
-      DEBUG(2) << " alpha=" << alpha[0] << " " << alpha[1] << " " << alpha[2] << endl;
-      DEBUG(2) << " beta=" << beta[0] << " " << beta[1] << " " << beta[2] << endl;
+      //DEBUG(2) << " alpha=" << alpha[0] << " " << alpha[1] << " " << alpha[2] << endl;
+      //DEBUG(2) << " beta=" << beta[0] << " " << beta[1] << " " << beta[2] << endl;
       
       for (int dir=0; dir<2; dir++) {
 	Vertex* n = (dir==0)? v1 : v2;
@@ -253,13 +253,13 @@ void TreeOptimizer2::propagateErrors(){
 
 	  Pose delta( beta[0]/(M[i].values[0]*tw[0]), beta[1]/(M[i].values[1]*tw[1]), beta[2]/(M[i].values[2]*tw[2]));
 	  delta=delta*sign;
-	  DEBUG(2) << "   " << dir << ":"  << i <<"," << n->parent->id << ":"
-	       << n->parameters.x() << " " << n->parameters.y() << " " << n->parameters.theta() << " -> ";
+	  //DEBUG(2) << "   " << dir << ":"  << i <<"," << n->parent->id << ":"
+	  //     << n->parameters.x() << " " << n->parameters.y() << " " << n->parameters.theta() << " -> ";
 
 	  n->parameters.x()+=delta.x();
 	  n->parameters.y()+=delta.y();
 	  n->parameters.theta()+=delta.theta();
-	  DEBUG(2) << n->parameters.x() << " " << n->parameters.y() << " " << n->parameters.theta()<< endl;
+	  //DEBUG(2) << n->parameters.x() << " " << n->parameters.y() << " " << n->parameters.theta()<< endl;
 	  n=n->parent;
 	}
       }
@@ -269,9 +269,9 @@ void TreeOptimizer2::propagateErrors(){
       Pose pf1=v1->pose;
       Pose pf2=v2->pose;
       
-      DEBUG(2) << " pf1=" << pf1.x() << " " << pf1.y() << " " << pf1.theta() << endl;
-      DEBUG(2) << " pf2=" << pf2.x() << " " << pf2.y() << " " << pf2.theta() << endl;
-      DEBUG(2) << " en=" << p12.x()-pf2.x() << " " << p12.y()-pf2.y() << " " << p12.theta()-pf2.theta() << endl;
+      //DEBUG(2) << " pf1=" << pf1.x() << " " << pf1.y() << " " << pf1.theta() << endl;
+      //DEBUG(2) << " pf2=" << pf2.x() << " " << pf2.y() << " " << pf2.theta() << endl;
+      //DEBUG(2) << " en=" << p12.x()-pf2.x() << " " << p12.y()-pf2.y() << " " << p12.theta()-pf2.theta() << endl;
     }
   
 }
@@ -320,8 +320,8 @@ double TreeOptimizer2::error(const Edge* e) const{
   Pose p1=v1->pose;
   Pose p2=v2->pose;
   
-  DEBUG(2) << " p1=" << p1.x() << " " << p1.y() << " " << p1.theta() << endl;
-  DEBUG(2) << " p2=" << p2.x() << " " << p2.y() << " " << p2.theta() << endl;
+  //DEBUG(2) << " p1=" << p1.x() << " " << p1.y() << " " << p1.theta() << endl;
+  //DEBUG(2) << " p2=" << p2.x() << " " << p2.y() << " " << p2.theta() << endl;
   
   Transformation et=e->transformation;
   Transformation t1(p1);
@@ -330,13 +330,13 @@ double TreeOptimizer2::error(const Edge* e) const{
   Transformation t12=t1*et;
     
   Pose p12=t12.toPoseType();
-  DEBUG(2) << " pt2=" << p12.x() << " " << p12.y() << " " << p12.theta() << endl;
+  //DEBUG(2) << " pt2=" << p12.x() << " " << p12.y() << " " << p12.theta() << endl;
 
   Pose r(p12.x()-p2.x(), p12.y()-p2.y(), p12.theta()-p2.theta());
   double angle=r.theta();
   angle=atan2(sin(angle),cos(angle));
   r.theta()=angle;
-  DEBUG(2) << " e=" << r.x() << " " << r.y() << " " << r.theta() << endl;
+  //DEBUG(2) << " e=" << r.x() << " " << r.y() << " " << r.theta() << endl;
     
   InformationMatrix S=e->informationMatrix;
   InformationMatrix R;

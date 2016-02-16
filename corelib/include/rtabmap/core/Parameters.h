@@ -177,7 +177,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, DetectionRate,                float, 1.0, "Detection rate. RTAB-Map will filter input images to satisfy this rate.");
 	RTABMAP_PARAM(Rtabmap, ImageBufferSize,              unsigned int, 1, "Data buffer size (0 min inf).");
 	RTABMAP_PARAM(Rtabmap, CreateIntermediateNodes,      bool, false, "Create intermediate nodes between loop closure detection. Only used when Rtabmap/DetectionRate>0.");
-	RTABMAP_PARAM_STR(Rtabmap, WorkingDirectory, Parameters::getDefaultWorkingDirectory(), "Working directory.");
+	RTABMAP_PARAM_STR(Rtabmap, WorkingDirectory,         "", "Working directory.");
 	RTABMAP_PARAM(Rtabmap, MaxRetrieved,                 unsigned int, 2, "Maximum locations retrieved at the same time from LTM.");
 	RTABMAP_PARAM(Rtabmap, StatisticLogsBufferedInRAM,   bool, true, "Statistic logs buffered in RAM instead of written to hard drive after each iteration.");
 	RTABMAP_PARAM(Rtabmap, StatisticLogged,   	         bool, false, "Logging enabled.");
@@ -192,6 +192,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, RehearsalSimilarity,     float, 0.6, 	"Rehearsal similarity.");
 	RTABMAP_PARAM(Mem, ImageKept, 		        bool, false, 	"Keep raw images in RAM.");
 	RTABMAP_PARAM(Mem, BinDataKept, 		    bool, true, 	"Keep binary data in db.");
+	RTABMAP_PARAM(Mem, RawDescriptorsKept, 		bool, false, 	"Raw descriptors kept in memory.");
 	RTABMAP_PARAM(Mem, MapLabelsAdded, 		    bool, true, 	"Create map labels. The first node of a map will be labelled as \"map#\" where # is the map ID.");
 	RTABMAP_PARAM(Mem, SaveDepth16Format, 		bool, true, 	"Save depth image into 16 bits format to reduce memory used. Warning: values over ~65 meters are ignored (maximum 65535 millimeters).");
 	RTABMAP_PARAM(Mem, NotLinkedNodesKept, 	    bool, true, 	"Keep not linked nodes in db (rehearsed nodes and deleted nodes).");
@@ -210,14 +211,14 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, UseDepthAsMask,          bool, false,   "Use depth image as mask for features detection.");
 
 	// KeypointMemory (Keypoint-based)
-	RTABMAP_PARAM_COND(Kp, NNStrategy,       int, RTABMAP_NONFREE, 1, 3, "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
+	RTABMAP_PARAM(Kp, NNStrategy,            int, 1,            "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
 	RTABMAP_PARAM(Kp, IncrementalDictionary, bool, true, 		"");
 	RTABMAP_PARAM(Kp, IncrementalFlann,      bool, true, 		"When using FLANN based strategy, add/remove points to its index without always rebuilding the index (the index is built only when the dictionary doubles in size).");
 	RTABMAP_PARAM(Kp, MaxDepth,              float, 0.0, 		"Filter extracted keypoints by depth (0=inf).");
 	RTABMAP_PARAM(Kp, MinDepth,              float, 0.0, 		"Filter extracted keypoints by depth.");
 	RTABMAP_PARAM(Kp, MaxFeatures,           int, 400, 			"Maximum features extracted from the images (0 means not bounded, <0 means no extraction).");
 	RTABMAP_PARAM(Kp, BadSignRatio,          float, 0.5, 		"Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
-	RTABMAP_PARAM_COND(Kp, NndrRatio, 	     float, RTABMAP_NONFREE, 0.8, 0.9,		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
+	RTABMAP_PARAM(Kp, NndrRatio, 	         float, 0.8,		"NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 	RTABMAP_PARAM_COND(Kp, DetectorStrategy, int, RTABMAP_NONFREE, 0, 2, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,   bool, true, 		"Use of the td-idf strategy to compute the likelihood.");
 	RTABMAP_PARAM(Kp, Parallelized,          bool, true, 		"If the dictionary update and signature creation were parallelized.");
@@ -323,12 +324,15 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,   "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
 
 	// Graph optimization
-	RTABMAP_PARAM(Optimizer, Strategy,          int, 0,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.")
+	RTABMAP_PARAM_COND(Optimizer, Strategy,     int, RTABMAP_GTSAM, 2, 0, "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
 	RTABMAP_PARAM(Optimizer, Iterations,        int, 100,        "Optimization iterations.");
 	RTABMAP_PARAM(Optimizer, Slam2D,            bool, false,     "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
 	RTABMAP_PARAM(Optimizer, VarianceIgnored,   bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
 	RTABMAP_PARAM(Optimizer, Robust,            bool, true,      "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
+
+	RTABMAP_PARAM(g2o, Solver,                  int, 0,          "0=csparse 1=pcg 2=cholmod");
+	RTABMAP_PARAM(g2o, Optimizer,               int, 0,          "0=Levenberg 1=GaussNewton");
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Local Map 1=Frame-to-Frame");
@@ -479,9 +483,10 @@ public:
 	 */
 	static const ParametersMap & getBackwardCompatibilityMap();
 
+	static std::string createDefaultWorkingDirectory();
+
 private:
 	Parameters();
-	static std::string getDefaultWorkingDirectory();
 
 private:
 	static ParametersMap parameters_;

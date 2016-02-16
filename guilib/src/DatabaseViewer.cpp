@@ -194,6 +194,13 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_A, SIGNAL(sliderMoved(int)), this, SLOT(sliderAMoved(int)));
 	connect(ui_->horizontalSlider_B, SIGNAL(sliderMoved(int)), this, SLOT(sliderBMoved(int)));
 
+	connect(ui_->spinBox_mesh_angleTolerance, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->spinBox_mesh_fillDepthHoles, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->spinBox_mesh_depthError, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_mesh_quad, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->spinBox_mesh_triangleSize, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showMesh, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+
 	ui_->horizontalSlider_neighbors->setTracking(false);
 	ui_->horizontalSlider_loops->setTracking(false);
 	ui_->horizontalSlider_neighbors->setEnabled(false);
@@ -305,10 +312,12 @@ void DatabaseViewer::setupMainLayout(int vertical)
 	if(vertical)
 	{
 		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_imageViews->layout())->setDirection(QBoxLayout::TopToBottom);
+		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_3dviews->layout())->setDirection(QBoxLayout::TopToBottom);
 	}
 	else if(!vertical)
 	{
 		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_imageViews->layout())->setDirection(QBoxLayout::LeftToRight);
+		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_3dviews->layout())->setDirection(QBoxLayout::LeftToRight);
 	}
 }
 
@@ -384,6 +393,14 @@ void DatabaseViewer::readSettings()
 	ui_->groupBox_posefiltering->setChecked(settings.value("poseFiltering", ui_->groupBox_posefiltering->isChecked()).toBool());
 	ui_->doubleSpinBox_posefilteringRadius->setValue(settings.value("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value()).toDouble());
 	ui_->doubleSpinBox_posefilteringAngle->setValue(settings.value("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value()).toDouble());
+	settings.endGroup();
+
+	settings.beginGroup("mesh");
+	ui_->checkBox_mesh_quad->setChecked(settings.value("quad", ui_->checkBox_mesh_quad->isChecked()).toBool());
+	ui_->spinBox_mesh_angleTolerance->setValue(settings.value("angleTolerance", ui_->spinBox_mesh_angleTolerance->value()).toInt());
+	ui_->spinBox_mesh_fillDepthHoles->setValue(settings.value("fillDepthHolesSize", ui_->spinBox_mesh_fillDepthHoles->value()).toInt());
+	ui_->spinBox_mesh_depthError->setValue(settings.value("fillDepthHolesError", ui_->spinBox_mesh_depthError->value()).toInt());
+	ui_->spinBox_mesh_triangleSize->setValue(settings.value("triangleSize", ui_->spinBox_mesh_triangleSize->value()).toInt());
 	settings.endGroup();
 
 	// ImageViews
@@ -462,6 +479,14 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("poseFiltering", ui_->groupBox_posefiltering->isChecked());
 	settings.setValue("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value());
 	settings.setValue("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value());
+	settings.endGroup();
+
+	settings.beginGroup("mesh");
+	settings.setValue("quad", ui_->checkBox_mesh_quad->isChecked());
+	settings.setValue("angleTolerance", ui_->spinBox_mesh_angleTolerance->value());
+	settings.setValue("fillDepthHolesSize", ui_->spinBox_mesh_fillDepthHoles->value());
+	settings.setValue("fillDepthHolesError", ui_->spinBox_mesh_depthError->value());
+	settings.setValue("triangleSize", ui_->spinBox_mesh_triangleSize->value());
 	settings.endGroup();
 
 	// ImageViews
@@ -2096,11 +2121,19 @@ void DatabaseViewer::update(int value,
 				data.uncompressData();
 				if(!data.imageRaw().empty())
 				{
-					img = uCvMat2QImage(data.imageRaw());
+					img = uCvMat2QImage(ui_->label_indexB==labelIndex?data.imageRaw():data.imageRaw());
 				}
 				if(!data.depthOrRightRaw().empty())
 				{
-					imgDepth = uCvMat2QImage(data.depthOrRightRaw());
+					cv::Mat depth =data.depthOrRightRaw();
+					if(!data.depthRaw().empty())
+					{
+						if(ui_->spinBox_mesh_fillDepthHoles->value() > 0)
+						{
+							depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
+						}
+					}
+					imgDepth = uCvMat2QImage(depth);
 				}
 
 				std::list<int> ids;
@@ -2123,7 +2156,9 @@ void DatabaseViewer::update(int value,
 
 				weight->setNum(w);
 				label->setText(l.c_str());
-				labelPose->setText(QString("%1%2, %3, %4").arg(odomPose.isIdentity()?"* ":"").arg(odomPose.x()).arg(odomPose.y()).arg(odomPose.z()));
+				float x,y,z,roll,pitch,yaw;
+				odomPose.getTranslationAndEulerAngles(x,y,z,roll, pitch,yaw);
+				labelPose->setText(QString("%1xyz=(%2,%3,%4)\nrpy=(%5,%6,%7)").arg(odomPose.isIdentity()?"* ":"").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
 				if(s!=0.0)
 				{
 					stamp->setText(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
@@ -2150,10 +2185,35 @@ void DatabaseViewer::update(int value,
 						if(!data.imageRaw().empty())
 						{
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-							cloud = util3d::cloudRGBFromSensorData(data);
+							if(!data.depthRaw().empty() && data.cameraModels().size()==1)
+							{
+								cv::Mat depth = data.depthRaw();
+								if(ui_->spinBox_mesh_fillDepthHoles->value() > 0)
+								{
+									depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
+								}
+								cloud = util3d::cloudFromDepthRGB(data.imageRaw(), depth, data.cameraModels()[0].cx(), data.cameraModels()[0].cy(), data.cameraModels()[0].fx(), data.cameraModels()[0].fy());
+							}
+							else
+							{
+								cloud = util3d::cloudRGBFromSensorData(data);
+							}
 							if(cloud->size())
 							{
-								view3D->addOrUpdateCloud("0", cloud);
+								if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
+								{
+									std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+											cloud,
+											float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
+											ui_->checkBox_mesh_quad->isChecked(),
+											ui_->spinBox_mesh_triangleSize->value());
+									view3D->removeCloud("0");
+									view3D->addCloudMesh("0", cloud, polygons);
+								}
+								else
+								{
+									view3D->addCloud("0", cloud);
+								}
 							}
 						}
 						else
@@ -2162,7 +2222,7 @@ void DatabaseViewer::update(int value,
 							cloud = util3d::cloudFromSensorData(data);
 							if(cloud->size())
 							{
-								view3D->addOrUpdateCloud("0", cloud);
+								view3D->addCloud("0", cloud);
 							}
 						}
 					}
@@ -2171,7 +2231,7 @@ void DatabaseViewer::update(int value,
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw());
 					if(scan->size())
 					{
-						view3D->addOrUpdateCloud("1", scan);
+						view3D->addCloud("1", scan);
 					}
 
 					view3D->update();
@@ -2447,7 +2507,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 				(int)cloud->size(), (int)leftCorners.size(), float(cloud->size())/float(leftCorners.size()), timeKpt, timeStereo);
 
 		ui_->stereoViewer->updateCameraTargetPosition(Transform::getIdentity());
-		ui_->stereoViewer->addOrUpdateCloud("stereo", cloud);
+		ui_->stereoViewer->addCloud("stereo", cloud);
 		ui_->stereoViewer->update();
 
 		ui_->label_stereo_inliers->setNum(inliers);
@@ -2606,6 +2666,15 @@ void DatabaseViewer::sliderBMoved(int value)
 	else
 	{
 		ULOGGER_ERROR("Slider index out of range ?");
+	}
+}
+
+void DatabaseViewer::update3dView()
+{
+	if(ui_->dockWidget_view3d->isVisible())
+	{
+		sliderAValueChanged(ui_->horizontalSlider_A->value());
+		sliderBValueChanged(ui_->horizontalSlider_B->value());
 	}
 }
 
@@ -2784,12 +2853,12 @@ void DatabaseViewer::updateConstraintView(
 
 				if(cloudFrom.get() && cloudFrom->size())
 				{
-					ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+					ui_->constraintsViewer->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 				}
 				if(cloudTo.get() && cloudTo->size())
 				{
 					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
-					ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+					ui_->constraintsViewer->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
 			else
@@ -2843,7 +2912,7 @@ void DatabaseViewer::updateConstraintView(
 
 					if(cloudFrom->size())
 					{
-						ui_->constraintsViewer->addOrUpdateCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
+						ui_->constraintsViewer->addCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
 					}
 					else
 					{
@@ -2852,7 +2921,7 @@ void DatabaseViewer::updateConstraintView(
 					}
 					if(cloudTo->size())
 					{
-						ui_->constraintsViewer->addOrUpdateCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
+						ui_->constraintsViewer->addCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
 					}
 					else
 					{
@@ -2882,11 +2951,11 @@ void DatabaseViewer::updateConstraintView(
 		{
 			if(cloudFrom->size())
 			{
-				ui_->constraintsViewer->addOrUpdateCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+				ui_->constraintsViewer->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 			}
 			if(cloudTo->size())
 			{
-				ui_->constraintsViewer->addOrUpdateCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+				ui_->constraintsViewer->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 			}
 		}
 
@@ -2995,7 +3064,7 @@ void DatabaseViewer::updateConstraintView(
 
 							if(assembledScans->size())
 							{
-								ui_->constraintsViewer->addOrUpdateCloud("scan2", assembledScans, Transform::getIdentity(), Qt::cyan);
+								ui_->constraintsViewer->addCloud("scan2", assembledScans, Transform::getIdentity(), Qt::cyan);
 							}
 							if(graph->size())
 							{
@@ -3012,7 +3081,7 @@ void DatabaseViewer::updateConstraintView(
 				scanB = rtabmap::util3d::transformPointCloud(scanB, t);
 				if(scanA->size())
 				{
-					ui_->constraintsViewer->addOrUpdateCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
+					ui_->constraintsViewer->addCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
 				}
 				else
 				{
@@ -3020,7 +3089,7 @@ void DatabaseViewer::updateConstraintView(
 				}
 				if(scanB->size())
 				{
-					ui_->constraintsViewer->addOrUpdateCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
+					ui_->constraintsViewer->addCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
 				}
 				else
 				{
@@ -3038,7 +3107,7 @@ void DatabaseViewer::updateConstraintView(
 		{
 			if(scanFrom->size())
 			{
-				ui_->constraintsViewer->addOrUpdateCloud("scan0", scanFrom, Transform::getIdentity(), Qt::yellow);
+				ui_->constraintsViewer->addCloud("scan0", scanFrom, Transform::getIdentity(), Qt::yellow);
 			}
 			else
 			{
@@ -3046,7 +3115,7 @@ void DatabaseViewer::updateConstraintView(
 			}
 			if(scanTo->size())
 			{
-				ui_->constraintsViewer->addOrUpdateCloud("scan1", scanTo, Transform::getIdentity(), Qt::magenta);
+				ui_->constraintsViewer->addCloud("scan1", scanTo, Transform::getIdentity(), Qt::magenta);
 			}
 			else
 			{

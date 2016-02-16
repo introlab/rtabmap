@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/core/GeodeticCoords.h>
 #include <rtabmap/core/Memory.h>
+#include <rtabmap/core/util3d_filtering.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
 #include <pcl/common/common.h>
@@ -548,6 +549,55 @@ std::multimap<int, int>::const_iterator findLink(
 		}
 	}
 	return links.end();
+}
+
+std::map<int, Transform> frustumPosesFiltering(
+		const std::map<int, Transform> & poses,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative)
+{
+	std::map<int, Transform> output;
+
+	if(poses.size())
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		std::vector<int> ids(poses.size());
+
+		cloud->resize(poses.size());
+		ids.resize(poses.size());
+		int oi=0;
+		for(std::map<int, rtabmap::Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(!iter->second.isNull())
+			{
+				(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+				ids[oi++] = iter->first;
+			}
+		}
+		cloud->resize(oi);
+		ids.resize(oi);
+
+		pcl::IndicesPtr indices = util3d::frustumFiltering(
+				cloud,
+				pcl::IndicesPtr(new std::vector<int>),
+				cameraPose,
+				horizontalFOV,
+				verticalFOV,
+				nearClipPlaneDistance,
+				farClipPlaneDistance,
+				negative);
+
+
+		for(unsigned int i=0; i<indices->size(); ++i)
+		{
+			output.insert(*poses.find(ids[indices->at(i)]));
+		}
+	}
+	return output;
 }
 
 std::map<int, Transform> radiusPosesFiltering(
@@ -1441,15 +1491,14 @@ std::map<int, float> getNodesInRadius(
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
 		kdTree->setInputCloud(cloud);
 		std::vector<int> ind;
-		std::vector<float> dist;
+		std::vector<float> sqrdDist;
 		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, dist, 0);
+		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
 			if(ind[i] >=0)
 			{
-				UDEBUG("Inlier %d: %f", ids[ind[i]], sqrt(dist[i]));
-				foundNodes.insert(std::make_pair(ids[ind[i]], dist[i]));
+				foundNodes.insert(std::make_pair(ids[ind[i]], sqrdDist[i]));
 			}
 		}
 	}
@@ -1461,7 +1510,8 @@ std::map<int, float> getNodesInRadius(
 std::map<int, Transform> getPosesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
-		float radius)
+		float radius,
+		float angle)
 {
 	UASSERT(uContains(nodes, nodeId));
 	std::map<int, Transform> foundNodes;
@@ -1494,15 +1544,31 @@ std::map<int, Transform> getPosesInRadius(
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
 		kdTree->setInputCloud(cloud);
 		std::vector<int> ind;
-		std::vector<float> dist;
+		std::vector<float> sqrdDist;
 		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, dist, 0);
+		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
+
+		Eigen::Vector3f vA = fromT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
 			if(ind[i] >=0)
 			{
-				UDEBUG("Inlier %d: %f", ids[ind[i]], sqrt(dist[i]));
-				foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
+				if(angle > 0.0f)
+				{
+					const Transform & checkT = nodes.at(ids[ind[i]]);
+					// same orientation?
+					Eigen::Vector3f vB = checkT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+					if(a <= angle)
+					{
+						foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
+					}
+				}
+				else
+				{
+					foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
+				}
 			}
 		}
 	}

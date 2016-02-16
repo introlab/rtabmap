@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <group android:id="@+id/group_pause" android:checkableBehavior="all">
+        <item android:id="@+id/pause" android:checked="false" android:title="Pause"/>
+    </group>
+    
+    <group android:id="@+id/group_actions">
+       <item android:id="@+id/open" android:title="Open"/>
+       <item android:id="@+id/save" android:title="Save"/>
+       <item android:id="@+id/export" android:title="Export (*.ply)"/>
+       <item android:id="@+id/reset" android:title="Reset"/>
+       <item android:id="@+id/about" android:title="About"/>
+    </group>
+    
+    <item android:id="@+id/menu_settings" android:title="Options..." android:orderInCategory="2">
+        <menu >
+        <group android:id="@+id/group_visibility" android:checkableBehavior="all">
+            <item android:id="@+id/debug" android:checked="false" android:title="Debug" />
+            <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
+            <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
+            <item android:id="@+id/mesh_rendering" android:checked="true" android:title="Mesh Rendering" />
+            <item android:id="@+id/auto_exposure" android:checked="false" android:title="Auto Exposure" />
+            <item android:id="@+id/map_shown" android:checked="true" android:title="Map Visible" />
+            <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
+            <item android:id="@+id/graph_visible" android:checked="true" android:title="Graph Visible" />
+            <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
+        </group>   
+        </menu>
+    </item>
+</menu>

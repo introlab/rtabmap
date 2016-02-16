@@ -97,6 +97,7 @@ private slots:
 	void sliderBValueChanged(int);
 	void sliderAMoved(int);
 	void sliderBMoved(int);
+	void update3dView();
 	void sliderNeighborValueChanged(int);
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);

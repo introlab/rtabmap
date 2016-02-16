@@ -137,7 +137,7 @@ protected slots:
 					4.0f); // max depth
 				if(cloud->size())
 				{
-					if(!cloudViewer_->addOrUpdateCloud("cloudOdom", cloud, odometryCorrection_*pose))
+					if(!cloudViewer_->addCloud("cloudOdom", cloud, odometryCorrection_*pose))
 					{
 						UERROR("Adding cloudOdom to viewer failed!");
 					}
@@ -202,7 +202,7 @@ protected slots:
 						    4.0f); // max depth
 					if(cloud->size())
 					{
-						if(!cloudViewer_->addOrUpdateCloud(cloudName, cloud, iter->second))
+						if(!cloudViewer_->addCloud(cloudName, cloud, iter->second))
 						{
 							UERROR("Adding cloud %d to viewer failed!", iter->first);
 						}
@@ -238,7 +238,7 @@ protected slots:
 
 			// add graph
 			cloudViewer_->addOrUpdateGraph("graph", graph, Qt::gray);
-			cloudViewer_->addOrUpdateCloud("graph_nodes", graphNodes, Transform::getIdentity(), Qt::green);
+			cloudViewer_->addCloud("graph_nodes", graphNodes, Transform::getIdentity(), Qt::green);
 			cloudViewer_->setCloudPointSize("graph_nodes", 5);
 		}
 

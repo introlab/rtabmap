@@ -121,7 +121,11 @@ public:
 				rt = pthread_cond_wait(&_cond, &_waitMutex);
 			}
 		}
-		_available -= n;
+		if(rt == 0)
+		{
+			// only remove them if waiting did not fail
+			_available -= n;
+		}
 		pthread_mutex_unlock(&_waitMutex);
 		return rt == 0;
 	}

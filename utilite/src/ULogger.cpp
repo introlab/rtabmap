@@ -312,7 +312,7 @@ void ULogger::write(ULogger::Level level,
 		...)
 {
 	loggerMutex_.lock();
-	if(type_ == kTypeNoLog && level < kFatal)
+	if(type_ == kTypeNoLog && level < kFatal && level < eventLevel_)
 	{
 		loggerMutex_.unlock();
 		return;
@@ -324,7 +324,7 @@ void ULogger::write(ULogger::Level level,
 		return;
 	}
 
-    if(level >= level_)
+    if(level >= level_ || level >= eventLevel_)
     {
 #ifdef _WIN32
     	int color = 0;

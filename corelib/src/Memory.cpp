@@ -70,8 +70,8 @@ const int Memory::kIdInvalid = 0;
 Memory::Memory(const ParametersMap & parameters) :
 	_dbDriver(0),
 	_similarityThreshold(Parameters::defaultMemRehearsalSimilarity()),
-	_rawDataKept(Parameters::defaultMemImageKept()),
 	_binDataKept(Parameters::defaultMemBinDataKept()),
+	_rawDescriptorsKept(Parameters::defaultMemRawDescriptorsKept()),
 	_saveDepth16Format(Parameters::defaultMemSaveDepth16Format()),
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
@@ -302,14 +302,14 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 void Memory::close(bool databaseSaved, bool postInitClosingEvents)
 {
-	UDEBUG("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved?1:0, postInitClosingEvents?1:0);
+	UINFO("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved?1:0, postInitClosingEvents?1:0);
 	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
 
 	if(!databaseSaved || (!_memoryChanged && !_linksChanged))
 	{
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
 
-		UDEBUG("");
+		UINFO("No changes added to database.");
 		if(_dbDriver)
 		{
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
@@ -324,7 +324,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents)
 	}
 	else
 	{
-		UDEBUG("");
+		UINFO("Saving memory...");
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory..."));
 		if(!_memoryChanged && _linksChanged && _dbDriver)
 		{
@@ -384,8 +384,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UDEBUG("");
 	ParametersMap::const_iterator iter;
 
-	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
 	Parameters::parse(parameters, Parameters::kMemBinDataKept(), _binDataKept);
+	Parameters::parse(parameters, Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
 	Parameters::parse(parameters, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
 	Parameters::parse(parameters, Parameters::kMemReduceGraph(), _reduceGraph);
 	Parameters::parse(parameters, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
@@ -2031,6 +2031,18 @@ void Memory::removeLink(int oldId, int newId)
 	}
 }
 
+void Memory::removeRawData(int id)
+{
+	Signature * s = this->_getSignature(id);
+	if(s)
+	{
+		s->sensorData().setImageRaw(cv::Mat());
+		s->sensorData().setDepthOrRightRaw(cv::Mat());
+		s->sensorData().setLaserScanRaw(cv::Mat(), s->sensorData().laserScanMaxPts(), s->sensorData().laserScanMaxRange());
+		s->sensorData().setUserDataRaw(cv::Mat());
+	}
+}
+
 // compute transform fromId -> toId
 Transform Memory::computeTransform(
 		int fromId,
@@ -2064,8 +2076,12 @@ Transform Memory::computeTransform(
 			{
 				tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
 				tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
+				tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+				tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
 				tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
 				tmpTo.setWords3(std::multimap<int, cv::Point3f>());
+				tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+				tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
 			}
 
 			Transform guess = Transform::getIdentity();
@@ -2244,7 +2260,7 @@ bool Memory::addLink(const Link & link)
 {
 	UASSERT(link.type() > Link::kNeighbor && link.type() != Link::kUndef);
 
-	ULOGGER_INFO("to=%d, from=%d transform: %s", link.to(), link.from(), link.transform().prettyPrint().c_str());
+	ULOGGER_INFO("to=%d, from=%d transform: %s var=%f", link.to(), link.from(), link.transform().prettyPrint().c_str(), link.transVariance());
 	Signature * toS = _getSignature(link.to());
 	Signature * fromS = _getSignature(link.from());
 	if(toS && fromS)
@@ -3006,8 +3022,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.imageRaw().type() == CV_8UC1 ||
 			data.imageRaw().type() == CV_8UC3);
 	UASSERT_MSG(data.depthOrRightRaw().empty() ||
-			(  (data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1 || data.depthOrRightRaw().type() == CV_8UC1) &&
-				((data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) || (data.depthOrRightRaw().rows == data.imageRaw().rows && data.depthOrRightRaw().cols == data.imageRaw().cols))),
+			(  ( data.depthOrRightRaw().type() == CV_16UC1 ||
+				 data.depthOrRightRaw().type() == CV_32FC1 ||
+				 data.depthOrRightRaw().type() == CV_8UC1)
+			   &&
+				( (data.imageRaw().empty() && data.depthOrRightRaw().type() != CV_8UC1) ||
+				  (data.imageRaw().rows % data.depthOrRightRaw().rows == 0 && data.imageRaw().cols % data.depthOrRightRaw().cols == 0))),
 				uFormat("image=(%d/%d) depth=(%d/%d, type=%d [accepted=%d,%d,%d])",
 						data.imageRaw().cols,
 						data.imageRaw().rows,
@@ -3093,9 +3113,18 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				imageMono = data.imageRaw();
 			}
 
+			cv::Mat depthMask;
+			if(_useDepthAsMask && !data.depthRaw().empty())
+			{
+				if(imageMono.rows/data.depthRaw().rows == imageMono.cols/data.depthRaw().cols)
+				{
+					depthMask = util2d::interpolate(data.depthRaw(), imageMono.rows/data.depthRaw().rows, 0.1f);
+				}
+			}
+
 			keypoints = _feature2D->generateKeypoints(
 					imageMono,
-					_useDepthAsMask&&!data.depthRaw().empty()?data.depthRaw():cv::Mat());
+					depthMask);
 			t = timer.ticks();
 			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
 			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
@@ -3173,6 +3202,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	std::multimap<int, cv::KeyPoint> words;
 	std::multimap<int, cv::Point3f> words3D;
+	std::multimap<int, cv::Mat> wordsDescriptors;
 	if(wordIds.size() > 0)
 	{
 		UASSERT(wordIds.size() == keypoints.size());
@@ -3196,46 +3226,62 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			{
 				words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
 			}
+			if(_rawDescriptorsKept)
+			{
+				wordsDescriptors.insert(std::pair<int, cv::Mat>(*iter, descriptors.row(i).clone()));
+			}
 		}
 	}
 
-	if(words.size() > 8 &&
-		words3D.size() == 0 &&
-		!pose.isNull() &&
+	if(!pose.isNull() &&
 		data.cameraModels().size() == 1 &&
-		_signatures.size())
+		words.size() &&
+		words3D.size() == 0)
 	{
-		UDEBUG("Generate 3D words using odometry");
-		Signature * previousS = _signatures.rbegin()->second;
-		if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
+		bool fillWithNaN = true;
+		if(_signatures.size())
 		{
-			Transform cameraTransform = pose.inverse() * previousS->getPose();
-			// compute 3D words by epipolar geometry with the previous signature
-			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
-					uMultimapToMapUnique(words),
-					uMultimapToMapUnique(previousS->getWords()),
-					data.cameraModels()[0],
-					cameraTransform);
+			UDEBUG("Generate 3D words using odometry");
+			Signature * previousS = _signatures.rbegin()->second;
+			if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
+			{
+				Transform cameraTransform = pose.inverse() * previousS->getPose();
+				// compute 3D words by epipolar geometry with the previous signature
+				std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
+						uMultimapToMapUnique(words),
+						uMultimapToMapUnique(previousS->getWords()),
+						data.cameraModels()[0],
+						cameraTransform);
 
-			// words3D should have the same size than words
+				// words3D should have the same size than words
+				float bad_point = std::numeric_limits<float>::quiet_NaN ();
+				for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
+				{
+					std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
+					if(jter != inliers.end())
+					{
+						words3D.insert(std::make_pair(iter->first, jter->second));
+					}
+					else
+					{
+						words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
+					}
+				}
+
+				t = timer.ticks();
+				UASSERT(words3D.size() == words.size());
+				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+				UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
+				fillWithNaN = false;
+			}
+		}
+		if(fillWithNaN)
+		{
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
-				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
-				if(jter != inliers.end())
-				{
-					words3D.insert(std::make_pair(iter->first, jter->second));
-				}
-				else
-				{
-					words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
-				}
+				words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
 			}
-
-			t = timer.ticks();
-			UASSERT(words3D.size() == words.size());
-			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
 		}
 	}
 
@@ -3245,7 +3291,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	StereoCameraModel stereoCameraModel = data.stereoCameraModel();
 
 	// apply decimation?
-	if((this->isBinDataKept() || this->isRawDataKept()) && _imageDecimation > 1)
+	if(_imageDecimation > 1)
 	{
 		image = util2d::decimate(image, _imageDecimation);
 		depthOrRightImage = util2d::decimate(depthOrRightImage, _imageDecimation);
@@ -3360,13 +3406,14 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	s->setWords(words);
 	s->setWords3(words3D);
-	if(this->isRawDataKept())
-	{
-		s->sensorData().setImageRaw(image);
-		s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-		s->sensorData().setLaserScanRaw(laserScan, maxLaserScanMaxPts, data.laserScanMaxRange());
-		s->sensorData().setUserDataRaw(data.userDataRaw());
-	}
+	s->setWordsDescriptors(wordsDescriptors);
+
+	// set raw data
+	s->sensorData().setImageRaw(image);
+	s->sensorData().setDepthOrRightRaw(depthOrRightImage);
+	s->sensorData().setLaserScanRaw(laserScan, maxLaserScanMaxPts, data.laserScanMaxRange());
+	s->sensorData().setUserDataRaw(data.userDataRaw());
+
 	s->sensorData().setGroundTruth(data.groundTruth());
 
 	t = timer.ticks();
@@ -3516,13 +3563,23 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 	for(std::list<Signature *>::iterator j=surfSigns.begin(); j!=surfSigns.end(); ++j)
 	{
 		const std::vector<int> & keys = uKeys((*j)->getWords());
-		// Add all references
-		for(std::vector<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
-		{
-			_vwd->addWordRef(*i, (*j)->id());
-		}
 		if(keys.size())
 		{
+			const VisualWord * wordFirst = _vwd->getWord(keys.front()); //get descriptor size
+			UASSERT(wordFirst!=0);
+			//Descriptors used for Memory::computeTransform()
+			cv::Mat descriptors(keys.size(), wordFirst->getDescriptor().cols, wordFirst->getDescriptor().type());
+			// Add all references
+			for(unsigned int i=0; i<keys.size(); ++i)
+			{
+				_vwd->addWordRef(keys.at(i), (*j)->id());
+				const VisualWord * word = _vwd->getWord(keys.at(i));
+				UASSERT(word != 0);
+
+				word->getDescriptor().copyTo(descriptors.row(i));
+
+			}
+			(*j)->sensorData().setFeatures(std::vector<cv::KeyPoint>(), descriptors);
 			(*j)->setEnabled(true);
 		}
 	}

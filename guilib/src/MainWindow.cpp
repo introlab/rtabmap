@@ -103,8 +103,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/common.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
-#include <pcl/io/vtk_io.h>
-#include <pcl/io/obj_io.h>
 #include <pcl/filters/filter.h>
 #include <pcl/search/kdtree.h>
 
@@ -464,6 +462,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+	_ui->widget_cloudViewer->setBackfaceCulling(true, false);
 	_preferencesDialog->loadWidgetState(_ui->widget_cloudViewer);
 
 	//dialog states
@@ -756,7 +755,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 		if(_ui->imageView_odometry->toolTip().isEmpty())
 		{
 			_ui->imageView_odometry->setToolTip(
-				"Dark Red	= Odometry Lost\n"
+				"Dark Red		= Odometry Lost\n"
 				"Dark Yellow	= Low Inliers");
 		}
 
@@ -811,17 +810,43 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 				   _preferencesDialog->isCloudsShown(1))
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+					pcl::IndicesPtr indices(new std::vector<int>);
 					cloud = util3d::cloudRGBFromSensorData(odom.data(),
 							_preferencesDialog->getCloudDecimation(1),
 							_preferencesDialog->getCloudMaxDepth(1),
-							_preferencesDialog->getCloudVoxelSize(1));
-					if(cloud->size())
+							0,
+							0,
+							indices.get());
+					if(indices->size())
 					{
 						cloud = util3d::transformPointCloud(cloud, pose);
 
-						if(!_ui->widget_cloudViewer->addOrUpdateCloud("cloudOdom", cloud, _odometryCorrection))
+						if(_preferencesDialog->isCloudMeshing())
 						{
-							UERROR("Adding cloudOdom to viewer failed!");
+							// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+							output = util3d::extractIndices(cloud, indices, false, true);
+
+							// Fast organized mesh
+							std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+									output,
+									_preferencesDialog->getCloudMeshingAngle(),
+									_preferencesDialog->isCloudMeshingQuad(),
+									_preferencesDialog->getCloudMeshingTriangleSize());
+							if(polygons.size())
+							{
+								if(!_ui->widget_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
+								{
+									UERROR("Adding cloudOdom to viewer failed!");
+								}
+							}
+						}
+						else
+						{
+							if(!_ui->widget_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
+							{
+								UERROR("Adding cloudOdom to viewer failed!");
+							}
 						}
 						_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
 						_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
@@ -845,7 +870,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 					{
 						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
 					}
-					if(!_ui->widget_cloudViewer->addOrUpdateCloud("scanOdom", cloud, _odometryCorrection))
+					if(!_ui->widget_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection))
 					{
 						UERROR("Adding scanOdom to viewer failed!");
 					}
@@ -1585,11 +1610,7 @@ void MainWindow::updateMapCloud(
 				}
 				else if(_cachedSignatures.contains(iter->first))
 				{
-					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if((!jter->sensorData().imageCompressed().empty() && !jter->sensorData().depthOrRightCompressed().empty()) || jter->getWords3().size())
-					{
-						this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
-					}
+					this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 				}
 			}
 			else if(viewerClouds.contains(cloudName))
@@ -1679,6 +1700,8 @@ void MainWindow::updateMapCloud(
 		}
 	}
 
+	UDEBUG("");
+
 	// update 3D graphes (show all poses)
 	_ui->widget_cloudViewer->removeAllGraphs();
 	_ui->widget_cloudViewer->removeCloud("graph_nodes");
@@ -1726,6 +1749,8 @@ void MainWindow::updateMapCloud(
 		}
 	}
 
+	UDEBUG("labels.size()=%d", (int)labels.size());
+
 	// Update labels
 	_ui->widget_cloudViewer->removeAllTexts();
 	if(_preferencesDialog->isLabelsShown() && labels.size())
@@ -1749,6 +1774,8 @@ void MainWindow::updateMapCloud(
 			}
 		}
 	}
+
+	UDEBUG("");
 
 	// Update occupancy grid map in 3D map view and graph view
 	if(_ui->graphicsView_graphView->isVisible())
@@ -1791,8 +1818,11 @@ void MainWindow::updateMapCloud(
 	}
 	_ui->graphicsView_graphView->update();
 
+	UDEBUG("");
+
 	if(!_preferencesDialog->getGridMapShown())
 	{
+		UDEBUG("");
 		_ui->widget_cloudViewer->removeOccupancyGridMap();
 	}
 
@@ -1800,10 +1830,12 @@ void MainWindow::updateMapCloud(
 	{
 		if(!_preferencesDialog->isCloudsShown(1))
 		{
+			UDEBUG("");
 			_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
 		}
 		else
 		{
+			UDEBUG("");
 			_ui->widget_cloudViewer->updateCloudPose("cloudOdom", _odometryCorrection);
 			_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
 			_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
@@ -1813,10 +1845,12 @@ void MainWindow::updateMapCloud(
 	{
 		if(!_preferencesDialog->isScansShown(1))
 		{
+			UDEBUG("");
 			_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
 		}
 		else
 		{
+			UDEBUG("");
 			_ui->widget_cloudViewer->updateCloudPose("scanOdom", _odometryCorrection);
 			_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 			_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
@@ -1825,14 +1859,18 @@ void MainWindow::updateMapCloud(
 
 	if(!currentPose.isNull())
 	{
+		UDEBUG("");
 		_ui->widget_cloudViewer->updateCameraTargetPosition(currentPose);
 	}
 
+	UDEBUG("");
 	_ui->widget_cloudViewer->update();
+	UDEBUG("");
 }
 
 void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId)
 {
+	UDEBUG("");
 	UASSERT(!pose.isNull());
 	std::string cloudName = uFormat("cloud%d", nodeId);
 	if(_ui->widget_cloudViewer->getAddedClouds().contains(cloudName))
@@ -1848,36 +1886,44 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		return;
 	}
 
+	if(_createdClouds.find(nodeId) != _createdClouds.end())
+	{
+		UDEBUG("Cloud %d already created.");
+		return;
+	}
+
 	if(!iter->sensorData().imageCompressed().empty() && !iter->sensorData().depthOrRightCompressed().empty())
 	{
-
 		cv::Mat image, depth;
 		SensorData data = iter->sensorData();
 		data.uncompressData(&image, &depth, 0);
 
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+		pcl::IndicesPtr indices(new std::vector<int>);
 		UASSERT(nodeId == data.id());
-		cloud = util3d::cloudRGBFromSensorData(data,
+		// Create organized cloud
+		cloudWithoutNormals = util3d::cloudRGBFromSensorData(data,
 				_preferencesDialog->getCloudDecimation(0),
 				_preferencesDialog->getCloudMaxDepth(0),
-				_preferencesDialog->getCloudVoxelSize(0));
-		_createdClouds.insert(std::make_pair(nodeId, cloud));
+				0,
+				0,
+				indices.get());
 
-		if(cloud->size() && _preferencesDialog->isGridMapFrom3DCloud())
+		//compute normals
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::computeNormals(cloudWithoutNormals, 10);
+
+		if(indices->size() && _preferencesDialog->isGridMapFrom3DCloud())
 		{
 			UTimer timer;
 			float cellSize = _preferencesDialog->getGridMapResolution();
 			float groundNormalMaxAngle = M_PI_4;
 			int minClusterSize = 20;
 			cv::Mat ground, obstacles;
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelizedCloud = cloud;
-			if(voxelizedCloud->size() && cellSize > _preferencesDialog->getCloudVoxelSize(0))
-			{
-				voxelizedCloud = util3d::voxelize(cloud, cellSize);
-			}
-			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
-					voxelizedCloud,
-					ground, obstacles,
+			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGBNormal>(
+					cloud,
+					indices,
+					ground,
+					obstacles,
 					cellSize,
 					groundNormalMaxAngle,
 					minClusterSize);
@@ -1888,120 +1934,111 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			UDEBUG("time gridMapFrom2DCloud = %f s", timer.ticks());
 		}
 
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered = cloud;
 		if(_preferencesDialog->isSubtractFiltering() &&
-			_preferencesDialog->getCloudVoxelSize(0) > 0.0 &&
-			cloud->size() &&
-			_createdClouds.size() &&
-			_currentPosesMap.size() &&
-			_currentLinksMap.size())
+					_preferencesDialog->getSubtractFilteringRadius() > 0.0)
 		{
-			// find link to previous neighbor
-			std::map<int, Transform>::const_iterator previousIter = _currentPosesMap.find(nodeId);
-			Link link;
-			if(previousIter != _currentPosesMap.begin())
+			pcl::IndicesPtr beforeFiltering = indices;
+			if(	cloud->size() &&
+				_previousCloud.first>0 &&
+				_previousCloud.second.first.get() != 0 &&
+				_previousCloud.second.second.get() != 0 &&
+				_previousCloud.second.second->size() &&
+				_currentPosesMap.find(_previousCloud.first) != _currentPosesMap.end())
 			{
-				--previousIter;
-				std::multimap<int, Link>::const_iterator linkIter = graph::findLink(_currentLinksMap, nodeId, previousIter->first);
-				if(linkIter != _currentLinksMap.end())
+				UTimer time;
+
+				rtabmap::Transform t = pose.inverse() * _currentPosesMap.at(_previousCloud.first);
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first, t);
+
+				UWARN("saved new.pcd and old.pcd");
+				pcl::io::savePCDFile("new.pcd", *cloud, *indices);
+				pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
+
+				indices = rtabmap::util3d::subtractFiltering(
+						cloud,
+						indices,
+						previousCloud,
+						_previousCloud.second.second,
+						_preferencesDialog->getSubtractFilteringRadius(),
+						_preferencesDialog->getSubtractFilteringAngle(),
+						_preferencesDialog->getSubtractFilteringMinPts());
+				UWARN("Time subtract filtering %d from %d -> %d (%fs)",
+						(int)_previousCloud.second.second->size(),
+						(int)beforeFiltering->size(),
+						(int)indices->size(),
+						time.ticks());
+			}
+			// keep all indices for next subtraction
+			_previousCloud.first = nodeId;
+			_previousCloud.second.first = cloud;
+			_previousCloud.second.second = beforeFiltering;
+		}
+
+		// keep substracted clouds
+		_createdClouds.insert(std::make_pair(nodeId, std::make_pair(cloud, indices)));
+
+		if(indices->size())
+		{
+			if(_preferencesDialog->isCloudMeshing() && cloud->isOrganized())
+			{
+				// Fast organized mesh
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
+				// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
+				output = util3d::extractIndices(cloud, indices, false, true);
+				std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+						output,
+						_preferencesDialog->getCloudMeshingAngle(),
+						_preferencesDialog->isCloudMeshingQuad(),
+						_preferencesDialog->getCloudMeshingTriangleSize());
+				if(polygons.size())
 				{
-					link = linkIter->second;
-					if(link.from() != nodeId)
+					// remove unused vertices to save memory
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+					std::vector<pcl::Vertices> outputPolygons;
+					util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
+					if(!_ui->widget_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
 					{
-						link = link.inverse();
+						UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 					}
 				}
 			}
-			if(link.isValid())
+			else
 			{
-				std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter = _createdClouds.find(link.to());
-				if(iter!=_createdClouds.end() && iter->second->size())
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
+				// don't keep organized to save memory
+				output = util3d::extractIndices(cloud, indices, false, false);
+				QColor color = Qt::gray;
+				if(mapId >= 0)
 				{
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = util3d::transformPointCloud(iter->second, link.transform());
-					cloudFiltered = util3d::subtractFiltering(
-							cloud,
-							previousCloud,
-							_preferencesDialog->getCloudVoxelSize(0),
-							_preferencesDialog->getSubstractFilteringMinPts());
-					UDEBUG("Filtering %d from %d -> %d", (int)previousCloud->size(), (int)cloud->size(), (int)cloudFiltered->size());
+					color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 				}
-			}
-		}
 
-		if(_preferencesDialog->isCloudMeshing())
-		{
-			pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-			if(cloudFiltered->size())
-			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				if(_preferencesDialog->getMeshSmoothing())
+				if(!_ui->widget_cloudViewer->addCloud(cloudName, output, pose, color))
 				{
-					cloudWithNormals = util3d::mls(
-							cloudFiltered,
-							(float)_preferencesDialog->getMeshSmoothingRadius(),
-							false,
-							(float)_preferencesDialog->getCloudVoxelSize(0));
-					//if(_preferencesDialog->getCloudVoxelSize(0))
-					//{
-					//	cloudWithNormals = util3d::voxelize(cloudWithNormals, _preferencesDialog->getCloudVoxelSize(0));
-					//}
+					UERROR("Adding cloud %d to viewer failed!", nodeId);
 				}
-				else
-				{
-					cloudWithNormals = util3d::computeNormals(cloudFiltered, _preferencesDialog->getMeshNormalKSearch());
-				}
-				mesh = util3d::createMesh(cloudWithNormals,	_preferencesDialog->getMeshGP3Radius(), _preferencesDialog->getMeshGP3Mu());
-			}
-
-			if(mesh->polygons.size())
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
-				pcl::fromPCLPointCloud2(mesh->cloud, *tmp);
-				if(!_ui->widget_cloudViewer->addCloudMesh(cloudName, tmp, mesh->polygons, pose))
-				{
-					UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
-				}
-			}
-		}
-		else
-		{
-			if(_preferencesDialog->getMeshSmoothing())
-			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-				cloudWithNormals = util3d::mls(
-						cloudFiltered,
-						(float)_preferencesDialog->getMeshSmoothingRadius(),
-						false,
-						(float)_preferencesDialog->getCloudVoxelSize(0));
-				cloudFiltered.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
-				pcl::copyPointCloud(*cloudWithNormals, *cloudFiltered);
-			}
-			QColor color = Qt::gray;
-			if(mapId >= 0)
-			{
-				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
-			}
-			if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloudFiltered, pose, color))
-			{
-				UERROR("Adding cloud %d to viewer failed!", nodeId);
 			}
 		}
 	}
 	else if(iter->getWords3().size())
 	{
+		UINFO("Create cloud from 3D words");
 		QColor color = Qt::gray;
 		if(mapId >= 0)
 		{
 			color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 		}
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+		pcl::IndicesPtr indices(new std::vector<int>);
 		cloud->resize(iter->getWords3().size());
+		indices->resize(cloud->size());
 		int oi=0;
 		UASSERT(iter->getWords().size() == iter->getWords3().size());
 		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
 		for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->getWords3().begin();
 				jter!=iter->getWords3().end(); ++jter, ++kter, ++oi)
 		{
+			indices->at(oi) = oi;
 			(*cloud)[oi].x = jter->second.x;
 			(*cloud)[oi].y = jter->second.y;
 			(*cloud)[oi].z = jter->second.z;
@@ -2028,13 +2065,13 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
 			}
 		}
-		if(!_ui->widget_cloudViewer->addOrUpdateCloud(cloudName, cloud, pose, color))
+		if(!_ui->widget_cloudViewer->addCloud(cloudName, cloud, pose, color))
 		{
 			UERROR("Adding cloud %d to viewer failed!", nodeId);
 		}
 		else
 		{
-			_createdClouds.insert(std::make_pair(nodeId, cloud));
+			_createdClouds.insert(std::make_pair(nodeId, std::make_pair(cloud, indices)));
 		}
 	}
 	else
@@ -2044,6 +2081,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 
 	_ui->widget_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 	_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+	UDEBUG("");
 }
 
 void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int mapId)
@@ -2085,7 +2123,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
-			if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose, color))
+			if(!_ui->widget_cloudViewer->addCloud(scanName, cloud, pose, color))
 			{
 				UERROR("Adding cloud %d to viewer failed!", nodeId);
 			}
@@ -2109,7 +2147,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
-			if(!_ui->widget_cloudViewer->addOrUpdateCloud(scanName, cloud, pose, color))
+			if(!_ui->widget_cloudViewer->addCloud(scanName, cloud, pose, color))
 			{
 				UERROR("Adding cloud %d to viewer failed!", nodeId);
 			}
@@ -2594,7 +2632,10 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 				_state != kMonitoring &&
 				_state != kMonitoringPaused)
 			{
-				QMessageBox::information(this, tr("Working memory changed"), tr("The working directory can't be changed while the detector is running. This will be applied when the detector will stop."));
+				QMessageBox::information(this, tr("Working memory changed"),
+						tr("The working directory can't be changed while the "
+								"detector is running (state=%1). This will be "
+								"applied when the detector will stop.").arg(_state));
 			}
 			if(postParamEvent)
 			{
@@ -3021,7 +3062,7 @@ bool MainWindow::closeDatabase()
 		}
 	}
 
-	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdClose, !_newDatabasePathOutput.isEmpty()));
+	this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdClose, !_openedDatabasePath.isEmpty() || !_newDatabasePathOutput.isEmpty()));
 	return true;
 }
 
@@ -4230,6 +4271,9 @@ void MainWindow::clearTheCache()
 {
 	_cachedSignatures.clear();
 	_createdClouds.clear();
+	_previousCloud.first = 0;
+	_previousCloud.second.first.reset();
+	_previousCloud.second.second.reset();
 	_createdScans.clear();
 	_gridLocalMaps.clear();
 	_projectionLocalMaps.clear();
@@ -4744,402 +4788,33 @@ bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::
 
 void MainWindow::exportClouds()
 {
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
-	std::map<int, pcl::PolygonMesh::Ptr> meshes;
-	std::map<int, pcl::TextureMesh::Ptr> textureMeshes;
-
-	if(getExportedClouds(clouds, meshes, textureMeshes, true))
+	if(_exportDialog->isVisible())
 	{
-		if(textureMeshes.size())
-		{
-			saveTextureMeshes(textureMeshes);
-		}
-		else if(meshes.size())
-		{
-			saveMeshes(meshes, _exportDialog->getBinaryFile());
-		}
-		else
-		{
-			saveClouds(clouds, _exportDialog->getBinaryFile());
-		}
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		return;
 	}
+
+	_exportDialog->exportClouds(
+			_currentPosesMap,
+			_currentMapIds,
+			_cachedSignatures,
+			_createdClouds,
+			_preferencesDialog->getWorkingDirectory());
 }
 
 void MainWindow::viewClouds()
 {
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
-	std::map<int, pcl::PolygonMesh::Ptr> meshes;
-	std::map<int, pcl::TextureMesh::Ptr> textureMeshes;
-
-	if(getExportedClouds(clouds, meshes, textureMeshes, false))
-	{
-		QDialog * window = new QDialog(this, Qt::Window);
-		if(meshes.size())
-		{
-			window->setWindowTitle(tr("Meshes (%1 nodes)").arg(meshes.size()));
-		}
-		else
-		{
-			window->setWindowTitle(tr("Clouds (%1 nodes)").arg(clouds.size()));
-		}
-		window->setMinimumWidth(800);
-		window->setMinimumHeight(600);
-
-		CloudViewer * viewer = new CloudViewer(window);
-		viewer->setCameraLockZ(false);
-
-		QVBoxLayout *layout = new QVBoxLayout();
-		layout->addWidget(viewer);
-		window->setLayout(layout);
-		connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
-
-		window->show();
-
-		uSleep(500);
-
-		if(meshes.size())
-		{
-			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter = meshes.begin(); iter!=meshes.end(); ++iter)
-			{
-				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->polygons.size()));
-				_initProgressDialog->incrementStep();
-				bool isRGB = false;
-				for(unsigned int i=0; i<iter->second->cloud.fields.size(); ++i)
-				{
-					if(iter->second->cloud.fields[i].name.compare("rgb") == 0)
-					{
-						isRGB=true;
-						break;
-					}
-				}
-				if(isRGB)
-				{
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-					pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
-					viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
-				}
-				else
-				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-					pcl::fromPCLPointCloud2(iter->second->cloud, *cloud);
-					viewer->addCloudMesh(uFormat("mesh%d",iter->first), cloud, iter->second->polygons, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
-				}
-				_initProgressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(iter->second->polygons.size()));
-				QApplication::processEvents();
-			}
-		}
-		else if(clouds.size())
-		{
-			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter = clouds.begin(); iter!=clouds.end(); ++iter)
-			{
-				_initProgressDialog->appendText(tr("Viewing the cloud %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
-				_initProgressDialog->incrementStep();
-
-				QColor color = Qt::gray;
-				int mapId = uValue(_currentMapIds, iter->first, -1);
-				if(mapId >= 0)
-				{
-					color = (Qt::GlobalColor)(mapId % 12 + 7 );
-				}
-				viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
-				_initProgressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
-			}
-		}
-
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-	}
-}
-
-bool removeDir(const QString & dirName)
-{
-    bool result = true;
-    QDir dir(dirName);
-
-    if (dir.exists(dirName)) {
-        Q_FOREACH(QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
-            if (info.isDir()) {
-                result = removeDir(info.absoluteFilePath());
-            }
-            else {
-                result = QFile::remove(info.absoluteFilePath());
-            }
-
-            if (!result) {
-                return result;
-            }
-        }
-        result = dir.rmdir(dirName);
-    }
-    return result;
-}
-
-bool MainWindow::getExportedClouds(
-		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
-		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
-		std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
-		bool toSave)
-{
 	if(_exportDialog->isVisible())
 	{
-		return false;
+		return;
 	}
-	if(toSave)
-	{
-		_exportDialog->setSaveButton();
-	}
-	else
-	{
-		_exportDialog->setOkButton();
-	}
-	_exportDialog->enableRegeneration(_preferencesDialog->isImagesKept());
-	if(_exportDialog->exec() == QDialog::Accepted)
-	{
-		std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		int mul = 1;
-		if(_exportDialog->getMesh())
-		{
-			mul+=1;
-		}
-		if(_exportDialog->getAssemble())
-		{
-			mul+=1;
-		}
-		mul+=1; // normals
-		if(_exportDialog->getMeshTexture())
-		{
-			mul+=1;
-		}
-		_initProgressDialog->setMaximumSteps(int(poses.size())*mul+1);
+	_exportDialog->viewClouds(
+			_currentPosesMap,
+			_currentMapIds,
+			_cachedSignatures,
+			_createdClouds,
+			_preferencesDialog->getWorkingDirectory());
 
-		if(_exportDialog->getMLS())
-		{
-			_initProgressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
-					"[search radius=%1m voxel=%2m]").arg(_exportDialog->getMLSRadius()).arg(_exportDialog->getGenerateVoxel()));
-		}
-		_initProgressDialog->appendText(tr("Computing surface normals... "
-					"[K neighbors=%1]").arg(_exportDialog->getNormalKSearch()));
-
-		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds = this->getClouds(
-				poses,
-				_exportDialog->getGenerate(),
-				_exportDialog->getGenerateDecimation(),
-				_exportDialog->getGenerateVoxel(),
-				_exportDialog->getGenerateMaxDepth(),
-				_exportDialog->getFiltering()?_exportDialog->getFilteringRadius():0.0f,
-				_exportDialog->getFiltering()?_exportDialog->getFilteringMinNeighbors():0.0f);
-
-		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
-		std::vector<int> rawCameraIndices;
-		if(_exportDialog->getAssemble())
-		{
-			_initProgressDialog->appendText(tr("Assembling %1 clouds...").arg(clouds.size()));
-			QApplication::processEvents();
-
-			int i =0;
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter=clouds.begin();
-				iter!= clouds.end();
-				++iter)
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed = util3d::transformPointCloud(iter->second, poses.at(iter->first));
-				*assembledCloud += *transformed;
-				rawCameraIndices.resize(assembledCloud->size(), iter->first);
-
-				_initProgressDialog->appendText(tr("Assembled cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(clouds.size()));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
-			}
-
-			pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
-
-			_initProgressDialog->appendText(tr("Voxelize assembled cloud (%1 points, voxel size = %2 m)...")
-					.arg(assembledCloud->size())
-					.arg(_exportDialog->getAssembleVoxel()));
-			QApplication::processEvents();
-			if(_exportDialog->getAssembleVoxel())
-			{
-				assembledCloud = util3d::voxelize(
-						assembledCloud,
-						_exportDialog->getAssembleVoxel());
-			}
-
-			if(_exportDialog->getFiltering() &&
-				_exportDialog->getFilteringRadius() > 0.0 &&
-				_exportDialog->getFilteringMinNeighbors() > 0)
-			{
-				_initProgressDialog->appendText(tr("Noise filtering (%1 points, radius = %2 m, min neighbors = %3)...")
-							.arg(assembledCloud->size())
-							.arg(_exportDialog->getFilteringRadius())
-							.arg(_exportDialog->getFilteringMinNeighbors()));
-
-				pcl::IndicesPtr indices = util3d::radiusFiltering(assembledCloud, (float)_exportDialog->getFilteringRadius(), _exportDialog->getFilteringMinNeighbors());
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
-				pcl::copyPointCloud(*assembledCloud, *indices, *cloudFiltered);
-				assembledCloud = cloudFiltered;
-			}
-
-			clouds.clear();
-			clouds.insert(std::make_pair(0, assembledCloud));
-		}
-
-		// normals
-		for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::iterator iter=clouds.begin();
-			iter!= clouds.end();
-			++iter)
-		{
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-			if(_exportDialog->getMLS())
-			{
-				_initProgressDialog->appendText(tr("Smoothing (MLS) the cloud (%1 points)...").arg(iter->second->size()));
-				QApplication::processEvents();
-
-				cloudWithNormals = util3d::mls(
-						iter->second,
-						(float)_exportDialog->getMLSRadius(),
-						_exportDialog->getMLSPolygonialOrder(),
-						_exportDialog->getMLSUpsamplingMethod(),
-						(float)_exportDialog->getMLSUpsamplingRadius(),
-						(float)_exportDialog->getMLSUpsamplingStep(),
-						_exportDialog->getMLSPointDensity(),
-						(float)_exportDialog->getMLSDilationVoxelSize(),
-						_exportDialog->getMLSDilationIterations());
-
-				// Re-voxelize to make sure to have uniform density
-				_initProgressDialog->appendText(tr("Voxelize cloud (%1 points, voxel size = %2 m)...")
-						.arg(cloudWithNormals->size())
-						.arg(_exportDialog->getAssemble()?_exportDialog->getAssembleVoxel():_exportDialog->getGenerateVoxel()));
-				QApplication::processEvents();
-
-				cloudWithNormals = util3d::voxelize(
-						cloudWithNormals,
-						_exportDialog->getAssemble()?_exportDialog->getAssembleVoxel():_exportDialog->getGenerateVoxel());
-
-			}
-			else
-			{
-				//compute normals
-				_initProgressDialog->appendText(tr("Computing normals (%1 points)...").arg(iter->second->size()));
-				cloudWithNormals = util3d::computeNormals(iter->second, _exportDialog->getNormalKSearch());
-			}
-
-			if(_exportDialog->getAssemble())
-			{
-				_initProgressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(cloudWithNormals->size()).arg(poses.size()));
-				util3d::adjustNormalsToViewPoints(
-						poses,
-						rawAssembledCloud,
-						rawCameraIndices,
-						cloudWithNormals);
-			}
-			cloudsWithNormals.insert(std::make_pair(iter->first, cloudWithNormals));
-
-			_initProgressDialog->incrementStep();
-			QApplication::processEvents();
-		}
-
-		//mesh
-		if(_exportDialog->getMesh())
-		{
-			_initProgressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_exportDialog->getMeshGp3Radius()));
-			QApplication::processEvents();
-
-			int i=0;
-			for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>::iterator iter=cloudsWithNormals.begin();
-				iter!= cloudsWithNormals.end();
-				++iter)
-			{
-				pcl::PolygonMesh::Ptr mesh = util3d::createMesh(iter->second, _exportDialog->getMeshGp3Radius(), _exportDialog->getMeshGp3Mu());
-				_initProgressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
-
-				if(_exportDialog->getMeshDecimationFactor() > 0.0)
-				{
-					mesh = util3d::meshDecimation(mesh, (float)_exportDialog->getMeshDecimationFactor());
-					_initProgressDialog->appendText(tr("Mesh %1 decimation (factor=%2) to %3 polygons").arg(iter->first).arg(_exportDialog->getMeshDecimationFactor()).arg(mesh->polygons.size()));
-				}
-
-				meshes.insert(std::make_pair(iter->first, mesh));
-
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
-			}
-		}
-
-		if(toSave && _exportDialog->getMeshTexture())
-		{
-			QDir dir(_preferencesDialog->getWorkingDirectory());
-			removeDir(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
-			dir.mkdir("tmp_textures");
-			int i=0;
-			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter=meshes.begin();
-				iter!= meshes.end();
-				++iter)
-			{
-				std::map<int, Transform> cameras;
-				if(iter->first == 0)
-				{
-					cameras = poses;
-				}
-				else
-				{
-					UASSERT(uContains(poses, iter->first));
-					cameras.insert(std::make_pair(iter->first, Transform::getIdentity()));
-				}
-				std::map<int, Transform> cameraPoses;
-				std::map<int, CameraModel> cameraModels;
-				std::map<int, cv::Mat> images;
-				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
-				{
-					if(_cachedSignatures.contains(jter->first))
-					{
-						const Signature & s = _cachedSignatures.value(jter->first);
-						CameraModel model;
-						if(s.sensorData().stereoCameraModel().isValidForProjection())
-						{
-							model = s.sensorData().stereoCameraModel().left();
-						}
-						else if(s.sensorData().cameraModels().size() == 1 && s.sensorData().cameraModels()[0].isValidForProjection())
-						{
-							model = s.sensorData().cameraModels()[0];
-						}
-						cv::Mat image = s.sensorData().imageRaw();
-						if(image.empty() && !s.sensorData().imageCompressed().empty())
-						{
-							s.sensorData().uncompressDataConst(&image, 0, 0, 0);
-						}
-						if(!jter->second.isNull() && model.isValidForProjection() && !image.empty())
-						{
-							cameraPoses.insert(std::make_pair(jter->first, jter->second));
-							cameraModels.insert(std::make_pair(jter->first, model));
-							images.insert(std::make_pair(jter->first, image));
-						}
-					}
-				}
-				if(cameraPoses.size())
-				{
-					pcl::TextureMesh::Ptr textureMesh = util3d::createTextureMesh(
-							iter->second,
-							cameraPoses,
-							cameraModels,
-							images,
-							dir.filePath("tmp_textures").toStdString());
-
-					textureMeshes.insert(std::make_pair(iter->first, textureMesh));
-				}
-
-				_initProgressDialog->appendText(tr("TextureMesh %1 created [cameras=%2] (%3/%4).").arg(iter->first).arg(cameraPoses.size()).arg(++i).arg(clouds.size()));
-				_initProgressDialog->incrementStep();
-				QApplication::processEvents();
-			}
-
-		}
-
-		return true;
-	}
-	return false;
 }
 
 void MainWindow::exportImages()
@@ -5476,388 +5151,6 @@ void MainWindow::dataRecorderDestroyed()
 
 //END ACTIONS
 
-void MainWindow::saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode)
-{
-	if(clouds.size() == 1)
-	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"cloud.ply", tr("Point cloud data (*.ply *.pcd)"));
-		if(!path.isEmpty())
-		{
-			if(clouds.begin()->second->size())
-			{
-				_initProgressDialog->appendText(tr("Saving the cloud (%1 points)...").arg(clouds.begin()->second->size()));
-
-				bool success =false;
-				if(QFileInfo(path).suffix() == "pcd")
-				{
-					success = pcl::io::savePCDFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
-				}
-				else if(QFileInfo(path).suffix() == "ply")
-				{
-					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
-				}
-				else if(QFileInfo(path).suffix() == "")
-				{
-					//use ply by default
-					path += ".ply";
-					success = pcl::io::savePLYFile(path.toStdString(), *clouds.begin()->second, binaryMode) == 0;
-				}
-				else
-				{
-					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd).", QFileInfo(path).suffix().toStdString().c_str());
-				}
-				if(success)
-				{
-					_initProgressDialog->incrementStep();
-					_initProgressDialog->appendText(tr("Saving the cloud (%1 points)... done.").arg(clouds.begin()->second->size()));
-
-					QMessageBox::information(this, tr("Save successful!"), tr("Cloud saved to \"%1\"").arg(path));
-				}
-				else
-				{
-					QMessageBox::warning(this, tr("Save failed!"), tr("Failed to save to \"%1\"").arg(path));
-				}
-			}
-			else
-			{
-				QMessageBox::warning(this, tr("Save failed!"), tr("Cloud is empty..."));
-			}
-		}
-	}
-	else if(clouds.size())
-	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.pcd)..."), _preferencesDialog->getWorkingDirectory(), 0);
-		if(!path.isEmpty())
-		{
-			bool ok = false;
-			QStringList items;
-			items.push_back("ply");
-			items.push_back("pcd");
-			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
-
-			if(ok)
-			{
-				QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "cloud", &ok);
-
-				if(ok)
-				{
-					for(std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr >::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
-					{
-						if(iter->second->size())
-						{
-							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud;
-							transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
-
-							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
-							bool success =false;
-							if(suffix == "pcd")
-							{
-								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
-							}
-							else if(suffix == "ply")
-							{
-								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
-							}
-							else
-							{
-								UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
-							}
-							if(success)
-							{
-								_initProgressDialog->appendText(tr("Saved cloud %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
-							}
-							else
-							{
-								_initProgressDialog->appendText(tr("Failed saving cloud %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
-							}
-						}
-						else
-						{
-							_initProgressDialog->appendText(tr("Cloud %1 is empty!").arg(iter->first));
-						}
-						_initProgressDialog->incrementStep();
-						QApplication::processEvents();
-					}
-				}
-			}
-		}
-	}
-}
-
-void MainWindow::saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode)
-{
-	if(meshes.size() == 1)
-	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"mesh.ply", tr("Mesh (*.ply)"));
-		if(!path.isEmpty())
-		{
-			if(meshes.begin()->second->polygons.size())
-			{
-				_initProgressDialog->appendText(tr("Saving the mesh (%1 polygons)...").arg(meshes.begin()->second->polygons.size()));
-
-				bool success =false;
-				if(QFileInfo(path).suffix() == "")
-				{
-					path += ".ply";
-				}
-				else if(QFileInfo(path).suffix() == "ply")
-				{
-					if(binaryMode)
-					{
-						success = pcl::io::savePLYFileBinary(path.toStdString(), *meshes.begin()->second) == 0;
-					}
-					else
-					{
-						success = pcl::io::savePLYFile(path.toStdString(), *meshes.begin()->second) == 0;
-					}
-				}
-				else if(QFileInfo(path).suffix() == "obj")
-				{
-					success = pcl::io::saveOBJFile(path.toStdString(), *meshes.begin()->second) == 0;
-				}
-				else
-				{
-					UERROR("Extension not recognized! (%s) Should be (*.ply).", QFileInfo(path).suffix().toStdString().c_str());
-				}
-				if(success)
-				{
-					_initProgressDialog->incrementStep();
-					_initProgressDialog->appendText(tr("Saving the mesh (%1 polygons)... done.").arg(meshes.begin()->second->polygons.size()));
-
-					QMessageBox::information(this, tr("Save successful!"), tr("Mesh saved to \"%1\"").arg(path));
-				}
-				else
-				{
-					QMessageBox::warning(this, tr("Save failed!"), tr("Failed to save to \"%1\"").arg(path));
-				}
-			}
-			else
-			{
-				QMessageBox::warning(this, tr("Save failed!"), tr("Cloud is empty..."));
-			}
-		}
-	}
-	else if(meshes.size())
-	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.obj)..."), _preferencesDialog->getWorkingDirectory(), 0);
-		if(!path.isEmpty())
-		{
-			bool ok = false;
-			QStringList items;
-			items.push_back("ply");
-			items.push_back("obj");
-			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
-
-			if(ok)
-			{
-				QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "mesh", &ok);
-
-				if(ok)
-				{
-					for(std::map<int, pcl::PolygonMesh::Ptr>::const_iterator iter=meshes.begin(); iter!=meshes.end(); ++iter)
-					{
-						if(iter->second->polygons.size())
-						{
-							pcl::PolygonMesh mesh;
-							mesh.polygons = iter->second->polygons;
-							bool isRGB = false;
-							for(unsigned int i=0; i<iter->second->cloud.fields.size(); ++i)
-							{
-								if(iter->second->cloud.fields[i].name.compare("rgb") == 0)
-								{
-									isRGB=true;
-									break;
-								}
-							}
-							if(isRGB)
-							{
-								pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
-								pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
-								tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
-								pcl::toPCLPointCloud2(*tmp, mesh.cloud);
-							}
-							else
-							{
-								pcl::PointCloud<pcl::PointXYZ>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZ>);
-								pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
-								tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
-								pcl::toPCLPointCloud2(*tmp, mesh.cloud);
-							}
-
-							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
-							bool success =false;
-							if(suffix == "ply")
-							{
-								if(binaryMode)
-								{
-									success = pcl::io::savePLYFileBinary(pathFile.toStdString(), mesh) == 0;
-								}
-								else
-								{
-									success = pcl::io::savePLYFile(pathFile.toStdString(), mesh) == 0;
-								}
-							}
-							else if(suffix == "obj")
-							{
-								success = pcl::io::saveOBJFile(pathFile.toStdString(), mesh) == 0;
-							}
-							else
-							{
-								UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
-							}
-							if(success)
-							{
-								_initProgressDialog->appendText(tr("Saved mesh %1 (%2 polygons) to %3.")
-										.arg(iter->first).arg(iter->second->polygons.size()).arg(pathFile));
-							}
-							else
-							{
-								_initProgressDialog->appendText(tr("Failed saving mesh %1 (%2 polygons) to %3.")
-										.arg(iter->first).arg(iter->second->polygons.size()).arg(pathFile));
-							}
-						}
-						else
-						{
-							_initProgressDialog->appendText(tr("Mesh %1 is empty!").arg(iter->first));
-						}
-						_initProgressDialog->incrementStep();
-						QApplication::processEvents();
-					}
-				}
-			}
-		}
-	}
-}
-
-void MainWindow::saveTextureMeshes(const std::map<int, pcl::TextureMesh::Ptr> & meshes)
-{
-	if(meshes.size() == 1)
-	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"mesh.obj", tr("Mesh (*.obj)"));
-		if(!path.isEmpty())
-		{
-			if(meshes.begin()->second->tex_materials.size())
-			{
-				_initProgressDialog->appendText(tr("Saving the mesh (with %1 textures)...").arg(meshes.begin()->second->tex_materials.size()));
-
-				bool success =false;
-				if(QFileInfo(path).suffix() == "")
-				{
-					path += ".obj";
-				}
-
-				pcl::TextureMesh mesh;
-				mesh.tex_coordinates = meshes.begin()->second->tex_coordinates;
-				mesh.tex_materials = meshes.begin()->second->tex_materials;
-				removeDir(QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName());
-				QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(QFileInfo(path).baseName());
-				for(unsigned int i=0;i<meshes.begin()->second->tex_materials.size(); ++i)
-				{
-					QFileInfo info(mesh.tex_materials[i].tex_file.c_str());
-					QString fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+QDir::separator()+info.fileName();
-					// relative path
-					mesh.tex_materials[i].tex_file=(QFileInfo(path).baseName()+QDir::separator()+info.fileName()).toStdString();
-					if(!QFile::copy(meshes.begin()->second->tex_materials[i].tex_file.c_str(), fullPath))
-					{
-						_initProgressDialog->appendText(tr("Failed copying texture \"%1\" to \"%2\".")
-								.arg(meshes.begin()->second->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
-						_initProgressDialog->setAutoClose(false);
-					}
-				}
-				mesh.tex_polygons = meshes.begin()->second->tex_polygons;
-				mesh.cloud = meshes.begin()->second->cloud;
-
-				success = pcl::io::saveOBJFile(path.toStdString(), mesh) == 0;
-				if(success)
-				{
-					_initProgressDialog->incrementStep();
-					_initProgressDialog->appendText(tr("Saving the mesh (with %1 textures)... done.").arg(mesh.tex_materials.size()));
-
-					QMessageBox::information(this, tr("Save successful!"), tr("Mesh saved to \"%1\"").arg(path));
-				}
-				else
-				{
-					QMessageBox::warning(this, tr("Save failed!"), tr("Failed to save to \"%1\"").arg(path));
-				}
-			}
-			else
-			{
-				QMessageBox::warning(this, tr("Save failed!"), tr("No textures..."));
-			}
-		}
-	}
-	else if(meshes.size())
-	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.obj)..."), _preferencesDialog->getWorkingDirectory(), 0);
-		if(!path.isEmpty())
-		{
-			bool ok = false;
-			QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "mesh", &ok);
-			QString suffix = "obj";
-
-			if(ok)
-			{
-				for(std::map<int, pcl::TextureMesh::Ptr>::const_iterator iter=meshes.begin(); iter!=meshes.end(); ++iter)
-				{
-					QString currentPrefix=prefix+QString::number(iter->first);
-					if(iter->second->tex_materials.size())
-					{
-						pcl::TextureMesh mesh;
-						mesh.tex_coordinates = iter->second->tex_coordinates;
-						mesh.tex_materials = iter->second->tex_materials;
-						QDir(path).rmdir(currentPrefix);
-						QDir(path).mkdir(currentPrefix);
-						for(unsigned int i=0;i<iter->second->tex_materials.size(); ++i)
-						{
-							QFileInfo info(mesh.tex_materials[i].tex_file.c_str());
-							QString fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+info.fileName();
-							// relative path
-							mesh.tex_materials[i].tex_file=(currentPrefix+QDir::separator()+info.fileName()).toStdString();
-							if(!QFile::copy(iter->second->tex_materials[i].tex_file.c_str(), fullPath))
-							{
-								_initProgressDialog->appendText(tr("Failed copying texture \"%1\" to \"%2\".")
-										.arg(iter->second->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
-								_initProgressDialog->setAutoClose(false);
-							}
-						}
-						mesh.tex_polygons = iter->second->tex_polygons;
-						pcl::PointCloud<pcl::PointNormal>::Ptr tmp(new pcl::PointCloud<pcl::PointNormal>);
-						pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
-						tmp = util3d::transformPointCloud(tmp, _currentPosesMap.at(iter->first));
-						pcl::toPCLPointCloud2(*tmp, mesh.cloud);
-
-						QString pathFile = path+QDir::separator()+QString("%1.%3").arg(currentPrefix).arg(suffix);
-						bool success =false;
-						if(suffix == "obj")
-						{
-							success = pcl::io::saveOBJFile(pathFile.toStdString(), mesh) == 0;
-						}
-						else
-						{
-							UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
-						}
-						if(success)
-						{
-							_initProgressDialog->appendText(tr("Saved mesh %1 (%2 textures) to %3.")
-									.arg(iter->first).arg(iter->second->tex_materials.size()-1).arg(pathFile));
-						}
-						else
-						{
-							_initProgressDialog->appendText(tr("Failed saving mesh %1 (%2 textures) to %3.")
-									.arg(iter->first).arg(iter->second->tex_materials.size()-1).arg(pathFile), Qt::darkRed);
-						}
-					}
-					else
-					{
-						_initProgressDialog->appendText(tr("Mesh %1 is empty!").arg(iter->first));
-					}
-					_initProgressDialog->incrementStep();
-					QApplication::processEvents();
-				}
-			}
-		}
-	}
-}
 
 void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & scans, bool binaryMode)
 {
@@ -5965,99 +5258,6 @@ void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::P
 			}
 		}
 	}
-}
-
-std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > MainWindow::getClouds(
-		const std::map<int, Transform> & poses,
-		bool regenerateClouds,
-		int regenerateDecimation,
-		float regenerateVoxelSize,
-		float regenerateMaxDepth,
-		float filteringRadius,
-		float filteringMinNeighbors) const
-{
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> clouds;
-	int i=0;
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-	{
-		bool inserted = false;
-		if(!iter->second.isNull())
-		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-			if(regenerateClouds)
-			{
-				if(_cachedSignatures.contains(iter->first))
-				{
-					const Signature & s = _cachedSignatures.find(iter->first).value();
-					SensorData d = s.sensorData();
-					cv::Mat image, depth;
-					d.uncompressData(&image, &depth, 0);
-					if(!image.empty() && !depth.empty())
-					{
-						UASSERT(iter->first == d.id());
-						cloud =	 util3d::cloudRGBFromSensorData(
-							d,
-							regenerateDecimation,
-							regenerateMaxDepth,
-							regenerateVoxelSize);
-					}
-					else if(s.getWords3().size())
-					{
-						cloud->resize(s.getWords3().size());
-						int oi=0;
-						for(std::multimap<int, cv::Point3f>::const_iterator jter=s.getWords3().begin(); jter!=s.getWords3().end(); ++jter)
-						{
-							(*cloud)[oi].x = jter->second.x;
-							(*cloud)[oi].y = jter->second.y;
-							(*cloud)[oi].z = jter->second.z;
-							(*cloud)[oi].r = 255;
-							(*cloud)[oi].g = 255;
-							(*cloud)[oi++].b = 255;
-						}
-					}
-				}
-				else
-				{
-					UERROR("Cloud %d not found in cache!", iter->first);
-				}
-			}
-			else if(uContains(_createdClouds, iter->first))
-			{
-				cloud = _createdClouds.at(iter->first);
-			}
-
-			if(cloud->size())
-			{
-				if(filteringRadius > 0.0f && filteringMinNeighbors > 0)
-				{
-					pcl::IndicesPtr indices = util3d::radiusFiltering(cloud, filteringRadius, filteringMinNeighbors);
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
-					pcl::copyPointCloud(*cloud, *indices, *cloudFiltered);
-					cloud = cloudFiltered;
-				}
-
-				clouds.insert(std::make_pair(iter->first, cloud));
-				inserted = true;
-			}
-		}
-		else
-		{
-			UERROR("transform is null!?");
-		}
-
-		if(inserted)
-		{
-			_initProgressDialog->appendText(tr("Generated cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-		}
-		else
-		{
-			_initProgressDialog->appendText(tr("Ignored cloud %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-		}
-		_initProgressDialog->incrementStep();
-		QApplication::processEvents();
-	}
-
-	return clouds;
 }
 
 // STATES

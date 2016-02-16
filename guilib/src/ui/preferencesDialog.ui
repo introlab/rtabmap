@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>984</width>
-    <height>662</height>
+    <height>693</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-269</y>
+            <y>0</y>
             <width>681</width>
-            <height>1919</height>
+            <height>2010</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>6</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -273,16 +273,6 @@
                        <string>3D Map View</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_38" columnstretch="0,1">
-                       <item row="0" column="0">
-                        <widget class="QSpinBox" name="spinBox_odomQualityWarnThr">
-                         <property name="maximum">
-                          <number>9999</number>
-                         </property>
-                         <property name="value">
-                          <number>50</number>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="0" column="1">
                         <widget class="QLabel" name="label_86">
                          <property name="text">
@@ -294,6 +284,16 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QSpinBox" name="spinBox_odomQualityWarnThr">
+                         <property name="maximum">
+                          <number>9999</number>
+                         </property>
+                         <property name="value">
+                          <number>50</number>
                          </property>
                         </widget>
                        </item>
@@ -368,7 +368,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                    <property name="title">
                     <string>3D Rendering</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_31">
+                   <layout class="QVBoxLayout" name="verticalLayout_98">
                     <item>
                      <widget class="QGroupBox" name="groupBox_filtering">
                       <property name="title">
@@ -384,7 +384,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        <item>
                         <widget class="QLabel" name="label_160">
                          <property name="text">
-                          <string>For visualization purpose, superposed clouds can be filtered by one or both approaches below.</string>
+                          <string>For visualization purpose, superposed clouds can be filtered by one of the approaches below.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -395,11 +395,11 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </widget>
                        </item>
                        <item>
-                        <layout class="QGridLayout" name="gridLayout_64" columnstretch="0,1">
+                        <layout class="QGridLayout" name="gridLayout_65" columnstretch="0,1">
                          <item row="0" column="1">
-                          <widget class="QLabel" name="label_33">
+                          <widget class="QLabel" name="label_71">
                            <property name="text">
-                            <string>Node filtering. By comparing poses in the same area, only one cloud in a fixed radius and angle is shown.</string>
+                            <string>No filtering.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -409,7 +409,24 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
+                         <item row="0" column="0">
+                          <widget class="QRadioButton" name="radioButton_noFiltering">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QRadioButton" name="radioButton_subtractFiltering">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
                           <layout class="QGridLayout" name="gridLayout_17" columnstretch="0,1">
                            <item row="0" column="0">
                             <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterRadius">
@@ -429,6 +446,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                              <property name="text">
                               <string>Radius.</string>
                              </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
                              <property name="textInteractionFlags">
                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
@@ -437,7 +457,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            <item row="1" column="0">
                             <widget class="QDoubleSpinBox" name="doubleSpinBox_cloudFilterAngle">
                              <property name="suffix">
-                              <string> degrees</string>
+                              <string> deg</string>
                              </property>
                              <property name="decimals">
                               <number>0</number>
@@ -455,6 +475,9 @@ Show a yellow background when the number of odometry inliers goes under this thr
                              <property name="text">
                               <string>Angle.</string>
                              </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
                              <property name="textInteractionFlags">
                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
@@ -462,20 +485,13 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </item>
                           </layout>
                          </item>
-                         <item row="0" column="0">
-                          <widget class="QCheckBox" name="checkBox_nodeFiltering">
-                           <property name="text">
-                            <string/>
-                           </property>
-                           <property name="checked">
-                            <bool>false</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="1">
+                         <item row="3" column="1">
                           <widget class="QLabel" name="label_161">
                            <property name="text">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Cloud subtraction filtering. &lt;span style=&quot; font-weight:600;&quot;&gt;Note that Map's &amp;quot;3D cloud voxel size&amp;quot; parameter below should be set&lt;/span&gt;. &lt;br/&gt;When a new cloud is added to the map, the previous cloud is subtracted from the new cloud. Using &amp;quot;Node filtering&amp;quot; at the same time may generate large &amp;quot;holes&amp;quot; in the map (so better to use without &amp;quot;Node filtering&amp;quot;). Voxel size of the map below is used for the radius search of the close points to filter between the two clouds.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            <string>Cloud subtraction filtering. When a new cloud is added to the map, its points are subtracted from the previous cloud.</string>
+                           </property>
+                           <property name="textFormat">
+                            <enum>Qt::PlainText</enum>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -485,19 +501,54 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
-                          <widget class="QCheckBox" name="checkBox_subtractFiltering">
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_33">
                            <property name="text">
-                            <string/>
+                            <string>Pose filtering. By comparing poses in the same area, only one cloud in a fixed radius and angle is shown.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="1">
-                          <layout class="QGridLayout" name="gridLayout_65" columnstretch="0,1">
+                         <item row="1" column="0">
+                          <widget class="QRadioButton" name="radioButton_nodeFiltering">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="1">
+                          <layout class="QGridLayout" name="gridLayout_69" columnstretch="0,1">
+                           <item row="0" column="0">
+                            <widget class="QDoubleSpinBox" name="doubleSpinBox_subtractFilteringRadius">
+                             <property name="suffix">
+                              <string/>
+                             </property>
+                             <property name="minimum">
+                              <double>0.010000000000000</double>
+                             </property>
+                             <property name="maximum">
+                              <double>1.000000000000000</double>
+                             </property>
+                             <property name="singleStep">
+                              <double>0.010000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>0.020000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
                            <item row="0" column="1">
-                            <widget class="QLabel" name="label_174">
+                            <widget class="QLabel" name="label_192">
                              <property name="text">
-                              <string>Minimum number of previous cloud's points in the fixed radius in order to substract the point in the new cloud (radius is the voxel size). Increasing this value reduces the black contours between clouds.</string>
+                              <string>Point radius used to find close points between the current cloud and the previous one.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
@@ -507,8 +558,54 @@ Show a yellow background when the number of odometry inliers goes under this thr
                              </property>
                             </widget>
                            </item>
-                           <item row="0" column="0">
-                            <widget class="QSpinBox" name="spinBox_substractFilteringMinPts"/>
+                           <item row="1" column="0">
+                            <widget class="QDoubleSpinBox" name="doubleSpinBox_subtractFilteringAngle">
+                             <property name="suffix">
+                              <string> deg</string>
+                             </property>
+                             <property name="decimals">
+                              <number>0</number>
+                             </property>
+                             <property name="maximum">
+                              <double>180.000000000000000</double>
+                             </property>
+                             <property name="value">
+                              <double>30.000000000000000</double>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="1" column="1">
+                            <widget class="QLabel" name="label_193">
+                             <property name="text">
+                              <string>Point angle used to keep only points with similar normal between the current cloud and the previous one.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="2" column="0">
+                            <widget class="QSpinBox" name="spinBox_subtractFilteringMinPts">
+                             <property name="minimum">
+                              <number>1</number>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="2" column="1">
+                            <widget class="QLabel" name="label_174">
+                             <property name="text">
+                              <string>Minimum points of the previous cloud in the fixed point radius in order to substract the point in the new cloud. Increasing this value reduces the black contours between clouds.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
                            </item>
                           </layout>
                          </item>
@@ -689,58 +786,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="2">
-                        <widget class="QLabel" name="label_156">
-                         <property name="text">
-                          <string>Scan opacity.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="19" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Radius">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.040000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="22" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_mlsRadius">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.040000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="9" column="2">
+                       <item row="8" column="2">
                         <widget class="QLabel" name="label_110">
                          <property name="text">
                           <string>Show scans.</string>
@@ -750,28 +796,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="20" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_gp3Mu">
-                         <property name="suffix">
-                          <string/>
-                         </property>
-                         <property name="decimals">
-                          <number>1</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>100.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>2.500000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -788,62 +812,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
-                        <widget class="QCheckBox" name="checkBox_showOdomClouds">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="2">
-                        <widget class="QLabel" name="label_107">
-                         <property name="text">
-                          <string>3D cloud voxel size.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QSpinBox" name="spinBox_decimation">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>32</number>
-                         </property>
-                         <property name="value">
-                          <number>4</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="1">
+                       <item row="3" column="1">
                         <widget class="QSpinBox" name="spinBox_decimation_odom">
                          <property name="minimum">
                           <number>1</number>
@@ -856,7 +825,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="0">
+                       <item row="4" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_maxDepth">
                          <property name="suffix">
                           <string> m</string>
@@ -875,7 +844,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="1">
+                       <item row="4" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_maxDepth_odom">
                          <property name="suffix">
                           <string> m</string>
@@ -895,25 +864,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </widget>
                        </item>
                        <item row="6" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity">
-                         <property name="suffix">
-                          <string/>
-                         </property>
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>1.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="0">
                         <widget class="QSpinBox" name="spinBox_ptsize">
                          <property name="minimum">
                           <number>1</number>
@@ -926,30 +876,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="2">
-                        <widget class="QLabel" name="label_157">
-                         <property name="text">
-                          <string>3D cloud point size (1..64).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="9" column="1">
-                        <widget class="QCheckBox" name="checkBox_showOdomScans">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="12" column="0">
+                       <item row="11" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_scan">
                          <property name="suffix">
                           <string/>
@@ -968,14 +895,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="17" column="0">
-                        <widget class="QCheckBox" name="checkBox_meshing">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="12" column="1">
+                       <item row="11" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom_scan">
                          <property name="suffix">
                           <string/>
@@ -994,10 +914,20 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="21" column="2">
-                        <widget class="QLabel" name="label_85">
+                       <item row="8" column="0">
+                        <widget class="QCheckBox" name="checkBox_showScans">
                          <property name="text">
-                          <string>Mesh smoothing using Moving Least Squares algorithm (MLS).</string>
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="2">
+                        <widget class="QLabel" name="label_108">
+                         <property name="text">
+                          <string>3D cloud decimation (1-2-4-8-...).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -1007,10 +937,10 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="17" column="2">
-                        <widget class="QLabel" name="label_169">
+                       <item row="4" column="2">
+                        <widget class="QLabel" name="label_132">
                          <property name="text">
-                          <string>Online meshing using Greedy Projection Triangulation (GP3).</string>
+                          <string>3D cloud maximum depth (0 means no limit).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -1020,10 +950,10 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="18" column="2">
-                        <widget class="QLabel" name="label_71">
+                       <item row="5" column="2">
+                        <widget class="QLabel" name="label_155">
                          <property name="text">
-                          <string>Set the number of k nearest neighbors to use for the normal estimation to create the mesh. Not used when mesh smoothing below is used.</string>
+                          <string>3D cloud opacity.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -1033,7 +963,150 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="15" column="2">
+                       <item row="6" column="1">
+                        <widget class="QSpinBox" name="spinBox_ptsize_odom">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>64</number>
+                         </property>
+                         <property name="value">
+                          <number>2</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="1">
+                        <widget class="QSpinBox" name="spinBox_ptsize_odom_scan">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>64</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="2">
+                        <widget class="QLabel" name="label_158">
+                         <property name="text">
+                          <string>Scan point size (1..64).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="2">
+                        <widget class="QLabel" name="label_271">
+                         <property name="text">
+                          <string>Scan voxel size.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="1">
+                        <widget class="QSpinBox" name="spinBox_downsamplingScan_odom">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>9999</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="11" column="2">
+                        <widget class="QLabel" name="label_156">
+                         <property name="text">
+                          <string>Scan opacity.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QCheckBox" name="checkBox_showOdomClouds">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QSpinBox" name="spinBox_decimation">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>32</number>
+                         </property>
+                         <property name="value">
+                          <number>4</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity">
+                         <property name="suffix">
+                          <string/>
+                         </property>
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="8" column="1">
+                        <widget class="QCheckBox" name="checkBox_showOdomScans">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="14" column="2">
                         <widget class="QLabel" name="label_213">
                          <property name="text">
                           <string>Show graphs.</string>
@@ -1046,7 +1119,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="15" column="0">
+                       <item row="14" column="0">
                         <widget class="QCheckBox" name="checkBox_showGraphs">
                          <property name="text">
                           <string/>
@@ -1056,7 +1129,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="1">
+                       <item row="5" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom">
                          <property name="suffix">
                           <string/>
@@ -1075,17 +1148,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="0">
-                        <widget class="QCheckBox" name="checkBox_showScans">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="13" column="0">
+                       <item row="12" column="0">
                         <widget class="QSpinBox" name="spinBox_ptsize_scan">
                          <property name="minimum">
                           <number>1</number>
@@ -1095,10 +1158,85 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="2">
-                        <widget class="QLabel" name="label_108">
+                       <item row="1" column="0">
+                        <widget class="QCheckBox" name="checkBox_showClouds">
                          <property name="text">
-                          <string>3D cloud decimation (1-2-4-8-...).</string>
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="15" column="2">
+                        <widget class="QLabel" name="label_243">
+                         <property name="text">
+                          <string>Show labels.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="15" column="0">
+                        <widget class="QCheckBox" name="checkBox_showLabels">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="10" column="1">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan_odom">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>3</number>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="2">
+                        <widget class="QLabel" name="label_273">
+                         <property name="text">
+                          <string>Scan downsampling step size.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="9" column="0">
+                        <widget class="QSpinBox" name="spinBox_downsamplingScan">
+                         <property name="minimum">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <number>9999</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="6" column="2">
+                        <widget class="QLabel" name="label_157">
+                         <property name="text">
+                          <string>3D cloud point size (1..64).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -1121,259 +1259,97 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="checkBox_showClouds">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_organized">
+                      <property name="title">
+                       <string>Organized Online Meshing</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_31">
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_64" columnstretch="0,1">
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_85">
+                           <property name="text">
+                            <string>Angle tolerance</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QCheckBox" name="checkBox_mesh_quad">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_quad">
+                           <property name="text">
+                            <string>Quad</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="spinBox_mesh_triangleSize">
+                           <property name="suffix">
+                            <string> pix</string>
+                           </property>
+                           <property name="minimum">
+                            <number>2</number>
+                           </property>
+                           <property name="maximum">
+                            <number>99</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_87">
+                           <property name="text">
+                            <string>Triangle size</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_mesh_angleTolerance">
+                           <property name="suffix">
+                            <string> deg</string>
+                           </property>
+                           <property name="decimals">
+                            <number>0</number>
+                           </property>
+                           <property name="minimum">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>99.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>15.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
                        </item>
-                       <item row="3" column="1">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize_odom">
-                         <property name="suffix">
-                          <string> m</string>
+                       <item>
+                        <spacer name="verticalSpacer_51">
+                         <property name="orientation">
+                          <enum>Qt::Vertical</enum>
                          </property>
-                         <property name="decimals">
-                          <number>3</number>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>0</width>
+                           <height>0</height>
+                          </size>
                          </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="2">
-                        <widget class="QLabel" name="label_132">
-                         <property name="text">
-                          <string>3D cloud maximum depth (0 means no limit).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="2">
-                        <widget class="QLabel" name="label_155">
-                         <property name="text">
-                          <string>3D cloud opacity.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="1">
-                        <widget class="QSpinBox" name="spinBox_ptsize_odom">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>64</number>
-                         </property>
-                         <property name="value">
-                          <number>2</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="13" column="1">
-                        <widget class="QSpinBox" name="spinBox_ptsize_odom_scan">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>64</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="13" column="2">
-                        <widget class="QLabel" name="label_158">
-                         <property name="text">
-                          <string>Scan point size (1..64).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="19" column="2">
-                        <widget class="QLabel" name="label_168">
-                         <property name="text">
-                          <string>(GP3) Sphere radius that is to be used for determining the k-nearest neighbors used for triangulating. Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="22" column="2">
-                        <widget class="QLabel" name="label_87">
-                         <property name="text">
-                          <string>MLS search radius: Set the sphere radius that is to be used for determining the k-nearest neighbors used for fitting. Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="21" column="0">
-                        <widget class="QCheckBox" name="checkBox_mls">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>false</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="18" column="0">
-                        <widget class="QSpinBox" name="spinBox_normalKSearch">
-                         <property name="value">
-                          <number>20</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="16" column="2">
-                        <widget class="QLabel" name="label_243">
-                         <property name="text">
-                          <string>Show labels.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="16" column="0">
-                        <widget class="QCheckBox" name="checkBox_showLabels">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="20" column="2">
-                        <widget class="QLabel" name="label_246">
-                         <property name="text">
-                          <string>(GP3) Set the multiplier of the nearest neighbor distance to obtain the final search radius for each point (this will make the algorithm adapt to different point densities in the cloud).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="11" column="1">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan_odom">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="11" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="maximum">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="11" column="2">
-                        <widget class="QLabel" name="label_271">
-                         <property name="text">
-                          <string>Scan voxel size.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="10" column="2">
-                        <widget class="QLabel" name="label_273">
-                         <property name="text">
-                          <string>Scan downsampling step size.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="10" column="1">
-                        <widget class="QSpinBox" name="spinBox_downsamplingScan_odom">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>9999</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="10" column="0">
-                        <widget class="QSpinBox" name="spinBox_downsamplingScan">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>9999</number>
-                         </property>
-                        </widget>
+                        </spacer>
                        </item>
                       </layout>
                      </widget>
@@ -1910,7 +1886,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>2</number>
+                       <number>3</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3175,7 +3151,27 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <property name="checked">
                            <bool>false</bool>
                           </property>
-                          <layout class="QGridLayout" name="gridLayout_9">
+                          <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,0,0">
+                           <item row="3" column="1">
+                            <widget class="QLabel" name="label_263">
+                             <property name="text">
+                              <string>Ignore goals saved in the database.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="3" column="0">
+                            <widget class="QCheckBox" name="source_checkBox_ignoreGoals">
+                             <property name="text">
+                              <string/>
+                             </property>
+                            </widget>
+                           </item>
                            <item row="0" column="2">
                             <widget class="QToolButton" name="toolButton_dbViewer">
                              <property name="toolTip">
@@ -3189,6 +3185,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
                              </property>
                             </widget>
+                           </item>
+                           <item row="6" column="1">
+                            <spacer name="verticalSpacer_35">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
                            </item>
                            <item row="1" column="0">
                             <widget class="QCheckBox" name="source_checkBox_ignoreOdometry">
@@ -3275,39 +3284,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </item>
                            <item row="2" column="0">
                             <widget class="QCheckBox" name="source_checkBox_useDbStamps">
-                             <property name="text">
-                              <string/>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="6" column="1">
-                            <spacer name="verticalSpacer_35">
-                             <property name="orientation">
-                              <enum>Qt::Vertical</enum>
-                             </property>
-                             <property name="sizeHint" stdset="0">
-                              <size>
-                               <width>20</width>
-                               <height>0</height>
-                              </size>
-                             </property>
-                            </spacer>
-                           </item>
-                           <item row="3" column="1">
-                            <widget class="QLabel" name="label_263">
-                             <property name="text">
-                              <string>Ignore goals saved in the database.</string>
-                             </property>
-                             <property name="wordWrap">
-                              <bool>true</bool>
-                             </property>
-                             <property name="textInteractionFlags">
-                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                             </property>
-                            </widget>
-                           </item>
-                           <item row="3" column="0">
-                            <widget class="QCheckBox" name="source_checkBox_ignoreGoals">
                              <property name="text">
                               <string/>
                              </property>
@@ -4864,6 +4840,29 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </item>
                       <item row="11" column="0">
                        <widget class="QCheckBox" name="general_checkBox_saveDepth16bits">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="1">
+                       <widget class="QLabel" name="label_retrieved_12">
+                        <property name="text">
+                         <string>Raw descriptors kept in memory.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_keepDescriptors">
                         <property name="text">
                          <string/>
                         </property>
@@ -6714,7 +6713,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </item>
                      </widget>
                     </item>
-                    <item row="1" column="0">
+                    <item row="2" column="0">
                      <widget class="QSpinBox" name="graphOptimization_iterations">
                       <property name="minimum">
                        <number>0</number>
@@ -6727,21 +6726,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="0">
+                    <item row="4" column="0">
                      <widget class="QCheckBox" name="graphOptimization_covarianceIgnored">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="0">
+                    <item row="9" column="0">
                      <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="1">
+                    <item row="9" column="1">
                      <widget class="QLabel" name="label_151">
                       <property name="text">
                        <string>Optimize graph from the newest node.</string>
@@ -6754,21 +6753,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
+                    <item row="8" column="1">
                      <widget class="Line" name="line">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="0">
+                    <item row="5" column="0">
                      <widget class="QCheckBox" name="graphOptimization_slam2d">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="1">
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_164">
                       <property name="text">
                        <string>2d SLAM: use fast 3DoF (x, y, theta) optimization instead of 6DoF (x, y, z, roll, pitch, yaw) optimization.</string>
@@ -6791,7 +6790,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="9" column="1">
+                    <item row="11" column="1">
                      <widget class="QLabel" name="label_183">
                       <property name="text">
                        <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
@@ -6804,7 +6803,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="8" column="1">
+                    <item row="10" column="1">
                      <widget class="QLabel" name="label_211">
                       <property name="text">
                        <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
@@ -6817,7 +6816,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="1">
+                    <item row="2" column="1">
                      <widget class="QLabel" name="label_31">
                       <property name="text">
                        <string>Iterations.</string>
@@ -6827,7 +6826,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="1">
+                    <item row="3" column="1">
                      <widget class="QLabel" name="label_64">
                       <property name="text">
                        <string>Stop optimizing when the error improvement is less than this value.</string>
@@ -6837,7 +6836,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="2" column="0">
+                    <item row="3" column="0">
                      <widget class="QDoubleSpinBox" name="graphOptimization_stopEpsilon">
                       <property name="decimals">
                        <number>5</number>
@@ -6856,7 +6855,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="1">
+                    <item row="4" column="1">
                      <widget class="QLabel" name="label_141">
                       <property name="text">
                        <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links (transitional and rotational variances).</string>
@@ -6869,14 +6868,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="0">
+                    <item row="6" column="0">
                      <widget class="QCheckBox" name="graphOptimization_robust">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="1">
+                    <item row="6" column="1">
                      <widget class="QLabel" name="label_258">
                       <property name="text">
                        <string>Robust graph optimization using Vertigo (only for g2o and GTSAM optimization strategies). This approach can filter wrong loop closure detections.</string>
@@ -6889,20 +6888,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="10" column="1">
-                     <widget class="QLabel" name="label_259">
-                      <property name="text">
-                       <string>Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="10" column="0">
+                    <item row="7" column="0">
                      <widget class="QDoubleSpinBox" name="graphOptimization_maxError">
                       <property name="suffix">
                        <string> m</string>
@@ -6922,6 +6908,75 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <property name="value">
                        <double>1.000000000000000</double>
                       </property>
+                     </widget>
+                    </item>
+                    <item row="7" column="1">
+                     <widget class="QLabel" name="label_259">
+                      <property name="text">
+                       <string>Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QGroupBox" name="groupBox_g2o">
+                      <property name="title">
+                       <string>g2o</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_70" columnstretch="0,1">
+                       <item row="1" column="0">
+                        <widget class="QComboBox" name="comboBox_g2o_optimizer">
+                         <item>
+                          <property name="text">
+                           <string>Levenberg</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Gauss Newton</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QComboBox" name="comboBox_g2o_solver">
+                         <item>
+                          <property name="text">
+                           <string>CSparse</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>PCG</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Cholmod</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_107">
+                         <property name="text">
+                          <string>Solver.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_138">
+                         <property name="text">
+                          <string>Optimization algorithm.</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
                      </widget>
                     </item>
                    </layout>
@@ -8490,7 +8545,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_loopClosureEstimation">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_38">
                        <layout class="QVBoxLayout" name="verticalLayout_68">
@@ -8701,7 +8756,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <item>
                             <widget class="QLabel" name="label_671">
                              <property name="text">
-                              <string>Experimental!</string>
+                              <string>Experimental! PnP parameters are also used here.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
@@ -8746,6 +8801,19 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                               </widget>
                              </item>
                             </layout>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_52">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>0</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
                            </item>
                           </layout>
                          </widget>

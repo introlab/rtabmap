@@ -957,13 +957,22 @@ float getDepth(
 		const cv::Mat & depthImage,
 		float x, float y,
 		bool smoothing,
-		float maxZError)
+		float maxZError,
+		bool estWithNeighborsIfNull)
 {
 	UASSERT(!depthImage.empty());
 	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
 
 	int u = int(x+0.5f);
 	int v = int(y+0.5f);
+	if(u == depthImage.cols && x<float(depthImage.cols))
+	{
+		u = depthImage.cols - 1;
+	}
+	if(v == depthImage.rows && y<float(depthImage.rows))
+	{
+		v = depthImage.rows - 1;
+	}
 
 	if(!(u >=0 && u<depthImage.cols && v >=0 && v<depthImage.rows))
 	{
@@ -986,6 +995,41 @@ float getDepth(
 	int v_end = std::min(v+1, depthImage.rows-1);
 
 	float depth = isInMM?(float)depthImage.at<unsigned short>(v,u)*0.001f:depthImage.at<float>(v,u);
+
+	if((depth==0.0f || !uIsFinite(depth)) && estWithNeighborsIfNull)
+	{
+		// all cells no2 must be under the zError to be accepted
+		float tmp = 0.0f;
+		int count = 0;
+		for(int uu = u_start; uu <= u_end; ++uu)
+		{
+			for(int vv = v_start; vv <= v_end; ++vv)
+			{
+				if((uu == u && vv!=v) || (uu != u && vv==v))
+				{
+					float d = isInMM?(float)depthImage.at<unsigned short>(vv,uu)*0.001f:depthImage.at<float>(vv,uu);
+					if(d!=0.0f && uIsFinite(d))
+					{
+						if(tmp == 0.0f)
+						{
+							tmp = d;
+							++count;
+						}
+						else if(fabs(d - tmp) < maxZError)
+						{
+							tmp+=d;
+							++count;
+						}
+					}
+				}
+			}
+		}
+		if(count > 1)
+		{
+			depth = tmp/float(count);
+		}
+	}
+
 	if(depth!=0.0f && uIsFinite(depth))
 	{
 		if(smoothing)
@@ -1078,6 +1122,117 @@ cv::Mat decimate(const cv::Mat & image, int decimation)
 	return out;
 }
 
+cv::Mat interpolate(const cv::Mat & image, int factor, float depthErrorRatio)
+{
+	UASSERT(factor >= 1);
+	cv::Mat out;
+	if(!image.empty())
+	{
+		if(factor > 1)
+		{
+			if((image.type() == CV_32FC1 || image.type()==CV_16UC1))
+			{
+				UASSERT(depthErrorRatio>0.0f);
+				out = cv::Mat::zeros(image.rows*factor, image.cols*factor, image.type());
+				for(int j=0; j<out.rows; j+=factor)
+				{
+					for(int i=0; i<out.cols; i+=factor)
+					{
+						if(i>0 && j>0)
+						{
+							float dTopLeft;
+							float dTopRight;
+							float dBottomLeft;
+							float dBottomRight;
+							if(image.type() == CV_32FC1)
+							{
+								dTopLeft = image.at<float>(j/factor-1, i/factor-1);
+								dTopRight = image.at<float>(j/factor-1, i/factor);
+								dBottomLeft = image.at<float>(j/factor, i/factor-1);
+								dBottomRight = image.at<float>(j/factor, i/factor);
+							}
+							else
+							{
+								dTopLeft = image.at<unsigned short>(j/factor-1, i/factor-1);
+								dTopRight = image.at<unsigned short>(j/factor-1, i/factor);
+								dBottomLeft = image.at<unsigned short>(j/factor, i/factor-1);
+								dBottomRight = image.at<unsigned short>(j/factor, i/factor);
+							}
+
+							if(dTopLeft>0 && dTopRight>0 && dBottomLeft>0 && dBottomRight > 0)
+							{
+								float depthError = depthErrorRatio*(dTopLeft+dTopRight+dBottomLeft+dBottomRight)/4.0f;
+								if(fabs(dTopLeft-dTopRight) <= depthError &&
+								   fabs(dTopLeft-dBottomLeft) <= depthError &&
+								   fabs(dTopLeft-dBottomRight) <= depthError)
+								{
+									// bilinear interpolation
+									// do first and last rows then columns
+									float slopeTop = (dTopRight-dTopLeft)/float(factor);
+									float slopeBottom = (dBottomRight-dBottomLeft)/float(factor);
+									if(image.type() == CV_32FC1)
+									{
+										for(int z=i-factor; z<=i; ++z)
+										{
+											out.at<float>(j-factor, z) = dTopLeft+(slopeTop*float(z-(i-factor)));
+											out.at<float>(j, z) = dBottomLeft+(slopeBottom*float(z-(i-factor)));
+										}
+									}
+									else
+									{
+										for(int z=i-factor; z<=i; ++z)
+										{
+											out.at<unsigned short>(j-factor, z) = (unsigned short)(dTopLeft+(slopeTop*float(z-(i-factor))));
+											out.at<unsigned short>(j, z) = (unsigned short)(dBottomLeft+(slopeBottom*float(z-(i-factor))));
+										}
+									}
+
+									// fill the columns
+									if(image.type() == CV_32FC1)
+									{
+										for(int z=i-factor; z<=i; ++z)
+										{
+											float top = out.at<float>(j-factor, z);
+											float bottom = out.at<float>(j, z);
+											float slope = (bottom-top)/float(factor);
+											for(int d=j-factor+1; d<j; ++d)
+											{
+												out.at<float>(d, z) = top+(slope*float(d-(j-factor)));
+											}
+										}
+									}
+									else
+									{
+										for(int z=i-factor; z<=i; ++z)
+										{
+											float top = out.at<unsigned short>(j-factor, z);
+											float bottom = out.at<unsigned short>(j, z);
+											float slope = (bottom-top)/float(factor);
+											for(int d=j-factor+1; d<j; ++d)
+											{
+												out.at<unsigned short>(d, z) = (unsigned short)(top+(slope*float(d-(j-factor))));
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			else
+			{
+				cv::resize(image, out, cv::Size(), float(factor), float(factor));
+			}
+		}
+		else
+		{
+			out = image;
+		}
+	}
+	return out;
+}
+
 // Registration Depth to RGB (return registered depth image)
 cv::Mat registerDepth(
 		const cv::Mat & depth,
@@ -1150,6 +1305,114 @@ cv::Mat registerDepth(
 		}
 	}
 	return registered;
+}
+
+cv::Mat fillDepthHoles(const cv::Mat & registeredDepth, int maximumHoleSize, float errorRatio)
+{
+	UASSERT(registeredDepth.type() == CV_16UC1);
+	UASSERT(maximumHoleSize > 0);
+	cv::Mat output = registeredDepth.clone();
+	for(int y=0; y<registeredDepth.rows-2; ++y)
+	{
+		for(int x=0; x<registeredDepth.cols-2; ++x)
+		{
+			float a = registeredDepth.at<unsigned short>(y, x);
+			float bRight = registeredDepth.at<unsigned short>(y, x+1);
+			float bDown = registeredDepth.at<unsigned short>(y+1, x);
+
+			if(a > 0.0f && (bRight == 0.0f || bDown == 0.0f))
+			{
+				bool horizontalSet = bRight != 0.0f;
+				bool verticalSet = bDown != 0.0f;
+				int stepX = 0;
+				for(int h=1; h<=maximumHoleSize && (!horizontalSet || !verticalSet); ++h)
+				{
+					// horizontal
+					if(!horizontalSet)
+					{
+						if(x+1+h >= registeredDepth.cols)
+						{
+							horizontalSet = true;
+						}
+						else
+						{
+							float c = registeredDepth.at<unsigned short>(y, x+1+h);
+							if(c == 0)
+							{
+								// ignore this size
+							}
+							else
+							{
+								// fill hole
+								float depthError = errorRatio*float(a+c)/2.0f;
+								if(fabs(a-c) <= depthError)
+								{
+									//linear interpolation
+									float slope = (c-a)/float(h+1);
+									for(int z=x+1; z<x+1+h; ++z)
+									{
+										if(output.at<unsigned short>(y, z) == 0)
+										{
+											output.at<unsigned short>(y, z) = (unsigned short)(a+(slope*float(z-x)));
+										}
+										else
+										{
+											// average with the previously set value
+											output.at<unsigned short>(y, z) = (output.at<unsigned short>(y, z)+(unsigned short)(a+(slope*float(z-x))))/2;
+										}
+									}
+								}
+								horizontalSet = true;
+								stepX = h;
+							}
+						}
+					}
+
+					// vertical
+					if(!verticalSet)
+					{
+						if(y+1+h >= registeredDepth.rows)
+						{
+							verticalSet = true;
+						}
+						else
+						{
+							float c = registeredDepth.at<unsigned short>(y+1+h, x);
+							if(c == 0)
+							{
+								// ignore this size
+							}
+							else
+							{
+								// fill hole
+								float depthError = errorRatio*float(a+c)/2.0f;
+								if(fabs(a-c) <= depthError)
+								{
+									//linear interpolation
+									float slope = (c-a)/float(h+1);
+									for(int z=y+1; z<y+1+h; ++z)
+									{
+										if(output.at<unsigned short>(z, x) == 0)
+										{
+											output.at<unsigned short>(z, x) = (unsigned short)(a+(slope*float(z-y)));
+										}
+										else
+										{
+											// average with the previously set value
+											output.at<unsigned short>(z, x) = (output.at<unsigned short>(z, x)+(unsigned short)(a+(slope*float(z-y))))/2;
+										}
+									}
+								}
+								verticalSet = true;
+							}
+						}
+					}
+				}
+				x+=stepX;
+			}
+		}
+	}
+	return output;
 }
 
 void fillRegisteredDepthHoles(cv::Mat & registeredDepth, bool vertical, bool horizontal, bool fillDoubleHoles)

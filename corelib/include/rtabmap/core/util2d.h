@@ -105,9 +105,11 @@ float RTABMAP_EXP getDepth(
 		const cv::Mat & depthImage,
 		float x, float y,
 		bool smoothing,
-		float maxZError = 0.02f);
+		float maxZError = 0.02f,
+		bool estWithNeighborsIfNull = false);
 
 cv::Mat RTABMAP_EXP decimate(const cv::Mat & image, int d);
+cv::Mat RTABMAP_EXP interpolate(const cv::Mat & image, int factor, float depthErrorRatio = 0.02f);
 
 // Registration Depth to RGB (return registered depth image)
 cv::Mat RTABMAP_EXP registerDepth(
@@ -115,6 +117,11 @@ cv::Mat RTABMAP_EXP registerDepth(
 		const cv::Mat & depthK,
 		const cv::Mat & colorK,
 		const rtabmap::Transform & transform);
+
+cv::Mat RTABMAP_EXP fillDepthHoles(
+		const cv::Mat & depth,
+		int maximumHoleSize = 1,
+		float errorRatio = 0.02f);
 
 void RTABMAP_EXP fillRegisteredDepthHoles(
 		cv::Mat & depthRegistered,

@@ -53,7 +53,7 @@ Parameters::~Parameters()
 {
 }
 
-std::string Parameters::getDefaultWorkingDirectory()
+std::string Parameters::createDefaultWorkingDirectory()
 {
 	std::string path = UDirectory::homeDir();
 	if(!path.empty())

@@ -111,6 +111,7 @@ public:
 			int maxGraphDepth) const;
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
 	void removeLink(int idA, int idB);
+	void removeRawData(int id);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
@@ -123,7 +124,6 @@ public:
 	std::map<int, Link> getLinks(int signatureId,
 			bool lookInDatabase = false) const;
 	std::multimap<int, Link> getAllLinks(bool lookInDatabase, bool ignoreNullLinks = true) const;
-	bool isRawDataKept() const {return _rawDataKept;}
 	bool isBinDataKept() const {return _binDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
@@ -226,8 +226,8 @@ private:
 	// parameters
 	ParametersMap parameters_;
 	float _similarityThreshold;
-	bool _rawDataKept;
 	bool _binDataKept;
+	bool _rawDescriptorsKept;
 	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _incrementalMemory;

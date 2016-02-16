@@ -72,20 +72,24 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 		UASSERT(int((depth.cols/cameraModels.size())*cameraModels.size()) == depth.cols);
 		float subImageWidth = depth.cols/cameraModels.size();
 		keypoints3d.resize(keypoints.size());
+		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?cameraModels[0].imageWidth()/depth.cols:1);
+		float rgbToDepthFactorY = 1.0f/(cameraModels[0].imageHeight()>0?cameraModels[0].imageHeight()/depth.rows:1);
 		for(unsigned int i=0; i!=keypoints.size(); ++i)
 		{
-			int cameraIndex = int(keypoints[i].pt.x / subImageWidth);
+			float x = keypoints[i].pt.x*rgbToDepthFactorX;
+			float y = keypoints[i].pt.y*rgbToDepthFactorY;
+			int cameraIndex = int(x / subImageWidth);
 			UASSERT_MSG(cameraIndex < (int)cameraModels.size(),
-					uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f",
-							cameraIndex, (int)cameraModels.size(), keypoints[i].pt.x, subImageWidth).c_str());
+					uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
+							cameraIndex, (int)cameraModels.size(), keypoints[i].pt.x, subImageWidth, cameraModels[0].imageWidth()).c_str());
 			pcl::PointXYZ ptXYZ = util3d::projectDepthTo3D(
 					depth,
-					keypoints[i].pt.x-subImageWidth*cameraIndex,
-					keypoints[i].pt.y,
-					cameraModels.at(cameraIndex).cx(),
-					cameraModels.at(cameraIndex).cy(),
-					cameraModels.at(cameraIndex).fx(),
-					cameraModels.at(cameraIndex).fy(),
+					x-subImageWidth*cameraIndex,
+					y,
+					cameraModels.at(cameraIndex).cx()*rgbToDepthFactorX,
+					cameraModels.at(cameraIndex).cy()*rgbToDepthFactorY,
+					cameraModels.at(cameraIndex).fx()*rgbToDepthFactorX,
+					cameraModels.at(cameraIndex).fy()*rgbToDepthFactorY,
 					true);
 
 			cv::Point3f pt(ptXYZ.x, ptXYZ.y, ptXYZ.z);
@@ -192,7 +196,9 @@ std::map<int, cv::Point3f> generateWords3DMono(
 	UASSERT(cameraModel.isValidForProjection());
 	std::map<int, cv::Point3f> words3D;
 	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-	if(EpipolarGeometry::findPairs(refWords, nextWords, pairs) > 8)
+	int pairsFound = EpipolarGeometry::findPairs(refWords, nextWords, pairs);
+	UDEBUG("pairsFound=%d", pairsFound);
+	if(pairsFound > 8)
 	{
 		std::vector<unsigned char> status;
 		cv::Mat F = EpipolarGeometry::findFFromWords(pairs, status, ransacParam1, ransacParam2);
@@ -277,6 +283,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 					cv::Mat pts4D;
 					cv::triangulatePoints(P0, P, x_norm, xp_norm, pts4D);
 
+					UASSERT((int)indexes.size() == pts4D.cols && pts4D.rows == 4);
 					for(unsigned int i=0; i<indexes.size(); ++i)
 					{
 						//if(cloud->at(i).z > 0)
@@ -290,6 +297,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 						}
 					}
 
+					UDEBUG("ref guess=%d", (int)refGuess3D.size());
 					if(refGuess3D.size())
 					{
 						// scale estimation
@@ -359,24 +367,25 @@ std::map<int, cv::Point3f> generateWords3DMono(
 							{
 								std::vector<cv::Point3f> objectPoints(indexes.size());
 								std::vector<cv::Point2f> imagePoints(indexes.size());
-								int oi=0;
+								int oi2=0;
+								UASSERT(indexes.size() == newCorners.size());
 								for(unsigned int i=0; i<indexes.size(); ++i)
 								{
 									std::map<int, cv::Point3f>::iterator iter = words3D.find(indexes[i]);
-									if(util3d::isFinite(iter->second))
+									if(iter!=words3D.end() && util3d::isFinite(iter->second))
 									{
 										iter->second.x *= scale;
 										iter->second.y *= scale;
 										iter->second.z *= scale;
-										objectPoints[oi].x = iter->second.x;
-										objectPoints[oi].y = iter->second.y;
-										objectPoints[oi].z = iter->second.z;
-										imagePoints[oi] = newCorners[i];
-										++oi;
+										objectPoints[oi2].x = iter->second.x;
+										objectPoints[oi2].y = iter->second.y;
+										objectPoints[oi2].z = iter->second.z;
+										imagePoints[oi2] = newCorners[i];
+										++oi2;
 									}
 								}
-								objectPoints.resize(oi);
-								imagePoints.resize(oi);
+								objectPoints.resize(oi2);
+								imagePoints.resize(oi2);
 
 								//PnPRansac
 								Transform guess = cameraModel.localTransform().inverse();

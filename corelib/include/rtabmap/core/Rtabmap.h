@@ -177,6 +177,7 @@ private:
 	float _loopRatio;
 	unsigned int _maxRetrieved;
 	unsigned int _maxLocalRetrieved;
+	bool _rawDataKept;
 	bool _statisticLogsBufferedInRAM;
 	bool _statisticLogged;
 	bool _statisticLoggedHeaders;

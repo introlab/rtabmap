@@ -79,6 +79,16 @@ std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
 		int to,
 		bool checkBothWays = true);
 
+//Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
+std::map<int, Transform> RTABMAP_EXP frustumPosesFiltering(
+		const std::map<int, Transform> & poses,
+		const Transform & cameraPose,
+		float horizontalFOV = 45.0f, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV = 45.0f,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance = 0.1f,
+		float farClipPlaneDistance = 100.0f,
+		bool negative = false);
+
 /**
  * Get only the the most recent or older poses in the defined radius.
  * @param poses The poses
@@ -170,7 +180,6 @@ int RTABMAP_EXP findNearestNode(
  * Get nodes near the query
  * @param nodeId the query id
  * @param nodes the nodes to search for
- * @param maxNearestNeighbors Maximum nearest neighbor to get. 0 means all.
  * @param radius radius to search for (m)
  * @return the nodes with squared distance to query node.
  */
@@ -181,7 +190,8 @@ std::map<int, float> RTABMAP_EXP getNodesInRadius(
 std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
-		float radius);
+		float radius,
+		float angle = 0.0f);
 
 float RTABMAP_EXP computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,

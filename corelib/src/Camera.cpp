@@ -26,7 +26,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Camera.h"
-#include "rtabmap/core/DBDriver.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>

@@ -249,7 +249,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 			}
 			else
 			{
-				cloudView_->addOrUpdateCloud("cloudtmp", cloud, lastOdomPose_);
+				cloudView_->addCloud("cloudtmp", cloud, lastOdomPose_);
 			}
 		}
 	}
@@ -271,7 +271,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 			(*cloud)[i].y = iter->second.y;
 			(*cloud)[i++].z = iter->second.z;
 		}
-		cloudView_->addOrUpdateCloud("localmap", cloud);
+		cloudView_->addCloud("localmap", cloud);
 	}
 
 	if(!odom.data().imageRaw().empty())

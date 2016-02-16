@@ -80,6 +80,7 @@ class RTABMAP_EXP Statistics
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);
+	RTABMAP_STATS(Memory, Database_memory_used, MB);
 	RTABMAP_STATS(Memory, Signatures_removed,);
 	RTABMAP_STATS(Memory, Immunized_globally,);
 	RTABMAP_STATS(Memory, Immunized_locally,);

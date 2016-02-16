@@ -79,7 +79,14 @@ public:
 			}
 			else
 			{
-				delete (rtflann::Index<rtflann::L2<float> >*)index_;
+				if(useDistanceL1_)
+				{
+					delete (rtflann::Index<rtflann::L1<float> >*)index_;
+				}
+				else
+				{
+					delete (rtflann::Index<rtflann::L2<float> >*)index_;
+				}
 			}
 			index_ = 0;
 		}
@@ -101,7 +108,14 @@ public:
 		}
 		else
 		{
-			return ((const rtflann::Index<rtflann::L2<float> >*)index_)->size();
+			if(useDistanceL1_)
+			{
+				return ((const rtflann::Index<rtflann::L1<float> >*)index_)->size();
+			}
+			else
+			{
+				return ((const rtflann::Index<rtflann::L2<float> >*)index_)->size();
+			}
 		}
 	}
 
@@ -118,19 +132,29 @@ public:
 		}
 		else
 		{
-			return ((const rtflann::Index<rtflann::L2<float> >*)index_)->usedMemory()/1000;
+			if(useDistanceL1_)
+			{
+				return ((const rtflann::Index<rtflann::L1<float> >*)index_)->usedMemory()/1000;
+			}
+			else
+			{
+				return ((const rtflann::Index<rtflann::L2<float> >*)index_)->usedMemory()/1000;
+			}
 		}
 	}
 
+	// Note that useDistanceL1 doesn't have any effect if LSH is used
 	void build(
 			const cv::Mat & features,
-			const rtflann::IndexParams& params)
+			const rtflann::IndexParams& params,
+			bool useDistanceL1)
 	{
 		this->release();
 		UASSERT(index_ == 0);
 		UASSERT(features.type() == CV_32FC1 || features.type() == CV_8UC1);
 		featuresType_ = features.type();
 		featuresDim_ = features.cols;
+		useDistanceL1_ = useDistanceL1;
 
 		if(featuresType_ == CV_8UC1)
 		{
@@ -141,8 +165,16 @@ public:
 		else
 		{
 			rtflann::Matrix<float> dataset((float*)features.data, features.rows, features.cols);
-			index_ = new rtflann::Index<rtflann::L2<float> >(dataset, params);
-			((rtflann::Index<rtflann::L2<float> >*)index_)->buildIndex();
+			if(useDistanceL1_)
+			{
+				index_ = new rtflann::Index<rtflann::L1<float> >(dataset, params);
+				((rtflann::Index<rtflann::L1<float> >*)index_)->buildIndex();
+			}
+			else
+			{
+				index_ = new rtflann::Index<rtflann::L2<float> >(dataset, params);
+				((rtflann::Index<rtflann::L2<float> >*)index_)->buildIndex();
+			}
 		}
 
 		if(features.rows == 1)
@@ -193,18 +225,37 @@ public:
 		else
 		{
 			rtflann::Matrix<float> point((float*)feature.data, feature.rows, feature.cols);
-			rtflann::Index<rtflann::L2<float> > * index = (rtflann::Index<rtflann::L2<float> >*)index_;
-			index->addPoints(point, 0);
-			// Rebuild index if it doubles in size
-			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
+			if(useDistanceL1_)
 			{
-				// clean not used features
-				for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
+				rtflann::Index<rtflann::L1<float> > * index = (rtflann::Index<rtflann::L1<float> >*)index_;
+				index->addPoints(point, 0);
+				// Rebuild index if it doubles in size
+				if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 				{
-					addedDescriptors_.erase(*iter);
+					// clean not used features
+					for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
+					{
+						addedDescriptors_.erase(*iter);
+					}
+					removedIndexes_.clear();
+					index->buildIndex();
 				}
-				removedIndexes_.clear();
-				index->buildIndex();
+			}
+			else
+			{
+				rtflann::Index<rtflann::L2<float> > * index = (rtflann::Index<rtflann::L2<float> >*)index_;
+				index->addPoints(point, 0);
+				// Rebuild index if it doubles in size
+				if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
+				{
+					// clean not used features
+					for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
+					{
+						addedDescriptors_.erase(*iter);
+					}
+					removedIndexes_.clear();
+					index->buildIndex();
+				}
 			}
 		}
 
@@ -230,10 +281,15 @@ public:
 		{
 			((rtflann::Index<rtflann::Hamming<unsigned char> >*)index_)->removePoint(index);
 		}
+		else if(useDistanceL1_)
+		{
+			((rtflann::Index<rtflann::L1<float> >*)index_)->removePoint(index);
+		}
 		else
 		{
 			((rtflann::Index<rtflann::L2<float> >*)index_)->removePoint(index);
 		}
+
 		removedIndexes_.push_back(index);
 	}
 
@@ -264,7 +320,14 @@ public:
 		{
 			rtflann::Matrix<float> distsF((float*)dists.data, dists.rows, dists.cols);
 			rtflann::Matrix<float> queryF((float*)query.data, query.rows, query.cols);
-			((rtflann::Index<rtflann::L2<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+			if(useDistanceL1_)
+			{
+				((rtflann::Index<rtflann::L1<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+			}
+			else
+			{
+				((rtflann::Index<rtflann::L2<float> >*)index_)->knnSearch(queryF, indicesF, distsF, knn, params);
+			}
 		}
 	}
 
@@ -274,6 +337,7 @@ private:
 	int featuresType_;
 	int featuresDim_;
 	bool isLSH_;
+	bool useDistanceL1_; // true=EUCLEDIAN_L2 false=MANHATTAN_L1
 
 	// keep feature in memory until the tree is rebuilt
 	// (in case the word is deleted when removed from the VWDictionary)
@@ -292,6 +356,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_dictionaryPath(Parameters::defaultKpDictionaryPath()),
 	_newWordsComparedTogether(Parameters::defaultKpNewWordsComparedTogether()),
 	_lastWordId(0),
+	useDistanceL1_(false),
 	_flannIndex(new FlannIndex()),
 	_strategy(kNNBruteForce)
 {
@@ -491,23 +556,14 @@ void VWDictionary::setNNStrategy(NNStrategy strategy)
 #endif
 #endif
 
-		if(RTABMAP_NONFREE == 0 && strategy == kNNFlannKdTree)
+		bool update = _strategy != strategy;
+		_strategy = strategy;
+		if(update)
 		{
-			UWARN("KdTree (%d) nearest neighbor is not available because RTAB-Map isn't built "
-				  "with OpenCV nonfree module (KdTree only used for SURF/SIFT features). "
-				  "NN strategy is not modified (current=%d).", (int)kNNFlannKdTree, (int)_strategy);
-		}
-		else
-		{
-			bool update = _strategy != strategy;
-			_strategy = strategy;
-			if(update)
-			{
-				_dataTree = cv::Mat();
-				_notIndexedWords = uKeysSet(_visualWords);
-				_removedIndexedWords.clear();
-				this->update();
-			}
+			_dataTree = cv::Mat();
+			_notIndexedWords = uKeysSet(_visualWords);
+			_removedIndexedWords.clear();
+			this->update();
 		}
 	}
 }
@@ -576,15 +632,15 @@ void VWDictionary::update()
 						switch(_strategy)
 						{
 						case kNNFlannNaive:
-							_flannIndex->build(w->getDescriptor(), rtflann::LinearIndexParams());
+							_flannIndex->build(w->getDescriptor(), rtflann::LinearIndexParams(), useDistanceL1_);
 							break;
 						case kNNFlannKdTree:
 							UASSERT_MSG(w->getDescriptor().type() == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-							_flannIndex->build(w->getDescriptor(), rtflann::KDTreeIndexParams());
+							_flannIndex->build(w->getDescriptor(), rtflann::KDTreeIndexParams(), useDistanceL1_);
 							break;
 						case kNNFlannLSH:
 							UASSERT_MSG(w->getDescriptor().type() == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-							_flannIndex->build(w->getDescriptor(), rtflann::LshIndexParams(12, 20, 2));
+							_flannIndex->build(w->getDescriptor(), rtflann::LshIndexParams(12, 20, 2), useDistanceL1_);
 							break;
 						default:
 							UFATAL("Not supposed to be here!");
@@ -666,15 +722,15 @@ void VWDictionary::update()
 				switch(_strategy)
 				{
 				case kNNFlannNaive:
-					_flannIndex->build(_dataTree, rtflann::LinearIndexParams());
+					_flannIndex->build(_dataTree, rtflann::LinearIndexParams(), useDistanceL1_);
 					break;
 				case kNNFlannKdTree:
 					UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-					_flannIndex->build(_dataTree, rtflann::KDTreeIndexParams());
+					_flannIndex->build(_dataTree, rtflann::KDTreeIndexParams(), useDistanceL1_);
 					break;
 				case kNNFlannLSH:
 					UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-					_flannIndex->build(_dataTree, rtflann::LshIndexParams(12, 20, 2));
+					_flannIndex->build(_dataTree, rtflann::LshIndexParams(12, 20, 2), useDistanceL1_);
 					break;
 				default:
 					break;
@@ -723,6 +779,7 @@ void VWDictionary::clear(bool printWarningsIfNotEmpty)
 	_mapIdIndex.clear();
 	_unusedWords.clear();
 	_flannIndex->release();
+	useDistanceL1_ = false;
 }
 
 int VWDictionary::getNextId()
@@ -764,10 +821,28 @@ void VWDictionary::removeAllWordRef(int wordId, int signatureId)
 	}
 }
 
-std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptors,
+std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 							   int signatureId)
 {
 	UASSERT(signatureId > 0);
+
+	cv::Mat descriptors;
+	if(descriptorsIn.type() == CV_8U)
+	{
+		useDistanceL1_ = true;
+		if(_strategy == kNNFlannKdTree || _strategy == kNNFlannNaive)
+		{
+			descriptorsIn.convertTo(descriptors, CV_32F);
+		}
+		else
+		{
+			descriptors = descriptorsIn;
+		}
+	}
+	else
+	{
+		descriptors = descriptorsIn;
+	}
 
 	UDEBUG("id=%d descriptors=%d", signatureId, descriptors.rows);
 	UTimer timer;
@@ -1313,6 +1388,18 @@ void VWDictionary::deleteUnusedWords()
 
 void VWDictionary::exportDictionary(const char * fileNameReferences, const char * fileNameDescriptors) const
 {
+	if(_visualWords.empty())
+	{
+		UWARN("Dictionary is empty, cannot export it!");
+		return;
+	}
+
+	if(_visualWords.at(0)->getDescriptor().type() != CV_32FC1)
+	{
+		UERROR("Exporting binary descriptors is not implemented!");
+		return;
+	}
+
     FILE* foutRef = 0;
     FILE* foutDesc = 0;
 #ifdef _MSC_VER

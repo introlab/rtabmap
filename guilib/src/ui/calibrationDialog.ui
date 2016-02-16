@@ -718,9 +718,6 @@
     </widget>
    </item>
   </layout>
-  <zorder>buttonBox</zorder>
-  <zorder>groupBox</zorder>
-  <zorder></zorder>
  </widget>
  <customwidgets>
   <customwidget>

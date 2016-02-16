@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/pcl_base.h>
 #include <pcl/TextureMesh.h>
 
 namespace rtabmap {
@@ -243,24 +244,7 @@ private:
 	void exportPoses(int format);
 	QString captureScreen(bool cacheInRAM = false);
 
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > getClouds(
-			const std::map<int, Transform> & poses,
-			bool regenerateClouds,
-			int regenerateDecimation,
-			float regenerateVoxelSize,
-			float regenerateMaxDepth,
-			float filteringRadius,
-			float filteringMinNeighbors) const;
-
 	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
-	bool getExportedClouds(
-			std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
-			std::map<int, pcl::PolygonMesh::Ptr> & meshes,
-			std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
-			bool toSave);
-	void saveClouds(const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
-	void saveMeshes(const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
-	void saveTextureMeshes(const std::map<int, pcl::TextureMesh::Ptr> & meshes);
 	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds, bool binaryMode = true);
 
 private:
@@ -299,7 +283,9 @@ private:
 	std::multimap<int, Link> _currentLinksMap; // <nodeFromId, link>
 	std::map<int, int> _currentMapIds;   // <nodeId, mapId>
 	std::map<int, std::string> _currentLabels; // <nodeId, label>
-	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > _createdClouds;
+	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > _createdClouds;
+	std::pair<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > _previousCloud; // used for subtraction
+
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>

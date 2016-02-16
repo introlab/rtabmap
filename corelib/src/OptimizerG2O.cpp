@@ -35,15 +35,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/OptimizerG2O.h>
 
 #ifdef WITH_G2O
+#include "g2o/config.h"
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
 #include "g2o/core/factory.h"
 #include "g2o/core/optimization_algorithm_factory.h"
 #include "g2o/core/optimization_algorithm_gauss_newton.h"
 #include "g2o/core/optimization_algorithm_levenberg.h"
+#ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
+#endif
 #include "g2o/solvers/pcg/linear_solver_pcg.h"
-#ifdef WITH_G2O_CHOMOLD
+#ifdef G2O_HAVE_CHOLMOD
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #endif
 #include "g2o/types/slam3d/vertex_se3.h"
@@ -52,9 +55,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/types/slam2d/edge_se2.h"
 
 typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
-typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSparseSolver;
 typedef g2o::LinearSolverPCG<SlamBlockSolver::PoseMatrixType> SlamLinearPCGSolver;
-#ifdef WITH_G2O_CHOMOLD
+#ifdef G2O_HAVE_CSPARSE
+typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSparseSolver;
+#endif
+#ifdef G2O_HAVE_CHOLMOD
 typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
 #endif
 
@@ -73,6 +78,48 @@ bool OptimizerG2O::available()
 	return true;
 #else
 	return false;
+#endif
+}
+
+bool OptimizerG2O::isCSparseAvailable()
+{
+#ifdef G2O_HAVE_CSPARSE
+	return true;
+#else
+	return false;
+#endif
+}
+
+bool OptimizerG2O::isCholmodAvailable()
+{
+#ifdef G2O_HAVE_CHOLMOD
+	return true;
+#else
+	return false;
+#endif
+}
+
+void OptimizerG2O::parseParameters(const ParametersMap & parameters)
+{
+	Optimizer::parseParameters(parameters);
+
+	Parameters::parse(parameters, Parameters::kg2oSolver(), solver_);
+	Parameters::parse(parameters, Parameters::kg2oOptimizer(), optimizer_);
+
+#ifndef G2O_HAVE_CHOLMOD
+	if(solver_ == 2)
+	{
+		UWARN("g2o is not built with chmold, so it cannot be used as solver. Using CSparse instead.");
+		solver_ = 0;
+	}
+#endif
+
+#ifndef G2O_HAVE_CSPARSE
+	if(solver_ == 0)
+	{
+		UWARN("g2o is not built with csparse, so it cannot be used as solver. Using PCG instead.");
+		solver_ = 1;
+	}
 #endif
 }
 
@@ -97,30 +144,31 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int solverApproach = 0;
 		int optimizationApproach = 1;
 
-		SlamBlockSolver * blockSolver;
-#ifdef WITH_G2O_CHOMOLD
-		if(solverApproach == 0)
+		SlamBlockSolver * blockSolver = 0;
+
+		if(solverApproach == 2)
 		{
+#ifdef G2O_HAVE_CHOLMOD
 			//chmold
 			SlamLinearCholmodSolver * linearSolver = new SlamLinearCholmodSolver();
 			linearSolver->setBlockOrdering(false);
 			blockSolver = new SlamBlockSolver(linearSolver);
-		}
-		else if
-#else
-		if
 #endif
-			(solverApproach == 1)
-		{
-			//pcg
-			SlamLinearPCGSolver * linearSolver = new SlamLinearPCGSolver();
-			blockSolver = new SlamBlockSolver(linearSolver);
 		}
-		else
+		else if(solverApproach == 0)
 		{
+#ifdef G2O_HAVE_CSPARSE
 			//csparse
 			SlamLinearCSparseSolver* linearSolver = new SlamLinearCSparseSolver();
 			linearSolver->setBlockOrdering(false);
+			blockSolver = new SlamBlockSolver(linearSolver);
+#endif
+		}
+
+		if(blockSolver == 0)
+		{
+			//pcg
+			SlamLinearPCGSolver * linearSolver = new SlamLinearPCGSolver();
 			blockSolver = new SlamBlockSolver(linearSolver);
 		}
 

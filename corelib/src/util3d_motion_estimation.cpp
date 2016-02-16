@@ -208,6 +208,7 @@ Transform estimateMotion3DTo3D(
 			0,
 			&matches);
 	UASSERT(inliers1.size() == inliers2.size());
+	UDEBUG("Unique correspondences = %d", (int)inliers1.size());
 
 	if(varianceOut)
 	{

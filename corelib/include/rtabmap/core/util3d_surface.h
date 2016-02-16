@@ -34,14 +34,64 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/TextureMesh.h>
+#include <pcl/pcl_base.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
+#include <set>
 
 namespace rtabmap
 {
 
 namespace util3d
 {
+
+/**
+ * @brief Given a set of polygons, create two indexes: polygons to neighbor polygons and vertices to polygons.
+ *
+ * @param polygons the polygons to be indexed.
+ * @param cloudSize the size of the cloud of the corresponding mesh to polygons (must be at least as high as
+ * the highest vertex value contained in the polygons).
+ * @param neighborPolygons returned index from polygons to neighbor polygons (index size = polygons size).
+ * @param vertexPolygons returned index from vertices to polygons (index size = cloudSize).
+ */
+void RTABMAP_EXP createPolygonIndexes(
+		const std::vector<pcl::Vertices> & polygons,
+		int cloudSize,
+		std::vector<std::set<int> > & neighborPolygons,
+		std::vector<std::set<int> > & vertexPolygons);
+
+std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		double angleTolerance = M_PI/16,
+		bool quad=true,
+		int trianglePixelSize = 2);
+std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		double angleTolerance = M_PI/16,
+		bool quad=true,
+		int trianglePixelSize = 2);
+
+void RTABMAP_EXP appendMesh(
+		pcl::PointCloud<pcl::PointXYZRGBNormal> & cloudA,
+		std::vector<pcl::Vertices> & polygonsA,
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloudB,
+		const std::vector<pcl::Vertices> & polygonsB);
+
+void RTABMAP_EXP filterNotUsedVerticesFromMesh(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		pcl::PointCloud<pcl::PointXYZRGBNormal> & outputCloud,
+		std::vector<pcl::Vertices> & outputPolygons);
+
+std::vector<pcl::Vertices> RTABMAP_EXP filterCloseVerticesFromMesh(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		float radius,
+		float angle,
+		bool keepLatestInRadius);
+
+std::vector<pcl::Vertices> RTABMAP_EXP filterInvalidPolygons(
+		const std::vector<pcl::Vertices> & polygons);
 
 pcl::PolygonMesh::Ptr RTABMAP_EXP createMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloudWithNormals,
@@ -63,13 +113,41 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int normalKSearch = 20);
-
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int normalKSearch = 20);
+pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		int normalKSearch = 20);
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		int normalKSearch = 20);
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeFastOrganizedNormals(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float maxDepthChangeFactor = 0.02f,
+		float normalSmoothingSize = 10.0f);
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeFastOrganizedNormals(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float maxDepthChangeFactor = 0.02f,
+		float normalSmoothingSize = 10.0f);
 
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		float searchRadius = 0.0f,
+		int polygonialOrder = 2,
+		int upsamplingMethod = 0, // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION
+		float upsamplingRadius = 0.0f,   // SAMPLE_LOCAL_PLANE
+		float upsamplingStep = 0.0f,     // SAMPLE_LOCAL_PLANE
+		int pointDensity = 0,            // RANDOM_UNIFORM_DENSITY
+		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
+		int dilationIterations = 0);     // VOXEL_GRID_DILATION
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
 		float searchRadius = 0.0f,
 		int polygonialOrder = 2,
 		int upsamplingMethod = 0, // NONE, DISTINCT_CLOUD, SAMPLE_LOCAL_PLANE, RANDOM_UNIFORM_DENSITY, VOXEL_GRID_DILATION

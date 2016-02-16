@@ -58,6 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/Optimizer.h"
+#include "rtabmap/core/OptimizerG2O.h"
 #include "rtabmap/core/DBReader.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
@@ -175,6 +176,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
 	}
+	if(!OptimizerG2O::isCSparseAvailable())
+	{
+		_ui->comboBox_g2o_solver->setItemData(0, 0, Qt::UserRole - 1);
+	}
+	if(!OptimizerG2O::isCholmodAvailable())
+	{
+		_ui->comboBox_g2o_solver->setItemData(2, 0, Qt::UserRole - 1);
+	}
 	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		_ui->graphOptimization_type->setItemData(2, 0, Qt::UserRole - 1);
@@ -253,10 +262,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingShowClouds[0] = _ui->checkBox_showClouds;
 	_3dRenderingShowClouds[1] = _ui->checkBox_showOdomClouds;
 
-	_3dRenderingVoxelSize.resize(2);
-	_3dRenderingVoxelSize[0] = _ui->doubleSpinBox_voxelSize;
-	_3dRenderingVoxelSize[1] = _ui->doubleSpinBox_voxelSize_odom;
-
 	_3dRenderingDecimation.resize(2);
 	_3dRenderingDecimation[0] = _ui->spinBox_decimation;
 	_3dRenderingDecimation[1] = _ui->spinBox_decimation_odom;
@@ -296,7 +301,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	for(int i=0; i<2; ++i)
 	{
 		connect(_3dRenderingShowClouds[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-		connect(_3dRenderingVoxelSize[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingDecimation[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingMaxDepth[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingShowScans[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -312,24 +316,25 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
-	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->checkBox_mls, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->doubleSpinBox_mlsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-
-	connect(_ui->checkBox_nodeFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->checkBox_subtractFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->radioButton_noFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->radioButton_nodeFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->radioButton_subtractFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_cloudFilterRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_cloudFilterAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->spinBox_substractFilteringMinPts, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_subtractFilteringMinPts, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_subtractFilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_subtractFilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_opacity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_map_occupancyFrom3DCloud, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_map_erode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+
+	connect(_ui->groupBox_organized, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_mesh_angleTolerance, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_mesh_quad, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_mesh_triangleSize, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	//Logging panel
 	connect(_ui->comboBox_loggerLevel, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
@@ -487,6 +492,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// Memory
 	_ui->general_checkBox_keepRawData->setObjectName(Parameters::kMemImageKept().c_str());
 	_ui->general_checkBox_keepBinaryData->setObjectName(Parameters::kMemBinDataKept().c_str());
+	_ui->general_checkBox_keepDescriptors->setObjectName(Parameters::kMemRawDescriptorsKept().c_str());
 	_ui->general_checkBox_saveDepth16bits->setObjectName(Parameters::kMemSaveDepth16Format().c_str());
 	_ui->general_checkBox_reduceGraph->setObjectName(Parameters::kMemReduceGraph().c_str());
 	_ui->general_checkBox_keepNotLinkedNodes->setObjectName(Parameters::kMemNotLinkedNodesKept().c_str());
@@ -627,6 +633,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->graphOptimization_stopEpsilon->setObjectName(Parameters::kOptimizerEpsilon().c_str());
 	_ui->graphOptimization_robust->setObjectName(Parameters::kOptimizerRobust().c_str());
 
+	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
+	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());
+
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
 	_ui->graphPlan_stuckIterations->setObjectName(Parameters::kRGBDPlanStuckIterations().c_str());
@@ -753,7 +762,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereobm_tetureThreshold->setObjectName(Parameters::kStereoBMTextureThreshold().c_str());
 	_ui->stereobm_uniquessRatio->setObjectName(Parameters::kStereoBMUniquenessRatio().c_str());
 
-
+	// reset default settings for the gui
+	resetSettings(_ui->groupBox_generalSettingsGui0);
+	resetSettings(_ui->groupBox_cloudRendering1);
+	resetSettings(_ui->groupBox_logging1);
+	resetSettings(_ui->groupBox_source0);
 
 	setupSignals();
 	// custom signals
@@ -761,6 +774,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_kp_roi1, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
 	connect(_ui->doubleSpinBox_kp_roi2, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
 	connect(_ui->doubleSpinBox_kp_roi3, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
+	connect(_ui->graphOptimization_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateG2oVisibility()));
 
 	//Create a model from the stacked widgets
 	// This will add all parameters to the parameters Map
@@ -1092,40 +1106,40 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		for(int i=0; i<2; ++i)
 		{
 			_3dRenderingShowClouds[i]->setChecked(true);
-			_3dRenderingVoxelSize[i]->setValue(i==0?0.01:0.0); // voxel of 1 cm for cloud substracting
-			_3dRenderingDecimation[i]->setValue(i==0?4:2);
+			_3dRenderingDecimation[i]->setValue(8);
 			_3dRenderingMaxDepth[i]->setValue(0.0);
 			_3dRenderingShowScans[i]->setChecked(true);
 
 			_3dRenderingDownsamplingScan[i]->setValue(1);
 			_3dRenderingVoxelSizeScan[i]->setValue(0.0);
-			_3dRenderingOpacity[i]->setValue(i==0?1.0:0.5);
+			_3dRenderingOpacity[i]->setValue(i==0?1.0:0.75);
 			_3dRenderingPtSize[i]->setValue(2);
 			_3dRenderingOpacityScan[i]->setValue(i==0?1.0:0.5);
 			_3dRenderingPtSizeScan[i]->setValue(2);
 		}
 
 		_ui->checkBox_showGraphs->setChecked(true);
-		_ui->checkBox_showLabels->setChecked(true);
+		_ui->checkBox_showLabels->setChecked(false);
 
-		_ui->checkBox_meshing->setChecked(false);
-		_ui->doubleSpinBox_gp3Radius->setValue(0.04);
-		_ui->doubleSpinBox_gp3Mu->setValue(2.5);
-		_ui->spinBox_normalKSearch->setValue(20);
-		_ui->checkBox_mls->setChecked(false);
-		_ui->doubleSpinBox_mlsRadius->setValue(0.04);
-
-		_ui->checkBox_nodeFiltering->setChecked(false);
-		_ui->checkBox_subtractFiltering->setChecked(true);
+		_ui->radioButton_noFiltering->setChecked(true);
+		_ui->radioButton_nodeFiltering->setChecked(false);
+		_ui->radioButton_subtractFiltering->setChecked(false);
 		_ui->doubleSpinBox_cloudFilterRadius->setValue(0.1);
 		_ui->doubleSpinBox_cloudFilterAngle->setValue(30);
-		_ui->spinBox_substractFilteringMinPts->setValue(1);
+		_ui->spinBox_subtractFilteringMinPts->setValue(5);
+		_ui->doubleSpinBox_subtractFilteringRadius->setValue(0.02);
+		_ui->doubleSpinBox_subtractFilteringAngle->setValue(45.0);
 
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
 		_ui->checkBox_map_occupancyFrom3DCloud->setChecked(false);
 		_ui->checkBox_map_erode->setChecked(false);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
+
+		_ui->groupBox_organized->setChecked(true);
+		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
+		_ui->checkBox_mesh_quad->setChecked(true);
+		_ui->spinBox_mesh_triangleSize->setValue(2);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
 	{
@@ -1265,7 +1279,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			key = children.at(i)->objectName().toStdString();
 			if(uContains(defaults, key))
 			{
-				this->setParameter(key, defaults.at(key));
+				if(key.compare(Parameters::kRtabmapWorkingDirectory().c_str()) == 0)
+				{
+					this->setParameter(key, Parameters::createDefaultWorkingDirectory());
+				}
+				else
+				{
+					this->setParameter(key, defaults.at(key));
+				}
 				if(qobject_cast<const QGroupBox*>(children.at(i)))
 				{
 					this->resetSettings((QGroupBox*)children.at(i));
@@ -1415,7 +1436,6 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	for(int i=0; i<2; ++i)
 	{
 		_3dRenderingShowClouds[i]->setChecked(settings.value(QString("showClouds%1").arg(i), _3dRenderingShowClouds[i]->isChecked()).toBool());
-		_3dRenderingVoxelSize[i]->setValue(settings.value(QString("voxelSize%1").arg(i), _3dRenderingVoxelSize[i]->value()).toDouble());
 		_3dRenderingDecimation[i]->setValue(settings.value(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value()).toInt());
 		_3dRenderingMaxDepth[i]->setValue(settings.value(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value()).toDouble());
 		_3dRenderingShowScans[i]->setChecked(settings.value(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked()).toBool());
@@ -1430,24 +1450,25 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 
-	_ui->checkBox_meshing->setChecked(settings.value("meshing", _ui->checkBox_meshing->isChecked()).toBool());
-	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("meshGP3Radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
-	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("meshGP3Mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
-	_ui->spinBox_normalKSearch->setValue(settings.value("meshNormalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
-	_ui->checkBox_mls->setChecked(settings.value("meshSmoothing", _ui->checkBox_mls->isChecked()).toBool());
-	_ui->doubleSpinBox_mlsRadius->setValue(settings.value("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value()).toDouble());
-
-	_ui->checkBox_nodeFiltering->setChecked(settings.value("cloudFiltering", _ui->checkBox_nodeFiltering->isChecked()).toBool());
-	_ui->checkBox_subtractFiltering->setChecked(settings.value("subtractFiltering", _ui->checkBox_subtractFiltering->isChecked()).toBool());
+	_ui->radioButton_noFiltering->setChecked(settings.value("noFiltering", _ui->radioButton_noFiltering->isChecked()).toBool());
+	_ui->radioButton_nodeFiltering->setChecked(settings.value("cloudFiltering", _ui->radioButton_nodeFiltering->isChecked()).toBool());
 	_ui->doubleSpinBox_cloudFilterRadius->setValue(settings.value("cloudFilteringRadius", _ui->doubleSpinBox_cloudFilterRadius->value()).toDouble());
 	_ui->doubleSpinBox_cloudFilterAngle->setValue(settings.value("cloudFilteringAngle", _ui->doubleSpinBox_cloudFilterAngle->value()).toDouble());
-	_ui->spinBox_substractFilteringMinPts->setValue(settings.value("cloudFilteringAngleMinPts", _ui->spinBox_substractFilteringMinPts->value()).toDouble());
+	_ui->radioButton_subtractFiltering->setChecked(settings.value("subtractFiltering", _ui->radioButton_subtractFiltering->isChecked()).toBool());
+	_ui->spinBox_subtractFilteringMinPts->setValue(settings.value("subtractFilteringMinPts", _ui->spinBox_subtractFilteringMinPts->value()).toInt());
+	_ui->doubleSpinBox_subtractFilteringRadius->setValue(settings.value("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value()).toDouble());
+	_ui->doubleSpinBox_subtractFilteringAngle->setValue(settings.value("subtractFilteringAngle", _ui->doubleSpinBox_subtractFilteringAngle->value()).toDouble());
 
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
 	_ui->checkBox_map_occupancyFrom3DCloud->setChecked(settings.value("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked()).toBool());
 	_ui->checkBox_map_erode->setChecked(settings.value("gridMapEroded", _ui->checkBox_map_erode->isChecked()).toBool());
 	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
+
+	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
+	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("meshing_angle", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
+	_ui->checkBox_mesh_quad->setChecked(settings.value("meshing_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
+	_ui->spinBox_mesh_triangleSize->setValue(settings.value("meshing_triangle_size", _ui->spinBox_mesh_triangleSize->value()).toInt());
 
 	settings.endGroup(); // General
 
@@ -1653,7 +1674,7 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 			if(key.toStdString().compare(Parameters::kRtabmapWorkingDirectory()) == 0)
 			{
 				// The directory should exist if not the default one
-				if(!QDir(value).exists() && value.compare(Parameters::defaultRtabmapWorkingDirectory().c_str()) != 0)
+				if(!QDir(value).exists() && value.compare(Parameters::createDefaultWorkingDirectory().c_str()) != 0)
 				{
 					if(QDir(this->getWorkingDirectory().toStdString().c_str()).exists())
 					{
@@ -1675,11 +1696,6 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 		}
 		else
 		{
-			UDEBUG("key.toStdString()=%s", key.toStdString().c_str());
-
-			// Use the default value if the key doesn't exist yet
-			this->setParameter(key.toStdString(), (*iter).second);
-
 			// Add information about the working directory if not in the config file
 			if(key.toStdString().compare(Parameters::kRtabmapWorkingDirectory()) == 0)
 			{
@@ -1691,8 +1707,16 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 							   "By default, the directory \"%1\" is used.\n\n"
 							   "The working directory can be changed any time in the "
 							   "preferences menu.").arg(
-									   Parameters::defaultRtabmapWorkingDirectory().c_str()));
+									   Parameters::createDefaultWorkingDirectory().c_str()));
 				}
+				this->setParameter(key.toStdString(), Parameters::createDefaultWorkingDirectory());
+				UDEBUG("key.toStdString()=%s", Parameters::createDefaultWorkingDirectory().c_str());
+			}
+			else
+			{
+				// Use the default value if the key doesn't exist yet
+				this->setParameter(key.toStdString(), (*iter).second);
+				UDEBUG("key.toStdString()=%s", key.toStdString().c_str());
 			}
 		}
 	}
@@ -1788,7 +1812,6 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	for(int i=0; i<2; ++i)
 	{
 		settings.setValue(QString("showClouds%1").arg(i), _3dRenderingShowClouds[i]->isChecked());
-		settings.setValue(QString("voxelSize%1").arg(i), _3dRenderingVoxelSize[i]->value());
 		settings.setValue(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value());
 		settings.setValue(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value());
 		settings.setValue(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked());
@@ -1803,24 +1826,26 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 
-	settings.setValue("meshing",             _ui->checkBox_meshing->isChecked());
-	settings.setValue("meshGP3Radius",       _ui->doubleSpinBox_gp3Radius->value());
-	settings.setValue("meshGP3Mu",       _ui->doubleSpinBox_gp3Mu->value());
-	settings.setValue("meshNormalKSearch",   _ui->spinBox_normalKSearch->value());
-	settings.setValue("meshSmoothing",       _ui->checkBox_mls->isChecked());
-	settings.setValue("meshSmoothingRadius", _ui->doubleSpinBox_mlsRadius->value());
-
-	settings.setValue("cloudFiltering",          _ui->checkBox_nodeFiltering->isChecked());
-	settings.setValue("subtractFiltering",       _ui->checkBox_subtractFiltering->isChecked());
+	settings.setValue("noFiltering",             _ui->radioButton_noFiltering->isChecked());
+	settings.setValue("cloudFiltering",          _ui->radioButton_nodeFiltering->isChecked());
 	settings.setValue("cloudFilteringRadius",    _ui->doubleSpinBox_cloudFilterRadius->value());
 	settings.setValue("cloudFilteringAngle",     _ui->doubleSpinBox_cloudFilterAngle->value());
-	settings.setValue("subtractFilteringMinPts", _ui->spinBox_substractFilteringMinPts->value());
+	settings.setValue("subtractFiltering",       _ui->radioButton_subtractFiltering->isChecked());
+	settings.setValue("subtractFilteringMinPts", _ui->spinBox_subtractFilteringMinPts->value());
+	settings.setValue("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value());
+	settings.setValue("subtractFilteringAngle", _ui->doubleSpinBox_subtractFilteringAngle->value());
 
 	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapResolution",           _ui->doubleSpinBox_map_resolution->value());
 	settings.setValue("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked());
 	settings.setValue("gridMapEroded",               _ui->checkBox_map_erode->isChecked());
 	settings.setValue("gridMapOpacity",              _ui->doubleSpinBox_map_opacity->value());
+
+	settings.setValue("meshing",               _ui->groupBox_organized->isChecked());
+	settings.setValue("meshing_angle",         _ui->doubleSpinBox_mesh_angleTolerance->value());
+	settings.setValue("meshing_quad",          _ui->checkBox_mesh_quad->isChecked());
+	settings.setValue("meshing_triangle_size", _ui->spinBox_mesh_triangleSize->value());
+
 	settings.endGroup(); // General
 
 	settings.endGroup(); // rtabmap
@@ -2073,13 +2098,6 @@ bool PreferencesDialog::validateForm()
 				   "cannot be LSH (used for binary descriptor). KD-tree is set instead for the bag-of-words dictionary."));
 		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNFlannKdTree);
 	}
-	else if(_ui->comboBox_dictionary_strategy->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->comboBox_detector_strategy->currentIndex() >1)
-	{
-		QMessageBox::warning(this, tr("Parameter warning"),
-				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Visual word->Nearest Neighbor\" "
-				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead for the bag-of-words dictionary."));
-		_ui->comboBox_dictionary_strategy->setCurrentIndex(VWDictionary::kNNBruteForce);
-	}
 
 	// BOW Reextract features type
 	if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannLSH && _ui->reextract_type->currentIndex() <= 1)
@@ -2089,14 +2107,6 @@ bool PreferencesDialog::validateForm()
 				   "cannot be LSH (used for binary descriptor). KD-tree is set instead for the re-extraction "
 					   "of features on loop closure."));
 		_ui->reextract_nn->setCurrentIndex(VWDictionary::kNNFlannKdTree);
-	}
-	else if(_ui->reextract_nn->currentIndex() == VWDictionary::kNNFlannKdTree && _ui->reextract_type->currentIndex() >1)
-	{
-		QMessageBox::warning(this, tr("Parameter warning"),
-				tr("With the selected feature type (ORB, FAST, FREAK or BRIEF), parameter \"Visual word->Nearest Neighbor\" "
-				   "cannot be KD-Tree (used for float descriptor). BruteForce matching is set instead for the re-extraction "
-					   "of features on loop closure."));
-		_ui->reextract_nn->setCurrentIndex(VWDictionary::kNNBruteForce);
 	}
 
 	if(_ui->doubleSpinBox_freenect2MinDepth->value() >= _ui->doubleSpinBox_freenect2MaxDepth->value())
@@ -3237,6 +3247,11 @@ void PreferencesDialog::updateKpROI()
 	_ui->lineEdit_kp_roi->setText(strings.join(" "));
 }
 
+void PreferencesDialog::updateG2oVisibility()
+{
+	_ui->groupBox_g2o->setVisible(_ui->graphOptimization_type->currentIndex() == 1);
+}
+
 void PreferencesDialog::changeWorkingDirectory()
 {
 	QString directory = QFileDialog::getExistingDirectory(this, tr("Working directory"), _ui->lineEdit_workingDirectory->text());
@@ -3387,12 +3402,19 @@ bool PreferencesDialog::isLabelsShown() const
 }
 bool PreferencesDialog::isCloudMeshing() const
 {
-	return _ui->checkBox_meshing->isChecked();
+	return _ui->groupBox_organized->isChecked();
 }
-double PreferencesDialog::getCloudVoxelSize(int index) const
+double PreferencesDialog::getCloudMeshingAngle() const
 {
-	UASSERT(index >= 0 && index <= 1);
-	return _3dRenderingVoxelSize[index]->value();
+	return _ui->doubleSpinBox_mesh_angleTolerance->value()*M_PI/180.0f;
+}
+bool PreferencesDialog::isCloudMeshingQuad() const
+{
+	return _ui->checkBox_mesh_quad->isChecked();
+}
+int PreferencesDialog::getCloudMeshingTriangleSize()
+{
+	return _ui->spinBox_mesh_triangleSize->value();
 }
 int PreferencesDialog::getCloudDecimation(int index) const
 {
@@ -3440,33 +3462,13 @@ int PreferencesDialog::getScanPointSize(int index) const
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingPtSizeScan[index]->value();
 }
-int PreferencesDialog::getMeshNormalKSearch() const
-{
-	return _ui->spinBox_normalKSearch->value();
-}
-double PreferencesDialog::getMeshGP3Radius() const
-{
-	return _ui->doubleSpinBox_gp3Radius->value();
-}
-double PreferencesDialog::getMeshGP3Mu() const
-{
-	return _ui->doubleSpinBox_gp3Mu->value();
-}
-bool PreferencesDialog::getMeshSmoothing() const
-{
-	return _ui->checkBox_mls->isChecked();
-}
-double PreferencesDialog::getMeshSmoothingRadius() const
-{
-	return _ui->doubleSpinBox_mlsRadius->value();
-}
 bool PreferencesDialog::isCloudFiltering() const
 {
-	return _ui->checkBox_nodeFiltering->isChecked();
+	return _ui->radioButton_nodeFiltering->isChecked();
 }
 bool PreferencesDialog::isSubtractFiltering() const
 {
-	return _ui->checkBox_subtractFiltering->isChecked();
+	return _ui->radioButton_subtractFiltering->isChecked();
 }
 double PreferencesDialog::getCloudFilteringRadius() const
 {
@@ -3476,9 +3478,17 @@ double PreferencesDialog::getCloudFilteringAngle() const
 {
 	return _ui->doubleSpinBox_cloudFilterAngle->value();
 }
-int PreferencesDialog::getSubstractFilteringMinPts() const
+int PreferencesDialog::getSubtractFilteringMinPts() const
 {
-	return _ui->spinBox_substractFilteringMinPts->value();
+	return _ui->spinBox_subtractFilteringMinPts->value();
+}
+double PreferencesDialog::getSubtractFilteringRadius() const
+{
+	return _ui->doubleSpinBox_subtractFilteringRadius->value();
+}
+double PreferencesDialog::getSubtractFilteringAngle() const
+{
+	return _ui->doubleSpinBox_subtractFilteringAngle->value()*M_PI/180.0;
 }
 bool PreferencesDialog::getGridMapShown() const
 {
@@ -4077,7 +4087,7 @@ void PreferencesDialog::testOdometry()
 
 	OdometryViewer * odomViewer = new OdometryViewer(10,
 					_ui->spinBox_decimation_odom->value(),
-					_ui->doubleSpinBox_voxelSize_odom->value(),
+					0.0f,
 					_ui->doubleSpinBox_maxDepth_odom->value(),
 					this->getOdomQualityWarnThr(),
 					this);

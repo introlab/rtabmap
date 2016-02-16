@@ -83,6 +83,16 @@ void RTABMAP_EXP projectCloudOnXYPlane(
 template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		pcl::IndicesPtr & ground,
+		pcl::IndicesPtr & obstacles,
+		float normalRadiusSearch,
+		float groundNormalAngle,
+		int minClusterSize,
+		bool segmentFlatObstacles = false);
+template<typename PointT>
+void segmentObstaclesFromGround(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		pcl::IndicesPtr & ground,
 		pcl::IndicesPtr & obstacles,
 		float normalRadiusSearch,
@@ -93,6 +103,15 @@ void segmentObstaclesFromGround(
 template<typename PointT>
 void occupancy2DFromCloud3D(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize = 0.05f,
+		float groundNormalAngle = M_PI_4,
+		int minClusterSize = 20);
+template<typename PointT>
+void occupancy2DFromCloud3D(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
 		float cellSize = 0.05f,

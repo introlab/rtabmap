@@ -119,20 +119,20 @@ void LoopClosureViewer::updateView(const Transform & transform)
 
 			if(cloudA->size())
 			{
-				ui_->cloudViewerTransform->addOrUpdateCloud("cloud0", cloudA);
+				ui_->cloudViewerTransform->addCloud("cloud0", cloudA);
 			}
 			if(cloudB->size())
 			{
 				cloudB = util3d::transformPointCloud(cloudB, t);
-				ui_->cloudViewerTransform->addOrUpdateCloud("cloud1", cloudB);
+				ui_->cloudViewerTransform->addCloud("cloud1", cloudB);
 			}
 			if(scanA->size())
 			{
-				ui_->cloudViewerTransform->addOrUpdateCloud("scan0", scanA);
+				ui_->cloudViewerTransform->addCloud("scan0", scanA);
 			}
 			if(scanB->size())
 			{
-				ui_->cloudViewerTransform->addOrUpdateCloud("scan1", scanB);
+				ui_->cloudViewerTransform->addCloud("scan1", scanB);
 			}
 		}
 		else
