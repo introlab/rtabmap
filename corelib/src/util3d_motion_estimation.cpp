@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d.h"
 
+#include "rtabmap/core/OptimizerG2O.h"
+
 namespace rtabmap
 {
 
@@ -127,6 +129,12 @@ Transform estimateMotion3DTo2D(
 			Transform pnp(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
 						   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
 						   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
+
+			UWARN("pnp=%s", pnp.prettyPrint().c_str());
+
+			OptimizerG2O g2o;
+			Transform g2oT = g2o.poseOptimization(pnp, objectPoints, imagePoints, cameraModel);
+			UWARN("g2oT=%s", g2oT.prettyPrint().c_str());
 
 			transform = (cameraModel.localTransform() * pnp).inverse();
 

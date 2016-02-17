@@ -106,7 +106,7 @@ void segmentObstaclesFromGround(
 		bool segmentFlatObstacles)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	segmentObstaclesFromGround(
+	segmentObstaclesFromGround<PointT>(
 			cloud,
 			indices,
 			ground,

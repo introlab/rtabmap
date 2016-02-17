@@ -1136,9 +1136,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_map_erode->setChecked(false);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 
-		_ui->groupBox_organized->setChecked(true);
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+		_ui->groupBox_organized->setChecked(true);
 		_ui->checkBox_mesh_quad->setChecked(true);
+#else
+		_ui->groupBox_organized->setChecked(false);
+		_ui->checkBox_mesh_quad->setChecked(false);
+#endif
 		_ui->spinBox_mesh_triangleSize->setValue(2);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())

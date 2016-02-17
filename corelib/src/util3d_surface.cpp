@@ -97,6 +97,7 @@ std::vector<pcl::Vertices> organizedFastMesh(
 		bool quad,
 		int trianglePixelSize)
 {
+	UDEBUG("size=%d angle=%f quad=%d triangleSize=%d", (int)cloud->size(), angleTolerance, quad?1:0, trianglePixelSize);
 	UASSERT(cloud->is_dense == false);
 	UASSERT(cloud->width > 1 && cloud->height > 1);
 
@@ -131,7 +132,7 @@ std::vector<pcl::Vertices> organizedFastMesh(
 		bool quad,
 		int trianglePixelSize)
 {
-	UDEBUG("size=%d angle=%f quand=%d triangleSize=%d", (int)cloud->size(), angleTolerance, quad?1:0, trianglePixelSize);
+	UDEBUG("size=%d angle=%f quad=%d triangleSize=%d", (int)cloud->size(), angleTolerance, quad?1:0, trianglePixelSize);
 	UASSERT(cloud->is_dense == false);
 	UASSERT(cloud->width > 1 && cloud->height > 1);
 

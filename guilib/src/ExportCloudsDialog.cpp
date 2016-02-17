@@ -49,7 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <QPushButton>
 #include <QDir>
-#include <QFileinfo>
+#include <QFileInfo>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
