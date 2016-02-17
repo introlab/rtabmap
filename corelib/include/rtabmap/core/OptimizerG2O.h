@@ -47,7 +47,7 @@ public:
 			bool useRobustConstraints = false);
 
 public:
-	OptimizerG2O(const ParametersMap & parameters) :
+	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer())

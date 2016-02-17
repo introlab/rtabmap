@@ -130,12 +130,6 @@ Transform estimateMotion3DTo2D(
 						   R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
 						   R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
 
-			UWARN("pnp=%s", pnp.prettyPrint().c_str());
-
-			OptimizerG2O g2o;
-			Transform g2oT = g2o.poseOptimization(pnp, objectPoints, imagePoints, cameraModel);
-			UWARN("g2oT=%s", g2oT.prettyPrint().c_str());
-
 			transform = (cameraModel.localTransform() * pnp).inverse();
 
 			// compute variance (like in PCL computeVariance() method of sac_model.h)
