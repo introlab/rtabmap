@@ -1753,6 +1753,8 @@ void PreferencesDialog::resetConfig()
 	   (button == QMessageBox::Save && saveConfigTo()))
 	{
 		this->resetSettings(-1);
+
+		_calibrationDialog->resetSettings();
 	}
 }
 

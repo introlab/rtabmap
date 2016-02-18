@@ -208,7 +208,7 @@ bool importPoses(
 				{
 					// timestamp,lat,lon,alt,x,y,z,roll,pitch,yaw
 
-					// stamp is 1252400096825289728, transform to 125240009.6825289728
+					// stamp is 1252400096825289728, transform to 1252400096.825289728
 					double stamp = uStr2Double(strList[0].insert(10, 1, '.'));
 					double x = uStr2Double(strList[4]);
 					double y = uStr2Double(strList[5]);

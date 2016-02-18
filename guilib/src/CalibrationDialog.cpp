@@ -139,6 +139,13 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	}
 }
 
+void CalibrationDialog::resetSettings()
+{
+	this->setBoardWidth(8);
+	this->setBoardHeight(6);
+	this->setSquareSize(0.033);
+}
+
 void CalibrationDialog::setSwitchedImages(bool switched)
 {
 	ui_->checkBox_switchImages->setChecked(switched);

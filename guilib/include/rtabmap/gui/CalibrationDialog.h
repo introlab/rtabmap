@@ -58,6 +58,7 @@ public:
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
+	void resetSettings();
 
 	void setSwitchedImages(bool switched);
 	void setStereoMode(bool stereo);
