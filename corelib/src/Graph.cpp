@@ -108,19 +108,29 @@ bool exportPoses(
 			{
 				if(format == 1) // rgbd-slam format
 				{
-					// Format: stamp x y z qw qx qy qz
-					Eigen::Quaternionf q = (*iter).second.getQuaternionf();
+					// put the pose in rgbd-slam world reference
+					Transform t( 0, 0, 1, 0,
+								 0, -1, 0, 0,
+								 1, 0, 0, 0);
+					Transform pose = t.inverse() * iter->second;
+					t = Transform( 0, 0, 1, 0,
+								  -1, 0, 0, 0,
+								   0,-1, 0, 0);
+					pose = t.inverse() * pose * t;
+
+					// Format: stamp x y z qx qy qz qw
+					Eigen::Quaternionf q = pose.getQuaternionf();
 
 					UASSERT(uContains(stamps, iter->first));
 					fprintf(fout, "%f %f %f %f %f %f %f %f\n",
 							stamps.at(iter->first),
-							(*iter).second.x(),
-							(*iter).second.y(),
-							(*iter).second.z(),
-							q.w(),
+							pose.x(),
+							pose.y(),
+							pose.z(),
 							q.x(),
 							q.y(),
-							q.z());
+							q.z(),
+							q.w());
 				}
 				else // default / KITTI format
 				{

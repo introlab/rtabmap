@@ -1153,7 +1153,7 @@ bool Rtabmap::process(
 		if(_proximityByTime &&
 		   rehearsedId == 0 && // don't do it if rehearsal happened
 		   signature->getWords3().size() &&
-		   _memory->isIncremental(), // don't do it in localization mode
+		   _memory->isIncremental() && // don't do it in localization mode
 		   !signature->isBadSignature() &&
 		   signature->getWeight()>=0)
 		{
