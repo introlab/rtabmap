@@ -331,6 +331,8 @@ Transform OdometryLocalMap::computeTransform(
 			if(fixedLocalMapPath_.empty() && (int)uniques.size() >= regVis_->getMinInliers())
 			{
 				output.setIdentity();
+				// a very high variance tells that the new pose is not linked with the previous one
+				regInfo.variance = 9999;
 
 				Transform t = this->getPose(); // initial pose maybe not identity...
 				for(std::list<int>::iterator iter = uniques.begin(); iter!=uniques.end(); ++iter)

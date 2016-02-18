@@ -981,6 +981,11 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 	{
 		//return Identity
 		output = Transform::getIdentity();
+		if(info)
+		{
+			// a very high variance tells that the new pose is not linked with the previous one
+			info->variance = 9999;
+		}
 
 			// generate kpts
 		if(memory_->update(SensorData(newFrame)))

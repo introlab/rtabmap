@@ -1204,8 +1204,8 @@ bool Rtabmap::process(
 	// Bayes filter update
 	//============================================================
 	int previousId = signature->getLinks().size() == 1?signature->getLinks().begin()->first:0;
-	// Not a bad signature, not a small displacement unless the previous signature didn't have a loop closure
-	if(!signature->isBadSignature() && (!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0))
+	// Not a bad signature, not an intermediate node, not a small displacement unless the previous signature didn't have a loop closure
+	if(!signature->isBadSignature() && signature->getWeight()>=0 && (!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0))
 	{
 		// If the working memory is empty, don't do the detection. It happens when it
 		// is the first time the detector is started (there needs some images to

@@ -2599,6 +2599,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 	Signature * newS = _getSignature(newId);
 	if(oldS && newS && _incrementalMemory)
 	{
+		UASSERT_MSG(oldS->getWeight() >= 0 && newS->getWeight() >= 0, uFormat("%d %d", oldS->getWeight(), newS->getWeight()).c_str());
 		std::map<int, Link>::const_iterator iter = oldS->getLinks().find(newS->id());
 		if(iter != oldS->getLinks().end() &&
 		   iter->second.type() != Link::kNeighbor &&
@@ -2610,7 +2611,9 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		}
 		UASSERT(!newS->isSaved());
 
-		UINFO("Rehearsal merging %d and %d", oldS->id(), newS->id());
+		UINFO("Rehearsal merging %d (w=%d) and %d (w=%d)",
+				oldS->id(), oldS->getWeight(),
+				newS->id(), newS->getWeight());
 
 		bool fullMerge;
 		bool intermediateMerge = false;

@@ -117,6 +117,8 @@ Transform OdometryF2F::computeTransform(
 	{
 		//return Identity
 		output = Transform::getIdentity();
+		// a very high variance tells that the new pose is not linked with the previous one
+		regInfo.variance = 9999;
 	}
 
 	if(!output.isNull())
