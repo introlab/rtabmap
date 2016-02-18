@@ -1153,14 +1153,17 @@ bool Rtabmap::process(
 		if(_proximityByTime &&
 		   rehearsedId == 0 && // don't do it if rehearsal happened
 		   signature->getWords3().size() &&
-		   _memory->isIncremental()) // don't do it in localization mode
+		   _memory->isIncremental(), // don't do it in localization mode
+		   !signature->isBadSignature() &&
+		   signature->getWeight()>=0)
 		{
 			const std::set<int> & stm = _memory->getStMem();
 			for(std::set<int>::const_reverse_iterator iter = stm.rbegin(); iter!=stm.rend(); ++iter)
 			{
 				if(*iter != signature->id() &&
 				   signature->getLinks().find(*iter) == signature->getLinks().end() &&
-				   _memory->getSignature(*iter)->mapId() == signature->mapId())
+				   _memory->getSignature(*iter)->mapId() == signature->mapId() &&
+				   _memory->getSignature(*iter)->getWeight()>=0)
 				{
 					std::string rejectedMsg;
 					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);

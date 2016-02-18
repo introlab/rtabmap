@@ -3711,27 +3711,31 @@ void MainWindow::postProcessing()
 						Signature signatureFrom = _cachedSignatures[from];
 						Signature signatureTo = _cachedSignatures[to];
 
-						if(reextractFeatures)
+						if(signatureFrom.getWeight() >= 0 &&
+						   signatureTo.getWeight() >= 0) // ignore intermediate nodes
 						{
-							signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
-							signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
-							signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
-							signatureTo.setWords3(std::multimap<int, cv::Point3f>());
-						}
+							if(reextractFeatures)
+							{
+								signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
+								signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
+								signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
+								signatureTo.setWords3(std::multimap<int, cv::Point3f>());
+							}
 
-						Transform transform;
-						RegistrationInfo info;
-						RegistrationVis registration(parameters);
-						transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &info);
+							Transform transform;
+							RegistrationInfo info;
+							RegistrationVis registration(parameters);
+							transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &info);
 
-						if(!transform.isNull())
-						{
-							UINFO("Added new loop closure between %d and %d.", from, to);
-							addedLinks.insert(from);
-							addedLinks.insert(to);
-							_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.variance, info.variance)));
-							++loopClosuresAdded;
-							_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+							if(!transform.isNull())
+							{
+								UINFO("Added new loop closure between %d and %d.", from, to);
+								addedLinks.insert(from);
+								addedLinks.insert(to);
+								_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.variance, info.variance)));
+								++loopClosuresAdded;
+								_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+							}
 						}
 					}
 				}
