@@ -832,7 +832,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 									output,
 									_preferencesDialog->getCloudMeshingAngle(),
 									_preferencesDialog->isCloudMeshingQuad(),
-									_preferencesDialog->getCloudMeshingTriangleSize());
+									_preferencesDialog->getCloudMeshingTriangleSize(),
+									Eigen::Vector3f(pose.x(), pose.y(), pose.z()));
 							if(polygons.size())
 							{
 								if(!_ui->widget_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
@@ -3720,6 +3721,23 @@ void MainWindow::postProcessing()
 								signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
 								signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
 								signatureTo.setWords3(std::multimap<int, cv::Point3f>());
+
+								if(signatureFrom.sensorData().imageRaw().empty())
+								{
+									signatureFrom.sensorData().uncompressData();
+									if(signatureFrom.sensorData().imageRaw().empty())
+									{
+										continue;
+									}
+								}
+								if(signatureTo.sensorData().imageRaw().empty())
+								{
+									signatureTo.sensorData().uncompressData();
+									if(signatureTo.sensorData().imageRaw().empty())
+									{
+										continue;
+									}
+								}
 							}
 
 							Transform transform;

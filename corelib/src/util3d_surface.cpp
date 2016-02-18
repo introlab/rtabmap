@@ -95,7 +95,8 @@ std::vector<pcl::Vertices> organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance,
 		bool quad,
-		int trianglePixelSize)
+		int trianglePixelSize,
+		const Eigen::Vector3f & viewpoint)
 {
 	UDEBUG("size=%d angle=%f quad=%d triangleSize=%d", (int)cloud->size(), angleTolerance, quad?1:0, trianglePixelSize);
 	UASSERT(cloud->is_dense == false);
@@ -106,6 +107,8 @@ std::vector<pcl::Vertices> organizedFastMesh(
 	ofm.setTriangulationType (quad?pcl::OrganizedFastMesh<pcl::PointXYZRGB>::QUAD_MESH:pcl::OrganizedFastMesh<pcl::PointXYZRGB>::TRIANGLE_RIGHT_CUT);
 	ofm.setInputCloud (cloud);
 	ofm.setAngleTolerance(angleTolerance);
+	ofm.setViewpoint(viewpoint);
+
 	std::vector<pcl::Vertices> vertices;
 	ofm.reconstruct (vertices);
 
@@ -130,7 +133,8 @@ std::vector<pcl::Vertices> organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		double angleTolerance,
 		bool quad,
-		int trianglePixelSize)
+		int trianglePixelSize,
+		const Eigen::Vector3f & viewpoint)
 {
 	UDEBUG("size=%d angle=%f quad=%d triangleSize=%d", (int)cloud->size(), angleTolerance, quad?1:0, trianglePixelSize);
 	UASSERT(cloud->is_dense == false);
@@ -141,6 +145,8 @@ std::vector<pcl::Vertices> organizedFastMesh(
 	ofm.setTriangulationType (quad?pcl::OrganizedFastMesh<pcl::PointXYZRGBNormal>::QUAD_MESH:pcl::OrganizedFastMesh<pcl::PointXYZRGBNormal>::TRIANGLE_RIGHT_CUT);
 	ofm.setInputCloud (cloud);
 	ofm.setAngleTolerance(angleTolerance);
+	ofm.setViewpoint(viewpoint);
+
 	std::vector<pcl::Vertices> vertices;
 	ofm.reconstruct (vertices);
 

@@ -64,12 +64,14 @@ std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance = M_PI/16,
 		bool quad=true,
-		int trianglePixelSize = 2);
+		int trianglePixelSize = 2,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
 std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		double angleTolerance = M_PI/16,
 		bool quad=true,
-		int trianglePixelSize = 2);
+		int trianglePixelSize = 2,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
 
 void RTABMAP_EXP appendMesh(
 		pcl::PointCloud<pcl::PointXYZRGBNormal> & cloudA,

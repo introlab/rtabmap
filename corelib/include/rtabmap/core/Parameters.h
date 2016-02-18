@@ -329,7 +329,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Optimizer, Slam2D,            bool, false,     "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
 	RTABMAP_PARAM(Optimizer, VarianceIgnored,   bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
 	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
-	RTABMAP_PARAM(Optimizer, Robust,            bool, true,      "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
+	RTABMAP_PARAM(Optimizer, Robust,            bool, false,      "Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies).");
 
 	RTABMAP_PARAM(g2o, Solver,                  int, 0,          "0=csparse 1=pcg 2=cholmod");
 	RTABMAP_PARAM(g2o, Optimizer,               int, 0,          "0=Levenberg 1=GaussNewton");
