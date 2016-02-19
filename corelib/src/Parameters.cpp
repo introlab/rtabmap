@@ -218,6 +218,8 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionByTime",              std::make_pair(true,  Parameters::kRGBDProximityByTime())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionBySpace",             std::make_pair(true,  Parameters::kRGBDProximityBySpace())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionTime",                std::make_pair(true,  Parameters::kRGBDProximityByTime())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionSpace",               std::make_pair(true,  Parameters::kRGBDProximityBySpace())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathScansMerged",     std::make_pair(true,  Parameters::kRGBDProximityPathScansMerged())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionMaxGraphDepth",       std::make_pair(true,  Parameters::kRGBDProximityMaxGraphDepth())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathFilteringRadius", std::make_pair(true,  Parameters::kRGBDProximityPathFilteringRadius())));

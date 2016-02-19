@@ -223,7 +223,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						   hasConverged,
 						   *fromCloudRegistered,
 						   _epsilon,
-						   !this->force3DoF()); // icp2D
+						   this->force3DoF()); // icp2D
 				}
 
 				/*pcl::io::savePCDFile("fromCloud.pcd", *fromCloud);

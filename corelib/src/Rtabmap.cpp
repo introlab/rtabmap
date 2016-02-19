@@ -1002,7 +1002,7 @@ bool Rtabmap::process(
 				{
 					// set small variance
 					UDEBUG("Set small variance. The robot is not moving.");
-					_memory->updateLink(signature->id(), oldId, guess, 0.0001, 0.0001);
+					_memory->updateLink(oldId, signature->id(), guess, 0.0001, 0.0001);
 				}
 			}
 			else
@@ -1019,10 +1019,10 @@ bool Rtabmap::process(
 					if(!t.isNull())
 					{
 						UINFO("Scan matching: update neighbor link (%d->%d, variance=%f) from %s to %s",
-								signature->id(),
 								oldId,
+								signature->id(),
 								info.variance,
-								signature->getLinks().at(oldId).transform().prettyPrint().c_str(),
+								guess.prettyPrint().c_str(),
 								t.prettyPrint().c_str());
 						UASSERT(info.variance > 0.0);
 						_memory->updateLink(oldId, signature->id(), t, info.variance, info.variance);
@@ -1049,7 +1049,7 @@ bool Rtabmap::process(
 						if(info.variance > 0)
 						{
 							double sqrtVar = sqrt(info.variance);
-							_memory->updateLink(signature->id(), oldId, guess, sqrtVar, sqrtVar);
+							_memory->updateLink(oldId, signature->id(), guess, sqrtVar, sqrtVar);
 						}
 					}
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
@@ -1064,6 +1064,7 @@ bool Rtabmap::process(
 
 			UASSERT(oldS->hasLink(signature->id()));
 			UASSERT(uContains(_optimizedPoses, oldId));
+
 			newPose = _optimizedPoses.at(oldId) * oldS->getLinks().at(signature->id()).transform();
 			_mapCorrection = newPose * signature->getPose().inverse();
 			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
@@ -1079,7 +1080,7 @@ bool Rtabmap::process(
 			newPose = _mapCorrection * signature->getPose();
 		}
 
-		UDEBUG("Added pose %s", newPose.prettyPrint().c_str());
+		UDEBUG("Added pose %s (odom=%s)", newPose.prettyPrint().c_str(), signature->getPose().prettyPrint().c_str());
 		// Update Poses and Constraints
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose

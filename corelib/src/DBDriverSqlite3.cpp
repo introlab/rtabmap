@@ -1779,6 +1779,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 							(*iter)->sensorData().setCameraModels(models);
 							(*iter)->sensorData().setStereoCameraModel(stereoModel);
 						}
+						rc = sqlite3_step(ppStmt);
 					}
 					UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
