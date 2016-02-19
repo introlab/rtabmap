@@ -994,7 +994,19 @@ float getDepth(
 	int u_end = std::min(u+1, depthImage.cols-1);
 	int v_end = std::min(v+1, depthImage.rows-1);
 
-	float depth = isInMM?(float)depthImage.at<unsigned short>(v,u)*0.001f:depthImage.at<float>(v,u);
+	float depth = 0.0f;
+	if(isInMM)
+	{
+		if(depthImage.at<unsigned short>(v,u) > 0 &&
+		   depthImage.at<unsigned short>(v,u) < std::numeric_limits<unsigned short>::max())
+		{
+			depth = float(depthImage.at<unsigned short>(v,u))*0.001f;
+		}
+	}
+	else
+	{
+		depth = depthImage.at<float>(v,u);
+	}
 
 	if((depth==0.0f || !uIsFinite(depth)) && estWithNeighborsIfNull)
 	{
@@ -1007,7 +1019,19 @@ float getDepth(
 			{
 				if((uu == u && vv!=v) || (uu != u && vv==v))
 				{
-					float d = isInMM?(float)depthImage.at<unsigned short>(vv,uu)*0.001f:depthImage.at<float>(vv,uu);
+					float d = 0.0f;
+					if(isInMM)
+					{
+						if(depthImage.at<unsigned short>(vv,uu) > 0 &&
+						   depthImage.at<unsigned short>(vv,uu) < std::numeric_limits<unsigned short>::max())
+						{
+							depth = float(depthImage.at<unsigned short>(vv,uu))*0.001f;
+						}
+					}
+					else
+					{
+						d = depthImage.at<float>(vv,uu);
+					}
 					if(d!=0.0f && uIsFinite(d))
 					{
 						if(tmp == 0.0f)
@@ -1042,7 +1066,20 @@ float getDepth(
 				{
 					if(!(uu == u && vv == v))
 					{
-						float d = isInMM?(float)depthImage.at<unsigned short>(vv,uu)*0.001f:depthImage.at<float>(vv,uu);
+						float d = 0.0f;
+						if(isInMM)
+						{
+							if(depthImage.at<unsigned short>(vv,uu) > 0 &&
+							   depthImage.at<unsigned short>(vv,uu) < std::numeric_limits<unsigned short>::max())
+							{
+								depth = float(depthImage.at<unsigned short>(vv,uu))*0.001f;
+							}
+						}
+						else
+						{
+							d = depthImage.at<float>(vv,uu);
+						}
+
 						// ignore if not valid or depth difference is too high
 						if(d != 0.0f && uIsFinite(d) && fabs(d - depth) < maxZError)
 						{

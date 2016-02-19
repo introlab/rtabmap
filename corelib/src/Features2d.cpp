@@ -502,7 +502,20 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		mask = cv::Mat::zeros(maskIn.rows, maskIn.cols, CV_8UC1);
 		for(int i=0; i<(int)mask.total(); ++i)
 		{
-			float value = maskIn.type()==CV_16UC1?float(((unsigned short*)maskIn.data)[i])/1000.0f:((float*)maskIn.data)[i];
+			float value = 0.0f;
+			if(maskIn.type()==CV_16UC1)
+			{
+				if(((unsigned short*)maskIn.data)[i] > 0 &&
+				   ((unsigned short*)maskIn.data)[i] < std::numeric_limits<unsigned short>::max())
+				{
+					value = float(((unsigned short*)maskIn.data)[i])*0.0001f;
+				}
+			}
+			else
+			{
+				value = ((float*)maskIn.data)[i];
+			}
+
 			if(value>_minDepth &&
 			   (_maxDepth == 0.0f || value <= _maxDepth))
 			{
