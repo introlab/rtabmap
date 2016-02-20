@@ -55,7 +55,6 @@ public:
 	float timeMirroring;
 	float timeImageDecimation;
 	float timeScanFromDepth;
-	float timeDepthFromScan;
 };
 
 } // namespace rtabmap

@@ -2056,9 +2056,10 @@ Transform Memory::computeTransform(
 
 	if(fromS && toS)
 	{
+		UWARN("%d=%d %d=%d", fromId, fromS->sensorData().cameraModels().size(), toId, toS->sensorData().cameraModels().size());
 		// make sure we have all data needed
 		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) ||
-		   _registrationPipeline->isScanRequired() ||
+		   (_registrationPipeline->isScanRequired()) ||
 		   _registrationPipeline->isUserDataRequired())
 		{
 			getNodeData(fromS->id(), true);
@@ -3379,6 +3380,14 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 	else
 	{
+		// just compress laser and user data
+		rtabmap::CompressionThread ctLaserScan(laserScan);
+		rtabmap::CompressionThread ctUserData(data.userDataRaw());
+		ctLaserScan.start();
+		ctUserData.start();
+		ctLaserScan.join();
+		ctUserData.join();
+
 		s = new Signature(id,
 			_idMapCount,
 			isIntermediateNode?-1:0, // tag intermediate nodes as weight=-1
@@ -3388,23 +3397,25 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						cv::Mat(),
-						0,
-						0,
+						ctLaserScan.getCompressedData(),
+						maxLaserScanMaxPts,
+						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
 						id,
-						0):
+						0,
+						ctUserData.getCompressedData()):
 				SensorData(
-						cv::Mat(),
-						0,
-						0,
+						ctLaserScan.getCompressedData(),
+						maxLaserScanMaxPts,
+						data.laserScanMaxRange(),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
 						id,
-						0));
+						0,
+						ctUserData.getCompressedData()));
 	}
 
 	s->setWords(words);

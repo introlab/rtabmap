@@ -740,7 +740,6 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id, (float)info.timeDisparity*1000.0);
 	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id, (float)info.timeMirroring*1000.0);
 	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", (float)info.id, (float)info.timeScanFromDepth*1000.0);
-	_ui->statsToolBox->updateStat("Camera/Time depth from scan/ms", (float)info.id, (float)info.timeDepthFromScan*1000.0);
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
@@ -1643,7 +1642,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(!jter->sensorData().laserScanCompressed().empty())
+					if(!jter->sensorData().laserScanCompressed().empty() || !jter->sensorData().laserScanRaw().empty())
 					{
 						this->createAndAddScanToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
@@ -1893,7 +1892,8 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		return;
 	}
 
-	if(!iter->sensorData().imageCompressed().empty() && !iter->sensorData().depthOrRightCompressed().empty())
+	if((!iter->sensorData().imageCompressed().empty() || !iter->sensorData().imageRaw().empty()) &&
+	   (!iter->sensorData().depthOrRightCompressed().empty() || !iter->sensorData().depthOrRightRaw().empty()))
 	{
 		cv::Mat image, depth;
 		SensorData data = iter->sensorData();
@@ -2101,7 +2101,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		return;
 	}
 
-	if(!iter->sensorData().laserScanCompressed().empty())
+	if(!iter->sensorData().laserScanCompressed().empty() || !iter->sensorData().laserScanRaw().empty())
 	{
 		cv::Mat scan;
 		iter->sensorData().uncompressData(0, 0, &scan);

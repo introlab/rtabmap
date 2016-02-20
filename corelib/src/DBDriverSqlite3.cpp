@@ -1696,7 +1696,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			rc = sqlite3_prepare_v2(_ppDb, query3.str().c_str(), -1, &ppStmt, 0);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-
+			int calibrationsLoaded = 0;
 			for(std::list<Signature*>::const_iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
 			{
 				if(calibrationsToLoad.find((*iter)->id())!=calibrationsToLoad.end())
@@ -1722,6 +1722,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
 						if(dataSize > 0 && data)
 						{
+							++calibrationsLoaded;
 							float * dataFloat = (float*)data;
 							if((unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
 							{
@@ -1776,6 +1777,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
 							}
 
+							UWARN("Set %d models to %d", models.size(), (*iter)->id());
 							(*iter)->sensorData().setCameraModels(models);
 							(*iter)->sensorData().setStereoCameraModel(stereoModel);
 						}
@@ -1791,9 +1793,9 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			// Finalize (delete) the statement
 			rc = sqlite3_finalize(ppStmt);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-		}
 
-		ULOGGER_DEBUG("Time load calibrations=%fs", timer.ticks());
+			ULOGGER_DEBUG("Time load calibrations (loaded=%d/%d)=%fs", calibrationsLoaded, calibrationsToLoad.size(), timer.ticks());
+		}
 
 		if(ids.size() != loaded)
 		{
@@ -2559,7 +2561,9 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 				if(!(*i)->sensorData().imageCompressed().empty() ||
 				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
 				   !(*i)->sensorData().laserScanCompressed().empty() ||
-				   !(*i)->sensorData().userDataCompressed().empty())
+				   !(*i)->sensorData().userDataCompressed().empty() ||
+				   !(*i)->sensorData().cameraModels().size() ||
+				   !(*i)->sensorData().stereoCameraModel().isValidForProjection())
 				{
 					UASSERT((*i)->id() == (*i)->sensorData().id());
 					stepSensorData(ppStmt, (*i)->sensorData());
