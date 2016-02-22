@@ -46,7 +46,7 @@ public:
 	const Signature & getRefFrame() const {return refFrame_;}
 
 private:
-	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
+	virtual Transform computeTransform(SensorData & image, OdometryInfo * info = 0);
 
 private:
 	//Parameters:

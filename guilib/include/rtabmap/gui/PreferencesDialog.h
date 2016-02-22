@@ -257,6 +257,7 @@ private slots:
 	void updatePredictionPlot();
 	void updateKpROI();
 	void updateG2oVisibility();
+	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void changeOdomBowFixedLocalMapPath();

@@ -246,6 +246,7 @@ private:
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useDepthAsMask;
+	bool _useOdometryFeatures;
 
 	int _idCount;
 	int _idMapCount;

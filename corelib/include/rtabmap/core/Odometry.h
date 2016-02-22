@@ -54,7 +54,7 @@ public:
 
 public:
 	virtual ~Odometry();
-	Transform process(const SensorData & data, OdometryInfo * info = 0);
+	Transform process(SensorData & data, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
 	//getters
@@ -63,7 +63,7 @@ public:
 	const Transform & previousTransform() const {return previousTransform_;}
 
 private:
-	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0) = 0;
+	virtual Transform computeTransform(SensorData & data, OdometryInfo * info = 0) = 0;
 
 	void initKalmanFilter();
 	void updateKalmanFilter(float dt, float & x, float & y, float & z, float & roll, float & pitch, float & yaw);

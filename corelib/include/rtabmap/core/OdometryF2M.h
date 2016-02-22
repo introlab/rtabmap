@@ -45,7 +45,7 @@ public:
 	const std::multimap<int, cv::Point3f> & getLocalMap() const;
 
 private:
-	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
+	virtual Transform computeTransform(SensorData & data, OdometryInfo * info = 0);
 
 private:
 	//Parameters

@@ -510,6 +510,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_imageDecimation->setObjectName(Parameters::kMemImageDecimation().c_str());
 	_ui->general_spinBox_laserScanDownsample->setObjectName(Parameters::kMemLaserScanDownsampleStepSize().c_str());
 	_ui->checkBox_useDepthAsMask->setObjectName(Parameters::kMemUseDepthAsMask().c_str());
+	_ui->checkBox_useOdomFeatures->setObjectName(Parameters::kMemUseOdomFeatures().c_str());
 
 	// Database
 	_ui->checkBox_dbInMemory->setObjectName(Parameters::kDbSqlite3InMemory().c_str());
@@ -776,6 +777,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_kp_roi2, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
 	connect(_ui->doubleSpinBox_kp_roi3, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
 	connect(_ui->graphOptimization_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateG2oVisibility()));
+	connect(_ui->checkBox_useOdomFeatures, SIGNAL(toggled(bool)), this, SLOT(useOdomFeatures()));
 
 	//Create a model from the stacked widgets
 	// This will add all parameters to the parameters Map
@@ -2192,6 +2194,9 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 		_ui->groupBox_source0->setEnabled(false);
 		_ui->groupBox_odometry1->setEnabled(false);
 
+		_ui->checkBox_useOdomFeatures->setChecked(false);
+		_ui->checkBox_useOdomFeatures->setEnabled(false);
+
 		this->setWindowTitle(tr("Preferences [Monitoring mode]"));
 	}
 	else
@@ -2206,6 +2211,8 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 
 		_ui->groupBox_source0->setEnabled(true);
 		_ui->groupBox_odometry1->setEnabled(true);
+
+		_ui->checkBox_useOdomFeatures->setEnabled(true);
 
 		this->setWindowTitle(tr("Preferences"));
 	}
@@ -3258,6 +3265,29 @@ void PreferencesDialog::updateKpROI()
 void PreferencesDialog::updateG2oVisibility()
 {
 	_ui->groupBox_g2o->setVisible(_ui->graphOptimization_type->currentIndex() == 1);
+}
+
+void PreferencesDialog::useOdomFeatures()
+{
+	if(this->isVisible() && _ui->checkBox_useOdomFeatures->isChecked())
+	{
+		int r = QMessageBox::question(this, tr("Using odometry features for vocabulary..."),
+				tr("Do you want to match feature parameters "
+				   "below with corresponding ones used for odometry?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+		if(r == QMessageBox::Yes)
+		{
+			_ui->comboBox_detector_strategy->setCurrentIndex(_ui->reextract_type->currentIndex());
+			_ui->surf_doubleSpinBox_maxDepth->setValue(_ui->loopClosure_bowMaxDepth->value());
+			_ui->surf_doubleSpinBox_minDepth->setValue(_ui->loopClosure_bowMinDepth->value());
+			_ui->surf_spinBox_wordsPerImageTarget->setValue(_ui->reextract_maxFeatures->value());
+			_ui->checkBox_useDepthAsMask->setChecked(_ui->loopClosure_useDepthAsMask->isChecked());
+			_ui->lineEdit_kp_roi->setText(_ui->loopClosure_roi->text());
+			_ui->subpix_winSize_kp->setValue(_ui->subpix_winSize->value());
+			_ui->subpix_iterations_kp->setValue(_ui->subpix_iterations->value());
+			_ui->subpix_eps_kp->setValue(_ui->subpix_eps->value());
+		}
+	}
 }
 
 void PreferencesDialog::changeWorkingDirectory()

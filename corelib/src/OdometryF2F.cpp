@@ -59,7 +59,7 @@ void OdometryF2F::reset(const Transform & initialPose)
 
 // return not null transform if odometry is correctly computed
 Transform OdometryF2F::computeTransform(
-		const SensorData & data,
+		SensorData & data,
 		OdometryInfo * info)
 {
 	UTimer timer;
@@ -86,6 +86,8 @@ Transform OdometryF2F::computeTransform(
 				newFrame,
 				guessFromMotion_?motionSinceLastKeyFrame_*this->previousTransform():Transform(),
 				&regInfo);
+
+		data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().descriptors());
 
 		if(info && this->isInfoDataFilled())
 		{
@@ -140,6 +142,8 @@ Transform OdometryF2F::computeTransform(
 						newFrame,
 						dummy);
 				features = (int)newFrame.sensorData().keypoints().size();
+
+				data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().descriptors());
 			}
 
 			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&

@@ -43,7 +43,7 @@ public:
 	virtual void reset(const Transform & initialPose);
 
 private:
-	virtual Transform computeTransform(const SensorData & data, OdometryInfo * info = 0);
+	virtual Transform computeTransform(SensorData & data, OdometryInfo * info = 0);
 private:
 	//Parameters:
 	int flowWinSize_;

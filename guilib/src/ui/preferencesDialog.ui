@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-591</y>
             <width>681</width>
             <height>2010</height>
            </rect>
@@ -4972,6 +4972,33 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_12">
                     <item>
+                     <layout class="QHBoxLayout" name="horizontalLayout_7" stretch="0,1">
+                      <item>
+                       <widget class="QCheckBox" name="checkBox_useOdomFeatures">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="label_145">
+                        <property name="text">
+                         <string>Use odometry features. Disable to select different feature type. Note that if no features are received, they will be re-extracted (if visual odometry is used, you may want to match the feature type below with the one used for odometry).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
                      <widget class="QGroupBox" name="groupBox_8">
                       <property name="title">
                        <string>Features Extraction</string>
@@ -4979,6 +5006,64 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <layout class="QVBoxLayout" name="verticalLayout_60">
                        <item>
                         <layout class="QGridLayout" name="gridLayout_32" columnstretch="0,1">
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_22">
+                           <property name="toolTip">
+                            <string>0 means that the response (hessian) threshold 
+used for the detector will not be adapted. 
+Otherwise, the threshold is modified to 
+generate the number of words requested.</string>
+                           </property>
+                           <property name="text">
+                            <string>Maximum words per image (0=no maximum). Setting to -1 will disable features extraction, so disabling loop closure detection indirectly.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="6" column="1">
+                          <widget class="QLabel" name="label_101">
+                           <property name="text">
+                            <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_81">
+                           <property name="toolTip">
+                            <string>0 means that the response (hessian) threshold 
+used for the detector will not be adapted. 
+Otherwise, the threshold is modified to 
+generate the number of words requested.</string>
+                           </property>
+                           <property name="text">
+                            <string>Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="6" column="0">
+                          <widget class="QLineEdit" name="lineEdit_kp_roi">
+                           <property name="readOnly">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="0" column="0">
                           <widget class="QComboBox" name="comboBox_detector_strategy">
                            <item>
@@ -5043,38 +5128,6 @@ generate the number of words requested.</string>
                            </property>
                            <property name="text">
                             <string>Maximum words depth (0 means inf). Only used when a depth image is provided. Applied before &quot;Maximum words per image&quot;.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="1">
-                          <widget class="QLabel" name="label_22">
-                           <property name="toolTip">
-                            <string>0 means that the response (hessian) threshold 
-used for the detector will not be adapted. 
-Otherwise, the threshold is modified to 
-generate the number of words requested.</string>
-                           </property>
-                           <property name="text">
-                            <string>Maximum words per image (0=no maximum). Setting to -1 will disable features extraction, so disabling loop closure detection indirectly.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="6" column="1">
-                          <widget class="QLabel" name="label_101">
-                           <property name="text">
-                            <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -5171,32 +5224,6 @@ generate the number of words requested.</string>
                            </property>
                            <property name="value">
                             <double>0.250000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="4" column="1">
-                          <widget class="QLabel" name="label_81">
-                           <property name="toolTip">
-                            <string>0 means that the response (hessian) threshold 
-used for the detector will not be adapted. 
-Otherwise, the threshold is modified to 
-generate the number of words requested.</string>
-                           </property>
-                           <property name="text">
-                            <string>Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="6" column="0">
-                          <widget class="QLineEdit" name="lineEdit_kp_roi">
-                           <property name="readOnly">
-                            <bool>true</bool>
                            </property>
                           </widget>
                          </item>

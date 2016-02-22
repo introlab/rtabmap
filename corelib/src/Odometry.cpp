@@ -192,7 +192,7 @@ void Odometry::reset(const Transform & initialPose)
 	}
 }
 
-Transform Odometry::process(const SensorData & data, OdometryInfo * info)
+Transform Odometry::process(SensorData & data, OdometryInfo * info)
 {
 	if(_pose.isNull())
 	{

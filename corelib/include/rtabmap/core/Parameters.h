@@ -209,6 +209,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1) when creating a signature.");
 	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,  "If > 1, downsample the laser scans when creating a signature.");
 	RTABMAP_PARAM(Mem, UseDepthAsMask,          bool, false,   "Use depth image as mask for features detection.");
+	RTABMAP_PARAM(Mem, UseOdomFeatures,         bool, false,   "Use odometry features.");
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM(Kp, NNStrategy,            int, 1,            "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
@@ -269,7 +270,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(GFTT, K, double, 0.04, "");
 
 	RTABMAP_PARAM(ORB, ScaleFactor,          float,  1.2, "Pyramid decimation ratio, greater than 1. scaleFactor==2 means the classical pyramid, where each next level has 4x less pixels than the previous, but such a big scale factor will degrade feature matching scores dramatically. On the other hand, too close to 1 scale factor will mean that to cover certain scale range you will need more pyramid levels and so the speed will suffer.");
-	RTABMAP_PARAM(ORB, NLevels,              int, 1,       "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
+	RTABMAP_PARAM(ORB, NLevels,              int, 8,       "The number of pyramid levels. The smallest level will have linear size equal to input_image_linear_size/pow(scaleFactor, nlevels).");
 	RTABMAP_PARAM(ORB, EdgeThreshold,        int, 31,      "This is size of the border where the features are not detected. It should roughly match the patchSize parameter.");
 	RTABMAP_PARAM(ORB, FirstLevel,           int, 0,       "It should be 0 in the current implementation.");
 	RTABMAP_PARAM(ORB, WTA_K,                int, 2,       "The number of points that produce each element of the oriented BRIEF descriptor. The default value 2 means the BRIEF where we take a random point pair and compare their brightnesses, so we get 0/1 response. Other possible values are 3 and 4. For example, 3 means that we take 3 random points (of course, those point coordinates are random, but they are generated from the pre-defined seed, so each element of BRIEF descriptor is computed deterministically from the pixel rectangle), find point of maximum brightness and output index of the winner (0, 1 or 2). Such output will occupy 2 bits, and therefore it will need a special variant of Hamming distance, denoted as NORM_HAMMING2 (2 bits per bin). When WTA_K=4, we take 4 random points to compute each bin (that will also occupy 2 bits with possible values 0, 1, 2 or 3).");

@@ -90,6 +90,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
 	_useDepthAsMask(Parameters::defaultMemUseDepthAsMask()),
+	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -404,6 +405,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
 	Parameters::parse(parameters, Parameters::kMemUseDepthAsMask(), _useDepthAsMask);
+	Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -3102,10 +3104,11 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 
 	std::vector<cv::Point3f> keypoints3D;
-	if(data.keypoints().size() == 0)
+	if(!_useOdometryFeatures || data.keypoints().size() == 0)
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
+			UINFO("Extract features");
 			cv::Mat imageMono;
 			if(data.imageRaw().channels() == 3)
 			{
@@ -3166,10 +3169,38 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 	else if(!isIntermediateNode)
 	{
+		UINFO("Use odometry features");
 		keypoints = data.keypoints();
 		descriptors = data.descriptors().clone();
 
-		keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
+		UASSERT(descriptors.empty() || descriptors.rows == (int)keypoints.size());
+
+		if(keypoints.size() > _feature2D->getMaxFeatures())
+		{
+			_feature2D->limitKeypoints(keypoints, descriptors, _feature2D->getMaxFeatures());
+		}
+
+		if(descriptors.empty())
+		{
+			descriptors = _feature2D->generateDescriptors(data.imageRaw(), keypoints);
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+			UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
+		}
+
+		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
+		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
+		{
+			descriptors = cv::Mat();
+		}
+		else if((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
+				(!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
+		{
+			keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
+			t = timer.ticks();
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
+		}
 	}
 
 	if(_parallelized)

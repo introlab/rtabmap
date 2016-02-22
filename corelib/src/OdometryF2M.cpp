@@ -168,7 +168,7 @@ const std::multimap<int, cv::Point3f> & OdometryF2M::getLocalMap() const
 
 // return not null transform if odometry is correctly computed
 Transform OdometryF2M::computeTransform(
-		const SensorData & data,
+		SensorData & data,
 		OdometryInfo * info)
 {
 	UTimer timer;
@@ -190,6 +190,8 @@ Transform OdometryF2M::computeTransform(
 		{
 			Transform guess = this->previousTransform().isIdentity()||this->previousTransform().isNull()?Transform():this->getPose()*this->previousTransform();
 			Transform transform = regVis_->computeTransformationMod(*map_, newSignature, guess, &regInfo);
+
+			data.setFeatures(newSignature.sensorData().keypoints(), newSignature.sensorData().descriptors());
 
 			if(!transform.isNull())
 			{
@@ -271,6 +273,8 @@ Transform OdometryF2M::computeTransform(
 					newSignature,
 					dummy);
 
+			data.setFeatures(newSignature.sensorData().keypoints(), newSignature.sensorData().descriptors());
+
 			if(fixedMapPath_.empty() && (int)newSignature.getWords3().size() >= regVis_->getMinInliers())
 			{
 				output.setIdentity();
@@ -293,6 +297,7 @@ Transform OdometryF2M::computeTransform(
 
 		map_->sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat()); // clear sensorData features
 
+		nFeatures = newSignature.getWords().size();
 		if(this->isInfoDataFilled() && info)
 		{
 			info->words = newSignature.getWords();

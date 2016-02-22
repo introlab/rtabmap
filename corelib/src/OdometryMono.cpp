@@ -170,7 +170,7 @@ void OdometryMono::reset(const Transform & initialPose)
 	keyFramePoses_.clear();
 }
 
-Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo * info)
+Transform OdometryMono::computeTransform(SensorData & data, OdometryInfo * info)
 {
 	Transform output;
 
