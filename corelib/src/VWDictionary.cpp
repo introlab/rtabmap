@@ -61,7 +61,8 @@ public:
 		nextIndex_(0),
 		featuresType_(0),
 		featuresDim_(0),
-		isLSH_(false)
+		isLSH_(false),
+		useDistanceL1_(false)
 	{
 	}
 	virtual ~FlannIndex()
@@ -1099,8 +1100,6 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 {
 	UTimer timer;
 	timer.start();
-	std::vector<int> resultIds(vws.size(), 0);
-	unsigned int k=2; // k nearest neighbor
 
 	if(_visualWords.size() && vws.size())
 	{
@@ -1110,19 +1109,14 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 		if(dim != (*vws.begin())->getDescriptor().cols)
 		{
 			UERROR("Descriptors (size=%d) are not the same size as already added words in dictionary(size=%d)", (*vws.begin())->getDescriptor().cols, dim);
-			return resultIds;
+			return std::vector<int>(vws.size(), 0);
 		}
 
 		if(type != (*vws.begin())->getDescriptor().type())
 		{
 			UERROR("Descriptors (type=%d) are not the same type as already added words in dictionary(type=%d)", (*vws.begin())->getDescriptor().type(), type);
-			return resultIds;
+			return std::vector<int>(vws.size(), 0);
 		}
-
-		std::vector<std::vector<cv::DMatch> > matches;
-		bool bruteForce = false;
-		cv::Mat results;
-		cv::Mat dists;
 
 		// fill the request matrix
 		int index = 0;
@@ -1139,10 +1133,43 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 		}
 		ULOGGER_DEBUG("Preparation time = %fs", timer.ticks());
 
+		return findNN(query);
+	}
+	return std::vector<int>(vws.size(), 0);
+}
+std::vector<int> VWDictionary::findNN(const cv::Mat & query) const
+{
+	UTimer timer;
+	timer.start();
+	std::vector<int> resultIds(query.rows, 0);
+	unsigned int k=2; // k nearest neighbor
+
+	if(_visualWords.size() && query.rows)
+	{
+		int dim = _visualWords.begin()->second->getDescriptor().cols;
+		int type = _visualWords.begin()->second->getDescriptor().type();
+
+		if(dim != query.cols)
+		{
+			UERROR("Descriptors (size=%d) are not the same size as already added words in dictionary(size=%d)", query.cols, dim);
+			return resultIds;
+		}
+
+		if(type != query.type())
+		{
+			UERROR("Descriptors (type=%d) are not the same type as already added words in dictionary(type=%d)", query.type(), type);
+			return resultIds;
+		}
+
+		std::vector<std::vector<cv::DMatch> > matches;
+		bool bruteForce = false;
+		cv::Mat results;
+		cv::Mat dists;
+
 		if(_flannIndex->isBuilt() || (!_dataTree.empty() && _dataTree.rows >= (int)k))
 		{
 			//Find nearest neighbors
-			UDEBUG("newPts.total()=%d ", query.total());
+			UDEBUG("query.rows=%d ", query.rows);
 
 			if(_strategy == kNNFlannNaive || _strategy == kNNFlannKdTree || _strategy == kNNFlannLSH)
 			{
@@ -1231,7 +1258,7 @@ std::vector<int> VWDictionary::findNN(const std::list<VisualWord *> & vws) const
 		}
 		ULOGGER_DEBUG("Search not yet indexed words time = %fs", timer.ticks());
 
-		for(unsigned int i=0; i<vws.size(); ++i)
+		for(unsigned int i=0; i<query.rows; ++i)
 		{
 			std::multimap<float, int> fullResults; // Contains results from the kd-tree search [and the naive search in new words]
 			if(!bruteForce && dists.cols)

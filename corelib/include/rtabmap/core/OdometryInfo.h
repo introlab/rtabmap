@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYINFO_H_
 
 #include <map>
+#include "rtabmap/core/Transform.h"
 
 namespace rtabmap {
 

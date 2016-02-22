@@ -59,7 +59,7 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	pnpReprojError_(Parameters::defaultVisPnPReprojError()),
 	pnpFlags_(Parameters::defaultVisPnPFlags()),
 	pnpRefineIterations_(Parameters::defaultVisPnPRefineIterations()),
-	localHistoryMaxSize_(Parameters::defaultOdomLocalMapHistorySize()),
+	localHistoryMaxSize_(Parameters::defaultOdomF2MMaxSize()),
 	initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
 	initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
 	minTranslation_(Parameters::defaultOdomMonoMinTranslation()),
@@ -77,7 +77,7 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), pnpReprojError_);
 	Parameters::parse(parameters, Parameters::kVisPnPFlags(), pnpFlags_);
 	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), pnpRefineIterations_);
-	Parameters::parse(parameters, Parameters::kOdomLocalMapHistorySize(), localHistoryMaxSize_);
+	Parameters::parse(parameters, Parameters::kOdomF2MMaxSize(), localHistoryMaxSize_);
 
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinTranslation(), initMinTranslation_);
@@ -129,15 +129,7 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	// add only feature stuff
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		std::string group = uSplit(iter->first, '/').front();
-		if(group.compare("SURF") == 0 ||
-			group.compare("SIFT") == 0 ||
-			group.compare("BRIEF") == 0 ||
-			group.compare("FAST") == 0 ||
-			group.compare("ORB") == 0 ||
-			group.compare("FREAK") == 0 ||
-			group.compare("GFTT") == 0 ||
-			group.compare("BRISK") == 0)
+		if(Parameters::isFeatureParameter(iter->first))
 		{
 			customParameters.insert(*iter);
 		}

@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
+class Feature2D;
+
 // Visual registration
 class RTABMAP_EXP RegistrationVis : public Registration
 {
@@ -48,6 +50,8 @@ public:
 	float getInlierDistance() const {return _inlierDistance;}
 	int getIterations() const {return _iterations;}
 	int getMinInliers() const {return _minInliers;}
+
+	Feature2D * createFeatureDetector() const; // for convenience
 
 protected:
 	virtual Transform computeTransformationImpl(
@@ -75,6 +79,8 @@ private:
 	int _flowIterations;
 	float _flowEps;
 	int _flowMaxLevel;
+	float _nndr;
+	int _guessWinSize;
 	bool _useDepthAsMask;
 
 	ParametersMap _featureParameters;

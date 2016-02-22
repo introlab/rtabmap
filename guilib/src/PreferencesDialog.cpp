@@ -675,6 +675,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stackedWidget_loopClosureCorrespondences->setCurrentIndex(Parameters::defaultVisCorType());
 	_ui->reextract_nn->setObjectName(Parameters::kVisCorNNType().c_str());
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
+	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
 	_ui->reextract_type->setObjectName(Parameters::kVisFeatureType().c_str());
 	_ui->reextract_maxFeatures->setObjectName(Parameters::kVisMaxFeatures().c_str());
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kVisMaxDepth().c_str());
@@ -706,18 +707,18 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
 
-	//Odometry BOW
-	_ui->odom_localHistory->setObjectName(Parameters::kOdomLocalMapHistorySize().c_str());
-	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomLocalMapFixedMapPath().c_str());
+	//Odometry Frame to Map
+	_ui->odom_localHistory->setObjectName(Parameters::kOdomF2MMaxSize().c_str());
+	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomF2MFixedMapPath().c_str());
 	connect(_ui->toolButton_odomBowFixedLocalMap, SIGNAL(clicked()), this, SLOT(changeOdomBowFixedLocalMapPath()));
 
-	//Odometry Optical Flow
+	//Odometry Frame to Frame
 	_ui->odom_flow_keyframeThr->setObjectName(Parameters::kOdomF2FKeyFrameThr().c_str());
 	_ui->odom_flow_winSize_2->setObjectName(Parameters::kVisCorFlowWinSize().c_str());
 	_ui->odom_flow_maxLevel_2->setObjectName(Parameters::kVisCorFlowMaxLevel().c_str());
 	_ui->odom_flow_iterations_2->setObjectName(Parameters::kVisCorFlowIterations().c_str());
 	_ui->odom_flow_eps_2->setObjectName(Parameters::kVisCorFlowEps().c_str());
-	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomF2FGuessMotion().c_str());
+	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomGuessMotion().c_str());
 
 	//Odometry Mono
 	_ui->doubleSpinBox_minFlow->setObjectName(Parameters::kOdomMonoInitMinFlow().c_str());

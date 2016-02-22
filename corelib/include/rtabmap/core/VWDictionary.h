@@ -69,7 +69,8 @@ public:
 			int signatureId);
 	virtual void addWord(VisualWord * vw);
 
-	virtual std::vector<int> findNN(const std::list<VisualWord *> & vws) const;
+	std::vector<int> findNN(const std::list<VisualWord *> & vws) const;
+	std::vector<int> findNN(const cv::Mat & descriptors) const;
 
 	void addWordRef(int wordId, int signatureId);
 	void removeAllWordRef(int wordId, int signatureId);

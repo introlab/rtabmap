@@ -29,7 +29,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/OdometryLocalMap.h>
 #include <rtabmap/core/OdometryF2F.h>
 #include <rtabmap/core/OdometryMono.h>
 #include <rtabmap/core/OdometryThread.h>
@@ -42,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QApplication>
 #include <QPushButton>
 #include <pcl/console/print.h>
+#include <rtabmap/core/OdometryF2M.h>
 
 void showUsage()
 {
@@ -121,7 +121,7 @@ int main (int argc, char * argv[])
 	int fastThr = rtabmap::Parameters::defaultFASTThreshold();
 	float sec = 0.0f;
 	bool gpu = false;
-	int localHistory = rtabmap::Parameters::defaultOdomLocalMapHistorySize();
+	int localHistory = rtabmap::Parameters::defaultOdomF2MMaxSize();
 	bool p2p = false;
 
 	for(int i=1; i<argc; ++i)
@@ -646,13 +646,13 @@ int main (int argc, char * argv[])
 		}
 		else
 		{
-			//BOW
+			//Frame to Map
 			UINFO("Nearest neighbor =         %s", nnName.c_str());
 			UINFO("Nearest neighbor ratio =  %f", nndr);
 			UINFO("Local history =           %d", localHistory);
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNType(), uNumber2Str(nnType)));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNDR(), uNumber2Str(nndr)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomLocalMapHistorySize(), uNumber2Str(localHistory)));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomF2MMaxSize(), uNumber2Str(localHistory)));
 
 			if(mono)
 			{
@@ -663,7 +663,7 @@ int main (int argc, char * argv[])
 			}
 			else
 			{
-				odom = new rtabmap::OdometryLocalMap(parameters);
+				odom = new rtabmap::OdometryF2M(parameters);
 			}
 		}
 	}

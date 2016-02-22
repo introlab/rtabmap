@@ -348,10 +348,11 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ParticleLambdaR, 		float, 100,       "Lambda of rotational components (roll,pitch,yaw).");
 	RTABMAP_PARAM(Odom, KalmanProcessNoise, 	float, 0.001,     "Process noise covariance value.");
 	RTABMAP_PARAM(Odom, KalmanMeasurementNoise, float, 0.01,      "Process measurement covariance value.");
+	RTABMAP_PARAM(Odom, GuessMotion,            bool, true,       "Guess next transformation from the last motion computed.");
 
 	// Odometry Bag-of-words
-	RTABMAP_PARAM(OdomLocalMap, HistorySize,       int, 1000,   "Local history size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
-	RTABMAP_PARAM_STR(OdomLocalMap, FixedMapPath,   "",         "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
+	RTABMAP_PARAM(OdomF2M, MaxSize,             int, 1000,   "Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
+	RTABMAP_PARAM_STR(OdomF2M, FixedMapPath,    "",         "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
 
 	// Odometry Mono
 	RTABMAP_PARAM(OdomMono, InitMinFlow,            float, 100,  "Minimum optical flow required for the initialization step.");
@@ -360,8 +361,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01, "Maximum variance to add new points to local map.");
 
 	// Odometry Optical Flow
-	RTABMAP_PARAM(OdomF2F, KeyFrameThr,           int, 0,        "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
-	RTABMAP_PARAM(OdomF2F, GuessMotion,           bool, true,    "Guess next transformation from the last motion computed.");
+	RTABMAP_PARAM(OdomF2F, KeyFrameThr,           int, 100,      "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
 
 	// Common registration parameters
 	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
@@ -373,7 +373,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, ForwardEstOnly,           bool, true, 	"Forward estimation only (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
 	RTABMAP_PARAM(Vis, InlierDistance,           float, 0.1,    "[Vis/EstimationType = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.");
 	RTABMAP_PARAM(Vis, RefineIterations,         int, 10,       "[Vis/EstimationType = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
-	RTABMAP_PARAM(Vis, PnPReprojError, 	         float, 2.0,   "[Vis/EstimationType = 1] PnP reprojection error.");
+	RTABMAP_PARAM(Vis, PnPReprojError, 	         float, 2.0,    "[Vis/EstimationType = 1] PnP reprojection error.");
 	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,        "[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 	RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        "[Vis/EstimationType = 1] Refine iterations.");
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
@@ -386,15 +386,16 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM_STR(Vis, RoiRatios,        "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
     RTABMAP_PARAM(Vis, SubPixWinSize,            int, 3,        "See cv::cornerSubPix().");
 	RTABMAP_PARAM(Vis, SubPixIterations,         int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
-	RTABMAP_PARAM(Vis, SubPixEps,                float, 0.02,  "See cv::cornerSubPix().");
+	RTABMAP_PARAM(Vis, SubPixEps,                float, 0.02,   "See cv::cornerSubPix().");
 	RTABMAP_PARAM(Vis, CorType,                  int, 0,        "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
 	RTABMAP_PARAM(Vis, CorNNType, 	             int, 3,        "[Vis/CorrespondenceType=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.");
 	RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.8,    "[Vis/CorrespondenceType=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.");
+	RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 16,       "[Vis/CorrespondenceType=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences.");
 	RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
 	RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
-	RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01,  "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
+	RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01,   "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
 	RTABMAP_PARAM(Vis, CorFlowMaxLevel,          int, 3,        "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
-	RTABMAP_PARAM(Vis, UseDepthAsMask,           bool, true,   "Use depth image as mask for features detection.");
+	RTABMAP_PARAM(Vis, UseDepthAsMask,           bool, true,    "Use depth image as mask for features detection.");
 
 	// ICP registration parameters
 	RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");

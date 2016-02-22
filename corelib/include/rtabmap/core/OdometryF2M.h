@@ -25,39 +25,37 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYLOCALMAP_H_
-#define ODOMETRYLOCALMAP_H_
+#ifndef ODOMETRYF2M_H_
+#define ODOMETRYF2M_H_
 
 #include <rtabmap/core/Odometry.h>
 
 namespace rtabmap {
 
-class Memory;
+class Signature;
 class RegistrationVis;
 
-class RTABMAP_EXP OdometryLocalMap : public Odometry
+class RTABMAP_EXP OdometryF2M : public Odometry
 {
 public:
-	OdometryLocalMap(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
-	virtual ~OdometryLocalMap();
+	OdometryF2M(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryF2M();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	const std::multimap<int, cv::Point3f> & getLocalMap() const {return localMap_;}
-	const Memory * getMemory() const {return memory_;}
+	const std::multimap<int, cv::Point3f> & getLocalMap() const;
 
 private:
 	virtual Transform computeTransform(const SensorData & image, OdometryInfo * info = 0);
 
 private:
 	//Parameters
-	int localHistoryMaxSize_;
-	std::string fixedLocalMapPath_;
+	int maximumMapSize_;
+	std::string fixedMapPath_;
 
-	Memory * memory_;
 	RegistrationVis * regVis_;
-	std::multimap<int, cv::Point3f> localMap_;
+	Signature * map_;
 };
 
 }
 
-#endif /* ODOMETRYLOCALMAP_H_ */
+#endif /* ODOMETRYF2M_H_ */

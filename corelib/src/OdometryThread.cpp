@@ -25,10 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryMono.h"
-#include "rtabmap/core/OdometryLocalMap.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
@@ -103,7 +103,7 @@ void OdometryThread::mainLoop()
 
 void OdometryThread::addData(const SensorData & data)
 {
-	if(dynamic_cast<OdometryMono*>(_odometry) == 0 && dynamic_cast<OdometryLocalMap*>(_odometry) == 0)
+	if(dynamic_cast<OdometryMono*>(_odometry) == 0 && dynamic_cast<OdometryF2M*>(_odometry) == 0)
 	{
 		if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
 		{

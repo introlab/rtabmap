@@ -25,9 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryF2F.h"
-#include "rtabmap/core/OdometryLocalMap.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -54,7 +54,7 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		odometry = new OdometryF2F(parameters);
 		break;
 	default:
-		odometry = new OdometryLocalMap(parameters);
+		odometry = new OdometryF2M(parameters);
 		type = Odometry::kTypeLocalMap;
 		break;
 	}

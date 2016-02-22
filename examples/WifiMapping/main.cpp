@@ -25,11 +25,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
-#include "rtabmap/core/OdometryLocalMap.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
@@ -171,7 +171,7 @@ int main(int argc, char * argv[])
 	MapBuilderWifi mapBuilderWifi(&cameraThread);
 
 	// Create an odometry thread to process camera events, it will send OdometryEvent.
-	OdometryThread odomThread(new OdometryLocalMap());
+	OdometryThread odomThread(new OdometryF2M());
 
 	// Create RTAB-Map to process OdometryEvent
 	Rtabmap * rtabmap = new Rtabmap();

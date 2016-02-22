@@ -140,11 +140,16 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.11.2
+		removedParameters_.insert(std::make_pair("OdomLocalMap/HistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
+		removedParameters_.insert(std::make_pair("OdomLocalMap/FixedMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
+		removedParameters_.insert(std::make_pair("OdomF2F/GuessMotion",           std::make_pair(true, Parameters::kOdomGuessMotion())));
+
 		// 0.11.0
-		removedParameters_.insert(std::make_pair("OdomBow/LocalHistorySize",      std::make_pair(true, Parameters::kOdomLocalMapHistorySize())));
-		removedParameters_.insert(std::make_pair("OdomBow/FixedLocalMapPath",     std::make_pair(true, Parameters::kOdomLocalMapFixedMapPath())));
+		removedParameters_.insert(std::make_pair("OdomBow/LocalHistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
+		removedParameters_.insert(std::make_pair("OdomBow/FixedLocalMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
 		removedParameters_.insert(std::make_pair("OdomFlow/KeyFrameThr",          std::make_pair(true, Parameters::kOdomF2FKeyFrameThr())));
-		removedParameters_.insert(std::make_pair("OdomFlow/GuessMotion",          std::make_pair(true, Parameters::kOdomF2FGuessMotion())));
+		removedParameters_.insert(std::make_pair("OdomFlow/GuessMotion",          std::make_pair(true, Parameters::kOdomGuessMotion())));
 
 		removedParameters_.insert(std::make_pair("Kp/WordsPerImage",              std::make_pair(true, Parameters::kKpMaxFeatures())));
 
@@ -248,7 +253,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionMaxDiffID", std::make_pair(false, "")));
 		removedParameters_.insert(std::make_pair("Odom/Type",                        std::make_pair(true, Parameters::kVisFeatureType())));
 		removedParameters_.insert(std::make_pair("Odom/MaxWords",                    std::make_pair(true, Parameters::kVisMaxFeatures())));
-		removedParameters_.insert(std::make_pair("Odom/LocalHistory",                std::make_pair(true, Parameters::kOdomLocalMapHistorySize())));
+		removedParameters_.insert(std::make_pair("Odom/LocalHistory",                std::make_pair(true, Parameters::kOdomF2MMaxSize())));
 		removedParameters_.insert(std::make_pair("Odom/NearestNeighbor",             std::make_pair(true, Parameters::kVisCorNNType())));
 		removedParameters_.insert(std::make_pair("Odom/NNDR",                        std::make_pair(true, Parameters::kVisCorNNDR())));
 	}

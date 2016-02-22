@@ -37,12 +37,12 @@ namespace rtabmap {
 OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	Odometry(parameters),
 	keyFrameThr_(Parameters::defaultOdomF2FKeyFrameThr()),
-	guessFromMotion_(Parameters::defaultOdomF2FGuessMotion()),
+	guessFromMotion_(Parameters::defaultOdomGuessMotion()),
 	motionSinceLastKeyFrame_(Transform::getIdentity())
 {
 	registrationPipeline_ = Registration::create(parameters);
 	Parameters::parse(parameters, Parameters::kOdomF2FKeyFrameThr(), keyFrameThr_);
-	Parameters::parse(parameters, Parameters::kOdomF2FGuessMotion(), guessFromMotion_);
+	Parameters::parse(parameters, Parameters::kOdomGuessMotion(), guessFromMotion_);
 }
 
 OdometryF2F::~OdometryF2F()
@@ -130,25 +130,28 @@ Transform OdometryF2F::computeTransform(
 		if(keyFrameThr_ <= 0 || (int)regInfo.inliers <= keyFrameThr_)
 		{
 			UDEBUG("Update key frame");
-			Signature newRefFrame(data);
-
-			int features = 0;
-			if(registrationPipeline_->getMinVisualCorrespondences()>0)
+			int features = newFrame.sensorData().keypoints().size();
+			if(features == 0)
 			{
+				newFrame = Signature(data);
 				// this will generate features only for the first frame
 				Signature dummy;
 				registrationPipeline_->computeTransformationMod(
-						newRefFrame,
+						newFrame,
 						dummy);
-				features = (int)newRefFrame.getWords().size();
+				features = (int)newFrame.sensorData().keypoints().size();
 			}
 
 			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&
 			   (registrationPipeline_->getMinGeometryCorrespondencesRatio()==0.0f ||
-					   (newRefFrame.sensorData().laserScanRaw().cols &&
-					   (newRefFrame.sensorData().laserScanMaxPts() == 0 || float(newRefFrame.sensorData().laserScanRaw().cols)/float(newRefFrame.sensorData().laserScanMaxPts())>=registrationPipeline_->getMinGeometryCorrespondencesRatio()))))
+					   (newFrame.sensorData().laserScanRaw().cols &&
+					   (newFrame.sensorData().laserScanMaxPts() == 0 || float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanMaxPts())>=registrationPipeline_->getMinGeometryCorrespondencesRatio()))))
 			{
-				refFrame_ = newRefFrame;
+				refFrame_ = newFrame;
+
+				refFrame_.setWords(std::multimap<int, cv::KeyPoint>());
+				refFrame_.setWords3(std::multimap<int, cv::Point3f>());
+				refFrame_.setWordsDescriptors(std::multimap<int, cv::Mat>());
 
 				//reset motion
 				motionSinceLastKeyFrame_.setIdentity();
@@ -160,13 +163,13 @@ Transform OdometryF2F::computeTransform(
 					UWARN("Too low 2D features (%d), keeping last key frame...", features);
 				}
 
-				if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newRefFrame.sensorData().laserScanRaw().cols==0)
+				if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newFrame.sensorData().laserScanRaw().cols==0)
 				{
-					UWARN("Too low scan points (%d), keeping last key frame...", newRefFrame.sensorData().laserScanRaw().cols);
+					UWARN("Too low scan points (%d), keeping last key frame...", newFrame.sensorData().laserScanRaw().cols);
 				}
-				else if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newRefFrame.sensorData().laserScanMaxPts() != 0 && float(newRefFrame.sensorData().laserScanRaw().cols)/float(newRefFrame.sensorData().laserScanMaxPts())<registrationPipeline_->getMinGeometryCorrespondencesRatio())
+				else if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newFrame.sensorData().laserScanMaxPts() != 0 && float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanMaxPts())<registrationPipeline_->getMinGeometryCorrespondencesRatio())
 				{
-					UWARN("Too low scan points ratio (%d < %d), keeping last key frame...", float(newRefFrame.sensorData().laserScanRaw().cols)/float(newRefFrame.sensorData().laserScanMaxPts()), registrationPipeline_->getMinGeometryCorrespondencesRatio());
+					UWARN("Too low scan points ratio (%d < %d), keeping last key frame...", float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanMaxPts()), registrationPipeline_->getMinGeometryCorrespondencesRatio());
 				}
 			}
 		}
@@ -189,7 +192,7 @@ Transform OdometryF2F::computeTransform(
 			timer.elapsed(),
 			output.isNull()?"true":"false",
 			(int)regInfo.inliers,
-			(int)refFrame_.getWords().size(),
+			(int)refFrame_.sensorData().keypoints().size(),
 			!output.isNull()?"true":"false");
 
 	return output;

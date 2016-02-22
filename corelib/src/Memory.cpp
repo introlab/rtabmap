@@ -2056,7 +2056,6 @@ Transform Memory::computeTransform(
 
 	if(fromS && toS)
 	{
-		UWARN("%d=%d %d=%d", fromId, fromS->sensorData().cameraModels().size(), toId, toS->sensorData().cameraModels().size());
 		// make sure we have all data needed
 		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) ||
 		   (_registrationPipeline->isScanRequired()) ||
