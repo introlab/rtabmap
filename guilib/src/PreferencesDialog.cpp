@@ -171,6 +171,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->reextract_type->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 	}
+
+#if CV_MAJOR_VERSION == 3
+	_ui->groupBox_fast_opencv2->setEnabled(false);
+#endif
+
 	_ui->comboBox_cameraImages_gtFormat->setItemData(4, 0, Qt::UserRole - 1);
 	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 	{
