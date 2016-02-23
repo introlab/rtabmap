@@ -42,7 +42,8 @@ public:
 	virtual ~OdometryF2M();
 
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	const std::multimap<int, cv::Point3f> & getLocalMap() const;
+	const Signature & getMap() const {return *map_;}
+	const Signature & getLastFrame() const {return *lastFrame_;}
 
 private:
 	virtual Transform computeTransform(SensorData & data, OdometryInfo * info = 0);
@@ -54,6 +55,7 @@ private:
 
 	RegistrationVis * regVis_;
 	Signature * map_;
+	Signature * lastFrame_;
 };
 
 }

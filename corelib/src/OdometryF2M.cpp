@@ -56,7 +56,8 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	maximumMapSize_(Parameters::defaultOdomF2MMaxSize()),
 	fixedMapPath_(Parameters::defaultOdomF2MFixedMapPath()),
 	regVis_(new RegistrationVis(parameters)),
-	map_(new Signature(-1))
+	map_(new Signature(-1)),
+	lastFrame_(new Signature(1))
 {
 	UDEBUG("");
 	Parameters::parse(parameters, Parameters::kOdomF2MMaxSize(), maximumMapSize_);
@@ -144,6 +145,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 OdometryF2M::~OdometryF2M()
 {
 	delete map_;
+	delete lastFrame_;
 	UDEBUG("");
 }
 
@@ -159,11 +161,6 @@ void OdometryF2M::reset(const Transform & initialPose)
 	{
 		UWARN("Odometry cannot be reset when a fixed local map is set.");
 	}
-}
-
-const std::multimap<int, cv::Point3f> & OdometryF2M::getLocalMap() const
-{
-	return map_->getWords3();
 }
 
 // return not null transform if odometry is correctly computed
@@ -182,16 +179,18 @@ Transform OdometryF2M::computeTransform(
 	RegistrationInfo regInfo;
 	int nFeatures = 0;
 
+	delete lastFrame_;
+	lastFrame_ = new Signature(data);
+
 	// Generate keypoints from the new data
-	if(data.isValid())
+	if(lastFrame_->sensorData().isValid())
 	{
-		Signature newSignature(data);
-		if(map_->getWords3().size() && newSignature.sensorData().isValid())
+		if(map_->getWords3().size() && lastFrame_->sensorData().isValid())
 		{
 			Transform guess = this->previousTransform().isIdentity()||this->previousTransform().isNull()?Transform():this->getPose()*this->previousTransform();
-			Transform transform = regVis_->computeTransformationMod(*map_, newSignature, guess, &regInfo);
+			Transform transform = regVis_->computeTransformationMod(*map_, *lastFrame_, guess, &regInfo);
 
-			data.setFeatures(newSignature.sensorData().keypoints(), newSignature.sensorData().descriptors());
+			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().descriptors());
 
 			if(!transform.isNull())
 			{
@@ -219,14 +218,14 @@ Transform OdometryF2M::computeTransform(
 				std::multimap<int, cv::Mat> mapDescriptors = map_->getWordsDescriptors();
 				Transform t = this->getPose()*output;
 				UASSERT(mapPoints.size() == mapDescriptors.size());
-				UASSERT(newSignature.getWordsDescriptors().size() == newSignature.getWords3().size());
-				std::list<int> newIds = uUniqueKeys(newSignature.getWordsDescriptors());
+				UASSERT(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size());
+				std::list<int> newIds = uUniqueKeys(lastFrame_->getWordsDescriptors());
 				for(std::list<int>::iterator iter=newIds.begin(); iter!=newIds.end(); ++iter)
 				{
 					if(mapPoints.find(*iter) == mapPoints.end())
 					{
-						mapPoints.insert(std::make_pair(*iter, util3d::transformPoint(newSignature.getWords3().find(*iter)->second, t)));
-						mapDescriptors.insert(std::make_pair(*iter, newSignature.getWordsDescriptors().find(*iter)->second));
+						mapPoints.insert(std::make_pair(*iter, util3d::transformPoint(lastFrame_->getWords3().find(*iter)->second, t)));
+						mapDescriptors.insert(std::make_pair(*iter, lastFrame_->getWordsDescriptors().find(*iter)->second));
 						++added;
 					}
 				}
@@ -270,12 +269,12 @@ Transform OdometryF2M::computeTransform(
 			// just generate keypoints for the new signature
 			Signature dummy;
 			regVis_->computeTransformationMod(
-					newSignature,
+					*lastFrame_,
 					dummy);
 
-			data.setFeatures(newSignature.sensorData().keypoints(), newSignature.sensorData().descriptors());
+			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().descriptors());
 
-			if(fixedMapPath_.empty() && (int)newSignature.getWords3().size() >= regVis_->getMinInliers())
+			if(fixedMapPath_.empty() && (int)lastFrame_->getWords3().size() >= regVis_->getMinInliers())
 			{
 				output.setIdentity();
 				// a very high variance tells that the new pose is not linked with the previous one
@@ -283,24 +282,24 @@ Transform OdometryF2M::computeTransform(
 
 				Transform t = this->getPose(); // initial pose may be not identity...
 				std::multimap<int, cv::Point3f> transformedPoints;
-				for(std::multimap<int, cv::Point3f>::const_iterator iter = newSignature.getWords3().begin(); iter!=newSignature.getWords3().end(); ++iter)
+				for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin(); iter!=lastFrame_->getWords3().end(); ++iter)
 				{
 					transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, t)));
 				}
 
 				map_->setWords3(transformedPoints);
-				map_->setWordsDescriptors(newSignature.getWordsDescriptors());
-				map_->sensorData().setCameraModels(newSignature.sensorData().cameraModels());
-				map_->sensorData().setStereoCameraModel(newSignature.sensorData().stereoCameraModel());
+				map_->setWordsDescriptors(lastFrame_->getWordsDescriptors());
+				map_->sensorData().setCameraModels(lastFrame_->sensorData().cameraModels());
+				map_->sensorData().setStereoCameraModel(lastFrame_->sensorData().stereoCameraModel());
 			}
 		}
 
 		map_->sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat()); // clear sensorData features
 
-		nFeatures = newSignature.getWords().size();
+		nFeatures = lastFrame_->getWords().size();
 		if(this->isInfoDataFilled() && info)
 		{
-			info->words = newSignature.getWords();
+			info->words = lastFrame_->getWords();
 		}
 	}
 

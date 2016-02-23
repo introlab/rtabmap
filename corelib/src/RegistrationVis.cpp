@@ -540,7 +540,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				// If guess is set, limit the search of matches using optical flow window size
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
-				if(guessSet)
+				if(guessSet && _guessWinSize > 0)
 				{
 					UDEBUG("");
 					UASSERT((int)kptsTo.size() == descriptorsTo.rows);
