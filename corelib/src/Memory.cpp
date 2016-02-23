@@ -3175,7 +3175,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 		UASSERT(descriptors.empty() || descriptors.rows == (int)keypoints.size());
 
-		if(keypoints.size() > _feature2D->getMaxFeatures())
+		if((int)keypoints.size() > _feature2D->getMaxFeatures())
 		{
 			_feature2D->limitKeypoints(keypoints, descriptors, _feature2D->getMaxFeatures());
 		}

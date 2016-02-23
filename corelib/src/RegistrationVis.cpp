@@ -459,7 +459,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			UDEBUG("kptsTo=%d", (int)kptsTo.size());
 			cv::Mat descriptorsFrom;
 			if((kptsFrom.empty() && fromSignature.getWordsDescriptors().size()) ||
-				fromSignature.getWordsDescriptors().size() == (int)kptsFrom.size())
+				fromSignature.getWordsDescriptors().size() == kptsFrom.size())
 			{
 				descriptorsFrom = cv::Mat(fromSignature.getWordsDescriptors().size(),
 						fromSignature.getWordsDescriptors().begin()->second.cols,
@@ -484,7 +484,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			cv::Mat descriptorsTo;
 			if(kptsTo.size())
 			{
-				if(toSignature.getWordsDescriptors().size() == (int)kptsTo.size())
+				if(toSignature.getWordsDescriptors().size() == kptsTo.size())
 				{
 					descriptorsTo = cv::Mat(toSignature.getWordsDescriptors().size(),
 							toSignature.getWordsDescriptors().begin()->second.cols,
@@ -543,7 +543,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				if(guessSet)
 				{
 					UDEBUG("");
-					UASSERT(kptsTo.size() == descriptorsTo.rows);
+					UASSERT((int)kptsTo.size() == descriptorsTo.rows);
 
 					// Use guess to project 3D "from" keypoints into "to" image
 					std::vector<cv::Point2f> cornersProjected;
@@ -589,18 +589,18 @@ Transform RegistrationVis::computeTransformationImpl(
 						rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
 						index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams());
 
-						UASSERT((int)indices.size() == cornersProjectedMat.rows);
+						UASSERT(indices.size() == cornersProjectedMat.rows);
 						UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
-						UASSERT(cornersProjectedMat.rows == descriptorsFrom.rows);
-						UASSERT(kptsFrom.empty() || cornersProjectedMat.rows == (int)kptsFrom.size());
-						UASSERT(kptsFrom3D.empty() || cornersProjectedMat.rows == (int)kptsFrom3D.size());
+						UASSERT((int)cornersProjectedMat.rows == descriptorsFrom.rows);
+						UASSERT(kptsFrom.empty() || cornersProjectedMat.rows == kptsFrom.size());
+						UASSERT(kptsFrom3D.empty() || cornersProjectedMat.rows == kptsFrom3D.size());
 
 						UDEBUG("");
 
 						// Process results (Nearest Neighbor Distance Ratio)
 						int notMatchedUniqueId = cornersProjectedMat.rows;
 						std::set<int> addedWordsTo;
-						for(int i = 0; i < cornersProjectedMat.rows; ++i)
+						for(unsigned int i = 0; i < cornersProjectedMat.rows; ++i)
 						{
 							int matchedIndex = -1;
 							if(indices[i].size() >= 2)
@@ -703,7 +703,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 					UASSERT(kptsFrom.empty() || fromWordIds.size() == kptsFrom.size());
 					UASSERT(kptsFrom3D.empty() || fromWordIds.size() == kptsFrom3D.size());
-					UASSERT(fromWordIds.size() == descriptorsFrom.rows);
+					UASSERT(int(fromWordIds.size()) == descriptorsFrom.rows);
 					int i=0;
 					for(std::list<int>::iterator iter=fromWordIds.begin(); iter!=fromWordIds.end(); ++iter)
 					{
@@ -723,7 +723,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 					UASSERT(kptsTo3D.size() == 0 || kptsTo3D.size() == kptsTo.size());
 					UASSERT(toWordIds.size() == kptsTo.size());
-					UASSERT(toWordIds.size() == descriptorsTo.rows);
+					UASSERT(int(toWordIds.size()) == descriptorsTo.rows);
 					i=0;
 					for(std::list<int>::iterator iter=toWordIds.begin(); iter!=toWordIds.end(); ++iter)
 					{
@@ -743,7 +743,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			else if(descriptorsFrom.rows)
 			{
 				//just create fake words
-				UASSERT(kptsFrom.size() == descriptorsFrom.rows);
+				UASSERT(int(kptsFrom.size()) == descriptorsFrom.rows);
 				UASSERT(words3From.empty() || kptsFrom.size() == words3From.size());
 				for(unsigned int i=0; i<kptsFrom.size(); ++i)
 				{

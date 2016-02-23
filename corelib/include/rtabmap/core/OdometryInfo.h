@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <map>
 #include "rtabmap/core/Transform.h"
+#include <opencv2/features2d/features2d.hpp>
 
 namespace rtabmap {
 

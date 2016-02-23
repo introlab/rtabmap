@@ -1258,7 +1258,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & query) const
 		}
 		ULOGGER_DEBUG("Search not yet indexed words time = %fs", timer.ticks());
 
-		for(unsigned int i=0; i<query.rows; ++i)
+		for(int i=0; i<query.rows; ++i)
 		{
 			std::multimap<float, int> fullResults; // Contains results from the kd-tree search [and the naive search in new words]
 			if(!bruteForce && dists.cols)

@@ -232,7 +232,7 @@ Transform OdometryF2M::computeTransform(
 				}
 
 				// remove words in map if max size is reached
-				if(mapPoints.size() > maximumMapSize_)
+				if((int)mapPoints.size() > maximumMapSize_)
 				{
 					// remove oldest first, keep matched features
 					std::set<int> matches(regInfo.matchesIDs.begin(), regInfo.matchesIDs.end());
