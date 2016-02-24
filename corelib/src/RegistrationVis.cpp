@@ -564,15 +564,6 @@ Transform RegistrationVis::computeTransformationImpl(
 					std::vector<cv::Point2f> projected;
 					cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), projected);
 
-					/*UDEBUG("guess=%s", guess.prettyPrint().c_str());
-					std::vector<cv::KeyPoint> projectedKpts;
-					cv::KeyPoint::convert(projected, projectedKpts);
-					cv::Mat image = toSignature.sensorData().imageRaw().clone();
-					drawKeypoints(image, projectedKpts, image, cv::Scalar(255,0,0));
-					drawKeypoints(image, kptsTo, image, cv::Scalar(0,0,255));
-					cv::imwrite("projected.bmp", image);
-					UWARN("saved projected.bmp");*/
-
 					//remove projected points outside of the image
 					UASSERT((int)projected.size() == descriptorsFrom.rows);
 					std::vector<cv::Point2f> cornersProjected(projected.size());
@@ -621,10 +612,11 @@ Transform RegistrationVis::computeTransformationImpl(
 						UDEBUG("");
 
 						// Process results (Nearest Neighbor Distance Ratio)
-						int notToMatchedUniqueId = descriptorsFrom.rows+descriptorsTo.rows; // make sure new words from "to" are after older one of "from"
-						int notFromMatchedUniqueId = descriptorsTo.rows;
+						int matchedID = descriptorsFrom.rows+descriptorsTo.rows;
+						int newToId = descriptorsFrom.rows;
+						int notMatchedFromId = 0;
 						std::map<int,int> addedWordsFrom; //<id, index>
-						std::set<int> duplicates;
+						std::map<int, int> duplicates; //<fromId, toId>
 						int newWords = 0;
 						for(unsigned int i = 0; i < pointsToMat.rows; ++i)
 						{
@@ -657,12 +649,12 @@ Transform RegistrationVis::computeTransformationImpl(
 								if(matchedIndex >= 0)
 								{
 									matchedIndex = projectedIndexToDescIndex[matchedIndex];
-									int id = i;
+									int id = matchedID++;
 
 									if(addedWordsFrom.find(matchedIndex) != addedWordsFrom.end())
 									{
 										id = addedWordsFrom.at(matchedIndex);
-										duplicates.insert(matchedIndex);
+										duplicates.insert(std::make_pair(matchedIndex, id));
 									}
 									else
 									{
@@ -686,14 +678,14 @@ Transform RegistrationVis::computeTransformationImpl(
 								else
 								{
 									// gen fake ids
-									wordsTo.insert(std::make_pair(notToMatchedUniqueId, kptsTo[i]));
-									wordsDescTo.insert(std::make_pair(notToMatchedUniqueId, descriptorsTo.row(i)));
+									wordsTo.insert(std::make_pair(newToId, kptsTo[i]));
+									wordsDescTo.insert(std::make_pair(newToId, descriptorsTo.row(i)));
 									if(kptsTo3D.size())
 									{
-										words3To.insert(std::make_pair(notToMatchedUniqueId, kptsTo3D[i]));
+										words3To.insert(std::make_pair(newToId, kptsTo3D[i]));
 									}
 
-									++notToMatchedUniqueId;
+									++newToId;
 									++newWords;
 								}
 							}
@@ -703,17 +695,6 @@ Transform RegistrationVis::computeTransformationImpl(
 								(int)addedWordsFrom.size(), (int)cornersProjected.size(), (int)duplicates.size(), newWords,
 								(int)kptsTo.size(), (int)wordsTo.size(), (int)words3From.size());
 
-						//remove duplicates
-						for(std::set<int>::iterator iter=duplicates.begin(); iter!=duplicates.end(); ++iter)
-						{
-							wordsFrom.erase(*iter);
-							wordsDescFrom.erase(*iter);
-							words3From.erase(*iter);
-							wordsTo.erase(*iter);
-							wordsDescTo.erase(*iter);
-							words3To.erase(*iter);
-						}
-
 						// create fake ids for not matched words from "from"
 						int addWordsFromNotMatched = 0;
 						for(unsigned int i=0; i<kptsFrom3D.size(); ++i)
@@ -722,16 +703,37 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								if(kptsFrom.size())
 								{
-									wordsFrom.insert(std::make_pair(notFromMatchedUniqueId, kptsFrom[i]));
+									wordsFrom.insert(std::make_pair(notMatchedFromId, kptsFrom[i]));
 								}
-								wordsDescFrom.insert(std::make_pair(notFromMatchedUniqueId, descriptorsFrom.row(i)));
-								words3From.insert(std::make_pair(notFromMatchedUniqueId, kptsFrom3D[i]));
+								wordsDescFrom.insert(std::make_pair(notMatchedFromId, descriptorsFrom.row(i)));
+								words3From.insert(std::make_pair(notMatchedFromId, kptsFrom3D[i]));
 
-								++notFromMatchedUniqueId;
+								++notMatchedFromId;
 								++addWordsFromNotMatched;
 							}
 						}
 						UDEBUG("addWordsFromNotMatched=%d -> words3From=%d", addWordsFromNotMatched, (int)words3From.size());
+
+						/*std::vector<cv::KeyPoint> matches(wordsTo.size());
+						int oi=0;
+						for(std::multimap<int, cv::KeyPoint>::iterator iter = wordsTo.begin(); iter!=wordsTo.end(); ++iter)
+						{
+							if(iter->first >= descriptorsFrom.rows+descriptorsTo.rows && wordsTo.count(iter->first) <= 1)
+							{
+								matches[oi++] = iter->second;
+							}
+						}
+						matches.resize(oi);
+						UDEBUG("guess=%s", guess.prettyPrint().c_str());
+						std::vector<cv::KeyPoint> projectedKpts;
+						cv::KeyPoint::convert(projected, projectedKpts);
+						cv::Mat image = toSignature.sensorData().imageRaw().clone();
+						drawKeypoints(image, projectedKpts, image, cv::Scalar(255,0,0));
+						drawKeypoints(image, kptsTo, image, cv::Scalar(0,0,255));
+						drawKeypoints(image, matches, image, cv::Scalar(0,255,0));
+						cv::imwrite("projected.bmp", image);
+						UWARN("saved projected.bmp");*/
+
 					}
 					UDEBUG("");
 				}

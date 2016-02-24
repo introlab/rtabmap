@@ -84,10 +84,8 @@ Transform OdometryF2F::computeTransform(
 		output = registrationPipeline_->computeTransformationMod(
 				refFrame_,
 				newFrame,
-				guessFromMotion_?motionSinceLastKeyFrame_*this->previousTransform():Transform(),
+				guessFromMotion_&&!this->previousTransform().isNull()?motionSinceLastKeyFrame_*this->previousTransform():Transform(),
 				&regInfo);
-
-		data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().descriptors());
 
 		if(info && this->isInfoDataFilled())
 		{
@@ -132,18 +130,16 @@ Transform OdometryF2F::computeTransform(
 		if(keyFrameThr_ <= 0 || (int)regInfo.inliers <= keyFrameThr_)
 		{
 			UDEBUG("Update key frame");
-			int features = newFrame.sensorData().keypoints().size();
+			int features = newFrame.getWordsDescriptors().size();
 			if(features == 0)
 			{
 				newFrame = Signature(data);
-				// this will generate features only for the first frame
+				// this will generate features only for the first frame or if optical flow was used (no 3d words)
 				Signature dummy;
 				registrationPipeline_->computeTransformationMod(
 						newFrame,
 						dummy);
 				features = (int)newFrame.sensorData().keypoints().size();
-
-				data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().descriptors());
 			}
 
 			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&
@@ -182,6 +178,8 @@ Transform OdometryF2F::computeTransform(
 	{
 		UWARN("Registration failed: \"%s\"", regInfo.rejectedMsg.c_str());
 	}
+
+	data.setFeatures(newFrame.sensorData().keypoints(), newFrame.sensorData().descriptors());
 
 	if(info)
 	{

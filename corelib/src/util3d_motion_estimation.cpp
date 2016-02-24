@@ -144,7 +144,12 @@ Transform estimateMotion3DTo2D(
 					{
 						const cv::Point3f & objPt = objectPoints[inliers[i]];
 						cv::Point3f newPt = util3d::transformPoint(iter->second, transform);
-						errorSqrdDists[oi++] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+						errorSqrdDists[oi] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
+						//ignore very very far features (stereo)
+						if(errorSqrdDists[oi] < 100.0f)
+						{
+							++oi;
+						}
 					}
 				}
 				errorSqrdDists.resize(oi);

@@ -3104,7 +3104,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 
 	std::vector<cv::Point3f> keypoints3D;
-	if(!_useOdometryFeatures || data.keypoints().size() == 0)
+	if(!_useOdometryFeatures || (data.keypoints().size() != data.descriptors().rows))
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{

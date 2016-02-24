@@ -376,7 +376,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, RefineIterations,         int, 10,       "[Vis/EstimationType = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.");
 	RTABMAP_PARAM(Vis, PnPReprojError, 	         float, 2.0,    "[Vis/EstimationType = 1] PnP reprojection error.");
 	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,        "[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
-	RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        "[Vis/EstimationType = 1] Refine iterations.");
+	RTABMAP_PARAM_COND(Vis, PnPRefineIterations, int, RTABMAP_OPENCV3, 0, 1, "[Vis/EstimationType = 1] Refine iterations.");
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
 	RTABMAP_PARAM(Vis, MinInliers,               int, 10, 		"Minimum feature correspondences to compute/accept the transformation.");
 	RTABMAP_PARAM(Vis, Iterations,               int, 100, 		"Maximum iterations to compute the transform.");

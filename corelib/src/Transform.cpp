@@ -375,7 +375,7 @@ Transform Transform::fromEigen3d(const Eigen::Isometry3d & matrix)
 Transform Transform::fromString(const std::string & string)
 {
 	std::list<std::string> list = uSplit(string, ' ');
-	UASSERT_MSG(list.size() == 3 || list.size() == 6 || list.size() == 7 || list.size() == 9 || list.size() == 12,
+	UASSERT_MSG(list.empty() || list.size() == 3 || list.size() == 6 || list.size() == 7 || list.size() == 9 || list.size() == 12,
 			uFormat("Cannot parse \"%s\"", string.c_str()).c_str());
 
 	std::vector<float> numbers(list.size());
@@ -424,7 +424,7 @@ Transform Transform::fromString(const std::string & string)
 bool Transform::canParseString(const std::string & string)
 {
 	std::list<std::string> list = uSplit(string, ' ');
-	return list.size() == 3 || list.size() == 6 || list.size() == 7 || list.size() == 9 || list.size() == 12;
+	return list.size() == 0 || list.size() == 3 || list.size() == 6 || list.size() == 7 || list.size() == 9 || list.size() == 12;
 }
 
 }
