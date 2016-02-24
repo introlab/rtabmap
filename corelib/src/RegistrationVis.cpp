@@ -430,13 +430,13 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 
 					cv::Mat depthMask;
-					if(_useDepthAsMask && !fromSignature.sensorData().depthRaw().empty())
+					if(_useDepthAsMask && !toSignature.sensorData().depthRaw().empty())
 					{
-						if(fromSignature.sensorData().imageRaw().rows % fromSignature.sensorData().depthRaw().rows == 0 &&
-							fromSignature.sensorData().imageRaw().cols % fromSignature.sensorData().depthRaw().cols == 0 &&
-							fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows == fromSignature.sensorData().imageRaw().cols/fromSignature.sensorData().depthRaw().cols)
+						if(toSignature.sensorData().imageRaw().rows % toSignature.sensorData().depthRaw().rows == 0 &&
+								toSignature.sensorData().imageRaw().cols % toSignature.sensorData().depthRaw().cols == 0 &&
+							toSignature.sensorData().imageRaw().rows/toSignature.sensorData().depthRaw().rows == toSignature.sensorData().imageRaw().cols/toSignature.sensorData().depthRaw().cols)
 						{
-							depthMask = util2d::interpolate(fromSignature.sensorData().depthRaw(), fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows, 0.1f);
+							depthMask = util2d::interpolate(toSignature.sensorData().depthRaw(), toSignature.sensorData().imageRaw().rows/toSignature.sensorData().depthRaw().rows, 0.1f);
 						}
 					}
 
@@ -540,146 +540,198 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				// If guess is set, limit the search of matches using optical flow window size
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
-				if(guessSet && _guessWinSize > 0)
+				if(guessSet && _guessWinSize > 0 && kptsFrom3D.size())
 				{
 					UDEBUG("");
 					UASSERT((int)kptsTo.size() == descriptorsTo.rows);
+					UASSERT((int)kptsFrom3D.size() == descriptorsFrom.rows);
 
 					// Use guess to project 3D "from" keypoints into "to" image
-					std::vector<cv::Point2f> cornersProjected;
-					if(kptsFrom3D.size() && (guessSet || kptsFrom.size()==0))
+					if(fromSignature.sensorData().cameraModels().size() > 1)
 					{
-						if(fromSignature.sensorData().cameraModels().size() > 1)
+						UFATAL("Radius feature matching is not supported for multiple cameras.");
+					}
+					Transform localTransform = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].localTransform():fromSignature.sensorData().stereoCameraModel().left().localTransform();
+					Transform guessCameraRef = (guess * localTransform).inverse();
+					cv::Mat R = (cv::Mat_<double>(3,3) <<
+							(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
+							(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
+							(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
+					cv::Mat rvec(1,3, CV_64FC1);
+					cv::Rodrigues(R, rvec);
+					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
+					cv::Mat K = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].K():fromSignature.sensorData().stereoCameraModel().left().K();
+					std::vector<cv::Point2f> projected;
+					cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), projected);
+
+					/*UDEBUG("guess=%s", guess.prettyPrint().c_str());
+					std::vector<cv::KeyPoint> projectedKpts;
+					cv::KeyPoint::convert(projected, projectedKpts);
+					cv::Mat image = toSignature.sensorData().imageRaw().clone();
+					drawKeypoints(image, projectedKpts, image, cv::Scalar(255,0,0));
+					drawKeypoints(image, kptsTo, image, cv::Scalar(0,0,255));
+					cv::imwrite("projected.bmp", image);
+					UWARN("saved projected.bmp");*/
+
+					//remove projected points outside of the image
+					UASSERT((int)projected.size() == descriptorsFrom.rows);
+					std::vector<cv::Point2f> cornersProjected(projected.size());
+					std::vector<int> projectedIndexToDescIndex(projected.size());
+					int oi=0;
+					for(unsigned int i=0; i<projected.size(); ++i)
+					{
+						if(uIsInBounds(projected[i].x, 0.0f, float(toSignature.sensorData().imageRaw().cols-1)) &&
+						   uIsInBounds(projected[i].y, 0.0f, float(toSignature.sensorData().imageRaw().rows-1)))
 						{
-							UFATAL("Radius feature matching is not supported for multiple cameras.");
+							projectedIndexToDescIndex[oi] = i;
+							cornersProjected[oi++] = projected[i];
 						}
-						Transform localTransform = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].localTransform():fromSignature.sensorData().stereoCameraModel().left().localTransform();
-						Transform guessCameraRef = (guess * localTransform).inverse();
-						cv::Mat R = (cv::Mat_<double>(3,3) <<
-								(double)guessCameraRef.r11(), (double)guessCameraRef.r12(), (double)guessCameraRef.r13(),
-								(double)guessCameraRef.r21(), (double)guessCameraRef.r22(), (double)guessCameraRef.r23(),
-								(double)guessCameraRef.r31(), (double)guessCameraRef.r32(), (double)guessCameraRef.r33());
-						cv::Mat rvec(1,3, CV_64FC1);
-						cv::Rodrigues(R, rvec);
-						cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guessCameraRef.x(), (double)guessCameraRef.y(), (double)guessCameraRef.z());
-						cv::Mat K = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].K():fromSignature.sensorData().stereoCameraModel().left().K();
-						cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), cornersProjected);
 					}
-					else if(kptsFrom.size())
-					{
-						cv::KeyPoint::convert(kptsFrom, cornersProjected);
-					}
-					UDEBUG("");
+					projectedIndexToDescIndex.resize(oi);
+					cornersProjected.resize(oi);
+
+
+
+					UDEBUG("cornersProjected=%d", (int)cornersProjected.size());
 
 					// For each projected feature guess of "from" in "to", find its matching feature in
 					// the radius around the projected guess.
 					// TODO: do cross-check?
 					if(cornersProjected.size())
 					{
-						// Create kd-tree for keypoints "to"
-						std::vector<cv::Point2f> pointsTo;
-						cv::KeyPoint::convert(kptsTo, pointsTo);
-						rtflann::Matrix<float> pointsToMat((float*)pointsTo.data(), pointsTo.size(), 2);
-						rtflann::Index<rtflann::L2<float> > index(pointsToMat, rtflann::KDTreeIndexParams());
+
+						// Create kd-tree for projected keypoints
+						rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
+						rtflann::Index<rtflann::L2<float> > index(cornersProjectedMat, rtflann::KDTreeIndexParams());
 						index.buildIndex();
 
 						std::vector< std::vector<size_t> > indices;
 						std::vector<std::vector<float> > dists;
 						float radius = (float)_guessWinSize; // pixels
-						rtflann::Matrix<float> cornersProjectedMat((float*)cornersProjected.data(), cornersProjected.size(), 2);
-						index.radiusSearch(cornersProjectedMat, indices, dists, radius*radius, rtflann::SearchParams());
+						std::vector<cv::Point2f> pointsTo;
+						cv::KeyPoint::convert(kptsTo, pointsTo);
+						rtflann::Matrix<float> pointsToMat((float*)pointsTo.data(), pointsTo.size(), 2);
+						index.radiusSearch(pointsToMat, indices, dists, radius*radius, rtflann::SearchParams());
 
-						UASSERT(indices.size() == cornersProjectedMat.rows);
+						UASSERT(indices.size() == pointsToMat.rows);
 						UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
-						UASSERT((int)cornersProjectedMat.rows == descriptorsFrom.rows);
-						UASSERT(kptsFrom.empty() || cornersProjectedMat.rows == kptsFrom.size());
-						UASSERT(kptsFrom3D.empty() || cornersProjectedMat.rows == kptsFrom3D.size());
-
+						UASSERT(kptsFrom.empty() || descriptorsFrom.rows == (int)kptsFrom.size());
+						UASSERT((int)pointsToMat.rows == descriptorsTo.rows);
+						UASSERT(pointsToMat.rows == kptsTo.size());
 						UDEBUG("");
 
 						// Process results (Nearest Neighbor Distance Ratio)
-						int notMatchedUniqueId = cornersProjectedMat.rows;
-						std::set<int> addedWordsTo;
-						for(unsigned int i = 0; i < cornersProjectedMat.rows; ++i)
+						int notToMatchedUniqueId = descriptorsFrom.rows+descriptorsTo.rows; // make sure new words from "to" are after older one of "from"
+						int notFromMatchedUniqueId = descriptorsTo.rows;
+						std::map<int,int> addedWordsFrom; //<id, index>
+						std::set<int> duplicates;
+						int newWords = 0;
+						for(unsigned int i = 0; i < pointsToMat.rows; ++i)
 						{
-							int matchedIndex = -1;
-							if(indices[i].size() >= 2)
+							if(kptsTo3D.empty() || util3d::isFinite(kptsTo3D[i]))
 							{
-								cv::Mat descriptors(indices[i].size(), descriptorsTo.cols, descriptorsTo.type());
-								for(unsigned int j=0; j<indices[i].size(); ++j)
+								int matchedIndex = -1;
+								if(indices[i].size() >= 2)
 								{
-									descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(j));
-									addedWordsTo.insert(indices[i].at(j));
+									cv::Mat descriptors(indices[i].size(), descriptorsFrom.cols, descriptorsFrom.type());
+									for(unsigned int j=0; j<indices[i].size(); ++j)
+									{
+										descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(j));
+									}
+
+									std::vector<std::vector<cv::DMatch> > matches;
+									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+									matcher.knnMatch(descriptorsTo.row(i), descriptors, matches, 2);
+									UASSERT(matches.size() == 1);
+									UASSERT(matches[0].size() == 2);
+									if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+									{
+										matchedIndex = indices[i].at(matches[0].at(0).trainIdx);
+									}
+								}
+								else if(indices[i].size() == 1)
+								{
+									matchedIndex = indices[i].at(0);
 								}
 
-								std::vector<std::vector<cv::DMatch> > matches;
-								cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-								matcher.knnMatch(descriptorsFrom.row(i), descriptors, matches, 2);
-								UASSERT(matches.size() == 1);
-								UASSERT(matches[0].size() == 2);
-								if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+								if(matchedIndex >= 0)
 								{
-									matchedIndex = indices[i].at(matches[0].at(0).trainIdx);
-								}
-							}
-							else if(indices[i].size() == 1)
-							{
-								matchedIndex = indices[i].at(0);
-							}
+									matchedIndex = projectedIndexToDescIndex[matchedIndex];
+									int id = i;
 
-							if(matchedIndex >= 0)
-							{
-								if(kptsFrom.size())
-								{
-									wordsFrom.insert(std::make_pair(i, kptsFrom[i]));
-								}
-								if(kptsFrom3D.size())
-								{
-									words3From.insert(std::make_pair(i, kptsFrom3D[i]));
-								}
-								wordsDescFrom.insert(std::make_pair(i, descriptorsFrom.row(i)));
+									if(addedWordsFrom.find(matchedIndex) != addedWordsFrom.end())
+									{
+										id = addedWordsFrom.at(matchedIndex);
+										duplicates.insert(matchedIndex);
+									}
+									else
+									{
+										addedWordsFrom.insert(std::make_pair(matchedIndex, id));
 
-								wordsTo.insert(std::make_pair(i, kptsTo[matchedIndex]));
-								wordsDescTo.insert(std::make_pair(i, descriptorsTo.row(matchedIndex)));
-								if(kptsTo3D.size())
-								{
-									words3To.insert(std::make_pair(i, kptsTo3D[matchedIndex]));
-								}
-							}
-							else
-							{
-								// gen fake ids
-								if(kptsFrom.size())
-								{
-									wordsFrom.insert(std::make_pair(notMatchedUniqueId, kptsFrom[i]));
-								}
-								if(kptsFrom3D.size())
-								{
-									words3From.insert(std::make_pair(notMatchedUniqueId, kptsFrom3D[i]));
-								}
-								wordsDescFrom.insert(std::make_pair(notMatchedUniqueId, descriptorsFrom.row(i)));
+										if(kptsFrom.size())
+										{
+											wordsFrom.insert(std::make_pair(id, kptsFrom[matchedIndex]));
+										}
+										words3From.insert(std::make_pair(id, kptsFrom3D[matchedIndex]));
+										wordsDescFrom.insert(std::make_pair(id, descriptorsFrom.row(matchedIndex)));
+									}
 
-								++notMatchedUniqueId;
+									wordsTo.insert(std::make_pair(id, kptsTo[i]));
+									wordsDescTo.insert(std::make_pair(id, descriptorsTo.row(i)));
+									if(kptsTo3D.size())
+									{
+										words3To.insert(std::make_pair(id, kptsTo3D[i]));
+									}
+								}
+								else
+								{
+									// gen fake ids
+									wordsTo.insert(std::make_pair(notToMatchedUniqueId, kptsTo[i]));
+									wordsDescTo.insert(std::make_pair(notToMatchedUniqueId, descriptorsTo.row(i)));
+									if(kptsTo3D.size())
+									{
+										words3To.insert(std::make_pair(notToMatchedUniqueId, kptsTo3D[i]));
+									}
+
+									++notToMatchedUniqueId;
+									++newWords;
+								}
 							}
 						}
 
-						UDEBUG("addedWordsTo=%d, kptsTo=%d, wordsTo=%d", (int)addedWordsTo.size(), (int)kptsTo.size(), (int)wordsTo.size());
+						UDEBUG("addedWordsFrom=%d/%d (duplicates=%d, newWords=%d), kptsTo=%d, wordsTo=%d, words3From=%d",
+								(int)addedWordsFrom.size(), (int)cornersProjected.size(), (int)duplicates.size(), newWords,
+								(int)kptsTo.size(), (int)wordsTo.size(), (int)words3From.size());
 
-						// create fake ids for not matched words from "to"
-						for(unsigned int i=0; i<kptsTo.size(); ++i)
+						//remove duplicates
+						for(std::set<int>::iterator iter=duplicates.begin(); iter!=duplicates.end(); ++iter)
 						{
-							if(addedWordsTo.find(i) == addedWordsTo.end())
-							{
-								wordsTo.insert(std::make_pair(notMatchedUniqueId, kptsTo[i]));
-								wordsDescTo.insert(std::make_pair(notMatchedUniqueId, descriptorsTo.row(i)));
-								if(kptsTo3D.size())
-								{
-									words3To.insert(std::make_pair(notMatchedUniqueId, kptsTo3D[i]));
-								}
+							wordsFrom.erase(*iter);
+							wordsDescFrom.erase(*iter);
+							words3From.erase(*iter);
+							wordsTo.erase(*iter);
+							wordsDescTo.erase(*iter);
+							words3To.erase(*iter);
+						}
 
-								++notMatchedUniqueId;
+						// create fake ids for not matched words from "from"
+						int addWordsFromNotMatched = 0;
+						for(unsigned int i=0; i<kptsFrom3D.size(); ++i)
+						{
+							if(util3d::isFinite(kptsFrom3D[i]) && addedWordsFrom.find(i) == addedWordsFrom.end())
+							{
+								if(kptsFrom.size())
+								{
+									wordsFrom.insert(std::make_pair(notFromMatchedUniqueId, kptsFrom[i]));
+								}
+								wordsDescFrom.insert(std::make_pair(notFromMatchedUniqueId, descriptorsFrom.row(i)));
+								words3From.insert(std::make_pair(notFromMatchedUniqueId, kptsFrom3D[i]));
+
+								++notFromMatchedUniqueId;
+								++addWordsFromNotMatched;
 							}
 						}
+						UDEBUG("addWordsFromNotMatched=%d -> words3From=%d", addWordsFromNotMatched, (int)words3From.size());
 					}
 					UDEBUG("");
 				}

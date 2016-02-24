@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>681</width>
-            <height>2010</height>
+            <width>686</width>
+            <height>1990</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>23</number>
+                <number>16</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8429,7 +8429,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <item row="2" column="1">
                             <widget class="QLabel" name="label_303">
                              <property name="text">
-                              <string>Matching window size around projected points when a guess transform is provided to find correspondences.</string>
+                              <string>Matching window size around projected points when a guess transform is provided to find correspondences. 0 means that global matching will be done.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
@@ -8445,7 +8445,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                               <string> pixels</string>
                              </property>
                              <property name="minimum">
-                              <number>3</number>
+                              <number>0</number>
                              </property>
                              <property name="maximum">
                               <number>1000</number>

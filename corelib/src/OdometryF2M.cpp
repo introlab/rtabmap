@@ -155,7 +155,8 @@ void OdometryF2M::reset(const Transform & initialPose)
 	if(fixedMapPath_.empty())
 	{
 		Odometry::reset(initialPose);
-		map_->sensorData() = SensorData();
+		*map_ = Signature(-1);
+		*lastFrame_ = Signature(1);
 	}
 	else
 	{
@@ -188,7 +189,8 @@ Transform OdometryF2M::computeTransform(
 		if(map_->getWords3().size() && lastFrame_->sensorData().isValid())
 		{
 			Transform guess = this->previousTransform().isIdentity()||this->previousTransform().isNull()?Transform():this->getPose()*this->previousTransform();
-			Transform transform = regVis_->computeTransformationMod(*map_, *lastFrame_, guess, &regInfo);
+			Signature tmpMap = *map_;
+			Transform transform = regVis_->computeTransformationMod(tmpMap, *lastFrame_, guess, &regInfo);
 
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().descriptors());
 
@@ -206,62 +208,66 @@ Transform OdometryF2M::computeTransform(
 				UWARN("Unknown registration error");
 			}
 
-			if(fixedMapPath_.empty())
+			if(!transform.isNull())
 			{
-				output = transform;
-
-				int added = 0;
-				int removed = 0;
-
-				// update local map
-				std::multimap<int, cv::Point3f> mapPoints = map_->getWords3();
-				std::multimap<int, cv::Mat> mapDescriptors = map_->getWordsDescriptors();
-				Transform t = this->getPose()*output;
-				UASSERT(mapPoints.size() == mapDescriptors.size());
-				UASSERT(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size());
-				std::list<int> newIds = uUniqueKeys(lastFrame_->getWordsDescriptors());
-				for(std::list<int>::iterator iter=newIds.begin(); iter!=newIds.end(); ++iter)
+				if(fixedMapPath_.empty())
 				{
-					if(mapPoints.find(*iter) == mapPoints.end())
-					{
-						mapPoints.insert(std::make_pair(*iter, util3d::transformPoint(lastFrame_->getWords3().find(*iter)->second, t)));
-						mapDescriptors.insert(std::make_pair(*iter, lastFrame_->getWordsDescriptors().find(*iter)->second));
-						++added;
-					}
-				}
+					output = transform;
 
-				// remove words in map if max size is reached
-				if((int)mapPoints.size() > maximumMapSize_)
-				{
-					// remove oldest first, keep matched features
-					std::set<int> matches(regInfo.matchesIDs.begin(), regInfo.matchesIDs.end());
-					std::multimap<int, cv::Mat>::iterator iterMapWords = mapDescriptors.begin();
-					for(std::multimap<int, cv::Point3f>::iterator iter = mapPoints.begin();
-						iter!=mapPoints.end() && (int)mapPoints.size() > maximumMapSize_ && mapPoints.size() >= newIds.size();)
+					int added = 0;
+					int removed = 0;
+
+					// update local map
+					*map_ = tmpMap;
+					std::multimap<int, cv::Point3f> mapPoints = map_->getWords3();
+					std::multimap<int, cv::Mat> mapDescriptors = map_->getWordsDescriptors();
+					Transform t = this->getPose()*output;
+					UASSERT(mapPoints.size() == mapDescriptors.size());
+					UASSERT(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size());
+					std::list<int> newIds = uUniqueKeys(lastFrame_->getWordsDescriptors());
+					for(std::list<int>::iterator iter=newIds.begin(); iter!=newIds.end(); ++iter)
 					{
-						if(matches.find(iter->first) == matches.end())
+						if(mapPoints.find(*iter) == mapPoints.end() && util3d::isFinite(lastFrame_->getWords3().find(*iter)->second))
 						{
-							iter = mapPoints.erase(iter);
-							iterMapWords = mapDescriptors.erase(iterMapWords);
-							++removed;
-						}
-						else
-						{
-							++iter;
-							++iterMapWords;
+							mapPoints.insert(std::make_pair(*iter, util3d::transformPoint(lastFrame_->getWords3().find(*iter)->second, t)));
+							mapDescriptors.insert(std::make_pair(*iter, lastFrame_->getWordsDescriptors().find(*iter)->second));
+							++added;
 						}
 					}
+
+					// remove words in map if max size is reached
+					if((int)mapPoints.size() > maximumMapSize_)
+					{
+						// remove oldest first, keep matched features
+						std::set<int> matches(regInfo.matchesIDs.begin(), regInfo.matchesIDs.end());
+						std::multimap<int, cv::Mat>::iterator iterMapWords = mapDescriptors.begin();
+						for(std::multimap<int, cv::Point3f>::iterator iter = mapPoints.begin();
+							iter!=mapPoints.end() && (int)mapPoints.size() > maximumMapSize_ && mapPoints.size() >= newIds.size();)
+						{
+							if(matches.find(iter->first) == matches.end())
+							{
+								iter = mapPoints.erase(iter);
+								iterMapWords = mapDescriptors.erase(iterMapWords);
+								++removed;
+							}
+							else
+							{
+								++iter;
+								++iterMapWords;
+							}
+						}
+					}
+
+					map_->setWords3(mapPoints);
+					map_->setWordsDescriptors(mapDescriptors);
+
+					UINFO("Updated map: %d added %d removed (new map size=%d)", added, removed, (int)mapPoints.size());
 				}
-
-				map_->setWords3(mapPoints);
-				map_->setWordsDescriptors(mapDescriptors);
-
-				UINFO("Updated map: %d added %d removed (new map size=%d)", added, removed, (int)mapPoints.size());
-			}
-			else
-			{
-				// fixed local map, don't update with the new signature
-				output = transform;
+				else
+				{
+					// fixed local map, don't update with the new signature
+					output = transform;
+				}
 			}
 		}
 		else
@@ -282,13 +288,22 @@ Transform OdometryF2M::computeTransform(
 
 				Transform t = this->getPose(); // initial pose may be not identity...
 				std::multimap<int, cv::Point3f> transformedPoints;
-				for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin(); iter!=lastFrame_->getWords3().end(); ++iter)
+				std::multimap<int, cv::Mat> descriptors;
+				UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWordsDescriptors().size());
+				std::multimap<int, cv::Mat>::const_iterator descIter = lastFrame_->getWordsDescriptors().begin();
+				for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
+						iter!=lastFrame_->getWords3().end();
+						++iter,++descIter)
 				{
-					transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, t)));
+					if(util3d::isFinite(iter->second))
+					{
+						transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, t)));
+						descriptors.insert(std::make_pair(iter->first, descIter->second));
+					}
 				}
 
 				map_->setWords3(transformedPoints);
-				map_->setWordsDescriptors(lastFrame_->getWordsDescriptors());
+				map_->setWordsDescriptors(descriptors);
 				map_->sensorData().setCameraModels(lastFrame_->sensorData().cameraModels());
 				map_->sensorData().setStereoCameraModel(lastFrame_->sensorData().stereoCameraModel());
 			}
