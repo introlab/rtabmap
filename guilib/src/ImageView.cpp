@@ -369,7 +369,6 @@ void ImageView::setGraphicsViewMode(bool on)
 		{
 			_imageItem = _graphicsView->scene()->addPixmap(_image);
 			_imageItem->setVisible(_showImage->isChecked());
-			_showImage->setEnabled(true);
 		}
 
 		if(_imageDepthItem)
@@ -380,7 +379,6 @@ void ImageView::setGraphicsViewMode(bool on)
 		{
 			_imageDepthItem = _graphicsView->scene()->addPixmap(_imageDepth);
 			_imageDepthItem->setVisible(_showImageDepth->isChecked());
-			_showImageDepth->setEnabled(true);
 		}
 		this->updateOpacity();
 
@@ -725,7 +723,6 @@ void ImageView::setImage(const QImage & image)
 		{
 			_imageItem = _graphicsView->scene()->addPixmap(_image);
 			_imageItem->setVisible(_showImage->isChecked());
-			_showImage->setEnabled(true);
 			this->updateOpacity();
 		}
 	}
@@ -761,7 +758,6 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 		{
 			_imageDepthItem = _graphicsView->scene()->addPixmap(_imageDepth);
 			_imageDepthItem->setVisible(_showImageDepth->isChecked());
-			_showImageDepth->setEnabled(true);
 			this->updateOpacity();
 		}
 	}
@@ -879,7 +875,6 @@ void ImageView::clear()
 		_graphicsView->scene()->removeItem(_imageItem);
 		delete _imageItem;
 		_imageItem = 0;
-		_showImage->setEnabled(false);
 	}
 	_image = QPixmap();
 
@@ -888,7 +883,6 @@ void ImageView::clear()
 		_graphicsView->scene()->removeItem(_imageDepthItem);
 		delete _imageDepthItem;
 		_imageDepthItem = 0;
-		_showImageDepth->setEnabled(false);
 	}
 	_imageDepth = QPixmap();
 

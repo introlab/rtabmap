@@ -94,8 +94,7 @@ std::vector<cv::Point2f> Stereo::computeCorrespondences(
 
 StereoOpticalFlow::StereoOpticalFlow(const ParametersMap & parameters) :
 		Stereo(parameters),
-		epsilon_(Parameters::defaultStereoEps()),
-		maxSlope_(Parameters::defaultStereoMaxSlope())
+		epsilon_(Parameters::defaultStereoEps())
 {
 	this->parseParameters(parameters);
 }
@@ -104,7 +103,6 @@ void StereoOpticalFlow::parseParameters(const ParametersMap & parameters)
 {
 	Stereo::parseParameters(parameters);
 	Parameters::parse(parameters, Parameters::kStereoEps(), epsilon_);
-	Parameters::parse(parameters, Parameters::kStereoMaxSlope(), maxSlope_);
 }
 
 
@@ -135,9 +133,7 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 		if(status[i]!=0)
 		{
 			float disparity = leftCorners[i].x - rightCorners[i].x;
-			float slope = fabs((leftCorners[i].y-rightCorners[i].y) / (leftCorners[i].x-rightCorners[i].x));
-			if(disparity < float(this->minDisparity()) || disparity > float(this->maxDisparity()) ||
-			   (maxSlope_ > 0.0f && fabs(leftCorners[i].y-rightCorners[i].y) > 1.0f && slope > maxSlope_))
+			if(disparity < float(this->minDisparity()) || disparity > float(this->maxDisparity()))
 			{
 				status[i] = 0;
 			}

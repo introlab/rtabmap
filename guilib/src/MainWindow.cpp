@@ -1789,7 +1789,9 @@ void MainWindow::updateMapCloud(
 		_ui->graphicsView_graphView->updateGTGraph(_currentGTPosesMap);
 	}
 	cv::Mat map8U;
-	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) && (_createdScans.size() || _preferencesDialog->isGridMapFrom3DCloud()))
+	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) &&
+			((_gridLocalMaps.size() && !_preferencesDialog->isGridMapFrom3DCloud()) ||
+			 (_projectionLocalMaps.size() && _preferencesDialog->isGridMapFrom3DCloud())))
 	{
 		float xMin, yMin;
 		float resolution = _preferencesDialog->getGridMapResolution();

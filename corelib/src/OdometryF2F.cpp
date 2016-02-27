@@ -37,12 +37,10 @@ namespace rtabmap {
 OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	Odometry(parameters),
 	keyFrameThr_(Parameters::defaultOdomF2FKeyFrameThr()),
-	guessFromMotion_(Parameters::defaultOdomGuessMotion()),
 	motionSinceLastKeyFrame_(Transform::getIdentity())
 {
 	registrationPipeline_ = Registration::create(parameters);
 	Parameters::parse(parameters, Parameters::kOdomF2FKeyFrameThr(), keyFrameThr_);
-	Parameters::parse(parameters, Parameters::kOdomGuessMotion(), guessFromMotion_);
 }
 
 OdometryF2F::~OdometryF2F()
@@ -60,6 +58,7 @@ void OdometryF2F::reset(const Transform & initialPose)
 // return not null transform if odometry is correctly computed
 Transform OdometryF2F::computeTransform(
 		SensorData & data,
+		const Transform & guess,
 		OdometryInfo * info)
 {
 	UTimer timer;
@@ -84,7 +83,7 @@ Transform OdometryF2F::computeTransform(
 		output = registrationPipeline_->computeTransformationMod(
 				refFrame_,
 				newFrame,
-				guessFromMotion_&&!this->previousTransform().isNull()?motionSinceLastKeyFrame_*this->previousTransform():Transform(),
+				!guess.isNull()?motionSinceLastKeyFrame_*guess:Transform(),
 				&regInfo);
 
 		if(info && this->isInfoDataFilled())
@@ -188,6 +187,7 @@ Transform OdometryF2F::computeTransform(
 		info->inliers = regInfo.inliers;
 		info->icpInliersRatio = regInfo.icpInliersRatio;
 		info->matches = regInfo.matches;
+		info->features = refFrame_.sensorData().keypoints().size();
 	}
 
 	UINFO("Odom update time = %fs lost=%s inliers=%d, ref frame corners=%d, transform accepted=%s",

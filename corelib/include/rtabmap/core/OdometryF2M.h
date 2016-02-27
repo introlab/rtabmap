@@ -46,7 +46,7 @@ public:
 	const Signature & getLastFrame() const {return *lastFrame_;}
 
 private:
-	virtual Transform computeTransform(SensorData & data, OdometryInfo * info = 0);
+	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
 	//Parameters

@@ -80,11 +80,9 @@ public:
 			std::vector<unsigned char> & status) const;
 
 	float epsilon() const {return epsilon_;}
-	float maxSlope() const {return maxSlope_;}
 
 private:
 	float epsilon_;
-	float maxSlope_;
 };
 
 } /* namespace rtabmap */

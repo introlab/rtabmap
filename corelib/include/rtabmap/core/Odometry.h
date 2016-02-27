@@ -60,18 +60,19 @@ public:
 	//getters
 	const Transform & getPose() const {return _pose;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
-	const Transform & previousTransform() const {return previousTransform_;}
 
 private:
-	virtual Transform computeTransform(SensorData & data, OdometryInfo * info = 0) = 0;
+	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0) = 0;
 
-	void initKalmanFilter();
-	void updateKalmanFilter(float dt, float & x, float & y, float & z, float & roll, float & pitch, float & yaw);
+	void initKalmanFilter(const Transform & initialPose = Transform::getIdentity(), float vx=0.0f, float vy=0.0f, float vz=0.0f, float vroll=0.0f, float vpitch=0.0f, float vyaw=0.0f);
+	void predictKalmanFilter(float dt, float * vx=0, float * vy=0, float * vz=0, float * vroll=0, float * vpitch=0, float * vyaw=0);
+	void updateKalmanFilter(float & vx, float & vy, float & vz, float & vroll, float & vpitch, float & vyaw);
 
 private:
 	int _resetCountdown;
 	bool _force3DoF;
 	bool _holonomic;
+	bool guessFromMotion_;
 	int _filteringStrategy;
 	int _particleSize;
 	float _particleNoiseT;
@@ -84,11 +85,11 @@ private:
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;
-	Transform previousTransform_;
+	Transform previousVelocityTransform_;
 	Transform previousGroundTruthPose_;
 	float distanceTravelled_;
 
-	std::vector<ParticleFilter *> filters_;
+	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;
 
 protected:

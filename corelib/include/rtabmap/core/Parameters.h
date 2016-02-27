@@ -362,7 +362,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01, "Maximum variance to add new points to local map.");
 
 	// Odometry Optical Flow
-	RTABMAP_PARAM(OdomF2F, KeyFrameThr,           int, 100,      "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
+	RTABMAP_PARAM(OdomF2F, KeyFrameThr,           int, 500,      "Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
 
 	// Common registration parameters
 	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
@@ -420,7 +420,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Stereo, OpticalFlow,           bool, true,    "Use optical flow to find stereo correspondences, otherwise a simple block matching approach is used.");
 	RTABMAP_PARAM(Stereo, SSD,                   bool, true,    "[Stereo/OpticalFlow = false] Use Sum of Squared Differences (SSD) window, otherwise Sum of Absolute Differences (SAD) window is used.");
 	RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  "[Stereo/OpticalFlow = true] Epsilon stop criterion.");
-	RTABMAP_PARAM(Stereo, MaxSlope,              float, 0.1,    "[Stereo/OpticalFlow = true] The maximum slope for each stereo pairs.");
 
 	RTABMAP_PARAM(StereoBM, BlockSize,           int, 15,       "See cv::StereoBM");
 	RTABMAP_PARAM(StereoBM, MinDisparity,        int, 0,        "See cv::StereoBM");

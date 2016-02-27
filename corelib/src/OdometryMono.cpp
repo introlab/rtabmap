@@ -170,7 +170,7 @@ void OdometryMono::reset(const Transform & initialPose)
 	keyFramePoses_.clear();
 }
 
-Transform OdometryMono::computeTransform(SensorData & data, OdometryInfo * info)
+Transform OdometryMono::computeTransform(SensorData & data, const Transform & guess, OdometryInfo * info)
 {
 	Transform output;
 
@@ -229,14 +229,14 @@ Transform OdometryMono::computeTransform(SensorData & data, OdometryInfo * info)
 				if((int)newS->getWords().size() > minInliers_)
 				{
 					cv::Mat K = cameraModel.K();
-					Transform guess = (this->getPose() * cameraModel.localTransform()).inverse();
+					Transform pnpGuess = ((this->getPose() * (guess.isNull()?Transform::getIdentity():guess)) * cameraModel.localTransform()).inverse();
 					cv::Mat R = (cv::Mat_<double>(3,3) <<
-							(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-							(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-							(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+							(double)pnpGuess.r11(), (double)pnpGuess.r12(), (double)pnpGuess.r13(),
+							(double)pnpGuess.r21(), (double)pnpGuess.r22(), (double)pnpGuess.r23(),
+							(double)pnpGuess.r31(), (double)pnpGuess.r32(), (double)pnpGuess.r33());
 					cv::Mat rvec(1,3, CV_64FC1);
 					cv::Rodrigues(R, rvec);
-					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)pnpGuess.x(), (double)pnpGuess.y(), (double)pnpGuess.z());
 
 					std::vector<cv::Point3f> objectPoints;
 					std::vector<cv::Point2f> imagePoints;

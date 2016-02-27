@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/UConversion.h"
 #include <opencv2/calib3d/calib3d.hpp>
 #include <rtabmap/core/OdometryF2M.h>
@@ -167,6 +168,7 @@ void OdometryF2M::reset(const Transform & initialPose)
 // return not null transform if odometry is correctly computed
 Transform OdometryF2M::computeTransform(
 		SensorData & data,
+		const Transform & guess,
 		OdometryInfo * info)
 {
 	UTimer timer;
@@ -188,9 +190,12 @@ Transform OdometryF2M::computeTransform(
 	{
 		if(map_->getWords3().size() && lastFrame_->sensorData().isValid())
 		{
-			Transform guess = this->previousTransform().isIdentity()||this->previousTransform().isNull()?Transform():this->getPose()*this->previousTransform();
 			Signature tmpMap = *map_;
-			Transform transform = regVis_->computeTransformationMod(tmpMap, *lastFrame_, guess, &regInfo);
+			Transform transform = regVis_->computeTransformationMod(
+					tmpMap,
+					*lastFrame_,
+					guess.isNull()?Transform():this->getPose()*guess,
+					&regInfo);
 
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().descriptors());
 

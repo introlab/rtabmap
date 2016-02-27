@@ -46,12 +46,11 @@ public:
 	const Signature & getRefFrame() const {return refFrame_;}
 
 private:
-	virtual Transform computeTransform(SensorData & image, OdometryInfo * info = 0);
+	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
 	//Parameters:
 	int keyFrameThr_;
-	bool guessFromMotion_;
 
 	Registration * registrationPipeline_;
 	Signature refFrame_;

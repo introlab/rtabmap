@@ -128,6 +128,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 	// the "Invalid drawable" warning when the view is not visible.
 	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
 	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
+	_visualizer->getInteractorStyle()->GetInteractor()->SetDesiredUpdateRate(5.0);
 
 	_visualizer->setCameraPosition(
 				-1, 0, 0,

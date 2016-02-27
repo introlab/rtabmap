@@ -756,7 +756,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->stereo_ssd->setObjectName(Parameters::kStereoSSD().c_str());
 	_ui->stereo_flow_eps->setObjectName(Parameters::kStereoEps().c_str());
 	_ui->stereo_opticalFlow->setObjectName(Parameters::kStereoOpticalFlow().c_str());
-	_ui->stereo_maxSlope->setObjectName(Parameters::kStereoMaxSlope().c_str());
 
 	//StereoBM
 	_ui->stereobm_blockSize->setObjectName(Parameters::kStereoBMBlockSize().c_str());
