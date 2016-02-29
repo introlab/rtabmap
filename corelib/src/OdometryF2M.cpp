@@ -228,7 +228,7 @@ Transform OdometryF2M::computeTransform(
 					std::multimap<int, cv::Mat> mapDescriptors = map_->getWordsDescriptors();
 					Transform t = this->getPose()*output;
 					UASSERT(mapPoints.size() == mapDescriptors.size());
-					UASSERT(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size());
+					UASSERT_MSG(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
 					std::list<int> newIds = uUniqueKeys(lastFrame_->getWordsDescriptors());
 					for(std::list<int>::iterator iter=newIds.begin(); iter!=newIds.end(); ++iter)
 					{

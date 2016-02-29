@@ -518,9 +518,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				kptsFrom3D = uValues(fromSignature.getWords3());
 			}
-			if((_estimationType == 0 || (_estimationType == 1 && !varianceFromInliersCount()) || !_forwardEstimateOnly) &&
-			   toSignature.getWords3().empty() &&
-			   !toSignature.sensorData().imageRaw().empty())
+			if(toSignature.getWords3().empty())
 			{
 				kptsTo3D = detector->generateKeypoints3D(toSignature.sensorData(), kptsTo);
 			}

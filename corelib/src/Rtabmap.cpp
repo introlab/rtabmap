@@ -2109,7 +2109,8 @@ bool Rtabmap::process(
 			}
 			else if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
 			  _optimizationMaxLinearError > 0.0f &&
-			  loopClosureLinksAdded.size())
+			  loopClosureLinksAdded.size() &&
+			  optimizationIterations > 0)
 			{
 				const Link * maxLinearLink = 0;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
