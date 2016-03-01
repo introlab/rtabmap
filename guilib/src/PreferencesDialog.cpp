@@ -308,12 +308,21 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingPtSizeScan[0] = _ui->spinBox_ptsize_scan;
 	_3dRenderingPtSizeScan[1] = _ui->spinBox_ptsize_odom_scan;
 
+	_3dRenderingShowFeatures.resize(2);
+	_3dRenderingShowFeatures[0] = _ui->checkBox_showFeatures;
+	_3dRenderingShowFeatures[1] = _ui->checkBox_showOdomFeatures;
+
+	_3dRenderingPtSizeFeatures.resize(2);
+	_3dRenderingPtSizeFeatures[0] = _ui->spinBox_ptsize_features;
+	_3dRenderingPtSizeFeatures[1] = _ui->spinBox_ptsize_odom_features;
+
 	for(int i=0; i<2; ++i)
 	{
 		connect(_3dRenderingShowClouds[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingDecimation[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingMaxDepth[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingShowScans[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingShowFeatures[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 		connect(_3dRenderingDownsamplingScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingVoxelSizeScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -321,6 +330,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingPtSize[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingPtSizeFeatures[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	}
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1119,6 +1129,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingDecimation[i]->setValue(8);
 			_3dRenderingMaxDepth[i]->setValue(0.0);
 			_3dRenderingShowScans[i]->setChecked(true);
+			_3dRenderingShowFeatures[i]->setChecked(false);
 
 			_3dRenderingDownsamplingScan[i]->setValue(1);
 			_3dRenderingVoxelSizeScan[i]->setValue(0.0);
@@ -1126,6 +1137,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingPtSize[i]->setValue(2);
 			_3dRenderingOpacityScan[i]->setValue(i==0?1.0:0.5);
 			_3dRenderingPtSizeScan[i]->setValue(2);
+			_3dRenderingPtSizeFeatures[i]->setValue(3);
 		}
 
 		_ui->checkBox_showGraphs->setChecked(true);
@@ -1454,6 +1466,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingDecimation[i]->setValue(settings.value(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value()).toInt());
 		_3dRenderingMaxDepth[i]->setValue(settings.value(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value()).toDouble());
 		_3dRenderingShowScans[i]->setChecked(settings.value(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked()).toBool());
+		_3dRenderingShowFeatures[i]->setChecked(settings.value(QString("showFeatures%1").arg(i), _3dRenderingShowFeatures[i]->isChecked()).toBool());
 
 		_3dRenderingDownsamplingScan[i]->setValue(settings.value(QString("downsamplingScan%1").arg(i), _3dRenderingDownsamplingScan[i]->value()).toInt());
 		_3dRenderingVoxelSizeScan[i]->setValue(settings.value(QString("voxelSizeScan%1").arg(i), _3dRenderingVoxelSizeScan[i]->value()).toDouble());
@@ -1461,6 +1474,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingPtSize[i]->setValue(settings.value(QString("ptSize%1").arg(i), _3dRenderingPtSize[i]->value()).toInt());
 		_3dRenderingOpacityScan[i]->setValue(settings.value(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
 		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
+		_3dRenderingPtSizeFeatures[i]->setValue(settings.value(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value()).toInt());
 	}
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
@@ -1832,6 +1846,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value());
 		settings.setValue(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value());
 		settings.setValue(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked());
+		settings.setValue(QString("showFeatures%1").arg(i), _3dRenderingShowFeatures[i]->isChecked());
 
 		settings.setValue(QString("downsamplingScan%1").arg(i), _3dRenderingDownsamplingScan[i]->value());
 		settings.setValue(QString("voxelSizeScan%1").arg(i), _3dRenderingVoxelSizeScan[i]->value());
@@ -1839,6 +1854,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("ptSize%1").arg(i), _3dRenderingPtSize[i]->value());
 		settings.setValue(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
 		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
+		settings.setValue(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value());
 	}
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
@@ -2137,7 +2153,7 @@ bool PreferencesDialog::validateForm()
 	}
 
 	// verify that Robust and Reject threshold are not set at the same time
-	if(_ui->graphOptimization_robust->isEnabled() && _ui->graphOptimization_maxError->value()>0.0)
+	if(_ui->graphOptimization_robust->isChecked() && _ui->graphOptimization_maxError->value()>0.0)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Robust graph optimization and maximum optimization error threshold cannot be "
@@ -3544,6 +3560,18 @@ int PreferencesDialog::getScanPointSize(int index) const
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingPtSizeScan[index]->value();
 }
+
+bool PreferencesDialog::isFeaturesShown(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingShowFeatures[index]->isChecked();
+}
+int PreferencesDialog::getFeaturesPointSize(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingPtSizeFeatures[index]->value();
+}
+
 bool PreferencesDialog::isCloudFiltering() const
 {
 	return _ui->radioButton_nodeFiltering->isChecked();

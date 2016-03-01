@@ -793,11 +793,14 @@ Transform RegistrationVis::computeTransformationImpl(
 			else if(descriptorsFrom.rows)
 			{
 				//just create fake words
-				UASSERT(int(kptsFrom.size()) == descriptorsFrom.rows);
-				UASSERT(words3From.empty() || kptsFrom.size() == words3From.size());
-				for(unsigned int i=0; i<kptsFrom.size(); ++i)
+				UASSERT(kptsFrom.empty() || int(kptsFrom.size()) == descriptorsFrom.rows);
+				UASSERT(kptsFrom3D.empty() || int(kptsFrom3D.size()) == descriptorsFrom.rows);
+				for(int i=0; i<descriptorsFrom.rows; ++i)
 				{
-					wordsFrom.insert(std::make_pair(i, kptsFrom[i]));
+					if(kptsFrom.size())
+					{
+						wordsFrom.insert(std::make_pair(i, kptsFrom[i]));
+					}
 					wordsDescFrom.insert(std::make_pair(i, descriptorsFrom.row(i)));
 					if(kptsFrom3D.size())
 					{

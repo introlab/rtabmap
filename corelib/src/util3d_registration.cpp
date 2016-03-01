@@ -112,9 +112,7 @@ Transform transformFromXYZCorrespondences(
 
 			if (refineIterations>0)
 			{
-				double inlier_distance_threshold_sqr = inlierThreshold * inlierThreshold;
 				double error_threshold = inlierThreshold;
-				double sigma_sqr = refineSigma * refineSigma;
 				int refine_iterations = 0;
 				bool inlier_changed = false, oscillating = false;
 				std::vector<int> new_inliers, prev_inliers = inliers;
@@ -143,7 +141,7 @@ Transform transformFromXYZCorrespondences(
 
 					// Estimate the variance and the new threshold
 					double variance = model->computeVariance ();
-					error_threshold = sqrt (std::min (inlier_distance_threshold_sqr, sigma_sqr * variance));
+					error_threshold = std::min (inlierThreshold, refineSigma * sqrt(variance));
 
 					UDEBUG ("RANSAC refineModel: New estimated error threshold: %f (variance=%f) on iteration %d out of %d.",
 						  error_threshold, variance, refine_iterations, refineIterations);

@@ -234,6 +234,7 @@ private:
 			bool verboseProgress = false);
 	void createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
+	void createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId);
 	Transform alignPosesToGroundTruth(std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
@@ -289,6 +290,9 @@ private:
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>
+
+	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> _createdFeatures;
+
 	Transform _odometryCorrection;
 	Transform _lastOdomPose;
 	bool _processingOdometry;

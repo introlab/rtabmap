@@ -335,6 +335,7 @@ Transform OdometryF2M::computeTransform(
 		{
 			info->wordMatches = regInfo.matchesIDs;
 			info->wordInliers = regInfo.inliersIDs;
+			info->localMap = uMultimapToMap(map_->getWords3());
 		}
 	}
 

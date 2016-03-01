@@ -157,6 +157,9 @@ public:
 	double getScanOpacity(int index) const;    // 0=map, 1=odom
 	int getScanPointSize(int index) const;     // 0=map, 1=odom
 
+	bool isFeaturesShown(int index) const;     // 0=map, 1=odom
+	int getFeaturesPointSize(int index) const; // 0=map, 1=odom
+
 	bool isCloudFiltering() const;
 	bool isSubtractFiltering() const;
 	double getCloudFilteringRadius() const;
@@ -344,6 +347,8 @@ private:
 	QVector<QDoubleSpinBox*> _3dRenderingVoxelSizeScan;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
 	QVector<QSpinBox*> _3dRenderingPtSizeScan;
+	QVector<QCheckBox*> _3dRenderingShowFeatures;
+	QVector<QSpinBox*> _3dRenderingPtSizeFeatures;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

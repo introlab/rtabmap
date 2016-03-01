@@ -52,6 +52,27 @@ public:
 		distanceTravelled(0.0f),
 		type(0)
 	{}
+
+	OdometryInfo copyWithoutData() const
+	{
+		OdometryInfo output;
+		output.lost = lost;
+		output.matches = matches;
+		output.inliers = inliers;
+		output.icpInliersRatio = icpInliersRatio;
+		output.variance = variance;
+		output.features = features;
+		output.localMapSize = localMapSize;
+		output.timeEstimation = timeEstimation;
+		output.timeParticleFiltering = timeParticleFiltering;
+		output.stamp = stamp;
+		output.transform = transform;
+		output.transformFiltered = transformFiltered;
+		output.transformGroundTruth = transformGroundTruth;
+		output.distanceTravelled = distanceTravelled;
+		return output;
+	}
+
 	bool lost;
 	int matches;
 	int inliers;

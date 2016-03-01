@@ -709,7 +709,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			// we receive too many odometry events! just send without data
 			SensorData data(cv::Mat(), odomEvent->data().id(), odomEvent->data().stamp());
 			data.setGroundTruth(odomEvent->data().groundTruth());
-			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->covariance(), odomEvent->info());
+			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->covariance(), odomEvent->info().copyWithoutData());
 			emit odometryReceived(tmp);
 		}
 	}
@@ -799,6 +799,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 		{
 			bool cloudUpdated = false;
 			bool scanUpdated = false;
+			bool featuresUpdated = false;
 			if(!pose.isNull())
 			{
 				// 3d cloud
@@ -880,6 +881,35 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 
 					scanUpdated = true;
 				}
+
+				// 3d features
+				if(_preferencesDialog->isFeaturesShown(1))
+				{
+					if(!odom.info().localMap.empty())
+					{
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+						cloud->resize(odom.info().localMap.size());
+						int i=0;
+						for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
+						{
+							(*cloud)[i].x = iter->second.x;
+							(*cloud)[i].y = iter->second.y;
+							(*cloud)[i].z = iter->second.z;
+
+							// green = inlier, yellow = outliers
+							bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
+							(*cloud)[i].r = inlier?0:255;
+							(*cloud)[i].g = 255;
+							(*cloud)[i++].b = 0;
+						}
+
+						_ui->widget_cloudViewer->addCloud("featuresOdom", cloud, _odometryCorrection);
+						_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", true);
+						_ui->widget_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
+
+						featuresUpdated = true;
+					}
+				}
 			}
 			if(!cloudUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("cloudOdom"))
 			{
@@ -888,6 +918,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 			if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanOdom"))
 			{
 				_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
+			}
+			if(!featuresUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("featuresOdom"))
+			{
+				_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", false);
 			}
 		}
 
@@ -1658,6 +1692,44 @@ void MainWindow::updateMapCloud(
 				_ui->widget_cloudViewer->setCloudVisibility(scanName.c_str(), false);
 			}
 
+			// 3d features
+			std::string featuresName = uFormat("features%d", iter->first);
+			if(_ui->widget_cloudViewer->isVisible() && _preferencesDialog->isFeaturesShown(0))
+			{
+				if(viewerClouds.contains(featuresName))
+				{
+					// Update only if the pose has changed
+					Transform tFeatures;
+					_ui->widget_cloudViewer->getPose(featuresName, tFeatures);
+					if(tFeatures.isNull() || iter->second != tFeatures)
+					{
+						if(!_ui->widget_cloudViewer->updateCloudPose(featuresName, iter->second))
+						{
+							UERROR("Updating pose features %d failed!", iter->first);
+						}
+					}
+					_ui->widget_cloudViewer->setCloudVisibility(featuresName, true);
+					_ui->widget_cloudViewer->setCloudPointSize(featuresName, _preferencesDialog->getFeaturesPointSize(0));
+				}
+				else if(_cachedSignatures.contains(iter->first))
+				{
+					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
+					if(!jter->getWords3().empty())
+					{
+						this->createAndAddFeaturesToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
+					}
+				}
+				if(!_preferencesDialog->isFeaturesShown(0))
+				{
+					UDEBUG("Hide features %s", featuresName.c_str());
+					_ui->widget_cloudViewer->setCloudVisibility(featuresName.c_str(), false);
+				}
+			}
+			else if(viewerClouds.contains(featuresName))
+			{
+				_ui->widget_cloudViewer->setCloudVisibility(featuresName.c_str(), false);
+			}
+
 			if(verboseProgress)
 			{
 				_initProgressDialog->appendText(tr("Updated cloud %1 (%2/%3)").arg(iter->first).arg(i).arg(poses.size()));
@@ -1858,6 +1930,20 @@ void MainWindow::updateMapCloud(
 			_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 		}
 	}
+	if(viewerClouds.contains("featuresOdom"))
+	{
+		if(!_preferencesDialog->isFeaturesShown(1))
+		{
+			UDEBUG("");
+			_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", false);
+		}
+		else
+		{
+			UDEBUG("");
+			_ui->widget_cloudViewer->updateCloudPose("featuresOdom", _odometryCorrection);
+			_ui->widget_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
+		}
+	}
 
 	if(!currentPose.isNull())
 	{
@@ -2023,60 +2109,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			}
 		}
 	}
-	else if(iter->getWords3().size())
-	{
-		UINFO("Create cloud from 3D words");
-		QColor color = Qt::gray;
-		if(mapId >= 0)
-		{
-			color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
-		}
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-		pcl::IndicesPtr indices(new std::vector<int>);
-		cloud->resize(iter->getWords3().size());
-		indices->resize(cloud->size());
-		int oi=0;
-		UASSERT(iter->getWords().size() == iter->getWords3().size());
-		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
-		for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->getWords3().begin();
-				jter!=iter->getWords3().end(); ++jter, ++kter, ++oi)
-		{
-			indices->at(oi) = oi;
-			(*cloud)[oi].x = jter->second.x;
-			(*cloud)[oi].y = jter->second.y;
-			(*cloud)[oi].z = jter->second.z;
-			int u = kter->second.pt.x+0.5;
-			int v = kter->second.pt.x+0.5;
-			if(!iter->sensorData().imageRaw().empty() &&
-				uIsInBounds(u, 0, iter->sensorData().imageRaw().cols-1) &&
-				uIsInBounds(v, 0, iter->sensorData().imageRaw().rows-1))
-			{
-				if(iter->sensorData().imageRaw().channels() == 1)
-				{
-					(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = iter->sensorData().imageRaw().at<unsigned char>(u, v);
-				}
-				else
-				{
-					cv::Vec3b bgr = iter->sensorData().imageRaw().at<cv::Vec3b>(u, v);
-					(*cloud)[oi].r = bgr.val[0];
-					(*cloud)[oi].g = bgr.val[1];
-					(*cloud)[oi].b = bgr.val[2];
-				}
-			}
-			else
-			{
-				(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
-			}
-		}
-		if(!_ui->widget_cloudViewer->addCloud(cloudName, cloud, pose, color))
-		{
-			UERROR("Adding cloud %d to viewer failed!", nodeId);
-		}
-		else
-		{
-			_createdClouds.insert(std::make_pair(nodeId, std::make_pair(cloud, indices)));
-		}
-	}
 	else
 	{
 		return;
@@ -2169,6 +2201,98 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 		_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 	}
+}
+
+void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId)
+{
+	UDEBUG("");
+	UASSERT(!pose.isNull());
+	std::string cloudName = uFormat("features%d", nodeId);
+	if(_ui->widget_cloudViewer->getAddedClouds().contains(cloudName))
+	{
+		UERROR("Features cloud %d already added to map.", nodeId);
+		return;
+	}
+
+	QMap<int, Signature>::iterator iter = _cachedSignatures.find(nodeId);
+	if(iter == _cachedSignatures.end())
+	{
+		UERROR("Node %d is not in the cache.", nodeId);
+		return;
+	}
+
+	if(_createdFeatures.find(nodeId) != _createdFeatures.end())
+	{
+		UDEBUG("Features cloud %d already created.");
+		return;
+	}
+
+	if(iter->getWords3().size())
+	{
+		UINFO("Create cloud from 3D words");
+		QColor color = Qt::gray;
+		if(mapId >= 0)
+		{
+			color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+		}
+
+		cv::Mat rgb;
+		if(!iter->sensorData().imageCompressed().empty() || !iter->sensorData().imageRaw().empty())
+		{
+			SensorData data = iter->sensorData();
+			data.uncompressData(&rgb, 0, 0);
+		}
+
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+		cloud->resize(iter->getWords3().size());
+		int oi=0;
+		UASSERT(iter->getWords().size() == iter->getWords3().size());
+		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
+		for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->getWords3().begin();
+				jter!=iter->getWords3().end(); ++jter, ++kter, ++oi)
+		{
+			(*cloud)[oi].x = jter->second.x;
+			(*cloud)[oi].y = jter->second.y;
+			(*cloud)[oi].z = jter->second.z;
+			int u = kter->second.pt.x+0.5;
+			int v = kter->second.pt.y+0.5;
+			if(!rgb.empty() &&
+				uIsInBounds(u, 0, rgb.cols-1) &&
+				uIsInBounds(v, 0, rgb.rows-1))
+			{
+				if(rgb.channels() == 1)
+				{
+					(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = rgb.at<unsigned char>(v, u);
+				}
+				else
+				{
+					cv::Vec3b bgr = rgb.at<cv::Vec3b>(v, u);
+					(*cloud)[oi].b = bgr.val[0];
+					(*cloud)[oi].g = bgr.val[1];
+					(*cloud)[oi].r = bgr.val[2];
+				}
+			}
+			else
+			{
+				(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
+			}
+		}
+		if(!_ui->widget_cloudViewer->addCloud(cloudName, cloud, pose, color))
+		{
+			UERROR("Adding features cloud %d to viewer failed!", nodeId);
+		}
+		else
+		{
+			_createdFeatures.insert(std::make_pair(nodeId, cloud));
+		}
+	}
+	else
+	{
+		return;
+	}
+
+	_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getFeaturesPointSize(0));
+	UDEBUG("");
 }
 
 Transform MainWindow::alignPosesToGroundTruth(
@@ -4301,6 +4425,7 @@ void MainWindow::clearTheCache()
 	_createdScans.clear();
 	_gridLocalMaps.clear();
 	_projectionLocalMaps.clear();
+	_createdFeatures.clear();
 	_ui->widget_cloudViewer->clear();
 	_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
 	_ui->widget_cloudViewer->clearTrajectory();

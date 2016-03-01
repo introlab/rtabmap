@@ -1777,7 +1777,6 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
 							}
 
-							UWARN("Set %d models to %d", models.size(), (*iter)->id());
 							(*iter)->sensorData().setCameraModels(models);
 							(*iter)->sensorData().setStereoCameraModel(stereoModel);
 						}

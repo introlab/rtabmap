@@ -1072,10 +1072,12 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 
 			this->addOrUpdateCoordinate("reference", pose, 0.2);
 
-			_visualizer->setCameraPosition(
-					cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2],
-					cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2],
-					cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
+			vtkRenderer* renderer = _visualizer->getRendererCollection()->GetFirstRenderer();
+			vtkSmartPointer<vtkCamera> cam = renderer->GetActiveCamera ();
+			cam->SetPosition (cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2]);
+			cam->SetFocalPoint (cameras.front().focal[0], cameras.front().focal[1], cameras.front().focal[2]);
+			cam->SetViewUp (cameras.front().view[0], cameras.front().view[1], cameras.front().view[2]);
+			renderer->ResetCameraClippingRange();
 		}
 	}
 
