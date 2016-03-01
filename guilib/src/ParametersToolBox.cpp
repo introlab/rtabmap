@@ -405,34 +405,58 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout,
 
 	if(key.compare(Parameters::kVisFeatureType().c_str()) == 0)
 	{
-		if(RTABMAP_NONFREE == 0)
+#ifndef RTABMAP_NONFREE
+		if(value <= 1)
 		{
-			if(value <= 1)
-			{
-				UWARN("SURF/SIFT not available, setting feature default to FAST/BRIEF.");
-				widget->setValue(4);
-			}
+			UWARN("SURF/SIFT not available, setting feature default to FAST/BRIEF.");
+			widget->setValue(4);
 		}
+#endif
 	}
 	if(key.compare(Parameters::kOptimizerStrategy().c_str()) == 0)
 	{
-		if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+		if(value == 0 && !Optimizer::isAvailable(Optimizer::kTypeTORO))
 		{
-			if(value == 1)
+			if(Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+			{
+				UWARN("TORO is not available, setting optimization default to GTSAM.");
+				widget->setValue(2);
+			}
+			else if(Optimizer::isAvailable(Optimizer::kTypeG2O))
+			{
+				UWARN("TORO is not available, setting optimization default to g2o.");
+				widget->setValue(1);
+			}
+		}
+		if(value == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+		{
+			if(Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+			{
+				UWARN("g2o is not available, setting optimization default to GTSAM.");
+				widget->setValue(2);
+			}
+			else if(Optimizer::isAvailable(Optimizer::kTypeTORO))
 			{
 				UWARN("g2o is not available, setting optimization default to TORO.");
 				widget->setValue(0);
 			}
 		}
-		if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+		if(value == 2 && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 		{
-			if(value == 2)
+			if(Optimizer::isAvailable(Optimizer::kTypeG2O))
+			{
+				UWARN("GTSAM is not available, setting optimization default to g2o.");
+				widget->setValue(2);
+			}
+			else if(Optimizer::isAvailable(Optimizer::kTypeTORO))
 			{
 				UWARN("GTSAM is not available, setting optimization default to TORO.");
-				widget->setValue(0);
+				widget->setValue(1);
 			}
 		}
-		if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+		if(!Optimizer::isAvailable(Optimizer::kTypeG2O) &&
+			!Optimizer::isAvailable(Optimizer::kTypeGTSAM) &&
+			!Optimizer::isAvailable(Optimizer::kTypeTORO))
 		{
 			widget->setEnabled(false);
 		}

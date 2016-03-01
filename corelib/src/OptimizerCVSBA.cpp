@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/OptimizerCVSBA.h>
 
-#ifdef WITH_CVSBA
+#ifdef RTABMAP_CVSBA
 #include <cvsba/cvsba.h>
 #include "rtabmap/core/util3d_motion_estimation.h"
 #include "rtabmap/core/util3d_transforms.h"
@@ -46,7 +46,7 @@ namespace rtabmap {
 
 bool OptimizerCVSBA::available()
 {
-#ifdef WITH_CVSBA
+#ifdef RTABMAP_CVSBA
 	return true;
 #else
 	return false;
@@ -59,7 +59,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		const std::multimap<int, Link> & links,
 		const std::map<int, Signature> & signatures)
 {
-#ifdef WITH_CVSBA
+#ifdef RTABMAP_CVSBA
 	// run sba optimization
 	cvsba::Sba sba;
 

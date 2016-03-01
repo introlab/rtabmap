@@ -57,7 +57,7 @@ bool Optimizer::isAvailable(Optimizer::Type type)
 	}
 	else if(type == Optimizer::kTypeTORO)
 	{
-		return true;
+		return OptimizerTORO::available();
 	}
 	return false;
 }
@@ -72,20 +72,65 @@ Optimizer * Optimizer::create(const ParametersMap & parameters)
 
 Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & parameters)
 {
+	UASSERT_MSG(OptimizerG2O::available() || OptimizerGTSAM::available() || OptimizerTORO::available(),
+			"RTAB-Map is not built with any graph optimization approach!");
+
+	if(!OptimizerTORO::available() && type == Optimizer::kTypeTORO)
+	{
+		if(OptimizerGTSAM::available())
+		{
+			UWARN("TORO optimizer not available. GTSAM will be used instead.");
+					type = Optimizer::kTypeGTSAM;
+		}
+		else if(OptimizerG2O::available())
+		{
+			UWARN("TORO optimizer not available. g2o will be used instead.");
+					type = Optimizer::kTypeG2O;
+		}
+	}
 	if(!OptimizerG2O::available() && type == Optimizer::kTypeG2O)
 	{
-		UWARN("g2o optimizer not available. TORO will be used instead.");
-		type = Optimizer::kTypeTORO;
+		if(OptimizerTORO::available())
+		{
+			UWARN("g2o optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
+		}
+		else if(OptimizerGTSAM::available())
+		{
+			UWARN("g2o optimizer not available. GTSAM will be used instead.");
+					type = Optimizer::kTypeGTSAM;
+		}
 	}
 	if(!OptimizerGTSAM::available() && type == Optimizer::kTypeGTSAM)
 	{
-		UWARN("GTSAM optimizer not available. TORO will be used instead.");
-		type = Optimizer::kTypeTORO;
+		if(OptimizerTORO::available())
+		{
+			UWARN("GTSAM optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
+		}
+		else if(OptimizerG2O::available())
+		{
+			UWARN("GTSAM optimizer not available. g2o will be used instead.");
+					type = Optimizer::kTypeG2O;
+		}
 	}
 	if(!OptimizerCVSBA::available() && type == Optimizer::kTypeCVSBA)
 	{
-		UWARN("CVSBA optimizer not available. TORO will be used instead.");
-		type = Optimizer::kTypeTORO;
+		if(OptimizerTORO::available())
+		{
+			UWARN("CVSBA optimizer not available. TORO will be used instead.");
+					type = Optimizer::kTypeTORO;
+		}
+		else if(OptimizerGTSAM::available())
+		{
+			UWARN("CVSBA optimizer not available. GTSAM will be used instead.");
+					type = Optimizer::kTypeGTSAM;
+		}
+		else if(OptimizerG2O::available())
+		{
+			UWARN("CVSBA optimizer not available. g2o will be used instead.");
+					type = Optimizer::kTypeG2O;
+		}
 	}
 	Optimizer * optimizer = 0;
 	switch(type)

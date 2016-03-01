@@ -64,14 +64,7 @@ SET(SRC_FILES
 	Stereo.cpp
 	StereoDense.cpp
 	StereoCameraModel.cpp
-	
-	toro3d/posegraph3.cpp
-	toro3d/treeoptimizer3_iteration.cpp
-	toro3d/treeoptimizer3.cpp
-	
-	toro3d/posegraph2.cpp
-	toro3d/treeoptimizer2.cpp
-	
+		
 	rtflann/ext/lz4.c
 	rtflann/ext/lz4hc.c
 	
@@ -95,7 +88,6 @@ SET(LIBRARIES
 )
 
 IF(Freenect_FOUND)
-	ADD_DEFINITIONS("-DWITH_FREENECT")
 	IF(Freenect_DASH_INCLUDES)
 	   ADD_DEFINITIONS("-DFREENECT_DASH_INCLUDES")
 	ENDIF(Freenect_DASH_INCLUDES)
@@ -110,7 +102,6 @@ IF(Freenect_FOUND)
 ENDIF(Freenect_FOUND)
 
 IF(OpenNI2_FOUND)
-	ADD_DEFINITIONS("-DWITH_OPENNI2")
 	SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}
 		${OpenNI2_INCLUDE_DIRS}
@@ -122,7 +113,6 @@ IF(OpenNI2_FOUND)
 ENDIF(OpenNI2_FOUND)
 
 IF(freenect2_FOUND)
-	ADD_DEFINITIONS("-DWITH_FREENECT2")
 	SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}
 		${freenect2_INCLUDE_DIRS}
@@ -134,7 +124,6 @@ IF(freenect2_FOUND)
 ENDIF(freenect2_FOUND)
 
 IF(DC1394_FOUND)
-	ADD_DEFINITIONS("-DWITH_DC1394")
 	SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}
 		${DC1394_INCLUDE_DIRS}
@@ -146,7 +135,6 @@ IF(DC1394_FOUND)
 ENDIF(DC1394_FOUND)
 
 IF(FlyCapture2_FOUND)
-	ADD_DEFINITIONS("-DWITH_FLYCAPTURE2")
 	SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}
 		${FlyCapture2_INCLUDE_DIRS}
@@ -157,8 +145,23 @@ IF(FlyCapture2_FOUND)
 	)
 ENDIF(FlyCapture2_FOUND)
 
+IF(WITH_TORO)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${G2O_LIBRARIES}
+	)
+	SET(SRC_FILES
+    	${SRC_FILES}
+		toro3d/posegraph3.cpp
+		toro3d/treeoptimizer3_iteration.cpp
+		toro3d/treeoptimizer3.cpp
+	
+		toro3d/posegraph2.cpp
+		toro3d/treeoptimizer2.cpp
+	)
+ENDIF(WITH_TORO)
+
 IF(G2O_FOUND)
-	ADD_DEFINITIONS("-DWITH_G2O")
 	SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 
 		${G2O_INCLUDE_DIRS}
@@ -168,18 +171,19 @@ IF(G2O_FOUND)
 		${G2O_LIBRARIES}
 	)
 	
-	SET(SRC_FILES
-    	${SRC_FILES}
-		vertigo/g2o/edge_se2Switchable.cpp
-		vertigo/g2o/edge_se3Switchable.cpp
-		vertigo/g2o/edge_switchPrior.cpp
-		vertigo/g2o/types_g2o_robust.cpp
-		vertigo/g2o/vertex_switchLinear.cpp
-	)
+	IF(WITH_VERTIGO)
+		SET(SRC_FILES
+    		${SRC_FILES}
+			vertigo/g2o/edge_se2Switchable.cpp
+			vertigo/g2o/edge_se3Switchable.cpp
+			vertigo/g2o/edge_switchPrior.cpp
+			vertigo/g2o/types_g2o_robust.cpp
+			vertigo/g2o/vertex_switchLinear.cpp
+		)
+	ENDIF(WITH_VERTIGO)
 ENDIF(G2O_FOUND)
 
 IF(GTSAM_FOUND)
-	ADD_DEFINITIONS("-DWITH_GTSAM")
 	SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 
 		${GTSAM_INCLUDE_DIRS}
@@ -191,7 +195,6 @@ IF(GTSAM_FOUND)
 ENDIF(GTSAM_FOUND)
 
 IF(cvsba_FOUND)
-	ADD_DEFINITIONS("-DWITH_CVSBA")
 	SET(INCLUDE_DIRS 
 		${INCLUDE_DIRS} 
 		${cvsba_INCLUDE_DIRS}

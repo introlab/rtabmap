@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/CameraRGB.h"
+#include "rtabmap/core/Version.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -38,11 +39,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
 
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 #include <dc1394/dc1394.h>
 #endif
 
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 #include <triclops.h>
 #include <fc2triclops.h>
 #endif
@@ -55,7 +56,7 @@ namespace rtabmap
 // Inspired from ROS camera1394stereo package
 //
 
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 class DC1394Device
 {
 public:
@@ -334,7 +335,7 @@ private:
 
 bool CameraStereoDC1394::available()
 {
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 	return true;
 #else
 	return false;
@@ -345,14 +346,14 @@ CameraStereoDC1394::CameraStereoDC1394(float imageRate, const Transform & localT
 		Camera(imageRate, localTransform),
 		device_(0)
 {
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 	device_ = new DC1394Device();
 #endif
 }
 
 CameraStereoDC1394::~CameraStereoDC1394()
 {
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 	if(device_)
 	{
 		delete device_;
@@ -362,7 +363,7 @@ CameraStereoDC1394::~CameraStereoDC1394()
 
 bool CameraStereoDC1394::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 	if(device_)
 	{
 		bool ok = device_->init();
@@ -401,7 +402,7 @@ bool CameraStereoDC1394::isCalibrated() const
 
 std::string CameraStereoDC1394::getSerial() const
 {
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 	if(device_)
 	{
 		return device_->guid();
@@ -413,7 +414,7 @@ std::string CameraStereoDC1394::getSerial() const
 SensorData CameraStereoDC1394::captureImage()
 {
 	SensorData data;
-#ifdef WITH_DC1394
+#ifdef RTABMAP_DC1394
 	if(device_)
 	{
 		cv::Mat left, right;
@@ -458,14 +459,14 @@ CameraStereoFlyCapture2::CameraStereoFlyCapture2(float imageRate, const Transfor
 		camera_(0),
 		triclopsCtx_(0)
 {
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 	camera_ = new FlyCapture2::Camera();
 #endif
 }
 
 CameraStereoFlyCapture2::~CameraStereoFlyCapture2()
 {
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 	// Close the camera
 	camera_->StopCapture();
 	camera_->Disconnect();
@@ -479,7 +480,7 @@ CameraStereoFlyCapture2::~CameraStereoFlyCapture2()
 
 bool CameraStereoFlyCapture2::available()
 {
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 	return true;
 #else
 	return false;
@@ -488,7 +489,7 @@ bool CameraStereoFlyCapture2::available()
 
 bool CameraStereoFlyCapture2::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 	if(camera_)
 	{
 		// Close the camera
@@ -567,7 +568,7 @@ bool CameraStereoFlyCapture2::init(const std::string & calibrationFolder, const 
 
 bool CameraStereoFlyCapture2::isCalibrated() const
 {
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 	if(triclopsCtx_)
 	{
 		float fx, cx, cy, baseline;
@@ -582,7 +583,7 @@ bool CameraStereoFlyCapture2::isCalibrated() const
 
 std::string CameraStereoFlyCapture2::getSerial() const
 {
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 	if(camera_ && camera_->IsConnected())
 	{
 		FlyCapture2::CameraInfo camInfo;
@@ -596,7 +597,7 @@ std::string CameraStereoFlyCapture2::getSerial() const
 }
 
 // struct containing image needed for processing
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 struct ImageContainer
 {
 	FlyCapture2::Image tmp[2];
@@ -607,7 +608,7 @@ struct ImageContainer
 SensorData CameraStereoFlyCapture2::captureImage()
 {
 	SensorData data;
-#ifdef WITH_FLYCAPTURE2
+#ifdef RTABMAP_FLYCAPTURE2
 	if(camera_ && triclopsCtx_ && camera_->IsConnected())
 	{
 		// grab image from camera.

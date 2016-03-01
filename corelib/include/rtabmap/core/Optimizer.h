@@ -69,11 +69,19 @@ public:
 
 	virtual Type type() const = 0;
 
+	// getters
 	int iterations() const {return iterations_;}
 	bool isSlam2d() const {return slam2d_;}
 	bool isCovarianceIgnored() const {return covarianceIgnored_;}
 	double epsilon() const {return epsilon_;}
 	bool isRobust() const {return robust_;}
+
+	// setters
+	void setIterations(int iterations) {iterations_ = iterations;}
+	void setSlam2d(bool enabled) {slam2d_ = enabled;}
+	void setCovarianceIgnored(bool enabled) {covarianceIgnored_ = enabled;}
+	void setEpsilon(double epsilon) {epsilon_ = epsilon;}
+	void setRobust(bool enabled) {robust_ = enabled;}
 
 	// inherited classes should implement one of these methods
 	virtual std::map<int, Transform> optimize(

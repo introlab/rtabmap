@@ -419,28 +419,27 @@ Feature2D * Feature2D::create(const ParametersMap & parameters)
 }
 Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parameters)
 {
-	if(RTABMAP_NONFREE == 0)
+#ifndef RTABMAP_NONFREE
+	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
 	{
-		if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
-		{
 #if CV_MAJOR_VERSION < 3
-			UWARN("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
+		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
 #else
-			UWARN("SURF/SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
+		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
 #endif
-			type = Feature2D::kFeatureOrb;
-		}
-#if CV_MAJOR_VERSION == 3
-		if(type == Feature2D::kFeatureFastBrief ||
-		   type == Feature2D::kFeatureFastFreak ||
-		   type == Feature2D::kFeatureGfttBrief ||
-		   type == Feature2D::kFeatureGfttFreak)
-		{
-			UWARN("BRIEF/FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
-			type = Feature2D::kFeatureOrb;
-		}
-#endif
+		type = Feature2D::kFeatureOrb;
 	}
+#if CV_MAJOR_VERSION == 3
+	if(type == Feature2D::kFeatureFastBrief ||
+	   type == Feature2D::kFeatureFastFreak ||
+	   type == Feature2D::kFeatureGfttBrief ||
+	   type == Feature2D::kFeatureGfttFreak)
+	{
+		UWARN("BRIEF/FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
+		type = Feature2D::kFeatureOrb;
+	}
+#endif
+#endif
 
 	Feature2D * feature2D = 0;
 	switch(type)
@@ -475,7 +474,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	case Feature2D::kFeatureBrisk:
 		feature2D = new BRISK(parameters);
 		break;
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 	default:
 		feature2D = new SURF(parameters);
 		type = Feature2D::kFeatureSurf;
@@ -697,7 +696,7 @@ void SURF::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSURFGpuKeypointsRatio(), gpuKeypointsRatio_);
 	Parameters::parse(parameters, Parameters::kSURFGpuVersion(), gpuVersion_);
 
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 #if CV_MAJOR_VERSION < 3
 	if(gpuVersion_ && cv::gpu::getCudaEnabledDeviceCount() == 0)
 	{
@@ -733,7 +732,7 @@ std::vector<cv::KeyPoint> SURF::generateKeypointsImpl(const cv::Mat & image, con
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
 
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
@@ -766,7 +765,7 @@ cv::Mat SURF::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 	if(gpuVersion_)
 	{
 #if CV_MAJOR_VERSION < 3
@@ -825,7 +824,7 @@ void SIFT::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kSIFTNOctaveLayers(), nOctaveLayers_);
 	Parameters::parse(parameters, Parameters::kSIFTSigma(), sigma_);
 
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 #if CV_MAJOR_VERSION < 3
 	_sift = cv::Ptr<CV_SIFT>(new CV_SIFT(this->getMaxFeatures(), nOctaveLayers_, contrastThreshold_, edgeThreshold_, sigma_));
 #else
@@ -840,7 +839,7 @@ std::vector<cv::KeyPoint> SIFT::generateKeypointsImpl(const cv::Mat & image, con
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if(!mask.empty())
@@ -858,7 +857,7 @@ cv::Mat SIFT::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Key
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 	_sift->compute(image, keypoints, descriptors);
 #else
 	UWARN("RTAB-Map is not built with OpenCV nonfree module so SIFT cannot be used!");

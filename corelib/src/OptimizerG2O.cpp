@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/OptimizerG2O.h>
 
-#ifdef WITH_G2O
+#ifdef RTABMAP_G2O
 #include "g2o/config.h"
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
@@ -63,18 +63,20 @@ typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSpa
 typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
 #endif
 
+#ifdef RTABMAP_VERTIGO
 #include "vertigo/g2o/edge_switchPrior.h"
 #include "vertigo/g2o/edge_se2Switchable.h"
 #include "vertigo/g2o/edge_se3Switchable.h"
 #include "vertigo/g2o/vertex_switchLinear.h"
+#endif
 
-#endif // end WITH_G2O
+#endif // end RTABMAP_G2O
 
 namespace rtabmap {
 
 bool OptimizerG2O::available()
 {
-#ifdef WITH_G2O
+#ifdef RTABMAP_G2O
 	return true;
 #else
 	return false;
@@ -132,8 +134,17 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int * iterationsDone)
 {
 	std::map<int, Transform> optimizedPoses;
-#ifdef WITH_G2O
+#ifdef RTABMAP_G2O
 	UDEBUG("Optimizing graph...");
+
+#ifndef RTABMAP_VERTIGO
+	if(this->isRobust())
+	{
+		UWARN("Vertigo robust optimization is not available! Robust optimization is now disabled.");
+		setRobust(false);
+	}
+#endif
+
 	optimizedPoses.clear();
 	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
 	{
@@ -226,6 +237,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 			g2o::HyperGraph::Edge * edge = 0;
 
+#ifdef RTABMAP_VERTIGO
 			VertexSwitchLinear * v = 0;
 			if(this->isRobust() &&
 			   iter->second.type() != Link::kNeighbor &&
@@ -253,6 +265,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				prior->setVertex(0, v);
 				UASSERT_MSG(optimizer.addEdge(prior), uFormat("cannot insert switchable prior edge %d!?", v->id()).c_str());
 			}
+#endif
 
 			if(isSlam2d())
 			{
@@ -270,6 +283,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 				}
 
+#ifdef RTABMAP_VERTIGO
 				if(this->isRobust() &&
 				   iter->second.type() != Link::kNeighbor  &&
 				   iter->second.type() != Link::kNeighborMerged)
@@ -287,6 +301,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					edge = e;
 				}
 				else
+#endif
 				{
 					g2o::EdgeSE2 * e = new g2o::EdgeSE2();
 					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
@@ -313,6 +328,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				constraint = a.rotation();
 				constraint.translation() = a.translation();
 
+#ifdef RTABMAP_VERTIGO
 				if(this->isRobust() &&
 				   iter->second.type() != Link::kNeighbor &&
 				   iter->second.type() != Link::kNeighborMerged)
@@ -330,6 +346,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					edge = e;
 				}
 				else
+#endif
 				{
 					g2o::EdgeSE3 * e = new g2o::EdgeSE3();
 					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);

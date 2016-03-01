@@ -37,6 +37,9 @@ namespace rtabmap {
 class RTABMAP_EXP OptimizerTORO : public Optimizer
 {
 public:
+	static bool available();
+
+public:
 	static bool saveGraph(
 			const std::string & fileName,
 			const std::map<int, Transform> & poses,

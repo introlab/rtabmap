@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/Graph.h"
+#include "rtabmap/core/Version.h"
 
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -46,7 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/openni_camera/openni_image.h>
 #endif
 
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 #include <libfreenect.h>
 #ifdef FREENECT_DASH_INCLUDES
 #include <libfreenect-registration.h>
@@ -55,7 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
-#ifdef WITH_FREENECT2
+#ifdef RTABMAP_FREENECT2
 #include <libfreenect2/libfreenect2.hpp>
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/registration.h>
@@ -63,18 +64,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <libfreenect2/config.h>
 #endif
 
-#ifdef WITH_DC1394
-#include <dc1394/dc1394.h>
-#endif
-
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 #include <OniVersion.h>
 #include <OpenNI.h>
-#endif
-
-#ifdef WITH_FLYCAPTURE2
-#include <triclops.h>
-#include <fc2triclops.h>
 #endif
 
 namespace rtabmap
@@ -361,7 +353,7 @@ SensorData CameraOpenNICV::captureImage()
 /////////////////////////
 bool CameraOpenNI2::available()
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	return true;
 #else
 	return false;
@@ -382,7 +374,7 @@ CameraOpenNI2::CameraOpenNI2(
 		float imageRate,
 		const rtabmap::Transform & localTransform) :
 	Camera(imageRate, localTransform),
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	_device(new openni::Device()),
 	_color(new openni::VideoStream()),
 	_depth(new openni::VideoStream()),
@@ -400,7 +392,7 @@ CameraOpenNI2::CameraOpenNI2(
 
 CameraOpenNI2::~CameraOpenNI2()
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	_color->stop();
 	_color->destroy();
 	_depth->stop();
@@ -416,7 +408,7 @@ CameraOpenNI2::~CameraOpenNI2()
 
 bool CameraOpenNI2::setAutoWhiteBalance(bool enabled)
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	if(_color && _color->getCameraSettings())
 	{
 		return _color->getCameraSettings()->setAutoWhiteBalanceEnabled(enabled) == openni::STATUS_OK;
@@ -429,7 +421,7 @@ bool CameraOpenNI2::setAutoWhiteBalance(bool enabled)
 
 bool CameraOpenNI2::setAutoExposure(bool enabled)
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	if(_color && _color->getCameraSettings())
 	{
 		return _color->getCameraSettings()->setAutoExposureEnabled(enabled) == openni::STATUS_OK;
@@ -442,7 +434,7 @@ bool CameraOpenNI2::setAutoExposure(bool enabled)
 
 bool CameraOpenNI2::setExposure(int value)
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 #if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
 	if(_color && _color->getCameraSettings())
 	{
@@ -459,7 +451,7 @@ bool CameraOpenNI2::setExposure(int value)
 
 bool CameraOpenNI2::setGain(int value)
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 #if ONI_VERSION_MAJOR > 2 || (ONI_VERSION_MAJOR==2 && ONI_VERSION_MINOR >= 2)
 	if(_color && _color->getCameraSettings())
 	{
@@ -476,7 +468,7 @@ bool CameraOpenNI2::setGain(int value)
 
 bool CameraOpenNI2::setMirroring(bool enabled)
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	if(_color->isValid() && _depth->isValid())
 	{
 		return _depth->setMirroringEnabled(enabled) == openni::STATUS_OK &&
@@ -488,7 +480,7 @@ bool CameraOpenNI2::setMirroring(bool enabled)
 
 bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	openni::OpenNI::initialize();
 
 	if(_device->open(_deviceId.empty()?openni::ANY_DEVICE:_deviceId.c_str()) != openni::STATUS_OK)
@@ -666,7 +658,7 @@ bool CameraOpenNI2::isCalibrated() const
 
 std::string CameraOpenNI2::getSerial() const
 {
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	if(_device)
 	{
 		return _device->getDeviceInfo().getName();
@@ -678,7 +670,7 @@ std::string CameraOpenNI2::getSerial() const
 SensorData CameraOpenNI2::captureImage()
 {
 	SensorData data;
-#ifdef WITH_OPENNI2
+#ifdef RTABMAP_OPENNI2
 	int readyStream = -1;
 	if(_device->isValid() &&
 		_depth->isValid() &&
@@ -740,7 +732,7 @@ SensorData CameraOpenNI2::captureImage()
 	return data;
 }
 
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 //
 // FreenectDevice
 //
@@ -947,7 +939,7 @@ private:
 //
 bool CameraFreenect::available()
 {
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 	return true;
 #else
 	return false;
@@ -960,7 +952,7 @@ CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & 
 		ctx_(0),
 		freenectDevice_(0)
 {
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 	if(freenect_init(&ctx_, NULL) < 0) UERROR("Cannot initialize freenect library");
 	// claim camera
 	freenect_select_subdevices(ctx_, static_cast<freenect_device_flags>(FREENECT_DEVICE_CAMERA));
@@ -969,7 +961,7 @@ CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & 
 
 CameraFreenect::~CameraFreenect()
 {
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 	if(freenectDevice_)
 	{
 		freenectDevice_->join(true);
@@ -985,7 +977,7 @@ CameraFreenect::~CameraFreenect()
 
 bool CameraFreenect::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 	if(freenectDevice_)
 	{
 		freenectDevice_->join(true);
@@ -1026,7 +1018,7 @@ bool CameraFreenect::isCalibrated() const
 
 std::string CameraFreenect::getSerial() const
 {
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 	if(freenectDevice_)
 	{
 		return freenectDevice_->getSerial();
@@ -1038,7 +1030,7 @@ std::string CameraFreenect::getSerial() const
 SensorData CameraFreenect::captureImage()
 {
 	SensorData data;
-#ifdef WITH_FREENECT
+#ifdef RTABMAP_FREENECT
 	if(ctx_ && freenectDevice_)
 	{
 		if(freenectDevice_->isRunning())
@@ -1078,7 +1070,7 @@ SensorData CameraFreenect::captureImage()
 //
 bool CameraFreenect2::available()
 {
-#ifdef WITH_FREENECT2
+#ifdef RTABMAP_FREENECT2
 	return true;
 #else
 	return false;
@@ -1108,7 +1100,7 @@ CameraFreenect2::CameraFreenect2(
 		edgeAwareFiltering_(edgeAwareFiltering),
 		noiseFiltering_(noiseFiltering)
 {
-#ifdef WITH_FREENECT2
+#ifdef RTABMAP_FREENECT2
 	UASSERT(minKinect2Depth_ < maxKinect2Depth_ && minKinect2Depth_>0 && maxKinect2Depth_>0 && maxKinect2Depth_<=65.535f);
 	freenect2_ = new libfreenect2::Freenect2();
 	switch(type_)
@@ -1131,7 +1123,7 @@ CameraFreenect2::CameraFreenect2(
 
 CameraFreenect2::~CameraFreenect2()
 {
-#ifdef WITH_FREENECT2
+#ifdef RTABMAP_FREENECT2
 	UDEBUG("");
 	if(dev_)
 	{
@@ -1160,7 +1152,7 @@ CameraFreenect2::~CameraFreenect2()
 
 bool CameraFreenect2::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-#ifdef WITH_FREENECT2
+#ifdef RTABMAP_FREENECT2
 	if(dev_)
 	{
 		dev_->stop();
@@ -1298,7 +1290,7 @@ bool CameraFreenect2::isCalibrated() const
 
 std::string CameraFreenect2::getSerial() const
 {
-#ifdef WITH_FREENECT2
+#ifdef RTABMAP_FREENECT2
 	if(dev_)
 	{
 		return dev_->getSerialNumber();
@@ -1310,7 +1302,7 @@ std::string CameraFreenect2::getSerial() const
 SensorData CameraFreenect2::captureImage()
 {
 	SensorData data;
-#ifdef WITH_FREENECT2
+#ifdef RTABMAP_FREENECT2
 	if(dev_ && listener_)
 	{
 		libfreenect2::FrameMap frames;

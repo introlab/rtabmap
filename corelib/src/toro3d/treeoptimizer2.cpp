@@ -266,8 +266,8 @@ void TreeOptimizer2::propagateErrors(){
       updatePoseChain(v1,top);
       updatePoseChain(v2,top);
 
-      Pose pf1=v1->pose;
-      Pose pf2=v2->pose;
+      //Pose pf1=v1->pose;
+      //Pose pf2=v2->pose;
       
       //DEBUG(2) << " pf1=" << pf1.x() << " " << pf1.y() << " " << pf1.theta() << endl;
       //DEBUG(2) << " pf2=" << pf2.x() << " " << pf2.y() << " " << pf2.theta() << endl;

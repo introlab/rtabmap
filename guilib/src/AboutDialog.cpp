@@ -46,7 +46,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	version.append(" [DEMO]");
 #endif
 	QString cv_version = CV_VERSION;
-#if RTABMAP_NONFREE == 1
+#ifdef RTABMAP_NONFREE
 	cv_version.append(" [With nonfree]");
 #else
 	cv_version.append(" [Without nonfree]");

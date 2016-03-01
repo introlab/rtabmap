@@ -35,10 +35,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/OptimizerTORO.h>
 
+#ifdef RTABMAP_TORO
 #include "toro3d/treeoptimizer3.hh"
 #include "toro3d/treeoptimizer2.hh"
+#endif
 
 namespace rtabmap {
+
+bool OptimizerTORO::available()
+{
+#ifdef RTABMAP_TORO
+	return true;
+#else
+	return false;
+#endif
+}
 
 std::map<int, Transform> OptimizerTORO::optimize(
 		int rootId,
@@ -49,6 +60,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 		int * iterationsDone)
 {
 	std::map<int, Transform> optimizedPoses;
+#ifdef RTABMAP_TORO
 	UDEBUG("Optimizing graph (pose=%d constraints=%d)...", (int)poses.size(), (int)edgeConstraints.size());
 	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
 	{
@@ -302,6 +314,9 @@ std::map<int, Transform> OptimizerTORO::optimize(
 		UWARN("This method should be called at least with 1 pose!");
 	}
 	UDEBUG("Optimizing graph...end!");
+#else
+	UERROR("Not built with TORO support!");
+#endif
 	return optimizedPoses;
 }
 

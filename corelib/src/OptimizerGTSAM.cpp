@@ -35,7 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/OptimizerGTSAM.h>
 
-#ifdef WITH_GTSAM
+#ifdef RTABMAP_GTSAM
 #include <gtsam/geometry/Pose2.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/inference/Key.h>
@@ -50,17 +50,19 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/nonlinear/Values.h>
 
+#ifdef RTABMAP_VERTIGO
 #include "vertigo/gtsam/betweenFactorMaxMix.h"
 #include "vertigo/gtsam/betweenFactorSwitchable.h"
 #include "vertigo/gtsam/switchVariableLinear.h"
 #include "vertigo/gtsam/switchVariableSigmoid.h"
-#endif // end WITH_GTSAM
+#endif
+#endif // end RTABMAP_GTSAM
 
 namespace rtabmap {
 
 bool OptimizerGTSAM::available()
 {
-#ifdef WITH_GTSAM
+#ifdef RTABMAP_GTSAM
 	return true;
 #else
 	return false;
@@ -76,7 +78,16 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		int * iterationsDone)
 {
 	std::map<int, Transform> optimizedPoses;
-#ifdef WITH_GTSAM
+#ifdef RTABMAP_GTSAM
+
+#ifndef RTABMAP_VERTIGO
+	if(this->isRobust())
+	{
+		UWARN("Vertigo robust optimization is not available! Robust optimization is now disabled.");
+		setRobust(false);
+	}
+#endif
+
 	UDEBUG("Optimizing graph...");
 	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
 	{
@@ -120,6 +131,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 			UASSERT(!iter->second.transform().isNull());
 
+#ifdef RTABMAP_VERTIGO
 			if(this->isRobust() &&
 			   iter->second.type()!=Link::kNeighbor &&
 			   iter->second.type() != Link::kNeighborMerged)
@@ -140,6 +152,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
 				graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior), switchPriorModel));
 			}
+#endif
 
 			if(isSlam2d())
 			{
@@ -159,6 +172,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				}
 				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 
+#ifdef RTABMAP_VERTIGO
 				if(this->isRobust() &&
 				   iter->second.type()!=Link::kNeighbor &&
 				   iter->second.type() != Link::kNeighborMerged)
@@ -167,6 +181,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
 				}
 				else
+#endif
 				{
 					graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
 				}
@@ -183,6 +198,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 
 				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 
+#ifdef RTABMAP_VERTIGO
 				if(this->isRobust() &&
 				   iter->second.type()!=Link::kNeighbor &&
 				   iter->second.type() != Link::kNeighborMerged)
@@ -191,6 +207,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
 				}
 				else
+#endif
 				{
 					graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
 				}

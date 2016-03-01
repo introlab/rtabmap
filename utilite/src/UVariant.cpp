@@ -202,7 +202,7 @@ unsigned char UVariant::toUChar(bool * ok) const
 	else if(type_ == kChar)
 	{
 		char tmp = toChar();
-		if(tmp >= std::numeric_limits<unsigned char>::min() && tmp <= std::numeric_limits<unsigned char>::max())
+		if(tmp >= std::numeric_limits<unsigned char>::min())
 		{
 			v = (unsigned char)tmp;
 			if(ok)
@@ -250,7 +250,7 @@ unsigned char UVariant::toUChar(bool * ok) const
 	else if(type_ == kUInt)
 	{
 		unsigned int tmp = toUInt();
-		if(tmp >= std::numeric_limits<unsigned char>::min() && tmp <= std::numeric_limits<unsigned char>::max())
+		if(tmp <= std::numeric_limits<unsigned char>::max())
 		{
 			v = (unsigned char)tmp;
 			if(ok)
@@ -368,7 +368,7 @@ unsigned short UVariant::toUShort(bool * ok) const
 	else if(type_ == kShort)
 	{
 		short tmp = toShort();
-		if(tmp >= std::numeric_limits<unsigned short>::min() && tmp <= std::numeric_limits<unsigned short>::max())
+		if(tmp >= std::numeric_limits<unsigned short>::min())
 		{
 			v = (unsigned short)tmp;
 			if(ok)
@@ -392,7 +392,7 @@ unsigned short UVariant::toUShort(bool * ok) const
 	else if(type_ == kUInt)
 	{
 		unsigned int tmp = toUInt();
-		if(tmp >= std::numeric_limits<unsigned short>::min() && tmp <= std::numeric_limits<unsigned short>::max())
+		if(tmp <= std::numeric_limits<unsigned short>::max())
 		{
 			v = (unsigned short)tmp;
 			if(ok)

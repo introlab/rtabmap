@@ -146,8 +146,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->label_map_shown->setText(_ui->label_map_shown->text() + " (Disabled, PCL >=1.7.2 required)");
 #endif
 
-	if(RTABMAP_NONFREE == 0)
-	{
+#ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->reextract_type->setItemData(0, 0, Qt::UserRole - 1);
@@ -170,7 +169,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->reextract_type->setItemData(5, 0, Qt::UserRole - 1);
 		_ui->reextract_type->setItemData(6, 0, Qt::UserRole - 1);
 #endif
-	}
+#endif
 
 #if CV_MAJOR_VERSION == 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
@@ -189,11 +188,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_g2o_solver->setItemData(2, 0, Qt::UserRole - 1);
 	}
+	if(!Optimizer::isAvailable(Optimizer::kTypeTORO))
+	{
+		_ui->graphOptimization_type->setItemData(0, 0, Qt::UserRole - 1);
+	}
 	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		_ui->graphOptimization_type->setItemData(2, 0, Qt::UserRole - 1);
 	}
+#ifdef RTABMAP_VERTIGO
 	if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+#endif
 	{
 		_ui->graphOptimization_robust->setEnabled(false);
 	}
@@ -2059,32 +2064,55 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath) const
 
 bool PreferencesDialog::validateForm()
 {
-	if(RTABMAP_NONFREE == 0)
+#ifndef RTABMAP_NONFREE
+	// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
+	// BOW dictionary type
+	if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
 	{
-		// verify that SURF/SIFT cannot be selected if not built with OpenCV nonfree module
-		// BOW dictionary type
-		if(_ui->comboBox_detector_strategy->currentIndex() <= 1)
-		{
-			QMessageBox::warning(this, tr("Parameter warning"),
-					tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
-					   "with the nonfree module from OpenCV. ORB is set instead for the bag-of-words dictionary."));
-			_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
-		}
-		// BOW Reextract features type
-		if(_ui->reextract_type->currentIndex() <= 1)
-		{
-			QMessageBox::warning(this, tr("Parameter warning"),
-					tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
-					   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
-					   "of features on loop closure."));
-			_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureFastBrief);
-		}
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
+				   "with the nonfree module from OpenCV. ORB is set instead for the bag-of-words dictionary."));
+		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
+	// BOW Reextract features type
+	if(_ui->reextract_type->currentIndex() <= 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected feature type (SURF/SIFT) is not available. RTAB-Map is not built "
+				   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
+				   "of features on loop closure."));
+		_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureFastBrief);
+	}
+#endif
 
 	// optimization strategy
-	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+	if(_ui->graphOptimization_type->currentIndex() == 0 && !Optimizer::isAvailable(Optimizer::kTypeTORO))
 	{
-		if(_ui->graphOptimization_type->currentIndex() == 1)
+		if(Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected graph optimization strategy (TORO) is not available. RTAB-Map is not built "
+					   "with TORO. GTSAM is set instead for graph optimization strategy."));
+			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeGTSAM);
+		}
+		else if(Optimizer::isAvailable(Optimizer::kTypeG2O))
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected graph optimization strategy (TORO) is not available. RTAB-Map is not built "
+					   "with TORO. g2o is set instead for graph optimization strategy."));
+			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeG2O);
+		}
+	}
+	if(_ui->graphOptimization_type->currentIndex() == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		if(Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected graph optimization strategy (g2o) is not available. RTAB-Map is not built "
+					   "with g2o. GTSAM is set instead for graph optimization strategy."));
+			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeGTSAM);
+		}
+		else if(Optimizer::isAvailable(Optimizer::kTypeTORO))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
 					tr("Selected graph optimization strategy (g2o) is not available. RTAB-Map is not built "
@@ -2092,15 +2120,31 @@ bool PreferencesDialog::validateForm()
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeTORO);
 		}
 	}
-	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
+	if(_ui->graphOptimization_type->currentIndex() == 2 && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
-		if(_ui->graphOptimization_type->currentIndex() == 2)
+		if(Optimizer::isAvailable(Optimizer::kTypeG2O))
+		{
+			QMessageBox::warning(this, tr("Parameter warning"),
+					tr("Selected graph optimization strategy (GTSAM) is not available. RTAB-Map is not built "
+					   "with GTSAM. g2o is set instead for graph optimization strategy."));
+			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeG2O);
+		}
+		else if(Optimizer::isAvailable(Optimizer::kTypeTORO))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
 					tr("Selected graph optimization strategy (GTSAM) is not available. RTAB-Map is not built "
 					   "with GTSAM. TORO is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeTORO);
 		}
+	}
+
+	// verify that Robust and Reject threshold are not set at the same time
+	if(_ui->graphOptimization_robust->isEnabled() && _ui->graphOptimization_maxError->value()>0.0)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Robust graph optimization and maximum optimization error threshold cannot be "
+				   "both used at the same time. Disabling robust optimization."));
+		_ui->graphOptimization_robust->setChecked(false);
 	}
 
 	//verify binary features and nearest neighbor
@@ -2771,31 +2815,30 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 			}
 			else
 			{
-				if(RTABMAP_NONFREE == 0)
+#ifndef RTABMAP_NONFREE
+				if(valueInt <= 1 &&
+						(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
+						 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
 				{
-					if(valueInt <= 1 &&
-							(combo->objectName().toStdString().compare(Parameters::kKpDetectorStrategy()) == 0 ||
-							 combo->objectName().toStdString().compare(Parameters::kVisFeatureType()) == 0))
-					{
-						UWARN("Trying to set \"%s\" to SIFT/SURF but RTAB-Map isn't built "
-							  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
-							  combo->objectName().toStdString().c_str(),
-							  combo->currentText().toStdString().c_str());
-						ok = false;
-					}
-					else if(valueInt==1 &&
-							(combo->objectName().toStdString().compare(Parameters::kKpNNStrategy()) == 0 ||
-							 combo->objectName().toStdString().compare(Parameters::kVisCorNNType()) == 0))
-
-					{
-						UWARN("Trying to set \"%s\" to KdTree but RTAB-Map isn't built "
-							  "with the nonfree module from OpenCV and kdTree cannot be used "
-							  "with binary descriptors. Keeping default combo value: %s.",
-							  combo->objectName().toStdString().c_str(),
-							  combo->currentText().toStdString().c_str());
-						ok = false;
-					}
+					UWARN("Trying to set \"%s\" to SIFT/SURF but RTAB-Map isn't built "
+						  "with the nonfree module from OpenCV. Keeping default combo value: %s.",
+						  combo->objectName().toStdString().c_str(),
+						  combo->currentText().toStdString().c_str());
+					ok = false;
 				}
+				else if(valueInt==1 &&
+						(combo->objectName().toStdString().compare(Parameters::kKpNNStrategy()) == 0 ||
+						 combo->objectName().toStdString().compare(Parameters::kVisCorNNType()) == 0))
+
+				{
+					UWARN("Trying to set \"%s\" to KdTree but RTAB-Map isn't built "
+						  "with the nonfree module from OpenCV and kdTree cannot be used "
+						  "with binary descriptors. Keeping default combo value: %s.",
+						  combo->objectName().toStdString().c_str(),
+						  combo->currentText().toStdString().c_str());
+					ok = false;
+				}
+#endif
 				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 				{
 					if(valueInt==1 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
