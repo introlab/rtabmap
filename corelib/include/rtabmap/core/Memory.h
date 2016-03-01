@@ -245,7 +245,6 @@ private:
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
-	bool _useDepthAsMask;
 	bool _useOdometryFeatures;
 
 	int _idCount;

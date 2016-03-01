@@ -81,7 +81,6 @@ private:
 	int _flowMaxLevel;
 	float _nndr;
 	int _guessWinSize;
-	bool _useDepthAsMask;
 
 	ParametersMap _featureParameters;
 };

@@ -208,7 +208,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
 	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1) when creating a signature.");
 	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,  "If > 1, downsample the laser scans when creating a signature.");
-	RTABMAP_PARAM(Mem, UseDepthAsMask,          bool, false,   "Use depth image as mask for features detection.");
 	RTABMAP_PARAM(Mem, UseOdomFeatures,         bool, false,   "Use odometry features.");
 
 	// KeypointMemory (Keypoint-based)
@@ -410,7 +409,6 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
 	RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01,   "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
 	RTABMAP_PARAM(Vis, CorFlowMaxLevel,          int, 3,        "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
-	RTABMAP_PARAM(Vis, UseDepthAsMask,           bool, true,    "Use depth image as mask for features detection.");
 
 	// ICP registration parameters
 	RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");

@@ -89,7 +89,6 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
-	_useDepthAsMask(Parameters::defaultMemUseDepthAsMask()),
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
@@ -404,7 +403,6 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
-	Parameters::parse(parameters, Parameters::kMemUseDepthAsMask(), _useDepthAsMask);
 	Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
@@ -3120,9 +3118,11 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			}
 
 			cv::Mat depthMask;
-			if(_useDepthAsMask && !data.depthRaw().empty())
+			if(!data.depthRaw().empty())
 			{
-				if(imageMono.rows/data.depthRaw().rows == imageMono.cols/data.depthRaw().cols)
+				if(imageMono.rows % data.depthRaw().rows == 0 &&
+					imageMono.cols % data.depthRaw().cols == 0 &&
+					imageMono.rows/data.depthRaw().rows == imageMono.cols/data.depthRaw().cols)
 				{
 					depthMask = util2d::interpolate(data.depthRaw(), imageMono.rows/data.depthRaw().rows, 0.1f);
 				}

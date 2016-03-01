@@ -62,8 +62,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowEps(Parameters::defaultVisCorFlowEps()),
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
 		_nndr(Parameters::defaultVisCorNNDR()),
-		_guessWinSize(Parameters::defaultVisCorGuessWinSize()),
-		_useDepthAsMask(Parameters::defaultVisUseDepthAsMask())
+		_guessWinSize(Parameters::defaultVisCorGuessWinSize())
 {
 	_featureParameters = Parameters::getDefaultParameters();
 	uInsert(_featureParameters, ParametersPair(Parameters::kKpNNStrategy(), _featureParameters.at(Parameters::kVisCorNNType())));
@@ -101,7 +100,6 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
 	Parameters::parse(parameters, Parameters::kVisCorGuessWinSize(), _guessWinSize);
-	Parameters::parse(parameters, Parameters::kVisUseDepthAsMask(), _useDepthAsMask);
 
 	UASSERT_MSG(_minInliers >= 1, uFormat("value=%d", _minInliers).c_str());
 	UASSERT_MSG(_inlierDistance > 0.0f, uFormat("value=%f", _inlierDistance).c_str());
@@ -259,7 +257,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 
 					cv::Mat depthMask;
-					if(_useDepthAsMask && !fromSignature.sensorData().depthRaw().empty())
+					if(!fromSignature.sensorData().depthRaw().empty())
 					{
 						if(fromSignature.sensorData().imageRaw().rows % fromSignature.sensorData().depthRaw().rows == 0 &&
 							fromSignature.sensorData().imageRaw().cols % fromSignature.sensorData().depthRaw().cols == 0 &&
@@ -430,10 +428,10 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 
 					cv::Mat depthMask;
-					if(_useDepthAsMask && !toSignature.sensorData().depthRaw().empty())
+					if(!toSignature.sensorData().depthRaw().empty())
 					{
 						if(toSignature.sensorData().imageRaw().rows % toSignature.sensorData().depthRaw().rows == 0 &&
-								toSignature.sensorData().imageRaw().cols % toSignature.sensorData().depthRaw().cols == 0 &&
+							toSignature.sensorData().imageRaw().cols % toSignature.sensorData().depthRaw().cols == 0 &&
 							toSignature.sensorData().imageRaw().rows/toSignature.sensorData().depthRaw().rows == toSignature.sensorData().imageRaw().cols/toSignature.sensorData().depthRaw().cols)
 						{
 							depthMask = util2d::interpolate(toSignature.sensorData().depthRaw(), toSignature.sensorData().imageRaw().rows/toSignature.sensorData().depthRaw().rows, 0.1f);
