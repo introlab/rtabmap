@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraRGB.h"
 
+#include <pcl/pcl_config.h>
+
 #ifdef HAVE_OPENNI
 #include <pcl/io/openni_camera/openni_depth_image.h>
 #include <pcl/io/openni_camera/openni_image.h>
