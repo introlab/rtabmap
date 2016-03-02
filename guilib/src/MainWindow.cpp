@@ -483,6 +483,44 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->updateStat("Planning/Goal/", 0.0f);
 	_ui->statsToolBox->updateStat("Planning/Poses/", 0.0f);
 	_ui->statsToolBox->updateStat("Planning/Length/m", 0.0f);
+
+	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", 0.0f);
+
+	_ui->statsToolBox->updateStat("Odometry/ID/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Features/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Matches/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Inliers/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/StdDev/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Variance/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Interval/ms", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Speed/kph", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Distance/m", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Tx/m", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Ty/m", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Tz/m", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Troll/deg", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Tpitch/deg", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Tyaw/deg", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Px/m", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Py/m", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Pz/m", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Proll/deg", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Ppitch/deg", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/Pyaw/deg", 0.0f);
+
+	_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", 0.0f);
+	_ui->statsToolBox->updateStat("GUI/RGB-D cloud/ms", 0.0f);
+	_ui->statsToolBox->updateStat("GUI/RGB-D closure_view/ms", 0.0f);
+	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", 0.0f);
+
 	this->loadFigures();
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
 
@@ -735,11 +773,11 @@ void MainWindow::handleEvent(UEvent* anEvent)
 
 void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 {
-	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", (float)info.id, (float)info.timeCapture*1000.0);
-	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", (float)info.id, (float)info.timeImageDecimation*1000.0);
-	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id, (float)info.timeDisparity*1000.0);
-	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id, (float)info.timeMirroring*1000.0);
-	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", (float)info.id, (float)info.timeScanFromDepth*1000.0);
+	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", (float)info.id, info.timeCapture*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", (float)info.id, info.timeImageDecimation*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id, info.timeDisparity*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id, info.timeMirroring*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time scan_from_depth/ms", (float)info.id, info.timeScanFromDepth*1000.0f);
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
@@ -1060,7 +1098,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	}
 	if(odom.info().icpInliersRatio >= 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/ICP_Inliers_Ratio/", (float)odom.data().id(), (float)odom.info().icpInliersRatio);
+		_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", (float)odom.data().id(), (float)odom.info().icpInliersRatio);
 	}
 	if(odom.info().matches >= 0)
 	{
@@ -1076,11 +1114,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	}
 	if(odom.info().timeEstimation > 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Time_Estimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
+		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
 	}
 	if(odom.info().timeParticleFiltering > 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Time_Filtering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
+		_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
 	}
 	if(odom.info().features >=0)
 	{
@@ -1088,7 +1126,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	}
 	if(odom.info().localMapSize >=0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Local_Map_Size/", (float)odom.data().id(), (float)odom.info().localMapSize);
+		_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", (float)odom.data().id(), (float)odom.info().localMapSize);
 	}
 	_ui->statsToolBox->updateStat("Odometry/ID/", (float)odom.data().id(), (float)odom.data().id());
 
@@ -1158,7 +1196,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 		_ui->statsToolBox->updateStat("Odometry/Distance/m", (float)odom.data().id(), odom.info().distanceTravelled);
 	}
 
-	_ui->statsToolBox->updateStat("/Gui Refresh Odom/ms", (float)odom.data().id(), time.elapsed()*1000.0);
+	_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", (float)odom.data().id(), time.elapsed()*1000.0);
 	_processingOdometry = false;
 }
 
@@ -1433,6 +1471,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			std::map<int, Transform> poses = stat.poses();
 			Transform groundTruthOffset = alignPosesToGroundTruth(poses, groundTruth);
+			UDEBUG("time= %d ms", time.restart());
 
 			updateMapCloud(
 					poses,
@@ -1447,7 +1486,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_odometryCorrection = groundTruthOffset * stat.mapCorrection();
 
 			UDEBUG("time= %d ms", time.restart());
-			_ui->statsToolBox->updateStat("/Gui RGB-D cloud/ms", stat.refImageId(), int(timerVis.elapsed()*1000.0f));
+			_ui->statsToolBox->updateStat("GUI/RGB-D cloud/ms", stat.refImageId(), int(timerVis.elapsed()*1000.0f));
 
 			// loop closure view
 			if((stat.loopClosureId() > 0 || stat.localLoopClosureId() > 0)  &&
@@ -1463,11 +1502,117 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					UTimer loopTimer;
 					_ui->widget_loopClosureViewer->updateView();
 					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
-					_ui->statsToolBox->updateStat("/Gui RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
+					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
 				}
 
 				UDEBUG("time= %d ms", time.restart());
 			}
+
+			// ground truth live statistics
+			if(poses.size() && groundTruth.size())
+			{
+				std::vector<float> translationalErrors(poses.size());
+				std::vector<float> rotationalErrors(poses.size());
+				int oi=0;
+				float sumTranslationalErrors = 0.0f;
+				float sumRotationalErrors = 0.0f;
+				float sumSqrdTranslationalErrors = 0.0f;
+				float sumSqrdRotationalErrors = 0.0f;
+				float radToDegree = 180.0f / M_PI;
+				float translational_min = 0.0f;
+				float translational_max = 0.0f;
+				float rotational_min = 0.0f;
+				float rotational_max = 0.0f;
+				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					std::map<int, Transform>::iterator jter = groundTruth.find(iter->first);
+					if(jter!=groundTruth.end())
+					{
+						Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+						Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+						double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+						rotationalErrors[oi] = a*radToDegree;
+						translationalErrors[oi] = iter->second.getDistance(jter->second);
+
+						sumTranslationalErrors+=translationalErrors[oi];
+						sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
+						sumRotationalErrors+=rotationalErrors[oi];
+						sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
+
+						if(oi == 0)
+						{
+							translational_min = translational_max = translationalErrors[oi];
+							rotational_min = rotational_max = rotationalErrors[oi];
+						}
+						else
+						{
+							if(translationalErrors[oi] < translational_min)
+							{
+								translational_min = translationalErrors[oi];
+							}
+							else if(translationalErrors[oi] > translational_max)
+							{
+								translational_max = translationalErrors[oi];
+							}
+
+							if(rotationalErrors[oi] < rotational_min)
+							{
+								rotational_min = rotationalErrors[oi];
+							}
+							else if(rotationalErrors[oi] > rotational_max)
+							{
+								rotational_max = rotationalErrors[oi];
+							}
+						}
+
+						++oi;
+					}
+				}
+				translationalErrors.resize(oi);
+				rotationalErrors.resize(oi);
+				if(oi)
+				{
+					float total = float(oi);
+					float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
+					float translational_mean = sumTranslationalErrors/total;
+					float translational_median = translationalErrors[oi/2];
+					float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
+
+					float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
+					float rotational_mean = sumRotationalErrors/total;
+					float rotational_median = rotationalErrors[oi/2];
+					float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
+
+					UINFO("translational_rmse=%f", translational_rmse);
+					UINFO("translational_mean=%f", translational_mean);
+					UINFO("translational_median=%f", translational_median);
+					UINFO("translational_std=%f", translational_std);
+					UINFO("translational_min=%f", translational_min);
+					UINFO("translational_max=%f", translational_max);
+
+					UINFO("rotational_rmse=%f", rotational_rmse);
+					UINFO("rotational_mean=%f", rotational_mean);
+					UINFO("rotational_median=%f", rotational_median);
+					UINFO("rotational_std=%f", rotational_std);
+					UINFO("rotational_min=%f", rotational_min);
+					UINFO("rotational_max=%f", rotational_max);
+
+					_ui->statsToolBox->updateStat("GT/translational_rmse/", stat.refImageId(), translational_rmse);
+					_ui->statsToolBox->updateStat("GT/translational_mean/", stat.refImageId(), translational_mean);
+					_ui->statsToolBox->updateStat("GT/translational_median/", stat.refImageId(), translational_median);
+					_ui->statsToolBox->updateStat("GT/translational_std/", stat.refImageId(), translational_std);
+					_ui->statsToolBox->updateStat("GT/translational_min/", stat.refImageId(), translational_min);
+					_ui->statsToolBox->updateStat("GT/translational_max/", stat.refImageId(), translational_max);
+
+					_ui->statsToolBox->updateStat("GT/rotational_rmse/", stat.refImageId(), rotational_rmse);
+					_ui->statsToolBox->updateStat("GT/rotational_mean/", stat.refImageId(), rotational_mean);
+					_ui->statsToolBox->updateStat("GT/rotational_median/", stat.refImageId(), rotational_median);
+					_ui->statsToolBox->updateStat("GT/rotational_std/", stat.refImageId(), rotational_std);
+					_ui->statsToolBox->updateStat("GT/rotational_min/", stat.refImageId(), rotational_min);
+					_ui->statsToolBox->updateStat("GT/rotational_max/", stat.refImageId(), rotational_max);
+				}
+			}
+			UDEBUG("time= %d ms", time.restart());
 		}
 
 		if( _ui->graphicsView_graphView->isVisible())
@@ -1505,7 +1650,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Updating GUI time = %fs", elapsedTime/1000.0f);
-	_ui->statsToolBox->updateStat("/Gui Refresh Stats/ms", stat.refImageId(), elapsedTime);
+	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", stat.refImageId(), elapsedTime);
 	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
 	{
 		this->captureScreen(_autoScreenCaptureRAM);
@@ -2299,7 +2444,6 @@ Transform MainWindow::alignPosesToGroundTruth(
 		std::map<int, Transform> & poses,
 		const std::map<int, Transform> & groundTruth)
 {
-	UDEBUG("");
 	Transform t = Transform::getIdentity();
 	if(groundTruth.size() && poses.size())
 	{
@@ -2322,14 +2466,15 @@ Transform MainWindow::alignPosesToGroundTruth(
 				cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
 			}
 		}
-		if(oi>1)
+
+		if(oi>5)
 		{
 			cloud1.resize(oi);
 			cloud2.resize(oi);
 		
 			t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
 		}
-		else if(oi==1)
+		else if(idFirst)
 		{
 			t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
 		}
@@ -3270,14 +3415,6 @@ void MainWindow::startDetection()
 				return;
 			}
 		}
-	}
-
-	if(!_preferencesDialog->isCloudsShown(0) || !_preferencesDialog->isScansShown(0))
-	{
-		QMessageBox::information(this,
-				tr("Some data may not be shown!"),
-				tr("Note that clouds and/or scans visibility settings are set to "
-				   "OFF (see General->\"3D Rendering\" section under Map column)."));
 	}
 
 	UDEBUG("");

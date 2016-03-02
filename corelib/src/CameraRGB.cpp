@@ -125,7 +125,6 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	_count = 0;
 	_countScan = 0;
 	_captureDelay = 0.0;
-	_captureTimer.restart();
 
 	UDEBUG("");
 	if(_dir)
@@ -403,6 +402,8 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			UASSERT_MSG(groundTruth_.size() == stamps_.size(), uFormat("%d vs %d", (int)groundTruth_.size(), (int)stamps_.size()).c_str());
 		}
 	}
+
+	_captureTimer.restart();
 
 	return success;
 }

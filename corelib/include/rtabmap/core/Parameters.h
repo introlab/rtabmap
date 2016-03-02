@@ -326,6 +326,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ProximityMaxGraphDepth,       int, 50,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
 	RTABMAP_PARAM(RGBD, ProximityPathFilteringRadius, float, 0.5,   "Path filtering radius.");
 	RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,   "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
+	RTABMAP_PARAM(RGBD, ProximityAngle,               float, 45.0,  "Maximum angle (degrees) for visual proximity detection.");
 
 	// Graph optimization
 #ifdef RTABMAP_GTSAM
@@ -358,7 +359,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ParticleLambdaR, 		float, 100,       "Lambda of rotational components (roll,pitch,yaw).");
 	RTABMAP_PARAM(Odom, KalmanProcessNoise, 	float, 0.001,     "Process noise covariance value.");
 	RTABMAP_PARAM(Odom, KalmanMeasurementNoise, float, 0.01,      "Process measurement covariance value.");
-	RTABMAP_PARAM(Odom, GuessMotion,            bool, false,       "Guess next transformation from the last motion computed.");
+	RTABMAP_PARAM(Odom, GuessMotion,            bool, true,       "Guess next transformation from the last motion computed.");
 	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.5,       "Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
 
 	// Odometry Bag-of-words
@@ -399,7 +400,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, CorType,                  int, 0,        "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
 	RTABMAP_PARAM(Vis, CorNNType, 	             int, 3,        "[Vis/CorrespondenceType=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.");
 	RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.8,    "[Vis/CorrespondenceType=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.");
-	RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 16,        "[Vis/CorrespondenceType=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.");
+	RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 50,       "[Vis/CorrespondenceType=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.");
 	RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
 	RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
 	RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01,   "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");

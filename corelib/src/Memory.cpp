@@ -2047,6 +2047,7 @@ void Memory::removeRawData(int id)
 Transform Memory::computeTransform(
 		int fromId,
 		int toId,
+		Transform guess,
 		RegistrationInfo * info)
 {
 	const Signature * fromS = this->getSignature(fromId);
@@ -2084,13 +2085,17 @@ Transform Memory::computeTransform(
 				tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
 			}
 
-			Transform guess = Transform::getIdentity();
 			if(!_registrationPipeline->isImageRequired())
 			{
 				// no visual in the pipeline, make visual registration for guess
 				RegistrationVis regVis(parameters_);
 				guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
 			}
+			else if(guess.isNull())
+			{
+				guess.setIdentity();
+			}
+
 			if(!guess.isNull())
 			{
 				transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);

@@ -181,7 +181,7 @@ public:
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
 
-	Transform computeTransform(int fromId, int toId, RegistrationInfo * info = 0);
+	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransformMulti(
 			int newId,

@@ -288,7 +288,9 @@ Transform RegistrationVis::computeTransformationImpl(
 		std::multimap<int, cv::Point3f> words3To;
 		std::multimap<int, cv::Mat> wordsDescFrom;
 		std::multimap<int, cv::Mat> wordsDescTo;
-		if(_correspondencesApproach == 1) //Optical Flow
+		if(_correspondencesApproach == 1 && //Optical Flow
+		   !fromSignature.sensorData().imageRaw().empty() &&
+		   !toSignature.sensorData().imageRaw().empty())
 		{
 			UDEBUG("");
 			// convert to grayscale
@@ -1053,6 +1055,11 @@ Transform RegistrationVis::computeTransformationImpl(
 			inliersCount = (int)inliers[0].size();
 			matchesCount = (int)matches[0].size();
 		}
+	}
+	else if(toSignature.sensorData().isValid())
+	{
+		UWARN("Missing correspondences for registration. toWords = %d toImageEmpty=%d",
+				(int)toSignature.getWords().size(), toSignature.sensorData().imageRaw().empty()?1:0);
 	}
 
 	info.inliers = inliersCount;

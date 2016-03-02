@@ -195,6 +195,7 @@ private:
 	float _proximityFilteringRadius;
 	bool _proximityRawPosesUsed;
 	bool _proximityScansMerged;
+	float _proximityAngle;
 	std::string _databasePath;
 	bool _optimizeFromGraphEnd;
 	float _optimizationMaxLinearError;

@@ -667,6 +667,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->localDetection_radius->setObjectName(Parameters::kRGBDLocalRadius().c_str());
 	_ui->localDetection_maxDiffID->setObjectName(Parameters::kRGBDProximityMaxGraphDepth().c_str());
 	_ui->localDetection_pathFilteringRadius->setObjectName(Parameters::kRGBDProximityPathFilteringRadius().c_str());
+	_ui->localDetection_angle->setObjectName(Parameters::kRGBDProximityAngle().c_str());
 	_ui->checkBox_localSpacePathOdomPosesUsed->setObjectName(Parameters::kRGBDProximityPathRawPosesUsed().c_str());
 	_ui->checkBox_localSpaceAssembleScans->setObjectName(Parameters::kRGBDProximityPathScansMerged().c_str());
 	_ui->rgdb_localImmunizationRatio->setObjectName(Parameters::kRGBDLocalImmunizationRatio().c_str());
@@ -1160,7 +1161,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-		_ui->groupBox_organized->setChecked(true);
+		_ui->groupBox_organized->setChecked(false);
 		_ui->checkBox_mesh_quad->setChecked(true);
 #else
 		_ui->groupBox_organized->setChecked(false);

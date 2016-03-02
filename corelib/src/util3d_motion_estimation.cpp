@@ -92,6 +92,9 @@ Transform estimateMotion3DTo2D(
 	imagePoints.resize(oi);
 	matches.resize(oi);
 
+	UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d",
+			(int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size());
+
 	if((int)matches.size() >= minInliers)
 	{
 		//PnPRansac
@@ -341,9 +344,7 @@ void solvePnPRansac(
 	float inlierThreshold = reprojectionError;
 	if(inliers.size() >= 4 && refineIterations>0)
 	{
-		float inlier_distance_threshold_sqr = inlierThreshold * inlierThreshold;
 		float error_threshold = inlierThreshold;
-		float sigma_sqr = refineSigma * refineSigma;
 		int refine_iterations = 0;
 		bool inlier_changed = false, oscillating = false;
 		std::vector<int> new_inliers, prev_inliers = inliers;
@@ -393,7 +394,7 @@ void solvePnPRansac(
 			// Estimate the variance and the new threshold
 			float m = uMean(err.data(), err.size());
 			float variance = uVariance(err.data(), err.size());
-			error_threshold = sqrt (std::min (inlier_distance_threshold_sqr, sigma_sqr * variance));
+			error_threshold = std::min(inlierThreshold, refineSigma * float(sqrt(variance)));
 
 			UDEBUG ("RANSAC refineModel: New estimated error threshold: %f (variance=%f mean=%f) on iteration %d out of %d.",
 				  error_threshold, variance, m, refine_iterations, refineIterations);

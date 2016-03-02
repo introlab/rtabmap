@@ -101,6 +101,7 @@ Rtabmap::Rtabmap() :
 	_proximityFilteringRadius(Parameters::defaultRGBDProximityPathFilteringRadius()),
 	_proximityRawPosesUsed(Parameters::defaultRGBDProximityPathRawPosesUsed()),
 	_proximityScansMerged(Parameters::defaultRGBDProximityPathScansMerged()),
+	_proximityAngle(Parameters::defaultRGBDProximityAngle()*M_PI/180.0f),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
 	_optimizationMaxLinearError(Parameters::defaultRGBDOptimizeMaxError()),
@@ -409,6 +410,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathFilteringRadius(), _proximityFilteringRadius);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathRawPosesUsed(), _proximityRawPosesUsed);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathScansMerged(), _proximityScansMerged);
+	Parameters::parse(parameters, Parameters::kRGBDProximityAngle(), _proximityAngle);
+	_proximityAngle *= M_PI/180.0f;
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxLinearError);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
@@ -1169,7 +1172,13 @@ bool Rtabmap::process(
 					std::string rejectedMsg;
 					UDEBUG("Check local transform between %d and %d", signature->id(), *iter);
 					RegistrationInfo info;
-					Transform transform = _memory->computeTransform(signature->id(), *iter, &info);
+					Transform guess;
+					if(_optimizedPoses.find(*iter) != _optimizedPoses.end())
+					{
+						guess = newPose.inverse() * _optimizedPoses.at(*iter);
+					}
+
+					Transform transform = _memory->computeTransform(signature->id(), *iter, guess, &info);
 
 					if(!transform.isNull())
 					{
@@ -1722,7 +1731,7 @@ bool Rtabmap::process(
 		info.variance = 1.0f;
 		if(_rgbdSlamMode)
 		{
-			transform = _memory->computeTransform(signature->id(), _loopClosureHypothesis.first, &info);
+			transform = _memory->computeTransform(signature->id(), _loopClosureHypothesis.first, Transform(), &info);
 			loopClosureVisualInliers = info.inliers;
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
@@ -1814,7 +1823,7 @@ bool Rtabmap::process(
 
 					//find the nearest pose on the path looking in the same direction
 					path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
-					path = graph::getPosesInRadius(signature->id(), path, _localRadius, M_PI/4);
+					path = graph::getPosesInRadius(signature->id(), path, _localRadius, _proximityAngle);
 					int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
 					if(nearestId > 0)
 					{
@@ -1824,7 +1833,7 @@ bool Rtabmap::process(
 							 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 						{
 							RegistrationInfo info;
-							Transform transform = _memory->computeTransform(signature->id(), nearestId, &info);
+							Transform transform = _memory->computeTransform(signature->id(), nearestId, Transform(), &info);
 							if(!transform.isNull())
 							{
 								if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
