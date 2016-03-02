@@ -363,7 +363,7 @@ class RTABMAP_EXP Parameters
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomF2M, MaxSize,             int, 1000,   "Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
-	RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,      "Maximum features added to local map (nearest to farthest) from a new key-frame. 0 means no limit.");
+	RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,      "Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.");
 	RTABMAP_PARAM_STR(OdomF2M, FixedMapPath,    "",          "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
 
 	// Odometry Mono

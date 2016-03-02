@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-215</y>
+            <y>-249</y>
             <width>681</width>
             <height>2010</height>
            </rect>
@@ -7525,7 +7525,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <item row="1" column="2">
                               <widget class="QLabel" name="label_194">
                                <property name="text">
-                                <string>Maximum features added to local map (nearest to farthest) from a new key-frame. 0 means no limit.</string>
+                                <string>Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
