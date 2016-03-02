@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-629</y>
+            <y>-215</y>
             <width>681</width>
             <height>2010</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>14</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -7282,7 +7282,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QSpinBox" name="odom_dataBufferSize">
                         <property name="maximum">
                          <number>999999</number>
@@ -7319,7 +7319,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QPushButton" name="pushButton_testOdometry">
                         <property name="text">
                          <string>Test selected odometry</string>
@@ -7339,7 +7339,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_232">
                         <property name="text">
                          <string>Data buffer size (0 means inf).</string>
@@ -7414,6 +7414,32 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_196">
+                        <property name="text">
+                         <string>Create a new keyframe when the number of inliers drops under this threshold. Setting value to 0 means that a keyframe is created for each processed frame.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QDoubleSpinBox" name="odom_flow_keyframeThr">
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.500000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
                     </item>
                     <item>
@@ -7457,7 +7483,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="1" column="0">
+                             <item row="2" column="0">
                               <widget class="QLineEdit" name="odom_fixedLocalMapPath"/>
                              </item>
                              <item row="0" column="0">
@@ -7476,14 +7502,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="1" column="1">
+                             <item row="2" column="1">
                               <widget class="QToolButton" name="toolButton_odomBowFixedLocalMap">
                                <property name="text">
                                 <string>...</string>
                                </property>
                               </widget>
                              </item>
-                             <item row="1" column="2">
+                             <item row="2" column="2">
                               <widget class="QLabel" name="label_239">
                                <property name="text">
                                 <string>Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP pose estimation is activated.</string>
@@ -7493,6 +7519,35 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                                <property name="textInteractionFlags">
                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_194">
+                               <property name="text">
+                                <string>Maximum features added to local map (nearest to farthest) from a new key-frame. 0 means no limit.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QSpinBox" name="spinBox_odom_f2m_maxNewFeatures">
+                               <property name="minimum">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <number>999999</number>
+                               </property>
+                               <property name="singleStep">
+                                <number>1</number>
+                               </property>
+                               <property name="value">
+                                <number>0</number>
                                </property>
                               </widget>
                              </item>
@@ -7538,39 +7593,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                             </widget>
                            </item>
                            <item>
-                            <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
-                             <item row="0" column="1">
-                              <widget class="QLabel" name="label_196">
-                               <property name="text">
-                                <string>Create a new keyframe when the number of inliers drops under this threshold. Setting value to 0 means that a keyframe is created for each processed frame.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="0" column="0">
-                              <widget class="QSpinBox" name="odom_flow_keyframeThr">
-                               <property name="minimum">
-                                <number>0</number>
-                               </property>
-                               <property name="maximum">
-                                <number>999999</number>
-                               </property>
-                               <property name="singleStep">
-                                <number>1</number>
-                               </property>
-                               <property name="value">
-                                <number>0</number>
-                               </property>
-                              </widget>
-                             </item>
-                            </layout>
-                           </item>
-                           <item>
                             <spacer name="verticalSpacer_43">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
@@ -7578,7 +7600,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <property name="sizeHint" stdset="0">
                               <size>
                                <width>20</width>
-                               <height>0</height>
+                               <height>40</height>
                               </size>
                              </property>
                             </spacer>

@@ -50,7 +50,7 @@ private:
 
 private:
 	//Parameters:
-	int keyFrameThr_;
+	float keyFrameThr_;
 
 	Registration * registrationPipeline_;
 	Signature refFrame_;

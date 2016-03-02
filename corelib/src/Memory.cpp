@@ -3167,7 +3167,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			UDEBUG("Intermediate node detected, don't extract features!");
 		}
 	}
-	else if(!isIntermediateNode)
+	else if(_feature2D->getMaxFeatures() >= 0 && !isIntermediateNode)
 	{
 		UINFO("Use odometry features");
 		keypoints = data.keypoints();

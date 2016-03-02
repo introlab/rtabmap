@@ -77,7 +77,6 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
-		previousVelocityTransform_(Transform::getIdentity()),
 		distanceTravelled_(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
@@ -131,7 +130,7 @@ Odometry::~Odometry()
 
 void Odometry::reset(const Transform & initialPose)
 {
-	previousVelocityTransform_.setIdentity();
+	previousVelocityTransform_.setNull();
 	previousGroundTruthPose_.setNull();
 	_resetCurrentCount = 0;
 	previousStamp_ = 0;
@@ -196,10 +195,10 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 		return Transform();
 	}
 
-	double dt = data.stamp() - previousStamp_;
+	double dt = previousStamp_>0.0f?data.stamp() - previousStamp_:0.0;
 	Transform guess;
-	if(	!previousVelocityTransform_.isNull() &&
-		!previousVelocityTransform_.isIdentity())
+	UASSERT(dt>0.0 || (dt == 0.0 && previousVelocityTransform_.isNull()));
+	if(!previousVelocityTransform_.isNull())
 	{
 		if(guessFromMotion_)
 		{
@@ -222,8 +221,6 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 			predictKalmanFilter(dt);
 		}
 	}
-	previousVelocityTransform_.setNull();
-	previousStamp_ = data.stamp();
 
 	UTimer time;
 	Transform t = this->computeTransform(data, guess, info);
@@ -268,16 +265,16 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 		{
 			if(_filteringStrategy == 1)
 			{
-				if(_pose.isIdentity())
+				if(previousVelocityTransform_.isNull())
 				{
 					// reset Kalman
-					if(t.isIdentity())
+					if(dt)
 					{
-						initKalmanFilter();
+						initKalmanFilter(t, vx,vy,vz,vroll,vpitch,vyaw);
 					}
 					else
 					{
-						initKalmanFilter(t, vx,vy,vz,vroll,vpitch,vyaw);
+						initKalmanFilter(t);
 					}
 				}
 				else
@@ -290,7 +287,7 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 			{
 				// Particle filtering
 				UASSERT(particleFilters_.size()==6);
-				if(_pose.isIdentity())
+				if(previousVelocityTransform_.isNull())
 				{
 					particleFilters_[0]->init(vx);
 					particleFilters_[1]->init(vy);
@@ -359,14 +356,27 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 				}
 			}
 
-			t = Transform(vx*dt, vy*dt, vz*dt, vroll*dt, vpitch*dt, vyaw*dt);
+			if(dt)
+			{
+				t = Transform(vx*dt, vy*dt, vz*dt, vroll*dt, vpitch*dt, vyaw*dt);
+			}
+			else
+			{
+				t = Transform(vx, vy, vz, vroll, vpitch, vyaw);
+			}
+
 			if(info)
 			{
 				info->transformFiltered = t;
 			}
 		}
 
-		previousVelocityTransform_ = Transform(vx, vy, vz, vroll, vpitch, vyaw);
+		previousStamp_ = data.stamp();
+		previousVelocityTransform_.setNull();
+		if(dt)
+		{
+			previousVelocityTransform_ = Transform(vx, vy, vz, vroll, vpitch, vyaw);
+		}
 
 		if(info)
 		{
@@ -387,6 +397,9 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 			this->reset(_pose);
 		}
 	}
+
+	previousVelocityTransform_.setNull();
+	previousStamp_ = 0;
 
 	return Transform();
 }

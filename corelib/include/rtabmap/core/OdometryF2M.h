@@ -51,6 +51,8 @@ private:
 private:
 	//Parameters
 	int maximumMapSize_;
+	float keyFrameThr_;
+	int maxNewFeatures_;
 	std::string fixedMapPath_;
 
 	RegistrationVis * regVis_;

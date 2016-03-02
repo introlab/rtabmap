@@ -144,11 +144,12 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("OdomLocalMap/HistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
 		removedParameters_.insert(std::make_pair("OdomLocalMap/FixedMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
 		removedParameters_.insert(std::make_pair("OdomF2F/GuessMotion",           std::make_pair(true, Parameters::kOdomGuessMotion())));
+		removedParameters_.insert(std::make_pair("OdomF2F/KeyFrameThr",          std::make_pair(false, Parameters::kOdomKeyFrameThr())));
 
 		// 0.11.0
 		removedParameters_.insert(std::make_pair("OdomBow/LocalHistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
 		removedParameters_.insert(std::make_pair("OdomBow/FixedLocalMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
-		removedParameters_.insert(std::make_pair("OdomFlow/KeyFrameThr",          std::make_pair(true, Parameters::kOdomF2FKeyFrameThr())));
+		removedParameters_.insert(std::make_pair("OdomFlow/KeyFrameThr",          std::make_pair(false, Parameters::kOdomKeyFrameThr())));
 		removedParameters_.insert(std::make_pair("OdomFlow/GuessMotion",          std::make_pair(true, Parameters::kOdomGuessMotion())));
 
 		removedParameters_.insert(std::make_pair("Kp/WordsPerImage",              std::make_pair(true, Parameters::kKpMaxFeatures())));

@@ -55,6 +55,8 @@ namespace rtabmap {
 OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Odometry(parameters),
 	maximumMapSize_(Parameters::defaultOdomF2MMaxSize()),
+	keyFrameThr_(Parameters::defaultOdomKeyFrameThr()),
+	maxNewFeatures_(Parameters::defaultOdomF2MMaxNewFeatures()),
 	fixedMapPath_(Parameters::defaultOdomF2MFixedMapPath()),
 	regVis_(new RegistrationVis(parameters)),
 	map_(new Signature(-1)),
@@ -62,7 +64,12 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 {
 	UDEBUG("");
 	Parameters::parse(parameters, Parameters::kOdomF2MMaxSize(), maximumMapSize_);
+	Parameters::parse(parameters, Parameters::kOdomKeyFrameThr(), keyFrameThr_);
+	Parameters::parse(parameters, Parameters::kOdomF2MMaxNewFeatures(), maxNewFeatures_);
 	Parameters::parse(parameters, Parameters::kOdomF2MFixedMapPath(), fixedMapPath_);
+	UASSERT(maximumMapSize_ >= 0);
+	UASSERT(keyFrameThr_ >= 0.0f && keyFrameThr_<=1.0f);
+	UASSERT(maxNewFeatures_ >= 0);
 
 	if(!fixedMapPath_.empty())
 	{
@@ -215,7 +222,8 @@ Transform OdometryF2M::computeTransform(
 
 			if(!transform.isNull())
 			{
-				if(fixedMapPath_.empty())
+				if(fixedMapPath_.empty() &&
+				   (keyFrameThr_==0 || float(regInfo.inliers) <= keyFrameThr_*float(lastFrame_->sensorData().keypoints().size())))
 				{
 					output = transform;
 
@@ -229,14 +237,32 @@ Transform OdometryF2M::computeTransform(
 					Transform t = this->getPose()*output;
 					UASSERT(mapPoints.size() == mapDescriptors.size());
 					UASSERT_MSG(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
-					std::list<int> newIds = uUniqueKeys(lastFrame_->getWordsDescriptors());
-					for(std::list<int>::iterator iter=newIds.begin(); iter!=newIds.end(); ++iter)
+
+					// sort by feature response
+					std::multimap<float, std::pair<int, cv::Point3f> > newIds;
+					int lastId = 0;
+					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWords().size());
+					std::multimap<int, cv::KeyPoint>::const_iterator iter2D = lastFrame_->getWords().begin();
+					for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin(); iter!=lastFrame_->getWords3().end(); ++iter, ++iter2D)
 					{
-						if(mapPoints.find(*iter) == mapPoints.end() && util3d::isFinite(lastFrame_->getWords3().find(*iter)->second))
+						if(iter == lastFrame_->getWords3().begin() ||
+						   (iter != lastFrame_->getWords3().begin() && lastId != iter->first))
 						{
-							mapPoints.insert(std::make_pair(*iter, util3d::transformPoint(lastFrame_->getWords3().find(*iter)->second, t)));
-							mapDescriptors.insert(std::make_pair(*iter, lastFrame_->getWordsDescriptors().find(*iter)->second));
-							++added;
+							newIds.insert(std::make_pair(iter2D->second.response, std::make_pair(iter->first, iter->second)));
+							lastId = iter->first;
+						}
+					}
+
+					for(std::multimap<float, std::pair<int, cv::Point3f> >::reverse_iterator iter=newIds.rbegin(); iter!=newIds.rend(); ++iter)
+					{
+						if(maxNewFeatures_ == 0  || added < maxNewFeatures_)
+						{
+							if(mapPoints.find(iter->second.first) == mapPoints.end() && util3d::isFinite(iter->second.second))
+							{
+								mapPoints.insert(std::make_pair(iter->second.first, util3d::transformPoint(iter->second.second, t)));
+								mapDescriptors.insert(std::make_pair(iter->second.first, lastFrame_->getWordsDescriptors().find(iter->second.first)->second));
+								++added;
+							}
 						}
 					}
 
@@ -273,6 +299,13 @@ Transform OdometryF2M::computeTransform(
 					// fixed local map, don't update with the new signature
 					output = transform;
 				}
+			}
+
+			if(this->isInfoDataFilled())
+			{
+				// use tmpMap instead of map_ to make sure that correspondences with the new frame matches
+				info->localMapSize = (int)tmpMap.getWords3().size();
+				info->localMap = uMultimapToMap(tmpMap.getWords3());
 			}
 		}
 		else
@@ -312,6 +345,12 @@ Transform OdometryF2M::computeTransform(
 				map_->sensorData().setCameraModels(lastFrame_->sensorData().cameraModels());
 				map_->sensorData().setStereoCameraModel(lastFrame_->sensorData().stereoCameraModel());
 			}
+
+			if(this->isInfoDataFilled())
+			{
+				info->localMapSize = (int)map_->getWords3().size();
+				info->localMap = uMultimapToMap(map_->getWords3());
+			}
 		}
 
 		map_->sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat()); // clear sensorData features
@@ -329,13 +368,11 @@ Transform OdometryF2M::computeTransform(
 		info->inliers = regInfo.inliers;
 		info->matches = regInfo.matches;
 		info->features = nFeatures;
-		info->localMapSize = (int)map_->getWords3().size();
 
 		if(this->isInfoDataFilled())
 		{
 			info->wordMatches = regInfo.matchesIDs;
 			info->wordInliers = regInfo.inliersIDs;
-			info->localMap = uMultimapToMap(map_->getWords3());
 		}
 	}
 

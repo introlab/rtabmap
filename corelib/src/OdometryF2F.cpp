@@ -29,18 +29,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Registration.h"
 #include "rtabmap/core/EpipolarGeometry.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
+#include "rtabmap/utilite/UStl.h"
 
 namespace rtabmap {
 
 OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	Odometry(parameters),
-	keyFrameThr_(Parameters::defaultOdomF2FKeyFrameThr()),
+	keyFrameThr_(Parameters::defaultOdomKeyFrameThr()),
 	motionSinceLastKeyFrame_(Transform::getIdentity())
 {
 	registrationPipeline_ = Registration::create(parameters);
-	Parameters::parse(parameters, Parameters::kOdomF2FKeyFrameThr(), keyFrameThr_);
+	Parameters::parse(parameters, Parameters::kOdomKeyFrameThr(), keyFrameThr_);
+	UASSERT(keyFrameThr_>=0.0f && keyFrameThr_<=1.0f);
 }
 
 OdometryF2F::~OdometryF2F()
@@ -80,8 +83,9 @@ Transform OdometryF2F::computeTransform(
 	Signature newFrame(data);
 	if(refFrame_.sensorData().isValid())
 	{
+		Signature tmpRefFrame = refFrame_;
 		output = registrationPipeline_->computeTransformationMod(
-				refFrame_,
+				tmpRefFrame,
 				newFrame,
 				!guess.isNull()?motionSinceLastKeyFrame_*guess:Transform(),
 				&regInfo);
@@ -89,7 +93,7 @@ Transform OdometryF2F::computeTransform(
 		if(info && this->isInfoDataFilled())
 		{
 			std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
-			EpipolarGeometry::findPairsUnique(refFrame_.getWords(), newFrame.getWords(), pairs);
+			EpipolarGeometry::findPairsUnique(tmpRefFrame.getWords(), newFrame.getWords(), pairs);
 			info->refCorners.resize(pairs.size());
 			info->newCorners.resize(pairs.size());
 			std::map<int, int> idToIndex;
@@ -110,6 +114,12 @@ Transform OdometryF2F::computeTransform(
 				info->cornerInliers[i] = idToIndex.at(regInfo.inliersIDs[i]);
 			}
 
+			Transform t = this->getPose()*motionSinceLastKeyFrame_.inverse();
+			for(std::multimap<int, cv::Point3f>::const_iterator iter=tmpRefFrame.getWords3().begin(); iter!=tmpRefFrame.getWords3().end(); ++iter)
+			{
+				info->localMap.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, t)));
+			}
+			info->words = newFrame.getWords();
 		}
 	}
 	else
@@ -126,7 +136,7 @@ Transform OdometryF2F::computeTransform(
 		motionSinceLastKeyFrame_ *= output;
 
 		// new key-frame?
-		if(keyFrameThr_ <= 0 || (int)regInfo.inliers <= keyFrameThr_)
+		if(keyFrameThr_==0 || float(regInfo.inliers) <= keyFrameThr_*float(refFrame_.sensorData().keypoints().size()))
 		{
 			UDEBUG("Update key frame");
 			int features = newFrame.getWordsDescriptors().size();
@@ -187,14 +197,14 @@ Transform OdometryF2F::computeTransform(
 		info->inliers = regInfo.inliers;
 		info->icpInliersRatio = regInfo.icpInliersRatio;
 		info->matches = regInfo.matches;
-		info->features = refFrame_.sensorData().keypoints().size();
+		info->features = newFrame.sensorData().keypoints().size();
 	}
 
 	UINFO("Odom update time = %fs lost=%s inliers=%d, ref frame corners=%d, transform accepted=%s",
 			timer.elapsed(),
 			output.isNull()?"true":"false",
 			(int)regInfo.inliers,
-			(int)refFrame_.sensorData().keypoints().size(),
+			(int)newFrame.sensorData().keypoints().size(),
 			!output.isNull()?"true":"false");
 
 	return output;
