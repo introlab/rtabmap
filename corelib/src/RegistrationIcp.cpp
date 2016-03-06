@@ -110,9 +110,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 			dataTo.laserScanRaw().cols,
 			dataTo.laserScanRaw().channels());
 
-	// ICP with guess transform
-	if(!dataFrom.laserScanRaw().empty() && !dataTo.laserScanRaw().empty())
+	if(!guess.isNull() && !dataFrom.laserScanRaw().empty() && !dataTo.laserScanRaw().empty())
 	{
+		// ICP with guess transform
 		int maxLaserScans = dataTo.laserScanMaxPts();
 		cv::Mat fromScan = dataFrom.laserScanRaw();
 		cv::Mat toScan = dataTo.laserScanRaw();
@@ -132,8 +132,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 			int correspondences = 0;
 			double variance = 1.0;
 
-			if( !force3DoF() &&
-				_pointToPlane &&
+			if( _pointToPlane &&
 				_voxelSize == 0.0f &&
 				fromScan.channels() == 6 &&
 				toScan.channels() == 6)
@@ -149,7 +148,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 					   _maxCorrespondenceDistance,
 					   _maxIterations,
 					   hasConverged,
-					   *fromCloudNormalsRegistered);
+					   *fromCloudNormalsRegistered,
+					   _epsilon,
+					   this->force3DoF());
 				if(!icpT.isNull() && hasConverged)
 				{
 					util3d::computeVarianceAndCorrespondences(
@@ -158,6 +159,20 @@ Transform RegistrationIcp::computeTransformationImpl(
 							_maxCorrespondenceDistance,
 							variance,
 							correspondences);
+					/*
+					UWARN("icpT=%s", icpT.prettyPrint().c_str());
+					pcl::io::savePCDFile("fromCloud.pcd", *fromCloudNormals);
+					pcl::io::savePCDFile("toCloud.pcd", *toCloudNormals);
+					UWARN("saved fromCloud.pcd and toCloud.pcd");
+					if(!icpT.isNull())
+					{
+						pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudTmp = util3d::transformPointCloud(fromCloudNormals, icpT);
+						pcl::io::savePCDFile("fromCloudFinal.pcd", *fromCloudTmp);
+						pcl::io::savePCDFile("fromCloudFinal2.pcd", *fromCloudNormalsRegistered);
+						UWARN("saved fromCloudFinal.pcd");
+					}
+					*/
+
 				}
 			}
 			else
@@ -178,7 +193,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				bool correspondencesComputed = false;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
-				if(!force3DoF() && _pointToPlane) // ICP Point To Plane, only in 3D
+				if(_pointToPlane) // ICP Point To Plane, only in 3D
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::computeNormals(fromCloudFiltered, _pointToPlaneNormalNeighbors);
 					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::computeNormals(toCloudFiltered, _pointToPlaneNormalNeighbors);
@@ -198,7 +213,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 							   _maxCorrespondenceDistance,
 							   _maxIterations,
 							   hasConverged,
-							   *fromCloudNormalsRegistered);
+							   *fromCloudNormalsRegistered,
+							   _epsilon,
+							   this->force3DoF());
 						if(!filtered &&
 							!icpT.isNull() &&
 							hasConverged)
@@ -263,16 +280,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 				hasConverged)
 			{
 				float ix,iy,iz, iroll,ipitch,iyaw;
-				icpT.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
+				Transform icpInTargetReferential = guess.inverse() * icpT.inverse() * guess; // actual local ICP refinement
+				icpInTargetReferential.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
 				if((_maxTranslation>0.0f &&
-					(fabs(ix) > _maxTranslation ||
-					 fabs(iy) > _maxTranslation ||
-					 fabs(iz) > _maxTranslation))
-					||
-					(_maxRotation>0.0f &&
-					 (fabs(iroll) > _maxRotation ||
-					  fabs(ipitch) > _maxRotation ||
-					  fabs(iyaw) > _maxRotation)))
+					uMax3(fabs(ix), fabs(iy), fabs(iz)) > _maxTranslation)
+				   ||
+				   (_maxRotation>0.0f &&
+					uMax3(fabs(iroll), fabs(ipitch), fabs(iyaw)) > _maxRotation))
 				{
 					msg = uFormat("Cannot compute transform (ICP correction too large -> %f m %f rad, limits=%f m, %f rad)",
 							uMax3(fabs(ix), fabs(iy), fabs(iz)),
@@ -331,11 +345,18 @@ Transform RegistrationIcp::computeTransformationImpl(
 			UWARN(msg.c_str());
 		}
 	}
-	else
+	else if(dataTo.isValid())
 	{
-		msg = uFormat("Laser scans empty?!? (new[%d]=%d old[%d]=%d)",
-				dataTo.id(), dataTo.laserScanRaw().total(),
-				dataFrom.id(), dataFrom.laserScanRaw().total());
+		if(guess.isNull())
+		{
+			msg = "RegistrationIcp cannot do registration with a null guess.";
+		}
+		else
+		{
+			msg = uFormat("Laser scans empty?!? (new[%d]=%d old[%d]=%d)",
+					dataTo.id(), dataTo.laserScanRaw().total(),
+					dataFrom.id(), dataFrom.laserScanRaw().total());
+		}
 		UERROR(msg.c_str());
 	}
 

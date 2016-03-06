@@ -29,11 +29,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define ODOMETRYF2M_H_
 
 #include <rtabmap/core/Odometry.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 
 namespace rtabmap {
 
 class Signature;
-class RegistrationVis;
+class Registration;
 
 class RTABMAP_EXP OdometryF2M : public Odometry
 {
@@ -53,11 +55,15 @@ private:
 	int maximumMapSize_;
 	float keyFrameThr_;
 	int maxNewFeatures_;
+	float scanKeyFrameThr_;
+	int scanMaximumMapSize_;
+	float scanSubstractRadius_;
 	std::string fixedMapPath_;
 
-	RegistrationVis * regVis_;
+	Registration * regPipeline_;
 	Signature * map_;
 	Signature * lastFrame_;
+	std::map<int, pcl::PointCloud<pcl::PointNormal>::Ptr > scansBuffer_;
 };
 
 }

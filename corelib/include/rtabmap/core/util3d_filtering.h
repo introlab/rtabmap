@@ -236,11 +236,39 @@ pcl::IndicesPtr RTABMAP_EXP subtractFiltering(
 /**
  * For convenience.
  */
+pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP subtractFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & substractCloud,
+		float radiusSearch,
+		float maxAngle = M_PI/4.0f,
+		int minNeighborsInRadius = 1);
+
+/**
+ * Subtract a cloud from another one using radius filtering.
+ * @param cloud the input cloud.
+ * @param indices the input indices of the cloud to check, if empty, all points in the cloud are checked.
+ * @param cloud the input cloud to subtract.
+ * @param indices the input indices of the subtracted cloud to check, if empty, all points in the cloud are checked.
+ * @param radiusSearch the radius in meter.
+ * @return the indices of the points satisfying the parameters.
+ */
+pcl::IndicesPtr RTABMAP_EXP subtractFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & substractCloud,
+		const pcl::IndicesPtr & substractIndices,
+		float radiusSearch,
+		float maxAngle = M_PI/4.0f,
+		int minNeighborsInRadius = 1);
+
+/**
+ * For convenience.
+ */
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP subtractFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & substractCloud,
 		float radiusSearch,
-		float maxAngle,
+		float maxAngle = M_PI/4.0f,
 		int minNeighborsInRadius = 1);
 
 /**

@@ -360,12 +360,15 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, KalmanProcessNoise, 	float, 0.001,     "Process noise covariance value.");
 	RTABMAP_PARAM(Odom, KalmanMeasurementNoise, float, 0.01,      "Process measurement covariance value.");
 	RTABMAP_PARAM(Odom, GuessMotion,            bool, true,       "Guess next transformation from the last motion computed.");
-	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.5,       "Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
+	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,       "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
+	RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,       "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
 
 	// Odometry Bag-of-words
-	RTABMAP_PARAM(OdomF2M, MaxSize,             int, 1000,   "Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
-	RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,      "Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.");
-	RTABMAP_PARAM_STR(OdomF2M, FixedMapPath,    "",          "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
+	RTABMAP_PARAM(OdomF2M, MaxSize,             int, 2000,    "[Visual] Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
+	RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,       "[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.");
+	RTABMAP_PARAM(OdomF2M, ScanMaxSize,         int, 2000,    "[Geometry] Maximum local scan map size.");
+	RTABMAP_PARAM(OdomF2M, ScanSubstractRadius, float, 0.05,  "[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the scans.");
+	RTABMAP_PARAM_STR(OdomF2M, FixedMapPath,    "",           "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
 
 	// Odometry Mono
 	RTABMAP_PARAM(OdomMono, InitMinFlow,            float, 100,  "Minimum optical flow required for the initialization step.");

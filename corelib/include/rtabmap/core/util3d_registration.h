@@ -79,7 +79,7 @@ Transform RTABMAP_EXP icp(
 		int maximumIterations,
 		bool & hasConverged,
 		pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
-		double epsilon = 0,
+		float epsilon = 0.0f,
 		bool icp2D = false);
 
 Transform RTABMAP_EXP icpPointToPlane(
@@ -88,7 +88,9 @@ Transform RTABMAP_EXP icpPointToPlane(
 		double maxCorrespondenceDistance,
 		int maximumIterations,
 		bool & hasConverged,
-		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered);
+		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
+		float epsilon = 0.0f,
+		bool icp2D = false);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP getICPReadyCloud(
 		const cv::Mat & depth,

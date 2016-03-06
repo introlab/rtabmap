@@ -306,7 +306,7 @@ Transform icp(const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & cloud_source,
 			  int maximumIterations,
 			  bool & hasConverged,
 			  pcl::PointCloud<pcl::PointXYZ> & cloud_source_registered,
-			  double epsilon,
+			  float epsilon,
 			  bool icp2D)
 {
 	pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
@@ -344,12 +344,21 @@ Transform icpPointToPlane(
 		double maxCorrespondenceDistance,
 		int maximumIterations,
 		bool & hasConverged,
-		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered)
+		pcl::PointCloud<pcl::PointNormal> & cloud_source_registered,
+		float epsilon,
+		bool icp2D)
 {
 	pcl::IterativeClosestPoint<pcl::PointNormal, pcl::PointNormal> icp;
 	// Set the input source and target
 	icp.setInputTarget (cloud_target);
 	icp.setInputSource (cloud_source);
+
+	if(icp2D)
+	{
+		pcl::registration::TransformationEstimation2D<pcl::PointNormal, pcl::PointNormal>::Ptr est;
+		est.reset(new pcl::registration::TransformationEstimation2D<pcl::PointNormal, pcl::PointNormal>);
+		icp.setTransformationEstimation(est);
+	}
 
 	pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointNormal, pcl::PointNormal>::Ptr est;
 	est.reset(new pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointNormal, pcl::PointNormal>);
@@ -360,7 +369,7 @@ Transform icpPointToPlane(
 	// Set the maximum number of iterations (criterion 1)
 	icp.setMaximumIterations (maximumIterations);
 	// Set the transformation epsilon (criterion 2)
-	//icp.setTransformationEpsilon (1e-8);
+	icp.setTransformationEpsilon (epsilon);
 	// Set the euclidean distance difference epsilon (criterion 3)
 	//icp.setEuclideanFitnessEpsilon (1);
 	//icp.setRANSACOutlierRejectionThreshold(maxCorrespondenceDistance);

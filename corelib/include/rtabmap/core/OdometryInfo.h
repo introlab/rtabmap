@@ -45,6 +45,7 @@ public:
 		variance(0.0f),
 		features(0),
 		localMapSize(0),
+		localScanMapSize(0),
 		timeEstimation(0.0f),
 		timeParticleFiltering(0.0f),
 		stamp(0),
@@ -63,6 +64,7 @@ public:
 		output.variance = variance;
 		output.features = features;
 		output.localMapSize = localMapSize;
+		output.localScanMapSize = localScanMapSize;
 		output.timeEstimation = timeEstimation;
 		output.timeParticleFiltering = timeParticleFiltering;
 		output.stamp = stamp;
@@ -80,6 +82,7 @@ public:
 	float variance;
 	int features;
 	int localMapSize;
+	int localScanMapSize;
 	float timeEstimation;
 	float timeParticleFiltering;
 	double stamp;
@@ -89,15 +92,16 @@ public:
 	Transform transformGroundTruth;
 	float distanceTravelled;
 
-	int type; // 0=BOW, 1=F2F, 2=ICP, 3=Mono
+	int type; // 0=F2M, 1=F2F
 
-	// BOW
+	// F2M
 	std::multimap<int, cv::KeyPoint> words;
 	std::vector<int> wordMatches;
 	std::vector<int> wordInliers;
 	std::map<int, cv::Point3f> localMap;
+	cv::Mat localScanMap;
 
-	// F2F && Mono
+	// F2F
 	std::vector<cv::Point2f> refCorners;
 	std::vector<cv::Point2f> newCorners;
 	std::vector<int> cornerInliers;

@@ -1025,7 +1025,6 @@ pcl::PointCloud<pcl::PointNormal>::Ptr laserScanToPointCloudNormal(const cv::Mat
 	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
 	output->resize(laserScan.cols);
 	bool nullTransform = transform.isNull();
-	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(int i=0; i<laserScan.cols; ++i)
 	{
 		if(laserScan.type() == CV_32FC2)
@@ -1051,7 +1050,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr laserScanToPointCloudNormal(const cv::Mat
 
 		if(!nullTransform)
 		{
-			output->at(i) = pcl::transformPoint(output->at(i), transform3f);
+			output->at(i) = util3d::transformPoint(output->at(i), transform);
 		}
 	}
 	return output;

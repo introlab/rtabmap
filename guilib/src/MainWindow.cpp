@@ -500,6 +500,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", 0.0f);
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", 0.0f);
 	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", 0.0f);
+	_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", 0.0f);
 	_ui->statsToolBox->updateStat("Odometry/Interval/ms", 0.0f);
 	_ui->statsToolBox->updateStat("Odometry/Speed/kph", 0.0f);
 	_ui->statsToolBox->updateStat("Odometry/Distance/m", 0.0f);
@@ -895,29 +896,54 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 					}
 				}
 
-				// 2d cloud
-				if(!odom.data().laserScanRaw().empty() &&
-					_preferencesDialog->isScansShown(1))
+				if(_preferencesDialog->isScansShown(1))
 				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-					cloud = util3d::laserScanToPointCloud(odom.data().laserScanRaw(), pose);
-					if(_preferencesDialog->getDownsamplingStepScan(1) > 0)
+					// scan local map
+					if(!odom.info().localScanMap.empty())
 					{
-						cloud = util3d::downsample(cloud, _preferencesDialog->getDownsamplingStepScan(1));
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
+						if(!_ui->widget_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
+						{
+							UERROR("Adding scanMapOdom to viewer failed!");
+						}
+						else
+						{
+							_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", true);
+							_ui->widget_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
+							_ui->widget_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
+							scanUpdated = true;
+						}
 					}
-					if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+					// scan cloud
+					if(!odom.data().laserScanRaw().empty())
 					{
-						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
-					}
-					if(!_ui->widget_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection))
-					{
-						UERROR("Adding scanOdom to viewer failed!");
-					}
-					_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
-					_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-					_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+						cv::Mat scan = odom.data().laserScanRaw();
 
-					scanUpdated = true;
+						if(_preferencesDialog->getDownsamplingStepScan(1) > 0)
+						{
+							scan = util3d::downsample(scan, _preferencesDialog->getDownsamplingStepScan(1));
+						}
+
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloudNormal(scan, pose);
+						if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+						{
+							cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+						}
+
+						if(!_ui->widget_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta))
+						{
+							UERROR("Adding scanOdom to viewer failed!");
+						}
+						else
+						{
+							_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
+							_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+							_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+							scanUpdated = true;
+						}
+					}
 				}
 
 				// 3d features
@@ -956,6 +982,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 			if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanOdom"))
 			{
 				_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
+			}
+			if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanMapOdom"))
+			{
+				_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", false);
 			}
 			if(!featuresUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("featuresOdom"))
 			{
@@ -1092,42 +1122,16 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	}
 
 	//Process info
-	if(odom.info().inliers >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)odom.data().id(), (float)odom.info().inliers);
-	}
-	if(odom.info().icpInliersRatio >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", (float)odom.data().id(), (float)odom.info().icpInliersRatio);
-	}
-	if(odom.info().matches >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Matches/", (float)odom.data().id(), (float)odom.info().matches);
-	}
-	if(odom.info().variance >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/StdDev/", (float)odom.data().id(), sqrt((float)odom.info().variance));
-	}
-	if(odom.info().variance >= 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Variance/", (float)odom.data().id(), (float)odom.info().variance);
-	}
-	if(odom.info().timeEstimation > 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
-	}
-	if(odom.info().timeParticleFiltering > 0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
-	}
-	if(odom.info().features >=0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/Features/", (float)odom.data().id(), (float)odom.info().features);
-	}
-	if(odom.info().localMapSize >=0)
-	{
-		_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", (float)odom.data().id(), (float)odom.info().localMapSize);
-	}
+	_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)odom.data().id(), (float)odom.info().inliers);
+	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", (float)odom.data().id(), (float)odom.info().icpInliersRatio);
+	_ui->statsToolBox->updateStat("Odometry/Matches/", (float)odom.data().id(), (float)odom.info().matches);
+	_ui->statsToolBox->updateStat("Odometry/StdDev/", (float)odom.data().id(), sqrt((float)odom.info().variance));
+	_ui->statsToolBox->updateStat("Odometry/Variance/", (float)odom.data().id(), (float)odom.info().variance);
+	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
+	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
+	_ui->statsToolBox->updateStat("Odometry/Features/", (float)odom.data().id(), (float)odom.info().features);
+	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", (float)odom.data().id(), (float)odom.info().localMapSize);
+	_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", (float)odom.data().id(), (float)odom.info().localScanMapSize);
 	_ui->statsToolBox->updateStat("Odometry/ID/", (float)odom.data().id(), (float)odom.data().id());
 
 	float x=0.0f,y,z, roll,pitch,yaw;
@@ -2073,6 +2077,21 @@ void MainWindow::updateMapCloud(
 			_ui->widget_cloudViewer->updateCloudPose("scanOdom", _odometryCorrection);
 			_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 			_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+		}
+	}
+	if(viewerClouds.contains("scanMapOdom"))
+	{
+		if(!_preferencesDialog->isScansShown(1))
+		{
+			UDEBUG("");
+			_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", false);
+		}
+		else
+		{
+			UDEBUG("");
+			_ui->widget_cloudViewer->updateCloudPose("scanMapOdom", _odometryCorrection);
+			_ui->widget_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
+			_ui->widget_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
 		}
 	}
 	if(viewerClouds.contains("featuresOdom"))

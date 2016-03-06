@@ -51,6 +51,7 @@ private:
 private:
 	//Parameters:
 	float keyFrameThr_;
+	float scanKeyFrameThr_;
 
 	Registration * registrationPipeline_;
 	Signature refFrame_;

@@ -243,9 +243,16 @@ Transform Transform::interpolate(float t, const Transform & other) const
 
 std::string Transform::prettyPrint() const
 {
-	float x,y,z,roll,pitch,yaw;
-	getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
-	return uFormat("xyz=%f,%f,%f rpy=%f,%f,%f", x,y,z, roll,pitch,yaw);
+	if(this->isNull())
+	{
+		return uFormat("xyz=[null] rpy=[null]");
+	}
+	else
+	{
+		float x,y,z,roll,pitch,yaw;
+		getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+		return uFormat("xyz=%f,%f,%f rpy=%f,%f,%f", x,y,z, roll,pitch,yaw);
+	}
 }
 
 Transform Transform::operator*(const Transform & t) const

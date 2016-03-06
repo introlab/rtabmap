@@ -401,7 +401,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float minMapSize,
 		float scanMaxRange)
 {
-	UDEBUG("poses=%d, scans = %d", poses.size(), scans.size());
+	UDEBUG("poses=%d, scans = %d scanMaxRange=%f", poses.size(), scans.size(), scanMaxRange);
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
 	// For computation issue, the maximum scan range allowed is 6 meters

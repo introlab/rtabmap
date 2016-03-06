@@ -39,11 +39,14 @@ namespace rtabmap {
 OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	Odometry(parameters),
 	keyFrameThr_(Parameters::defaultOdomKeyFrameThr()),
+	scanKeyFrameThr_(Parameters::defaultOdomScanKeyFrameThr()),
 	motionSinceLastKeyFrame_(Transform::getIdentity())
 {
 	registrationPipeline_ = Registration::create(parameters);
 	Parameters::parse(parameters, Parameters::kOdomKeyFrameThr(), keyFrameThr_);
+	Parameters::parse(parameters, Parameters::kOdomScanKeyFrameThr(), scanKeyFrameThr_);
 	UASSERT(keyFrameThr_>=0.0f && keyFrameThr_<=1.0f);
+	UASSERT(scanKeyFrameThr_>=0.0f && scanKeyFrameThr_<=1.0f);
 }
 
 OdometryF2F::~OdometryF2F()
@@ -136,7 +139,8 @@ Transform OdometryF2F::computeTransform(
 		motionSinceLastKeyFrame_ *= output;
 
 		// new key-frame?
-		if(keyFrameThr_==0 || float(regInfo.inliers) <= keyFrameThr_*float(refFrame_.sensorData().keypoints().size()))
+		if( (registrationPipeline_->isImageRequired() && (keyFrameThr_ == 0 || float(regInfo.inliers) <= keyFrameThr_*float(refFrame_.sensorData().keypoints().size()))) ||
+			(registrationPipeline_->isScanRequired() && (scanKeyFrameThr_ == 0 || regInfo.icpInliersRatio <= scanKeyFrameThr_)))
 		{
 			UDEBUG("Update key frame");
 			int features = newFrame.getWordsDescriptors().size();

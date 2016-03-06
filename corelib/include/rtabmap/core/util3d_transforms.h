@@ -62,6 +62,9 @@ pcl::PointXYZ RTABMAP_EXP transformPoint(
 pcl::PointXYZRGB RTABMAP_EXP transformPoint(
 		const pcl::PointXYZRGB & pt,
 		const Transform & transform);
+pcl::PointNormal RTABMAP_EXP transformPoint(
+		const pcl::PointNormal & point,
+		const Transform & transform);
 
 } // namespace util3d
 } // namespace rtabmap

@@ -32,10 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_surface.h"
+#include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/StereoDense.h"
 
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
+
+#include <pcl/io/io.h>
 
 namespace rtabmap
 {
@@ -170,7 +173,22 @@ void CameraThread::mainLoop()
 			{
 				UASSERT(_scanDecimation >= 1);
 				UTimer timer;
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth, _scanVoxelSize);
+				pcl::IndicesPtr validIndices(new std::vector<int>);
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth, 0.0f, 0, validIndices.get());
+				float maxPoints = (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation);
+				if(_scanVoxelSize>0.0f)
+				{
+					cloud = util3d::voxelize(cloud, validIndices, _scanVoxelSize);
+					float ratio = float(cloud->size()) / float(validIndices->size());
+					maxPoints = ratio * maxPoints;
+				}
+				else if(!cloud->is_dense)
+				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZ>);
+					pcl::copyPointCloud(*cloud, *validIndices, *denseCloud);
+					cloud = denseCloud;
+				}
+
 				cv::Mat scan;
 				if(_scanNormalsK>0)
 				{
@@ -180,7 +198,7 @@ void CameraThread::mainLoop()
 				{
 					scan = util3d::laserScanFromPointCloud(*cloud);
 				}
-				data.setLaserScanRaw(scan, (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation), _scanMaxDepth);
+				data.setLaserScanRaw(scan, (int)maxPoints, _scanMaxDepth);
 				info.timeScanFromDepth = timer.ticks();
 				UINFO("Computing scan from depth = %f s", info.timeScanFromDepth);
 			}
