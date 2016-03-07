@@ -331,10 +331,12 @@ class RTABMAP_EXP Parameters
 	// Graph optimization
 #ifdef RTABMAP_GTSAM
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 2,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
-#elif RTABMAP_G2O
+#else
+#ifdef RTABMAP_G2O
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 1,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
 #else
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 0,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
+#endif
 #endif
 	RTABMAP_PARAM(Optimizer, Iterations,        int, 100,        "Optimization iterations.");
 	RTABMAP_PARAM(Optimizer, Slam2D,            bool, false,     "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
