@@ -50,8 +50,7 @@ using namespace std;
 
 namespace AISNavigation {
 
-//#define DEBUG(i) \
-//        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 
 TreeOptimizer3::TreeOptimizer3(){

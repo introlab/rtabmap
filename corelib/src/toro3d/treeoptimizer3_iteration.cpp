@@ -42,8 +42,7 @@ using namespace std;
 
 namespace AISNavigation {
 
-//#define DEBUG(i) \
-//        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 //helper functions. Should I explain :-)?
 inline double max3( const double& a, const double& b, const double& c){

@@ -51,8 +51,7 @@ using namespace std;
 
 namespace AISNavigation {
 
-//#define DEBUG(i) \
-//        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 /** \brief A class (struct) to compute the parameterization of the vertex v **/
 struct ParameterPropagator{

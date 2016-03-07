@@ -54,8 +54,7 @@ typedef unsigned int uint;
 #define LINESIZE 81920
 
 
-//#define DEBUG(i) \
-//        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 
 bool TreePoseGraph2::load(const char* filename, bool overrideCovariances){
