@@ -1818,7 +1818,7 @@ void MainWindow::updateMapCloud(
 							UERROR("Updating pose scan %d failed!", iter->first);
 						}
 					}
-					_ui->widget_cloudViewer->setCloudVisibility(scanName, true);
+					_ui->widget_cloudViewer->setCloudVisibility(scanName, _preferencesDialog->isScansShown(0));
 					_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 					_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 				}
@@ -1829,11 +1829,6 @@ void MainWindow::updateMapCloud(
 					{
 						this->createAndAddScanToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
-				}
-				if(!_preferencesDialog->isScansShown(0))
-				{
-					UDEBUG("Hide scan %s", scanName.c_str());
-					_ui->widget_cloudViewer->setCloudVisibility(scanName.c_str(), false);
 				}
 			}
 			else if(viewerClouds.contains(scanName))
@@ -1857,7 +1852,7 @@ void MainWindow::updateMapCloud(
 							UERROR("Updating pose features %d failed!", iter->first);
 						}
 					}
-					_ui->widget_cloudViewer->setCloudVisibility(featuresName, true);
+					_ui->widget_cloudViewer->setCloudVisibility(featuresName, _preferencesDialog->isFeaturesShown(0));
 					_ui->widget_cloudViewer->setCloudPointSize(featuresName, _preferencesDialog->getFeaturesPointSize(0));
 				}
 				else if(_cachedSignatures.contains(iter->first))
@@ -1867,11 +1862,6 @@ void MainWindow::updateMapCloud(
 					{
 						this->createAndAddFeaturesToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
-				}
-				if(!_preferencesDialog->isFeaturesShown(0))
-				{
-					UDEBUG("Hide features %s", featuresName.c_str());
-					_ui->widget_cloudViewer->setCloudVisibility(featuresName.c_str(), false);
 				}
 			}
 			else if(viewerClouds.contains(featuresName))
