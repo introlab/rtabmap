@@ -3123,7 +3123,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			}
 
 			cv::Mat depthMask;
-			if(!data.depthRaw().empty())
+			if(!data.depthRaw().empty() &&
+			   _feature2D->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
 			{
 				if(imageMono.rows % data.depthRaw().rows == 0 &&
 					imageMono.cols % data.depthRaw().cols == 0 &&

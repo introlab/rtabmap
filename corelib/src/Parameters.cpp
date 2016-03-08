@@ -134,6 +134,19 @@ ParametersMap Parameters::getDefaultParameters(const std::string & group)
 	return parameters;
 }
 
+ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & group)
+{
+	ParametersMap output;
+	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+	{
+		if(iter->first.compare(group) == 0)
+		{
+			output.insert(*iter);
+		}
+	}
+	return output;
+}
+
 const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemovedParameters()
 {
 	if(removedParameters_.empty())

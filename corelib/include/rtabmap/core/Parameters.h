@@ -361,7 +361,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ParticleLambdaR, 		float, 100,       "Lambda of rotational components (roll,pitch,yaw).");
 	RTABMAP_PARAM(Odom, KalmanProcessNoise, 	float, 0.001,     "Process noise covariance value.");
 	RTABMAP_PARAM(Odom, KalmanMeasurementNoise, float, 0.01,      "Process measurement covariance value.");
-	RTABMAP_PARAM(Odom, GuessMotion,            bool, true,       "Guess next transformation from the last motion computed.");
+	RTABMAP_PARAM(Odom, GuessMotion,            bool, false,      "Guess next transformation from the last motion computed.");
 	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,       "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,       "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
 
@@ -403,7 +403,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, SubPixIterations,         int, 0,        "See cv::cornerSubPix(). 0 disables sub pixel refining.");
 	RTABMAP_PARAM(Vis, SubPixEps,                float, 0.02,   "See cv::cornerSubPix().");
 	RTABMAP_PARAM(Vis, CorType,                  int, 0,        "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
-	RTABMAP_PARAM(Vis, CorNNType, 	             int, 3,        "[Vis/CorrespondenceType=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.");
+	RTABMAP_PARAM(Vis, CorNNType, 	             int, 1,        "[Vis/CorrespondenceType=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.");
 	RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.8,    "[Vis/CorrespondenceType=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.");
 	RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 50,       "[Vis/CorrespondenceType=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.");
 	RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,       "[Vis/CorrespondenceType=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.");
@@ -482,6 +482,7 @@ public:
 	static bool isFeatureParameter(const std::string & param);
 	static ParametersMap getDefaultOdometryParameters(bool stereo = false);
 	static ParametersMap getDefaultParameters(const std::string & group);
+	static ParametersMap filterParameters(const ParametersMap & parameters, const std::string & group);
 
 	static void readINI(const std::string & configFile, ParametersMap & parameters);
 	static void writeINI(const std::string & configFile, const ParametersMap & parameters);

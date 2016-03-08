@@ -257,7 +257,8 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 
 					cv::Mat depthMask;
-					if(!fromSignature.sensorData().depthRaw().empty())
+					if(!fromSignature.sensorData().depthRaw().empty() &&
+					   detector->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
 					{
 						if(fromSignature.sensorData().imageRaw().rows % fromSignature.sensorData().depthRaw().rows == 0 &&
 							fromSignature.sensorData().imageRaw().cols % fromSignature.sensorData().depthRaw().cols == 0 &&
@@ -430,7 +431,8 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 
 					cv::Mat depthMask;
-					if(!toSignature.sensorData().depthRaw().empty())
+					if(!toSignature.sensorData().depthRaw().empty() &&
+						detector->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
 					{
 						if(toSignature.sensorData().imageRaw().rows % toSignature.sensorData().depthRaw().rows == 0 &&
 							toSignature.sensorData().imageRaw().cols % toSignature.sensorData().depthRaw().cols == 0 &&
@@ -527,6 +529,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				kptsTo3D = uValues(toSignature.getWords3());
 			}
 
+			UASSERT(kptsFrom.empty() || int(kptsFrom.size()) == descriptorsFrom.rows);
+
 			fromSignature.sensorData().setFeatures(kptsFrom, descriptorsFrom);
 			toSignature.sensorData().setFeatures(kptsTo, descriptorsTo);
 
@@ -604,7 +608,7 @@ Transform RegistrationVis::computeTransformationImpl(
 
 						UASSERT(indices.size() == pointsToMat.rows);
 						UASSERT(descriptorsFrom.cols == descriptorsTo.cols);
-						UASSERT(kptsFrom.empty() || descriptorsFrom.rows == (int)kptsFrom.size());
+						UASSERT(descriptorsFrom.rows == (int)kptsFrom.size());
 						UASSERT((int)pointsToMat.rows == descriptorsTo.rows);
 						UASSERT(pointsToMat.rows == kptsTo.size());
 						UDEBUG("");
@@ -620,26 +624,43 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							if(kptsTo3D.empty() || util3d::isFinite(kptsTo3D[i]))
 							{
+								int octave = kptsTo[i].octave;
 								int matchedIndex = -1;
 								if(indices[i].size() >= 2)
 								{
-									cv::Mat descriptors(indices[i].size(), descriptorsFrom.cols, descriptorsFrom.type());
+									cv::Mat descriptors;
+									std::vector<int> descriptorsIndices(indices[i].size());
+									int oi=0;
 									for(unsigned int j=0; j<indices[i].size(); ++j)
 									{
-										descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(j));
+										if(kptsFrom.at(projectedIndexToDescIndex[indices[i].at(j)]).octave>=octave-1 &&
+										   kptsFrom.at(projectedIndexToDescIndex[indices[i].at(j)]).octave<=octave+1)
+										{
+											descriptors.push_back(descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]));
+											descriptorsIndices[oi++] = indices[i].at(j);
+										}
 									}
-
-									std::vector<std::vector<cv::DMatch> > matches;
-									cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-									matcher.knnMatch(descriptorsTo.row(i), descriptors, matches, 2);
-									UASSERT(matches.size() == 1);
-									UASSERT(matches[0].size() == 2);
-									if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+									descriptorsIndices.resize(oi);
+									if(oi >=2)
 									{
-										matchedIndex = indices[i].at(matches[0].at(0).trainIdx);
+										std::vector<std::vector<cv::DMatch> > matches;
+										cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
+										matcher.knnMatch(descriptorsTo.row(i), descriptors, matches, 2);
+										UASSERT(matches.size() == 1);
+										UASSERT(matches[0].size() == 2);
+										if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
+										{
+											matchedIndex = descriptorsIndices.at(matches[0].at(0).trainIdx);
+										}
+									}
+									else if(oi == 1)
+									{
+										matchedIndex = descriptorsIndices[0];
 									}
 								}
-								else if(indices[i].size() == 1)
+								else if(indices[i].size() == 1 &&
+									    kptsFrom.at(projectedIndexToDescIndex[indices[i].at(0)]).octave >= octave-1 &&
+										kptsFrom.at(projectedIndexToDescIndex[indices[i].at(0)]).octave <= octave+1)
 								{
 									matchedIndex = indices[i].at(0);
 								}
@@ -699,10 +720,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							if(util3d::isFinite(kptsFrom3D[i]) && addedWordsFrom.find(i) == addedWordsFrom.end())
 							{
-								if(kptsFrom.size())
-								{
-									wordsFrom.insert(std::make_pair(notMatchedFromId, kptsFrom[i]));
-								}
+								wordsFrom.insert(std::make_pair(notMatchedFromId, kptsFrom[i]));
 								wordsDescFrom.insert(std::make_pair(notMatchedFromId, descriptorsFrom.row(i)));
 								words3From.insert(std::make_pair(notMatchedFromId, kptsFrom3D[i]));
 
@@ -753,7 +771,6 @@ Transform RegistrationVis::computeTransformationImpl(
 					std::multiset<int> fromWordIdsSet(fromWordIds.begin(), fromWordIds.end());
 					std::multiset<int> toWordIdsSet(toWordIds.begin(), toWordIds.end());
 
-					UASSERT(kptsFrom.empty() || fromWordIds.size() == kptsFrom.size());
 					UASSERT(kptsFrom3D.empty() || fromWordIds.size() == kptsFrom3D.size());
 					UASSERT(int(fromWordIds.size()) == descriptorsFrom.rows);
 					int i=0;
@@ -761,10 +778,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						if(fromWordIdsSet.count(*iter) == 1)
 						{
-							if(kptsFrom.size())
-							{
-								wordsFrom.insert(std::make_pair(*iter, kptsFrom[i]));
-							}
+							wordsFrom.insert(std::make_pair(*iter, kptsFrom[i]));
 							if(kptsFrom3D.size())
 							{
 								words3From.insert(std::make_pair(*iter, kptsFrom3D[i]));
@@ -795,14 +809,10 @@ Transform RegistrationVis::computeTransformationImpl(
 			else if(descriptorsFrom.rows)
 			{
 				//just create fake words
-				UASSERT(kptsFrom.empty() || int(kptsFrom.size()) == descriptorsFrom.rows);
 				UASSERT(kptsFrom3D.empty() || int(kptsFrom3D.size()) == descriptorsFrom.rows);
 				for(int i=0; i<descriptorsFrom.rows; ++i)
 				{
-					if(kptsFrom.size())
-					{
-						wordsFrom.insert(std::make_pair(i, kptsFrom[i]));
-					}
+					wordsFrom.insert(std::make_pair(i, kptsFrom[i]));
 					wordsDescFrom.insert(std::make_pair(i, descriptorsFrom.row(i)));
 					if(kptsFrom3D.size())
 					{

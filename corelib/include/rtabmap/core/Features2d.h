@@ -49,7 +49,6 @@ namespace gpu {
 }
 typedef cv::SIFT CV_SIFT;
 typedef cv::SURF CV_SURF;
-typedef cv::ORB CV_ORB;
 typedef cv::FastFeatureDetector CV_FAST;
 typedef cv::FREAK CV_FREAK;
 typedef cv::GFTTDetector CV_GFTT;
@@ -74,12 +73,12 @@ class SURF_CUDA;
 }
 typedef cv::xfeatures2d::SIFT CV_SIFT;
 typedef cv::xfeatures2d::SURF CV_SURF;
-typedef cv::ORB CV_ORB;
 typedef cv::FastFeatureDetector CV_FAST;
 typedef cv::xfeatures2d::FREAK CV_FREAK;
 typedef cv::GFTTDetector CV_GFTT;
 typedef cv::xfeatures2d::BriefDescriptorExtractor CV_BRIEF;
 typedef cv::BRISK CV_BRISK;
+typedef cv::ORB CV_ORB;
 typedef cv::cuda::SURF_CUDA CV_SURF_GPU;
 typedef cv::cuda::ORB CV_ORB_GPU;
 typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
@@ -89,6 +88,9 @@ typedef cv::cuda::FastFeatureDetector CV_FAST_GPU;
 namespace rtabmap {
 
 class Stereo;
+#if CV_MAJOR_VERSION < 3
+class CV_ORB;
+#endif
 
 // Feature2D
 class RTABMAP_EXP Feature2D {
@@ -102,8 +104,7 @@ public:
 		kFeatureGfttFreak=5,
 		kFeatureGfttBrief=6,
 		kFeatureBrisk=7,
-		kFeatureGfttOrb=8,   //new 0.10.11
-		kFeatureFastOrb=9};  //new 0.11.0
+		kFeatureGfttOrb=8}; //new 0.10.11
 
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
@@ -264,9 +265,11 @@ public:
 	virtual ~FAST();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const {return kFeatureUndef;}
 
 private:
 	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const {return cv::Mat();}
 
 private:
 	int threshold_;
@@ -321,23 +324,6 @@ private:
 	int nOctaves_;
 
 	cv::Ptr<CV_FREAK> _freak;
-};
-
-//FAST_ORB
-class RTABMAP_EXP FAST_ORB : public FAST
-{
-public:
-	FAST_ORB(const ParametersMap & parameters = ParametersMap());
-	virtual ~FAST_ORB();
-
-	virtual void parseParameters(const ParametersMap & parameters);
-	virtual Feature2D::Type getType() const {return kFeatureFastOrb;}
-
-private:
-	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
-
-private:
-	ORB _orb;
 };
 
 //GFTT

@@ -79,7 +79,7 @@ Transform estimateMotion3DTo2D(
 		std::map<int, cv::Point3f>::const_iterator iter=words3A.find(ids[i]);
 		if(iter != words3A.end() && util3d::isFinite(iter->second))
 		{
-			cv::Point3f pt = words3A.find(ids[i])->second;
+			const cv::Point3f & pt = iter->second;
 			objectPoints[oi].x = pt.x;
 			objectPoints[oi].y = pt.y;
 			objectPoints[oi].z = pt.z;

@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-605</y>
+            <y>0</y>
             <width>681</width>
             <height>2010</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>14</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -5228,11 +5228,6 @@ generate the number of words requested.</string>
                              <string>GFTT+ORB</string>
                             </property>
                            </item>
-                           <item>
-                            <property name="text">
-                             <string>FAST+ORB</string>
-                            </property>
-                           </item>
                           </widget>
                          </item>
                          <item row="1" column="1">
@@ -9187,11 +9182,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            <item>
                             <property name="text">
                              <string>GFTT+ORB</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>FAST+ORB</string>
                             </property>
                            </item>
                           </widget>

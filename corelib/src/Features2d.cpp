@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/opencv_modules.hpp>
 
 #if CV_MAJOR_VERSION < 3
+#include "opencv/Orb.h"
 #ifdef HAVE_OPENCV_GPU
 #include <opencv2/gpu/gpu.hpp>
 #endif
@@ -459,9 +460,6 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	case Feature2D::kFeatureFastFreak:
 		feature2D = new FAST_FREAK(parameters);
 		break;
-	case Feature2D::kFeatureFastOrb:
-		feature2D = new FAST_ORB(parameters);
-		break;
 	case Feature2D::kFeatureGfttFreak:
 		feature2D = new GFTT_FREAK(parameters);
 		break;
@@ -545,7 +543,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		}
 	}
 
-	if(_subPixWinSize > 0 && _subPixIterations > 0)
+	if(keypoints.size() && _subPixWinSize > 0 && _subPixIterations > 0)
 	{
 		std::vector<cv::Point2f> corners;
 		cv::KeyPoint::convert(keypoints, corners);
@@ -558,7 +556,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 		{
 			keypoints[i].pt = corners[i];
 		}
-		UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
+		UDEBUG("subpixel time = %f s", timer.ticks());
 	}
 
 	return keypoints;
@@ -949,9 +947,9 @@ void ORB::parseParameters(const ParametersMap & parameters)
 	else
 	{
 #if CV_MAJOR_VERSION < 3
-		_orb = cv::Ptr<CV_ORB>(new CV_ORB(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_));
+		_orb = cv::Ptr<CV_ORB>(new CV_ORB(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, parameters));
 #else
-		_orb = CV_ORB::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_);
+		_orb = CV_ORB::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, fastThreshold_);
 #endif
 	}
 }
@@ -1120,6 +1118,7 @@ void FAST::parseParameters(const ParametersMap & parameters)
 #if CV_MAJOR_VERSION < 3
 		if(gridRows_ > 0 && gridCols_ > 0)
 		{
+			UDEBUG("grid max features = %d", this->getMaxFeatures());
 			cv::Ptr<cv::FeatureDetector> fastAdjuster = cv::Ptr<cv::FastAdjuster>(new cv::FastAdjuster(threshold_, nonmaxSuppression_, minThreshold_, maxThreshold_));
 			_fast = cv::Ptr<cv::FeatureDetector>(new cv::GridAdaptedFeatureDetector(fastAdjuster, this->getMaxFeatures(), gridRows_, gridCols_));
 		}
@@ -1273,32 +1272,6 @@ cv::Mat FAST_FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<c
 #endif
 #endif
 	return descriptors;
-}
-
-//////////////////////////
-//FAST-ORB
-//////////////////////////
-FAST_ORB::FAST_ORB(const ParametersMap & parameters) :
-	FAST(parameters),
-	_orb(parameters)
-{
-	parseParameters(parameters);
-}
-
-FAST_ORB::~FAST_ORB()
-{
-}
-
-void FAST_ORB::parseParameters(const ParametersMap & parameters)
-{
-	FAST::parseParameters(parameters);
-	_orb.parseParameters(parameters);
-}
-
-cv::Mat FAST_ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
-{
-	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
-	return _orb.generateDescriptors(image, keypoints);
 }
 
 //////////////////////////

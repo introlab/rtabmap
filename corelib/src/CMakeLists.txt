@@ -68,8 +68,15 @@ SET(SRC_FILES
 	rtflann/ext/lz4.c
 	rtflann/ext/lz4hc.c
 	
-	sqlite3/sqlite3.c
+	sqlite3/sqlite3.c	
 )
+
+IF(OpenCV_VERSION_MAJOR EQUAL 2)
+SET(SRC_FILES
+    ${SRC_FILES}
+    opencv/Orb.cpp
+)
+ENDIF(OpenCV_VERSION_MAJOR EQUAL 2)
 
 SET(INCLUDE_DIRS
     ${PROJECT_SOURCE_DIR}/utilite/include
