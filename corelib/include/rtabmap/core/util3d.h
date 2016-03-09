@@ -177,16 +177,16 @@ cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 // Register point cloud to camera (return registered depth image)
 cv::Mat RTABMAP_EXP projectCloudToCamera(
 		const cv::Size & imageSize,
-		const cv::Mat & cameraMatrixK,  // /base_link -> /camera_link
-		const cv::Mat & laserScan,      // assuming points are already in /base_link coordinate
-		const rtabmap::Transform & cameraTransform);
+		const cv::Mat & cameraMatrixK,  
+		const cv::Mat & laserScan,                   // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform); // /base_link -> /camera_link
 
 // Register point cloud to camera (return registered depth image)
 cv::Mat RTABMAP_EXP projectCloudToCamera(
 		const cv::Size & imageSize,
-		const cv::Mat & cameraMatrixK,                       // /base_link -> /camera_link
+		const cv::Mat & cameraMatrixK,                       
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan, // assuming points are already in /base_link coordinate
-		const rtabmap::Transform & cameraTransform);
+		const rtabmap::Transform & cameraTransform);         // /base_link -> /camera_link
 
 // Direction vertical (>=0), horizontal (<0)
 void RTABMAP_EXP fillProjectedCloudHoles(
