@@ -130,9 +130,10 @@ StereoCameraModel::StereoCameraModel(
 		double cx,
 		double cy,
 		double baseline,
-		const Transform & localTransform) :
-	left_(fx, fy, cx, cy, localTransform),
-	right_(fx, fy, cx, cy, localTransform, baseline*-fx)
+		const Transform & localTransform,
+		const cv::Size & imageSize) :
+	left_(fx, fy, cx, cy, localTransform, 0, imageSize),
+	right_(fx, fy, cx, cy, localTransform, baseline*-fx, imageSize)
 {
 }
 
@@ -144,9 +145,10 @@ StereoCameraModel::StereoCameraModel(
 		double cx,
 		double cy,
 		double baseline,
-		const Transform & localTransform) :
-	left_(name+"_left", fx, fy, cx, cy, localTransform),
-	right_(name+"_right", fx, fy, cx, cy, localTransform, baseline*-fx),
+		const Transform & localTransform,
+		const cv::Size & imageSize) :
+	left_(name+"_left", fx, fy, cx, cy, localTransform, 0, imageSize),
+	right_(name+"_right", fx, fy, cx, cy, localTransform, baseline*-fx, imageSize),
 	name_(name)
 {
 }

@@ -540,9 +540,18 @@ Transform RegistrationVis::computeTransformationImpl(
 			// We have all data we need here, so match!
 			if(descriptorsFrom.rows > 0 && descriptorsTo.rows > 0)
 			{
+				cv::Size imageSize = toSignature.sensorData().imageRaw().size();
+				bool isCalibrated = false;
+				if(imageSize.height == 0 || imageSize.width == 0)
+				{
+					imageSize = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModel().left().imageSize();
+				}
+				isCalibrated = imageSize.height != 0 && imageSize.width != 0 && fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].isValidForProjection():fromSignature.sensorData().stereoCameraModel().isValidForProjection();
+
 				// If guess is set, limit the search of matches using optical flow window size
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
-				if(guessSet && _guessWinSize > 0 && kptsFrom3D.size())
+				if(guessSet && _guessWinSize > 0 && kptsFrom3D.size() &&
+						isCalibrated) // needed for projection
 				{
 					UDEBUG("");
 					UASSERT((int)kptsTo.size() == descriptorsTo.rows);
@@ -573,8 +582,8 @@ Transform RegistrationVis::computeTransformationImpl(
 					int oi=0;
 					for(unsigned int i=0; i<projected.size(); ++i)
 					{
-						if(uIsInBounds(projected[i].x, 0.0f, float(toSignature.sensorData().imageRaw().cols-1)) &&
-						   uIsInBounds(projected[i].y, 0.0f, float(toSignature.sensorData().imageRaw().rows-1)))
+						if(uIsInBounds(projected[i].x, 0.0f, float(imageSize.width-1)) &&
+						   uIsInBounds(projected[i].y, 0.0f, float(imageSize.height-1)))
 						{
 							projectedIndexToDescIndex[oi] = i;
 							cornersProjected[oi++] = projected[i];
@@ -755,6 +764,13 @@ Transform RegistrationVis::computeTransformationImpl(
 				}
 				else
 				{
+					if(guessSet && _guessWinSize > 0 && kptsFrom3D.size() && !isCalibrated)
+					{
+						UWARN("Calibration not found! Finding correspondences "
+							   "with the guess cannot be done, global matching is "
+							   "done instead.");
+					}
+
 					UDEBUG("");
 					// match between all descriptors
 					VWDictionary dictionary(_featureParameters);

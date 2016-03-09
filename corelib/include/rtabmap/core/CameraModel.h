@@ -59,7 +59,8 @@ public:
 			double cx,
 			double cy,
 			const Transform & localTransform = Transform::getIdentity(),
-			double Tx = 0.0f);
+			double Tx = 0.0f,
+			const cv::Size & imageSize = cv::Size(0,0));
 	// minimal to be saved
 	CameraModel(
 			const std::string & name,
@@ -68,7 +69,8 @@ public:
 			double cx,
 			double cy,
 			const Transform & localTransform = Transform::getIdentity(),
-			double Tx = 0.0f);
+			double Tx = 0.0f,
+			const cv::Size & imageSize = cv::Size(0,0));
 
 	virtual ~CameraModel() {}
 

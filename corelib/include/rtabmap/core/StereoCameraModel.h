@@ -68,7 +68,8 @@ public:
 			double cx,
 			double cy,
 			double baseline,
-			const Transform & localTransform = Transform::getIdentity());
+			const Transform & localTransform = Transform::getIdentity(),
+			const cv::Size & imageSize = cv::Size(0,0));
 	//minimal to be saved
 	StereoCameraModel(
 			const std::string & name,
@@ -77,7 +78,8 @@ public:
 			double cx,
 			double cy,
 			double baseline,
-			const Transform & localTransform = Transform::getIdentity());
+			const Transform & localTransform = Transform::getIdentity(),
+			const cv::Size & imageSize = cv::Size(0,0));
 	virtual ~StereoCameraModel() {}
 
 	bool isValidForProjection() const {return left_.isValidForProjection() && right_.isValidForProjection() && baseline() > 0.0;}

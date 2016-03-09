@@ -67,7 +67,9 @@ CameraModel::CameraModel(
 		double cx,
 		double cy,
 		const Transform & localTransform,
-		double Tx) :
+		double Tx,
+		const cv::Size & imageSize) :
+		imageSize_(imageSize),
 		K_(cv::Mat::eye(3, 3, CV_64FC1)),
 		localTransform_(localTransform)
 {
@@ -99,8 +101,10 @@ CameraModel::CameraModel(
 		double cx,
 		double cy,
 		const Transform & localTransform,
-		double Tx) :
+		double Tx,
+		const cv::Size & imageSize) :
 		name_(name),
+		imageSize_(imageSize),
 		K_(cv::Mat::eye(3, 3, CV_64FC1)),
 		localTransform_(localTransform)
 {
