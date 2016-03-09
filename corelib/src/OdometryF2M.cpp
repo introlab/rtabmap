@@ -169,11 +169,12 @@ OdometryF2M::~OdometryF2M()
 
 void OdometryF2M::reset(const Transform & initialPose)
 {
+	Odometry::reset(initialPose);
+	*lastFrame_ = Signature(1);
+
 	if(fixedMapPath_.empty())
 	{
-		Odometry::reset(initialPose);
 		*map_ = Signature(-1);
-		*lastFrame_ = Signature(1);
 	}
 	else
 	{
@@ -432,12 +433,29 @@ Transform OdometryF2M::computeTransform(
 				{
 					// update local map
 					UASSERT_MSG(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
-
 					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWords().size());
 
-					map_->setWords(lastFrame_->getWords());
-					map_->setWords3(lastFrame_->getWords3());
-					map_->setWordsDescriptors(lastFrame_->getWordsDescriptors());
+					std::multimap<int, cv::KeyPoint> words;
+					std::multimap<int, cv::Point3f> transformedPoints;
+					std::multimap<int, cv::Mat> descriptors;
+					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWordsDescriptors().size());
+					std::multimap<int, cv::KeyPoint>::const_iterator wordsIter = lastFrame_->getWords().begin();
+					std::multimap<int, cv::Mat>::const_iterator descIter = lastFrame_->getWordsDescriptors().begin();
+					for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
+							iter!=lastFrame_->getWords3().end();
+							++iter,++descIter,++wordsIter)
+					{
+						if(util3d::isFinite(iter->second))
+						{
+							words.insert(*wordsIter);
+							transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, newFramePose)));
+							descriptors.insert(*descIter);
+						}
+					}
+					map_->setWords(words);
+					map_->setWords3(transformedPoints);
+					map_->setWordsDescriptors(descriptors);
+
 					map_->sensorData().setCameraModels(lastFrame_->sensorData().cameraModels());
 					map_->sensorData().setStereoCameraModel(lastFrame_->sensorData().stereoCameraModel());
 				}
