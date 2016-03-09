@@ -37,6 +37,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/OptimizerG2O.h"
 
+#if CV_MAJOR_VERSION < 3
+#include "opencv/solvepnp.h"
+#endif
+
 namespace rtabmap
 {
 
@@ -121,7 +125,7 @@ Transform estimateMotion3DTo2D(
 				true,
 				iterations,
 				reprojError,
-				0, // min inliers
+				minInliers, // min inliers
 				inliers,
 				flagsPnP,
 				refineIterations);
@@ -323,7 +327,15 @@ void solvePnPRansac(
         int refineIterations,
         float refineSigma)
 {
-	cv::solvePnPRansac(
+	if(minInliersCount < 4)
+	{
+		minInliersCount = 4;
+	}
+#if CV_MAJOR_VERSION < 3
+	cv3::solvePnPRansac( //use OpenCV3 version of solvePnPRansac in OpenCV2
+#else
+	cv::solvePnPRansac( // use directly version from OpenCV 3
+#endif
 			objectPoints,
 			imagePoints,
 			cameraMatrix,
@@ -333,16 +345,12 @@ void solvePnPRansac(
 			useExtrinsicGuess,
 			iterationsCount,
 			reprojectionError,
-#if CV_MAJOR_VERSION < 3
-			minInliersCount, // min inliers
-#else
 			0.99, // confidence
-#endif
 			inliers,
 			flags);
 
 	float inlierThreshold = reprojectionError;
-	if(inliers.size() >= 4 && refineIterations>0)
+	if(inliers.size() >= minInliersCount && refineIterations>0)
 	{
 		float error_threshold = inlierThreshold;
 		int refine_iterations = 0;
@@ -381,7 +389,7 @@ void solvePnPRansac(
 			UDEBUG("RANSAC refineModel: Number of inliers found (before/after): %d/%d, with an error threshold of %f.",
 					(int)prev_inliers.size (), (int)new_inliers.size (), error_threshold);
 
-			if (new_inliers.size() < 4)
+			if (new_inliers.size() < minInliersCount)
 			{
 				++refine_iterations;
 				if (refine_iterations >= refineIterations)
@@ -405,7 +413,7 @@ void solvePnPRansac(
 			if (new_inliers.size () != prev_inliers.size ())
 			{
 				// Check if the number of inliers is oscillating in between two values
-				if (inliers_sizes.size () >= 4)
+				if (inliers_sizes.size () >= minInliersCount)
 				{
 					if (inliers_sizes[inliers_sizes.size () - 1] == inliers_sizes[inliers_sizes.size () - 3] &&
 					inliers_sizes[inliers_sizes.size () - 2] == inliers_sizes[inliers_sizes.size () - 4])
@@ -432,9 +440,9 @@ void solvePnPRansac(
 		while (inlier_changed && ++refine_iterations < refineIterations);
 
 		// If the new set of inliers is empty, we didn't do a good job refining
-		if (new_inliers.empty ())
+		if (prev_inliers.size() < minInliersCount)
 		{
-			UWARN ("RANSAC refineModel: Refinement failed: got an empty set of inliers!");
+			UWARN ("RANSAC refineModel: Refinement failed: got very low inliers (%d)!", (int)prev_inliers.size());
 		}
 
 		if (oscillating)

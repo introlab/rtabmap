@@ -2073,6 +2073,12 @@ Transform Memory::computeTransform(
 			Signature tmpFrom = *fromS;
 			Signature tmpTo = *toS;
 
+			// make a guess with known correspondences
+			RegistrationVis regVis(parameters_);
+			tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
+			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
+			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+
 			if(_reextractLoopClosureFeatures)
 			{
 				tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
@@ -2084,16 +2090,24 @@ Transform Memory::computeTransform(
 				tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
 				tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
 			}
-
-			if(!_registrationPipeline->isImageRequired())
+			else
 			{
-				// no visual in the pipeline, make visual registration for guess
-				RegistrationVis regVis(parameters_);
-				guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+				// set back features
+				tmpFrom.sensorData().setFeatures(fromS->sensorData().keypoints(), fromS->sensorData().descriptors());
+				tmpTo.sensorData().setFeatures(toS->sensorData().keypoints(), toS->sensorData().descriptors());
 			}
-			else if(guess.isNull())
+
+			if(guess.isNull())
 			{
-				guess.setIdentity();
+				if(!_registrationPipeline->isImageRequired())
+				{
+					// no visual in the pipeline, make visual registration for guess
+					guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+				}
+				else
+				{
+					guess.setIdentity();
+				}
 			}
 
 			if(!guess.isNull())
