@@ -60,6 +60,7 @@ public:
 	//getters
 	const Transform & getPose() const {return _pose;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
+	const Transform & previousVelocityTransform() const {return previousVelocityTransform_;}
 
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0) = 0;
