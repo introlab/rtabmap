@@ -480,6 +480,12 @@ Transform RegistrationVis::computeTransformationImpl(
 			}
 			else if(!fromSignature.sensorData().imageRaw().empty())
 			{
+				if(fromSignature.sensorData().imageRaw().channels() > 1)
+				{
+					cv::Mat tmp;
+					cv::cvtColor(fromSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
+					fromSignature.sensorData().setImageRaw(tmp);
+				}
 				descriptorsFrom = detector->generateDescriptors(fromSignature.sensorData().imageRaw(), kptsFrom);
 			}
 
@@ -505,6 +511,13 @@ Transform RegistrationVis::computeTransformationImpl(
 				}
 				else if(!toSignature.sensorData().imageRaw().empty())
 				{
+					if(toSignature.sensorData().imageRaw().channels() > 1)
+					{
+						cv::Mat tmp;
+						cv::cvtColor(toSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
+						toSignature.sensorData().setImageRaw(tmp);
+					}
+
 					descriptorsTo = detector->generateDescriptors(toSignature.sensorData().imageRaw(), kptsTo);
 				}
 			}
@@ -512,16 +525,26 @@ Transform RegistrationVis::computeTransformationImpl(
 			// create 3D keypoints
 			std::vector<cv::Point3f> kptsFrom3D;
 			std::vector<cv::Point3f> kptsTo3D;
-			if(fromSignature.getWords3().empty())
+			if(fromSignature.getWords3().empty() || kptsFrom.size() != fromSignature.getWords3().size())
 			{
+				if(fromSignature.getWords3().size() && kptsFrom.size() != fromSignature.getWords3().size())
+				{
+					UWARN("kptsFrom (%d) is not the same size as fromSignature.getWords3() (%d), there "
+						   "is maybe a problem with the logic above (getWords3() should be null or equal to kptsfrom).");
+				}
 				kptsFrom3D = detector->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 			}
 			else
 			{
 				kptsFrom3D = uValues(fromSignature.getWords3());
 			}
-			if(toSignature.getWords3().empty())
+			if(toSignature.getWords3().empty() || kptsTo.size() != toSignature.getWords3().size())
 			{
+				if(toSignature.getWords3().size() && kptsTo.size() != toSignature.getWords3().size())
+				{
+					UWARN("kptsTo (%d) is not the same size as toSignature.getWords3() (%d), there "
+						   "is maybe a problem with the logic above (getWords3() should be null or equal to kptsTo).");
+				}
 				kptsTo3D = detector->generateKeypoints3D(toSignature.sensorData(), kptsTo);
 			}
 			else

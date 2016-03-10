@@ -2073,14 +2073,26 @@ Transform Memory::computeTransform(
 			Signature tmpFrom = *fromS;
 			Signature tmpTo = *toS;
 
-			// make a guess with known correspondences
+			// make a guess fast with known correspondences (if there are)
 			RegistrationVis regVis(parameters_);
-			tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
-			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
-			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+			if(tmpFrom.getWords().size() &&
+				tmpTo.getWords().size() &&
+				tmpFrom.getWords3().size() &&
+				tmpTo.getWords3().size())
+			{
+				UDEBUG("");
+				// Remove descriptors, this will avoid recomputation of the correspondences in regVis
+				tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+				tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+				guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+				// set back descriptors
+				tmpFrom.setWordsDescriptors(fromS->getWordsDescriptors());
+				tmpTo.setWordsDescriptors(toS->getWordsDescriptors());
+			}
 
 			if(_reextractLoopClosureFeatures)
 			{
+				UDEBUG("");
 				tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
 				tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
 				tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
@@ -2090,28 +2102,25 @@ Transform Memory::computeTransform(
 				tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
 				tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
 			}
-			else
-			{
-				// set back features
-				tmpFrom.sensorData().setFeatures(fromS->sensorData().keypoints(), fromS->sensorData().descriptors());
-				tmpTo.sensorData().setFeatures(toS->sensorData().keypoints(), toS->sensorData().descriptors());
-			}
 
 			if(guess.isNull())
 			{
 				if(!_registrationPipeline->isImageRequired())
 				{
+					UDEBUG("");
 					// no visual in the pipeline, make visual registration for guess
 					guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
 				}
 				else
 				{
+					UDEBUG("");
 					guess.setIdentity();
 				}
 			}
 
 			if(!guess.isNull())
 			{
+				UDEBUG("");
 				transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
 
 				if(!transform.isNull())
@@ -3202,7 +3211,17 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 		if(descriptors.empty())
 		{
-			descriptors = _feature2D->generateDescriptors(data.imageRaw(), keypoints);
+			cv::Mat imageMono;
+			if(data.imageRaw().channels() == 3)
+			{
+				cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+			}
+			else
+			{
+				imageMono = data.imageRaw();
+			}
+
+			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
 			t = timer.ticks();
 			if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
 			UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
