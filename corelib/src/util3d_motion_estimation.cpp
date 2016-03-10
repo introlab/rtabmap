@@ -350,7 +350,7 @@ void solvePnPRansac(
 			flags);
 
 	float inlierThreshold = reprojectionError;
-	if(inliers.size() >= minInliersCount && refineIterations>0)
+	if((int)inliers.size() >= minInliersCount && refineIterations>0)
 	{
 		float error_threshold = inlierThreshold;
 		int refine_iterations = 0;
@@ -389,7 +389,7 @@ void solvePnPRansac(
 			UDEBUG("RANSAC refineModel: Number of inliers found (before/after): %d/%d, with an error threshold of %f.",
 					(int)prev_inliers.size (), (int)new_inliers.size (), error_threshold);
 
-			if (new_inliers.size() < minInliersCount)
+			if ((int)new_inliers.size() < minInliersCount)
 			{
 				++refine_iterations;
 				if (refine_iterations >= refineIterations)
@@ -413,7 +413,7 @@ void solvePnPRansac(
 			if (new_inliers.size () != prev_inliers.size ())
 			{
 				// Check if the number of inliers is oscillating in between two values
-				if (inliers_sizes.size () >= minInliersCount)
+				if ((int)inliers_sizes.size () >= minInliersCount)
 				{
 					if (inliers_sizes[inliers_sizes.size () - 1] == inliers_sizes[inliers_sizes.size () - 3] &&
 					inliers_sizes[inliers_sizes.size () - 2] == inliers_sizes[inliers_sizes.size () - 4])
@@ -440,7 +440,7 @@ void solvePnPRansac(
 		while (inlier_changed && ++refine_iterations < refineIterations);
 
 		// If the new set of inliers is empty, we didn't do a good job refining
-		if (prev_inliers.size() < minInliersCount)
+		if ((int)prev_inliers.size() < minInliersCount)
 		{
 			UWARN ("RANSAC refineModel: Refinement failed: got very low inliers (%d)!", (int)prev_inliers.size());
 		}
