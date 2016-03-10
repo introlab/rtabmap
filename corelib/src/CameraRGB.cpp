@@ -68,7 +68,7 @@ CameraImages::CameraImages() :
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
 		_depthFromScan(false),
-		_depthFromScanFillHolesVertical(true),
+		_depthFromScanFillHoles(1),
 		_depthFromScanFillHolesFromBorder(false),
 		_filenamesAreTimestamps(false),
 		syncImageRateWithStamps_(true),
@@ -95,7 +95,7 @@ CameraImages::CameraImages(const std::string & path,
 	_scanVoxelSize(0.0f),
 	_scanNormalsK(0),
 	_depthFromScan(false),
-	_depthFromScanFillHolesVertical(true),
+	_depthFromScanFillHoles(1),
 	_depthFromScanFillHolesFromBorder(false),
 	_filenamesAreTimestamps(false),
 	syncImageRateWithStamps_(true),
@@ -640,7 +640,10 @@ SensorData CameraImages::captureImage()
 				else
 				{
 					depthFromScan = util3d::projectCloudToCamera(img.size(), _model.K(), cloud, _model.localTransform());
-					util3d::fillProjectedCloudHoles(depthFromScan, _depthFromScanFillHolesVertical, _depthFromScanFillHolesFromBorder);
+					if(_depthFromScanFillHoles!=0)
+					{
+						util3d::fillProjectedCloudHoles(depthFromScan, _depthFromScanFillHoles>0, _depthFromScanFillHolesFromBorder);
+					}
 				}
 			}
 			// filter the scan after registration

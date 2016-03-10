@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-1161</y>
             <width>681</width>
             <height>2010</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -3666,44 +3666,40 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <property name="checked">
                           <bool>false</bool>
                          </property>
-                         <layout class="QGridLayout" name="gridLayout_67" columnstretch="0,1">
-                          <item row="0" column="0">
-                           <widget class="QCheckBox" name="checkBox_depthFromScan_vertical">
-                            <property name="text">
-                             <string/>
+                         <layout class="QVBoxLayout" name="verticalLayout_100">
+                          <item>
+                           <widget class="QGroupBox" name="groupBox_depthFromScan_fillHoles">
+                            <property name="title">
+                             <string>Interpolate depth values to fill holes</string>
                             </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="1">
-                           <widget class="QLabel" name="label_305">
-                            <property name="text">
-                             <string>Fill holes vertically, otherwise fill horizontally.</string>
-                            </property>
-                            <property name="wordWrap">
+                            <property name="checkable">
                              <bool>true</bool>
                             </property>
-                            <property name="textInteractionFlags">
-                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                            </property>
+                            <layout class="QVBoxLayout" name="verticalLayout_99">
+                             <item>
+                              <widget class="QRadioButton" name="radioButton_depthFromScan_vertical">
+                               <property name="text">
+                                <string>Vertically</string>
+                               </property>
+                               <property name="checked">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QRadioButton" name="radioButton_depthFromScan_horizontal">
+                               <property name="text">
+                                <string>Horizontally</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
                            </widget>
                           </item>
-                          <item row="1" column="0">
+                          <item>
                            <widget class="QCheckBox" name="checkBox_depthFromScan_fillBorders">
                             <property name="text">
-                             <string/>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="1">
-                           <widget class="QLabel" name="label_306">
-                            <property name="text">
                              <string>Fill holes from the image border.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                            <property name="textInteractionFlags">
-                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                             </property>
                            </widget>
                           </item>

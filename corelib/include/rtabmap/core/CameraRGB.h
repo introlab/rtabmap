@@ -99,10 +99,10 @@ public:
 		}
 	}
 
-	void setDepthFromScan(bool enabled, bool fillHolesVertical = true, bool fillHolesFromBorder = false)
+	void setDepthFromScan(bool enabled, int fillHoles = 1, bool fillHolesFromBorder = false)
 	{
 		_depthFromScan = enabled;
-		_depthFromScanFillHolesVertical = fillHolesVertical;
+		_depthFromScanFillHoles = fillHoles;
 		_depthFromScanFillHolesFromBorder = fillHolesFromBorder;
 	}
 
@@ -146,7 +146,7 @@ private:
 	int _scanNormalsK;
 
 	bool _depthFromScan;
-	bool _depthFromScanFillHolesVertical;
+	int _depthFromScanFillHoles; // <0:horizontal 0:disabled >0:vertical
 	bool _depthFromScanFillHolesFromBorder;
 
 	bool _filenamesAreTimestamps;

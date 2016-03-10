@@ -192,7 +192,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, RehearsalSimilarity,     float, 0.6, 	"Rehearsal similarity.");
 	RTABMAP_PARAM(Mem, ImageKept, 		        bool, false, 	"Keep raw images in RAM.");
 	RTABMAP_PARAM(Mem, BinDataKept, 		    bool, true, 	"Keep binary data in db.");
-	RTABMAP_PARAM(Mem, RawDescriptorsKept, 		bool, false, 	"Raw descriptors kept in memory.");
+	RTABMAP_PARAM(Mem, RawDescriptorsKept, 		bool, true, 	"Raw descriptors kept in memory.");
 	RTABMAP_PARAM(Mem, MapLabelsAdded, 		    bool, true, 	"Create map labels. The first node of a map will be labelled as \"map#\" where # is the map ID.");
 	RTABMAP_PARAM(Mem, SaveDepth16Format, 		bool, true, 	"Save depth image into 16 bits format to reduce memory used. Warning: values over ~65 meters are ignored (maximum 65535 millimeters).");
 	RTABMAP_PARAM(Mem, NotLinkedNodesKept, 	    bool, true, 	"Keep not linked nodes in db (rehearsed nodes and deleted nodes).");
@@ -317,7 +317,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
 	RTABMAP_PARAM(RGBD, ScanMatchingIdsSavedInLinks, bool, true,      "Save scan matching IDs in link's user data.");
 	RTABMAP_PARAM(RGBD, NeighborLinkRefining,          bool, false,  "When a new node is added to the graph, the transformation of its neighbor link to the previous node is refined using ICP (laser scans required!).");
-	RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures,  bool, true,    "Extract features even if there are some already in the nodes.");
+	RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures,  bool, false,  "Extract features even if there are some already in the nodes.");
 
 	// Local/Proximity loop closure detection
 	RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, 	"Detection over all locations in STM.");

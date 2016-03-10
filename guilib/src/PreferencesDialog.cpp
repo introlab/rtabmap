@@ -440,7 +440,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraImages_gt, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraImages_gtFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_depthFromScan, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->checkBox_depthFromScan_vertical, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->groupBox_depthFromScan_fillHoles, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->radioButton_depthFromScan_vertical, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->radioButton_depthFromScan_horizontal, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_depthFromScan_fillBorders, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraStereoImages_path_left, SIGNAL(clicked()), this, SLOT(selectSourceStereoImagesPathLeft()));
@@ -1278,7 +1280,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_cameraImages_scanNormalsK->setValue(0);
 
 		_ui->groupBox_depthFromScan->setChecked(false);
-		_ui->checkBox_depthFromScan_vertical->setChecked(true);
+		_ui->groupBox_depthFromScan_fillHoles->setChecked(true);
+		_ui->radioButton_depthFromScan_vertical->setChecked(true);
+		_ui->radioButton_depthFromScan_horizontal->setChecked(false);
 		_ui->checkBox_depthFromScan_fillBorders->setChecked(false);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_rtabmap_basic0->objectName())
@@ -1614,7 +1618,9 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("DepthFromScan");
 	_ui->groupBox_depthFromScan->setChecked(settings.value("depthFromScan", _ui->groupBox_depthFromScan->isChecked()).toBool());
-	_ui->checkBox_depthFromScan_vertical->setChecked(settings.value("depthFromScanVertical", _ui->checkBox_depthFromScan_vertical->isChecked()).toBool());
+	_ui->groupBox_depthFromScan_fillHoles->setChecked(settings.value("depthFromScanFillHoles", _ui->groupBox_depthFromScan_fillHoles->isChecked()).toBool());
+	_ui->radioButton_depthFromScan_vertical->setChecked(settings.value("depthFromScanVertical", _ui->radioButton_depthFromScan_vertical->isChecked()).toBool());
+	_ui->radioButton_depthFromScan_horizontal->setChecked(settings.value("depthFromScanHorizontal", _ui->radioButton_depthFromScan_horizontal->isChecked()).toBool());
 	_ui->checkBox_depthFromScan_fillBorders->setChecked(settings.value("depthFromScanFillBorders", _ui->checkBox_depthFromScan_fillBorders->isChecked()).toBool());
 	settings.endGroup();
 
@@ -1994,7 +2000,9 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("DepthFromScan");
 	settings.setValue("depthFromScan", _ui->groupBox_depthFromScan->isChecked());
-	settings.setValue("depthFromScanVertical", _ui->checkBox_depthFromScan_vertical->isChecked());
+	settings.setValue("depthFromScanFillHoles", _ui->groupBox_depthFromScan_fillHoles->isChecked());
+	settings.setValue("depthFromScanVertical", _ui->radioButton_depthFromScan_vertical->isChecked());
+	settings.setValue("depthFromScanHorizontal", _ui->radioButton_depthFromScan_horizontal->isChecked());
 	settings.setValue("depthFromScanFillBorders", _ui->checkBox_depthFromScan_fillBorders->isChecked());
 	settings.endGroup();
 
@@ -3980,7 +3988,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 						this->getLaserLocalTransform());
 		((CameraImages*)camera)->setDepthFromScan(
 				_ui->groupBox_depthFromScan->isChecked(),
-				_ui->checkBox_depthFromScan_vertical->isChecked(),
+				!_ui->groupBox_depthFromScan_fillHoles->isChecked()?0:_ui->radioButton_depthFromScan_vertical->isChecked()?1:-1,
 				_ui->checkBox_depthFromScan_fillBorders->isChecked());
 		((CameraImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
