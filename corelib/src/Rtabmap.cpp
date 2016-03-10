@@ -2315,7 +2315,7 @@ bool Rtabmap::process(
 	}
 	if(!_rawDataKept)
 	{
-		_memory->removeRawData(signature->id());
+		_memory->removeRawData(signature->id(), true, !_neighborLinkRefining && !_proximityBySpace, true);
 	}
 
 	// remove last signature if the memory is not incremental or is a bad signature (if bad signatures are ignored)

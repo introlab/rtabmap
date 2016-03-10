@@ -2031,15 +2031,24 @@ void Memory::removeLink(int oldId, int newId)
 	}
 }
 
-void Memory::removeRawData(int id)
+void Memory::removeRawData(int id, bool image, bool scan, bool userData)
 {
 	Signature * s = this->_getSignature(id);
 	if(s)
 	{
-		s->sensorData().setImageRaw(cv::Mat());
-		s->sensorData().setDepthOrRightRaw(cv::Mat());
-		s->sensorData().setLaserScanRaw(cv::Mat(), s->sensorData().laserScanMaxPts(), s->sensorData().laserScanMaxRange());
-		s->sensorData().setUserDataRaw(cv::Mat());
+		if(image && (!_reextractLoopClosureFeatures || !_registrationPipeline->isImageRequired()))
+		{
+			s->sensorData().setImageRaw(cv::Mat());
+			s->sensorData().setDepthOrRightRaw(cv::Mat());
+		}
+		if(scan && !_registrationPipeline->isScanRequired())
+		{
+			s->sensorData().setLaserScanRaw(cv::Mat(), s->sensorData().laserScanMaxPts(), s->sensorData().laserScanMaxRange());
+		}
+		if(userData && !_registrationPipeline->isUserDataRequired())
+		{
+			s->sensorData().setUserDataRaw(cv::Mat());
+		}
 	}
 }
 
@@ -2050,21 +2059,40 @@ Transform Memory::computeTransform(
 		Transform guess,
 		RegistrationInfo * info)
 {
-	const Signature * fromS = this->getSignature(fromId);
-	const Signature * toS = this->getSignature(toId);
+	Signature * fromS = this->_getSignature(fromId);
+	Signature * toS = this->_getSignature(toId);
 
 	Transform transform;
 
 	if(fromS && toS)
 	{
 		// make sure we have all data needed
-		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) ||
-		   (_registrationPipeline->isScanRequired()) ||
-		   _registrationPipeline->isUserDataRequired())
+		// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
+		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && fromS->sensorData().imageCompressed().empty()) ||
+		   (_registrationPipeline->isScanRequired() && fromS->sensorData().imageCompressed().empty() && fromS->sensorData().laserScanCompressed().empty()) ||
+		   (_registrationPipeline->isUserDataRequired() && fromS->sensorData().imageCompressed().empty() && fromS->sensorData().userDataCompressed().empty()))
 		{
-			getNodeData(fromS->id(), true);
-			getNodeData(toS->id(), true);
+			getNodeData(fromS->id());
 		}
+		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && toS->sensorData().imageCompressed().empty()) ||
+		   (_registrationPipeline->isScanRequired() && toS->sensorData().imageCompressed().empty() && toS->sensorData().laserScanCompressed().empty()) ||
+		   (_registrationPipeline->isUserDataRequired() && toS->sensorData().imageCompressed().empty() && toS->sensorData().userDataCompressed().empty()))
+		{
+			getNodeData(toS->id());
+		}
+		// uncompress only what we need
+		cv::Mat imgBuf, depthBuf, laserBuf, userBuf;
+		fromS->sensorData().uncompressData(
+				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
+				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+				_registrationPipeline->isScanRequired()?&laserBuf:0,
+				_registrationPipeline->isUserDataRequired()?&userBuf:0);
+		toS->sensorData().uncompressData(
+				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
+				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+				_registrationPipeline->isScanRequired()?&laserBuf:0,
+				_registrationPipeline->isUserDataRequired()?&userBuf:0);
+
 
 		// compute transform fromId -> toId
 		std::vector<int> inliersV;
@@ -2171,13 +2199,13 @@ Transform Memory::computeIcpTransform(
 	if(fromS && toS && _dbDriver)
 	{
 		std::list<Signature*> depthsToLoad;
-		//Depth required, if not in RAM, load it from LTM
-		if(fromS->sensorData().depthOrRightCompressed().empty() &&
+		//if image is already here, scan should be or it is null
+		if(fromS->sensorData().imageCompressed().empty() &&
 		   fromS->sensorData().laserScanCompressed().empty())
 		{
 			depthsToLoad.push_back(fromS);
 		}
-		if(toS->sensorData().depthOrRightCompressed().empty() &&
+		if(toS->sensorData().imageCompressed().empty() &&
 		   toS->sensorData().laserScanCompressed().empty())
 		{
 			depthsToLoad.push_back(toS);
@@ -2231,7 +2259,9 @@ Transform Memory::computeIcpTransformMulti(
 	{
 		Signature * s = _getSignature(iter->first);
 		UASSERT(s != 0);
-		if(s->sensorData().laserScanCompressed().empty())
+		//if image is already here, scan should be or it is null
+		if(s->sensorData().imageCompressed().empty() &&
+		   s->sensorData().laserScanCompressed().empty())
 		{
 			depthToLoad.push_back(s);
 		}

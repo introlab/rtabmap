@@ -111,7 +111,7 @@ public:
 			int maxGraphDepth) const;
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
 	void removeLink(int idA, int idB);
-	void removeRawData(int id);
+	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}

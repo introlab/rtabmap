@@ -1133,7 +1133,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingDecimation[i]->setValue(8);
 			_3dRenderingMaxDepth[i]->setValue(0.0);
 			_3dRenderingShowScans[i]->setChecked(true);
-			_3dRenderingShowFeatures[i]->setChecked(false);
+			_3dRenderingShowFeatures[i]->setChecked(i==0?false:true);
 
 			_3dRenderingDownsamplingScan[i]->setValue(1);
 			_3dRenderingVoxelSizeScan[i]->setValue(0.0);

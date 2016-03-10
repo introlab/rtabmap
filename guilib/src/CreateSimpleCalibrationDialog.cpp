@@ -170,7 +170,10 @@ void CreateSimpleCalibrationDialog::saveCalibration()
 					ui_->doubleSpinBox_fx->value(),
 					ui_->doubleSpinBox_fy->value(),
 					ui_->doubleSpinBox_cx->value(),
-					ui_->doubleSpinBox_cy->value());
+					ui_->doubleSpinBox_cy->value(),
+					Transform::getIdentity(),
+					0,
+					cv::Size(width, height));
 			UASSERT(modelLeft.isValidForProjection());
 		}
 		else
@@ -215,7 +218,8 @@ void CreateSimpleCalibrationDialog::saveCalibration()
 						ui_->doubleSpinBox_cx->value(),
 						ui_->doubleSpinBox_cy->value(),
 						Transform::getIdentity(),
-						ui_->doubleSpinBox_baseline->value()*-ui_->doubleSpinBox_fx->value());
+						ui_->doubleSpinBox_baseline->value()*-ui_->doubleSpinBox_fx->value(),
+						cv::Size(width, height));
 				UASSERT(modelRight.isValidForProjection());
 				stereoModel = StereoCameraModel(name.toStdString(), modelLeft, modelRight, Transform());
 				UASSERT(stereoModel.isValidForProjection());

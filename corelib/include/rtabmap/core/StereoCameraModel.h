@@ -90,6 +90,9 @@ public:
 	void setName(const std::string & name);
 	const std::string & name() const {return name_;}
 
+	// backward compatibility
+	void setImageSize(const cv::Size & size) {left_.setImageSize(size); right_.setImageSize(size);}
+
 	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
 	bool save(const std::string & directory, bool ignoreStereoTransform = true) const;
 

@@ -223,7 +223,9 @@ SensorData CameraOpenni::captureImage()
 						1.0f/depthConstant_, //fy
 						float(rgb_.cols/2) - 0.5f,  //cx
 						float(rgb_.rows/2) - 0.5f,  //cy
-						this->getLocalTransform());
+						this->getLocalTransform(),
+						0,
+						rgb_.size());
 				data = SensorData(rgb_, depth_, model, this->getNextSeqID(), UTimer::now());
 			}
 
@@ -336,7 +338,9 @@ SensorData CameraOpenNICV::captureImage()
 					_depthFocal, //fy
 					float(rgb.cols/2) - 0.5f,  //cx
 					float(rgb.rows/2) - 0.5f,  //cy
-					this->getLocalTransform());
+					this->getLocalTransform(),
+					0,
+					rgb.size());
 			data = SensorData(rgb, depth, model, this->getNextSeqID(), UTimer::now());
 		}
 	}
@@ -710,7 +714,9 @@ SensorData CameraOpenNI2::captureImage()
 						_depthFy, //fy
 						float(rgb.cols/2) - 0.5f,  //cx
 						float(rgb.rows/2) - 0.5f,  //cy
-						this->getLocalTransform());
+						this->getLocalTransform(),
+						0,
+						rgb.size());
 				if(_openNI2StampsAndIDsUsed)
 				{
 					data = SensorData(rgb, depth, model, depthFrame.getFrameIndex(), double(depthFrame.getTimestamp()) / 1000000.0);
@@ -1047,7 +1053,9 @@ SensorData CameraFreenect::captureImage()
 							freenectDevice_->getDepthFocal(), //fy
 							float(rgb.cols/2) - 0.5f,  //cx
 							float(rgb.rows/2) - 0.5f,  //cy
-							this->getLocalTransform());
+							this->getLocalTransform(),
+							0,
+							rgb.size());
 					data = SensorData(rgb, depth, model, this->getNextSeqID(), UTimer::now());
 				}
 			}
@@ -1643,7 +1651,9 @@ SensorData CameraFreenect2::captureImage()
 						fy, //fy
 						cx,  //cx
 						cy, // cy
-						this->getLocalTransform());
+						this->getLocalTransform(),
+						0,
+						rgb.size());
 			}
 			data = SensorData(rgb, depth, model, this->getNextSeqID(), stamp);
 

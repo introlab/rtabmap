@@ -672,6 +672,11 @@ SensorData CameraImages::captureImage()
 		UWARN("Directory is not set, camera must be initialized.");
 	}
 
+	if(_model.imageHeight() == 0 || _model.imageWidth() == 0)
+	{
+		_model.setImageSize(img.size());
+	}
+
 	SensorData data(scan, scan.empty()?0:_scanMaxPts, 0, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
 	data.setGroundTruth(groundTruthPose);
 	return data;
@@ -792,6 +797,11 @@ SensorData CameraVideo::captureImage()
 	{
 		if(_capture.read(img))
 		{
+			if(_model.imageHeight() == 0 || _model.imageWidth() == 0)
+			{
+				_model.setImageSize(img.size());
+			}
+
 			if(_model.isValidForRectification() && (_src != kVideoFile || _rectifyImages))
 			{
 				img = _model.rectifyImage(img);

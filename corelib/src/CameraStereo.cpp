@@ -440,7 +440,8 @@ SensorData CameraStereoDC1394::captureImage()
 						stereoModel_.left().cx(), //cx
 						stereoModel_.left().cy(), //cy
 						stereoModel_.baseline(),
-						this->getLocalTransform());
+						this->getLocalTransform(),
+						left.size());
 			}
 			data = SensorData(left, right, model, this->getNextSeqID(), UTimer::now());
 		}
@@ -715,7 +716,8 @@ SensorData CameraStereoFlyCapture2::captureImage()
 								cx,
 								cy,
 								baseline,
-								this->getLocalTransform());
+								this->getLocalTransform(),
+								left.size());
 						data = SensorData(left, right, model, this->getNextSeqID(), UTimer::now());
 					}
 				}
@@ -892,6 +894,11 @@ SensorData CameraStereoImages::captureImage()
 				rightImage = stereoModel_.right().rectifyImage(rightImage);
 			}
 
+			if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
+			{
+				stereoModel_.setImageSize(leftImage.size());
+			}
+
 			data = SensorData(left.laserScanRaw(), left.laserScanMaxPts(), 0, leftImage, rightImage, stereoModel_, left.id()/(camera2_?1:2), left.stamp());
 			data.setGroundTruth(left.groundTruth());
 		}
@@ -1013,6 +1020,12 @@ SensorData CameraStereoVideo::captureImage()
 					rightImage = rightImage.clone();
 				}
 			}
+
+			if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
+			{
+				stereoModel_.setImageSize(leftImage.size());
+			}
+
 			data = SensorData(leftImage, rightImage, stereoModel_, this->getNextSeqID(), UTimer::now());
 		}
 	}
