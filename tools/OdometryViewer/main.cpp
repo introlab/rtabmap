@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsManager.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/OdometryF2F.h>
 #include <rtabmap/core/OdometryMono.h>
 #include <rtabmap/core/OdometryThread.h>
@@ -49,44 +50,12 @@ void showUsage()
 			"odometryViewer [options]\n"
 			"Options:\n"
 			"  -driver #                 Driver number to use: 0=OpenNI-PCL, 1=OpenNI2, 2=Freenect, 3=OpenNI-CV, 4=OpenNI-CV-ASUS, 5=Freenect2, 6=dc1394, 7=FlyCapture2\n"
-			"  -o #                      Odometry type (default 6): 0=SURF, 1=SIFT, 2=ORB, 3=FAST/FREAK, 4=FAST/BRIEF, 5=GFTT/FREAK, 6=GFTT/BRIEF, 7=BRISK\n"
-			"  -nn #                     Nearest neighbor strategy (default 3): kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4\n"
-			"  -nndr #                   Nearest neighbor distance ratio (default 0.7)\n"
-			"  -flow                     Use optical flow odometry.\n"
-			"  -icp                      Use ICP odometry\n"
-			"  -mono                     Use Mono odometry\n"
-			"\n"
 			"  -hz #.#                   Camera rate (default 0, 0 means as fast as the camera can)\n"
 			"  -db \"input.db\"          Use database instead of camera (recorded with rtabmap-dataRecorder)\n"
 			"  -clouds #                 Maximum clouds shown (default 10, zero means inf)\n"
 			"  -sec #.#                  Delay (seconds) before reading the database (if set)\n"
-			"\n"
-			"  -in #.#                   Inliers maximum distance, features/ICP (default 0.01 m)\n"
-			"  -max #                    Max features used for matching (default 0=inf)\n"
-			"  -min #                    Minimum inliers to accept the transform (default 20)\n"
-			"  -depth #.#                Maximum features depth (default 5.0 m)\n"
-			"  -i #                      RANSAC/ICP iterations (default 30)\n"
-			"  -reset #                  Reset countdown (default 0 = disabled)\n"
-			"  -gpu                      Use GPU\n"
-			"  -lh #                     Local history (default 1000)\n"
-			"\n"
-			"  -brief_bytes #        BRIEF bytes (default 32)\n"
-			"  -fast_thr #           FAST threshold (default 30)\n"
-			"\n"
-			"  -d #                      ICP decimation (default 4)\n"
-			"  -v #                      ICP voxel size (default 0.005)\n"
-			"  -cr #.#                   ICP correspondence ratio (default 0.7)\n"
-			"  -p2p                      ICP point to point (default point to plane)"
-			"\n"
-			"  -debug                    Log debug messages\n"
-			"\n"
-			"Examples:\n"
-			"  odometryViewer -odom 0 -lh 5000                      SURF example\n"
-			"  odometryViewer -odom 1 -lh 10000                     SIFT example\n"
-			"  odometryViewer -odom 4 -nn 2 -lh 1000                FAST/BRIEF example\n"
-			"  odometryViewer -odom 3 -nn 2 -lh 1000                FAST/FREAK example\n"
-			"  odometryViewer -icp -in 0.05 -i 30                   ICP example\n"
-			"  odometryViewer -flow -in 0.02                        Optical flow example\n");
+			"%s\n",
+			rtabmap::Parameters::showUsage());
 	exit(1);
 }
 
@@ -94,35 +63,13 @@ int main (int argc, char * argv[])
 {
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kInfo);
-	ULogger::setPrintTime(false);
-	ULogger::setPrintWhere(false);
 
 	// parse arguments
 	float rate = 0.0;
 	std::string inputDatabase;
 	int driver = 0;
-	int odomType = rtabmap::Parameters::defaultVisFeatureType();
-	bool icp = false;
-	bool flow = false;
-	bool mono = false;
-	int nnType = rtabmap::Parameters::defaultVisCorNNType();
-	float nndr = rtabmap::Parameters::defaultVisCorNNDR();
-	float distance = rtabmap::Parameters::defaultVisInlierDistance();
-	int maxWords = rtabmap::Parameters::defaultVisMaxFeatures();
-	int minInliers = rtabmap::Parameters::defaultVisMinInliers();
-	float maxDepth = rtabmap::Parameters::defaultVisMaxDepth();
-	int iterations = rtabmap::Parameters::defaultVisIterations();
-	int resetCountdown = rtabmap::Parameters::defaultOdomResetCountdown();
-	int decimation = 4;
-	float voxel = 0.005;
-	float ratio = 0.7f;
 	int maxClouds = 10;
-	int briefBytes = rtabmap::Parameters::defaultBRIEFBytes();
-	int fastThr = rtabmap::Parameters::defaultFASTThreshold();
 	float sec = 0.0f;
-	bool gpu = false;
-	int localHistory = rtabmap::Parameters::defaultOdomF2MMaxSize();
-	bool p2p = false;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -133,57 +80,6 @@ int main (int argc, char * argv[])
 			{
 				driver = std::atoi(argv[i]);
 				if(driver < 0 || driver > 7)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-o") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				odomType = std::atoi(argv[i]);
-				if(odomType < 0 || odomType > 6)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-nn") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				nnType = std::atoi(argv[i]);
-				if(nnType < 0 || nnType > 4)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-nndr") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				nndr = uStr2Float(argv[i]);
-				if(nndr < 0.0f)
 				{
 					showUsage();
 				}
@@ -263,256 +159,10 @@ int main (int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-in") == 0)
+		if(strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0)
 		{
-			++i;
-			if(i < argc)
-			{
-				distance = uStr2Float(argv[i]);
-				if(distance <= 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
+			showUsage();
 		}
-		if(strcmp(argv[i], "-max") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				maxWords = std::atoi(argv[i]);
-				if(maxWords < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-min") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				minInliers = std::atoi(argv[i]);
-				if(minInliers < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-depth") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				maxDepth = uStr2Float(argv[i]);
-				if(maxDepth < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-i") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				iterations = std::atoi(argv[i]);
-				if(iterations <= 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-reset") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				resetCountdown = std::atoi(argv[i]);
-				if(resetCountdown < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-d") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				decimation = std::atoi(argv[i]);
-				if(decimation < 1)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-v") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				voxel = uStr2Float(argv[i]);
-				if(voxel < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-cr") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				ratio = uStr2Float(argv[i]);
-				if(ratio < 0.0f)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-gpu") == 0)
-		{
-			gpu = true;
-			continue;
-		}
-		if(strcmp(argv[i], "-lh") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				localHistory = std::atoi(argv[i]);
-				if(localHistory < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-brief_bytes") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				briefBytes = std::atoi(argv[i]);
-				if(briefBytes < 1)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-fast_thr") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				fastThr = std::atoi(argv[i]);
-				if(fastThr < 1)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-icp") == 0)
-		{
-			icp = true;
-			continue;
-		}
-		if(strcmp(argv[i], "-flow") == 0)
-		{
-			flow = true;
-			continue;
-		}
-		if(strcmp(argv[i], "-mono") == 0)
-		{
-			mono = true;
-			continue;
-		}
-		if(strcmp(argv[i], "-p2p") == 0)
-		{
-			p2p = true;
-			continue;
-		}
-		if(strcmp(argv[i], "-debug") == 0)
-		{
-			ULogger::setLevel(ULogger::kDebug);
-			ULogger::setPrintTime(true);
-			ULogger::setPrintWhere(true);
-			continue;
-		}
-
-		printf("Unrecognized option : %s\n", argv[i]);
-		showUsage();
-	}
-
-	if(odomType > 1 && nnType == rtabmap::VWDictionary::kNNFlannKdTree)
-	{
-		UERROR("You set \"-o %d\" (binary descriptor), you must use \"-nn 2\" (any \"-nn\" other than kNNFlannKdTree)", odomType);
-		showUsage();
-	}
-	else if(odomType <= 1 && nnType == rtabmap::VWDictionary::kNNFlannLSH)
-	{
-		UERROR("You set \"-o %d\" (float descriptor), you must use \"-nn 1\" (any \"-nn\" other than kNNFlannLSH)", odomType);
-		showUsage();
 	}
 
 	if(inputDatabase.size())
@@ -524,159 +174,46 @@ int main (int argc, char * argv[])
 		UINFO("Using OpenNI camera");
 	}
 
-	std::string odomName;
-	if(odomType == 0)
-	{
-		odomName = "SURF";
-	}
-	else if(odomType == 1)
-	{
-		odomName = "SIFT";
-	}
-	else if(odomType == 2)
-	{
-		odomName = "ORB";
-	}
-	else if(odomType == 3)
-	{
-		odomName = "FAST+FREAK";
-	}
-	else if(odomType == 4)
-	{
-		odomName = "FAST+BRIEF";
-	}
-	else if(odomType == 5)
-	{
-		odomName = "GFTT+FREAK";
-	}
-	else if(odomType == 6)
-	{
-		odomName = "GFTT+BRIEF";
-	}
-	else if(odomType == 7)
-	{
-		odomName = "BRISK";
-	}
-
-	if(icp)
-	{
-		odomName= "ICP";
-	}
-
-	if(flow)
-	{
-		odomName= "Optical Flow";
-	}
-
-	std::string nnName;
-	if(nnType == 0)
-	{
-		nnName = "kNNFlannLinear";
-	}
-	else if(nnType == 1)
-	{
-		nnName = "kNNFlannKdTree";
-	}
-	else if(nnType == 2)
-	{
-		nnName= "kNNFlannLSH";
-	}
-	else if(nnType == 3)
-	{
-		nnName= "kNNBruteForce";
-	}
-	else if(nnType == 4)
-	{
-		nnName= "kNNBruteForceGPU";
-	}
-
-	UINFO("Odometry used =           %s", odomName.c_str());
 	UINFO("Camera rate =             %f Hz", rate);
 	UINFO("Maximum clouds shown =    %d", maxClouds);
 	UINFO("Delay =                   %f s", sec);
-	UINFO("Max depth =               %f", maxDepth);
-	UINFO("Reset odometry coutdown = %d", resetCountdown);
+
+	rtabmap::ParametersMap parameters = rtabmap::Parameters::parseArguments(argc, argv);
+	for(rtabmap::ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+	{
+		UINFO(" Param \"%s\"=\"%s\"", iter->first.c_str(), iter->second.c_str());
+	}
+
+	bool icp = false;
+	int regStrategy = rtabmap::Parameters::defaultRegStrategy();
+	rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kRegStrategy(), regStrategy);
+	int decimation = 8;
+	float maxDepth = 4.0f;
+	float voxelSize = rtabmap::Parameters::defaultIcpVoxelSize();
+	int normalsK = 0;
+	if(regStrategy == 1 || regStrategy == 2)
+	{
+		// icp requires scans
+		icp = true;
+
+		rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpDownsamplingStep(), decimation);
+		rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpVoxelSize(), voxelSize);
+
+		bool pointToPlane = rtabmap::Parameters::defaultIcpPointToPlane();
+		rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpPointToPlane(), pointToPlane);
+		if(pointToPlane)
+		{
+			normalsK = rtabmap::Parameters::defaultIcpPointToPlaneNormalNeighbors();
+			rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpPointToPlaneNormalNeighbors(), normalsK);
+		}
+
+		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kIcpDownsamplingStep(), "1"));
+		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kIcpVoxelSize(), "0"));
+	}
 
 	QApplication app(argc, argv);
 
-	rtabmap::Odometry * odom = 0;
-
-	rtabmap::ParametersMap parameters;
-
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMaxDepth(), uNumber2Str(maxDepth)));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), uNumber2Str(resetCountdown)));
-
-	if(!icp)
-	{
-		UINFO("Min inliers =             %d", minInliers);
-		UINFO("Inlier maximum correspondences distance = %f", distance);
-		UINFO("RANSAC iterations =       %d", iterations);
-		UINFO("Max features =            %d", maxWords);
-		UINFO("GPU =                     %s", gpu?"true":"false");
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisInlierDistance(), uNumber2Str(distance)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), uNumber2Str(minInliers)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), uNumber2Str(iterations)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMaxFeatures(), uNumber2Str(maxWords)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisFeatureType(), uNumber2Str(odomType)));
-		if(odomType == 0)
-		{
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kSURFGpuVersion(), uBool2Str(gpu)));
-		}
-		if(odomType == 2)
-		{
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kORBGpu(), uBool2Str(gpu)));
-		}
-		if(odomType == 3 || odomType == 4)
-		{
-			UINFO("FAST threshold =          %d", fastThr);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), uNumber2Str(fastThr)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTGpu(), uBool2Str(gpu)));
-		}
-		if(odomType == 4 || odomType == 6)
-		{
-			UINFO("BRIEF bytes =             %d", briefBytes);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), uNumber2Str(briefBytes)));
-		}
-
-		if(flow)
-		{
-			// Optical Flow
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorType(), "1"));
-			odom = new rtabmap::OdometryF2F(parameters);
-		}
-		else
-		{
-			//Frame to Map
-			UINFO("Nearest neighbor =         %s", nnName.c_str());
-			UINFO("Nearest neighbor ratio =  %f", nndr);
-			UINFO("Local history =           %d", localHistory);
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNType(), uNumber2Str(nnType)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisCorNNDR(), uNumber2Str(nndr)));
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomF2MMaxSize(), uNumber2Str(localHistory)));
-
-			if(mono)
-			{
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPFlags(), uNumber2Str(0))); //CV_ITERATIVE
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisPnPReprojError(), "4.0"));
-				parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisIterations(), "100"));
-				odom = new rtabmap::OdometryMono(parameters);
-			}
-			else
-			{
-				odom = new rtabmap::OdometryF2M(parameters);
-			}
-		}
-	}
-	else if(icp) // ICP
-	{
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(distance)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpIterations(), uNumber2Str(iterations)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpVoxelSize(), uNumber2Str(voxel)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpCorrespondenceRatio(), uNumber2Str(ratio)));
-		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpPointToPlane(), p2p?"false":"true"));
-
-		odom = new rtabmap::OdometryF2F(parameters);
-	}
+	rtabmap::Odometry * odom = rtabmap::Odometry::create(parameters);
 
 	rtabmap::OdometryThread odomThread(odom);
 	rtabmap::OdometryViewer odomViewer(maxClouds, 2, 0.0, 50);
@@ -788,11 +325,9 @@ int main (int argc, char * argv[])
 		{
 			if(camera->isCalibrated())
 			{
-				rtabmap::CameraThread cameraThread(camera);
-				if(icp)
-				{
-					cameraThread.setScanFromDepth(true, decimation, maxDepth);
-				}
+				rtabmap::CameraThread cameraThread(camera, parameters);
+
+				cameraThread.setScanFromDepth(icp, decimation<1?1:decimation, maxDepth, voxelSize, normalsK);
 
 				odomThread.start();
 				cameraThread.start();

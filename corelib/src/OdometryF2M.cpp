@@ -253,7 +253,7 @@ Transform OdometryF2M::computeTransform(
 					if(regPipeline_->isImageRequired() &&
 						(keyFrameThr_==0 || float(regInfo.inliers) <= keyFrameThr_*float(lastFrame_->sensorData().keypoints().size())))
 					{
-						UDEBUG("Update local map");
+						UDEBUG("Update local map (ratio=%f < %f)", float(regInfo.inliers)/float(lastFrame_->sensorData().keypoints().size()), keyFrameThr_);
 
 						// update local map
 						UASSERT(mapWords.size() == mapPoints.size());
@@ -326,7 +326,7 @@ Transform OdometryF2M::computeTransform(
 					if(regPipeline_->isScanRequired() &&
 						(scanKeyFrameThr_==0 || regInfo.icpInliersRatio <= scanKeyFrameThr_))
 					{
-						UINFO("Update local scan map %d", lastFrame_->id());
+						UINFO("Update local scan map %d (ratio=%f < %f)", lastFrame_->id(), regInfo.icpInliersRatio, scanKeyFrameThr_);
 						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(mapScan);
 						pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose);
 
@@ -386,8 +386,6 @@ Transform OdometryF2M::computeTransform(
 						map_->setWords(mapWords);
 						map_->setWords3(mapPoints);
 						map_->setWordsDescriptors(mapDescriptors);
-
-						UINFO("Updated map: %d added %d removed (new map size=%d)", added, removed, (int)mapPoints.size());
 					}
 				}
 				else

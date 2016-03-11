@@ -180,6 +180,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloud = util3d::laserScanToPointCloud(fromScan, Transform());
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloud = util3d::laserScanToPointCloud(toScan, guess);
 				UDEBUG("Conversion time = %f s", timer.ticks());
+
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudFiltered = fromCloud;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
 				bool filtered = false;

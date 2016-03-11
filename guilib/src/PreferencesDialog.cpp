@@ -1276,8 +1276,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->groupBox_scanFromDepth->setChecked(false);
 		_ui->spinBox_cameraScanFromDepth_decimation->setValue(8);
 		_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->setValue(4.0);
-		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.0f);
-		_ui->spinBox_cameraImages_scanNormalsK->setValue(0);
+		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.025f);
+		_ui->spinBox_cameraImages_scanNormalsK->setValue(20);
 
 		_ui->groupBox_depthFromScan->setChecked(false);
 		_ui->groupBox_depthFromScan_fillHoles->setChecked(true);

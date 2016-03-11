@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QPushButton>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
+#include <QCheckBox>
 #include <QLabel>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -96,6 +97,15 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, f
 	decimationSpin_->setMinimum(1);
 	decimationSpin_->setMaximum(16);
 	decimationSpin_->setValue(decimation);
+	cloudShown_ = new QCheckBox(this);
+	cloudShown_->setText("Cloud");
+	cloudShown_->setChecked(true);
+	scanShown_ = new QCheckBox(this);
+	scanShown_->setText("Scan");
+	scanShown_->setChecked(true);
+	featuresShown_ = new QCheckBox(this);
+	featuresShown_->setText("Features");
+	featuresShown_->setChecked(true);
 	timeLabel_ = new QLabel(this);
 	QPushButton * resetButton = new QPushButton("reset", this);
 	QPushButton * clearButton = new QPushButton("clear", this);
@@ -121,6 +131,9 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, f
 	hlayout2->addWidget(maxDepthSpin_);
 	hlayout2->addWidget(decimationLabel);
 	hlayout2->addWidget(decimationSpin_);
+	hlayout2->addWidget(cloudShown_);
+	hlayout2->addWidget(scanShown_);
+	hlayout2->addWidget(featuresShown_);
 	hlayout2->addWidget(timeLabel_);
 	hlayout2->addStretch(1);
 	hlayout2->addWidget(resetButton);
@@ -190,7 +203,8 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 
 	timeLabel_->setText(QString("%1 s").arg(odom.info().timeEstimation));
 
-	if(!odom.data().imageRaw().empty() &&
+	if(cloudShown_->isChecked() &&
+		!odom.data().imageRaw().empty() &&
 		!odom.data().depthOrRightRaw().empty() &&
 		(odom.data().stereoCameraModel().isValidForProjection() || odom.data().cameraModels().size()))
 	{
@@ -253,6 +267,14 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 			}
 		}
 	}
+	else if(!cloudShown_->isChecked())
+	{
+		while(!addedClouds_.empty())
+		{
+			UASSERT(cloudView_->removeCloud(addedClouds_.first()));
+			addedClouds_.pop_front();
+		}
+	}
 
 	if(!odom.pose().isNull())
 	{
@@ -260,18 +282,83 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 		cloudView_->updateCameraTargetPosition(odom.pose());
 	}
 
-	if(odom.info().localMap.size())
+	if(scanShown_->isChecked())
 	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		cloud->resize(odom.info().localMap.size());
-		int i=0;
-		for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
+		// scan local map
+		if(!odom.info().localScanMap.empty())
 		{
-			(*cloud)[i].x = iter->second.x;
-			(*cloud)[i].y = iter->second.y;
-			(*cloud)[i++].z = iter->second.z;
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+			cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
+			if(!cloudView_->addCloud("scanMapOdom", cloud, Transform::getIdentity(), Qt::blue))
+			{
+				UERROR("Adding scanMapOdom to viewer failed!");
+			}
+			else
+			{
+				cloudView_->setCloudVisibility("scanMapOdom", true);
+				cloudView_->setCloudOpacity("scanMapOdom", 0.5);
+			}
 		}
-		cloudView_->addCloud("localmap", cloud);
+		// scan cloud
+		if(!odom.data().laserScanRaw().empty())
+		{
+			cv::Mat scan = odom.data().laserScanRaw();
+
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+			cloud = util3d::laserScanToPointCloudNormal(scan, odom.pose());
+
+			if(!cloudView_->addCloud("scanOdom", cloud, Transform::getIdentity(), Qt::magenta))
+			{
+				UERROR("Adding scanOdom to viewer failed!");
+			}
+			else
+			{
+				cloudView_->setCloudVisibility("scanOdom", true);
+				cloudView_->setCloudOpacity("scanOdom", 0.5);
+			}
+		}
+	}
+	else
+	{
+		cloudView_->removeCloud("scanMapOdom");
+		cloudView_->removeCloud("scanOdom");
+	}
+
+	// 3d features
+	if(featuresShown_->isChecked())
+	{
+		if(!odom.info().localMap.empty())
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+			cloud->resize(odom.info().localMap.size());
+			int i=0;
+			for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
+			{
+				(*cloud)[i].x = iter->second.x;
+				(*cloud)[i].y = iter->second.y;
+				(*cloud)[i].z = iter->second.z;
+
+				// green = inlier, yellow = outliers
+				bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
+				(*cloud)[i].r = inlier?0:255;
+				(*cloud)[i].g = 255;
+				(*cloud)[i++].b = 0;
+			}
+
+			if(!cloudView_->addCloud("featuresOdom", cloud))
+			{
+				UERROR("Adding featuresOdom to viewer failed!");
+			}
+			else
+			{
+				cloudView_->setCloudVisibility("featuresOdom", true);
+				cloudView_->setCloudPointSize("featuresOdom", 3);
+			}
+		}
+	}
+	else
+	{
+		cloudView_->removeCloud("featuresOdom");
 	}
 
 	if(!odom.data().imageRaw().empty())

@@ -3052,6 +3052,7 @@ void Memory::copyData(const Signature * from, Signature * to)
 
 		to->setPose(from->getPose());
 		to->setWords3(from->getWords3());
+		to->setWordsDescriptors(from->getWordsDescriptors());
 	}
 	else
 	{

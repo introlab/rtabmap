@@ -377,10 +377,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
-	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
-	{
-		this->setWorkingDirectory(iter->second.c_str());
-	}
 
 	Parameters::parse(parameters, Parameters::kRtabmapPublishStats(), _publishStats);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignatureData);
@@ -487,6 +483,12 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	else
 	{
 		_bayesFilter->parseParameters(parameters);
+	}
+
+	// update working directory at the end
+	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
+	{
+		this->setWorkingDirectory(iter->second.c_str());
 	}
 }
 

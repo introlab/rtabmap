@@ -291,9 +291,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 			}
 		}
 	}
+
 	if(validIndices)
 	{
-		validIndices->reserve(oi);
+		validIndices->resize(oi);
 	}
 
 	return cloud;

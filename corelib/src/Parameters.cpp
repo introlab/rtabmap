@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <cmath>
 #include <stdlib.h>
 #include <sstream>
+#include <iostream>
+#include <iomanip>
 #include "SimpleIni.h"
 
 namespace rtabmap
@@ -382,6 +384,190 @@ void Parameters::parse(const ParametersMap & parameters, ParametersMap & paramet
 			iter->second = jter->second;
 		}
 	}
+}
+
+const char * Parameters::showUsage()
+{
+	return  "Logger options:\n"
+			"   --nolog              Disable logger\n"
+			"   --logconsole         Set logger console type\n"
+			"   --logfile \"path\"     Set logger file type\n"
+			"   --logfilea \"path\"    Set logger file type with appending mode if the file already exists\n"
+			"   --udebug             Set logger level to debug\n"
+			"   --uinfo              Set logger level to info\n"
+			"   --uwarn              Set logger level to warn\n"
+			"   --uerror             Set logger level to error\n"
+			"   --logtime \"bool\"     Print time when logging\n"
+			"   --logwhere \"bool\"    Print where when logging\n"
+			"   --logthread \"bool\"   Print thread id when logging\n"
+			"RTAB-Map options:\n"
+			"   --params                       Show all parameters with their default value and description\n"
+			"   --\"parameter name\" \"value\"     Overwrite a specific RTAB-Map's parameter :\n"
+			"                                    --SURF/HessianThreshold 150\n"
+			"                                   For parameters in table format, add ',' between values :\n"
+			"                                    --Kp/RoiRatios 0,0,0.1,0\n"
+			;
+}
+
+ParametersMap Parameters::parseArguments(int argc, char * argv[])
+{
+	ParametersMap out;
+	const ParametersMap & parameters = getDefaultParameters();
+	const std::map<std::string, std::pair<bool, std::string> > & removedParams = getRemovedParameters();
+	for(int i=0;i<argc;++i)
+	{
+		if(strcmp(argv[i], "--nolog") == 0)
+		{
+			ULogger::setType(ULogger::kTypeNoLog);
+		}
+		else if(strcmp(argv[i], "--logconsole") == 0)
+		{
+			ULogger::setType(ULogger::kTypeConsole);
+		}
+		else if(strcmp(argv[i], "--logfile") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				ULogger::setType(ULogger::kTypeFile, argv[i], false);
+			}
+			else
+			{
+				UERROR("\"--logfile\" argument requires following file path");
+			}
+		}
+		else if(strcmp(argv[i], "--logfilea") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				ULogger::setType(ULogger::kTypeFile, argv[i], true);
+			}
+			else
+			{
+				UERROR("\"--logfilea\" argument requires following file path");
+			}
+		}
+		else if(strcmp(argv[i], "--udebug") == 0)
+		{
+			ULogger::setLevel(ULogger::kDebug);
+		}
+		else if(strcmp(argv[i], "--uinfo") == 0)
+		{
+			ULogger::setLevel(ULogger::kInfo);
+		}
+		else if(strcmp(argv[i], "--uwarn") == 0)
+		{
+			ULogger::setLevel(ULogger::kWarning);
+		}
+		else if(strcmp(argv[i], "--uerror") == 0)
+		{
+			ULogger::setLevel(ULogger::kError);
+		}
+		else if(strcmp(argv[i], "--ulogtime") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				ULogger::setPrintTime(uStr2Bool(argv[i]));
+			}
+			else
+			{
+				UERROR("\"--ulogtime\" argument requires a following boolean value");
+			}
+		}
+		else if(strcmp(argv[i], "--ulogwhere") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				ULogger::setPrintWhere(uStr2Bool(argv[i]));
+			}
+			else
+			{
+				UERROR("\"--ulogwhere\" argument requires a following boolean value");
+			}
+		}
+		else if(strcmp(argv[i], "--ulogthread") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				ULogger::setPrintThreadId(uStr2Bool(argv[i]));
+			}
+			else
+			{
+				UERROR("\"--ulogthread\" argument requires a following boolean value");
+			}
+		}
+		else if(strcmp(argv[i], "--params") == 0)
+		{
+			for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+			{
+				std::string str = "Param: " + iter->first + " = \"" + iter->second + "\"";
+				std::cout <<
+						str <<
+						std::setw(60 - str.size()) <<
+						" [" <<
+						rtabmap::Parameters::getDescription(iter->first).c_str() <<
+						"]" <<
+						std::endl;
+			}
+			UWARN("App will now exit after showing default RTAB-Map parameters because "
+					 "argument \"--params\" is detected!");
+			exit(0);
+		}
+		else // check for parameters
+		{
+			std::string key = uReplaceChar(argv[i], '-', "");
+			ParametersMap::const_iterator iter = parameters.find(key);
+			if(iter != parameters.end())
+			{
+				++i;
+				if(i < argc)
+				{
+					uInsert(out, ParametersPair(iter->first, argv[i]));
+				}
+			}
+			else
+			{
+				// backward compatibility
+				std::map<std::string, std::pair<bool, std::string> >::const_iterator jter = removedParams.find(key);
+				if(jter!=removedParams.end())
+				{
+					if(jter->second.first)
+					{
+						++i;
+						if(i < argc)
+						{
+							std::string value = argv[i];
+							if(!value.empty())
+							{
+								value = uReplaceChar(value, ',', ' '); // for table
+								key = jter->second.second;
+								UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
+										jter->first.c_str(), jter->second.second.c_str(), value.c_str());
+								uInsert(out, ParametersPair(key, value));
+							}
+						}
+						else
+						{
+							UERROR("Value missing for argument \"%s\"", argv[i-1]);
+						}
+					}
+					else if(jter->second.second.empty())
+					{
+						UERROR("Parameter \"%s\" doesn't exist anymore.", jter->first.c_str());
+					}
+					else
+					{
+						UERROR("Parameter \"%s\" doesn't exist anymore, check this similar parameter \"%s\".", jter->first.c_str(), jter->second.second.c_str());
+					}
+				}
+			}
+		}
+	}
+	return out;
 }
 
 

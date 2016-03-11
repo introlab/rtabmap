@@ -419,7 +419,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");
 	RTABMAP_PARAM(Icp, Iterations,                int, 30, 		"Max iterations.");
 	RTABMAP_PARAM(Icp, Epsilon,                   float, 0.0,   "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
-	RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.3,   "Ratio of matching correspondences to accept the transform.");
+	RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.2,   "Ratio of matching correspondences to accept the transform.");
 	RTABMAP_PARAM(Icp, PointToPlane,              bool, false, 	"Use point to plane ICP.");
 	RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");
 
@@ -475,6 +475,9 @@ public:
 	static void parse(const ParametersMap & parameters, const std::string & key, double & value);
 	static void parse(const ParametersMap & parameters, const std::string & key, std::string & value);
 	static void parse(const ParametersMap & parameters, ParametersMap & parametersOut);
+
+	static const char * showUsage();
+	static ParametersMap parseArguments(int argc, char * argv[]);
 
 	static std::string getVersion();
 	static std::string getDefaultDatabaseName();

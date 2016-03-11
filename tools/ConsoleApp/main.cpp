@@ -55,17 +55,10 @@ void showUsage()
 			"  -createGT                       Generate a ground truth file\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
 			"                                   to start processing at image # (default 1).\n"
-			"  -\"parameter name\" \"value\"       Overwrite a specific RTAB-Map's parameter :\n"
-			"                                     -SURF/HessianThreshold 150\n"
-			"                                   For parameters in table format, add ',' between values :\n"
-			"                                     -Kp/RoiRatios 0,0,0.1,0\n"
-			"  -default_params                 Show default RTAB-Map's parameters\n"
-			"  -debug                          Set Log level to Debug (Default Error)\n"
-			"  -info                           Set Log level to Info (Default Error)\n"
-			"  -warn                           Set Log level to Warning (Default Error)\n"
-			"  -log_console                    Log to console\n"
 			"  -v                              Get version of RTAB-Map\n"
-			"  -input \"path\"                 Load previous database if it exists.\n");
+			"  -input \"path\"                 Load previous database if it exists.\n"
+			"%s\n",
+			rtabmap::Parameters::showUsage());
 	exit(1);
 }
 
@@ -83,11 +76,6 @@ int main(int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	/*for(int i=0; i<argc; i++)
-	{
-		printf("argv[%d] = %s\n", i, argv[i]);
-	}*/
-	const ParametersMap & defaultParameters = Parameters::getDefaultParameters();
 	if(argc < 2)
 	{
 		showUsage();
@@ -95,14 +83,6 @@ int main(int argc, char * argv[])
 	else if(argc == 2 && strcmp(argv[1], "-v") == 0)
 	{
 		printf("%s\n", Parameters::getVersion().c_str());
-		exit(0);
-	}
-	else if(argc == 2 && (strcmp(argv[1], "-default_params") == 0 || strcmp(argv[1], "--params") == 0))
-	{
-		for(ParametersMap::const_iterator iter = defaultParameters.begin(); iter!=defaultParameters.end(); ++iter)
-		{
-			printf("%s=%s\n", iter->first.c_str(), iter->second.c_str());
-		}
 		exit(0);
 	}
 	printf("\n");
@@ -114,9 +94,8 @@ int main(int argc, char * argv[])
 	bool createGT = false;
 	std::string inputDbPath;
 	int startAt = 1;
-	ParametersMap pm;
-	ULogger::Level logLevel = ULogger::kError;
-	bool logConsole = false;
+	ULogger::setType(ULogger::kTypeConsole);
+	ULogger::setLevel(ULogger::kWarning);
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -222,122 +201,20 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-debug") == 0)
+		if(strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0)
 		{
-			logLevel = ULogger::kDebug;
-			continue;
+			showUsage();
 		}
-		if(strcmp(argv[i], "-info") == 0)
-		{
-			logLevel = ULogger::kInfo;
-			continue;
-		}
-		if(strcmp(argv[i], "-warn") == 0)
-		{
-			logLevel = ULogger::kWarning;
-			continue;
-		}
-		if(strcmp(argv[i], "-log_console") == 0)
-		{
-			logConsole = true;
-			continue;
-		}
-
-		// Check for RTAB-Map's parameters
-		std::string key = argv[i];
-		key = uSplit(key, '-').back();
-		if(defaultParameters.find(key) != defaultParameters.end())
-		{
-			++i;
-			if(i < argc)
-			{
-				std::string value = argv[i];
-				if(value.empty())
-				{
-					showUsage();
-				}
-				else
-				{
-					value = uReplaceChar(value, ',', ' ');
-				}
-				std::pair<ParametersMap::iterator, bool> inserted = pm.insert(ParametersPair(key, value));
-				if(inserted.second == false)
-				{
-					inserted.first->second = value;
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-
-		//backward compatibility
-		// look for old parameter name
-		std::map<std::string, std::pair<bool, std::string> >::const_iterator oldIter = Parameters::getRemovedParameters().find(key);
-		if(oldIter!=Parameters::getRemovedParameters().end())
-		{
-			++i;
-			if(i < argc)
-			{
-				std::string value = argv[i];
-				if(value.empty())
-				{
-					showUsage();
-				}
-				else
-				{
-					value = uReplaceChar(value, ',', ' ');
-				}
-
-				if(oldIter->second.first)
-				{
-					key = oldIter->second.second;
-					UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
-							oldIter->first.c_str(), oldIter->second.second.c_str(), value.c_str());
-				}
-				else if(oldIter->second.second.empty())
-				{
-					UERROR("Parameter \"%s\" doesn't exist anymore.", oldIter->first.c_str());
-				}
-				else
-				{
-					UERROR("Parameter \"%s\" doesn't exist anymore, check this similar parameter \"%s\".", oldIter->first.c_str(), oldIter->second.second.c_str());
-				}
-				if(oldIter->second.first)
-				{
-					std::pair<ParametersMap::iterator, bool> inserted = pm.insert(ParametersPair(key, value));
-					if(inserted.second == false)
-					{
-						inserted.first->second = value;
-					}
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-
-		printf("Unrecognized option : %s\n", argv[i]);
-		showUsage();
 	}
+
+	ParametersMap pm = Parameters::parseArguments(argc, argv);
+	pm.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), "."));
 
 	if(repeat && createGT)
 	{
 		printf("Cannot create a Ground truth if repeat is on.\n");
 		showUsage();
 	}
-
-	if(logConsole)
-	{
-		ULogger::setType(ULogger::kTypeConsole);
-	}
-	//ULogger::setType(ULogger::kTypeFile, rtabmap.getWorkingDir()+"/LogConsole.txt", false);
-	//ULogger::setBuffered(true);
-	ULogger::setLevel(logLevel);
 
 	UTimer timer;
 	timer.start();
@@ -376,13 +253,14 @@ int main(int argc, char * argv[])
 	{
 		printf("Loading database \"%s\".\n", inputDbPath.c_str());
 	}
+
 	// Disable statistics (we don't need them)
-	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
-	pm.insert(ParametersPair(Parameters::kRGBDEnabled(), "false"));
+	uInsert(pm, ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
+	uInsert(pm, ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
 	rtabmap.init(pm, inputDbPath);
 
-	printf("Avpd init time = %fs\n", timer.ticks());
+	printf("rtabmap init time = %fs\n", timer.ticks());
 
 	// Start thread's task
 	int loopClosureId;

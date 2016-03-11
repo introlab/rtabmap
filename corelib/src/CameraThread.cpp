@@ -161,7 +161,7 @@ void CameraThread::mainLoop()
 			data.setDepthOrRightRaw(depth);
 			data.setStereoCameraModel(StereoCameraModel());
 			info.timeDisparity = timer.ticks();
-			UINFO("Computing disparity = %f s", info.timeDisparity);
+			UDEBUG("Computing disparity = %f s", info.timeDisparity);
 		}
 		if(_scanFromDepth &&
 			data.cameraModels().size() &&
@@ -200,7 +200,7 @@ void CameraThread::mainLoop()
 				}
 				data.setLaserScanRaw(scan, (int)maxPoints, _scanMaxDepth);
 				info.timeScanFromDepth = timer.ticks();
-				UINFO("Computing scan from depth = %f s", info.timeScanFromDepth);
+				UDEBUG("Computing scan from depth = %f s", info.timeScanFromDepth);
 			}
 			else
 			{
