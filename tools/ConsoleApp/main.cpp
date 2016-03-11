@@ -76,6 +76,12 @@ int main(int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
+	ULogger::setType(ULogger::kTypeConsole);
+	ULogger::setLevel(ULogger::kWarning);
+
+	ParametersMap pm = Parameters::parseArguments(argc, argv);
+	pm.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), "."));
+
 	if(argc < 2)
 	{
 		showUsage();
@@ -94,8 +100,6 @@ int main(int argc, char * argv[])
 	bool createGT = false;
 	std::string inputDbPath;
 	int startAt = 1;
-	ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kWarning);
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -206,9 +210,6 @@ int main(int argc, char * argv[])
 			showUsage();
 		}
 	}
-
-	ParametersMap pm = Parameters::parseArguments(argc, argv);
-	pm.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), "."));
 
 	if(repeat && createGT)
 	{
