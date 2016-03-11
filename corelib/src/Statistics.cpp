@@ -42,7 +42,7 @@ Statistics::Statistics() :
 	_extended(0),
 	_refImageId(0),
 	_loopClosureId(0),
-	_localLoopClosureId(0),
+	_proximiyDetectionId(0),
 	_currentGoalId(0)
 {
 	_defaultDataInitialized = true;

@@ -664,7 +664,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		RtabmapEvent * rtabmapEvent = (RtabmapEvent*)anEvent;
 		Statistics stats = rtabmapEvent->getStats();
 		int highestHypothesisId = int(uValue(stats.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
-		int localLoopClosureId = int(uValue(stats.data(), Statistics::kLocalLoopSpace_last_closure_id(), 0.0f));
+		int proximityClosureId = int(uValue(stats.data(), Statistics::kProximitySpace_last_detection_id(), 0.0f));
 		bool rejectedHyp = bool(uValue(stats.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
 		float highestHypothesisValue = uValue(stats.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		if((stats.loopClosureId() > 0 &&
@@ -676,7 +676,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		    _ui->actionPause_when_a_loop_hypothesis_is_rejected->isChecked() &&
 		    rejectedHyp)
 		   ||
-		   (localLoopClosureId > 0 &&
+		   (proximityClosureId > 0 &&
 		    _ui->actionPause_on_local_loop_detection->isChecked()))
 		{
 			if(_state != kPaused && _state != kMonitoringPaused && !_processingDownloadedMap)
@@ -1219,7 +1219,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		refMapId = stat.getSignatures().at(stat.refImageId()).mapId();
 	}
 	int highestHypothesisId = static_cast<float>(uValue(stat.data(), Statistics::kLoopHighest_hypothesis_id(), 0.0f));
-	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
+	int loopId = stat.loopClosureId()>0?stat.loopClosureId():stat.proximityDetectionId()>0?stat.proximityDetectionId():highestHypothesisId;
 	if(_cachedSignatures.contains(loopId))
 	{
 		loopMapId = _cachedSignatures.value(loopId).mapId();
@@ -1261,7 +1261,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
-		int localTimeClosures = (int)uValue(stat.data(), Statistics::kLocalLoopTime_closures(), 0.0f);
+		int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);
 		bool smallMovement = (bool)uValue(stat.data(), Statistics::kMemorySmall_movement(), 0.0f);
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
@@ -1270,7 +1270,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::blue);
 		}
-		else if(localTimeClosures > 0)
+		else if(proximityTimeDetections > 0)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::darkYellow);
 		}
@@ -1312,7 +1312,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		int matchId = 0;
 		Signature loopSignature;
 		int shownLoopId = 0;
-		if(highestHypothesisId > 0 || stat.localLoopClosureId()>0)
+		if(highestHypothesisId > 0 || stat.proximityDetectionId()>0)
 		{
 			bool show = true;
 			if(stat.loopClosureId() > 0)
@@ -1326,11 +1326,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
 				matchId = stat.loopClosureId();
 			}
-			else if(stat.localLoopClosureId())
+			else if(stat.proximityDetectionId())
 			{
 				_ui->imageView_loopClosure->setBackgroundColor(Qt::yellow);
-				_ui->label_matchId->setText(QString("Local match = %1 [%2]").arg(stat.localLoopClosureId()).arg(loopMapId));
-				matchId = stat.localLoopClosureId();
+				_ui->label_matchId->setText(QString("Local match = %1 [%2]").arg(stat.proximityDetectionId()).arg(loopMapId));
+				matchId = stat.proximityDetectionId();
 			}
 			else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
 			{
@@ -1353,7 +1353,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			if(show)
 			{
-				shownLoopId = stat.loopClosureId()>0?stat.loopClosureId():stat.localLoopClosureId()>0?stat.localLoopClosureId():highestHypothesisId;
+				shownLoopId = stat.loopClosureId()>0?stat.loopClosureId():stat.proximityDetectionId()>0?stat.proximityDetectionId():highestHypothesisId;
 				QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
 				if(iter != _cachedSignatures.end())
 				{
@@ -1493,7 +1493,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_ui->statsToolBox->updateStat("GUI/RGB-D cloud/ms", stat.refImageId(), int(timerVis.elapsed()*1000.0f));
 
 			// loop closure view
-			if((stat.loopClosureId() > 0 || stat.localLoopClosureId() > 0)  &&
+			if((stat.loopClosureId() > 0 || stat.proximityDetectionId() > 0)  &&
 			   !stat.loopClosureTransform().isNull() &&
 			   !loopSignature.sensorData().imageRaw().empty())
 			{

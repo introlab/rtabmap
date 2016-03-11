@@ -66,11 +66,11 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Optimization_error, );
 	RTABMAP_STATS(Loop, Optimization_iterations, );
 
-	RTABMAP_STATS(LocalLoop, Time_closures,);
-	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);
-	RTABMAP_STATS(LocalLoop, Space_paths,);
-	RTABMAP_STATS(LocalLoop, Space_closures_added_visually,);
-	RTABMAP_STATS(LocalLoop, Space_closures_added_icp_only,);
+	RTABMAP_STATS(Proximity, Time_detections,);
+	RTABMAP_STATS(Proximity, Space_last_detection_id,);
+	RTABMAP_STATS(Proximity, Space_paths,);
+	RTABMAP_STATS(Proximity, Space_detections_added_visually,);
+	RTABMAP_STATS(Proximity, Space_detections_added_icp_only,);
 
 	RTABMAP_STATS(NeighborLinkRefining, Accepted,);
 	RTABMAP_STATS(NeighborLinkRefining, Inliers,);
@@ -144,7 +144,7 @@ public:
 	void setExtended(bool extended) {_extended = extended;}
 	void setRefImageId(int refImageId) {_refImageId = refImageId;}
 	void setLoopClosureId(int loopClosureId) {_loopClosureId = loopClosureId;}
-	void setLocalLoopClosureId(int localLoopClosureId) {_localLoopClosureId = localLoopClosureId;}
+	void setProximityDetectionId(int id) {_proximiyDetectionId = id;}
 
 	void setSignatures(const std::map<int, Signature> & signatures) {_signatures = signatures;}
 
@@ -164,7 +164,7 @@ public:
 	bool extended() const {return _extended;}
 	int refImageId() const {return _refImageId;}
 	int loopClosureId() const {return _loopClosureId;}
-	int localLoopClosureId() const {return _localLoopClosureId;}
+	int proximityDetectionId() const {return _proximiyDetectionId;}
 
 	const std::map<int, Signature> & getSignatures() const {return _signatures;}
 
@@ -187,7 +187,7 @@ private:
 
 	int _refImageId;
 	int _loopClosureId;
-	int _localLoopClosureId;
+	int _proximiyDetectionId;
 
 	std::map<int, Signature> _signatures;
 

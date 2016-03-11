@@ -377,6 +377,10 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
+	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
+	{
+		this->setWorkingDirectory(iter->second.c_str());
+	}
 
 	Parameters::parse(parameters, Parameters::kRtabmapPublishStats(), _publishStats);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignatureData);
@@ -483,12 +487,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	else
 	{
 		_bayesFilter->parseParameters(parameters);
-	}
-
-	// update working directory at the end
-	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
-	{
-		this->setWorkingDirectory(iter->second.c_str());
 	}
 }
 
@@ -846,7 +844,7 @@ bool Rtabmap::process(
 
 	std::map<int, int> childCount;
 	std::set<int> signaturesRetrieved;
-	int localLoopClosuresInTimeFound = 0;
+	int proximityDetectionsInTimeFound = 0;
 
 	const Signature * signature = 0;
 	const Signature * sLoop = 0;
@@ -1192,7 +1190,7 @@ bool Rtabmap::process(
 						UASSERT(info.variance > 0.0);
 						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, info.variance, info.variance)))
 						{
-							++localLoopClosuresInTimeFound;
+							++proximityDetectionsInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
 									*iter, signature->id(), transform.prettyPrint().c_str());
 						}
@@ -1762,10 +1760,10 @@ bool Rtabmap::process(
 	timeAddLoopClosureLink = timer.ticks();
 	ULOGGER_INFO("timeAddLoopClosureLink=%fs", timeAddLoopClosureLink);
 
-	int localSpaceClosuresAddedVisually = 0;
-	int localSpaceClosuresAddedByICPOnly = 0;
-	int lastLocalSpaceClosureId = 0;
-	int localSpacePaths = 0;
+	int proximityDetectionsAddedVisually = 0;
+	int proximityDetectionsAddedByICPOnly = 0;
+	int lastProximitySpaceClosureId = 0;
+	int proximitySpacePaths = 0;
 	if(_proximityBySpace &&
 	   _localRadius > 0 &&
 	   _rgbdSlamMode &&
@@ -1817,7 +1815,7 @@ bool Rtabmap::process(
 				UDEBUG("nearestPaths=%d", (int)nearestPaths.size());
 
 				for(std::list<std::map<int, Transform> >::const_iterator iter=nearestPaths.begin();
-					iter!=nearestPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
+					iter!=nearestPaths.end() && (_memory->isIncremental() || lastProximitySpaceClosureId == 0);
 					++iter)
 				{
 					std::map<int, Transform> path = *iter;
@@ -1855,8 +1853,8 @@ bool Rtabmap::process(
 
 									if(_loopClosureHypothesis.first == 0)
 									{
-										++localSpaceClosuresAddedVisually;
-										lastLocalSpaceClosureId = nearestId;
+										++proximityDetectionsAddedVisually;
+										lastProximitySpaceClosureId = nearestId;
 									}
 								}
 								else
@@ -1875,16 +1873,16 @@ bool Rtabmap::process(
 				//
 				UDEBUG("Proximity detection (local loop closure in SPACE with scan matching)");
 				if( !signature->sensorData().laserScanCompressed().empty() &&
-					(_memory->isIncremental() || lastLocalSpaceClosureId == 0))
+					(_memory->isIncremental() || lastProximitySpaceClosureId == 0))
 				{
 					// In localization mode, no need to check local loop
 					// closures if we are already localized by at least one
 					// local visual closure above.
 
-					localSpacePaths = (int)nearestPaths.size();
+					proximitySpacePaths = (int)nearestPaths.size();
 
 					for(std::list<std::map<int, Transform> >::iterator iter=nearestPaths.begin();
-							iter!=nearestPaths.end() && (_memory->isIncremental() || lastLocalSpaceClosureId == 0);
+							iter!=nearestPaths.end() && (_memory->isIncremental() || lastProximitySpaceClosureId == 0);
 							++iter)
 					{
 						std::map<int, Transform> & path = *iter;
@@ -1979,12 +1977,12 @@ bool Rtabmap::process(
 											_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, sqrtVar, sqrtVar, scanMatchingIds));
 											loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
-											++localSpaceClosuresAddedByICPOnly;
+											++proximityDetectionsAddedByICPOnly;
 
 											// no local loop closure added visually
-											if(localSpaceClosuresAddedVisually == 0 && _loopClosureHypothesis.first == 0)
+											if(proximityDetectionsAddedVisually == 0 && _loopClosureHypothesis.first == 0)
 											{
-												lastLocalSpaceClosureId = nearestId;
+												lastProximitySpaceClosureId = nearestId;
 											}
 										}
 										else
@@ -2043,9 +2041,9 @@ bool Rtabmap::process(
 	int optimizationIterations = 0;
 	if(_rgbdSlamMode &&
 		(_loopClosureHypothesis.first>0 ||
-	     lastLocalSpaceClosureId>0 || // can be different map of the current one
+	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
-	     localLoopClosuresInTimeFound>0 ||
+	     proximityDetectionsInTimeFound>0 ||
 		 ((_memory->isIncremental() || signature->getLinks().size()) && // In localization mode, the new node should be linked
 		          signaturesRetrieved.size())))  		// can be different map of the current one
 	{
@@ -2115,7 +2113,7 @@ bool Rtabmap::process(
                                  }
                                 updateConstraints = false;
                                 _loopClosureHypothesis.first = 0;
-                                lastLocalSpaceClosureId = 0;
+                                lastProximitySpaceClosureId = 0;
                                 rejectedHypothesis = true;
 			}
 			else if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
@@ -2164,7 +2162,7 @@ bool Rtabmap::process(
 					}
 					updateConstraints = false;
 					_loopClosureHypothesis.first = 0;
-					lastLocalSpaceClosureId = 0;
+					lastProximitySpaceClosureId = 0;
 					rejectedHypothesis = true;
 				}
 			}
@@ -2185,7 +2183,7 @@ bool Rtabmap::process(
 			UERROR("Map correction should be identity when optimizing from the last node. T=%s", _mapCorrection.prettyPrint().c_str());
 		}
 	}
-	_lastLocalizationNodeId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastLocalSpaceClosureId>0?lastLocalSpaceClosureId:_lastLocalizationNodeId;
+	_lastLocalizationNodeId = _loopClosureHypothesis.first>0?_loopClosureHypothesis.first:lastProximitySpaceClosureId>0?lastProximitySpaceClosureId:_lastLocalizationNodeId;
 
 	timeMapOptimization = timer.ticks();
 	ULOGGER_INFO("timeMapOptimization=%fs", timeMapOptimization);
@@ -2200,7 +2198,7 @@ bool Rtabmap::process(
 	int lcHypothesisReactivated = 0;
 	float rehearsalValue = uValue(statistics_.data(), Statistics::kMemoryRehearsal_sim(), 0.0f);
 	int rehearsalMaxId = (int)uValue(statistics_.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
-	sLoop = _memory->getSignature(_loopClosureHypothesis.first?_loopClosureHypothesis.first:lastLocalSpaceClosureId?lastLocalSpaceClosureId:_highestHypothesis.first);
+	sLoop = _memory->getSignature(_loopClosureHypothesis.first?_loopClosureHypothesis.first:lastProximitySpaceClosureId?lastProximitySpaceClosureId:_highestHypothesis.first);
 	if(sLoop)
 	{
 		lcHypothesisReactivated = sLoop->isSaved()?1.0f:0.0f;
@@ -2240,13 +2238,13 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 
-			statistics_.addStatistic(Statistics::kLocalLoopTime_closures(), localLoopClosuresInTimeFound);
-			statistics_.addStatistic(Statistics::kLocalLoopSpace_closures_added_visually(), localSpaceClosuresAddedVisually);
-			statistics_.addStatistic(Statistics::kLocalLoopSpace_closures_added_icp_only(), localSpaceClosuresAddedByICPOnly);
-			statistics_.addStatistic(Statistics::kLocalLoopSpace_paths(), localSpacePaths);
-			statistics_.addStatistic(Statistics::kLocalLoopSpace_last_closure_id(), lastLocalSpaceClosureId);
-			statistics_.setLocalLoopClosureId(lastLocalSpaceClosureId);
-			if(_loopClosureHypothesis.first || lastLocalSpaceClosureId)
+			statistics_.addStatistic(Statistics::kProximityTime_detections(), proximityDetectionsInTimeFound);
+			statistics_.addStatistic(Statistics::kProximitySpace_detections_added_visually(), proximityDetectionsAddedVisually);
+			statistics_.addStatistic(Statistics::kProximitySpace_detections_added_icp_only(), proximityDetectionsAddedByICPOnly);
+			statistics_.addStatistic(Statistics::kProximitySpace_paths(), proximitySpacePaths);
+			statistics_.addStatistic(Statistics::kProximitySpace_last_detection_id(), lastProximitySpaceClosureId);
+			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
+			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
 			{
 				UASSERT(uContains(sLoop->getLinks(), signature->id()));
 				UINFO("Set loop closure transform = %s", sLoop->getLinks().at(signature->id()).transform().prettyPrint().c_str());
@@ -2343,7 +2341,7 @@ bool Rtabmap::process(
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
 		}
-		else if(smallDisplacement && _loopClosureHypothesis.first == 0 && lastLocalSpaceClosureId == 0)
+		else if(smallDisplacement && _loopClosureHypothesis.first == 0 && lastProximitySpaceClosureId == 0)
 		{
 			// Don't delete the location if a loop closure is detected
 			UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",
