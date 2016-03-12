@@ -57,28 +57,20 @@ cv::Mat downsample(
 {
 	UASSERT(step > 0);
 	cv::Mat output;
-	if(step == 1)
+	if(step <= 1 || cloud.cols <= step)
 	{
 		// no sampling
 		output = cloud.clone();
 	}
 	else
 	{
-		if(cloud.cols > step)
+		int finalSize = cloud.cols/step;
+		output = cv::Mat(1, finalSize, cloud.type());
+		int oi = 0;
+		for(int i=0; i<cloud.cols-step+1; i+=step)
 		{
-			int finalSize = cloud.cols/step;
-			output = cv::Mat(1, finalSize, cloud.type());
-			int oi = 0;
-			for(int i=0; i<cloud.cols-step+1; i+=step)
-			{
-				cv::Mat(cloud, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
-				++oi;
-			}
-		}
-		else if(cloud.cols)
-		{
-			output = cv::Mat(1, 1, cloud.type());
-			cv::Mat(cloud, cv::Range::all(), cv::Range(0,1)).copyTo(output); // first point
+			cv::Mat(cloud, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
+			++oi;
 		}
 	}
 	return output;
@@ -89,26 +81,19 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr downsample(
 {
 	UASSERT(step > 0);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
-	if(step == 1)
+	if(step <= 1 || (int)cloud->size() <= step)
 	{
 		// no sampling
 		*output = *cloud;
 	}
 	else
 	{
-		if((int)cloud->size() > step)
+		int finalSize = cloud->size()/step;
+		output->resize(finalSize);
+		int oi = 0;
+		for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
 		{
-			int finalSize = cloud->size()/step;
-			output->resize(finalSize);
-			int oi = 0;
-			for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
-			{
-				(*output)[oi++] = cloud->at(i);
-			}
-		}
-		else if(cloud->size())
-		{
-			output->push_back(cloud->at(0));
+			(*output)[oi++] = cloud->at(i);
 		}
 	}
 	return output;
@@ -119,26 +104,19 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsample(
 {
 	UASSERT(step > 0);
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-	if(step == 1)
+	if(step <= 1 || (int)cloud->size()<=step)
 	{
 		// no sampling
 		*output = *cloud;
 	}
 	else
 	{
-		if((int)cloud->size() > step)
+		int finalSize = cloud->size()/step;
+		output->resize(finalSize);
+		int oi = 0;
+		for(int i=0; i<(int)cloud->size()-step+1; i+=step)
 		{
-			int finalSize = cloud->size()/step;
-			output->resize(finalSize);
-			int oi = 0;
-			for(int i=0; i<(int)cloud->size()-step+1; i+=step)
-			{
-				(*output)[oi++] = cloud->at(i);
-			}
-		}
-		else if(cloud->size())
-		{
-			output->push_back(cloud->at(0));
+			(*output)[oi++] = cloud->at(i);
 		}
 	}
 	return output;

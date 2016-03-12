@@ -404,12 +404,6 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	UDEBUG("poses=%d, scans = %d scanMaxRange=%f", poses.size(), scans.size(), scanMaxRange);
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
-	// For computation issue, the maximum scan range allowed is 6 meters
-	if(scanMaxRange > 6.0f || scanMaxRange <= 0.0f)
-	{
-		scanMaxRange = 6.0f;
-	}
-
 	pcl::PointCloud<pcl::PointXYZ> minMax;
 	if(minMapSize > 0.0f)
 	{
@@ -440,10 +434,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 
 		// Added margin to make sure that all points are inside the map (when rounded to integer)
 		float margin = cellSize*10.0f;
-		xMin = (scanMaxRange > 0 && -scanMaxRange < min.x?-scanMaxRange:min.x) - margin;
-		yMin = (scanMaxRange > 0 && -scanMaxRange < min.y?-scanMaxRange:min.y) - margin;
-		float xMax = (scanMaxRange > 0 && scanMaxRange > max.x?scanMaxRange:max.x) + margin;
-		float yMax = (scanMaxRange > 0 && scanMaxRange > max.y?scanMaxRange:max.y) + margin;
+		xMin = (unknownSpaceFilled && scanMaxRange > 0 && -scanMaxRange < min.x?-scanMaxRange:min.x) - margin;
+		yMin = (unknownSpaceFilled && scanMaxRange > 0 && -scanMaxRange < min.y?-scanMaxRange:min.y) - margin;
+		float xMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.x?scanMaxRange:max.x) + margin;
+		float yMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.y?scanMaxRange:max.y) + margin;
 
 		//UWARN("map min=(%fm, %fm) max=(%fm,%fm) (margin=%fm, cellSize=%fm, scan range=%f, min=[%fm,%fm] max=[%fm,%fm])",
 		//		xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);
@@ -493,13 +487,13 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						origin.at<float>(1) = pose.y();
 						pcl::PointXYZ ptFirst = iter->second->points[0];
 						pcl::PointXYZ ptLast = iter->second->points[iter->second->points.size()-1];
-						if(ptFirst.y > ptLast.y)
-						{
+						//if(ptFirst.y > ptLast.y)
+						//{
 							// swap to iterate counterclockwise
-							pcl::PointXYZ tmp = ptLast;
-							ptLast = ptFirst;
-							ptFirst = tmp;
-						}
+						//	pcl::PointXYZ tmp = ptLast;
+						//	ptLast = ptFirst;
+						//	ptFirst = tmp;
+						//}
 						endFirst.at<float>(0) = ptFirst.x;
 						endFirst.at<float>(1) = ptFirst.y;
 						endLast.at<float>(0) = ptLast.x;
