@@ -180,7 +180,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%f", Parameters::kVisEpipolarGeometryVar().c_str(), _epipolarGeometryVar);
 	UDEBUG("%s=%f", Parameters::kVisPnPReprojError().c_str(), _PnPReprojError);
 	UDEBUG("%s=%d", Parameters::kVisPnPFlags().c_str(), _PnPFlags);
-	UDEBUG("%s=%d", Parameters::kVisCorType().c_str(), _correspondencesApproach?1:0);
+	UDEBUG("%s=%d", Parameters::kVisCorType().c_str(), _correspondencesApproach);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowWinSize().c_str(), _flowWinSize);
 	UDEBUG("%s=%d", Parameters::kVisCorFlowIterations().c_str(), _flowIterations);
 	UDEBUG("%s=%f", Parameters::kVisCorFlowEps().c_str(), _flowEps);

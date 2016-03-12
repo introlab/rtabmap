@@ -579,7 +579,7 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 		const std::vector<cv::KeyPoint> & keypoints) const
 {
 	std::vector<cv::Point3f> keypoints3D;
-	if(!data.depthOrRightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection())
+	if(!data.rightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection())
 	{
 		//stereo
 		cv::Mat imageMono;

@@ -72,18 +72,19 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 		UASSERT(int((depth.cols/cameraModels.size())*cameraModels.size()) == depth.cols);
 		float subImageWidth = depth.cols/cameraModels.size();
 		keypoints3d.resize(keypoints.size());
-		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?cameraModels[0].imageWidth()/depth.cols:1);
+		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?cameraModels[0].imageWidth()/subImageWidth:1);
 		float rgbToDepthFactorY = 1.0f/(cameraModels[0].imageHeight()>0?cameraModels[0].imageHeight()/depth.rows:1);
-		for(unsigned int i=0; i!=keypoints.size(); ++i)
+		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
 			float x = keypoints[i].pt.x*rgbToDepthFactorX;
 			float y = keypoints[i].pt.y*rgbToDepthFactorY;
 			int cameraIndex = int(x / subImageWidth);
-			UASSERT_MSG(cameraIndex < (int)cameraModels.size(),
+			UASSERT_MSG(cameraIndex >= 0 && cameraIndex < (int)cameraModels.size(),
 					uFormat("cameraIndex=%d, models=%d, kpt.x=%f, subImageWidth=%f (Camera model image width=%d)",
 							cameraIndex, (int)cameraModels.size(), keypoints[i].pt.x, subImageWidth, cameraModels[0].imageWidth()).c_str());
+
 			pcl::PointXYZ ptXYZ = util3d::projectDepthTo3D(
-					depth,
+					cameraModels.size()==1?depth:cv::Mat(depth, cv::Range::all(), cv::Range(subImageWidth*cameraIndex,subImageWidth*(cameraIndex+1))),
 					x-subImageWidth*cameraIndex,
 					y,
 					cameraModels.at(cameraIndex).cx()*rgbToDepthFactorX,
