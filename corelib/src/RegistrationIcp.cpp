@@ -187,9 +187,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 				if(_voxelSize > 0.0f)
 				{
 					fromCloudFiltered = util3d::voxelize(fromCloudFiltered, _voxelSize);
+					int pointsBeforeFiltering = toCloudFiltered->size();
 					toCloudFiltered = util3d::voxelize(toCloudFiltered, _voxelSize);
 					filtered = true;
 					UDEBUG("Voxel filtering time (voxel=%f m) = %f s", _voxelSize, timer.ticks());
+
+					//Adjust maxLaserScans
+					maxLaserScans = maxLaserScans * toCloudFiltered->size() / pointsBeforeFiltering;
 				}
 
 				bool correspondencesComputed = false;
