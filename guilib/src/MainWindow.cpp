@@ -1290,19 +1290,21 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		if(_ui->imageView_source->toolTip().isEmpty())
 		{
 			_ui->imageView_source->setToolTip(
-				"Blue		= Weight Update Merged\n"
-				"Dark Blue	= Weight Update\n"
-				"Dark Yellow	= Proximity Detection in Time\n"
-				"Dark Cyan	= Neighbor Link Refined\n"
-				"Gray		= Small Movement");
+				"Background color core:"
+				"  Blue = Weight Update Merged\n"
+				"  Dark Blue = Weight Update\n"
+				"  Dark Yellow = Proximity Detection in Time\n"
+				"  Dark Cyan = Neighbor Link Refined\n"
+				"  Gray = Small Movement");
 		}
 		// Set color code as tooltip
 		if(_ui->imageView_loopClosure->toolTip().isEmpty())
 		{
 			_ui->imageView_loopClosure->setToolTip(
-				"Green	= Accepted Loop Closure Detection\n"
-				"Red	= Rejected Loop Closure Detection\n"
-				"Yellow	= Proximity Detection in Space");
+				"Background color code:"
+				"  Green = Accepted Loop Closure Detection\n"
+				"  Red = Rejected Loop Closure Detection\n"
+				"  Yellow = Proximity Detection in Space");
 		}
 
 		UDEBUG("time= %d ms", time.restart());

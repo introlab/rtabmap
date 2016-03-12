@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/util3d.h>
 #include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/common/transforms.h>
 #include <QMenu>
 #include <QAction>
 #include <QtGui/QContextMenuEvent>
@@ -100,6 +101,9 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_aShowTrajectory(0),
 		_aSetTrajectorySize(0),
 		_aClearTrajectory(0),
+		_aShowFrustum(0),
+		_aSetFrustumScale(0),
+		_aSetFrustumColor(0),
 		_aShowGrid(0),
 		_aSetGridCellCount(0),
 		_aSetGridCellSize(0),
@@ -107,6 +111,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
+		_frustumScale(0.5f),
+		_frustumColor(Qt::gray),
 		_gridCellCount(50),
 		_gridCellSize(1),
 		_lastCameraOrientation(0,0,0),
@@ -157,8 +163,15 @@ void CloudViewer::clear()
 	this->removeAllClouds();
 	this->removeAllGraphs();
 	this->removeAllCoordinates();
+	this->removeAllFrustums();
 	this->removeAllTexts();
 	this->clearTrajectory();
+
+	this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
+	if(_aShowFrustum->isChecked())
+	{
+		this->addOrUpdateFrustum("reference_frustum", Transform::getIdentity(), _frustumScale, _frustumColor);
+	}
 }
 
 void CloudViewer::createMenu()
@@ -181,6 +194,11 @@ void CloudViewer::createMenu()
 	_aShowTrajectory->setChecked(true);
 	_aSetTrajectorySize = new QAction("Set trajectory size...", this);
 	_aClearTrajectory = new QAction("Clear trajectory", this);
+	_aShowFrustum= new QAction("Show frustum", this);
+	_aShowFrustum->setCheckable(true);
+	_aShowFrustum->setChecked(false);
+	_aSetFrustumScale = new QAction("Set frustum scale...", this);
+	_aSetFrustumColor = new QAction("Set frustum color...", this);
 	_aShowGrid = new QAction("Show grid", this);
 	_aShowGrid->setCheckable(true);
 	_aSetGridCellCount = new QAction("Set cell count...", this);
@@ -204,6 +222,11 @@ void CloudViewer::createMenu()
 	trajectoryMenu->addAction(_aSetTrajectorySize);
 	trajectoryMenu->addAction(_aClearTrajectory);
 
+	QMenu * frustumMenu = new QMenu("Frustum", this);
+	frustumMenu->addAction(_aShowFrustum);
+	frustumMenu->addAction(_aSetFrustumScale);
+	frustumMenu->addAction(_aSetFrustumColor);
+
 	QMenu * gridMenu = new QMenu("Grid", this);
 	gridMenu->addAction(_aShowGrid);
 	gridMenu->addAction(_aSetGridCellCount);
@@ -213,6 +236,7 @@ void CloudViewer::createMenu()
 	_menu = new QMenu(this);
 	_menu->addMenu(cameraMenu);
 	_menu->addMenu(trajectoryMenu);
+	_menu->addMenu(frustumMenu);
 	_menu->addMenu(gridMenu);
 	_menu->addAction(_aSetBackgroundColor);
 }
@@ -254,6 +278,10 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
 
+	settings.setValue("frustum_shown", this->isFrustumShown());
+	settings.setValue("frustum_scale", this->getFrustumScale());
+	settings.setValue("frustum_color", this->getFrustumColor());
+
 	settings.setValue("camera_target_locked", this->isCameraTargetLocked());
 	settings.setValue("camera_target_follow", this->isCameraTargetFollow());
 	settings.setValue("camera_free", this->isCameraFree());
@@ -287,6 +315,10 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
+
+	this->setFrustumShown(settings.value("frustum_shown", this->isFrustumShown()).toBool());
+	this->setFrustumScale(settings.value("frustum_scale", this->getFrustumScale()).toDouble());
+	this->setFrustumColor(settings.value("frustum_color", this->getFrustumColor()).value<QColor>());
 
 	this->setCameraTargetLocked(settings.value("camera_target_locked", this->isCameraTargetLocked()).toBool());
 	this->setCameraTargetFollow(settings.value("camera_target_follow", this->isCameraTargetFollow()).toBool());
@@ -697,6 +729,18 @@ void CloudViewer::addOrUpdateCoordinate(
 	}
 }
 
+bool CloudViewer::updateCoordinatePose(
+		const std::string & id,
+		const Transform & pose)
+{
+	if(_coordinates.find(id) != _coordinates.end() && !pose.isNull())
+	{
+		UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
+		return _visualizer->updateCoordinateSystemPose(id, pose.toEigen3f());
+	}
+	return false;
+}
+
 void CloudViewer::removeCoordinate(const std::string & id)
 {
 	if(id.empty())
@@ -725,6 +769,108 @@ void CloudViewer::removeAllCoordinates()
 		this->removeCoordinate(*iter);
 	}
 	UASSERT(_coordinates.empty());
+}
+
+static const float frustum_vertices[] = {
+    0.0f,  0.0f, 0.0f,
+	1.0f, 1.0f, 1.0f,
+	1.0f, -1.0f, 1.0f,
+	1.0f, -1.0f, -1.0f,
+	1.0f, 1.0f, -1.0f};
+
+static const int frustum_indices[] = {
+    1, 2, 3, 4, 1, 0, 2, 0, 3, 0, 4};
+
+void CloudViewer::addOrUpdateFrustum(
+			const std::string & id,
+			const Transform & transform,
+			double scale,
+			const QColor & color)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	removeFrustum(id);
+
+	if(!transform.isNull())
+	{
+		_frustums.insert(id);
+
+		int frustumSize = sizeof(frustum_vertices)/sizeof(float);
+		UASSERT(frustumSize>0 && frustumSize % 3 == 0);
+		frustumSize/=3;
+		pcl::PointCloud<pcl::PointXYZ> frustumPoints;
+		frustumPoints.resize(frustumSize);
+		float scaleX = 0.5f * scale;
+		float scaleY = 0.4f * scale; //4x3 arbitrary ratio
+		float scaleZ = 0.3f * scale;
+		QColor c = Qt::gray;
+		if(color.isValid())
+		{
+			c = color;
+		}
+		Eigen::Affine3f t = transform.toEigen3f();
+		for(int i=0; i<frustumSize; ++i)
+		{
+			frustumPoints[i].x = frustum_vertices[i*3]*scaleX;
+			frustumPoints[i].y = frustum_vertices[i*3+1]*scaleY;
+			frustumPoints[i].z = frustum_vertices[i*3+2]*scaleZ;
+			frustumPoints[i] = pcl::transformPoint(frustumPoints[i], t);
+		}
+
+		pcl::PolygonMesh mesh;
+		pcl::Vertices vertices;
+		vertices.vertices.resize(sizeof(frustum_indices)/sizeof(int));
+		for(unsigned int i=0; i<vertices.vertices.size(); ++i)
+		{
+			vertices.vertices[i] = frustum_indices[i];
+		}
+		pcl::toPCLPointCloud2(frustumPoints, mesh.cloud);
+		mesh.polygons.push_back(vertices);
+		_visualizer->addPolylineFromPolygonMesh(mesh, id);
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, c.redF(), c.greenF(), c.blueF(), id);
+
+	}
+}
+
+bool CloudViewer::updateFrustumPose(
+		const std::string & id,
+		const Transform & pose)
+{
+	if(_frustums.find(id) != _frustums.end() && !pose.isNull())
+	{
+		UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
+		return _visualizer->updateShapePose(id, pose.toEigen3f());
+	}
+	return false;
+}
+
+void CloudViewer::removeFrustum(const std::string & id)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	if(_frustums.find(id) != _frustums.end())
+	{
+		_visualizer->removeShape(id);
+		_frustums.erase(id);
+	}
+}
+
+void CloudViewer::removeAllFrustums()
+{
+	std::set<std::string> frustums = _frustums;
+	for(std::set<std::string>::iterator iter = frustums.begin(); iter!=frustums.end(); ++iter)
+	{
+		this->removeFrustum(*iter);
+	}
+	UASSERT(_frustums.empty());
 }
 
 void CloudViewer::addOrUpdateGraph(
@@ -866,6 +1012,49 @@ void CloudViewer::clearTrajectory()
 	_trajectory->clear();
 	_visualizer->removeShape("trajectory");
 	this->update();
+}
+
+bool CloudViewer::isFrustumShown() const
+{
+	return _aShowFrustum->isChecked();
+}
+
+float CloudViewer::getFrustumScale() const
+{
+	return _frustumScale;
+}
+
+QColor CloudViewer::getFrustumColor() const
+{
+	return _frustumColor;
+}
+
+void CloudViewer::setFrustumShown(bool shown)
+{
+	if(!shown)
+	{
+		this->removeFrustum("reference_frustum");
+	}
+	_aShowFrustum->setChecked(shown);
+}
+
+void CloudViewer::setFrustumScale(float value)
+{
+	_frustumScale = value;
+}
+
+void CloudViewer::setFrustumColor(QColor value)
+{
+	if(!value.isValid())
+	{
+		value = Qt::gray;
+	}
+	if(_frustums.find("reference_frustum") != _frustums.end())
+	{
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), "reference_frustum");
+		this->update();
+	}
+	_frustumColor = value;
 }
 
 void CloudViewer::resetCamera()
@@ -1070,7 +1259,24 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 				cameras.front().view[2] = _aLockViewZ->isChecked()?1:Fp[10];
 			}
 
-			this->addOrUpdateCoordinate("reference", pose, 0.2);
+			if(_coordinates.find("reference") != _coordinates.end())
+			{
+				this->updateCoordinatePose("reference", pose);
+			}
+			else
+			{
+				this->addOrUpdateCoordinate("reference", pose, 0.2);
+			}
+
+			// commented: update pose is crashing...
+			/*if(_frustums.find("reference_frustum") != _frustums.end())
+			{
+				this->updateFrustumPose("reference_frustum", pose);
+			}
+			else */ if(_aShowFrustum->isChecked())
+			{
+				this->addOrUpdateFrustum("reference_frustum", pose, _frustumScale, _frustumColor);
+			}
 
 			vtkRenderer* renderer = _visualizer->getRendererCollection()->GetFirstRenderer();
 			vtkSmartPointer<vtkCamera> cam = renderer->GetActiveCamera ();
@@ -1531,6 +1737,27 @@ void CloudViewer::handleAction(QAction * a)
 	else if(a == _aClearTrajectory)
 	{
 		this->clearTrajectory();
+	}
+	else if(a == _aShowFrustum)
+	{
+		this->setFrustumShown(a->isChecked());
+	}
+	else if(a == _aSetFrustumScale)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set frustum scale"), tr("Scale"), _frustumScale, 0.0, 999.0, 1, &ok);
+		if(ok)
+		{
+			this->setFrustumScale(value);
+		}
+	}
+	else if(a == _aSetFrustumColor)
+	{
+		QColor value = QColorDialog::getColor(_frustumColor, this);
+		if(value.isValid())
+		{
+			this->setFrustumColor(value);
+		}
 	}
 	else if(a == _aResetCamera)
 	{

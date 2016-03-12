@@ -148,8 +148,22 @@ public:
 			const std::string & id,
 			const Transform & transform,
 			double scale);
+	bool updateCoordinatePose(
+			const std::string & id,
+			const Transform & transform);
 	void removeCoordinate(const std::string & id);
 	void removeAllCoordinates();
+
+	void addOrUpdateFrustum(
+			const std::string & id,
+			const Transform & transform,
+			double scale,
+			const QColor & color = QColor());
+	bool updateFrustumPose(
+			const std::string & id,
+			const Transform & pose);
+	void removeFrustum(const std::string & id);
+	void removeAllFrustums();
 
 	void addOrUpdateGraph(
 			const std::string & id,
@@ -172,6 +186,12 @@ public:
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(unsigned int value);
 	void clearTrajectory();
+	bool isFrustumShown() const;
+	float getFrustumScale() const;
+	QColor getFrustumColor() const;
+	void setFrustumShown(bool shown);
+	void setFrustumScale(float value);
+	void setFrustumColor(QColor value);
 	void resetCamera();
 
 	void removeAllClouds(); //including meshes
@@ -248,6 +268,9 @@ private:
     QAction * _aShowTrajectory;
     QAction * _aSetTrajectorySize;
     QAction * _aClearTrajectory;
+    QAction * _aShowFrustum;
+    QAction * _aSetFrustumScale;
+    QAction * _aSetFrustumColor;
     QAction * _aShowGrid;
     QAction * _aSetGridCellCount;
     QAction * _aSetGridCellSize;
@@ -256,8 +279,11 @@ private:
     std::set<std::string> _graphes;
     std::set<std::string> _coordinates;
     std::set<std::string> _texts;
+    std::set<std::string> _frustums;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
+    float _frustumScale;
+    QColor _frustumColor;
     unsigned int _gridCellCount;
     float _gridCellSize;
     cv::Vec3d _lastCameraOrientation;
