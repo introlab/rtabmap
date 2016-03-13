@@ -51,18 +51,22 @@ namespace util3d
 std::vector<cv::Point3f> generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		const CameraModel & cameraModel)
+		const CameraModel & cameraModel,
+		float minDepth,
+		float maxDepth)
 {
 	UASSERT(cameraModel.isValidForProjection());
 	std::vector<CameraModel> models;
 	models.push_back(cameraModel);
-	return generateKeypoints3DDepth(keypoints, depth, models);
+	return generateKeypoints3DDepth(keypoints, depth, models, minDepth, maxDepth);
 }
 
 std::vector<cv::Point3f> generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		const std::vector<CameraModel> & cameraModels)
+		const std::vector<CameraModel> & cameraModels,
+		float minDepth,
+		float maxDepth)
 {
 	UASSERT(!depth.empty() && (depth.type() == CV_32FC1 || depth.type() == CV_16UC1));
 	UASSERT(cameraModels.size());
@@ -74,6 +78,7 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 		keypoints3d.resize(keypoints.size());
 		float rgbToDepthFactorX = 1.0f/(cameraModels[0].imageWidth()>0?cameraModels[0].imageWidth()/subImageWidth:1);
 		float rgbToDepthFactorY = 1.0f/(cameraModels[0].imageHeight()>0?cameraModels[0].imageHeight()/depth.rows:1);
+		float bad_point = std::numeric_limits<float>::quiet_NaN ();
 		for(unsigned int i=0; i<keypoints.size(); ++i)
 		{
 			float x = keypoints[i].pt.x*rgbToDepthFactorX;
@@ -93,12 +98,17 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 					cameraModels.at(cameraIndex).fy()*rgbToDepthFactorY,
 					true);
 
-			cv::Point3f pt(ptXYZ.x, ptXYZ.y, ptXYZ.z);
-			if(util3d::isFinite(pt) &&
-				!cameraModels.at(cameraIndex).localTransform().isNull() &&
-			    !cameraModels.at(cameraIndex).localTransform().isIdentity())
+			cv::Point3f pt(bad_point, bad_point, bad_point);
+			if(pcl::isFinite(ptXYZ) &&
+				(minDepth <= 0.0f || ptXYZ.z >= minDepth) &&
+				(maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
 			{
-				pt = util3d::transformPoint(pt, cameraModels.at(cameraIndex).localTransform());
+				pt = cv::Point3f(ptXYZ.x, ptXYZ.y, ptXYZ.z);
+				if(!cameraModels.at(cameraIndex).localTransform().isNull() &&
+				   !cameraModels.at(cameraIndex).localTransform().isIdentity())
+				{
+					pt = util3d::transformPoint(pt, cameraModels.at(cameraIndex).localTransform());
+				}
 			}
 			keypoints3d.at(i) = pt;
 		}
@@ -109,24 +119,33 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 std::vector<cv::Point3f> generateKeypoints3DDisparity(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & disparity,
-		const StereoCameraModel & stereoCameraModel)
+		const StereoCameraModel & stereoCameraModel,
+		float minDepth,
+		float maxDepth)
 {
 	UASSERT(!disparity.empty() && (disparity.type() == CV_16SC1 || disparity.type() == CV_32F));
 	UASSERT(stereoCameraModel.isValidForProjection());
 	std::vector<cv::Point3f> keypoints3d;
 	keypoints3d.resize(keypoints.size());
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
 	for(unsigned int i=0; i!=keypoints.size(); ++i)
 	{
-		cv::Point3f pt = util3d::projectDisparityTo3D(
+		cv::Point3f tmpPt = util3d::projectDisparityTo3D(
 				keypoints[i].pt,
 				disparity,
 				stereoCameraModel);
 
-		if(util3d::isFinite(pt) &&
-			!stereoCameraModel.left().localTransform().isNull() &&
-			!stereoCameraModel.left().localTransform().isIdentity())
+		cv::Point3f pt(bad_point, bad_point, bad_point);
+		if(util3d::isFinite(tmpPt) &&
+			(minDepth <= 0.0f || tmpPt.z >= minDepth) &&
+			(maxDepth <= 0.0f || tmpPt.z <= maxDepth))
 		{
-			pt = util3d::transformPoint(pt, stereoCameraModel.left().localTransform());
+			pt = tmpPt;
+			if(!stereoCameraModel.left().localTransform().isNull() &&
+				!stereoCameraModel.left().localTransform().isIdentity())
+			{
+				pt = util3d::transformPoint(pt, stereoCameraModel.left().localTransform());
+			}
 		}
 		keypoints3d.at(i) = pt;
 	}
@@ -137,7 +156,9 @@ std::vector<cv::Point3f> generateKeypoints3DStereo(
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
 		const StereoCameraModel & model,
-		const std::vector<unsigned char> & mask)
+		const std::vector<unsigned char> & mask,
+		float minDepth,
+		float maxDepth)
 {
 	UASSERT(leftCorners.size() == rightCorners.size());
 	UASSERT(mask.size() == 0 || leftCorners.size() == mask.size());
@@ -159,7 +180,9 @@ std::vector<cv::Point3f> generateKeypoints3DStereo(
 						disparity,
 						model);
 
-				if(util3d::isFinite(tmpPt))
+				if(util3d::isFinite(tmpPt) &&
+				   (minDepth <= 0.0f || tmpPt.z >= minDepth) &&
+				   (maxDepth <= 0.0f || tmpPt.z <= maxDepth))
 				{
 					pt = tmpPt;
 					if(!model.localTransform().isNull() &&

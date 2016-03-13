@@ -2437,7 +2437,13 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		// generate kpts
 		std::vector<cv::KeyPoint> kpts;
 		uInsert(parameters, ParametersPair(Parameters::kKpMaxFeatures(), parameters.at(Parameters::kVisMaxFeatures())));
-		uInsert(parameters, ParametersPair(Parameters::kKpRoiRatios(), std::string(opticalFlow?"0.03 0.03 0.04 0.04":"0 0 0 0")));
+		uInsert(parameters, ParametersPair(Parameters::kKpMinDepth(), parameters.at(Parameters::kVisMinDepth())));
+		uInsert(parameters, ParametersPair(Parameters::kKpMaxDepth(), parameters.at(Parameters::kVisMaxDepth())));
+		uInsert(parameters, ParametersPair(Parameters::kKpDetectorStrategy(), parameters.at(Parameters::kVisFeatureType())));
+		uInsert(parameters, ParametersPair(Parameters::kKpRoiRatios(), parameters.at(Parameters::kVisRoiRatios())));
+		uInsert(parameters, ParametersPair(Parameters::kKpSubPixEps(), parameters.at(Parameters::kVisSubPixEps())));
+		uInsert(parameters, ParametersPair(Parameters::kKpSubPixIterations(), parameters.at(Parameters::kVisSubPixIterations())));
+		uInsert(parameters, ParametersPair(Parameters::kKpSubPixWinSize(), parameters.at(Parameters::kVisSubPixWinSize())));
 		Feature2D * kptDetector = Feature2D::create(parameters);
 		kpts = kptDetector->generateKeypoints(leftMono);
 		delete kptDetector;

@@ -128,6 +128,8 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 			cv::OPTFLOW_LK_GET_MIN_EIGENVALS, 1e-4);
 	UDEBUG("util2d::calcOpticalFlowPyrLKStereo() end");
 	UASSERT(leftCorners.size() == rightCorners.size() && status.size() == leftCorners.size());
+	int countFlowRejected = 0;
+	int countDisparityRejected = 0;
 	for(unsigned int i=0; i<status.size(); ++i)
 	{
 		if(status[i]!=0)
@@ -136,9 +138,21 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 			if(disparity < float(this->minDisparity()) || disparity > float(this->maxDisparity()))
 			{
 				status[i] = 0;
+				++countDisparityRejected;
 			}
 		}
+		else
+		{
+			++countFlowRejected;
+		}
 	}
+	UDEBUG("total=%d countFlowRejected=%d countDisparityRejected=%d", (int)status.size(), countFlowRejected, countDisparityRejected);
+
+	if(countFlowRejected + countDisparityRejected > (int)status.size()/2)
+	{
+		UWARN("A large number (%d/%d) of stereo correspondences are rejected! Optical flow may have failed, images are not calibrated or the background is too far (no disparity between the images).", countFlowRejected+countDisparityRejected, (int)status.size());
+	}
+
 	return rightCorners;
 }
 

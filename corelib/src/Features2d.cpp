@@ -592,7 +592,7 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 		{
 			imageMono = data.imageRaw();
 		}
-		//generate a disparity map
+
 		std::vector<cv::Point2f> leftCorners;
 		cv::KeyPoint::convert(keypoints, leftCorners);
 		std::vector<unsigned char> status;
@@ -604,60 +604,22 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 				leftCorners,
 				status);
 
-		if(_maxDepth > 0.0f || _minDepth > 0.0f)
-		{
-			UASSERT(status.size() == leftCorners.size() && status.size() == rightCorners.size());
-			for(unsigned int i=0; i<status.size(); ++i)
-			{
-				if(status[i] != 0)
-				{
-					float d = data.stereoCameraModel().computeDepth(leftCorners[i].x - rightCorners[i].x);
-					if((_minDepth > 0.0f && d < _minDepth) ||
-					   (_maxDepth > 0.0f && d > _maxDepth))
-					{
-						status[i] = 0;
-					}
-				}
-			}
-		}
-
 		keypoints3D = util3d::generateKeypoints3DStereo(
 				leftCorners,
 				rightCorners,
 				data.stereoCameraModel(),
-				status);
+				status,
+				_minDepth,
+				_maxDepth);
 	}
 	else if(!data.depthRaw().empty() && data.cameraModels().size())
 	{
 		keypoints3D = util3d::generateKeypoints3DDepth(
 				keypoints,
 				data.depthOrRightRaw(),
-				data.cameraModels());
-
-		if(_maxDepth > 0.0f || _minDepth > 0.0f)
-		{
-			UASSERT(keypoints3D.size() == keypoints.size());
-			float bad_point = std::numeric_limits<float>::quiet_NaN ();
-			for(unsigned int i=0; i<keypoints.size(); ++i)
-			{
-				float d = util2d::getDepth(
-						data.depthRaw(),
-						keypoints[i].pt.x/float((data.imageRaw().cols/data.depthRaw().cols)),
-						keypoints[i].pt.y/float((data.imageRaw().rows/data.depthRaw().rows)),
-						false);
-				bool reject = true;
-				if(uIsFinite(d) && d>_minDepth && (_maxDepth <= 0.0f || d < _maxDepth))
-				{
-					reject = false;
-				}
-				if(reject)
-				{
-					keypoints3D[i].x = bad_point;
-					keypoints3D[i].y = bad_point;
-					keypoints3D[i].z = bad_point;
-				}
-			}
-		}
+				data.cameraModels(),
+				_minDepth,
+				_maxDepth);
 	}
 
 	return keypoints3D;

@@ -138,6 +138,8 @@ public:
 	static cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
 
 	int getMaxFeatures() const {return maxFeatures_;}
+	float getMinDepth() const {return _minDepth;}
+	float getMaxDepth() const {return _maxDepth;}
 
 public:
 	virtual ~Feature2D();

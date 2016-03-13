@@ -320,7 +320,6 @@ Transform RegistrationVis::computeTransformationImpl(
 
 			if(!toSignature.sensorData().imageRaw().empty())
 			{
-
 				std::vector<cv::Point2f> cornersFrom;
 				cv::KeyPoint::convert(kptsFrom, cornersFrom);
 				std::vector<cv::Point2f> cornersTo;
@@ -533,6 +532,34 @@ Transform RegistrationVis::computeTransformationImpl(
 						   "is maybe a problem with the logic above (getWords3() should be null or equal to kptsfrom).");
 				}
 				kptsFrom3D = detector->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
+				if(detector->getMinDepth() > 0.0f || detector->getMaxDepth() > 0.0f)
+				{
+					UDEBUG("");
+					//remove all keypoints/descriptors with no valid 3D points
+					UASSERT((int)kptsFrom.size() == descriptorsFrom.rows &&
+							kptsFrom3D.size() == kptsFrom.size());
+					std::vector<cv::KeyPoint> validKeypoints(kptsFrom.size());
+					std::vector<cv::Point3f> validKeypoints3D(kptsFrom.size());
+					cv::Mat validDescriptors(descriptorsFrom.size(), descriptorsFrom.type());
+
+					int oi=0;
+					for(unsigned int i=0; i<kptsFrom3D.size(); ++i)
+					{
+						if(util3d::isFinite(kptsFrom3D[i]))
+						{
+							validKeypoints[oi] = kptsFrom[i];
+							validKeypoints3D[oi] = kptsFrom3D[i];
+							descriptorsFrom.row(i).copyTo(validDescriptors.row(oi));
+							++oi;
+						}
+					}
+					UDEBUG("Removed %d invalid 3D points", (int)kptsFrom3D.size()-oi);
+					validKeypoints.resize(oi);
+					validKeypoints3D.resize(oi);
+					kptsFrom = validKeypoints;
+					kptsFrom3D = validKeypoints3D;
+					descriptorsFrom = validDescriptors.rowRange(0, oi).clone();
+				}
 			}
 			else
 			{
@@ -546,6 +573,34 @@ Transform RegistrationVis::computeTransformationImpl(
 						   "is maybe a problem with the logic above (getWords3() should be null or equal to kptsTo).");
 				}
 				kptsTo3D = detector->generateKeypoints3D(toSignature.sensorData(), kptsTo);
+				if(detector->getMinDepth() > 0.0f || detector->getMaxDepth() > 0.0f)
+				{
+					UDEBUG("");
+					//remove all keypoints/descriptors with no valid 3D points
+					UASSERT((int)kptsTo.size() == descriptorsTo.rows &&
+							kptsTo3D.size() == kptsTo.size());
+					std::vector<cv::KeyPoint> validKeypoints(kptsTo.size());
+					std::vector<cv::Point3f> validKeypoints3D(kptsTo.size());
+					cv::Mat validDescriptors(descriptorsTo.size(), descriptorsTo.type());
+
+					int oi=0;
+					for(unsigned int i=0; i<kptsTo3D.size(); ++i)
+					{
+						if(util3d::isFinite(kptsTo3D[i]))
+						{
+							validKeypoints[oi] = kptsTo[i];
+							validKeypoints3D[oi] = kptsTo3D[i];
+							descriptorsTo.row(i).copyTo(validDescriptors.row(oi));
+							++oi;
+						}
+					}
+					UDEBUG("Removed %d invalid 3D points", (int)kptsTo3D.size()-oi);
+					validKeypoints.resize(oi);
+					validKeypoints3D.resize(oi);
+					kptsTo = validKeypoints;
+					kptsTo3D = validKeypoints3D;
+					descriptorsTo = validDescriptors.rowRange(0, oi).clone();
+				}
 			}
 			else
 			{

@@ -47,23 +47,31 @@ namespace util3d
 std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		const CameraModel & cameraModel);
+		const CameraModel & cameraModel,
+		float minDepth = 0,
+		float maxDepth = 0);
 
 std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DDepth(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & depth,
-		const std::vector<CameraModel> & cameraModels);
+		const std::vector<CameraModel> & cameraModels,
+		float minDepth = 0,
+		float maxDepth = 0);
 
 std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DDisparity(
 		const std::vector<cv::KeyPoint> & keypoints,
 		const cv::Mat & disparity,
-		const StereoCameraModel & stereoCameraMode);
+		const StereoCameraModel & stereoCameraModel,
+		float minDepth = 0,
+		float maxDepth = 0);
 
 std::vector<cv::Point3f> RTABMAP_EXP generateKeypoints3DStereo(
 		const std::vector<cv::Point2f> & leftCorners,
 		const std::vector<cv::Point2f> & rightCorners,
 		const StereoCameraModel & model,
-		const std::vector<unsigned char> & mask = std::vector<unsigned char>());
+		const std::vector<unsigned char> & mask = std::vector<unsigned char>(),
+		float minDepth = 0,
+		float maxDepth = 0);
 
 std::map<int, cv::Point3f> RTABMAP_EXP generateWords3DMono(
 		const std::map<int, cv::KeyPoint> & kpts,
