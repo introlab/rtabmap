@@ -733,11 +733,15 @@ bool CloudViewer::updateCoordinatePose(
 		const std::string & id,
 		const Transform & pose)
 {
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 	if(_coordinates.find(id) != _coordinates.end() && !pose.isNull())
 	{
 		UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
 		return _visualizer->updateCoordinateSystemPose(id, pose.toEigen3f());
 	}
+#else
+	UERROR("CloudViewer::updateCoordinatePose() is not available on PCL < 1.7.2");
+#endif
 	return false;
 }
 
@@ -1259,11 +1263,13 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 				cameras.front().view[2] = _aLockViewZ->isChecked()?1:Fp[10];
 			}
 
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 			if(_coordinates.find("reference") != _coordinates.end())
 			{
 				this->updateCoordinatePose("reference", pose);
 			}
 			else
+#endif
 			{
 				this->addOrUpdateCoordinate("reference", pose, 0.2);
 			}
