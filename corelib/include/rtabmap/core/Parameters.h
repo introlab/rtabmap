@@ -392,7 +392,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,        "[Vis/EstimationType = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P");
 	RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        "[Vis/EstimationType = 1] Refine iterations.");
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   "[Vis/EstimationType = 2] Epipolar geometry maximum variance to accept the transformation.");
-	RTABMAP_PARAM(Vis, MinInliers,               int, 10, 		"Minimum feature correspondences to compute/accept the transformation.");
+	RTABMAP_PARAM(Vis, MinInliers,               int, 20, 		"Minimum feature correspondences to compute/accept the transformation.");
 	RTABMAP_PARAM(Vis, Iterations,               int, 100, 		"Maximum iterations to compute the transform.");
 	RTABMAP_PARAM(Vis, FeatureType,              int, 6,        "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK.");
 	RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,     "0 no limits.");
