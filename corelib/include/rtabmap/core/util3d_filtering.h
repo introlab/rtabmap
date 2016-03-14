@@ -171,6 +171,10 @@ pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
 		float radiusSearch,
 		int minNeighborsInRadius);
 pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		float radiusSearch,
+		int minNeighborsInRadius);
+pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float radiusSearch,
 		int minNeighborsInRadius);
@@ -193,6 +197,11 @@ pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
 
 pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float radiusSearch,
+		int minNeighborsInRadius);
+pcl::IndicesPtr RTABMAP_EXP radiusFiltering(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float radiusSearch,
 		int minNeighborsInRadius);

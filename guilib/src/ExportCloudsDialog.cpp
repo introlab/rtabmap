@@ -484,7 +484,7 @@ void ExportCloudsDialog::viewClouds(
 	}
 }
 
-bool removeDir(const QString & dirName)
+bool removeDirRecursively(const QString & dirName)
 {
     bool result = true;
     QDir dir(dirName);
@@ -492,7 +492,7 @@ bool removeDir(const QString & dirName)
     if (dir.exists(dirName)) {
         Q_FOREACH(QFileInfo info, dir.entryInfoList(QDir::NoDotAndDotDot | QDir::System | QDir::Hidden  | QDir::AllDirs | QDir::Files, QDir::DirsFirst)) {
             if (info.isDir()) {
-                result = removeDir(info.absoluteFilePath());
+                result = removeDirRecursively(info.absoluteFilePath());
             }
             else {
                 result = QFile::remove(info.absoluteFilePath());
@@ -850,7 +850,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		if(_ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
 		{
 			QDir dir(workingDirectory);
-			removeDir(workingDirectory+QDir::separator()+"tmp_textures");
+			removeDirRecursively(workingDirectory+QDir::separator()+"tmp_textures");
 			dir.mkdir("tmp_textures");
 			int i=0;
 			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter=meshes.begin();
@@ -1360,7 +1360,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 				pcl::TextureMesh mesh;
 				mesh.tex_coordinates = meshes.begin()->second->tex_coordinates;
 				mesh.tex_materials = meshes.begin()->second->tex_materials;
-				removeDir(QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName());
+				removeDirRecursively(QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName());
 				QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(QFileInfo(path).baseName());
 				for(unsigned int i=0;i<meshes.begin()->second->tex_materials.size(); ++i)
 				{

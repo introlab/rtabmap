@@ -22,6 +22,7 @@ SET(headers_ui
 	./ExportDialog.h
 	./PostProcessingDialog.h
 	./ExportCloudsDialog.h
+	./ExportScansDialog.h
 	./MapVisibilityWidget.h
 	../include/${PROJECT_PREFIX}/gui/GraphViewer.h
 	./CreateSimpleCalibrationDialog.h
@@ -38,6 +39,7 @@ SET(uis
     ./ui/exportDialog.ui
     ./ui/postProcessingDialog.ui
     ./ui/exportCloudsDialog.ui
+    ./ui/exportScansDialog.ui
     ./ui/calibrationDialog.ui
     ./ui/createSimpleCalibrationDialog.ui
 )
@@ -84,6 +86,7 @@ SET(SRC_FILES
 	./ExportDialog.cpp
 	./PostProcessingDialog.cpp
 	./ExportCloudsDialog.cpp
+	./ExportScansDialog.cpp
 	./MapVisibilityWidget.cpp
 	./GraphViewer.cpp
 	./CreateSimpleCalibrationDialog.cpp

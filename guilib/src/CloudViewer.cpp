@@ -333,6 +333,8 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	{
 		settings.endGroup();
 	}
+
+	this->update();
 }
 
 bool CloudViewer::updateCloudPose(

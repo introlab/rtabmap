@@ -728,6 +728,52 @@ void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
 		const std::vector<int> & rawCameraIndices,
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud)
+{
+	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
+	{
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
+		rawTree->setInputCloud (rawCloud);
+
+		for(unsigned int i=0; i<cloud->size(); ++i)
+		{
+			pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
+			if(pcl::isFinite(normal))
+			{
+				std::vector<int> indices;
+				std::vector<float> dist;
+				rawTree->nearestKSearch(pcl::PointXYZ(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z), 1, indices, dist);
+				UASSERT(indices.size() == 1);
+				if(indices.size() && indices[0]>=0)
+				{
+					Transform p = poses.at(rawCameraIndices[indices[0]]);
+					pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
+					Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
+
+					Eigen::Vector3f n(normal.x, normal.y, normal.z);
+
+					float result = v.dot(n);
+					if(result < 0)
+					{
+						//reverse normal
+						cloud->points[i].normal_x *= -1.0f;
+						cloud->points[i].normal_y *= -1.0f;
+						cloud->points[i].normal_z *= -1.0f;
+					}
+				}
+				else
+				{
+					UWARN("Not found camera viewpoint for point %d", i);
+				}
+			}
+		}
+	}
+}
+
+void adjustNormalsToViewPoints(
+		const std::map<int, Transform> & poses,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,
+		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud)
 {
 	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
@@ -737,30 +783,34 @@ void adjustNormalsToViewPoints(
 
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
-			std::vector<int> indices;
-			std::vector<float> dist;
-			rawTree->nearestKSearch(pcl::PointXYZ(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z), 1, indices, dist);
-			UASSERT(indices.size() == 1);
-			if(indices.size() && indices[0]>=0)
+			pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
+			if(pcl::isFinite(normal))
 			{
-				Transform p = poses.at(rawCameraIndices[indices[0]]);
-				pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
-				Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
-
-				Eigen::Vector3f n(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
-
-				float result = v.dot(n);
-				if(result < 0)
+				std::vector<int> indices;
+				std::vector<float> dist;
+				rawTree->nearestKSearch(pcl::PointXYZ(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z), 1, indices, dist);
+				UASSERT(indices.size() == 1);
+				if(indices.size() && indices[0]>=0)
 				{
-					//reverse normal
-					cloud->points[i].normal_x *= -1.0f;
-					cloud->points[i].normal_y *= -1.0f;
-					cloud->points[i].normal_z *= -1.0f;
+					Transform p = poses.at(rawCameraIndices[indices[0]]);
+					pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
+					Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
+
+					Eigen::Vector3f n(normal.x, normal.y, normal.z);
+
+					float result = v.dot(n);
+					if(result < 0)
+					{
+						//reverse normal
+						cloud->points[i].normal_x *= -1.0f;
+						cloud->points[i].normal_y *= -1.0f;
+						cloud->points[i].normal_z *= -1.0f;
+					}
 				}
-			}
-			else
-			{
-				UWARN("Not found camera viewpoint for point %d", i);
+				else
+				{
+					UWARN("Not found camera viewpoint for point %d", i);
+				}
 			}
 		}
 	}

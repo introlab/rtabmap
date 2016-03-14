@@ -726,9 +726,13 @@ void ImageView::setImage(const QImage & image)
 			this->updateOpacity();
 		}
 	}
-	else
+
+	if(image.rect().isValid())
 	{
 		this->setSceneRect(image.rect());
+	}
+	else if(!_graphicsView->isVisible())
+	{
 		this->update();
 	}
 }

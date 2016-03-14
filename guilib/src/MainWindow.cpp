@@ -58,6 +58,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UCv2Qt.h"
 
 #include "ExportCloudsDialog.h"
+#include "ExportScansDialog.h"
 #include "AboutDialog.h"
 #include "PostProcessingDialog.h"
 
@@ -127,7 +128,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_odomThread(0),
 	_preferencesDialog(0),
 	_aboutDialog(0),
-	_exportDialog(0),
+	_exportCloudsDialog(0),
+	_exportScansDialog(0),
 	_dataRecorder(0),
 	_lastId(0),
 	_processingStatistics(false),
@@ -165,8 +167,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	// Create dialogs
 	_aboutDialog = new AboutDialog(this);
 	_aboutDialog->setObjectName("AboutDialog");
-	_exportDialog = new ExportCloudsDialog(this);
-	_exportDialog->setObjectName("ExportCloudsDialog");
+	_exportCloudsDialog = new ExportCloudsDialog(this);
+	_exportCloudsDialog->setObjectName("ExportCloudsDialog");
+	_exportScansDialog = new ExportScansDialog(this);
+	_exportScansDialog->setObjectName("ExportScansDialog");
 	_postProcessingDialog = new PostProcessingDialog(this);
 	_postProcessingDialog->setObjectName("PostProcessingDialog");
 
@@ -199,7 +203,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	bool statusBarShown = false;
 	_preferencesDialog->loadMainWindowState(this, _savedMaximized, statusBarShown);
 	_preferencesDialog->loadWindowGeometry(_preferencesDialog);
-	_preferencesDialog->loadWindowGeometry(_exportDialog);
+	_preferencesDialog->loadWindowGeometry(_exportCloudsDialog);
+	_preferencesDialog->loadWindowGeometry(_exportScansDialog);
 	_preferencesDialog->loadWindowGeometry(_postProcessingDialog);
 	_preferencesDialog->loadWindowGeometry(_aboutDialog);
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
@@ -411,7 +416,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->imageView_odometry, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->graphicsView_graphView, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->widget_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
-	connect(_exportDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_exportCloudsDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_exportScansDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar, SIGNAL(orientationChanged(Qt::Orientation)), this, SLOT(configGUIModified()));
@@ -466,7 +472,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadWidgetState(_ui->widget_cloudViewer);
 
 	//dialog states
-	_preferencesDialog->loadWidgetState(_exportDialog);
+	_preferencesDialog->loadWidgetState(_exportCloudsDialog);
+	_preferencesDialog->loadWidgetState(_exportScansDialog);
 	_preferencesDialog->loadWidgetState(_postProcessingDialog);
 
 	if(_ui->statsToolBox->findChildren<StatItem*>().size() == 0)
@@ -1288,9 +1295,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_ui->imageView_source->setBackgroundColor(Qt::gray);
 		}
 		// Set color code as tooltip
-		if(_ui->imageView_source->toolTip().isEmpty())
+		if(_ui->label_refId->toolTip().isEmpty())
 		{
-			_ui->imageView_source->setToolTip(
+			_ui->label_refId->setToolTip(
 				"Background Color Code:\n"
 				"  Blue = Weight Update Merged\n"
 				"  Dark Blue = Weight Update\n"
@@ -1299,9 +1306,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				"  Gray = Small Movement");
 		}
 		// Set color code as tooltip
-		if(_ui->imageView_loopClosure->toolTip().isEmpty())
+		if(_ui->label_matchId->toolTip().isEmpty())
 		{
-			_ui->imageView_loopClosure->setToolTip(
+			_ui->label_matchId->setToolTip(
 				"Background Color Code:\n"
 				"  Green = Accepted Loop Closure Detection\n"
 				"  Red = Rejected Loop Closure Detection\n"
@@ -2321,9 +2328,12 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			}
 			else
 			{
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudXYZ(new pcl::PointCloud<pcl::PointXYZ>);
-				pcl::copyPointCloud(*cloud, *cloudXYZ);
-				_createdScans.insert(std::make_pair(nodeId, cloudXYZ));
+				if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+				{
+					//reconvert the voxelized cloud
+					scan = util3d::laserScanFromPointCloud(*cloud);
+				}
+				_createdScans.insert(std::make_pair(nodeId, scan));
 			}
 		}
 		else
@@ -2345,7 +2355,19 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			}
 			else
 			{
-				_createdScans.insert(std::make_pair(nodeId, cloud));
+				if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+				{
+					//reconvert the voxelized cloud
+					if(scan.channels() == 2)
+					{
+						scan = util3d::laserScan2dFromPointCloud(*cloud);
+					}
+					else
+					{
+						scan = util3d::laserScanFromPointCloud(*cloud);
+					}
+				}
+				_createdScans.insert(std::make_pair(nodeId, scan));
 
 				if(scan.channels() == 2)
 				{
@@ -3229,7 +3251,8 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_ui->imageView_source);
 	_preferencesDialog->saveWidgetState(_ui->imageView_loopClosure);
 	_preferencesDialog->saveWidgetState(_ui->imageView_odometry);
-	_preferencesDialog->saveWidgetState(_exportDialog);
+	_preferencesDialog->saveWidgetState(_exportCloudsDialog);
+	_preferencesDialog->saveWidgetState(_exportScansDialog);
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
 	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
 	_preferencesDialog->saveSettings();
@@ -4934,164 +4957,43 @@ void MainWindow::exportGridMap()
 
 void MainWindow::exportScans()
 {
-	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> scans;
-	if(getExportedScans(scans))
-	{
-		if(scans.size())
-		{
-			QMessageBox::StandardButton b = QMessageBox::question(this,
-						tr("Binary file?"),
-						tr("Do you want to save in binary mode?"),
-						QMessageBox::No | QMessageBox::Yes,
-						QMessageBox::Yes);
-
-			if(b == QMessageBox::No || b == QMessageBox::Yes)
-			{
-				this->saveScans(scans, b == QMessageBox::Yes);
-			}
-		}
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-	}
-}
-
-void MainWindow::viewScans()
-{
-	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> scans;
-	if(getExportedScans(scans))
-	{
-		QDialog * window = new QDialog(this, Qt::Window);
-		window->setWindowFlags(Qt::Dialog);
-		window->setWindowTitle(tr("Scans (%1 nodes)").arg(scans.size()));
-		window->setMinimumWidth(800);
-		window->setMinimumHeight(600);
-
-		CloudViewer * viewer = new CloudViewer(window);
-		viewer->setCameraLockZ(false);
-
-		QVBoxLayout *layout = new QVBoxLayout();
-		layout->addWidget(viewer);
-		window->setLayout(layout);
-		connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
-
-		window->show();
-
-		uSleep(500);
-
-		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr>::iterator iter = scans.begin(); iter!=scans.end(); ++iter)
-		{
-			_initProgressDialog->appendText(tr("Viewing the scan %1 (%2 points)...").arg(iter->first).arg(iter->second->size()));
-			_initProgressDialog->incrementStep();
-
-			QColor color = Qt::red;
-			int mapId = uValue(_currentMapIds, iter->first, -1);
-			if(mapId >= 0)
-			{
-				color = (Qt::GlobalColor)(mapId % 12 + 7 );
-			}
-			viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?_currentPosesMap.at(iter->first):Transform::getIdentity());
-			_initProgressDialog->appendText(tr("Viewing the scan %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
-		}
-
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-	}
-}
-
-bool MainWindow::getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans)
-{
-	QMessageBox::StandardButton b = QMessageBox::question(this,
-				tr("Assemble scans?"),
-				tr("Do you want to assemble the scans in only one cloud?"),
-				QMessageBox::No | QMessageBox::Yes,
-				QMessageBox::Yes);
-
-	if(b != QMessageBox::No && b != QMessageBox::Yes)
-	{
-		return false;
-	}
-
-	double voxel = 0.01;
-	bool assemble = b == QMessageBox::Yes;
-
-	if(assemble)
-	{
-		bool ok;
-		voxel = QInputDialog::getDouble(this, tr("Voxel size"), tr("Voxel size (m):"), voxel, 0.00, 0.1, 2, &ok);
-		if(!ok)
-		{
-			return false;
-		}
-	}
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr assembledScans(new pcl::PointCloud<pcl::PointXYZ>());
-	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
-
-	_initProgressDialog->resetProgress();
-	_initProgressDialog->show();
-	_initProgressDialog->setMaximumSteps(int(poses.size())*(assemble?1:2)+1);
-
-	int count = 1;
-	int i = 0;
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-	{
-		bool inserted = false;
-		if(_createdScans.find(iter->first) != _createdScans.end())
-		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr scan = _createdScans.at(iter->first);
-			if(scan->size())
-			{
-				if(assemble)
-				{
-					*assembledScans += *util3d::transformPointCloud(scan, iter->second);;
-
-					if(count++ % 100 == 0)
-					{
-						if(assembledScans->size() && voxel)
-						{
-							assembledScans = util3d::voxelize(assembledScans, voxel);
-						}
-					}
-				}
-				else
-				{
-					scans.insert(std::make_pair(iter->first, scan));
-				}
-				inserted = true;
-			}
-		}
-		if(inserted)
-		{
-			_initProgressDialog->appendText(tr("Generated scan %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-		}
-		else
-		{
-			_initProgressDialog->appendText(tr("Ignored scan %1 (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
-		}
-		_initProgressDialog->incrementStep();
-		QApplication::processEvents();
-	}
-
-	if(assemble)
-	{
-		if(voxel && assembledScans->size())
-		{
-			assembledScans = util3d::voxelize(assembledScans, voxel);
-		}
-		if(assembledScans->size())
-		{
-			scans.insert(std::make_pair(0, assembledScans));
-		}
-	}
-	return true;
-}
-
-void MainWindow::exportClouds()
-{
-	if(_exportDialog->isVisible())
+	if(_exportScansDialog->isVisible())
 	{
 		return;
 	}
 
-	_exportDialog->exportClouds(
+	_exportScansDialog->exportScans(
+			_currentPosesMap,
+			_currentMapIds,
+			_cachedSignatures,
+			_createdScans,
+			_preferencesDialog->getWorkingDirectory());
+}
+
+void MainWindow::viewScans()
+{
+	if(_exportScansDialog->isVisible())
+	{
+		return;
+	}
+
+	_exportScansDialog->viewScans(
+			_currentPosesMap,
+			_currentMapIds,
+			_cachedSignatures,
+			_createdScans,
+			_preferencesDialog->getWorkingDirectory());
+
+}
+
+void MainWindow::exportClouds()
+{
+	if(_exportCloudsDialog->isVisible())
+	{
+		return;
+	}
+
+	_exportCloudsDialog->exportClouds(
 			_currentPosesMap,
 			_currentMapIds,
 			_cachedSignatures,
@@ -5101,12 +5003,12 @@ void MainWindow::exportClouds()
 
 void MainWindow::viewClouds()
 {
-	if(_exportDialog->isVisible())
+	if(_exportCloudsDialog->isVisible())
 	{
 		return;
 	}
 
-	_exportDialog->viewClouds(
+	_exportCloudsDialog->viewClouds(
 			_currentPosesMap,
 			_currentMapIds,
 			_cachedSignatures,
@@ -5448,115 +5350,6 @@ void MainWindow::dataRecorderDestroyed()
 }
 
 //END ACTIONS
-
-
-void MainWindow::saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & scans, bool binaryMode)
-{
-	if(scans.size() == 1)
-	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save to ..."), _preferencesDialog->getWorkingDirectory()+QDir::separator()+"scan.ply", tr("Point cloud data (*.ply *.pcd)"));
-		if(!path.isEmpty())
-		{
-			if(scans.begin()->second->size())
-			{
-				_initProgressDialog->appendText(tr("Saving the scan (%1 points)...").arg(scans.begin()->second->size()));
-
-				bool success =false;
-				if(QFileInfo(path).suffix() == "pcd")
-				{
-					success = pcl::io::savePCDFile(path.toStdString(), *scans.begin()->second, binaryMode) == 0;
-				}
-				else if(QFileInfo(path).suffix() == "ply")
-				{
-					success = pcl::io::savePLYFile(path.toStdString(), *scans.begin()->second, binaryMode) == 0;
-				}
-				else if(QFileInfo(path).suffix() == "")
-				{
-					//use ply by default
-					path += ".ply";
-					success = pcl::io::savePLYFile(path.toStdString(), *scans.begin()->second, binaryMode) == 0;
-				}
-				else
-				{
-					UERROR("Extension not recognized! (%s) Should be one of (*.ply *.pcd).", QFileInfo(path).suffix().toStdString().c_str());
-				}
-				if(success)
-				{
-					_initProgressDialog->incrementStep();
-					_initProgressDialog->appendText(tr("Saving the scan (%1 points)... done.").arg(scans.begin()->second->size()));
-
-					QMessageBox::information(this, tr("Save successful!"), tr("Scan saved to \"%1\"").arg(path));
-				}
-				else
-				{
-					QMessageBox::warning(this, tr("Save failed!"), tr("Failed to save to \"%1\"").arg(path));
-				}
-			}
-			else
-			{
-				QMessageBox::warning(this, tr("Save failed!"), tr("Scan is empty..."));
-			}
-		}
-	}
-	else if(scans.size())
-	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Save to (*.ply *.pcd)..."), _preferencesDialog->getWorkingDirectory(), 0);
-		if(!path.isEmpty())
-		{
-			bool ok = false;
-			QStringList items;
-			items.push_back("ply");
-			items.push_back("pcd");
-			QString suffix = QInputDialog::getItem(this, tr("File format"), tr("Which format?"), items, 0, false, &ok);
-
-			if(ok)
-			{
-				QString prefix = QInputDialog::getText(this, tr("File prefix"), tr("Prefix:"), QLineEdit::Normal, "scan", &ok);
-
-				if(ok)
-				{
-					for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::const_iterator iter=scans.begin(); iter!=scans.end(); ++iter)
-					{
-						if(iter->second->size())
-						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr transformedCloud;
-							transformedCloud = util3d::transformPointCloud(iter->second, _currentPosesMap.at(iter->first));
-
-							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
-							bool success =false;
-							if(suffix == "pcd")
-							{
-								success = pcl::io::savePCDFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
-							}
-							else if(suffix == "ply")
-							{
-								success = pcl::io::savePLYFile(pathFile.toStdString(), *transformedCloud, binaryMode) == 0;
-							}
-							else
-							{
-								UFATAL("Extension not recognized! (%s)", suffix.toStdString().c_str());
-							}
-							if(success)
-							{
-								_initProgressDialog->appendText(tr("Saved scan %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
-							}
-							else
-							{
-								_initProgressDialog->appendText(tr("Failed saving scan %1 (%2 points) to %3.").arg(iter->first).arg(iter->second->size()).arg(pathFile));
-							}
-						}
-						else
-						{
-							_initProgressDialog->appendText(tr("Scan %1 is empty!").arg(iter->first));
-						}
-						_initProgressDialog->incrementStep();
-						QApplication::processEvents();
-					}
-				}
-			}
-		}
-	}
-}
 
 // STATES
 

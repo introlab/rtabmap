@@ -67,6 +67,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/GraphViewer.h"
 #include "ExportCloudsDialog.h"
+#include "ExportScansDialog.h"
 #include "PostProcessingDialog.h"
 #include "CreateSimpleCalibrationDialog.h"
 
@@ -2402,6 +2403,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		const CloudViewer * cloudViewer = qobject_cast<const CloudViewer*>(widget);
 		const ImageView * imageView = qobject_cast<const ImageView*>(widget);
 		const ExportCloudsDialog * exportCloudsDialog = qobject_cast<const ExportCloudsDialog*>(widget);
+		const ExportScansDialog * exportScansDialog = qobject_cast<const ExportScansDialog*>(widget);
 		const PostProcessingDialog * postProcessingDialog = qobject_cast<const PostProcessingDialog *>(widget);
 		const GraphViewer * graphViewer = qobject_cast<const GraphViewer *>(widget);
 		const CalibrationDialog * calibrationDialog = qobject_cast<const CalibrationDialog *>(widget);
@@ -2417,6 +2419,10 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		else if(exportCloudsDialog)
 		{
 			exportCloudsDialog->saveSettings(settings);
+		}
+		else if(exportScansDialog)
+		{
+			exportScansDialog->saveSettings(settings);
 		}
 		else if(postProcessingDialog)
 		{
@@ -2452,6 +2458,7 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		CloudViewer * cloudViewer = qobject_cast<CloudViewer*>(widget);
 		ImageView * imageView = qobject_cast<ImageView*>(widget);
 		ExportCloudsDialog * exportCloudsDialog = qobject_cast<ExportCloudsDialog*>(widget);
+		ExportScansDialog * exportScansDialog = qobject_cast<ExportScansDialog*>(widget);
 		PostProcessingDialog * postProcessingDialog = qobject_cast<PostProcessingDialog *>(widget);
 		GraphViewer * graphViewer = qobject_cast<GraphViewer *>(widget);
 		CalibrationDialog * calibrationDialog = qobject_cast<CalibrationDialog *>(widget);
@@ -2467,6 +2474,10 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		else if(exportCloudsDialog)
 		{
 			exportCloudsDialog->loadSettings(settings);
+		}
+		else if(exportScansDialog)
+		{
+			exportScansDialog->loadSettings(settings);
 		}
 		else if(postProcessingDialog)
 		{

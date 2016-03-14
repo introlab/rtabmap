@@ -68,6 +68,7 @@ class StatsToolBox;
 class ProgressDialog;
 class TwistGridWidget;
 class ExportCloudsDialog;
+class ExportScansDialog;
 class PostProcessingDialog;
 class DataRecorder;
 
@@ -245,9 +246,6 @@ private:
 	void exportPoses(int format);
 	QString captureScreen(bool cacheInRAM = false);
 
-	bool getExportedScans(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans);
-	void saveScans(const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds, bool binaryMode = true);
-
 private:
 	Ui_mainWindow * _ui;
 
@@ -259,7 +257,8 @@ private:
 	//Dialogs
 	PreferencesDialog * _preferencesDialog;
 	AboutDialog * _aboutDialog;
-	ExportCloudsDialog * _exportDialog;
+	ExportCloudsDialog * _exportCloudsDialog;
+	ExportScansDialog * _exportScansDialog;
 	PostProcessingDialog * _postProcessingDialog;
 	DataRecorder * _dataRecorder;
 
@@ -287,7 +286,7 @@ private:
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > _createdClouds;
 	std::pair<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 
-	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > _createdScans;
+	std::map<int, cv::Mat> _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>
 
