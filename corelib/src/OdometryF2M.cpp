@@ -305,9 +305,9 @@ Transform OdometryF2M::computeTransform(
 							{
 								if(matches.find(iter->first) == matches.end())
 								{
-									iter = mapPoints.erase(iter);
-									iterMapDescriptors = mapDescriptors.erase(iterMapDescriptors);
-									iterMapWords = mapWords.erase(iterMapWords);
+									mapPoints.erase(iter++);
+									mapDescriptors.erase(iterMapDescriptors++);
+									mapWords.erase(iterMapWords++);
 									++removed;
 								}
 								else

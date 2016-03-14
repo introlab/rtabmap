@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "ExportScansDialog.h"
-#include "ui_ExportScansDialog.h"
+#include "ui_exportScansDialog.h"
 
 #include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/CloudViewer.h"

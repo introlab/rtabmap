@@ -50,12 +50,24 @@ bool readHeader(FILE *fp, const char *imtype, char c1, char c2,
 	skipSpace(fp);
 	skipComment(fp);
 	skipSpace(fp);
-	fscanf(fp, "%d", width);
+	int r = fscanf(fp, "%d", width);
+	if(r==0)
+	{
+		return false;
+	}
 	skipSpace(fp);
-	fscanf(fp, "%d", height);
+	r = fscanf(fp, "%d", height);
+	if(r==0)
+	{
+		return false;
+	}
 	if (thirdArg) {
 		skipSpace(fp);
-		fscanf(fp, "%d", nbands);
+		r = fscanf(fp, "%d", nbands);
+		if(r==0)
+		{
+			return false;
+		}
 	}
     // skip SINGLE newline character after reading image height (or third arg)
 	c = getc(fp);
@@ -102,7 +114,11 @@ cv::Mat readPFM(const char* filename)
     skipSpace(fp);
 
     float scalef;
-    fscanf(fp, "%f", &scalef);  // scale factor (if negative, little endian)
+    int r = fscanf(fp, "%f", &scalef);  // scale factor (if negative, little endian)
+    if(r==0)
+	{
+    	return cv::Mat();
+	}
 
     // skip SINGLE newline character after reading third arg
     char c = getc(fp);
