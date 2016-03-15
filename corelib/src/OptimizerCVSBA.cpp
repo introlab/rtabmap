@@ -87,11 +87,11 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		CameraModel model;
 		if(uContains(signatures, iter->first))
 		{
-			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValid())
+			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValidForProjection())
 			{
 				model = signatures.at(iter->first).sensorData().cameraModels()[0];
 			}
-			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValid())
+			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValidForProjection())
 			{
 				model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
 			}
@@ -105,7 +105,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 			UERROR("Did not find node %d in cache", iter->first);
 		}
 
-		if(model.isValid())
+		if(model.isValidForProjection())
 		{
 			frameIdToIndex.insert(std::make_pair(iter->first, oi));
 
