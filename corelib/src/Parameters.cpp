@@ -251,6 +251,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("RGBD/OptimizeIterations",          std::make_pair(true,  Parameters::kOptimizerIterations())));
 		removedParameters_.insert(std::make_pair("RGBD/OptimizeRobust",              std::make_pair(true,  Parameters::kOptimizerRobust())));
 		removedParameters_.insert(std::make_pair("RGBD/OptimizeSlam2D",              std::make_pair(true,  Parameters::kOptimizerSlam2D())));
+		removedParameters_.insert(std::make_pair("RGBD/OptimizeSlam2d",              std::make_pair(true,  Parameters::kOptimizerSlam2D())));
 		removedParameters_.insert(std::make_pair("RGBD/OptimizeVarianceIgnored",     std::make_pair(true,  Parameters::kOptimizerVarianceIgnored())));
 
 		removedParameters_.insert(std::make_pair("Stereo/WinSize",                   std::make_pair(true,  Parameters::kStereoWinWidth())));
