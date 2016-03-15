@@ -154,10 +154,6 @@ IF(FlyCapture2_FOUND)
 ENDIF(FlyCapture2_FOUND)
 
 IF(WITH_TORO)
-	SET(LIBRARIES
-		${LIBRARIES}
-		${G2O_LIBRARIES}
-	)
 	SET(SRC_FILES
     	${SRC_FILES}
 		toro3d/posegraph3.cpp
