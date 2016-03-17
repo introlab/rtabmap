@@ -5363,6 +5363,8 @@ void MainWindow::setMonitoringState(bool pauseChecked)
 void MainWindow::changeState(MainWindow::State newState)
 {
 	bool monitoring = newState==kMonitoring || newState == kMonitoringPaused;
+	_ui->label_source->setVisible(!monitoring);
+	_ui->label_stats_source->setVisible(!monitoring);
 	_ui->actionNew_database->setVisible(!monitoring);
 	_ui->actionOpen_database->setVisible(!monitoring);
 	_ui->actionClose_database->setVisible(!monitoring);
