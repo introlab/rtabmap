@@ -35,6 +35,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.atap.tangoservice.Tango;
+
 // The main activity of the application. This activity shows debug information
 // and a glSurfaceView that renders graphic content.
 public class RTABMapActivity extends Activity implements OnClickListener {
@@ -116,7 +118,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       Toast.makeText(this, "Tango Core out dated, please update in Play Store", Toast.LENGTH_LONG).show();
       finish();
       return;
-    }
+    }   
     
     mOpenedDatabasePath = "";
     mTempDatabasePath = "";
@@ -149,21 +151,51 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     RTABMapLib.initialize(this);
     RTABMapLib.openDatabase(mTempDatabasePath);
   }
+  
+  @Override
+  protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+  	// Check which request we're responding to
+  	if (requestCode == Tango.TANGO_INTENT_ACTIVITYCODE) {
+  		// Make sure the request was successful
+  		if (resultCode == RESULT_CANCELED) {
+  			Toast.makeText(this, "Motion Tracking Permissions Required!",
+  					Toast.LENGTH_SHORT).show();
+  			finish();
+  		}
+  	}
+  }
 
   @Override
   protected void onResume() {
     super.onResume();
-    mGLView.onResume();
     
-    mTotalLoopClosures = 0;
-    if(mItemOpen != null)
-    {
-	    mItemOpen.setEnabled(false);
-	    mItemPause.setChecked(false);
-	    mItemSave.setEnabled(false);
-		mItemExport.setEnabled(false);
+    Log.i(TAG, String.format("onResume()"));
+    
+    if (Tango.hasPermission(this, Tango.PERMISSIONTYPE_MOTION_TRACKING)) {
+
+    	mGLView.onResume();
+        
+        mTotalLoopClosures = 0;
+        if(mItemOpen != null)
+        {
+    	    mItemOpen.setEnabled(false);
+    	    mItemPause.setChecked(false);
+    	    mItemSave.setEnabled(false);
+    		mItemExport.setEnabled(false);
+        }
+
+        if(RTABMapLib.onResume()!=0)
+        {
+        	Toast.makeText(getApplicationContext(), 
+    				String.format("Failed to connect with Tango!"), Toast.LENGTH_SHORT).show();
+        }
+
+    } else {
+    	Log.i(TAG, String.format("Asking for motion tracking permission"));
+        startActivityForResult(
+                Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING),
+                Tango.TANGO_INTENT_ACTIVITYCODE);
     }
-   RTABMapLib.onResume();
   }
 
   @Override
