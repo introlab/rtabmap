@@ -96,16 +96,18 @@ class Scene {
   void setGraphVisible(bool visible);
   void setTraceVisible(bool visible);
 
-  void addOrUpdateCloud(
+  void addCloud(
 		  int id,
 		  const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		  const std::vector<pcl::Vertices> & polygons,
-		  const rtabmap::Transform & pose);
-  void addOrUpdateCloud(
+		  const rtabmap::Transform & pose,
+		  const cv::Mat & image = cv::Mat());
+  void addCloud(
   		  int id,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
   		  const std::vector<pcl::Vertices> & polygons,
-  		  const rtabmap::Transform & pose);
+  		  const rtabmap::Transform & pose,
+		  const cv::Mat & image = cv::Mat());
 
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
@@ -140,6 +142,7 @@ class Scene {
 
   // Shader to display point cloud.
   GLuint cloud_shader_program_;
+  GLuint texture_mesh_shader_program_;
   GLuint graph_shader_program_;
 
   bool meshRendering_;

@@ -60,6 +60,26 @@ const std::string kPointCloudFragmentShader =
     "  gl_FragColor = vec4(v_color.z, v_color.y, v_color.x, 1.0);\n"
     "}\n";
 
+const std::string kTextureMeshVertexShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+    "attribute vec3 vertex;\n"
+    "attribute vec2 a_TexCoordinate;\n"
+    "uniform mat4 mvp;\n"
+    "varying vec2 v_TexCoordinate;\n"
+    "void main() {\n"
+    "  gl_Position = mvp*vec4(vertex.x, vertex.y, vertex.z, 1.0);\n"
+    "  v_TexCoordinate = a_TexCoordinate;\n"
+    "}\n";
+const std::string kTextureMeshFragmentShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+	"uniform sampler2D u_Texture;\n"
+    "varying vec2 v_TexCoordinate;\n"
+    "void main() {\n"
+    "  gl_FragColor = texture2D(u_Texture, v_TexCoordinate);\n"
+    "}\n";
+
 const std::string kGraphVertexShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
@@ -92,6 +112,7 @@ Scene::Scene() :
 		traceVisible_(true),
 		currentPose_(0),
 		cloud_shader_program_(0),
+		texture_mesh_shader_program_(0),
 		graph_shader_program_(0),
 		meshRendering_(true),
 		pointSize_(3.0f) {}
@@ -130,6 +151,11 @@ void Scene::InitGLContent()
 	  cloud_shader_program_ = tango_gl::util::CreateProgram(kPointCloudVertexShader.c_str(), kPointCloudFragmentShader.c_str());
 	  UASSERT(cloud_shader_program_ != 0);
   }
+  if(texture_mesh_shader_program_ == 0)
+  {
+	  texture_mesh_shader_program_ = tango_gl::util::CreateProgram(kTextureMeshVertexShader.c_str(), kTextureMeshFragmentShader.c_str());
+	  UASSERT(texture_mesh_shader_program_ != 0);
+  }
   if(graph_shader_program_ == 0)
   {
 	  graph_shader_program_ = tango_gl::util::CreateProgram(kGraphVertexShader.c_str(), kGraphFragmentShader.c_str());
@@ -155,6 +181,10 @@ void Scene::DeleteResources() {
 	if (cloud_shader_program_) {
 		glDeleteShader(cloud_shader_program_);
 		cloud_shader_program_ = 0;
+	  }
+	if (texture_mesh_shader_program_) {
+		glDeleteShader(texture_mesh_shader_program_);
+		texture_mesh_shader_program_ = 0;
 	  }
 	if (graph_shader_program_) {
 		glDeleteShader(graph_shader_program_);
@@ -372,11 +402,12 @@ void Scene::setTraceVisible(bool visible)
 }
 
 //Should only be called in OpenGL thread!
-void Scene::addOrUpdateCloud(
+void Scene::addCloud(
 		int id,
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const std::vector<pcl::Vertices> & polygons,
-		const rtabmap::Transform & pose)
+		const rtabmap::Transform & pose,
+		const cv::Mat & image)
 {
 	LOGI("addOrUpdateCloud cloud %d", id);
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
@@ -387,16 +418,22 @@ void Scene::addOrUpdateCloud(
 	}
 
 	//create
-	UASSERT(cloud_shader_program_ != 0);
-	PointCloudDrawable * drawable = new PointCloudDrawable(cloud_shader_program_, cloud, polygons);
+	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
+	PointCloudDrawable * drawable = new PointCloudDrawable(
+			image.empty()?cloud_shader_program_:0,
+			image.empty()?0:texture_mesh_shader_program_,
+			cloud,
+			polygons,
+			image);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }
-void Scene::addOrUpdateCloud(
+void Scene::addCloud(
 		int id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::vector<pcl::Vertices> & polygons,
-		const rtabmap::Transform & pose)
+		const rtabmap::Transform & pose,
+		const cv::Mat & image)
 {
 	LOGI("addOrUpdateCloud cloud %d", id);
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
@@ -407,8 +444,13 @@ void Scene::addOrUpdateCloud(
 	}
 
 	//create
-	UASSERT(cloud_shader_program_ != 0);
-	PointCloudDrawable * drawable = new PointCloudDrawable(cloud_shader_program_, cloud, polygons);
+	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
+	PointCloudDrawable * drawable = new PointCloudDrawable(
+			image.empty()?cloud_shader_program_:0,
+			image.empty()?0:texture_mesh_shader_program_,
+			cloud,
+			polygons,
+			image);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }

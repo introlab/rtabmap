@@ -54,6 +54,7 @@ const int meshTrianglePixels = 1;
 const bool substractFiltering = false;
 const float subtractRadius = 0.02;
 const float subtractMaxAngle = M_PI/4.0f;
+const bool textureMeshing = true;
 const int minNeighborsInRadius = 5;
 const float closeVerticesDistance = 0.02f;
 
@@ -90,7 +91,6 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerVarianceIgnored(), std::string("false")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), std::string("700")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), std::string("true")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemUseDepthAsMask(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), std::string("15")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisRefineIterations(), std::string("5")));
 
@@ -458,17 +458,34 @@ int RTABMapApp::Render()
 								std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(output, meshAngleTolerance, false, meshTrianglePixels);
 								pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 								std::vector<pcl::Vertices> outputPolygons;
-								rtabmap::util3d::filterNotUsedVerticesFromMesh(
-										*output,
-										polygons,
-										*outputCloud,
-										outputPolygons);
+
+								if(!textureMeshing)
+								{
+									rtabmap::util3d::filterNotUsedVerticesFromMesh(
+											*output,
+											polygons,
+											*outputCloud,
+											outputPolygons);
+								}
+								else
+								{
+									outputCloud = output;
+									outputPolygons = polygons;
+								}
 								LOGI("Creating mesh, %d polygons (%fs)", (int)outputPolygons.size(), time.ticks());
 
-								if(outputCloud->size())
+								if(outputCloud->size() && (!textureMeshing || outputPolygons.size()))
 								{
 									totalPolygons_ += outputPolygons.size();
-									main_scene_.addOrUpdateCloud(id, outputCloud, outputPolygons, iter->second);
+									if(textureMeshing)
+									{
+										main_scene_.addCloud(id, outputCloud, outputPolygons, iter->second, data.imageRaw());
+									}
+									else
+									{
+										main_scene_.addCloud(id, outputCloud, outputPolygons, iter->second);
+									}
+
 
 									// protect createdMeshes_ used also by exportMesh() method
 									boost::mutex::scoped_lock  lock(meshesMutex_);
@@ -529,7 +546,7 @@ int RTABMapApp::Render()
 					if(cloud->size())
 					{
 						std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleTolerance, false, meshTrianglePixels);
-						main_scene_.addOrUpdateCloud(-1, cloud, polygons, opengl_world_T_rtabmap_world*event.pose());
+						main_scene_.addCloud(-1, cloud, polygons, opengl_world_T_rtabmap_world*event.pose(), textureMeshing?event.data().imageRaw():cv::Mat());
 						main_scene_.setCloudVisible(-1, true);
 					}
 					else
@@ -751,7 +768,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 							uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kMemoryShort_time_memory_size(), 0.0f);
 					words = (int)uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kKeypointDictionary_size(), 0.0f);
 					updateTime = uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kTimingTotal(), 0.0f);
-					loopClosureId = rtabmapEvents_.back().loopClosureId()>0?rtabmapEvents_.back().loopClosureId():rtabmapEvents_.back().localLoopClosureId()>0?rtabmapEvents_.back().localLoopClosureId():0;
+					loopClosureId = rtabmapEvents_.back().loopClosureId()>0?rtabmapEvents_.back().loopClosureId():rtabmapEvents_.back().proximityDetectionId()>0?rtabmapEvents_.back().proximityDetectionId():0;
 					databaseMemoryUsed = (int)uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kMemoryDatabase_memory_used(), 0.0f);
 					inliers = (int)uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kLoopVisual_inliers(), 0.0f);
 					featuresExtracted = rtabmapEvents_.back().getSignatures().size()?rtabmapEvents_.back().getSignatures().rbegin()->second.getWords().size():0;
