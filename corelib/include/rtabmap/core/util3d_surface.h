@@ -79,7 +79,8 @@ void RTABMAP_EXP appendMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloudB,
 		const std::vector<pcl::Vertices> & polygonsB);
 
-void RTABMAP_EXP filterNotUsedVerticesFromMesh(
+// return map from new to old polygon indices
+std::map<int, int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGBNormal> & outputCloud,

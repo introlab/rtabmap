@@ -640,7 +640,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				  @Override
 				  public void onClick(DialogInterface dialog, int which)
 				  {
-					  final String fileName = input.getText().toString();      
+					  final String fileName = input.getText().toString();  
+					  dialog.dismiss();
 					  if(!fileName.isEmpty())
 					  {
 						  File newFile = new File(mWorkingDirectory + fileName + ".db");
@@ -731,7 +732,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       else if(itemId == R.id.export)
       {
     	  AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		  builder.setTitle("File Name (*.ply):");
+		  builder.setTitle("File Name (*.obj):");
 		  final EditText input = new EditText(this);
 		  input.setInputType(InputType.TYPE_CLASS_TEXT);        
 		  builder.setView(input);
@@ -739,10 +740,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			  @Override
 			  public void onClick(DialogInterface dialog, int which)
 			  {
-				  final String fileName = input.getText().toString();      
+				  final String fileName = input.getText().toString();    
+				  dialog.dismiss();
 				  if(!fileName.isEmpty())
 				  {
-					  File newFile = new File(mWorkingDirectory + fileName + ".ply");
+					  File newFile = new File(mWorkingDirectory + fileName + ".obj");
 					  if(newFile.exists())
 					  {
 						  new AlertDialog.Builder(getActivity())
@@ -750,12 +752,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			                .setMessage("Do you want to overwrite the existing file?")
 			                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 			                    public void onClick(DialogInterface dialog, int which) {
-			                    	final String path = mWorkingDirectory + fileName + ".ply";
+			                    	final String path = mWorkingDirectory + fileName + ".obj";
 			                    	
 			                    	mItemExport.setEnabled(false);
-			                    	
+			                    			                    	
 			                    	mProgressDialog.setTitle("Exporting");
-			                  	    mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+".ply"));
+			                  	    mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+".obj"));
 			                  	    mProgressDialog.show();
 			                  	  
 			                    	Thread exportThread = new Thread(new Runnable() {
@@ -789,10 +791,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					  }
 					  else
 					  {
-						  final String path = mWorkingDirectory + fileName + ".ply";
+						  final String path = mWorkingDirectory + fileName + ".obj";
 						  mItemExport.setEnabled(false);
 						  mProgressDialog.setTitle("Exporting");
-	                  	  mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+".ply"));
+	                  	  mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+".obj"));
 	                  	  mProgressDialog.show();
 						  Thread exportThread = new Thread(new Runnable() {
 	                		    public void run() {
