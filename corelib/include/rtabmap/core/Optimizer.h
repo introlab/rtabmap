@@ -53,7 +53,7 @@ public:
 	};
 	static bool isAvailable(Optimizer::Type type);
 	static Optimizer * create(const ParametersMap & parameters);
-	static Optimizer * create(Optimizer::Type & type, const ParametersMap & parameters = ParametersMap());
+	static Optimizer * create(Optimizer::Type type, const ParametersMap & parameters = ParametersMap());
 
 	// Get connected poses and constraints from a set of links
 	static void getConnectedGraph(

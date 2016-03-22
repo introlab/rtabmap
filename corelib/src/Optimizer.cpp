@@ -66,11 +66,10 @@ Optimizer * Optimizer::create(const ParametersMap & parameters)
 {
 	int optimizerTypeInt = Parameters::defaultOptimizerStrategy();
 	Parameters::parse(parameters, Parameters::kOptimizerStrategy(), optimizerTypeInt);
-	Optimizer::Type type = (Optimizer::Type)optimizerTypeInt;
-	return create(type, parameters);
+	return create((Optimizer::Type)optimizerTypeInt, parameters);
 }
 
-Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & parameters)
+Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parameters)
 {
 	UASSERT_MSG(OptimizerG2O::available() || OptimizerGTSAM::available() || OptimizerTORO::available(),
 			"RTAB-Map is not built with any graph optimization approach!");
