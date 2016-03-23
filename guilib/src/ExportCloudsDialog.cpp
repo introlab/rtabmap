@@ -671,6 +671,9 @@ bool ExportCloudsDialog::getExportedClouds(
 			QApplication::processEvents();
 		}
 
+		//used for organized texturing below
+		std::map<int, std::pair<std::map<int, int>, std::pair<int, int> > > organizedIndices;
+
 		//mesh
 		UDEBUG("Meshing=%d", _ui->groupBox_meshing->isChecked()?1:0);
 		if(_ui->groupBox_meshing->isChecked())
@@ -700,9 +703,35 @@ bool ExportCloudsDialog::getExportedClouds(
 
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 						std::vector<pcl::Vertices> densePolygons;
-						util3d::filterNotUsedVerticesFromMesh(*iter->second, polygons, *denseCloud, densePolygons);
+						std::map<int, int> newToOldIndices = util3d::filterNotUsedVerticesFromMesh(*iter->second, polygons, *denseCloud, densePolygons);
 
-						if(_ui->checkBox_assemble->isChecked())
+						if(!_ui->checkBox_assemble->isChecked() ||
+							 (_ui->checkBox_textureMapping->isEnabled() &&
+							  _ui->checkBox_textureMapping->isChecked() &&
+							  _ui->doubleSpinBox_voxelSize_assembled->value() == 0.0)) // don't assemble now if we are texturing
+						{
+							if(_ui->checkBox_assemble->isChecked())
+							{
+								denseCloud = util3d::transformPointCloud(denseCloud, poses.at(iter->first));
+							}
+
+							pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
+							pcl::toPCLPointCloud2(*denseCloud, mesh->cloud);
+							mesh->polygons = densePolygons;
+							if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
+							   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
+							{
+								int count = mesh->polygons.size();
+								mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
+								_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+							}
+							else
+							{
+								organizedIndices.insert(std::make_pair(iter->first, std::make_pair(newToOldIndices, std::make_pair(iter->second->width, iter->second->height))));
+							}
+							meshes.insert(std::make_pair(iter->first, mesh));
+						}
+						else
 						{
 							denseCloud = util3d::transformPointCloud(denseCloud, poses.at(iter->first));
 							if(mergedClouds->size() == 0)
@@ -713,46 +742,6 @@ bool ExportCloudsDialog::getExportedClouds(
 							else
 							{
 								util3d::appendMesh(*mergedClouds, mergedPolygons, *denseCloud, densePolygons);
-							}
-						}
-						else
-						{
-							if(_ui->doubleSpinBox_voxelSize_assembled->value() == 0.0)
-							{
-								pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-								pcl::toPCLPointCloud2(*denseCloud, mesh->cloud);
-								mesh->polygons = densePolygons;
-								if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
-								   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
-								{
-									int count = mesh->polygons.size();
-									mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-									_progressDialog->appendText(tr("Assembled mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
-								}
-								meshes.insert(std::make_pair(iter->first, mesh));
-							}
-							else
-							{
-								densePolygons = util3d::filterCloseVerticesFromMesh(
-										denseCloud,
-										densePolygons,
-										_ui->doubleSpinBox_voxelSize_assembled->value(),
-										M_PI/4,
-										true);
-								pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr filteredCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-								std::vector<pcl::Vertices> filteredPolygons;
-								util3d::filterNotUsedVerticesFromMesh(*denseCloud, densePolygons, *filteredCloud, filteredPolygons);
-								pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
-								pcl::toPCLPointCloud2(*filteredCloud, mesh->cloud);
-								mesh->polygons = filteredPolygons;
-								if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
-								   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
-								{
-									int count = mesh->polygons.size();
-									mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-									_progressDialog->appendText(tr("Assembled mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
-								}
-								meshes.insert(std::make_pair(iter->first, mesh));
 							}
 						}
 					}
@@ -769,7 +758,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				{
 					if(_ui->doubleSpinBox_voxelSize_assembled->value())
 					{
-						_progressDialog->appendText(tr("Filtering assembled mesh (points=%1, polygons=%2)...").arg(mergedClouds->size()).arg(mergedPolygons.size()));
+						_progressDialog->appendText(tr("Filtering assembled mesh for close vertices (points=%1, polygons=%2)...").arg(mergedClouds->size()).arg(mergedPolygons.size()));
 						QApplication::processEvents();
 
 						mergedPolygons = util3d::filterCloseVerticesFromMesh(
@@ -865,7 +854,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				else
 				{
 					UASSERT(uContains(poses, iter->first));
-					cameras.insert(std::make_pair(iter->first, Transform::getIdentity()));
+					cameras.insert(std::make_pair(iter->first, _ui->checkBox_assemble->isChecked()?poses.at(iter->first):Transform::getIdentity()));
 				}
 				std::map<int, Transform> cameraPoses;
 				std::map<int, CameraModel> cameraModels;
@@ -899,12 +888,67 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 				if(cameraPoses.size())
 				{
-					pcl::TextureMesh::Ptr textureMesh = util3d::createTextureMesh(
-							iter->second,
-							cameraPoses,
-							cameraModels,
-							images,
-							dir.filePath("tmp_textures").toStdString());
+					pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
+					std::map<int, std::pair<std::map<int, int>, std::pair<int, int> > >::iterator oter = organizedIndices.find(iter->first);
+					if(iter->first != 0 && oter != organizedIndices.end())
+					{
+						UDEBUG("Texture by pixels");
+						textureMesh->cloud = iter->second->cloud;
+						textureMesh->tex_polygons.push_back(iter->second->polygons);
+						int w = oter->second.second.first;
+						int h = oter->second.second.second;
+						UASSERT(w > 1 && h > 1);
+						UASSERT(textureMesh->tex_polygons.size() && textureMesh->tex_polygons[0].size());
+						textureMesh->tex_coordinates.resize(1);
+						int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
+						textureMesh->tex_coordinates[0].resize(polygonSize*textureMesh->tex_polygons[0].size());
+						for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
+						{
+							const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
+							UASSERT(polygonSize == vertices.vertices.size());
+							for(int k=0; k<polygonSize; ++k)
+							{
+								//uv
+								std::map<int, int>::iterator vter = oter->second.first.find(vertices.vertices[k]);
+								UASSERT(vter != oter->second.first.end());
+								int originalVertex = vter->second;
+								textureMesh->tex_coordinates[0][i*polygonSize+k] = Eigen::Vector2f(
+										float(originalVertex % w) / float(w),   // u
+										float(h - originalVertex / w) / float(h)); // v
+							}
+						}
+						pcl::TexMaterial mesh_material;
+						mesh_material.tex_d = 1.0f;
+						mesh_material.tex_Ns = 75.0f;
+						mesh_material.tex_illum = 1;
+
+						std::stringstream tex_name;
+						tex_name << "material_" << iter->first;
+						tex_name >> mesh_material.tex_name;
+
+						std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
+						mesh_material.tex_file = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", iter->first);
+						if(!cv::imwrite(mesh_material.tex_file, images.at(iter->first)))
+						{
+							UERROR("Cannot save texture of image %d", iter->first);
+						}
+						else
+						{
+							UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
+						}
+
+						textureMesh->tex_materials.push_back(mesh_material);
+					}
+					else
+					{
+						UDEBUG("Texture by projection");
+						textureMesh = util3d::createTextureMesh(
+								iter->second,
+								cameraPoses,
+								cameraModels,
+								images,
+								dir.filePath("tmp_textures").toStdString());
+					}
 
 					textureMeshes.insert(std::make_pair(iter->first, textureMesh));
 				}
@@ -916,6 +960,18 @@ bool ExportCloudsDialog::getExportedClouds(
 				_progressDialog->appendText(tr("TextureMesh %1 created [cameras=%2] (%3/%4).").arg(iter->first).arg(cameraPoses.size()).arg(++i).arg(meshes.size()));
 				_progressDialog->incrementStep();
 				QApplication::processEvents();
+			}
+
+			if(textureMeshes.size() > 1 && _ui->checkBox_assemble->isChecked())
+			{
+				_progressDialog->appendText(tr("Assembling %1 meshes...").arg(textureMeshes.size()));
+				QApplication::processEvents();
+				uSleep(100);
+				QApplication::processEvents();
+
+				pcl::TextureMesh::Ptr assembledMesh = util3d::concatenateTextureMeshes(uValuesList(textureMeshes));
+				textureMeshes.clear();
+				textureMeshes.insert(std::make_pair(0, assembledMesh));
 			}
 
 		}
@@ -1202,6 +1258,9 @@ void ExportCloudsDialog::saveMeshes(
 			if(meshes.begin()->second->polygons.size())
 			{
 				_progressDialog->appendText(tr("Saving the mesh (%1 polygons)...").arg(meshes.begin()->second->polygons.size()));
+				QApplication::processEvents();
+				uSleep(100);
+				QApplication::processEvents();
 
 				bool success =false;
 				if(QFileInfo(path).suffix() == "")
@@ -1350,6 +1409,9 @@ void ExportCloudsDialog::saveTextureMeshes(
 			if(meshes.begin()->second->tex_materials.size())
 			{
 				_progressDialog->appendText(tr("Saving the mesh (with %1 textures)...").arg(meshes.begin()->second->tex_materials.size()));
+				QApplication::processEvents();
+				uSleep(100);
+				QApplication::processEvents();
 
 				bool success =false;
 				if(QFileInfo(path).suffix() == "")
@@ -1424,7 +1486,8 @@ void ExportCloudsDialog::saveTextureMeshes(
 							QString fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+info.fileName();
 							// relative path
 							mesh.tex_materials[i].tex_file=(currentPrefix+QDir::separator()+info.fileName()).toStdString();
-							if(!QFile::copy(iter->second->tex_materials[i].tex_file.c_str(), fullPath))
+							if(!QFile::copy(iter->second->tex_materials[i].tex_file.c_str(), fullPath) &&
+									info.fileName().compare("occluded.png") != 0)
 							{
 								_progressDialog->appendText(tr("Failed copying texture \"%1\" to \"%2\".")
 										.arg(iter->second->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);

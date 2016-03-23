@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/pcl_base.h>
+#include <pcl/TextureMesh.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
 #include <opencv2/core/core.hpp>
@@ -200,6 +201,9 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP concatenateClouds(
 		const std::list<pcl::PointCloud<pcl::PointXYZ>::Ptr> & clouds);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP concatenateClouds(
 		const std::list<pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & clouds);
+
+pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
+		const std::list<pcl::TextureMesh::Ptr> & meshes);
 
 /**
  * @brief Concatenate a vector of indices to a single vector.

@@ -45,6 +45,10 @@ MapVisibilityWidget::MapVisibilityWidget(QWidget * parent) : QWidget(parent) {
 	QVBoxLayout * layout2 = new QVBoxLayout(scrollAreaWidgetContent);
 	scrollAreaWidgetContent->setLayout(layout2);
 	scrollArea->setWidget(scrollAreaWidgetContent);
+
+	QCheckBox * selectAll = new QCheckBox("Select all", this);
+	connect(selectAll, SIGNAL(toggled(bool)), this, SLOT(selectAll(bool)));
+	verticalLayout1->addWidget(selectAll);
 	verticalLayout1->addWidget(scrollArea);
 }
 
@@ -124,6 +128,16 @@ void MapVisibilityWidget::signalVisibility()
 	QCheckBox * check = qobject_cast<QCheckBox*>(sender());
 	_mask.at(check->text().split('(').first().toInt()) = check->isChecked();
 	emit visibilityChanged(check->text().split('(').first().toInt(), check->isChecked());
+}
+
+void MapVisibilityWidget::selectAll(bool checked)
+{
+	QWidget * area = this->findChild<QWidget*>("area");
+	QList<QCheckBox*> checkboxes = area->findChildren<QCheckBox*>();
+	for(int i = 0; i<checkboxes.size(); ++i)
+	{
+		checkboxes[i]->setChecked(checked);
+	}
 }
 
 } /* namespace rtabmap */

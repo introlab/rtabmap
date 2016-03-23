@@ -4978,7 +4978,7 @@ void MainWindow::viewScans()
 	}
 
 	_exportScansDialog->viewScans(
-			_currentPosesMap,
+			_ui->widget_mapVisibility->getVisiblePoses(),
 			_currentMapIds,
 			_cachedSignatures,
 			_createdScans,
@@ -4994,7 +4994,7 @@ void MainWindow::exportClouds()
 	}
 
 	_exportCloudsDialog->exportClouds(
-			_currentPosesMap,
+			_ui->widget_mapVisibility->getVisiblePoses(),
 			_currentMapIds,
 			_cachedSignatures,
 			_createdClouds,

@@ -236,7 +236,7 @@ std::vector<pcl::Vertices> filterCloseVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		float radius,
-		float angle,
+		float angle, // FIXME angle not used
 		bool keepLatestInRadius)
 {
 	UDEBUG("size=%d polygons=%d radius=%f angle=%f keepLatest=%d",
@@ -428,21 +428,14 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const std::map<int, cv::Mat> & images,
 		const std::string & tmpDirectory)
 {
+	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
+	textureMesh->cloud = mesh->cloud;
+	textureMesh->tex_polygons.push_back(mesh->polygons);
+
 	// Original from pcl/gpu/kinfu_large_scale/tools/standalone_texture_mapping.cpp:
 	// Author: Raphael Favier, Technical University Eindhoven, (r.mysurname <aT> tue.nl)
 
 	// Create the texturemesh object that will contain our UV-mapped mesh
-	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
-	textureMesh->cloud = mesh->cloud;
-	std::vector< pcl::Vertices> polygons;
-
-	// push faces into the texturemesh object
-	polygons.resize (mesh->polygons.size ());
-	for(size_t i =0; i < mesh->polygons.size (); ++i)
-	{
-		polygons[i] = mesh->polygons[i];
-	}
-	textureMesh->tex_polygons.push_back(polygons);
 
 	// create cameras
 	pcl::texture_mapping::CameraVector cameras = createTextureCameras(
@@ -498,7 +491,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		textureMesh->tex_materials[i] = mesh_material;
 	}
 
-	// Sort faces
+	// Texture by projection
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
 	tm.textureMeshwithMultipleCameras(*textureMesh, cameras);
 

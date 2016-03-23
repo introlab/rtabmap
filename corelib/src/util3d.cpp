@@ -1316,6 +1316,65 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr concatenateClouds(const std::list<pcl::Po
 	return cloud;
 }
 
+pcl::TextureMesh::Ptr concatenateTextureMeshes(const std::list<pcl::TextureMesh::Ptr> & meshes)
+{
+	pcl::TextureMesh::Ptr output(new pcl::TextureMesh);
+	std::map<std::string, int> addedMaterials; //<file, index>
+	for(std::list<pcl::TextureMesh::Ptr>::const_iterator iter = meshes.begin(); iter!=meshes.end(); ++iter)
+	{
+		// append point cloud
+		int polygonStep = output->cloud.height * output->cloud.width;
+		pcl::PCLPointCloud2 tmp;
+		pcl::concatenatePointCloud(output->cloud, iter->get()->cloud, tmp);
+		output->cloud = tmp;
+
+		UASSERT((*iter)->tex_polygons.size() == (*iter)->tex_coordinates.size() &&
+				(*iter)->tex_polygons.size() == (*iter)->tex_materials.size());
+
+		int materialCount = (*iter)->tex_polygons.size();
+		for(int i=0; i<materialCount; ++i)
+		{
+			std::map<std::string, int>::iterator jter = addedMaterials.find((*iter)->tex_materials[i].tex_file);
+			int index;
+			if(jter != addedMaterials.end())
+			{
+				index = jter->second;
+			}
+			else
+			{
+				addedMaterials.insert(std::make_pair((*iter)->tex_materials[i].tex_file, output->tex_materials.size()));
+				index = output->tex_materials.size();
+				output->tex_materials.push_back((*iter)->tex_materials[i]);
+				output->tex_materials.back().tex_name = uFormat("material_%d", index);
+				output->tex_polygons.resize(output->tex_polygons.size() + 1);
+				output->tex_coordinates.resize(output->tex_coordinates.size() + 1);
+			}
+
+			// update and append polygon indices
+			int oi = output->tex_polygons[index].size();
+			output->tex_polygons[index].resize(output->tex_polygons[index].size() + (*iter)->tex_polygons[i].size());
+			for(unsigned int j=0; j<(*iter)->tex_polygons[i].size(); ++j)
+			{
+				pcl::Vertices polygon = (*iter)->tex_polygons[i][j];
+				for(unsigned int k=0; k<polygon.vertices.size(); ++k)
+				{
+					polygon.vertices[k] += polygonStep;
+				}
+				output->tex_polygons[index][oi+j] = polygon;
+			}
+
+			// append uv coordinates
+			oi = output->tex_coordinates[index].size();
+			output->tex_coordinates[index].resize(output->tex_coordinates[index].size() + (*iter)->tex_coordinates[i].size());
+			for(unsigned int j=0; j<(*iter)->tex_coordinates[i].size(); ++j)
+			{
+				output->tex_coordinates[index][oi+j] = (*iter)->tex_coordinates[i][j];
+			}
+		}
+	}
+	return output;
+}
+
 pcl::IndicesPtr concatenate(const std::vector<pcl::IndicesPtr> & indices)
 {
 	//compute total size
