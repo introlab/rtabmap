@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef MAPBUILDERWIFI_H_
 #define MAPBUILDERWIFI_H_
 
-#include "../RGBDMapping/MapBuilder.h"
+#include "MapBuilder.h"
 #include "rtabmap/core/UserDataEvent.h"
 
 using namespace rtabmap;

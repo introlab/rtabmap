@@ -1,20 +1,53 @@
+cmake_minimum_required(VERSION 2.8)
 
-SET(srcs
-    main.cpp)
+IF(DEFINED PROJECT_NAME)
+   set(internal TRUE)
+ENDIF(DEFINED PROJECT_NAME)
+
+if(internal)
+	# inside rtabmap project (see below for external build)
+	SET(RTABMap_INCLUDE_DIRS 
+	    ${PROJECT_SOURCE_DIR}/utilite/include
+		${PROJECT_SOURCE_DIR}/corelib/include
+		${PROJECT_SOURCE_DIR}/guilib/include
+	)
+	SET(RTABMap_LIBRARIES 
+	    rtabmap_core
+		rtabmap_gui
+		rtabmap_utilite
+	)  
+	SET(MY_QT_VERSION ${RTABMAP_QT_VERSION})
+else()
+	# external build
+	PROJECT( MyProject )
+	
+	FIND_PACKAGE(RTABMap REQUIRED)
+	FIND_PACKAGE(OpenCV REQUIRED)
+	FIND_PACKAGE(PCL 1.7 REQUIRED)
+	
+	# Use Qt4 or Qt5
+	SET(MY_QT_VERSION 4 CACHE STRING "Which Qt version to use")
+	IF("${MY_QT_VERSION}" STREQUAL "4")
+		message("4")
+	    FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
+	ELSE()
+		message("5")
+	    FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+	ENDIF()
+endif()
 
 SET(INCLUDE_DIRS
-	${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/guilib/include
+	${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+IF("${MY_QT_VERSION}" STREQUAL "4")
     INCLUDE(${QT_USE_FILE})
 ENDIF()
 
 SET(LIBRARIES
+	${RTABMap_LIBRARIES}
 	${OpenCV_LIBRARIES}
 	${QT_LIBRARIES} 
 	${PCL_LIBRARIES}
@@ -22,11 +55,14 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
-    QT4_WRAP_CPP(moc_srcs ../RGBDMapping/MapBuilder.h MapBuilderWifi.h)
+IF("${MY_QT_VERSION}" STREQUAL "4")
+    QT4_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
 ELSE()
-    QT5_WRAP_CPP(moc_srcs ../RGBDMapping/MapBuilder.h MapBuilderWifi.h)
+    QT5_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
 ENDIF()
+
+SET(srcs
+    main.cpp)
 
 IF(APPLE)
     FIND_LIBRARY(CoreWLAN_LIBRARY CoreWLAN)
@@ -44,7 +80,9 @@ IF(APPLE)
 ENDIF(APPLE)
 
 ADD_EXECUTABLE(wifi_mapping ${srcs} ${moc_srcs})
-TARGET_LINK_LIBRARIES(wifi_mapping rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
+TARGET_LINK_LIBRARIES(wifi_mapping ${LIBRARIES})
 
-SET_TARGET_PROPERTIES( wifi_mapping 
-  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-wifi_mapping)
+if(internal)
+  SET_TARGET_PROPERTIES( wifi_mapping 
+    PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-wifi_mapping)
+endif(internal)

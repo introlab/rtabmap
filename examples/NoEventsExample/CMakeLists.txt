@@ -1,19 +1,40 @@
 cmake_minimum_required(VERSION 2.8)
-PROJECT( MyProject )
 
-FIND_PACKAGE(RTABMap REQUIRED)
-FIND_PACKAGE(OpenCV REQUIRED)
-FIND_PACKAGE(PCL 1.7 REQUIRED)
+IF(DEFINED PROJECT_NAME)
+   set(internal TRUE)
+ENDIF(DEFINED PROJECT_NAME)
 
-# Use Qt4 or Qt5
-SET(MY_QT_VERSION 4 CACHE STRING "Which Qt version to use")
-IF("${MY_QT_VERSION}" STREQUAL "4")
-	message("4")
-    FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
-ELSE()
-	message("5")
-    FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
-ENDIF()
+if(internal)
+	# inside rtabmap project (see below for external build)
+	SET(RTABMap_INCLUDE_DIRS 
+	    ${PROJECT_SOURCE_DIR}/utilite/include
+		${PROJECT_SOURCE_DIR}/corelib/include
+		${PROJECT_SOURCE_DIR}/guilib/include
+	)
+	SET(RTABMap_LIBRARIES 
+	    rtabmap_core
+		rtabmap_gui
+		rtabmap_utilite
+	)  
+	SET(MY_QT_VERSION ${RTABMAP_QT_VERSION})
+else()
+	# external build
+	PROJECT( MyProject )
+	
+	FIND_PACKAGE(RTABMap REQUIRED)
+	FIND_PACKAGE(OpenCV REQUIRED)
+	FIND_PACKAGE(PCL 1.7 REQUIRED)
+	
+	# Use Qt4 or Qt5
+	SET(MY_QT_VERSION 4 CACHE STRING "Which Qt version to use")
+	IF("${MY_QT_VERSION}" STREQUAL "4")
+		message("4")
+	    FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
+	ELSE()
+		message("5")
+	    FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+	ENDIF()
+endif()
 
 SET(INCLUDE_DIRS
 	${RTABMap_INCLUDE_DIRS}
@@ -44,6 +65,11 @@ ADD_EXECUTABLE(noEventsExample main.cpp ${moc_srcs})
   
 TARGET_LINK_LIBRARIES(noEventsExample ${LIBRARIES})
 
-SET_TARGET_PROPERTIES( noEventsExample 
-  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-noEventsExample)
+if(internal)
+	SET_TARGET_PROPERTIES( noEventsExample 
+	  PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-noEventsExample)
+endif(internal)
+
+
+
 
