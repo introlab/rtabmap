@@ -1,17 +1,32 @@
+cmake_minimum_required(VERSION 2.8)
+PROJECT( MyProject )
+
+FIND_PACKAGE(RTABMap REQUIRED)
+FIND_PACKAGE(OpenCV REQUIRED)
+FIND_PACKAGE(PCL 1.7 REQUIRED)
+
+# Use Qt4 or Qt5
+SET(MY_QT_VERSION 4 CACHE STRING "Which Qt version to use")
+IF("${MY_QT_VERSION}" STREQUAL "4")
+	message("4")
+    FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
+ELSE()
+	message("5")
+    FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+ENDIF()
 
 SET(INCLUDE_DIRS
-	${PROJECT_SOURCE_DIR}/utilite/include
-	${PROJECT_SOURCE_DIR}/corelib/include
-	${PROJECT_SOURCE_DIR}/guilib/include
+	${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
 )
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+IF("${MY_QT_VERSION}" STREQUAL "4")
     INCLUDE(${QT_USE_FILE})
 ENDIF()
 
 SET(LIBRARIES
+	${RTABMap_LIBRARIES}
 	${OpenCV_LIBRARIES}
 	${QT_LIBRARIES} 
 	${PCL_LIBRARIES}
@@ -19,7 +34,7 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+IF("${MY_QT_VERSION}" STREQUAL "4")
     QT4_WRAP_CPP(moc_srcs MapBuilder.h)
 ELSE()
     QT5_WRAP_CPP(moc_srcs MapBuilder.h)
@@ -27,7 +42,8 @@ ENDIF()
 
 ADD_EXECUTABLE(noEventsExample main.cpp ${moc_srcs})
   
-TARGET_LINK_LIBRARIES(noEventsExample rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
+TARGET_LINK_LIBRARIES(noEventsExample ${LIBRARIES})
 
 SET_TARGET_PROPERTIES( noEventsExample 
   PROPERTIES OUTPUT_NAME ${PROJECT_PREFIX}-noEventsExample)
+
