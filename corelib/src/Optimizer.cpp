@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/Graph.h>
+#include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/RegistrationVis.h>
 #include <set>
 #include <queue>
 
@@ -267,6 +269,78 @@ void Optimizer::getConnectedGraph(
 		}
 		++d;
 	}
+}
+
+
+void Optimizer::computeBACorrespondences(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures,
+		std::map<int, cv::Point3f> & points3DMap,
+		std::map<int, std::map<int, cv::Point2f> > & wordReferences) // <ID words, IDs frames + keypoint>
+{
+	int wordCount = 0;
+	int edgeWithWordsAdded = 0;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		Link link = iter->second;
+		if(link.to() < link.from())
+		{
+			link = link.inverse();
+		}
+		if(uContains(signatures, link.from()) &&
+		   uContains(signatures, link.to()) &&
+		   uContains(poses, link.from()))
+		{
+			Signature sFrom = signatures.at(link.from());
+			Signature sTo = signatures.at(link.to());
+
+			if(sFrom.getWords().size() &&
+				sTo.getWords().size() &&
+				sFrom.getWords3().size())
+			{
+				ParametersMap regParam;
+				regParam.insert(ParametersPair(Parameters::kVisEstimationType(), "1"));
+				regParam.insert(ParametersPair(Parameters::kVisPnPReprojError(), "5"));
+				regParam.insert(ParametersPair(Parameters::kVisMinInliers(), "5"));
+				regParam.insert(ParametersPair(Parameters::kVisCorNNDR(), "0.6"));
+				RegistrationVis reg(regParam);
+
+				//sFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+				//sTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+
+				RegistrationInfo info;
+				Transform t = reg.computeTransformationMod(sFrom, sTo, Transform(), &info);
+				//Transform t = reg.computeTransformationMod(sFrom, sTo, iter->second.transform(), &info);
+				UDEBUG("%d->%d, inliers=%d",sFrom.id(), sTo.id(), (int)info.inliersIDs.size());
+
+				if(!t.isNull())
+				{
+					Transform pose = poses.at(sFrom.id());
+					for(unsigned int i=0; i<info.inliersIDs.size(); ++i)
+					{
+						cv::Point3f p = sFrom.getWords3().lower_bound(info.inliersIDs[i])->second;
+						if(p.x > 0.0f) // make sure the point is valid
+						{
+							int wordId = ++wordCount;
+
+							p = util3d::transformPoint(p, pose);
+							points3DMap.insert(std::make_pair(wordId, p));
+							wordReferences.insert(std::make_pair(wordId, std::map<int, cv::Point2f>()));
+							wordReferences.at(wordId).insert(std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(info.inliersIDs[i])->second.pt));
+							wordReferences.at(wordId).insert(std::make_pair(sTo.id(), sTo.getWords().lower_bound(info.inliersIDs[i])->second.pt));
+						}
+					}
+					++edgeWithWordsAdded;
+				}
+				else
+				{
+					UWARN("Not enough inliers (%d) between %d and %d", info.inliersIDs.size(), sFrom.id(), sTo.id());
+				}
+			}
+		}
+	}
+	UDEBUG("Added %d words (edges with words=%d/%d)", wordCount, edgeWithWordsAdded, links.size());
 }
 
 } /* namespace rtabmap */

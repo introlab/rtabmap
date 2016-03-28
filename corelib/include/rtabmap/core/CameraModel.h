@@ -99,7 +99,7 @@ public:
 	cv::Mat K_raw() const {return K_;} //intrinsic camera matrix (before rectification)
 	cv::Mat D_raw() const {return D_;} //intrinsic distorsion matrix (before rectification)
 	cv::Mat K() const {return !P_.empty()?P_.colRange(0,3):K_;} // if P exists, return rectified version
-	cv::Mat D() const {return P_.empty()&&!D_.empty()?D_:cv::Mat::zeros(1,4,CV_64FC1);} // if P exists, return rectified version
+	cv::Mat D() const {return P_.empty()&&!D_.empty()?D_:cv::Mat::zeros(1,5,CV_64FC1);} // if P exists, return rectified version
 	cv::Mat R() const {return R_;} //rectification matrix
 	cv::Mat P() const {return P_;} //projection matrix
 

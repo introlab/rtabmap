@@ -99,6 +99,13 @@ public:
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
+	void computeBACorrespondences(
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, Signature> & signatures,
+			std::map<int, cv::Point3f> & points3DMap,
+			std::map<int, std::map<int, cv::Point2f> > & wordReferences); // <ID words, IDs frames + keypoint>
+
 protected:
 	Optimizer(
 			int iterations         = Parameters::defaultOptimizerIterations(),

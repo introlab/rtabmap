@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 
 #include <rtabmap/core/OptimizerG2O.h>
+#include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d_motion_estimation.h>
 
 #ifdef RTABMAP_G2O
 #include "g2o/config.h"
@@ -42,6 +44,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/core/optimization_algorithm_factory.h"
 #include "g2o/core/optimization_algorithm_gauss_newton.h"
 #include "g2o/core/optimization_algorithm_levenberg.h"
+#include "g2o/core/linear_solver.h"
+#include "g2o/types/sba/types_sba.h"
+#include "g2o/core/robust_kernel_impl.h"
 #ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
 #endif
@@ -152,12 +157,10 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
-		int solverApproach = 0;
-		int optimizationApproach = 1;
 
 		SlamBlockSolver * blockSolver = 0;
 
-		if(solverApproach == 2)
+		if(solver_ == 2)
 		{
 #ifdef G2O_HAVE_CHOLMOD
 			//chmold
@@ -166,7 +169,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 			blockSolver = new SlamBlockSolver(linearSolver);
 #endif
 		}
-		else if(solverApproach == 0)
+		else if(solver_ == 0)
 		{
 #ifdef G2O_HAVE_CSPARSE
 			//csparse
@@ -183,7 +186,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 			blockSolver = new SlamBlockSolver(linearSolver);
 		}
 
-		if(optimizationApproach == 1)
+		if(optimizer_ == 1)
 		{
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(blockSolver));
 		}
@@ -522,6 +525,307 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		g2o::Factory::destroy();
 		g2o::OptimizationAlgorithmFactory::destroy();
 		g2o::HyperGraphActionLibrary::destroy();
+	}
+	else if(poses.size() == 1 || iterations() <= 0)
+	{
+		optimizedPoses = poses;
+	}
+	else
+	{
+		UWARN("This method should be called at least with 1 pose!");
+	}
+	UDEBUG("Optimizing graph...end!");
+#else
+	UERROR("Not built with G2O support!");
+#endif
+	return optimizedPoses;
+}
+
+std::map<int, Transform> OptimizerG2O::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures)
+{
+	std::map<int, Transform> optimizedPoses;
+#ifdef RTABMAP_G2O
+	UDEBUG("Optimizing graph...");
+
+	optimizedPoses.clear();
+	if(links.size()>=1 && poses.size()>=2 && iterations() > 0)
+	{
+		g2o::SparseOptimizer optimizer;
+		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
+		g2o::BlockSolver_6_3::LinearSolverType * linearSolver = 0;
+		bool robustKernel = true;
+
+		if(solver_ == 2)
+		{
+#ifdef G2O_HAVE_CHOLMOD
+			//chmold
+			linearSolver = new g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType>();
+#endif
+		}
+		else if(solver_ == 0)
+		{
+#ifdef G2O_HAVE_CSPARSE
+			//csparse
+			linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolver_6_3::PoseMatrixType>();
+#endif
+		}
+
+		if(linearSolver == 0)
+		{
+			//pcg
+			linearSolver = new g2o::LinearSolverPCG<g2o::BlockSolver_6_3::PoseMatrixType>();
+		}
+
+		g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+
+		if(optimizer_ == 1)
+		{
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(solver_ptr));
+		}
+		else
+		{
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(solver_ptr));
+		}
+
+		std::map<int, Transform> frames = poses;
+
+		UDEBUG("fill poses to g2o...");
+		std::map<int, CameraModel> models;
+		for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); )
+		{
+			// Get camera model
+			CameraModel model;
+			if(uContains(signatures, iter->first))
+			{
+				if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValidForProjection())
+				{
+					model = signatures.at(iter->first).sensorData().cameraModels()[0];
+				}
+				else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValidForProjection())
+				{
+					model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
+				}
+				else
+				{
+					UERROR("Missing calibration for node %d", iter->first);
+				}
+			}
+			else
+			{
+				UERROR("Did not find node %d in cache", iter->first);
+			}
+
+			if(model.isValidForProjection())
+			{
+				models.insert(std::make_pair(iter->first, model));
+				Transform camPose = iter->second * model.localTransform();
+				//iter->second = (iter->second * model.localTransform()).inverse();
+				UDEBUG("%d t=%s", iter->first, camPose.prettyPrint().c_str());
+
+				// Add node's pose
+				UASSERT(!camPose.isNull());
+				g2o::VertexCam * vCam = new g2o::VertexCam();
+
+				Eigen::Affine3d a = camPose.toEigen3d();
+				g2o::SBACam cam(Eigen::Quaterniond(a.rotation()), a.translation());
+				cam.setKcam(model.fx(), model.fy(), model.cx(), model.cy(), 0);
+				vCam->setEstimate(cam);
+				if(iter->first == rootId)
+				{
+					vCam->setFixed(true);
+				}
+				vCam->setId(iter->first);
+				std::cout << cam << std::endl;
+				UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert vertex %d!?", iter->first).c_str());
+
+				++iter;
+			}
+			else
+			{
+				frames.erase(iter++);
+			}
+		}
+
+		UDEBUG("fill edges to g2o and associate each 3D point to all frames observing it...");
+		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			Link link = iter->second;
+			if(link.to() < link.from())
+			{
+				link = link.inverse();
+			}
+			if(uContains(signatures, link.from()) &&
+			   uContains(signatures, link.to()) &&
+			   uContains(frames, link.from()) &&
+			   uContains(frames, link.to()))
+			{
+				// add edge
+				int id1 = iter->first;
+				int id2 = iter->second.to();
+
+				UASSERT(!iter->second.transform().isNull());
+
+				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+				if(!isCovarianceIgnored())
+				{
+					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+				}
+
+				// between cameras, not base_link
+				Transform camLink = models.at(id1).localTransform().inverse()*iter->second.transform()*models.at(id2).localTransform();
+				//Transform t = iter->second.transform();
+				UDEBUG("added edge %d=%s -> %d=%s",
+						id1,
+						iter->second.transform().prettyPrint().c_str(),
+						id2,
+						camLink.prettyPrint().c_str());
+				Eigen::Affine3d a = camLink.toEigen3d();
+
+				g2o::EdgeSBACam * e = new g2o::EdgeSBACam();
+				g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+				g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+				UASSERT(v1 != 0);
+				UASSERT(v2 != 0);
+				e->setVertex(0, v1);
+				e->setVertex(1, v2);
+				e->setMeasurement(g2o::SE3Quat(a.rotation(), a.translation()));
+				e->setInformation(information);
+
+				if (!optimizer.addEdge(e))
+				{
+					delete e;
+					UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
+				}
+			}
+		}
+
+		std::map<int, cv::Point3f> points3DMap;
+		std::map<int, std::map<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
+		this->computeBACorrespondences(frames, links, signatures, points3DMap, wordReferences);
+
+		UDEBUG("fill 3D points to g2o...");
+		int stepVertexId = frames.rbegin()->first+1;
+		for(std::map<int, std::map<int, cv::Point2f> >::iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+		{
+			const cv::Point3f & pt3d = points3DMap.at(iter->first);
+			g2o::VertexSBAPointXYZ* vpt3d = new g2o::VertexSBAPointXYZ();
+
+			vpt3d->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
+			vpt3d->setId(stepVertexId + iter->first);
+			vpt3d->setMarginalized(true);
+			optimizer.addVertex(vpt3d);
+
+			// set observations
+			for(std::map<int, cv::Point2f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+			{
+				int camId = jter->first;
+
+				const cv::Point2f & pt = jter->second;
+
+				Eigen::Matrix<double,2,1> obs;
+				obs << pt.x, pt.y;
+
+				UDEBUG("Added observation pt=%d to cam=%d (%f,%f)", vpt3d->id(), camId, pt.x, pt.y);
+
+				g2o::EdgeProjectP2MC* e = new g2o::EdgeProjectP2MC();
+
+				e->setVertex(0, vpt3d);
+				e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(camId)));
+				e->setMeasurement(obs);
+				e->setInformation(Eigen::Matrix2d::Identity());
+
+				if(robustKernel)
+				{
+					e->setRobustKernel(new g2o::RobustKernelHuber);
+				}
+
+				optimizer.addEdge(e);
+			}
+		}
+
+		UDEBUG("Initial optimization...");
+		optimizer.initializeOptimization();
+
+		UASSERT(optimizer.verifyInformationMatrices());
+
+		UINFO("g2o optimizing begin (max iterations=%d, robustKernel=%d)", iterations(), robustKernel?1:0);
+
+		int it = 0;
+		UTimer timer;
+		double lastError = 0.0;
+		if(this->epsilon() > 0.0)
+		{
+			for(int i=0; i<iterations(); ++i)
+			{
+				it += optimizer.optimize(1);
+
+				// early stop condition
+				optimizer.computeActiveErrors();
+				double chi2 = optimizer.activeRobustChi2();
+				UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), chi2);
+
+				if(i>0 && (optimizer.activeRobustChi2() > 1000000000000.0 || !uIsFinite(optimizer.activeRobustChi2())))
+				{
+					UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+					return optimizedPoses;
+				}
+
+				double errorDelta = lastError - chi2;
+				if(i>0 && errorDelta < this->epsilon())
+				{
+					if(errorDelta < 0)
+					{
+						UDEBUG("Negative improvement?! Ignore and continue optimizing... (%f < %f)", errorDelta, this->epsilon());
+					}
+					else
+					{
+						UINFO("Stop optimizing, not enough improvement (%f < %f)", errorDelta, this->epsilon());
+						break;
+					}
+				}
+				else if(i==0 && chi2 < this->epsilon())
+				{
+					UINFO("Stop optimizing, error is already under epsilon (%f < %f)", chi2, this->epsilon());
+					break;
+				}
+				lastError = chi2;
+			}
+		}
+		else
+		{
+			it = optimizer.optimize(iterations());
+			optimizer.computeActiveErrors();
+			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.activeRobustChi2());
+		}
+		UINFO("g2o optimizing end (%d iterations done, error=%f, time = %f s)", it, optimizer.activeRobustChi2(), timer.ticks());
+
+		if(optimizer.activeRobustChi2() > 1000000000000.0)
+		{
+			UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+			return optimizedPoses;
+		}
+
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			const g2o::VertexCam* v = (const g2o::VertexCam*)optimizer.vertex(iter->first);
+			if(v)
+			{
+				Transform t = Transform::fromEigen3d(v->estimate());
+				UDEBUG("%d t=%s", iter->first, t.prettyPrint().c_str());
+				// remove model local transform
+				t *= models.at(iter->first).localTransform().inverse();
+				optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+				UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+			}
+			else
+			{
+				UERROR("Vertex %d not found!?", iter->first);
+			}
+		}
 	}
 	else if(poses.size() == 1 || iterations() <= 0)
 	{

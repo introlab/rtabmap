@@ -87,26 +87,6 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="1">
-         <widget class="QLabel" name="label_5">
-          <property name="text">
-           <string>Re-extract features</string>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QCheckBox" name="reextractFeatures">
-          <property name="text">
-           <string/>
-          </property>
-          <property name="checked">
-           <bool>false</bool>
-          </property>
-         </widget>
-        </item>
         <item row="2" column="1">
          <widget class="QLabel" name="label_6">
           <property name="text">
@@ -201,72 +181,7 @@
      <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
        <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
-        <item row="0" column="1">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>Iterations</string>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QLabel" name="label_10">
-          <property name="text">
-           <string>Inlier distance of corresponding 3D words</string>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QDoubleSpinBox" name="sba_minInlierDistance">
-          <property name="suffix">
-           <string> m</string>
-          </property>
-          <property name="decimals">
-           <number>3</number>
-          </property>
-          <property name="minimum">
-           <double>0.001000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>10.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>0.010000000000000</double>
-          </property>
-          <property name="value">
-           <double>0.020000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QLabel" name="label_11">
-          <property name="text">
-           <string>Minimum inliers</string>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QSpinBox" name="sba_minInliers">
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <number>1000</number>
-          </property>
-          <property name="value">
-           <number>10</number>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="0">
+        <item row="1" column="0">
          <widget class="QSpinBox" name="sba_iterations">
           <property name="minimum">
            <number>1</number>
@@ -279,17 +194,21 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
-         <widget class="QLabel" name="label_9">
-          <property name="text">
-           <string>Stop optimizing when the error improvement is less than this value.</string>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
+        <item row="0" column="0">
+         <widget class="QComboBox" name="comboBox_sbaType">
+          <item>
+           <property name="text">
+            <string>g2o</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>cvsba</string>
+           </property>
+          </item>
          </widget>
         </item>
-        <item row="1" column="0">
+        <item row="2" column="0">
          <widget class="QDoubleSpinBox" name="sba_epsilon">
           <property name="suffix">
            <string/>
@@ -308,6 +227,36 @@
           </property>
           <property name="value">
            <double>0.000100000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>Iterations</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Stop optimizing when the error improvement is less than this value.</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>Type</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
           </property>
          </widget>
         </item>

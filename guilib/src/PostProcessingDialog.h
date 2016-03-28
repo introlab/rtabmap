@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QDialog>
 #include <QtCore/QSettings>
 
+#include <rtabmap/core/Optimizer.h>
+
 class Ui_PostProcessingDialog;
 class QAbstractButton;
 
@@ -53,28 +55,24 @@ public:
 	double clusterRadius() const;
 	double clusterAngle() const;
 	int iterations() const;
-	bool isReextractFeatures() const;
 	bool isRefineNeighborLinks() const;
 	bool isRefineLoopClosureLinks() const;
 	bool isSBA() const;
 	int sbaIterations() const;
 	double sbaEpsilon() const;
-	double sbaInlierDistance() const;
-	int sbaMinInliers() const;
+	Optimizer::Type sbaType() const;
 
 	//setters
 	void setDetectMoreLoopClosures(bool on);
 	void setClusterRadius(double radius);
 	void setClusterAngle(double angle);
 	void setIterations(int iterations);
-	void setReextractFeatures(bool on);
 	void setRefineNeighborLinks(bool on);
 	void setRefineLoopClosureLinks(bool on);
 	void setSBA(bool on);
 	void setSBAIterations(int iterations);
 	void setSBAEpsilon(double epsilon);
-	void setSBAInlierDistance(double inlierDistance);
-	void setSBAMinInliers(int minInliers);
+	void setSBAType(Optimizer::Type type);
 
 signals:
 	void configChanged();

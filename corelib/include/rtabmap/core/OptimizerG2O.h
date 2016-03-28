@@ -68,6 +68,12 @@ public:
 			double * finalError = 0,
 			int * iterationsDone = 0);
 
+	virtual std::map<int, Transform> optimizeBA(
+			int rootId,
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, Signature> & signatures);
+
 private:
 	int solver_;
 	int optimizer_;

@@ -150,7 +150,8 @@ public:
 	SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
 	void getNodeWords(int nodeId,
 			std::multimap<int, cv::KeyPoint> & words,
-			std::multimap<int, cv::Point3f> & words3);
+			std::multimap<int, cv::Point3f> & words3,
+			std::multimap<int, cv::Mat> & wordsDescriptors);
 	SensorData getSignatureDataConst(int locationId) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}

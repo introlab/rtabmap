@@ -69,7 +69,7 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 	params.iterations = this->iterations();
 	params.minError = this->epsilon();
 	params.fixedIntrinsics = 5;
-	params.fixedDistortion = 5;
+	params.fixedDistortion = 5; // updated below
 	params.verbose=ULogger::level() <= ULogger::kInfo;
 	sba.setParams(params);
 
@@ -110,7 +110,15 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 			frameIdToIndex.insert(std::make_pair(iter->first, oi));
 
 			cameraMatrix[oi] = model.K();
-			distCoeffs[oi] = model.D();
+			if(model.D().cols != 5)
+			{
+				distCoeffs[oi] = cv::Mat::zeros(1, 5, CV_64FC1);
+				UWARN("Camera model %d: Distortion coefficients are not 5, setting all them to 0 (assuming no distortion)", iter->first);
+			}
+			else
+			{
+				distCoeffs[oi] = model.D();
+			}
 
 			Transform t = (iter->second * model.localTransform()).inverse();
 
@@ -138,88 +146,28 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 	distCoeffs.resize(oi);
 
 	std::map<int, cv::Point3f> points3DMap;
-	std::multimap<int, std::pair<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
-	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
-	{
-		Link link = iter->second;
-		if(link.to() < link.from())
-		{
-			link = link.inverse();
-		}
-		if(uContains(signatures, link.from()) &&
-		   uContains(signatures, link.to()) &&
-		   uContains(frames, link.from()))
-		{
-			const Signature & sFrom = signatures.at(link.from());
-			const Signature & sTo = signatures.at(link.to());
+	std::map<int, std::map<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
+	computeBACorrespondences(frames, links, signatures, points3DMap, wordReferences);
 
-			std::vector<int> inliers;
-			Transform t = util3d::estimateMotion3DTo3D(
-					uMultimapToMapUnique(sFrom.getWords3()),
-					uMultimapToMapUnique(sTo.getWords3()),
-					minInliers_,
-					inlierDistance_,
-					100,
-					10,
-					0,
-					0,
-					&inliers);
-
-			if(!t.isNull())
-			{
-				Transform pose = frames.at(sFrom.id());
-				for(unsigned int i=0; i<inliers.size(); ++i)
-				{
-					cv::Point3f p = util3d::transformPoint(sFrom.getWords3().lower_bound(inliers[i])->second, pose);
-					std::map<int, cv::Point3f>::iterator jter = points3DMap.find(inliers[i]);
-					if(jter == points3DMap.end())
-					{
-						points3DMap.insert(std::make_pair(inliers[i], p));
-						wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
-						wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
-					}
-					else
-					{
-						float dist = uNorm(p.x - jter->second.x, p.y - jter->second.y, p.z - jter->second.z);
-						if(dist <= inlierDistance_)
-						{
-							// in case of loop closure links
-							wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sFrom.id(), sFrom.getWords().lower_bound(inliers[i])->second.pt)));
-							wordReferences.insert(std::make_pair(inliers[i], std::make_pair(sTo.id(), sTo.getWords().lower_bound(inliers[i])->second.pt)));
-						}
-					}
-				}
-			}
-			else
-			{
-				UWARN("Not enough inliers (%d) between %d and %d", inliers.size(), sFrom.id(), sTo.id());
-			}
-		}
-	}
-
-	std::list<int> wordReferencesKeys = uUniqueKeys(wordReferences);
-	UDEBUG("points=%d frames=%d", (int)wordReferencesKeys.size(), (int)frames.size());
-	std::vector<cv::Point3f> points(wordReferencesKeys.size()); //npoints
+	UDEBUG("points=%d frames=%d", (int)wordReferences.size(), (int)frames.size());
+	std::vector<cv::Point3f> points(wordReferences.size()); //npoints
 	std::vector<std::vector<cv::Point2f> >  imagePoints(frames.size()); //nframes -> npoints
 	std::vector<std::vector<int> > visibility(frames.size()); //nframes -> npoints
 	for(unsigned int i=0; i<frames.size(); ++i)
 	{
-		imagePoints[i].resize(wordReferencesKeys.size(), cv::Point2f(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN()));
-		visibility[i].resize(wordReferencesKeys.size(), 0);
+		imagePoints[i].resize(wordReferences.size(), cv::Point2f(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN()));
+		visibility[i].resize(wordReferences.size(), 0);
 	}
 	int i=0;
-	for(std::list<int>::iterator iter = wordReferencesKeys.begin(); iter!=wordReferencesKeys.end(); ++iter)
+	for(std::map<int, std::map<int, cv::Point2f> >::iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 	{
-		points[i] = points3DMap.at(*iter);
+		points[i] = points3DMap.at(iter->first);
 
-		std::multimap<int, std::pair<int, cv::Point2f> >::iterator jter = wordReferences.lower_bound(*iter);
-		while(jter->first == *iter && jter != wordReferences.end())
+		for(std::map<int, cv::Point2f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 		{
-			imagePoints[frameIdToIndex.at(jter->second.first)][i] = jter->second.second;
-			visibility[frameIdToIndex.at(jter->second.first)][i] = 1;
-			++jter;
+			imagePoints[frameIdToIndex.at(jter->first)][i] = jter->second;
+			visibility[frameIdToIndex.at(jter->first)][i] = 1;
 		}
-
 		++i;
 	}
 

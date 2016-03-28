@@ -3160,7 +3160,8 @@ void Rtabmap::get3DMap(
 			data.setId(*iter);
 			std::multimap<int, cv::KeyPoint> words;
 			std::multimap<int, cv::Point3f> words3;
-			_memory->getNodeWords(*iter, words, words3);
+			std::multimap<int, cv::Mat> wordsDescriptors;
+			_memory->getNodeWords(*iter, words, words3, wordsDescriptors);
 			signatures.insert(std::make_pair(*iter,
 					Signature(*iter,
 							mapId,
@@ -3172,6 +3173,7 @@ void Rtabmap::get3DMap(
 							data)));
 			signatures.at(*iter).setWords(words);
 			signatures.at(*iter).setWords3(words3);
+			signatures.at(*iter).setWordsDescriptors(wordsDescriptors);
 		}
 	}
 	else if(_memory && (_memory->getStMem().size() || _memory->getWorkingMem().size() > 1))

@@ -2914,7 +2914,8 @@ SensorData Memory::getNodeData(int nodeId, bool uncompressedData, bool keepLoade
 
 void Memory::getNodeWords(int nodeId,
 		std::multimap<int, cv::KeyPoint> & words,
-		std::multimap<int, cv::Point3f> & words3)
+		std::multimap<int, cv::Point3f> & words3,
+		std::multimap<int, cv::Mat> & wordsDescriptors)
 {
 	UDEBUG("nodeId=%d", nodeId);
 	Signature * s = this->_getSignature(nodeId);
@@ -2922,6 +2923,7 @@ void Memory::getNodeWords(int nodeId,
 	{
 		words = s->getWords();
 		words3 = s->getWords3();
+		wordsDescriptors = s->getWordsDescriptors();
 	}
 	else if(_dbDriver)
 	{
@@ -2935,6 +2937,7 @@ void Memory::getNodeWords(int nodeId,
 		{
 			words = signatures.front()->getWords();
 			words3 = signatures.front()->getWords3();
+			wordsDescriptors = signatures.front()->getWordsDescriptors();
 			if(loadedFromTrash.size())
 			{
 				//put back

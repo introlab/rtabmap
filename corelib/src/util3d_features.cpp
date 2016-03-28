@@ -100,7 +100,7 @@ std::vector<cv::Point3f> generateKeypoints3DDepth(
 
 			cv::Point3f pt(bad_point, bad_point, bad_point);
 			if(pcl::isFinite(ptXYZ) &&
-				(minDepth <= 0.0f || ptXYZ.z >= minDepth) &&
+				(minDepth < 0.0f || ptXYZ.z > minDepth) &&
 				(maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
 			{
 				pt = cv::Point3f(ptXYZ.x, ptXYZ.y, ptXYZ.z);
@@ -137,7 +137,7 @@ std::vector<cv::Point3f> generateKeypoints3DDisparity(
 
 		cv::Point3f pt(bad_point, bad_point, bad_point);
 		if(util3d::isFinite(tmpPt) &&
-			(minDepth <= 0.0f || tmpPt.z >= minDepth) &&
+			(minDepth < 0.0f || tmpPt.z > minDepth) &&
 			(maxDepth <= 0.0f || tmpPt.z <= maxDepth))
 		{
 			pt = tmpPt;
@@ -181,7 +181,7 @@ std::vector<cv::Point3f> generateKeypoints3DStereo(
 						model);
 
 				if(util3d::isFinite(tmpPt) &&
-				   (minDepth <= 0.0f || tmpPt.z >= minDepth) &&
+				   (minDepth < 0.0f || tmpPt.z > minDepth) &&
 				   (maxDepth <= 0.0f || tmpPt.z <= maxDepth))
 				{
 					pt = tmpPt;
@@ -221,7 +221,7 @@ std::map<int, cv::Point3f> generateWords3DMono(
 	std::map<int, cv::Point3f> words3D;
 	std::list<std::pair<int, std::pair<cv::KeyPoint, cv::KeyPoint> > > pairs;
 	int pairsFound = EpipolarGeometry::findPairs(refWords, nextWords, pairs);
-	UDEBUG("pairsFound=%d", pairsFound);
+	UDEBUG("pairsFound=%d/%d", pairsFound, int(refWords.size()>nextWords.size()?refWords.size():nextWords.size()));
 	if(pairsFound > 8)
 	{
 		std::vector<unsigned char> status;

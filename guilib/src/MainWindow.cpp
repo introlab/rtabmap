@@ -3879,7 +3879,6 @@ void MainWindow::postProcessing()
 	}
 
 	bool detectMoreLoopClosures = _postProcessingDialog->isDetectMoreLoopClosures();
-	bool reextractFeatures = _postProcessingDialog->isReextractFeatures();
 	bool refineNeighborLinks = _postProcessingDialog->isRefineNeighborLinks();
 	bool refineLoopClosureLinks = _postProcessingDialog->isRefineLoopClosureLinks();
 	double clusterRadius = _postProcessingDialog->clusterRadius();
@@ -3888,8 +3887,7 @@ void MainWindow::postProcessing()
 	bool sba = _postProcessingDialog->isSBA();
 	int sbaIterations = _postProcessingDialog->sbaIterations();
 	double sbaEpsilon = _postProcessingDialog->sbaEpsilon();
-	double sbaInlierDistance = _postProcessingDialog->sbaInlierDistance();
-	int sbaMinInliers = _postProcessingDialog->sbaMinInliers();
+	Optimizer::Type sbaType = _postProcessingDialog->sbaType();
 
 	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks && !sba)
 	{
@@ -3960,6 +3958,7 @@ void MainWindow::postProcessing()
 
 	bool warn = false;
 	int loopClosuresAdded = 0;
+	std::multimap<int, int> checkedLoopClosures;
 	if(detectMoreLoopClosures)
 	{
 		UDEBUG("");
@@ -3990,67 +3989,58 @@ void MainWindow::postProcessing()
 					to = iter->first;
 				}
 
-				// only add new links and one per cluster per iteration
-				if(addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end() &&
-				   rtabmap::graph::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
+				bool alreadyChecked = false;
+				for(std::multimap<int, int>::iterator jter = checkedLoopClosures.lower_bound(from);
+					!alreadyChecked && jter!=checkedLoopClosures.end() && jter->first == from;
+					++jter)
 				{
-					if(!_cachedSignatures.contains(from))
+					if(to == jter->second)
 					{
-						UERROR("Didn't find signature %d", from);
+						alreadyChecked = true;
 					}
-					else if(!_cachedSignatures.contains(to))
-					{
-						UERROR("Didn't find signature %d", to);
-					}
-					else
-					{
-						_initProgressDialog->incrementStep();
-						QApplication::processEvents();
+				}
 
-						Signature signatureFrom = _cachedSignatures[from];
-						Signature signatureTo = _cachedSignatures[to];
+				if(!alreadyChecked)
+				{
+					// only add new links and one per cluster per iteration
+					if(addedLinks.find(from) == addedLinks.end() &&
+					   rtabmap::graph::findLink(_currentLinksMap, from, to) == _currentLinksMap.end())
+					{
+						checkedLoopClosures.insert(std::make_pair(from, to));
 
-						if(signatureFrom.getWeight() >= 0 &&
-						   signatureTo.getWeight() >= 0) // ignore intermediate nodes
+						if(!_cachedSignatures.contains(from))
 						{
-							if(reextractFeatures)
+							UERROR("Didn't find signature %d", from);
+						}
+						else if(!_cachedSignatures.contains(to))
+						{
+							UERROR("Didn't find signature %d", to);
+						}
+						else
+						{
+							_initProgressDialog->incrementStep();
+							QApplication::processEvents();
+
+							Signature signatureFrom = _cachedSignatures[from];
+							Signature signatureTo = _cachedSignatures[to];
+
+							if(signatureFrom.getWeight() >= 0 &&
+							   signatureTo.getWeight() >= 0) // ignore intermediate nodes
 							{
-								signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
-								signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
-								signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
-								signatureTo.setWords3(std::multimap<int, cv::Point3f>());
+								Transform transform;
+								RegistrationInfo info;
+								RegistrationVis registration(parameters);
+								transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &info);
 
-								if(signatureFrom.sensorData().imageRaw().empty())
+								if(!transform.isNull())
 								{
-									signatureFrom.sensorData().uncompressData();
-									if(signatureFrom.sensorData().imageRaw().empty())
-									{
-										continue;
-									}
+									UINFO("Added new loop closure between %d and %d.", from, to);
+									addedLinks.insert(from);
+									addedLinks.insert(to);
+									_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.variance, info.variance)));
+									++loopClosuresAdded;
+									_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 								}
-								if(signatureTo.sensorData().imageRaw().empty())
-								{
-									signatureTo.sensorData().uncompressData();
-									if(signatureTo.sensorData().imageRaw().empty())
-									{
-										continue;
-									}
-								}
-							}
-
-							Transform transform;
-							RegistrationInfo info;
-							RegistrationVis registration(parameters);
-							transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &info);
-
-							if(!transform.isNull())
-							{
-								UINFO("Added new loop closure between %d and %d.", from, to);
-								addedLinks.insert(from);
-								addedLinks.insert(to);
-								_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.variance, info.variance)));
-								++loopClosuresAdded;
-								_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 							}
 						}
 					}
@@ -4186,7 +4176,7 @@ void MainWindow::postProcessing()
 
 	if(sba)
 	{
-		UASSERT(OptimizerCVSBA::available());
+		UASSERT(Optimizer::isAvailable(sbaType));
 		_initProgressDialog->appendText(tr("SBA (%1 nodes, %2 constraints, %3 iterations)...")
 					.arg(optimizedPoses.size()).arg(linksOut.size()).arg(sbaIterations));
 		QApplication::processEvents();
@@ -4196,10 +4186,9 @@ void MainWindow::postProcessing()
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerEpsilon(), uNumber2Str(sbaEpsilon)));
-		OptimizerCVSBA cvsba = OptimizerCVSBA(parametersSBA);
-		cvsba.setInlierDistance(sbaInlierDistance);
-		cvsba.setMinInliers(sbaMinInliers);
-		std::map<int, Transform>  newPoses = cvsba.optimizeBA(0, optimizedPoses, linksOut, _cachedSignatures.toStdMap());
+		Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
+		std::map<int, Transform>  newPoses = sba->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap());
+		delete sba;
 		if(newPoses.size())
 		{
 			optimizedPoses = newPoses;

@@ -44,29 +44,18 @@ public:
 			int iterations         = Parameters::defaultOptimizerIterations(),
 			bool slam2d            = Parameters::defaultOptimizerSlam2D(),
 			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored()) :
-		Optimizer(iterations, slam2d, covarianceIgnored),
-		inlierDistance_(0.02),
-		minInliers_(10){}
+		Optimizer(iterations, slam2d, covarianceIgnored) {}
 	OptimizerCVSBA(const ParametersMap & parameters) :
-		Optimizer(parameters),
-		inlierDistance_(0.02),
-		minInliers_(10){}
+		Optimizer(parameters) {}
 	virtual ~OptimizerCVSBA() {}
 
 	virtual Type type() const {return kTypeCVSBA;}
-
-	void setInlierDistance(float inlierDistance) {inlierDistance_ = inlierDistance;}
-	void setMinInliers(int minInliers) {minInliers_ = minInliers;}
 
 	virtual std::map<int, Transform> optimizeBA(
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures);
-
-private:
-	float inlierDistance_;
-	float minInliers_;
 };
 
 } /* namespace rtabmap */
