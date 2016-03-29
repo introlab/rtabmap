@@ -375,6 +375,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 {
 	uInsert(_parameters, parameters);
 
+	// place this before changing working directory
+	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogsBufferedInRAM(), _statisticLogsBufferedInRAM);
+	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogged(), _statisticLogged);
+	Parameters::parse(parameters, Parameters::kRtabmapStatisticLoggedHeaders(), _statisticLoggedHeaders);
+
 	ULOGGER_DEBUG("");
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
@@ -393,9 +398,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
 	Parameters::parse(parameters, Parameters::kRGBDMaxLocalRetrieved(), _maxLocalRetrieved);
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
-	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogsBufferedInRAM(), _statisticLogsBufferedInRAM);
-	Parameters::parse(parameters, Parameters::kRtabmapStatisticLogged(), _statisticLogged);
-	Parameters::parse(parameters, Parameters::kRtabmapStatisticLoggedHeaders(), _statisticLoggedHeaders);
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), _rgbdSlamMode);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);

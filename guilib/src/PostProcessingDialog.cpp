@@ -73,7 +73,7 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->sba, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->sba_iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->sba_epsilon, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
-	connect(_ui->comboBox_sbaType, SIGNAL(indexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 }
 
 PostProcessingDialog::~PostProcessingDialog()

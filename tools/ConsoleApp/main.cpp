@@ -54,7 +54,7 @@ void showUsage()
 			"  -repeat #                       Repeat the process on the data set # times (minimum of 1)\n"
 			"  -createGT                       Generate a ground truth file\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
-			"                                   to start processing at image # (default 1).\n"
+			"                                   to start processing at image # (default 0).\n"
 			"  -v                              Get version of RTAB-Map\n"
 			"  -input \"path\"                 Load previous database if it exists.\n"
 			"%s\n",
@@ -99,7 +99,7 @@ int main(int argc, char * argv[])
 	int repeat = 0;
 	bool createGT = false;
 	std::string inputDbPath;
-	int startAt = 1;
+	int startAt = 0;
 
 	for(int i=1; i<argc; ++i)
 	{
