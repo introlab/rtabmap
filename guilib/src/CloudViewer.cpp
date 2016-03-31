@@ -1040,6 +1040,7 @@ void CloudViewer::setFrustumShown(bool shown)
 	if(!shown)
 	{
 		this->removeFrustum("reference_frustum");
+		this->update();
 	}
 	_aShowFrustum->setChecked(shown);
 }
