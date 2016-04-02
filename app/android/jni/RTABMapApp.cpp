@@ -49,18 +49,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/obj_io.h>
 
 const int kVersionStringLength = 128;
-const int cameraTangoDecimation = 2;
-const int renderingCloudDecimation = 8;
-const float renderingCloudMaxDepth = 4.0f;
-const int maxFeatures = 400;
 const float meshAngleTolerance = 0.1745; // 10 degrees
 const int meshTrianglePixels = 1;
-const bool substractFiltering = false;
-const float subtractRadius = 0.02;
-const float subtractMaxAngle = M_PI/4.0f;
-const bool textureMeshing = true;
-const int minNeighborsInRadius = 5;
-const float closeVerticesDistance = 0.02f;
 
 static JavaVM *jvm;
 static jobject RTABMapActivity = 0;
@@ -69,34 +59,22 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 {
 	rtabmap::ParametersMap parameters;
 
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapLoopThr(), "0.11"));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), std::string("false")));
+	parameters.insert(mappingParameters_.begin(), mappingParameters_.end());
+
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), std::string("6"))); // GFTT/BRIEF
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGFTTQualityLevel(), std::string("0.0001")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGFTTMinDistance(), std::string("10")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGFTTMinDistance(), std::string(fullResolution_?"15":"5")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), std::string("1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), std::string("64")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImageKept(), "false"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), uBool2Str(!trajectoryMode_)));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRawDescriptorsKept(), "true")); // for visual registration
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("false")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNNStrategy(), std::string("1"))); // Kd-tree
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), std::string("200")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpNndrRatio(), std::string("0.8"))); // set the one for kd-tree
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), !loopClosureDetection_?std::string("-1"):uNumber2Str(maxFeatures))); // Kd-tree
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), uNumber2Str(graphOptimization_?rtabmap::Parameters::defaultOptimizerIterations():0)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), uBool2Str(!localizationMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), uBool2Str(!localizationMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxDepth(), std::string("10"))); // to avoid extracting features in invalid depth (as we compute transformation directly from the words)
-	//parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImageDecimation(), std::string("2")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeFromGraphEnd(), std::string("true")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("1")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerRobust(), std::string("false")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerVarianceIgnored(), std::string("false")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), std::string("700")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), std::string("15")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisRefineIterations(), std::string("5")));
 
 	return parameters;
 }
@@ -107,16 +85,18 @@ RTABMapApp::RTABMapApp() :
 		logHandler_(0),
 		mapCloudShown_(true),
 		odomCloudShown_(true),
-		loopClosureDetection_(true),
 		graphOptimization_(true),
 		localizationMode_(false),
 		trajectoryMode_(false),
 		autoExposure_(false),
+		fullResolution_(false),
+		maxCloudDepth_(0.0),
 		clearSceneOnNextRender_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
 		lastDrawnCloudsCount_(0)
 {
+
 }
 
 RTABMapApp::~RTABMapApp() {
@@ -143,9 +123,6 @@ int RTABMapApp::TangoInitialize(JNIEnv* env, jobject caller_activity)
 
 	LOGI("RTABMapApp::TangoInitialize()");
 	createdMeshes_.clear();
-	previousCloud_.first = 0;
-	previousCloud_.second.first.reset();
-	previousCloud_.second.second.reset();
 	rawPoses_.clear();
 	clearSceneOnNextRender_ = true;
 	totalPoints_ = 0;
@@ -172,7 +149,7 @@ int RTABMapApp::TangoInitialize(JNIEnv* env, jobject caller_activity)
 
 	this->registerToEventsManager();
 
-	camera_ = new rtabmap::CameraTango(cameraTangoDecimation, autoExposure_);
+	camera_ = new rtabmap::CameraTango(fullResolution_?1:2, autoExposure_);
 
 
   // The first thing we need to do for any Tango enabled application is to
@@ -300,9 +277,6 @@ int RTABMapApp::Render()
 		main_scene_.clear();
 		clearSceneOnNextRender_ = false;
 		createdMeshes_.clear();
-		previousCloud_.first = 0;
-		previousCloud_.second.first.reset();
-		previousCloud_.second.second.reset();
 		rawPoses_.clear();
 		totalPoints_ = 0;
 		totalPolygons_ = 0;
@@ -410,85 +384,37 @@ int RTABMapApp::Render()
 						if(!data.imageRaw().empty() && !data.depthRaw().empty())
 						{
 							// Voxelize and filter depending on the previous cloud?
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
 							LOGI("Creating node cloud %d (image size=%dx%d)", id, data.imageRaw().cols, data.imageRaw().rows);
-							cloudWithoutNormals = rtabmap::util3d::cloudRGBFromSensorData(data, renderingCloudDecimation, renderingCloudMaxDepth, 0, 0, indices.get());
-
-							//compute normals
-							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = rtabmap::util3d::computeNormals(cloudWithoutNormals, 6);
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, data.imageRaw().rows/data.depthRaw().rows, maxCloudDepth_, 0, 0, indices.get());
 
 							if(cloud->size() && indices->size())
 							{
 								UTimer time;
 
-								// substract? set points to NaN which are over previous cloud
-								pcl::IndicesPtr indicesKept = indices;
-								if(substractFiltering &&
-									subtractRadius > 0.0 &&
-									indices->size() &&
-									previousCloud_.first > 0 &&
-									previousCloud_.second.first.get() != 0 &&
-									previousCloud_.second.second.get() != 0 &&
-									previousCloud_.second.second->size() &&
-									poses.find(previousCloud_.first) != poses.end())
-								{
-									rtabmap::Transform t = iter->second.inverse() * poses.at(previousCloud_.first);
-									pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(previousCloud_.second.first, t);
-									indicesKept = rtabmap::util3d::subtractFiltering(
-											cloud,
-											indices,
-											previousCloud,
-											previousCloud_.second.second,
-											subtractRadius,
-											subtractMaxAngle,
-											minNeighborsInRadius);
-									UINFO("Subtraction %fs", time.ticks());
-								}
-
-								previousCloud_.first = id;
-								previousCloud_.second.first = cloud;
-								previousCloud_.second.second = indices;
-
 								// pcl::organizedFastMesh doesn't take indices, so set to NaN points we don't need to mesh
-								pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-								pcl::ExtractIndices<pcl::PointXYZRGBNormal> filter;
-								filter.setIndices(indicesKept);
+								pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+								pcl::ExtractIndices<pcl::PointXYZRGB> filter;
+								filter.setIndices(indices);
 								filter.setKeepOrganized(true);
 								filter.setInputCloud(cloud);
 								filter.filter(*output);
-								LOGE("Filtering %d from %d -> %d (%fs)", (int)indices->size(), (int)indices->size(), (int)indicesKept->size(), time.ticks());
 
 								std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(output, meshAngleTolerance, false, meshTrianglePixels);
-								pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+								pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 								std::vector<pcl::Vertices> outputPolygons;
 
-								if(!textureMeshing)
-								{
-									rtabmap::util3d::filterNotUsedVerticesFromMesh(
-											*output,
-											polygons,
-											*outputCloud,
-											outputPolygons);
-								}
-								else
-								{
-									outputCloud = output;
-									outputPolygons = polygons;
-								}
+								outputCloud = output;
+								outputPolygons = polygons;
+
 								LOGI("Creating mesh, %d polygons (%fs)", (int)outputPolygons.size(), time.ticks());
 
-								if(outputCloud->size() && (!textureMeshing || outputPolygons.size()))
+								if(outputCloud->size() && outputPolygons.size())
 								{
 									totalPolygons_ += outputPolygons.size();
-									if(textureMeshing)
-									{
-										main_scene_.addCloud(id, outputCloud, outputPolygons, iter->second, data.imageRaw());
-									}
-									else
-									{
-										main_scene_.addCloud(id, outputCloud, outputPolygons, iter->second);
-									}
+
+									main_scene_.addCloud(id, outputCloud, outputPolygons, iter->second, data.imageRaw());
 
 
 									// protect createdMeshes_ used also by exportMesh() method
@@ -498,10 +424,7 @@ int RTABMapApp::Render()
 									inserted.first->second.cloud = outputCloud;
 									inserted.first->second.polygons = outputPolygons;
 									inserted.first->second.pose = iter->second;
-									if(textureMeshing)
-									{
-										inserted.first->second.texture = data.imageCompressed();
-									}
+									inserted.first->second.texture = data.imageCompressed();
 								}
 								else
 								{
@@ -554,11 +477,11 @@ int RTABMapApp::Render()
 							event.data().imageRaw().cols, event.data().imageRaw().rows,
 							event.data().depthRaw().cols, event.data().depthRaw().rows);
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					cloud = rtabmap::util3d::cloudRGBFromSensorData(event.data(), renderingCloudDecimation, renderingCloudMaxDepth);
+					cloud = rtabmap::util3d::cloudRGBFromSensorData(event.data(), event.data().imageRaw().rows/event.data().depthRaw().rows, maxCloudDepth_);
 					if(cloud->size())
 					{
 						std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleTolerance, false, meshTrianglePixels);
-						main_scene_.addCloud(-1, cloud, polygons, opengl_world_T_rtabmap_world*event.pose(), textureMeshing?event.data().imageRaw():cv::Mat());
+						main_scene_.addCloud(-1, cloud, polygons, opengl_world_T_rtabmap_world*event.pose(), event.data().imageRaw());
 						main_scene_.setCloudVisible(-1, true);
 					}
 					else
@@ -655,7 +578,39 @@ void RTABMapApp::setAutoExposure(bool enabled)
 			camera_->setAutoExposure(autoExposure_);
 			onResume();
 		}
-		resetMapping();
+	}
+}
+
+void RTABMapApp::setFullResolution(bool enabled)
+{
+	if(fullResolution_ != enabled)
+	{
+		fullResolution_ = enabled;
+		if(camera_)
+		{
+			camera_->setDecimation(fullResolution_?1:2);
+		}
+	}
+}
+
+void RTABMapApp::setMaxCloudDepth(float value)
+{
+	maxCloudDepth_ = value;
+}
+
+int RTABMapApp::setMappingParameter(const std::string & key, const std::string & value)
+{
+	if(rtabmap::Parameters::getDefaultParameters().find(key) != rtabmap::Parameters::getDefaultParameters().end())
+	{
+		LOGI(uFormat("Setting param \"%s\"  to \"\"", key.c_str(), value.c_str()).c_str());
+		uInsert(mappingParameters_, rtabmap::ParametersPair(key, value));
+		UEventsManager::post(new rtabmap::ParamEvent(mappingParameters_));
+		return 0;
+	}
+	else
+	{
+		LOGE(uFormat("Key \"%s\" doesn't exist!", key.c_str()).c_str());
+		return -1;
 	}
 }
 
@@ -680,7 +635,7 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 	bool success = false;
 
 	//Assemble the meshes
-	if(textureMeshing)
+	if(UFile::getExtension(filePath).compare("obj") == 0)
 	{
 		pcl::TextureMesh textureMesh;
 		std::vector<cv::Mat> textures;
@@ -705,12 +660,16 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 					iter->second.cloud->size() &&
 					iter->second.polygons.size())
 				{
+					// OBJ format requires normals
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+					cloudWithNormals = rtabmap::util3d::computeNormals(iter->second.cloud, 20);
+
 					// create dense cloud
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 					std::vector<pcl::Vertices> densePolygons;
 					std::map<int, int> newToOldIndices;
 					newToOldIndices = rtabmap::util3d::filterNotUsedVerticesFromMesh(
-							*iter->second.cloud,
+							*cloudWithNormals,
 							iter->second.polygons,
 							*denseCloud,
 							densePolygons);
@@ -789,7 +748,7 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 	}
 	else
 	{
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGB>);
 		std::vector<pcl::Vertices> mergedPolygons;
 
 		{
@@ -799,23 +758,16 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 				iter!= createdMeshes_.end();
 				++iter)
 			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 				std::vector<pcl::Vertices> densePolygons;
-				if(iter->second.cloud->is_dense)
-				{
-					denseCloud = iter->second.cloud;
-					densePolygons = iter->second.polygons;
-				}
-				else
-				{
-					rtabmap::util3d::filterNotUsedVerticesFromMesh(
-							*iter->second.cloud,
-							iter->second.polygons,
-							*denseCloud,
-							densePolygons);
-				}
 
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(denseCloud, iter->second.pose);
+				rtabmap::util3d::filterNotUsedVerticesFromMesh(
+						*iter->second.cloud,
+						iter->second.polygons,
+						*denseCloud,
+						densePolygons);
+
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(denseCloud, iter->second.pose);
 				if(mergedClouds->size() == 0)
 				{
 					*mergedClouds = *transformedCloud;
@@ -826,30 +778,6 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 					rtabmap::util3d::appendMesh(*mergedClouds, mergedPolygons, *transformedCloud, densePolygons);
 				}
 			}
-		}
-		if(closeVerticesDistance)
-		{
-			UINFO("Filtering assembled mesh (points=%d, polygons=%d, close vertices=%fm)...",
-					(int)mergedClouds->size(), (int)mergedPolygons.size(), closeVerticesDistance);
-
-			mergedPolygons = rtabmap::util3d::filterCloseVerticesFromMesh(
-					mergedClouds,
-					mergedPolygons,
-					closeVerticesDistance,
-					M_PI/4,
-					true);
-
-			// filter invalid polygons
-			unsigned int count = mergedPolygons.size();
-			mergedPolygons = rtabmap::util3d::filterInvalidPolygons(mergedPolygons);
-			UINFO("Filtered %d invalid polygons.", (int)count-mergedPolygons.size());
-
-			// filter not used vertices
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr filteredCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-			std::vector<pcl::Vertices> filteredPolygons;
-			rtabmap::util3d::filterNotUsedVerticesFromMesh(*mergedClouds, mergedPolygons, *filteredCloud, filteredPolygons);
-			mergedClouds = filteredCloud;
-			mergedPolygons = filteredPolygons;
 		}
 
 		if(mergedClouds->size() && mergedPolygons.size())

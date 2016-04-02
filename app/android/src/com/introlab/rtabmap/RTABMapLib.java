@@ -52,6 +52,9 @@ public class RTABMapLib
     public static native void setGraphOptimization(boolean enabled);
     public static native void setGraphVisible(boolean visible);
     public static native void setAutoExposure(boolean enabled);
+    public static native void setFullResolution(boolean enabled);
+    public static native void setMaxCloudDepth(float value);
+    public static native int setMappingParameter(String key, String value);
 
     public static native void resetMapping();
     public static native void save();

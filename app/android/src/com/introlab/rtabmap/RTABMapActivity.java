@@ -75,6 +75,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private String mNewDatabasePath = "";
   private String mWorkingDirectory = "";
   
+  private int mMaxDepthIndex = 5;
+  
+  private int mParamUpdateRateHzIndex = 1;
+  private int mParamTimeThrMsIndex = 1;
+  private int mParamMaxFeaturesIndex = 2;
+  
   private LinearLayout mLayoutDebug;
   
   private int mTotalLoopClosures = 0;
@@ -627,6 +633,96 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  item.setChecked(!item.isChecked());
     	  RTABMapLib.setAutoExposure(item.isChecked());
       }
+      else if(itemId == R.id.resolution)
+      {
+    	  item.setChecked(!item.isChecked());
+    	  RTABMapLib.setFullResolution(item.isChecked());
+      }
+      else if(itemId == R.id.max_depth)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Max Depth (m)");
+		  final String[] values = {"1", "2", "3", "4", "5", "No Limit"};
+		  builder.setSingleChoiceItems(values, mMaxDepthIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < 6)
+		        {
+			        mMaxDepthIndex = which;
+			        RTABMapLib.setMaxCloudDepth(which < 5?Integer.parseInt(values[which]):0);
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.update_rate)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Update Rate (Hz)");
+		  final String[] values = {"0.5", "1", "2", "Max"};
+		  builder.setSingleChoiceItems(values, mParamUpdateRateHzIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < 4)
+		        {
+		        	mParamUpdateRateHzIndex = which;
+			        if(RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", values[which]) != 0)
+			        {
+			        	Toast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/DetectionRate\"!", Toast.LENGTH_LONG).show();
+			        }
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.time_threshold)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Time Threshold (ms, 0 means no limit)");
+		  final String[] values = {"400", "700", "1400", "No Limit"};
+		  builder.setSingleChoiceItems(values, mParamTimeThrMsIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < 4)
+		        {
+		        	mParamTimeThrMsIndex = which;
+			        if(RTABMapLib.setMappingParameter("Rtabmap/TimeThr", which==3?"0":values[which]) != 0)
+			        {
+			        	Toast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/TimeThr\"!", Toast.LENGTH_LONG).show();
+			        }
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.features)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Max Features");
+		  final String[] values = {"Disabled", "100", "200", "300", "400", "No Limit"};
+		  builder.setSingleChoiceItems(values, mParamMaxFeaturesIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < 6)
+		        {
+		        	mParamMaxFeaturesIndex = which;
+			        if(RTABMapLib.setMappingParameter("Kp/MaxFeatures", which==0?"-1":which==5?"0":values[which]) != 0)
+			        {
+			        	Toast.makeText(getActivity(),"Failed to set parameter \"Kp/MaxFeatures\"!", Toast.LENGTH_LONG).show();
+			        }
+		        }
+		    }
+		  });
+		  builder.show();
+      }
       else if (itemId == R.id.save)
       {
     	  if(mOpenedDatabasePath.isEmpty())
@@ -729,10 +825,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
         	  RTABMapLib.openDatabase(mTempDatabasePath);
 		  }
       }
-      else if(itemId == R.id.export)
+      else if(itemId == R.id.export_obj || itemId == R.id.export_ply)
       {
+    	  final String extension = itemId == R.id.export_ply ? ".ply" : ".obj";
+    	  
     	  AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		  builder.setTitle("File Name (*.obj):");
+		  builder.setTitle(String.format("File Name (*%s):", extension));
 		  final EditText input = new EditText(this);
 		  input.setInputType(InputType.TYPE_CLASS_TEXT);        
 		  builder.setView(input);
@@ -744,7 +842,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				  dialog.dismiss();
 				  if(!fileName.isEmpty())
 				  {
-					  File newFile = new File(mWorkingDirectory + fileName + ".obj");
+					  File newFile = new File(mWorkingDirectory + fileName + extension);
 					  if(newFile.exists())
 					  {
 						  new AlertDialog.Builder(getActivity())
@@ -752,12 +850,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			                .setMessage("Do you want to overwrite the existing file?")
 			                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 			                    public void onClick(DialogInterface dialog, int which) {
-			                    	final String path = mWorkingDirectory + fileName + ".obj";
+			                    	final String path = mWorkingDirectory + fileName + extension;
 			                    	
 			                    	mItemExport.setEnabled(false);
 			                    			                    	
 			                    	mProgressDialog.setTitle("Exporting");
-			                  	    mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+".obj"));
+			                  	    mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+extension));
 			                  	    mProgressDialog.show();
 			                  	  
 			                    	Thread exportThread = new Thread(new Runnable() {
@@ -791,10 +889,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					  }
 					  else
 					  {
-						  final String path = mWorkingDirectory + fileName + ".obj";
+						  final String path = mWorkingDirectory + fileName + extension;
 						  mItemExport.setEnabled(false);
 						  mProgressDialog.setTitle("Exporting");
-	                  	  mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+".obj"));
+	                  	  mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+extension));
 	                  	  mProgressDialog.show();
 						  Thread exportThread = new Thread(new Runnable() {
 	                		    public void run() {

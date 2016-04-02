@@ -99,8 +99,12 @@ static rtabmap::Transform opticalRotation(
 CameraTango::CameraTango(int decimation, bool autoExposure) :
 		Camera(0, opticalRotation),
 		tango_config_(0),
+		firstFrame_(true),
 		decimation_(decimation),
-		autoExposure_(autoExposure)
+		autoExposure_(autoExposure),
+		cloudStamp_(0),
+		tangoColorType_(0),
+		tangoColorStamp_(0)
 {
 	UASSERT(decimation >= 1);
 }
@@ -318,6 +322,7 @@ void CameraTango::close()
 		tango_config_ = nullptr;
 		TangoService_disconnect();
 	}
+	firstFrame_ = true;
 }
 
 void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
@@ -624,7 +629,9 @@ void CameraTango::mainLoop()
 		{
 			rtabmap::Transform pose = data.groundTruth();
 			data.setGroundTruth(Transform());
-			this->post(new OdometryEvent(data, pose, 0.0001, 0.0001));
+			LOGI("Publish odometry message (variance=%f)", firstFrame_?9999:0.0001);
+			this->post(new OdometryEvent(data, pose, firstFrame_?9999:0.0001, firstFrame_?9999:0.0001));
+			firstFrame_ = false;
 		}
 		else if(!this->isKilled())
 		{

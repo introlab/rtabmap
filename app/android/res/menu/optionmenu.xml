@@ -8,24 +8,42 @@
     <group android:id="@+id/group_actions">
        <item android:id="@+id/open" android:title="Open"/>
        <item android:id="@+id/save" android:title="Save"/>
-       <item android:id="@+id/export" android:title="Export (*.ply)"/>
+       <item android:id="@+id/export" android:title="Export...">
+          <menu>
+	         <group android:id="@+id/group_export">
+	            <item android:id="@+id/export_ply" android:title="Mesh (.ply)" />
+	            <item android:id="@+id/export_obj" android:title="Mesh with texture (*.obj)" />
+	         </group>   
+          </menu>
+       </item>
        <item android:id="@+id/reset" android:title="Reset"/>
        <item android:id="@+id/about" android:title="About"/>
     </group>
     
-    <item android:id="@+id/menu_settings" android:title="Options..." android:orderInCategory="2">
+    <item android:id="@+id/menu_rendering_settings" android:title="Rendering Options..." android:orderInCategory="2">
         <menu >
-        <group android:id="@+id/group_visibility" android:checkableBehavior="all">
+        <group android:id="@+id/group_rendering_visibility" android:checkableBehavior="all">
             <item android:id="@+id/debug" android:checked="false" android:title="Debug" />
-            <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
-            <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
             <item android:id="@+id/mesh_rendering" android:checked="true" android:title="Mesh Rendering" />
-            <item android:id="@+id/auto_exposure" android:checked="false" android:title="Auto Exposure" />
             <item android:id="@+id/map_shown" android:checked="true" android:title="Map Visible" />
             <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
             <item android:id="@+id/graph_visible" android:checked="true" android:title="Graph Visible" />
-            <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
+            <item android:id="@+id/max_depth" android:checkable="false" android:title="Max Depth..." />
         </group>   
         </menu>
     </item>
+    <item android:id="@+id/menu_mapping_settings" android:title="Mapping Options..." android:orderInCategory="3">
+       <menu >
+       <group android:id="@+id/group_mapping_visibility" android:checkableBehavior="all">
+           <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
+           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
+           <item android:id="@+id/auto_exposure" android:checked="false" android:title="Auto Exposure" />
+           <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
+           <item android:id="@+id/update_rate" android:checkable="false" android:title="Map Update Rate..." />
+           <item android:id="@+id/time_threshold" android:checkable="false" android:title="Time Threshold..." />
+           <item android:id="@+id/features" android:checkable="false" android:title="Max Features Extracted..." />
+           <item android:id="@+id/resolution" android:checked="false" android:title="720p Mode" />
+       </group>   
+       </menu>
+   </item>
 </menu>

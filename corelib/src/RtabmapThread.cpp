@@ -544,12 +544,28 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 				ignoreFrame = true;
 			}
 		}
-		if(_dataBufferMaxSize > 0 && !lastPose_.isIdentity() && (odomEvent.pose().isIdentity() || odomEvent.info().variance>=9999))
+		if(_dataBufferMaxSize > 0 &&
+				((!lastPose_.isIdentity() && odomEvent.pose().isIdentity()) ||
+						odomEvent.info().variance>=9999 ||
+						odomEvent.rotVariance()>=9999 ||
+						odomEvent.transVariance()>=9999))
 		{
-			UWARN("Odometry is reset (identity pose or high variance (%f) detected). Increment map id!", odomEvent.info().variance);
+			UWARN("Odometry is reset (identity pose or high variance (>=9999) detected). Increment map id!");
 			pushNewState(kStateTriggeringMap);
 			_rotVariance = 0;
 			_transVariance = 0;
+		}
+
+		double maxRotVar = odomEvent.rotVariance();
+		double maxTransVar = odomEvent.transVariance();
+		// FIXME: should merge the transformations/variances like Link::merge();
+		if(maxRotVar > _rotVariance)
+		{
+			_rotVariance = maxRotVar;
+		}
+		if(maxTransVar > _transVariance)
+		{
+			_transVariance = maxTransVar;
 		}
 
 		if(ignoreFrame && !_createIntermediateNodes)
@@ -563,17 +579,6 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		}
 
 		lastPose_ = odomEvent.pose();
-		double maxRotVar = odomEvent.rotVariance();
-		double maxTransVar = odomEvent.transVariance();
-		// FIXME: should merge the transformations/variances like Link::merge();
-		if(maxRotVar > _rotVariance)
-		{
-			_rotVariance = maxRotVar;
-		}
-		if(maxTransVar > _transVariance)
-		{
-			_transVariance = maxTransVar;
-		}
 
 		bool notify = true;
 		_dataMutex.lock();
@@ -598,7 +603,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			{
 				_dataBuffer.push_back(OdometryEvent(odomEvent.data(), odomEvent.pose(), _rotVariance, _transVariance));
 			}
-			UDEBUG("Added data %d", odomEvent.data().id());
+			UINFO("Added data %d (variance=%f)", odomEvent.data().id(), _rotVariance);
 
 			_rotVariance = 0;
 			_transVariance = 0;

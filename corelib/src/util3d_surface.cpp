@@ -194,10 +194,74 @@ void appendMesh(
 	}
 }
 
+void appendMesh(
+		pcl::PointCloud<pcl::PointXYZRGB> & cloudA,
+		std::vector<pcl::Vertices> & polygonsA,
+		const pcl::PointCloud<pcl::PointXYZRGB> & cloudB,
+		const std::vector<pcl::Vertices> & polygonsB)
+{
+	UDEBUG("cloudA=%d polygonsA=%d cloudB=%d polygonsB=%d", (int)cloudA.size(), (int)polygonsA.size(), (int)cloudB.size(), (int)polygonsB.size());
+	UASSERT(!cloudA.isOrganized() && !cloudB.isOrganized());
+
+	int sizeA = cloudA.size();
+	cloudA += cloudB;
+
+	int sizePolygonsA = polygonsA.size();
+	polygonsA.resize(sizePolygonsA+polygonsB.size());
+
+	for(unsigned int i=0; i<polygonsB.size(); ++i)
+	{
+		pcl::Vertices vertices = polygonsB[i];
+		for(unsigned int j=0; j<vertices.vertices.size(); ++j)
+		{
+			vertices.vertices[j] += sizeA;
+		}
+		polygonsA[i+sizePolygonsA] = vertices;
+	}
+}
+
 std::map<int, int> filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGBNormal> & outputCloud,
+		std::vector<pcl::Vertices> & outputPolygons)
+{
+	UDEBUG("size=%d polygons=%d", (int)cloud.size(), (int)polygons.size());
+	std::map<int, int> addedVertices; //<oldIndex, newIndex>
+	std::map<int, int> output; //<newIndex, oldIndex>
+	outputCloud.resize(cloud.size());
+	outputCloud.is_dense = true;
+	outputPolygons.resize(polygons.size());
+	int oi = 0;
+	for(unsigned int i=0; i<polygons.size(); ++i)
+	{
+		pcl::Vertices & v = outputPolygons[i];
+		v.vertices.resize(polygons[i].vertices.size());
+		for(unsigned int j=0; j<polygons[i].vertices.size(); ++j)
+		{
+			std::map<int, int>::iterator iter = addedVertices.find(polygons[i].vertices[j]);
+			if(iter == addedVertices.end())
+			{
+				outputCloud[oi] = cloud.at(polygons[i].vertices[j]);
+				addedVertices.insert(std::make_pair(polygons[i].vertices[j], oi));
+				output.insert(std::make_pair(oi, polygons[i].vertices[j]));
+				v.vertices[j] = oi++;
+			}
+			else
+			{
+				v.vertices[j] = iter->second;
+			}
+		}
+	}
+	outputCloud.resize(oi);
+
+	return output;
+}
+
+std::map<int, int> filterNotUsedVerticesFromMesh(
+		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,
 		std::vector<pcl::Vertices> & outputPolygons)
 {
 	UDEBUG("size=%d polygons=%d", (int)cloud.size(), (int)polygons.size());

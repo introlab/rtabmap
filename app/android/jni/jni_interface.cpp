@@ -167,6 +167,27 @@ Java_com_introlab_rtabmap_RTABMapLib_setAutoExposure(
 {
 	return app.setAutoExposure(enabled);
 }
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setFullResolution(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setFullResolution(enabled);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setMaxCloudDepth(
+		JNIEnv*, jobject, float value)
+{
+	return app.setMaxCloudDepth(value);
+}
+JNIEXPORT jint JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setMappingParameter(
+    JNIEnv* env, jobject, jstring key, jstring value)
+{
+	std::string keyC, valueC;
+	GetJStringContent(env,key,keyC);
+	GetJStringContent(env,value,valueC);
+	return app.setMappingParameter(keyC, valueC);
+}
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_resetMapping(

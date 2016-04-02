@@ -121,6 +121,9 @@ class RTABMapApp : public UEventsHandler {
   void setGraphOptimization(bool enabled);
   void setGraphVisible(bool visible);
   void setAutoExposure(bool enabled);
+  void setFullResolution(bool enabled);
+  void setMaxCloudDepth(float value);
+  int setMappingParameter(const std::string & key, const std::string & value);
 
   void resetMapping();
   void save();
@@ -139,11 +142,15 @@ class RTABMapApp : public UEventsHandler {
 
   bool mapCloudShown_;
   bool odomCloudShown_;
-  bool loopClosureDetection_;
   bool graphOptimization_;
   bool localizationMode_;
   bool trajectoryMode_;
   bool autoExposure_;
+  bool fullResolution_;
+  float maxCloudDepth_;
+
+  rtabmap::ParametersMap mappingParameters_;
+
 
   bool clearSceneOnNextRender_;
   int totalPoints_;
@@ -165,7 +172,7 @@ class RTABMapApp : public UEventsHandler {
 
 	struct Mesh
 	{
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 		std::vector<pcl::Vertices> polygons;
 		rtabmap::Transform pose;
 		cv::Mat texture;
@@ -173,7 +180,6 @@ class RTABMapApp : public UEventsHandler {
 
 	std::map<int, Mesh> createdMeshes_;
 	std::map<int, rtabmap::Transform> rawPoses_;
-	std::pair<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > previousCloud_;
 
 	std::pair<rtabmap::RtabmapEventInit::Status, std::string> status_;
 };

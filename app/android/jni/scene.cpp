@@ -404,32 +404,6 @@ void Scene::setTraceVisible(bool visible)
 //Should only be called in OpenGL thread!
 void Scene::addCloud(
 		int id,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const std::vector<pcl::Vertices> & polygons,
-		const rtabmap::Transform & pose,
-		const cv::Mat & image)
-{
-	LOGI("addOrUpdateCloud cloud %d", id);
-	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
-	if(iter != pointClouds_.end())
-	{
-		delete iter->second;
-		pointClouds_.erase(iter);
-	}
-
-	//create
-	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
-	PointCloudDrawable * drawable = new PointCloudDrawable(
-			image.empty()?cloud_shader_program_:0,
-			image.empty()?0:texture_mesh_shader_program_,
-			cloud,
-			polygons,
-			image);
-	drawable->setPose(pose);
-	pointClouds_.insert(std::make_pair(id, drawable));
-}
-void Scene::addCloud(
-		int id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		const rtabmap::Transform & pose,
@@ -446,8 +420,8 @@ void Scene::addCloud(
 	//create
 	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
 	PointCloudDrawable * drawable = new PointCloudDrawable(
-			image.empty()?cloud_shader_program_:0,
-			image.empty()?0:texture_mesh_shader_program_,
+			cloud->is_dense || image.empty()?cloud_shader_program_:0,
+			cloud->is_dense || image.empty()?0:texture_mesh_shader_program_,
 			cloud,
 			polygons,
 			image);

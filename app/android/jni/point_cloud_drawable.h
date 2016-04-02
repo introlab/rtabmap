@@ -44,12 +44,6 @@ class PointCloudDrawable {
   PointCloudDrawable(
 		  GLuint cloudShaderProgram,
 		  GLuint textureShaderProgram,
-		  const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		  const std::vector<pcl::Vertices> & polygons = std::vector<pcl::Vertices>(),
-		  const cv::Mat & image = cv::Mat());
-  PointCloudDrawable(
-		  GLuint cloudShaderProgram,
-		  GLuint textureShaderProgram,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
   		  const std::vector<pcl::Vertices> & polygons = std::vector<pcl::Vertices>(),
 		  const cv::Mat & image = cv::Mat());

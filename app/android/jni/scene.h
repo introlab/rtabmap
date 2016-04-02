@@ -97,12 +97,6 @@ class Scene {
   void setTraceVisible(bool visible);
 
   void addCloud(
-		  int id,
-		  const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		  const std::vector<pcl::Vertices> & polygons,
-		  const rtabmap::Transform & pose,
-		  const cv::Mat & image = cv::Mat());
-  void addCloud(
   		  int id,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
   		  const std::vector<pcl::Vertices> & polygons,

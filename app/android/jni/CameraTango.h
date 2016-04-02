@@ -77,6 +77,7 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose, bool inOpenGLFrame) const;
+	void setDecimation(int value) {decimation_ = value;}
 	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
@@ -95,6 +96,7 @@ private:
 
 private:
 	void * tango_config_;
+	bool firstFrame_;
 	int decimation_;
 	bool autoExposure_;
 	cv::Mat cloud_;
