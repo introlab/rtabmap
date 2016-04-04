@@ -381,7 +381,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 
 	return true;
 }
-void DBDriverSqlite3::disconnectDatabaseQuery()
+void DBDriverSqlite3::disconnectDatabaseQuery(bool save)
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -398,7 +398,7 @@ void DBDriverSqlite3::disconnectDatabaseQuery()
 			}
 		}
 
-		if(_dbInMemory)
+		if(save && _dbInMemory)
 		{
 			UTimer timer;
 			timer.start();
@@ -1049,8 +1049,6 @@ bool DBDriverSqlite3::getCalibrationQuery(
 		const void * data = 0;
 		int dataSize = 0;
 		Transform localTransform;
-		StereoCameraModel stereoModel;
-		std::vector<CameraModel> models;
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);

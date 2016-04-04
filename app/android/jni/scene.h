@@ -108,6 +108,7 @@ class Scene {
   bool hasCloud(int id) const;
   std::set<int> getAddedClouds() const;
 
+  void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled) {meshRendering_ = enabled;}
   void setPointSize(float size) {pointSize_ = size;}
 
@@ -139,6 +140,7 @@ class Scene {
   GLuint texture_mesh_shader_program_;
   GLuint graph_shader_program_;
 
+  bool mapRendering_;
   bool meshRendering_;
   float pointSize_;
 };

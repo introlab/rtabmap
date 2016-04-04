@@ -3277,12 +3277,12 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 	if(_graphOptimizer->iterations() <= 0)
 	{
 		UERROR("Cannot detect more loop closures if graph optimization iterations = 0");
-		return 0;
+		return -1;
 	}
 	if(!_rgbdSlamMode)
 	{
 		UERROR("Detecting more loop closures can be done only in RGBD-SLAM mode.");
-		return 0;
+		return -1;
 	}
 
 	std::list<Link> loopClosuresAdded;
@@ -3317,21 +3317,11 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 				to = iter->first;
 			}
 
-			bool alreadyChecked = false;
-			for(std::multimap<int, int>::iterator jter = checkedLoopClosures.lower_bound(from);
-				!alreadyChecked && jter!=checkedLoopClosures.end() && jter->first == from;
-				++jter)
-			{
-				if(to == jter->second)
-				{
-					alreadyChecked = true;
-				}
-			}
-
-			if(!alreadyChecked)
+			if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
 			{
 				// only add new links and one per cluster per iteration
 				if(addedLinks.find(from) == addedLinks.end() &&
+				   addedLinks.find(to) == addedLinks.end() &&
 				   rtabmap::graph::findLink(links, from, to) == links.end())
 				{
 					checkedLoopClosures.insert(std::make_pair(from, to));
@@ -3371,7 +3361,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 			{
 				UERROR("Optimization failed! Rejecting all loop closures...");
 				loopClosuresAdded.clear();
-				break;
+				return -1;
 			}
 			UINFO("Optimizing graph with new links... done!");
 		}
@@ -3382,7 +3372,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 	{
 		for(std::list<Link>::iterator iter=loopClosuresAdded.begin(); iter!=loopClosuresAdded.end(); ++iter)
 		{
-			_memory->addLink(*iter);
+			_memory->addLink(*iter, true);
 		}
 	}
 	return (int)loopClosuresAdded.size();

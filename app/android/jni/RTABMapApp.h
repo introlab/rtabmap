@@ -123,12 +123,14 @@ class RTABMapApp : public UEventsHandler {
   void setAutoExposure(bool enabled);
   void setFullResolution(bool enabled);
   void setMaxCloudDepth(float value);
+  void setMeshAngleTolerance(float value);
+  void setMeshTriangleSize(int value);
   int setMappingParameter(const std::string & key, const std::string & value);
 
   void resetMapping();
   void save();
   bool exportMesh(const std::string & filePath);
-  int postProcessing(bool graphOptimizationOnly);
+  int postProcessing(int approach);
 
  protected:
   virtual void handleEvent(UEvent * event);
@@ -142,7 +144,6 @@ class RTABMapApp : public UEventsHandler {
   rtabmap::Rtabmap * rtabmap_;
   LogHandler * logHandler_;
 
-  bool mapCloudShown_;
   bool odomCloudShown_;
   bool graphOptimization_;
   bool localizationMode_;
@@ -150,6 +151,8 @@ class RTABMapApp : public UEventsHandler {
   bool autoExposure_;
   bool fullResolution_;
   float maxCloudDepth_;
+  int meshTrianglePix_;
+  float meshAngleToleranceDeg_;
 
   rtabmap::ParametersMap mappingParameters_;
 

@@ -179,6 +179,18 @@ Java_com_introlab_rtabmap_RTABMapLib_setMaxCloudDepth(
 {
 	return app.setMaxCloudDepth(value);
 }
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setMeshAngleTolerance(
+		JNIEnv*, jobject, float value)
+{
+	return app.setMeshAngleTolerance(value);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setMeshTriangleSize(
+		JNIEnv*, jobject, int value)
+{
+	return app.setMeshTriangleSize(value);
+}
 JNIEXPORT jint JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMappingParameter(
     JNIEnv* env, jobject, jstring key, jstring value)
@@ -214,9 +226,9 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 
 JNIEXPORT int JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_postProcessing(
-		JNIEnv* env, jobject, bool graphOptimizationOnly)
+		JNIEnv* env, jobject, int approach)
 {
-	return app.postProcessing(graphOptimizationOnly);
+	return app.postProcessing(approach);
 }
 
 

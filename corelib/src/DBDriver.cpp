@@ -61,14 +61,24 @@ void DBDriver::parseParameters(const ParametersMap & parameters)
 {
 }
 
-void DBDriver::closeConnection()
+void DBDriver::closeConnection(bool save)
 {
 	UDEBUG("isRunning=%d", this->isRunning());
 	this->join(true);
 	UDEBUG("");
-	this->emptyTrashes();
+	if(save)
+	{
+		this->emptyTrashes();
+	}
+	else
+	{
+		_trashesMutex.lock();
+		_trashSignatures.clear();
+		_trashVisualWords.clear();
+		_trashesMutex.unlock();
+	}
 	_dbSafeAccessMutex.lock();
-	this->disconnectDatabaseQuery();
+	this->disconnectDatabaseQuery(save);
 	_dbSafeAccessMutex.unlock();
 	UDEBUG("");
 }

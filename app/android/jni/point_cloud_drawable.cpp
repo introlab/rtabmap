@@ -46,7 +46,8 @@ PointCloudDrawable::PointCloudDrawable(
 		nPoints_(0),
 		pose_(1.0f),
 		visible_(true),
-		shader_program_(cloudShaderProgram!=0?cloudShaderProgram:textureShaderProgram)
+		cloud_shader_program_(cloudShaderProgram),
+		texture_shader_program_(textureShaderProgram)
 {
 	UASSERT(!cloud->empty());
 
@@ -57,7 +58,7 @@ PointCloudDrawable::PointCloudDrawable(
 		return;
 	}
 
-	if(textureShaderProgram)
+	if(!cloud->is_dense && !image.empty())
 	{
 		LOGI("cloud=%dx%d image=%dx%d\n", (int)cloud->width, (int)cloud->height, image.cols, image.rows);
 		UASSERT(polygons.size() && !cloud->is_dense && !image.empty() && image.type() == CV_8UC3);
@@ -74,16 +75,19 @@ PointCloudDrawable::PointCloudDrawable(
 	std::vector<float> vertices;
 	if(textures_)
 	{
-		vertices = std::vector<float>(cloud->size()*5);
+		vertices = std::vector<float>(cloud->size()*6);
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
-			vertices[i*5] = cloud->at(i).x;
-			vertices[i*5+1] = cloud->at(i).y;
-			vertices[i*5+2] = cloud->at(i).z;
+			vertices[i*6] = cloud->at(i).x;
+			vertices[i*6+1] = cloud->at(i).y;
+			vertices[i*6+2] = cloud->at(i).z;
+
+			// rgb
+			vertices[i*6+3] = cloud->at(i).rgb;
 
 			// texture uv
-			vertices[i*5+3] = float(i % cloud->width)/float(cloud->width); //u
-			vertices[i*5+4] = float(i/cloud->width)/float(cloud->height);  //v
+			vertices[i*6+4] = float(i % cloud->width)/float(cloud->width); //u
+			vertices[i*6+5] = float(i/cloud->width)/float(cloud->height);  //v
 		}
 	}
 	else
@@ -180,47 +184,60 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix, const glm::m
 
 	if(vertex_buffers_ && nPoints_ && visible_)
 	{
-		glUseProgram(shader_program_);
-
-		GLuint mvp_handle_ = glGetUniformLocation(shader_program_, "mvp");
-		glm::mat4 mvp_mat = projectionMatrix * viewMatrix * pose_;
-		glUniformMatrix4fv(mvp_handle_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
-
-		if(textures_)
+		if(meshRendering && textures_)
 		{
+			glUseProgram(texture_shader_program_);
+
+			GLuint mvp_handle_ = glGetUniformLocation(texture_shader_program_, "mvp");
+			glm::mat4 mvp_mat = projectionMatrix * viewMatrix * pose_;
+			glUniformMatrix4fv(mvp_handle_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
+
 			// Texture activate unit 0
 			glActiveTexture(GL_TEXTURE0);
 			// Bind the texture to this unit.
 			glBindTexture(GL_TEXTURE_2D, textures_);
 			// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
-			GLuint texture_handle = glGetUniformLocation(shader_program_, "u_Texture");
+			GLuint texture_handle = glGetUniformLocation(texture_shader_program_, "u_Texture");
 			glUniform1i(texture_handle, 0);
 
-			GLint attribute_vertex = glGetAttribLocation(shader_program_, "vertex");
-			GLint attribute_texture = glGetAttribLocation(shader_program_, "a_TexCoordinate");
+			GLint attribute_vertex = glGetAttribLocation(texture_shader_program_, "vertex");
+			GLint attribute_texture = glGetAttribLocation(texture_shader_program_, "a_TexCoordinate");
 
 			glEnableVertexAttribArray(attribute_vertex);
 			glEnableVertexAttribArray(attribute_texture);
 			glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
-			glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), 0);
-			glVertexAttribPointer(attribute_texture, 2, GL_FLOAT, GL_FALSE, 5*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
+			glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0);
+			glVertexAttribPointer(attribute_texture, 2, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (GLvoid*) (4 * sizeof(GLfloat)));
 
 			glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_SHORT, polygons_.data());
 		}
 		else // point cloud or colored mesh
 		{
-			GLuint point_size_handle_ = glGetUniformLocation(shader_program_, "point_size");
+			glUseProgram(cloud_shader_program_);
+
+			GLuint mvp_handle_ = glGetUniformLocation(cloud_shader_program_, "mvp");
+			glm::mat4 mvp_mat = projectionMatrix * viewMatrix * pose_;
+			glUniformMatrix4fv(mvp_handle_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
+
+			GLuint point_size_handle_ = glGetUniformLocation(cloud_shader_program_, "point_size");
 			glUniform1f(point_size_handle_, pointSize);
 
-			GLint attribute_vertex = glGetAttribLocation(shader_program_, "vertex");
-			GLint attribute_color = glGetAttribLocation(shader_program_, "color");
+			GLint attribute_vertex = glGetAttribLocation(cloud_shader_program_, "vertex");
+			GLint attribute_color = glGetAttribLocation(cloud_shader_program_, "color");
 
 			glEnableVertexAttribArray(attribute_vertex);
 			glEnableVertexAttribArray(attribute_color);
 			glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
-			glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), 0);
-			glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE, 4*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
-
+			if(textures_)
+			{
+				glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0);
+				glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE, 6*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
+			}
+			else
+			{
+				glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, 4*sizeof(GLfloat), 0);
+				glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE, 4*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
+			}
 			if(meshRendering && polygons_.size())
 			{
 				glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_SHORT, polygons_.data());

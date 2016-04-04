@@ -71,7 +71,8 @@ class PointCloudDrawable {
   glm::mat4 pose_;
   bool visible_;
 
-  GLuint shader_program_;
+  GLuint cloud_shader_program_;
+  GLuint texture_shader_program_;
 };
 
 #endif  // TANGO_POINT_CLOUD_POINT_CLOUD_DRAWABLE_H_

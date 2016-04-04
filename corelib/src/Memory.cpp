@@ -313,7 +313,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents)
 		if(_dbDriver)
 		{
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
-			_dbDriver->closeConnection();
+			_dbDriver->closeConnection(false);
 			delete _dbDriver;
 			_dbDriver = 0;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));
@@ -2327,7 +2327,7 @@ Transform Memory::computeIcpTransformMulti(
 	return t;
 }
 
-bool Memory::addLink(const Link & link)
+bool Memory::addLink(const Link & link, bool addInDatabase)
 {
 	UASSERT(link.type() > Link::kNeighbor && link.type() != Link::kUndef);
 
@@ -2378,9 +2378,8 @@ bool Memory::addLink(const Link & link)
 				}
 			}
 		}
-		return true;
 	}
-	else
+	else if(!addInDatabase)
 	{
 		if(!fromS)
 		{
@@ -2390,8 +2389,27 @@ bool Memory::addLink(const Link & link)
 		{
 			UERROR("from=%d, to=%d, Signature %d not found in working/st memories", link.from(), link.to(), link.to());
 		}
+		return false;
 	}
-	return false;
+	else if(fromS)
+	{
+		UDEBUG("Add link between %d and %d (db)", link.from(), link.to());
+		fromS->addLink(link);
+		_dbDriver->addLink(link.inverse());
+	}
+	else if(toS)
+	{
+		UDEBUG("Add link between %d (db) and %d", link.from(), link.to());
+		_dbDriver->addLink(link);
+		toS->addLink(link.inverse());
+	}
+	else
+	{
+		UDEBUG("Add link between %d (db) and %d (db)", link.from(), link.to());
+		_dbDriver->addLink(link);
+		_dbDriver->addLink(link.inverse());
+	}
+	return true;
 }
 
 void Memory::updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance)

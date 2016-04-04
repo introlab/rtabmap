@@ -114,6 +114,7 @@ Scene::Scene() :
 		cloud_shader_program_(0),
 		texture_mesh_shader_program_(0),
 		graph_shader_program_(0),
+		mapRendering_(true),
 		meshRendering_(true),
 		pointSize_(3.0f) {}
 
@@ -280,7 +281,7 @@ int Scene::Render() {
 
 	bool frustumCulling = true;
 	int cloudDrawn=0;
-	if(frustumCulling)
+	if(mapRendering_ && frustumCulling)
 	{
 		//Use camera frustum to cull nodes that don't need to be drawn
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -334,8 +335,11 @@ int Scene::Render() {
 	{
 		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
 		{
-			++cloudDrawn;
-			iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_);
+			if(mapRendering_ || iter->first < 0)
+			{
+				++cloudDrawn;
+				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_);
+			}
 		}
 	}
 
@@ -420,8 +424,8 @@ void Scene::addCloud(
 	//create
 	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
 	PointCloudDrawable * drawable = new PointCloudDrawable(
-			cloud->is_dense || image.empty()?cloud_shader_program_:0,
-			cloud->is_dense || image.empty()?0:texture_mesh_shader_program_,
+			cloud_shader_program_,
+			texture_mesh_shader_program_,
 			cloud,
 			polygons,
 			image);

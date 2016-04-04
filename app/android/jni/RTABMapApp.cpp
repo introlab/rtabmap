@@ -50,8 +50,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/obj_io.h>
 
 const int kVersionStringLength = 128;
-const float meshAngleTolerance = 0.1745; // 10 degrees
-const int meshTrianglePixels = 1;
 
 static JavaVM *jvm;
 static jobject RTABMapActivity = 0;
@@ -86,7 +84,6 @@ RTABMapApp::RTABMapApp() :
 		rtabmapThread_(0),
 		rtabmap_(0),
 		logHandler_(0),
-		mapCloudShown_(true),
 		odomCloudShown_(true),
 		graphOptimization_(true),
 		localizationMode_(false),
@@ -94,6 +91,8 @@ RTABMapApp::RTABMapApp() :
 		autoExposure_(false),
 		fullResolution_(false),
 		maxCloudDepth_(0.0),
+		meshTrianglePix_(1),
+		meshAngleToleranceDeg_(10.0),
 		clearSceneOnNextRender_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
@@ -192,21 +191,6 @@ void RTABMapApp::openDatabase(const std::string & databasePath)
 			links,
 			true,
 			true);
-
-	if(poses.size() > 1 &&
-		rtabmap::Optimizer::isAvailable(rtabmap::Optimizer::kTypeG2O))
-	{
-		rtabmap::ParametersMap param;
-		param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "10"));
-		rtabmap::Optimizer * sba = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeG2O, param);
-		poses = sba->optimizeBA(poses.rbegin()->first, poses, links, signatures);
-		delete sba;
-
-		if(poses.size())
-		{
-			rtabmap_->setOptimizedPoses(poses);
-		}
-	}
 
 	clearSceneOnNextRender_ = true;
 	rtabmap::Statistics stats;
@@ -421,7 +405,7 @@ int RTABMapApp::Render()
 								filter.setInputCloud(cloud);
 								filter.filter(*output);
 
-								std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(output, meshAngleTolerance, false, meshTrianglePixels);
+								std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(output, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 								pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 								std::vector<pcl::Vertices> outputPolygons;
 
@@ -464,7 +448,7 @@ int RTABMapApp::Render()
 			iter!=addedClouds.end();
 			++iter)
 		{
-			if(*iter > 0 && (!mapCloudShown_ || poses.find(*iter) == poses.end()))
+			if(*iter > 0 && poses.find(*iter) == poses.end())
 			{
 				main_scene_.setCloudVisible(*iter, false);
 			}
@@ -485,22 +469,24 @@ int RTABMapApp::Render()
 			}
 		}
 
+		main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_);
+
 		//just process the last one
 		if(set && !event.pose().isNull())
 		{
-			main_scene_.setCloudVisible(-1, false);
 			if(odomCloudShown_ && !trajectoryMode_)
 			{
 				if(!event.data().imageRaw().empty() && !event.data().depthRaw().empty())
 				{
-					LOGI("Creating Odom cloud (rgb=%dx%d depth=%dx%d)",
-							event.data().imageRaw().cols, event.data().imageRaw().rows,
-							event.data().depthRaw().cols, event.data().depthRaw().rows);
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 					cloud = rtabmap::util3d::cloudRGBFromSensorData(event.data(), event.data().imageRaw().rows/event.data().depthRaw().rows, maxCloudDepth_);
 					if(cloud->size())
 					{
-						std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleTolerance, false, meshTrianglePixels);
+						LOGI("Created odom cloud (rgb=%dx%d depth=%dx%d cloud=%dx%d)",
+													event.data().imageRaw().cols, event.data().imageRaw().rows,
+													event.data().depthRaw().cols, event.data().depthRaw().rows,
+													(int)cloud->width, (int)cloud->height);
+						std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 						main_scene_.addCloud(-1, cloud, polygons, opengl_world_T_rtabmap_world*event.pose(), event.data().imageRaw());
 						main_scene_.setCloudVisible(-1, true);
 					}
@@ -551,7 +537,7 @@ void RTABMapApp::setPausedMapping(bool paused)
 }
 void RTABMapApp::setMapCloudShown(bool shown)
 {
-	mapCloudShown_ = shown;
+	main_scene_.setMapRendering(shown);
 }
 void RTABMapApp::setOdomCloudShown(bool shown)
 {
@@ -616,6 +602,16 @@ void RTABMapApp::setFullResolution(bool enabled)
 void RTABMapApp::setMaxCloudDepth(float value)
 {
 	maxCloudDepth_ = value;
+}
+
+void RTABMapApp::setMeshAngleTolerance(float value)
+{
+	meshAngleToleranceDeg_ = value;
+}
+
+void RTABMapApp::setMeshTriangleSize(int value)
+{
+	 meshTrianglePix_ = value;
 }
 
 int RTABMapApp::setMappingParameter(const std::string & key, const std::string & value)
@@ -763,6 +759,14 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 
 				UINFO("Saving obj to %s.", filePath.c_str());
 				success = pcl::io::saveOBJFile(filePath, textureMesh) == 0;
+				if(success)
+				{
+					UINFO("Saved obj to %s!", filePath.c_str());
+				}
+				else
+				{
+					UERROR("Failed saving obj to %s!", filePath.c_str());
+				}
 			}
 		}
 	}
@@ -806,39 +810,64 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 			pcl::toPCLPointCloud2(*mergedClouds, mesh.cloud);
 			mesh.polygons = mergedPolygons;
 
-			UINFO("Saving to %s.", filePath.c_str());
+			UINFO("Saving ply to %s.", filePath.c_str());
 			success = pcl::io::savePLYFileBinary(filePath, mesh) == 0;
+			if(success)
+			{
+				UINFO("Saved ply to %s!", filePath.c_str());
+			}
+			else
+			{
+				UERROR("Failed saving ply to %s!", filePath.c_str());
+			}
 		}
 	}
 	return success;
 }
 
-int RTABMapApp::postProcessing(bool graphOptimizationOnly)
+int RTABMapApp::postProcessing(int approach)
 {
-	int detectedLoopClosures = 0;
+	int returnedValue = 0;
 	if(rtabmap_)
 	{
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;
-		if(graphOptimizationOnly)
+		if(approach == 2 || approach == 0)
 		{
-			rtabmap_->getGraph(poses, links, true, true);
+			if(approach == 2)
+			{
+				// detect more loop closures
+				returnedValue = rtabmap_->detectMoreLoopClosures();
+			}
+
+			if(returnedValue >= 0)
+			{
+				// simple graph optmimization
+				rtabmap_->getGraph(poses, links, true, true);
+			}
 		}
-		else
+		else if (approach == 1)
 		{
-			detectedLoopClosures = rtabmap_->detectMoreLoopClosures();
-
-			std::map<int, rtabmap::Signature> signatures;
-			rtabmap_->getGraph(poses, links, false, true, &signatures);
-
 			if(rtabmap::Optimizer::isAvailable(rtabmap::Optimizer::kTypeG2O))
 			{
+				std::map<int, rtabmap::Signature> signatures;
+				rtabmap_->getGraph(poses, links, false, true, &signatures);
+
 				rtabmap::ParametersMap param;
-				param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "10"));
+				param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "30"));
 				rtabmap::Optimizer * sba = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeG2O, param);
 				poses = sba->optimizeBA(poses.rbegin()->first, poses, links, signatures);
 				delete sba;
 			}
+			else
+			{
+				LOGE("g2o not available!");
+			}
+		}
+		else
+		{
+			LOGE("Invalid approach %d (should be 0 (graph optimization), 1 (sba) or 2 (detect more loop closures))", approach);
+			returnedValue = -1;
 		}
 
 		if(poses.size())
@@ -851,8 +880,12 @@ int RTABMapApp::postProcessing(bool graphOptimizationOnly)
 
 			rtabmap_->setOptimizedPoses(poses);
 		}
+		else
+		{
+			returnedValue = -1;
+		}
 	}
-	return detectedLoopClosures;
+	return returnedValue;
 }
 
 void RTABMapApp::handleEvent(UEvent * event)

@@ -30,6 +30,7 @@ import android.view.MenuInflater;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -66,6 +67,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private MenuItem mItemPause;
   private MenuItem mItemSave;
   private MenuItem mItemOpen;
+  private MenuItem mItemPostProcessing;
   private MenuItem mItemExport;
   private MenuItem mItemLocalizationMode;
   private MenuItem mItemTrajectoryMode;
@@ -76,10 +78,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private String mWorkingDirectory = "";
   
   private int mMaxDepthIndex = 5;
+  private int mMeshAngleToleranceIndex = 1;
+  private int mMeshTriangleSizeIndex = 0;
   
   private int mParamUpdateRateHzIndex = 1;
   private int mParamTimeThrMsIndex = 1;
-  private int mParamMaxFeaturesIndex = 2;
+  private int mParamMaxFeaturesIndex = 4;
+  private int mParamLoopThrMsIndex = 1;
   
   private LinearLayout mLayoutDebug;
   
@@ -94,6 +99,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     // touch point.
     Display display = getWindowManager().getDefaultDisplay();
     display.getSize(mScreenSize);
+    
+    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
     // Setting content view of this activity.
     setContentView(R.layout.activity_rtabmap);
@@ -188,6 +195,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	    mItemPause.setChecked(false);
     	    mItemSave.setEnabled(false);
     		mItemExport.setEnabled(false);
+    		mItemPostProcessing.setEnabled(false);
         }
 
         if(RTABMapLib.onResume()!=0)
@@ -274,12 +282,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  mItemPause = menu.findItem(R.id.pause);
 	  mItemSave = menu.findItem(R.id.save);
 	  mItemOpen = menu.findItem(R.id.open);
+	  mItemPostProcessing = menu.findItem(R.id.post_processing);
 	  mItemExport = menu.findItem(R.id.export);
 	  mItemLocalizationMode = menu.findItem(R.id.localization_mode);
 	  mItemTrajectoryMode = menu.findItem(R.id.trajectory_mode);
 	  mItemSave.setEnabled(false);
 	  mItemExport.setEnabled(false);
 	  mItemOpen.setEnabled(false);
+	  mItemPostProcessing.setEnabled(false);
 	  
 	  return true;
   }
@@ -315,9 +325,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  if(loopClosureId > 0)
 	  {
 		  ++mTotalLoopClosures;
-		  ((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
 		  Toast.makeText(this, "Loop closure detected!", Toast.LENGTH_SHORT).show();
 	  }
+	  ((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
   }
   
   // called from jni
@@ -443,6 +453,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				{
 					mItemPause.setChecked(false);
 					mItemOpen.setEnabled(false);
+					mItemPostProcessing.setEnabled(false);
 					mItemSave.setEnabled(false);
 					mItemExport.setEnabled(false);
 					RTABMapLib.setPausedMapping(false); // resume mapping
@@ -570,62 +581,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  mItemSave.setEnabled(item.isChecked());
 		  mItemExport.setEnabled(item.isChecked());
     	  mItemOpen.setEnabled(item.isChecked());
+    	  mItemPostProcessing.setEnabled(item.isChecked());
     	 // mItemSave.setEnabled(item.isChecked() && !mWorkingDirectory.isEmpty());
     	  if(item.isChecked())
     	  {
     		  RTABMapLib.setPausedMapping(true);
     		  ((TextView)findViewById(R.id.status)).setText("Paused");
-    		  
-    		  // Post-processing
-    		  new AlertDialog.Builder(getActivity())
-              .setTitle("Post-Processing")
-              .setMessage("Do you want to detect more loop closures and do a bundle adjustement? Otherwise, a simple global graph optimization is done.")
-              .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                  public void onClick(DialogInterface dialog, int which) {
-	                	dialog.dismiss();
-	                  	mProgressDialog.setTitle("Post-Processing");
-                	    mProgressDialog.setMessage(String.format("Please wait while optimizing..."));
-                	    mProgressDialog.show();
-                	    
-                	    Thread workingThread = new Thread(new Runnable() {
-						    public void run() {
-						    	final int loopDetected = RTABMapLib.postProcessing(false);
-						    	runOnUiThread(new Runnable() {
-						    		public void run() {
-										mProgressDialog.dismiss();
-										if(loopDetected > 0)
-										{
-											Toast.makeText(getActivity(), String.format("%d new loop closure(s) added.", loopDetected), Toast.LENGTH_SHORT).show();
-										}
-						    		}
-						    	});
-						    } 
-						});
-						workingThread.start();
-                  }
-              })
-              .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                  public void onClick(DialogInterface dialog, int which) {
-                      dialog.dismiss();
-                      mProgressDialog.setTitle("Post-Processing");
-              	      mProgressDialog.setMessage(String.format("Please wait while optimizing..."));
-              	      mProgressDialog.show();
-              	      
-						Thread workingThread = new Thread(new Runnable() {
-						    public void run() {
-						    	RTABMapLib.postProcessing(true);
-						    	runOnUiThread(new Runnable() {
-						    		public void run() {
-								    	mProgressDialog.dismiss();
-						    		}
-						    	});
-						    } 
-						});
-						workingThread.start();
-                  }
-              })
-              .show();
-    		  
     	  }
     	  else
     	  {
@@ -633,6 +594,84 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     		  ((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?"Localization":"Mapping");
     	  }
       } 
+      else if (itemId == R.id.detect_more_loop_closures)
+      {
+			mProgressDialog.setTitle("Post-Processing");
+			mProgressDialog.setMessage(String.format("Please wait while detecting more loop closures..."));
+			mProgressDialog.show();
+			
+			Thread workingThread = new Thread(new Runnable() {
+				    public void run() {
+				    	final int loopDetected = RTABMapLib.postProcessing(2);
+				    	runOnUiThread(new Runnable() {
+				    		public void run() {
+								mProgressDialog.dismiss();
+								if(loopDetected >= 0)
+								{
+									Toast.makeText(getActivity(), String.format("Detection done! %d new loop closure(s) added.", loopDetected), Toast.LENGTH_SHORT).show();
+								}
+								else if(loopDetected < 0)
+								{
+									Toast.makeText(getActivity(), String.format("Detection failed!"), Toast.LENGTH_SHORT).show();
+								}
+				    		}
+				    	});
+				    } 
+			});
+			workingThread.start();
+      }
+      else if (itemId == R.id.global_graph_optimization)
+      {
+			mProgressDialog.setTitle("Post-Processing");
+			mProgressDialog.setMessage(String.format("Global graph optimization..."));
+			mProgressDialog.show();
+			
+			Thread workingThread = new Thread(new Runnable() {
+				    public void run() {
+				    	final int value = RTABMapLib.postProcessing(0);
+				    	runOnUiThread(new Runnable() {
+				    		public void run() {
+								mProgressDialog.dismiss();
+								if(value >= 0)
+								{
+									Toast.makeText(getActivity(), String.format("Optimization done!"), Toast.LENGTH_SHORT).show();
+								}
+								else if(value < 0)
+								{
+									Toast.makeText(getActivity(), String.format("Optimization failed!"), Toast.LENGTH_SHORT).show();
+								}
+				    		}
+				    	});
+				    } 
+			});
+			workingThread.start();
+      }
+      else if (itemId == R.id.sba)
+      {
+			mProgressDialog.setTitle("Post-Processing");
+			mProgressDialog.setMessage(String.format("Bundle adjustement..."));
+			mProgressDialog.show();
+			
+			Thread workingThread = new Thread(new Runnable() {
+				    public void run() {
+				    	final int value = RTABMapLib.postProcessing(1);
+				    	runOnUiThread(new Runnable() {
+				    		public void run() {
+								mProgressDialog.dismiss();
+								if(value >= 0)
+								{
+									Toast.makeText(getActivity(), String.format("Optimization done!"), Toast.LENGTH_SHORT).show();
+								}
+								else if(value < 0)
+								{
+									Toast.makeText(getActivity(), String.format("Optimization failed!"), Toast.LENGTH_SHORT).show();
+								}
+				    		}
+				    	});
+				    } 
+			});
+			workingThread.start();
+      }
       else if(itemId == R.id.debug)
       {
     	  item.setChecked(!item.isChecked());
@@ -703,7 +742,45 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		        if(which >=0 && which < 6)
 		        {
 			        mMaxDepthIndex = which;
-			        RTABMapLib.setMaxCloudDepth(which < 5?Integer.parseInt(values[which]):0);
+			        RTABMapLib.setMaxCloudDepth(which < 5?Float.parseFloat(values[which]):0);
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.mesh_angle_tolerance)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Mesh Angle Tolerance (deg)");
+		  final String[] values = {"5", "10", "15", "20", "25", "30"};
+		  builder.setSingleChoiceItems(values, mMeshAngleToleranceIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < 6)
+		        {
+		        	mMeshAngleToleranceIndex = which;
+			        RTABMapLib.setMeshAngleTolerance(Float.parseFloat(values[which]));
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.mesh_triangle_size)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Mesh Triangle Size (pixels)");
+		  final String[] values = {"2", "3", "4", "5", "6"};
+		  builder.setSingleChoiceItems(values, mMeshTriangleSizeIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < 5)
+		        {
+		        	mMeshTriangleSizeIndex = which;
+			        RTABMapLib.setMeshTriangleSize(Integer.parseInt(values[which]));
 		        }
 		    }
 		  });
@@ -735,7 +812,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       {
     	  // get double
 		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		  builder.setTitle("Time Threshold (ms, 0 means no limit)");
+		  builder.setTitle("Time Threshold (ms)");
 		  final String[] values = {"400", "700", "1400", "No Limit"};
 		  builder.setSingleChoiceItems(values, mParamTimeThrMsIndex, new DialogInterface.OnClickListener() {
 		    @Override
@@ -758,17 +835,39 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  // get double
 		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		  builder.setTitle("Max Features");
-		  final String[] values = {"Disabled", "100", "200", "300", "400", "No Limit"};
+		  final String[] values = {"Disabled", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000", "No Limit"};
 		  builder.setSingleChoiceItems(values, mParamMaxFeaturesIndex, new DialogInterface.OnClickListener() {
 		    @Override
 		    public void onClick(DialogInterface dialog, int which) {
 		        dialog.dismiss();
-		        if(which >=0 && which < 6)
+		        if(which >=0 && which < 12)
 		        {
 		        	mParamMaxFeaturesIndex = which;
-			        if(RTABMapLib.setMappingParameter("Kp/MaxFeatures", which==0?"-1":which==5?"0":values[which]) != 0)
+			        if(RTABMapLib.setMappingParameter("Kp/MaxFeatures", which==0?"-1":which==11?"0":values[which]) != 0)
 			        {
 			        	Toast.makeText(getActivity(),"Failed to set parameter \"Kp/MaxFeatures\"!", Toast.LENGTH_LONG).show();
+			        }
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.loop_threshold)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Loop Closure Threshold");
+		  final String[] values = {"Disabled", "0.11", "0.20", "0.30", "0.40", "0.50", "0.60", "0.70", "0.80", "0.90"};
+		  builder.setSingleChoiceItems(values, mParamTimeThrMsIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < 10)
+		        {
+		        	mParamLoopThrMsIndex = which;
+			        if(RTABMapLib.setMappingParameter("Rtabmap/LoopThr", which==0?"1":values[which]) != 0)
+			        {
+			        	Toast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/LoopThr\"!", Toast.LENGTH_LONG).show();
 			        }
 		        }
 		    }
@@ -810,6 +909,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 										//disable gui actions
 										mItemSave.setEnabled(false);
 										mItemOpen.setEnabled(false);
+										mItemPostProcessing.setEnabled(false);
 										mItemExport.setEnabled(false);
 				                    }
 				                })
@@ -832,6 +932,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							  //disable gui actions
 							  mItemSave.setEnabled(false);
 							  mItemOpen.setEnabled(false);
+							  mItemPostProcessing.setEnabled(false);
 							  mItemExport.setEnabled(false);
 						  }
 					  }
@@ -849,6 +950,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     		  //disable gui actions
 			  mItemSave.setEnabled(false);
 			  mItemOpen.setEnabled(false);
+			  mItemPostProcessing.setEnabled(false);
 			  mItemExport.setEnabled(false);
     	  }
       }
@@ -880,6 +982,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       else if(itemId == R.id.export_obj || itemId == R.id.export_ply)
       {
     	  final String extension = itemId == R.id.export_ply ? ".ply" : ".obj";
+    	  final boolean isOBJ = itemId == R.id.export_obj;
     	  
     	  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		  builder.setTitle(String.format("File Name (*%s):", extension));
@@ -917,7 +1020,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			                		    		public void run() {
 					                		    	if(success)
 							                    	{
-							                    		Toast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), Toast.LENGTH_LONG).show();
+					                		    		if(isOBJ)
+					                		    		{	
+					                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" (with textures \"%s/\" and \"%s\") successfully exported!", path, fileName, fileName + ".mtl"), Toast.LENGTH_LONG).show();
+						                		    	}
+					                		    		else
+					                		    		{
+					                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), Toast.LENGTH_LONG).show();
+					                		    		}
 							                    	}
 							                    	else
 							                    	{
@@ -953,7 +1063,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	                		    		public void run() {
 			                		    	if(success)
 					                    	{
-					                    		Toast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), Toast.LENGTH_LONG).show();
+			                		    		if(isOBJ)
+			                		    		{	
+			                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" (with textures \"%s/\" and \"%s\") successfully exported!", path, fileName, fileName + ".mtl"), Toast.LENGTH_LONG).show();
+			                		    		}
+			                		    		else
+			                		    		{
+			                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), Toast.LENGTH_LONG).show();
+			                		    		}
 					                    	}
 					                    	else
 					                    	{
@@ -986,7 +1103,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
                 	  if(!mItemTrajectoryMode.isChecked())
                 	  {
 	                	  mProgressDialog.setTitle("Loading");
-	                	  mProgressDialog.setMessage(String.format("Please wait while loading \"%s\"...", files[which]));
+	                	  mProgressDialog.setMessage(String.format("Database \"%s\" loaded. Please wait while creating point clouds and meshes...", files[which]));
 	                	  mProgressDialog.show();
                 	  }
 

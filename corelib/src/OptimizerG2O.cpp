@@ -612,6 +612,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				else
 				{
 					UERROR("Missing calibration for node %d", iter->first);
+					return optimizedPoses;
 				}
 			}
 			else
@@ -699,6 +700,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				{
 					delete e;
 					UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
+					return optimizedPoses;
 				}
 			}
 		}

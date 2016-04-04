@@ -91,7 +91,7 @@ public:
 	int cleanup();
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLink(const Link & link);
+	bool addLink(const Link & link, bool addInDatabase = false);
 	void updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance);
 	void updateLink(int fromId, int toId, const Transform & transform, const cv::Mat & covariance);
 	void removeAllVirtualLinks();

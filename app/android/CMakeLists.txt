@@ -15,9 +15,18 @@ if(NOT ANDROID_EXECUTABLE)
 endif()
 
 configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/AndroidManifest.xml.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/AndroidManifest.xml")
+  
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/AndroidManifest.xml"
   "${CMAKE_CURRENT_BINARY_DIR}/AndroidManifest.xml"
   COPYONLY)
+  
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/info.txt.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/res/raw/info.txt")
+  
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/ant.properties.in"
