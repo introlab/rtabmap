@@ -212,6 +212,15 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 	return app.exportMesh(filePathC);
 }
 
+JNIEXPORT int JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_postProcessing(
+		JNIEnv* env, jobject, bool graphOptimizationOnly)
+{
+	return app.postProcessing(graphOptimizationOnly);
+}
+
+
+
 #ifdef __cplusplus
 }
 #endif

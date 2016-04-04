@@ -2066,113 +2066,7 @@ Transform Memory::computeTransform(
 
 	if(fromS && toS)
 	{
-		// make sure we have all data needed
-		// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
-		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && fromS->sensorData().imageCompressed().empty()) ||
-		   (_registrationPipeline->isScanRequired() && fromS->sensorData().imageCompressed().empty() && fromS->sensorData().laserScanCompressed().empty()) ||
-		   (_registrationPipeline->isUserDataRequired() && fromS->sensorData().imageCompressed().empty() && fromS->sensorData().userDataCompressed().empty()))
-		{
-			getNodeData(fromS->id());
-		}
-		if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && toS->sensorData().imageCompressed().empty()) ||
-		   (_registrationPipeline->isScanRequired() && toS->sensorData().imageCompressed().empty() && toS->sensorData().laserScanCompressed().empty()) ||
-		   (_registrationPipeline->isUserDataRequired() && toS->sensorData().imageCompressed().empty() && toS->sensorData().userDataCompressed().empty()))
-		{
-			getNodeData(toS->id());
-		}
-		// uncompress only what we need
-		cv::Mat imgBuf, depthBuf, laserBuf, userBuf;
-		fromS->sensorData().uncompressData(
-				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
-				_registrationPipeline->isScanRequired()?&laserBuf:0,
-				_registrationPipeline->isUserDataRequired()?&userBuf:0);
-		toS->sensorData().uncompressData(
-				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-				(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
-				_registrationPipeline->isScanRequired()?&laserBuf:0,
-				_registrationPipeline->isUserDataRequired()?&userBuf:0);
-
-
-		// compute transform fromId -> toId
-		std::vector<int> inliersV;
-		if(_reextractLoopClosureFeatures || (fromS->getWords().size() && toS->getWords().size()))
-		{
-			Signature tmpFrom = *fromS;
-			Signature tmpTo = *toS;
-
-			// make a guess fast with known correspondences (if there are)
-			RegistrationVis regVis(parameters_);
-			if(tmpFrom.getWords().size() &&
-				tmpTo.getWords().size() &&
-				tmpFrom.getWords3().size() &&
-				tmpTo.getWords3().size())
-			{
-				UDEBUG("");
-				// Remove descriptors, this will avoid recomputation of the correspondences in regVis
-				tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-				tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
-				guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
-				// set back descriptors
-				tmpFrom.setWordsDescriptors(fromS->getWordsDescriptors());
-				tmpTo.setWordsDescriptors(toS->getWordsDescriptors());
-			}
-
-			if(_reextractLoopClosureFeatures)
-			{
-				UDEBUG("");
-				tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
-				tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
-				tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-				tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
-				tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
-				tmpTo.setWords3(std::multimap<int, cv::Point3f>());
-				tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
-				tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
-			}
-
-			if(guess.isNull())
-			{
-				if(!_registrationPipeline->isImageRequired())
-				{
-					UDEBUG("");
-					// no visual in the pipeline, make visual registration for guess
-					guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
-				}
-				else
-				{
-					UDEBUG("");
-					guess.setIdentity();
-				}
-			}
-
-			if(!guess.isNull())
-			{
-				UDEBUG("");
-				transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
-
-				if(!transform.isNull())
-				{
-					UDEBUG("");
-					// verify if it is a 180 degree transform, well verify > 90
-					float x,y,z, roll,pitch,yaw;
-					transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-					if(fabs(roll) > CV_PI/2 ||
-					   fabs(pitch) > CV_PI/2 ||
-					   fabs(yaw) > CV_PI/2)
-					{
-						transform.setNull();
-						std::string msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
-								roll, pitch, yaw);
-						UINFO(msg.c_str());
-						if(info)
-						{
-							info->rejectedMsg = msg;
-						}
-					}
-				}
-			}
-		}
+		return computeTransform(*fromS, *toS, guess, info);
 	}
 	else
 	{
@@ -2182,6 +2076,125 @@ Transform Memory::computeTransform(
 			info->rejectedMsg = msg;
 		}
 		UWARN(msg.c_str());
+	}
+	return transform;
+}
+
+// compute transform fromId -> toId
+Transform Memory::computeTransform(
+		Signature & fromS,
+		Signature & toS,
+		Transform guess,
+		RegistrationInfo * info) const
+{
+	Transform transform;
+
+	// make sure we have all data needed
+	// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
+	if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && fromS.sensorData().imageCompressed().empty()) ||
+	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().empty()) ||
+	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
+	{
+		fromS.sensorData() = getNodeData(fromS.id());
+	}
+	if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && toS.sensorData().imageCompressed().empty()) ||
+	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().empty()) ||
+	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
+	{
+		toS.sensorData() = getNodeData(toS.id());
+	}
+	// uncompress only what we need
+	cv::Mat imgBuf, depthBuf, laserBuf, userBuf;
+	fromS.sensorData().uncompressData(
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			_registrationPipeline->isScanRequired()?&laserBuf:0,
+			_registrationPipeline->isUserDataRequired()?&userBuf:0);
+	toS.sensorData().uncompressData(
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
+			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			_registrationPipeline->isScanRequired()?&laserBuf:0,
+			_registrationPipeline->isUserDataRequired()?&userBuf:0);
+
+
+	// compute transform fromId -> toId
+	std::vector<int> inliersV;
+	if(_reextractLoopClosureFeatures || (fromS.getWords().size() && toS.getWords().size()))
+	{
+		Signature tmpFrom = fromS;
+		Signature tmpTo = toS;
+
+		// make a guess fast with known correspondences (if there are)
+		RegistrationVis regVis(parameters_);
+		if(tmpFrom.getWords().size() &&
+			tmpTo.getWords().size() &&
+			tmpFrom.getWords3().size() &&
+			tmpTo.getWords3().size())
+		{
+			UDEBUG("");
+			// Remove descriptors, this will avoid recomputation of the correspondences in regVis
+			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+			// set back descriptors
+			tmpFrom.setWordsDescriptors(fromS.getWordsDescriptors());
+			tmpTo.setWordsDescriptors(toS.getWordsDescriptors());
+		}
+
+		if(_reextractLoopClosureFeatures)
+		{
+			UDEBUG("");
+			tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
+			tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
+			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
+			tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
+			tmpTo.setWords3(std::multimap<int, cv::Point3f>());
+			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
+		}
+
+		if(guess.isNull())
+		{
+			if(!_registrationPipeline->isImageRequired())
+			{
+				UDEBUG("");
+				// no visual in the pipeline, make visual registration for guess
+				guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+			}
+			else
+			{
+				UDEBUG("");
+				guess.setIdentity();
+			}
+		}
+
+		if(!guess.isNull())
+		{
+			UDEBUG("");
+			transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+
+			if(!transform.isNull())
+			{
+				UDEBUG("");
+				// verify if it is a 180 degree transform, well verify > 90
+				float x,y,z, roll,pitch,yaw;
+				transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+				if(fabs(roll) > CV_PI/2 ||
+				   fabs(pitch) > CV_PI/2 ||
+				   fabs(yaw) > CV_PI/2)
+				{
+					transform.setNull();
+					std::string msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
+							roll, pitch, yaw);
+					UINFO(msg.c_str());
+					if(info)
+					{
+						info->rejectedMsg = msg;
+					}
+				}
+			}
+		}
 	}
 	return transform;
 }
@@ -2868,45 +2881,24 @@ cv::Mat Memory::getImageCompressed(int signatureId) const
 	return image;
 }
 
-SensorData Memory::getNodeData(int nodeId, bool uncompressedData, bool keepLoadedDataInMemory)
+SensorData Memory::getNodeData(int nodeId, bool uncompressedData) const
 {
 	UDEBUG("nodeId=%d", nodeId);
 	SensorData r;
 	Signature * s = this->_getSignature(nodeId);
 	if(s && !s->sensorData().imageCompressed().empty())
 	{
-		if(keepLoadedDataInMemory && uncompressedData)
-		{
-			s->sensorData().uncompressData();
-		}
 		r = s->sensorData();
-		if(!keepLoadedDataInMemory && uncompressedData)
-		{
-			r.uncompressData();
-		}
 	}
 	else if(_dbDriver)
 	{
 		// load from database
-		if(s && keepLoadedDataInMemory)
-		{
-			std::list<Signature*> signatures;
-			signatures.push_back(s);
-			_dbDriver->loadNodeData(signatures);
-			if(uncompressedData)
-			{
-				s->sensorData().uncompressData();
-			}
-			r = s->sensorData();
-		}
-		else
-		{
-			_dbDriver->getNodeData(nodeId, r);
-			if(uncompressedData)
-			{
-				r.uncompressData();
-			}
-		}
+		_dbDriver->getNodeData(nodeId, r);
+	}
+
+	if(uncompressedData)
+	{
+		r.uncompressData();
 	}
 
 	return r;
@@ -2948,6 +2940,24 @@ void Memory::getNodeWords(int nodeId,
 				delete signatures.front();
 			}
 		}
+	}
+}
+
+void Memory::getNodeCalibration(int nodeId,
+		std::vector<CameraModel> & models,
+		StereoCameraModel & stereoModel)
+{
+	UDEBUG("nodeId=%d", nodeId);
+	Signature * s = this->_getSignature(nodeId);
+	if(s)
+	{
+		models = s->sensorData().cameraModels();
+		stereoModel = s->sensorData().stereoCameraModel();
+	}
+	else if(_dbDriver)
+	{
+		// load from database
+		_dbDriver->getCalibration(nodeId, models, stereoModel);
 	}
 }
 

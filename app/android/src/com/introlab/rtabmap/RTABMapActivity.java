@@ -509,13 +509,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  final String key,
 		  final String value)
   {
-	  Log.i(TAG, String.format("tangoEventCallback()"));
-
-	  runOnUiThread(new Runnable() {
-		    public void run() {
-		    	tangoEventUI(type, key, value);
-		    } 
-		});
+	  if(mItemPause != null && !mItemPause.isChecked())
+	  {
+		  runOnUiThread(new Runnable() {
+			    public void run() {
+			    	tangoEventUI(type, key, value);
+			    } 
+			});
+	  }
   }
   
   private boolean CheckTangoCoreVersion(int minVersion) {
@@ -574,6 +575,57 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  {
     		  RTABMapLib.setPausedMapping(true);
     		  ((TextView)findViewById(R.id.status)).setText("Paused");
+    		  
+    		  // Post-processing
+    		  new AlertDialog.Builder(getActivity())
+              .setTitle("Post-Processing")
+              .setMessage("Do you want to detect more loop closures and do a bundle adjustement? Otherwise, a simple global graph optimization is done.")
+              .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                  public void onClick(DialogInterface dialog, int which) {
+	                	dialog.dismiss();
+	                  	mProgressDialog.setTitle("Post-Processing");
+                	    mProgressDialog.setMessage(String.format("Please wait while optimizing..."));
+                	    mProgressDialog.show();
+                	    
+                	    Thread workingThread = new Thread(new Runnable() {
+						    public void run() {
+						    	final int loopDetected = RTABMapLib.postProcessing(false);
+						    	runOnUiThread(new Runnable() {
+						    		public void run() {
+										mProgressDialog.dismiss();
+										if(loopDetected > 0)
+										{
+											Toast.makeText(getActivity(), String.format("%d new loop closure(s) added.", loopDetected), Toast.LENGTH_SHORT).show();
+										}
+						    		}
+						    	});
+						    } 
+						});
+						workingThread.start();
+                  }
+              })
+              .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                  public void onClick(DialogInterface dialog, int which) {
+                      dialog.dismiss();
+                      mProgressDialog.setTitle("Post-Processing");
+              	      mProgressDialog.setMessage(String.format("Please wait while optimizing..."));
+              	      mProgressDialog.show();
+              	      
+						Thread workingThread = new Thread(new Runnable() {
+						    public void run() {
+						    	RTABMapLib.postProcessing(true);
+						    	runOnUiThread(new Runnable() {
+						    		public void run() {
+								    	mProgressDialog.dismiss();
+						    		}
+						    	});
+						    } 
+						});
+						workingThread.start();
+                  }
+              })
+              .show();
+    		  
     	  }
     	  else
     	  {

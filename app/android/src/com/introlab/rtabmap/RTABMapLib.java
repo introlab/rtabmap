@@ -59,6 +59,7 @@ public class RTABMapLib
     public static native void resetMapping();
     public static native void save();
     public static native boolean exportMesh(String filePath);
+    public static native int postProcessing(boolean graphOptimizationOnly);
     
     public static native String getStatus();
     public static native int getTotalNodes();

@@ -115,6 +115,7 @@ public:
 	const ParametersMap & getParameters() const {return _parameters;}
 	void setWorkingDirectory(std::string path);
 	void rejectLoopClosure(int oldId, int newId);
+	void setOptimizedPoses(const std::map<int, Transform> & poses);
 	void get3DMap(std::map<int, Signature> & signatures,
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & constraints,
@@ -125,6 +126,7 @@ public:
 			bool optimized,
 			bool global,
 			std::map<int, Signature> * signatures = 0);
+	int detectMoreLoopClosures(float clusterRadius = 0.5f, float clusterAngle = M_PI/6.0f, int iterations = 1);
 
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
 	void clearPath(int status); // -1=failed 0=idle/executing 1=success

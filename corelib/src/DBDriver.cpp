@@ -546,6 +546,31 @@ void DBDriver::getNodeData(
 	}
 }
 
+bool DBDriver::getCalibration(
+		int signatureId,
+		std::vector<CameraModel> & models,
+		StereoCameraModel & stereoModel) const
+{
+	bool found = false;
+	// look in the trash
+	_trashesMutex.lock();
+	if(uContains(_trashSignatures, signatureId))
+	{
+		models = _trashSignatures.at(signatureId)->sensorData().cameraModels();
+		stereoModel = _trashSignatures.at(signatureId)->sensorData().stereoCameraModel();
+		found = true;
+	}
+	_trashesMutex.unlock();
+
+	if(!found)
+	{
+		_dbSafeAccessMutex.lock();
+		found = this->getCalibrationQuery(signatureId, models, stereoModel);
+		_dbSafeAccessMutex.unlock();
+	}
+	return found;
+}
+
 bool DBDriver::getNodeInfo(
 		int signatureId,
 		Transform & pose,

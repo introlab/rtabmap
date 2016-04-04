@@ -128,6 +128,7 @@ class RTABMapApp : public UEventsHandler {
   void resetMapping();
   void save();
   bool exportMesh(const std::string & filePath);
+  int postProcessing(bool graphOptimizationOnly);
 
  protected:
   virtual void handleEvent(UEvent * event);
@@ -138,6 +139,7 @@ class RTABMapApp : public UEventsHandler {
  private:
   rtabmap::CameraTango * camera_;
   rtabmap::RtabmapThread * rtabmapThread_;
+  rtabmap::Rtabmap * rtabmap_;
   LogHandler * logHandler_;
 
   bool mapCloudShown_;

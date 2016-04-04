@@ -1009,6 +1009,158 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 	}
 }
 
+bool DBDriverSqlite3::getCalibrationQuery(
+		int signatureId,
+		std::vector<CameraModel> & models,
+		StereoCameraModel & stereoModel) const
+{
+	bool found = false;
+	if(_ppDb && signatureId)
+	{
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		if(uStrNumCmp(_version, "0.10.0") >= 0)
+		{
+			query << "SELECT calibration "
+				  << "FROM Data "
+				  << "WHERE id = " << signatureId
+				  <<";";
+		}
+		else if(uStrNumCmp(_version, "0.7.0") >= 0)
+		{
+			query << "SELECT local_transform, fx, fy, cx, cy "
+				  << "FROM Depth "
+				  << "WHERE id = " << signatureId
+				  <<";";
+		}
+		else
+		{
+			query << "SELECT local_transform, constant "
+				  << "FROM Depth "
+				  << "WHERE id = " << signatureId
+				  <<";";
+		}
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		const void * data = 0;
+		int dataSize = 0;
+		Transform localTransform;
+		StereoCameraModel stereoModel;
+		std::vector<CameraModel> models;
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			found = true;
+			int index = 0;
+
+			// calibration
+			if(uStrNumCmp(_version, "0.10.0") >= 0)
+			{
+				data = sqlite3_column_blob(ppStmt, index);
+				dataSize = sqlite3_column_bytes(ppStmt, index++);
+				// multi-cameras [fx,fy,cx,cy,[width,height],local_transform, ... ,fx,fy,cx,cy,[width,height],local_transform] (4or6+12)*float * numCameras
+				// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
+				if(dataSize > 0 && data)
+				{
+					float * dataFloat = (float*)data;
+					if((unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
+					{
+						int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
+						UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+						int max = cameraCount*(4+localTransform.size());
+						for(int i=0; i<max; i+=4+localTransform.size())
+						{
+							memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+							models.push_back(CameraModel(
+									(double)dataFloat[i],
+									(double)dataFloat[i+1],
+									(double)dataFloat[i+2],
+									(double)dataFloat[i+3],
+									localTransform));
+						}
+					}
+					else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
+					{
+						UDEBUG("Loading calibration of a stereo camera");
+						memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+						stereoModel = StereoCameraModel(
+								dataFloat[0],  // fx
+								dataFloat[1],  // fy
+								dataFloat[2],  // cx
+								dataFloat[3],  // cy
+								dataFloat[4], // baseline
+								localTransform);
+					}
+					else if((unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+					{
+						int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
+						UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+						int max = cameraCount*(6+localTransform.size());
+						for(int i=0; i<max; i+=6+localTransform.size())
+						{
+							memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+							models.push_back(CameraModel(
+									(double)dataFloat[i],
+									(double)dataFloat[i+1],
+									(double)dataFloat[i+2],
+									(double)dataFloat[i+3],
+									localTransform));
+							models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
+							UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
+									dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
+									localTransform.prettyPrint().c_str());
+						}
+					}
+					else
+					{
+						UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
+					}
+				}
+
+			}
+			else if(uStrNumCmp(_version, "0.7.0") >= 0)
+			{
+				double fx = sqlite3_column_double(ppStmt, index++);
+				double fyOrBaseline = sqlite3_column_double(ppStmt, index++);
+				double cx = sqlite3_column_double(ppStmt, index++);
+				double cy = sqlite3_column_double(ppStmt, index++);
+				if(fyOrBaseline < 1.0)
+				{
+					//it is a baseline
+					stereoModel = StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform);
+				}
+				else
+				{
+					models.push_back(CameraModel(fx, fyOrBaseline, cx, cy, localTransform));
+				}
+			}
+			else
+			{
+				float depthConstant = sqlite3_column_double(ppStmt, index++);
+				float fx = 1.0f/depthConstant;
+				float fy = 1.0f/depthConstant;
+				float cx = 0.0f;
+				float cy = 0.0f;
+				models.push_back(CameraModel(fx, fy, cx, cy, localTransform));
+			}
+
+			rc = sqlite3_step(ppStmt); // next result...
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return found;
+}
+
 bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		Transform & pose,
 		int & mapId,

@@ -44,6 +44,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/core/ParamEvent.h>
 #include <rtabmap/core/Compression.h>
+#include <rtabmap/core/Optimizer.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
@@ -68,13 +69,14 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), std::string("64")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), uBool2Str(!trajectoryMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("false")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), uNumber2Str(graphOptimization_?rtabmap::Parameters::defaultOptimizerIterations():0)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), uBool2Str(!localizationMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), uBool2Str(!localizationMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxDepth(), std::string("10"))); // to avoid extracting features in invalid depth (as we compute transformation directly from the words)
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeFromGraphEnd(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), std::string("15")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), std::string("0"))); // PnP
 
 	return parameters;
 }
@@ -82,6 +84,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 RTABMapApp::RTABMapApp() :
 		camera_(0),
 		rtabmapThread_(0),
+		rtabmap_(0),
 		logHandler_(0),
 		mapCloudShown_(true),
 		odomCloudShown_(true),
@@ -138,6 +141,7 @@ int RTABMapApp::TangoInitialize(JNIEnv* env, jobject caller_activity)
 		rtabmapThread_->close(false);
 	    delete rtabmapThread_;
 	    rtabmapThread_ = 0;
+	    rtabmap_ = 0;
 	}
 
 	if(logHandler_ == 0)
@@ -168,25 +172,41 @@ void RTABMapApp::openDatabase(const std::string & databasePath)
 		rtabmapThread_->close(false);
 		delete rtabmapThread_;
 		rtabmapThread_ = 0;
+		rtabmap_ = 0;
 	}
 
 	//Rtabmap
-	rtabmap::Rtabmap * rtabmap = new rtabmap::Rtabmap();
+	rtabmap_ = new rtabmap::Rtabmap();
 	rtabmap::ParametersMap parameters = getRtabmapParameters();
 
-	rtabmap->init(parameters, databasePath);
-	rtabmapThread_ = new rtabmap::RtabmapThread(rtabmap);
+	rtabmap_->init(parameters, databasePath);
+	rtabmapThread_ = new rtabmap::RtabmapThread(rtabmap_);
 
 	// Generate all meshes
 	std::map<int, rtabmap::Signature> signatures;
 	std::map<int, rtabmap::Transform> poses;
 	std::multimap<int, rtabmap::Link> links;
-	rtabmap->get3DMap(
+	rtabmap_->get3DMap(
 			signatures,
 			poses,
 			links,
 			true,
 			true);
+
+	if(poses.size() > 1 &&
+		rtabmap::Optimizer::isAvailable(rtabmap::Optimizer::kTypeG2O))
+	{
+		rtabmap::ParametersMap param;
+		param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "10"));
+		rtabmap::Optimizer * sba = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeG2O, param);
+		poses = sba->optimizeBA(poses.rbegin()->first, poses, links, signatures);
+		delete sba;
+
+		if(poses.size())
+		{
+			rtabmap_->setOptimizedPoses(poses);
+		}
+	}
 
 	clearSceneOnNextRender_ = true;
 	rtabmap::Statistics stats;
@@ -791,6 +811,48 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 		}
 	}
 	return success;
+}
+
+int RTABMapApp::postProcessing(bool graphOptimizationOnly)
+{
+	int detectedLoopClosures = 0;
+	if(rtabmap_)
+	{
+		std::map<int, rtabmap::Transform> poses;
+		std::multimap<int, rtabmap::Link> links;
+		if(graphOptimizationOnly)
+		{
+			rtabmap_->getGraph(poses, links, true, true);
+		}
+		else
+		{
+			detectedLoopClosures = rtabmap_->detectMoreLoopClosures();
+
+			std::map<int, rtabmap::Signature> signatures;
+			rtabmap_->getGraph(poses, links, false, true, &signatures);
+
+			if(rtabmap::Optimizer::isAvailable(rtabmap::Optimizer::kTypeG2O))
+			{
+				rtabmap::ParametersMap param;
+				param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "10"));
+				rtabmap::Optimizer * sba = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeG2O, param);
+				poses = sba->optimizeBA(poses.rbegin()->first, poses, links, signatures);
+				delete sba;
+			}
+		}
+
+		if(poses.size())
+		{
+			boost::mutex::scoped_lock  lock(rtabmapMutex_);
+			rtabmap::Statistics stats;
+			stats.setPoses(poses);
+			stats.setConstraints(links);
+			rtabmapEvents_.push_back(stats);
+
+			rtabmap_->setOptimizedPoses(poses);
+		}
+	}
+	return detectedLoopClosures;
 }
 
 void RTABMapApp::handleEvent(UEvent * event)

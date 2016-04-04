@@ -147,11 +147,14 @@ public:
 			Transform & groundTruth,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	SensorData getNodeData(int nodeId, bool uncompressedData = false, bool keepLoadedDataInMemory = true);
+	SensorData getNodeData(int nodeId, bool uncompressedData = false) const;
 	void getNodeWords(int nodeId,
 			std::multimap<int, cv::KeyPoint> & words,
 			std::multimap<int, cv::Point3f> & words3,
 			std::multimap<int, cv::Mat> & wordsDescriptors);
+	void getNodeCalibration(int nodeId,
+			std::vector<CameraModel> & models,
+			StereoCameraModel & stereoModel);
 	SensorData getSignatureDataConst(int locationId) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
@@ -182,6 +185,7 @@ public:
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
 
+	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0) const;
 	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransformMulti(

@@ -752,7 +752,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		UASSERT(optimizer.verifyInformationMatrices());
 
-		UINFO("g2o optimizing begin (max iterations=%d, robustKernel=%d)", iterations(), robustKernel?1:0);
+		UINFO("g2o optimizing begin (max iterations=%d, epsilon=%f robustKernel=%d)", iterations(), this->epsilon(), robustKernel?1:0);
 
 		int it = 0;
 		UTimer timer;

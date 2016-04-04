@@ -1639,27 +1639,29 @@ bool Rtabmap::process(
 			++iter)
 		{
 			const Signature * s = _memory->getSignature(iter->second);
-			UASSERT(s!=0);
-			// If there is a change of direction, better to be retrieving
-			// ALL nearest signatures than only newest neighbors
-			const std::map<int, Link> & links = s->getLinks();
-			for(std::map<int, Link>::const_reverse_iterator jter=links.rbegin();
-				jter!=links.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
-				++jter)
+			if(s!=0)
 			{
-				if(_memory->getSignature(jter->first) == 0)
+				// If there is a change of direction, better to be retrieving
+				// ALL nearest signatures than only newest neighbors
+				const std::map<int, Link> & links = s->getLinks();
+				for(std::map<int, Link>::const_reverse_iterator jter=links.rbegin();
+					jter!=links.rend() && retrievalLocalIds.size() < _maxLocalRetrieved;
+					++jter)
 				{
-					UINFO("retrieval of node %d on local map", jter->first);
-					retrievalLocalIds.push_back(jter->first);
+					if(_memory->getSignature(jter->first) == 0)
+					{
+						UINFO("retrieval of node %d on local map", jter->first);
+						retrievalLocalIds.push_back(jter->first);
+					}
 				}
-			}
-			if(!_memory->isInSTM(s->id()) && immunizedLocally < maxLocalLocationsImmunized)
-			{
-				if(immunizedLocations.insert(s->id()).second)
+				if(!_memory->isInSTM(s->id()) && immunizedLocally < maxLocalLocationsImmunized)
 				{
-					++immunizedLocally;
+					if(immunizedLocations.insert(s->id()).second)
+					{
+						++immunizedLocally;
+					}
+					UDEBUG("local node %d (%f m) immunized=1", iter->second, iter->first);
 				}
-				UDEBUG("local node %d (%f m) immunized=1", iter->second, iter->first);
 			}
 		}
 		// well, if the maximum retrieved is not reached, look for neighbors in database
@@ -2685,6 +2687,11 @@ void Rtabmap::rejectLoopClosure(int oldId, int newId)
 	}
 }
 
+void Rtabmap::setOptimizedPoses(const std::map<int, Transform> & poses)
+{
+	_optimizedPoses = poses;
+}
+
 void Rtabmap::dumpData() const
 {
 	UDEBUG("");
@@ -3236,6 +3243,20 @@ void Rtabmap::getGraph(
 							label,
 							odomPose,
 							groundTruth)));
+
+				std::multimap<int, cv::KeyPoint> words;
+				std::multimap<int, cv::Point3f> words3;
+				std::multimap<int, cv::Mat> wordsDescriptors;
+				_memory->getNodeWords(iter->first, words, words3, wordsDescriptors);
+				signatures->at(iter->first).setWords(words);
+				signatures->at(iter->first).setWords3(words3);
+				signatures->at(iter->first).setWordsDescriptors(wordsDescriptors);
+
+				std::vector<CameraModel> models;
+				StereoCameraModel stereoModel;
+				_memory->getNodeCalibration(iter->first, models, stereoModel);
+				signatures->at(iter->first).sensorData().setCameraModels(models);
+				signatures->at(iter->first).sensorData().setStereoCameraModel(stereoModel);
 			}
 		}
 	}
@@ -3247,6 +3268,119 @@ void Rtabmap::getGraph(
 	{
 		UWARN("Memory not initialized...");
 	}
+}
+
+int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int iterations)
+{
+	UASSERT(iterations>0);
+
+	if(_graphOptimizer->iterations() <= 0)
+	{
+		UERROR("Cannot detect more loop closures if graph optimization iterations = 0");
+		return 0;
+	}
+	if(!_rgbdSlamMode)
+	{
+		UERROR("Detecting more loop closures can be done only in RGBD-SLAM mode.");
+		return 0;
+	}
+
+	std::list<Link> loopClosuresAdded;
+	std::multimap<int, int> checkedLoopClosures;
+
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> links;
+	this->getGraph(poses, links, true, true);
+
+	for(int n=0; n<iterations; ++n)
+	{
+		UINFO("Looking for more loop closures, clustering poses... (iteration=%d/%d, radius=%f m angle=%f rad)",
+				n+1, iterations, clusterRadius, clusterAngle);
+
+		std::multimap<int, int> clusters = graph::radiusPosesClustering(
+				poses,
+				clusterRadius,
+				clusterAngle);
+
+		UINFO("Looking for more loop closures, clustering poses... found %d clusters.", (int)clusters.size());
+
+		int i=0;
+		std::set<int> addedLinks;
+		for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter, ++i)
+		{
+			int from = iter->first;
+			int to = iter->second;
+			if(iter->first < iter->second)
+			{
+				from = iter->second;
+				to = iter->first;
+			}
+
+			bool alreadyChecked = false;
+			for(std::multimap<int, int>::iterator jter = checkedLoopClosures.lower_bound(from);
+				!alreadyChecked && jter!=checkedLoopClosures.end() && jter->first == from;
+				++jter)
+			{
+				if(to == jter->second)
+				{
+					alreadyChecked = true;
+				}
+			}
+
+			if(!alreadyChecked)
+			{
+				// only add new links and one per cluster per iteration
+				if(addedLinks.find(from) == addedLinks.end() &&
+				   rtabmap::graph::findLink(links, from, to) == links.end())
+				{
+					checkedLoopClosures.insert(std::make_pair(from, to));
+
+					RegistrationInfo info;
+					Transform t = _memory->computeTransform(from, to, Transform(), &info);
+
+					if(!t.isNull())
+					{
+						UINFO("Added new loop closure between %d and %d.", from, to);
+						addedLinks.insert(from);
+						addedLinks.insert(to);
+						links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.variance, info.variance)));
+						loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, info.variance, info.variance));
+						UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
+					}
+				}
+			}
+		}
+		UINFO("Iteration %d/%d: Detected %d loop closures!", n+1, iterations, (int)addedLinks.size()/2);
+		if(addedLinks.size() == 0)
+		{
+			break;
+		}
+
+		if(n+1 < iterations)
+		{
+			UINFO("Optimizing graph with new links (%d nodes, %d constraints)...",
+					(int)poses.size(), (int)links.size());
+			int fromId = _optimizeFromGraphEnd?poses.rbegin()->first:poses.begin()->first;
+			poses = _graphOptimizer->optimize(fromId, poses, links, 0);
+			if(poses.size() == 0)
+			{
+				UERROR("Optimization failed! Rejecting all loop closures...");
+				loopClosuresAdded.clear();
+				break;
+			}
+			UINFO("Optimizing graph with new links... done!");
+		}
+	}
+	UINFO("Total added %d loop closures.", (int)loopClosuresAdded.size());
+
+	if(loopClosuresAdded.size())
+	{
+		for(std::list<Link>::iterator iter=loopClosuresAdded.begin(); iter!=loopClosuresAdded.end(); ++iter)
+		{
+			_memory->addLink(*iter);
+		}
+	}
+	return (int)loopClosuresAdded.size();
 }
 
 void Rtabmap::clearPath(int status)

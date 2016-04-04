@@ -379,7 +379,6 @@ void CameraTango::poseReceived(const Transform & pose)
 
 void CameraTango::tangoEventReceived(int type, const char * key, const char * value)
 {
-	LOGE("Tango event: %s:%s", key, value);
 	this->post(new CameraTangoEvent(type, key, value));
 }
 
