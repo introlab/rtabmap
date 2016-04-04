@@ -3290,7 +3290,8 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 
 	std::map<int, Transform> poses;
 	std::multimap<int, Link> links;
-	this->getGraph(poses, links, true, true);
+	std::map<int, Signature> signatures;
+	this->getGraph(poses, links, true, true, &signatures);
 
 	for(int n=0; n<iterations; ++n)
 	{
@@ -3335,8 +3336,12 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 				{
 					checkedLoopClosures.insert(std::make_pair(from, to));
 
+					UASSERT(signatures.find(from) != signatures.end());
+					UASSERT(signatures.find(to) != signatures.end());
+
 					RegistrationInfo info;
-					Transform t = _memory->computeTransform(from, to, Transform(), &info);
+					// use signatures instead of IDs because some signatures may not be in WM
+					Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), Transform(), &info);
 
 					if(!t.isNull())
 					{
