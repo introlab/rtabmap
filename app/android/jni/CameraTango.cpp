@@ -129,8 +129,7 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 
 	// Set auto-recovery for motion tracking as requested by the user.
 	bool is_atuo_recovery = true;
-	int ret = TangoConfig_setBool(tango_config_, "config_enable_auto_recovery",
-	is_atuo_recovery);
+	int ret = TangoConfig_setBool(tango_config_, "config_enable_auto_recovery", is_atuo_recovery);
 	if (ret != TANGO_SUCCESS)
 	{
 		LOGE("NativeRTABMap: config_enable_auto_recovery() failed with error code: %d", ret);
@@ -161,6 +160,12 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 			return false;
 		}
 	}
+	bool verifyAutoExposureState;
+	int32_t verifyIso, verifyExp;
+	TangoConfig_getBool( tango_config_, "config_color_mode_auto", &verifyAutoExposureState );
+	TangoConfig_getInt32( tango_config_, "config_color_iso", &verifyIso );
+	TangoConfig_getInt32( tango_config_, "config_color_exp", &verifyExp );
+	LOGI( "NativeRTABMap: config_color autoExposure=%s %d %d", verifyAutoExposureState?"On" : "Off", verifyIso, verifyExp );
 
 	// Enable depth.
 	ret = TangoConfig_setBool(tango_config_, "config_enable_depth", true);
@@ -177,15 +182,13 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	ret = TangoConfig_setBool(tango_config_, "config_enable_low_latency_imu_integration", true);
 	if (ret != TANGO_SUCCESS)
 	{
-		LOGE("Failed to enable low latency imu integration.");
+		LOGE("NativeRTABMap: Failed to enable low latency imu integration.");
 		return false;
 	}
 
 	// Get TangoCore version string from service.
 	char tango_core_version[kVersionStringLength];
-	ret = TangoConfig_getString(
-	tango_config_, "tango_service_library_version",
-	tango_core_version, kVersionStringLength);
+	ret = TangoConfig_getString(tango_config_, "tango_service_library_version", tango_core_version, kVersionStringLength);
 	if (ret != TANGO_SUCCESS)
 	{
 		LOGE("NativeRTABMap: get tango core version failed with error code: %d", ret);
@@ -201,14 +204,14 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	ret = TangoService_connectOnXYZijAvailable(onPointCloudAvailableRouter);
 	if (ret != TANGO_SUCCESS)
 	{
-		LOGE("PointCloudApp: Failed to connect to point cloud callback with error code: %d", ret);
+		LOGE("NativeRTABMap: Failed to connect to point cloud callback with error code: %d", ret);
 		return false;
 	}
 
 	ret = TangoService_connectOnFrameAvailable(TANGO_CAMERA_COLOR, this, onFrameAvailableRouter);
 	if (ret != TANGO_SUCCESS)
 	{
-		LOGE("PointCloudApp: Failed to connect to color callback with error code: %d", ret);
+		LOGE("NativeRTABMap: Failed to connect to color callback with error code: %d", ret);
 		return false;
 	}
 
@@ -220,7 +223,7 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	ret = TangoService_connectOnPoseAvailable(1, &pair, onPoseAvailableRouter);
 	if (ret != TANGO_SUCCESS)
 	{
-		LOGE("PointCloudApp: Failed to connect to pose callback with error code: %d", ret);
+		LOGE("NativeRTABMap: Failed to connect to pose callback with error code: %d", ret);
 		return false;
 	}
 
@@ -238,78 +241,78 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	ret = TangoService_connect(this, tango_config_);
 	if (ret != TANGO_SUCCESS)
 	{
-		LOGE("PointCloudApp: Failed to connect to the Tango service with error code: %d", ret);
+		LOGE("NativeRTABMap: Failed to connect to the Tango service with error code: %d", ret);
 		return false;
 	}
 
 	// update extrinsics
-		LOGI("NativeRTABMap: Update extrinsics");
-		TangoPoseData pose_data;
-		TangoCoordinateFramePair frame_pair;
+	LOGI("NativeRTABMap: Update extrinsics");
+	TangoPoseData pose_data;
+	TangoCoordinateFramePair frame_pair;
 
-		// TangoService_getPoseAtTime function is used for query device extrinsics
-		// as well. We use timestamp 0.0 and the target frame pair to get the
-		// extrinsics from the sensors.
-		//
-		// Get device with respect to imu transformation matrix.
-		frame_pair.base = TANGO_COORDINATE_FRAME_IMU;
-		frame_pair.target = TANGO_COORDINATE_FRAME_DEVICE;
-		ret = TangoService_getPoseAtTime(0.0, frame_pair, &pose_data);
-		if (ret != TANGO_SUCCESS)
-		{
-			LOGE("PointCloudApp: Failed to get transform between the IMU frame and device frames");
-			return false;
-		}
-		imuTDevice_ = rtabmap::Transform(
-				pose_data.translation[0],
-				pose_data.translation[1],
-				pose_data.translation[2],
-				pose_data.orientation[0],
-				pose_data.orientation[1],
-				pose_data.orientation[2],
-				pose_data.orientation[3]);
+	// TangoService_getPoseAtTime function is used for query device extrinsics
+	// as well. We use timestamp 0.0 and the target frame pair to get the
+	// extrinsics from the sensors.
+	//
+	// Get device with respect to imu transformation matrix.
+	frame_pair.base = TANGO_COORDINATE_FRAME_IMU;
+	frame_pair.target = TANGO_COORDINATE_FRAME_DEVICE;
+	ret = TangoService_getPoseAtTime(0.0, frame_pair, &pose_data);
+	if (ret != TANGO_SUCCESS)
+	{
+		LOGE("NativeRTABMap: Failed to get transform between the IMU frame and device frames");
+		return false;
+	}
+	imuTDevice_ = rtabmap::Transform(
+			pose_data.translation[0],
+			pose_data.translation[1],
+			pose_data.translation[2],
+			pose_data.orientation[0],
+			pose_data.orientation[1],
+			pose_data.orientation[2],
+			pose_data.orientation[3]);
 
-		// Get color camera with respect to imu transformation matrix.
-		frame_pair.base = TANGO_COORDINATE_FRAME_IMU;
-		frame_pair.target = TANGO_COORDINATE_FRAME_CAMERA_DEPTH;
-		ret = TangoService_getPoseAtTime(0.0, frame_pair, &pose_data);
-		if (ret != TANGO_SUCCESS)
-		{
-			LOGE("PointCloudApp: Failed to get transform between the color camera frame and device frames");
-			return false;
-		}
-		imuTDepthCamera_ = rtabmap::Transform(
-				pose_data.translation[0],
-				pose_data.translation[1],
-				pose_data.translation[2],
-				pose_data.orientation[0],
-				pose_data.orientation[1],
-				pose_data.orientation[2],
-				pose_data.orientation[3]);
+	// Get color camera with respect to imu transformation matrix.
+	frame_pair.base = TANGO_COORDINATE_FRAME_IMU;
+	frame_pair.target = TANGO_COORDINATE_FRAME_CAMERA_DEPTH;
+	ret = TangoService_getPoseAtTime(0.0, frame_pair, &pose_data);
+	if (ret != TANGO_SUCCESS)
+	{
+		LOGE("NativeRTABMap: Failed to get transform between the color camera frame and device frames");
+		return false;
+	}
+	imuTDepthCamera_ = rtabmap::Transform(
+			pose_data.translation[0],
+			pose_data.translation[1],
+			pose_data.translation[2],
+			pose_data.orientation[0],
+			pose_data.orientation[1],
+			pose_data.orientation[2],
+			pose_data.orientation[3]);
 
-		deviceTDepth_ = imuTDevice_.inverse() * imuTDepthCamera_;
+	deviceTDepth_ = imuTDevice_.inverse() * imuTDepthCamera_;
 
-		// camera intrinsic
-		TangoCameraIntrinsics color_camera_intrinsics;
-		ret = TangoService_getCameraIntrinsics(TANGO_CAMERA_COLOR, &color_camera_intrinsics);
-		if (ret != TANGO_SUCCESS)
-		{
-			LOGE("SynchronizationApplication: Failed to get the intrinsics for the color camera with error code: %d.", ret);
-			return false;
-		}
-		model_ = CameraModel(
-				color_camera_intrinsics.fx,
-				color_camera_intrinsics.fy,
-				color_camera_intrinsics.cx,
-				color_camera_intrinsics.cy,
-				this->getLocalTransform());
-		model_.setImageSize(cv::Size(color_camera_intrinsics.width, color_camera_intrinsics.height));
+	// camera intrinsic
+	TangoCameraIntrinsics color_camera_intrinsics;
+	ret = TangoService_getCameraIntrinsics(TANGO_CAMERA_COLOR, &color_camera_intrinsics);
+	if (ret != TANGO_SUCCESS)
+	{
+		LOGE("NativeRTABMap: Failed to get the intrinsics for the color camera with error code: %d.", ret);
+		return false;
+	}
+	model_ = CameraModel(
+			color_camera_intrinsics.fx,
+			color_camera_intrinsics.fy,
+			color_camera_intrinsics.cx,
+			color_camera_intrinsics.cy,
+			this->getLocalTransform());
+	model_.setImageSize(cv::Size(color_camera_intrinsics.width, color_camera_intrinsics.height));
 
-		// optical rotation
-		model_.setLocalTransform(Transform(
-				0.0f, 0.0f, 1.0f, 0.0f,
-				-1.0f, 0.0f, 0.0f, 0.0f,
-				0.0f, -1.0f, 0.0f, 0.0f));
+	// optical rotation
+	model_.setLocalTransform(Transform(
+			0.0f, 0.0f, 1.0f, 0.0f,
+			-1.0f, 0.0f, 0.0f, 0.0f,
+			0.0f, -1.0f, 0.0f, 0.0f));
 
 	return true;
 }
