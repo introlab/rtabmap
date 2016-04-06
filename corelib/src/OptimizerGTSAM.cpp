@@ -262,7 +262,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 			catch(gtsam::IndeterminantLinearSystemException & e)
 			{
-				UERROR("GTSAM exception catched: %s", e.what());
+				UERROR("GTSAM exception caught: %s", e.what());
 				return optimizedPoses;
 			}
 

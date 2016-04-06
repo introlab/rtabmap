@@ -346,6 +346,7 @@ class RTABMAP_EXP Parameters
 
 	RTABMAP_PARAM(g2o, Solver,                  int, 0,          "0=csparse 1=pcg 2=cholmod");
 	RTABMAP_PARAM(g2o, Optimizer,               int, 0,          "0=Levenberg 1=GaussNewton");
+	RTABMAP_PARAM(g2o, PixelVariance,           double, 1.0,     "Pixel variance used for SBA.");
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F)");

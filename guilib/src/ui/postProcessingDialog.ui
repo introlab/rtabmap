@@ -187,7 +187,7 @@
            <number>1</number>
           </property>
           <property name="maximum">
-           <number>1000</number>
+           <number>999999</number>
           </property>
           <property name="value">
            <number>100</number>
@@ -217,7 +217,7 @@
            <number>4</number>
           </property>
           <property name="minimum">
-           <double>0.000100000000000</double>
+           <double>0.000000000000000</double>
           </property>
           <property name="maximum">
            <double>1.000000000000000</double>
@@ -257,6 +257,38 @@
           </property>
           <property name="wordWrap">
            <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLabel" name="label_variance">
+          <property name="text">
+           <string>Pixel variance used by g2o.</string>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QDoubleSpinBox" name="sba_variance">
+          <property name="suffix">
+           <string/>
+          </property>
+          <property name="decimals">
+           <number>4</number>
+          </property>
+          <property name="minimum">
+           <double>0.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>10.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
           </property>
          </widget>
         </item>

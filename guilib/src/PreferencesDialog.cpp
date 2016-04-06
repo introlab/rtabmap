@@ -658,6 +658,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
 	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());
+	_ui->doubleSpinBox_g2o_variance->setObjectName(Parameters::kg2oPixelVariance().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());

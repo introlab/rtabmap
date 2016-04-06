@@ -77,6 +77,7 @@ public:
 private:
 	int solver_;
 	int optimizer_;
+	double pixelVariance_;
 };
 
 } /* namespace rtabmap */

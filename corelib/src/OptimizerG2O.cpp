@@ -112,6 +112,8 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kg2oSolver(), solver_);
 	Parameters::parse(parameters, Parameters::kg2oOptimizer(), optimizer_);
+	Parameters::parse(parameters, Parameters::kg2oPixelVariance(), pixelVariance_);
+	UASSERT(pixelVariance_ > 0.0);
 
 #ifndef G2O_HAVE_CHOLMOD
 	if(solver_ == 2)
@@ -738,7 +740,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				e->setVertex(0, vpt3d);
 				e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(camId)));
 				e->setMeasurement(obs);
-				e->setInformation(Eigen::Matrix2d::Identity());
+				e->setInformation(Eigen::Matrix2d::Identity() / pixelVariance_);
 
 				if(robustKernel)
 				{
@@ -772,7 +774,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 				if(i>0 && (optimizer.activeRobustChi2() > 1000000000000.0 || !uIsFinite(optimizer.activeRobustChi2())))
 				{
-					UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+					UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
 					return optimizedPoses;
 				}
 

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1161</y>
+            <y>0</y>
             <width>681</width>
-            <height>2010</height>
+            <height>2044</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>12</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -7057,6 +7057,35 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         <widget class="QLabel" name="label_138">
                          <property name="text">
                           <string>Optimization algorithm.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_variance">
+                         <property name="enabled">
+                          <bool>false</bool>
+                         </property>
+                         <property name="decimals">
+                          <number>4</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000100000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>10.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_148">
+                         <property name="enabled">
+                          <bool>false</bool>
+                         </property>
+                         <property name="text">
+                          <string>Pixel variance for SBA.</string>
                          </property>
                         </widget>
                        </item>

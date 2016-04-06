@@ -60,6 +60,7 @@ public:
 	bool isSBA() const;
 	int sbaIterations() const;
 	double sbaEpsilon() const;
+	double sbaVariance() const;
 	Optimizer::Type sbaType() const;
 
 	//setters
@@ -72,6 +73,7 @@ public:
 	void setSBA(bool on);
 	void setSBAIterations(int iterations);
 	void setSBAEpsilon(double epsilon);
+	void setSBAVariance(double variance);
 	void setSBAType(Optimizer::Type type);
 
 signals:
@@ -81,6 +83,7 @@ public slots:
 	void restoreDefaults();
 
 private slots:
+	void updateVisibility();
 	void updateButtonBox();
 
 

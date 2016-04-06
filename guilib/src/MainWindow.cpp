@@ -3887,6 +3887,7 @@ void MainWindow::postProcessing()
 	bool sba = _postProcessingDialog->isSBA();
 	int sbaIterations = _postProcessingDialog->sbaIterations();
 	double sbaEpsilon = _postProcessingDialog->sbaEpsilon();
+	double sbaVariance = _postProcessingDialog->sbaVariance();
 	Optimizer::Type sbaType = _postProcessingDialog->sbaType();
 
 	if(!detectMoreLoopClosures && !refineNeighborLinks && !refineLoopClosureLinks && !sba)
@@ -4186,6 +4187,7 @@ void MainWindow::postProcessing()
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerEpsilon(), uNumber2Str(sbaEpsilon)));
+		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
 		Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
 		std::map<int, Transform>  newPoses = sba->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap());
 		delete sba;

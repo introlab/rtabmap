@@ -74,11 +74,20 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 	connect(_ui->sba_iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->sba_epsilon, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateVisibility()));
+
+	updateVisibility();
 }
 
 PostProcessingDialog::~PostProcessingDialog()
 {
 	delete _ui;
+}
+
+void PostProcessingDialog::updateVisibility()
+{
+	_ui->sba_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
+	_ui->label_variance->setVisible(_ui->comboBox_sbaType->currentIndex() == 0);
 }
 
 void PostProcessingDialog::saveSettings(QSettings & settings, const QString & group) const
@@ -97,6 +106,7 @@ void PostProcessingDialog::saveSettings(QSettings & settings, const QString & gr
 	settings.setValue("sba_iterations", this->sbaIterations());
 	settings.setValue("sba_epsilon", this->sbaEpsilon());
 	settings.setValue("sba_type", this->sbaType());
+	settings.setValue("sba_variance", this->sbaVariance());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -119,6 +129,7 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 	this->setSBAIterations(settings.value("sba_iterations", this->sbaIterations()).toInt());
 	this->setSBAEpsilon(settings.value("sba_epsilon", this->sbaEpsilon()).toDouble());
 	this->setSBAType((Optimizer::Type)settings.value("sba_type", this->sbaType()).toInt());
+	this->setSBAVariance(settings.value("sba_variance", this->sbaVariance()).toDouble());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -135,8 +146,9 @@ void PostProcessingDialog::restoreDefaults()
 	setRefineLoopClosureLinks(false);
 	setSBA(false);
 	setSBAIterations(20);
-	setSBAEpsilon(0.0001);
+	setSBAEpsilon(0.0);
 	setSBAType(!Optimizer::isAvailable(Optimizer::kTypeG2O)&&Optimizer::isAvailable(Optimizer::kTypeCVSBA)?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O);
+	setSBAVariance(1.0);
 }
 
 void PostProcessingDialog::updateButtonBox()
@@ -188,6 +200,10 @@ double PostProcessingDialog::sbaEpsilon() const
 {
 	return _ui->sba_epsilon->value();
 }
+double PostProcessingDialog::sbaVariance() const
+{
+	return _ui->sba_variance->value();
+}
 Optimizer::Type PostProcessingDialog::sbaType() const
 {
 	return _ui->comboBox_sbaType->currentIndex()==0?Optimizer::kTypeG2O:Optimizer::kTypeCVSBA;
@@ -229,6 +245,10 @@ void PostProcessingDialog::setSBAIterations(int iterations)
 void PostProcessingDialog::setSBAEpsilon(double epsilon)
 {
 	_ui->sba_epsilon->setValue(epsilon);
+}
+void PostProcessingDialog::setSBAVariance(double variance)
+{
+	_ui->sba_variance->setValue(variance);
 }
 void PostProcessingDialog::setSBAType(Optimizer::Type type)
 {
