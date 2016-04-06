@@ -855,6 +855,7 @@ int RTABMapApp::postProcessing(int approach)
 
 				rtabmap::ParametersMap param;
 				param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "30"));
+                param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0"));
 				rtabmap::Optimizer * sba = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeG2O, param);
 				poses = sba->optimizeBA(poses.rbegin()->first, poses, links, signatures);
 				delete sba;

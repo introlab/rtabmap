@@ -50,7 +50,8 @@ public:
 	OptimizerG2O(const ParametersMap & parameters = ParametersMap()) :
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
-		optimizer_(Parameters::defaultg2oOptimizer())
+		optimizer_(Parameters::defaultg2oOptimizer()),
+        pixelVariance_(Parameters::defaultg2oPixelVariance())
 	{
 		parseParameters(parameters);
 	}
