@@ -35,6 +35,7 @@
             <item android:id="@+id/map_shown" android:checked="true" android:title="Map Visible" />
             <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
             <item android:id="@+id/graph_visible" android:checked="true" android:title="Graph Visible" />
+            <item android:id="@+id/auto_exposure" android:checked="false" android:title="Auto Exposure" />
             <item android:id="@+id/max_depth" android:checkable="false" android:title="Cloud/Mesh Max Depth..." />
             <item android:id="@+id/mesh_angle_tolerance" android:checkable="false" android:title="Mesh Angle Tolerance..." />
             <item android:id="@+id/mesh_triangle_size" android:checkable="false" android:title="Mesh Triangle Size..." />
@@ -46,7 +47,6 @@
 	       <group android:id="@+id/group_mapping_visibility" android:checkableBehavior="all">
 	           <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
 	           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
-	           <item android:id="@+id/auto_exposure" android:checked="false" android:title="Auto Exposure" />
 	           <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
 	           <item android:id="@+id/update_rate" android:checkable="false" android:title="Map Update Rate..." />
 	           <item android:id="@+id/time_threshold" android:checkable="false" android:title="Time Threshold..." />

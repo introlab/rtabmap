@@ -90,6 +90,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   
   private int mTotalLoopClosures = 0;
   
+  private Toast mToast = null;
+  
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -109,6 +111,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     findViewById(R.id.first_person_button).setOnClickListener(this);
     findViewById(R.id.third_person_button).setOnClickListener(this);
     findViewById(R.id.top_down_button).setOnClickListener(this);
+    
+    mToast = Toast.makeText(getApplicationContext(), "", Toast.LENGTH_SHORT);
 
     // OpenGL view where all of the graphics are drawn.
     mGLView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
@@ -128,7 +132,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
     // Check if the Tango Core is out dated.
     if (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION)) {
-      Toast.makeText(this, "Tango Core out dated, please update in Play Store", Toast.LENGTH_LONG).show();
+      mToast.makeText(this, "Tango Core out dated, please update in Play Store", mToast.LENGTH_LONG).show();
       finish();
       return;
     }   
@@ -156,9 +160,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     else
     {
     	// show warning that data cannot be saved!
-		Toast.makeText(getApplicationContext(), 
+		mToast.makeText(getApplicationContext(), 
 				String.format("Failed to get external storage path (SD-CARD, state=%s). Saving disabled.", 
-						Environment.getExternalStorageState()), Toast.LENGTH_LONG).show();
+						Environment.getExternalStorageState()), mToast.LENGTH_LONG).show();
     }
     
     RTABMapLib.initialize(this);
@@ -171,8 +175,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   	if (requestCode == Tango.TANGO_INTENT_ACTIVITYCODE) {
   		// Make sure the request was successful
   		if (resultCode == RESULT_CANCELED) {
-  			Toast.makeText(this, "Motion Tracking Permissions Required!",
-  					Toast.LENGTH_SHORT).show();
+  			mToast.makeText(this, "Motion Tracking Permissions Required!",
+  					mToast.LENGTH_SHORT).show();
   			finish();
   		}
   	}
@@ -200,8 +204,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
         if(RTABMapLib.onResume()!=0)
         {
-        	Toast.makeText(getApplicationContext(), 
-    				String.format("Failed to connect with Tango!"), Toast.LENGTH_SHORT).show();
+        	mToast.makeText(getApplicationContext(), 
+    				String.format("Failed to connect with Tango!"), mToast.LENGTH_SHORT).show();
         }
 
     } else {
@@ -325,7 +329,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  if(loopClosureId > 0)
 	  {
 		  ++mTotalLoopClosures;
-		  Toast.makeText(this, "Loop closure detected!", Toast.LENGTH_SHORT).show();
+
+		  mToast.setText("Loop closure detected!");
+		  mToast.show();
 	  }
 	  ((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
   }
@@ -425,7 +431,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 			if(!msg.isEmpty())
 			{
-				Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+				mToast.makeText(this, msg, mToast.LENGTH_LONG).show();
 			}
 			
 			mOpenedDatabasePath = "";
@@ -493,25 +499,35 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	   * "AreaDescriptionSaveProgress:X" - ADF saving is X * 100 percent complete.
 	   * "Unknown"
 	   */
+	  String str = null;
 	  if(key.equals("TangoServiceException"))
-			  Toast.makeText(this, String.format("Tango service exception: %s", value), Toast.LENGTH_SHORT).show();
+		  str = String.format("Tango service exception: %s", value);
 	  else if(key.equals("FisheyeOverExposed"))
-			  ;//Toast.makeText(this, String.format("The fisheye image is over exposed with average pixel value %s px.", value), Toast.LENGTH_SHORT).show();
+		  ;//str = String.format("The fisheye image is over exposed with average pixel value %s px.", value);
 	  else if(key.equals("FisheyeUnderExposed"))
-			  ;//Toast.makeText(this, String.format("The fisheye image is under exposed with average pixel value %s px.", value), Toast.LENGTH_SHORT).show();
+		  ;//str = String.format("The fisheye image is under exposed with average pixel value %s px.", value);
 	  else if(key.equals("ColorOverExposed")) 
-			  ;//Toast.makeText(this, String.format("The color image is over exposed with average pixel value %s px.", value), Toast.LENGTH_SHORT).show();
+		  ;//str = String.format("The color image is over exposed with average pixel value %s px.", value);
 	  else if(key.equals("ColorUnderExposed")) 
-			  ;//Toast.makeText(this, String.format("The color image is under exposed with average pixel value %s px.", value), Toast.LENGTH_SHORT).show();
+		  ;//str = String.format("The color image is under exposed with average pixel value %s px.", value);
 	  else if(key.equals("CameraTango")) 
-		  	 Toast.makeText(this, value, Toast.LENGTH_SHORT).show();
+		  str = value;
 	  else if(key.equals("TooFewFeaturesTracked")) 
 	  {
 		  if(!value.equals("0"))
-			  Toast.makeText(this, String.format("Too few features (%s) were tracked in the fisheye image. This may result in poor odometry!", value), Toast.LENGTH_SHORT).show();
+		  {
+			  str = String.format("Too few features (%s) were tracked in the fisheye image. This may result in poor odometry!", value);
+		  }
 	  }
-	  else
-			  Toast.makeText(this, String.format("Unknown Tango event detected!? (type=%d)", type), Toast.LENGTH_SHORT).show();
+	  else	
+	  {
+		  str = String.format("Unknown Tango event detected!? (type=%d)", type);
+	  }
+	  if(str!=null)
+	  {
+		  mToast.setText(str);
+		  mToast.show();
+	  }
   }
   
   //called from jni
@@ -608,11 +624,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								mProgressDialog.dismiss();
 								if(loopDetected >= 0)
 								{
-									Toast.makeText(getActivity(), String.format("Detection done! %d new loop closure(s) added.", loopDetected), Toast.LENGTH_SHORT).show();
+									mToast.makeText(getActivity(), String.format("Detection done! %d new loop closure(s) added.", loopDetected), mToast.LENGTH_SHORT).show();
 								}
 								else if(loopDetected < 0)
 								{
-									Toast.makeText(getActivity(), String.format("Detection failed!"), Toast.LENGTH_SHORT).show();
+									mToast.makeText(getActivity(), String.format("Detection failed!"), mToast.LENGTH_SHORT).show();
 								}
 				    		}
 				    	});
@@ -634,11 +650,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								mProgressDialog.dismiss();
 								if(value >= 0)
 								{
-									Toast.makeText(getActivity(), String.format("Optimization done!"), Toast.LENGTH_SHORT).show();
+									mToast.makeText(getActivity(), String.format("Optimization done!"), mToast.LENGTH_SHORT).show();
 								}
 								else if(value < 0)
 								{
-									Toast.makeText(getActivity(), String.format("Optimization failed!"), Toast.LENGTH_SHORT).show();
+									mToast.makeText(getActivity(), String.format("Optimization failed!"), mToast.LENGTH_SHORT).show();
 								}
 				    		}
 				    	});
@@ -660,11 +676,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								mProgressDialog.dismiss();
 								if(value >= 0)
 								{
-									Toast.makeText(getActivity(), String.format("Optimization done!"), Toast.LENGTH_SHORT).show();
+									mToast.makeText(getActivity(), String.format("Optimization done!"), mToast.LENGTH_SHORT).show();
 								}
 								else if(value < 0)
 								{
-									Toast.makeText(getActivity(), String.format("Optimization failed!"), Toast.LENGTH_SHORT).show();
+									mToast.makeText(getActivity(), String.format("Optimization failed!"), mToast.LENGTH_SHORT).show();
 								}
 				    		}
 				    	});
@@ -801,7 +817,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		        	mParamUpdateRateHzIndex = which;
 			        if(RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", values[which]) != 0)
 			        {
-			        	Toast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/DetectionRate\"!", Toast.LENGTH_LONG).show();
+			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/DetectionRate\"!", mToast.LENGTH_LONG).show();
 			        }
 		        }
 		    }
@@ -823,7 +839,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		        	mParamTimeThrMsIndex = which;
 			        if(RTABMapLib.setMappingParameter("Rtabmap/TimeThr", which==3?"0":values[which]) != 0)
 			        {
-			        	Toast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/TimeThr\"!", Toast.LENGTH_LONG).show();
+			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/TimeThr\"!", mToast.LENGTH_LONG).show();
 			        }
 		        }
 		    }
@@ -845,7 +861,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		        	mParamMaxFeaturesIndex = which;
 			        if(RTABMapLib.setMappingParameter("Kp/MaxFeatures", which==0?"-1":which==11?"0":values[which]) != 0)
 			        {
-			        	Toast.makeText(getActivity(),"Failed to set parameter \"Kp/MaxFeatures\"!", Toast.LENGTH_LONG).show();
+			        	mToast.makeText(getActivity(),"Failed to set parameter \"Kp/MaxFeatures\"!", mToast.LENGTH_LONG).show();
 			        }
 		        }
 		    }
@@ -867,7 +883,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		        	mParamLoopThrMsIndex = which;
 			        if(RTABMapLib.setMappingParameter("Rtabmap/LoopThr", which==0?"1":values[which]) != 0)
 			        {
-			        	Toast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/LoopThr\"!", Toast.LENGTH_LONG).show();
+			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/LoopThr\"!", mToast.LENGTH_LONG).show();
 			        }
 		        }
 		    }
@@ -1022,16 +1038,16 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							                    	{
 					                		    		if(isOBJ)
 					                		    		{	
-					                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" (with textures \"%s/\" and \"%s\") successfully exported!", path, fileName, fileName + ".mtl"), Toast.LENGTH_LONG).show();
+					                		    			mToast.makeText(getActivity(), String.format("Mesh \"%s\" (with textures \"%s/\" and \"%s\") successfully exported!", path, fileName, fileName + ".mtl"), mToast.LENGTH_LONG).show();
 						                		    	}
 					                		    		else
 					                		    		{
-					                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), Toast.LENGTH_LONG).show();
+					                		    			mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), mToast.LENGTH_LONG).show();
 					                		    		}
 							                    	}
 							                    	else
 							                    	{
-							                    		Toast.makeText(getActivity(), String.format("Exporting mesh to \"%s\" failed!", path), Toast.LENGTH_LONG).show();
+							                    		mToast.makeText(getActivity(), String.format("Exporting mesh to \"%s\" failed!", path), mToast.LENGTH_LONG).show();
 							                    	}
 					                		    	mItemExport.setEnabled(true);
 					                		    	mProgressDialog.dismiss();
@@ -1065,16 +1081,16 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					                    	{
 			                		    		if(isOBJ)
 			                		    		{	
-			                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" (with textures \"%s/\" and \"%s\") successfully exported!", path, fileName, fileName + ".mtl"), Toast.LENGTH_LONG).show();
+			                		    			mToast.makeText(getActivity(), String.format("Mesh \"%s\" (with textures \"%s/\" and \"%s\") successfully exported!", path, fileName, fileName + ".mtl"), mToast.LENGTH_LONG).show();
 			                		    		}
 			                		    		else
 			                		    		{
-			                		    			Toast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), Toast.LENGTH_LONG).show();
+			                		    			mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), mToast.LENGTH_LONG).show();
 			                		    		}
 					                    	}
 					                    	else
 					                    	{
-					                    		Toast.makeText(getActivity(), String.format("Exporting mesh to \"%s\" failed!", path), Toast.LENGTH_LONG).show();
+					                    		mToast.makeText(getActivity(), String.format("Exporting mesh to \"%s\" failed!", path), mToast.LENGTH_LONG).show();
 					                    	}
 			                		    	mItemExport.setEnabled(true);
 			                		    	mProgressDialog.dismiss();
