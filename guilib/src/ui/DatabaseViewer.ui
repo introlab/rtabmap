@@ -51,33 +51,12 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>0</y>
-           <width>205</width>
-           <height>184</height>
+           <y>-24</y>
+           <width>190</width>
+           <height>208</height>
           </rect>
          </property>
-         <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0,0" columnstretch="1,1">
-          <item row="0" column="0">
-           <widget class="QLabel" name="label_parentsA_2">
-            <property name="text">
-             <string>Parents</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="1">
-           <widget class="QLabel" name="label_parentsA">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QLabel" name="label_childrenA_2">
-            <property name="text">
-             <string>Children</string>
-            </property>
-           </widget>
-          </item>
+         <layout class="QGridLayout" name="gridLayout" rowstretch="0,0,0,0,0,0,0,0" columnstretch="1,1">
           <item row="1" column="1">
            <widget class="QLabel" name="label_childrenA">
             <property name="text">
@@ -148,8 +127,43 @@
             </property>
            </widget>
           </item>
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_parentsA_2">
+            <property name="text">
+             <string>Parents</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="label_parentsA">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_childrenA_2">
+            <property name="text">
+             <string>Children</string>
+            </property>
+           </widget>
+          </item>
           <item row="5" column="1">
            <widget class="QLabel" name="label_poseA">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_childrenA_14">
+            <property name="text">
+             <string>Calib</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
+           <widget class="QLabel" name="label_calibA">
             <property name="text">
              <string/>
             </property>
@@ -171,9 +185,9 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>0</y>
-           <width>203</width>
-           <height>184</height>
+           <y>-24</y>
+           <width>188</width>
+           <height>208</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -270,6 +284,20 @@
           </item>
           <item row="5" column="1">
            <widget class="QLabel" name="label_poseB">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_childrenA_15">
+            <property name="text">
+             <string>Calib</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="1">
+           <widget class="QLabel" name="label_calibB">
             <property name="text">
              <string/>
             </property>

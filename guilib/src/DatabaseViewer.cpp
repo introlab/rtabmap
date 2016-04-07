@@ -2059,6 +2059,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_idA,
 			ui_->label_mapA,
 			ui_->label_poseA,
+			ui_->label_calibA,
 			true);
 }
 
@@ -2076,6 +2077,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_idB,
 			ui_->label_mapB,
 			ui_->label_poseB,
+			ui_->label_calibB,
 			true);
 }
 
@@ -2091,6 +2093,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelId,
 						QLabel * labelMapId,
 						QLabel * labelPose,
+						QLabel * labelCalib,
 						bool updateConstraintView)
 {
 	UTimer timer;
@@ -2102,6 +2105,7 @@ void DatabaseViewer::update(int value,
 	labelMapId->clear();
 	labelPose->clear();
 	stamp->clear();
+	labelCalib->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
@@ -2162,6 +2166,53 @@ void DatabaseViewer::update(int value,
 				if(s!=0.0)
 				{
 					stamp->setText(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+				}
+				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
+				{
+					if(data.cameraModels().size())
+					{
+						if(!data.depthRaw().empty() && data.depthRaw().cols!=data.imageRaw().cols && data.imageRaw().cols)
+						{
+							labelCalib->setText(tr("%1 %2x%3 [%8x%9] fx=%4 fy=%5 cx=%6 cy=%7")
+									.arg(data.cameraModels().size())
+									.arg(data.cameraModels()[0].imageWidth()>0?data.cameraModels()[0].imageWidth():data.imageRaw().cols/data.cameraModels().size())
+									.arg(data.cameraModels()[0].imageHeight()>0?data.cameraModels()[0].imageHeight():data.imageRaw().rows)
+									.arg(data.cameraModels()[0].fx())
+									.arg(data.cameraModels()[0].fy())
+									.arg(data.cameraModels()[0].cx())
+									.arg(data.cameraModels()[0].cy())
+									.arg(data.depthRaw().cols/data.cameraModels().size())
+									.arg(data.depthRaw().rows));
+						}
+						else
+						{
+							labelCalib->setText(tr("%1 %2x%3 fx=%4 fy=%5 cx=%6 cy=%7")
+									.arg(data.cameraModels().size())
+									.arg(data.cameraModels()[0].imageWidth()>0?data.cameraModels()[0].imageWidth():data.imageRaw().cols/data.cameraModels().size())
+									.arg(data.cameraModels()[0].imageHeight()>0?data.cameraModels()[0].imageHeight():data.imageRaw().rows)
+									.arg(data.cameraModels()[0].fx())
+									.arg(data.cameraModels()[0].fy())
+									.arg(data.cameraModels()[0].cx())
+									.arg(data.cameraModels()[0].cy()));
+						}
+					}
+					else
+					{
+						//stereo
+						labelCalib->setText(tr("%1x%2 fx=%3 fy=%4 cx=%5 cy=%6 baseline=%7m")
+									.arg(data.stereoCameraModel().left().imageWidth()>0?data.stereoCameraModel().left().imageWidth():data.imageRaw().cols)
+									.arg(data.stereoCameraModel().left().imageHeight()>0?data.stereoCameraModel().left().imageHeight():data.imageRaw().rows)
+									.arg(data.stereoCameraModel().left().fx())
+									.arg(data.stereoCameraModel().left().fy())
+									.arg(data.stereoCameraModel().left().cx())
+									.arg(data.stereoCameraModel().left().cy())
+									.arg(data.stereoCameraModel().baseline()));
+					}
+
+				}
+				else
+				{
+					labelCalib->setText("NA");
 				}
 
 				//stereo
@@ -2811,6 +2862,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_idA,
 					ui_->label_mapA,
 					ui_->label_poseA,
+					ui_->label_calibA,
 					false); // don't update constraints view!
 		this->update(idToIndex_.value(link.to()),
 					ui_->label_indexB,
@@ -2824,6 +2876,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_idB,
 					ui_->label_mapB,
 					ui_->label_poseB,
+					ui_->label_calibB,
 					false); // don't update constraints view!
 	}
 
