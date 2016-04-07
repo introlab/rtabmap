@@ -1303,7 +1303,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				"  Dark Blue = Weight Update\n"
 				"  Dark Yellow = Proximity Detection in Time\n"
 				"  Dark Cyan = Neighbor Link Refined\n"
-				"  Gray = Small Movement");
+				"  Gray = Small Movement\n"
+				"Feature Color code:\n"
+				"  Green = New\n"
+				"  Yellow = New but Not Unique\n"
+				"  Red = In Vocabulary\n"
+		        "  Blue = In Vocabulary and in Previous Signature\n"
+				"  Pink = In Vocabulary and in Loop Closure Signature");
 		}
 		// Set color code as tooltip
 		if(_ui->label_matchId->toolTip().isEmpty())
@@ -1312,7 +1318,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				"Background Color Code:\n"
 				"  Green = Accepted Loop Closure Detection\n"
 				"  Red = Rejected Loop Closure Detection\n"
-				"  Yellow = Proximity Detection in Space");
+				"  Yellow = Proximity Detection in Space\n"
+				"Feature Color code:\n"
+				"  Red = In Vocabulary\n"
+				"  Pink = In Vocabulary and in Loop Closure Signature");
 		}
 
 		UDEBUG("time= %d ms", time.restart());
