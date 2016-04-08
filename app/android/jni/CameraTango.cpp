@@ -144,28 +144,31 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 		return false;
 	}
 
-	// disable auto exposure
+	// disable auto exposure (disabled, seems broken on latest Tango releases)
 	ret = TangoConfig_setBool(tango_config_, "config_color_mode_auto", autoExposure_);
 	if (ret != TANGO_SUCCESS)
 	{
 		LOGE("NativeRTABMap: config_color_mode_auto() failed with error code: %d", ret);
-		return false;
+		//return false;
 	}
-	if(!autoExposure_)
+	else
 	{
-		ret = TangoConfig_setInt32(tango_config_, "config_color_iso", 800);
-		if (ret != TANGO_SUCCESS)
+		if(!autoExposure_)
 		{
-			LOGE("NativeRTABMap: config_color_iso() failed with error code: %d", ret);
-			return false;
+			ret = TangoConfig_setInt32(tango_config_, "config_color_iso", 800);
+			if (ret != TANGO_SUCCESS)
+			{
+				LOGE("NativeRTABMap: config_color_iso() failed with error code: %d", ret);
+				return false;
+			}
 		}
+		bool verifyAutoExposureState;
+		int32_t verifyIso, verifyExp;
+		TangoConfig_getBool( tango_config_, "config_color_mode_auto", &verifyAutoExposureState );
+		TangoConfig_getInt32( tango_config_, "config_color_iso", &verifyIso );
+		TangoConfig_getInt32( tango_config_, "config_color_exp", &verifyExp );
+		LOGI( "NativeRTABMap: config_color autoExposure=%s %d %d", verifyAutoExposureState?"On" : "Off", verifyIso, verifyExp );
 	}
-	bool verifyAutoExposureState;
-	int32_t verifyIso, verifyExp;
-	TangoConfig_getBool( tango_config_, "config_color_mode_auto", &verifyAutoExposureState );
-	TangoConfig_getInt32( tango_config_, "config_color_iso", &verifyIso );
-	TangoConfig_getInt32( tango_config_, "config_color_exp", &verifyExp );
-	LOGI( "NativeRTABMap: config_color autoExposure=%s %d %d", verifyAutoExposureState?"On" : "Off", verifyIso, verifyExp );
 
 	// Enable depth.
 	ret = TangoConfig_setBool(tango_config_, "config_enable_depth", true);

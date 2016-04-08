@@ -82,9 +82,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private int mMeshTriangleSizeIndex = 0;
   
   private int mParamUpdateRateHzIndex = 1;
-  private int mParamTimeThrMsIndex = 1;
+  private int mParamTimeThrMsIndex = 4;
   private int mParamMaxFeaturesIndex = 4;
   private int mParamLoopThrMsIndex = 1;
+  
+  final String[] mUpdateRateValues = {"0.5", "1", "2", "Max"};
+  final String[] mTimeThrValues = {"400", "500", "600", "700", "800", "900", "1000", "1100", "1200", "1300", "1400", "1500", "No Limit"};
+  final String[] mMaxFeaturesValues = {"Disabled", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000", "No Limit"};
+  final String[] mLoopThrValues = {"Disabled", "0.11", "0.20", "0.30", "0.40", "0.50", "0.60", "0.70", "0.80", "0.90"};
   
   private LinearLayout mLayoutDebug;
   
@@ -313,7 +318,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   {
 	  if(mItemPause!=null)
 	  {
-		  ((TextView)findViewById(R.id.status)).setText(mItemPause.isChecked()?"Paused":mItemLocalizationMode.isChecked()?"Localization":"Mapping");
+		  ((TextView)findViewById(R.id.status)).setText(mItemPause.isChecked()?"Paused":mItemLocalizationMode.isChecked()?String.format("Localization (%s Hz)", mUpdateRateValues[mParamUpdateRateHzIndex]):String.format("Mapping (%s Hz)", mUpdateRateValues[mParamUpdateRateHzIndex]));
 	  }
 	  
 	  ((TextView)findViewById(R.id.points)).setText(String.valueOf(points));
@@ -323,9 +328,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  ((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
 	  ((TextView)findViewById(R.id.db_size)).setText(String.valueOf(databaseMemoryUsed));
 	  ((TextView)findViewById(R.id.inliers)).setText(String.valueOf(inliers));
-	  ((TextView)findViewById(R.id.features)).setText(String.valueOf(featuresExtracted));
-	  ((TextView)findViewById(R.id.update_time)).setText(String.format("%.3f", updateTime));
-	  ((TextView)findViewById(R.id.hypothesis)).setText(String.format("%.3f (%d)", hypothesis, loopClosureId));
+	  ((TextView)findViewById(R.id.features)).setText(String.format("%d / %s", featuresExtracted, mMaxFeaturesValues[mParamMaxFeaturesIndex]));
+	  ((TextView)findViewById(R.id.update_time)).setText(String.format("%.3f / %s", updateTime, mTimeThrValues[mParamTimeThrMsIndex]));
+	  ((TextView)findViewById(R.id.hypothesis)).setText(String.format("%.3f / %s (%d)", hypothesis, mLoopThrValues[mParamLoopThrMsIndex], loopClosureId));
 	  if(loopClosureId > 0)
 	  {
 		  ++mTotalLoopClosures;
@@ -807,15 +812,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  // get double
 		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		  builder.setTitle("Update Rate (Hz)");
-		  final String[] values = {"0.5", "1", "2", "Max"};
-		  builder.setSingleChoiceItems(values, mParamUpdateRateHzIndex, new DialogInterface.OnClickListener() {
+		  builder.setSingleChoiceItems(mUpdateRateValues, mParamUpdateRateHzIndex, new DialogInterface.OnClickListener() {
 		    @Override
 		    public void onClick(DialogInterface dialog, int which) {
 		        dialog.dismiss();
-		        if(which >=0 && which < 4)
+		        if(which >=0 && which < mUpdateRateValues.length)
 		        {
 		        	mParamUpdateRateHzIndex = which;
-			        if(RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", values[which]) != 0)
+			        if(RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", mUpdateRateValues[which]) != 0)
 			        {
 			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/DetectionRate\"!", mToast.LENGTH_LONG).show();
 			        }
@@ -829,15 +833,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  // get double
 		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		  builder.setTitle("Time Threshold (ms)");
-		  final String[] values = {"400", "700", "1400", "No Limit"};
-		  builder.setSingleChoiceItems(values, mParamTimeThrMsIndex, new DialogInterface.OnClickListener() {
+		  builder.setSingleChoiceItems(mTimeThrValues, mParamTimeThrMsIndex, new DialogInterface.OnClickListener() {
 		    @Override
 		    public void onClick(DialogInterface dialog, int which) {
 		        dialog.dismiss();
-		        if(which >=0 && which < 4)
+		        if(which >=0 && which < mTimeThrValues.length)
 		        {
 		        	mParamTimeThrMsIndex = which;
-			        if(RTABMapLib.setMappingParameter("Rtabmap/TimeThr", which==3?"0":values[which]) != 0)
+			        if(RTABMapLib.setMappingParameter("Rtabmap/TimeThr", which==mTimeThrValues.length-1?"0":mTimeThrValues[which]) != 0)
 			        {
 			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/TimeThr\"!", mToast.LENGTH_LONG).show();
 			        }
@@ -851,15 +854,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  // get double
 		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		  builder.setTitle("Max Features");
-		  final String[] values = {"Disabled", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000", "No Limit"};
-		  builder.setSingleChoiceItems(values, mParamMaxFeaturesIndex, new DialogInterface.OnClickListener() {
+		  builder.setSingleChoiceItems(mMaxFeaturesValues, mParamMaxFeaturesIndex, new DialogInterface.OnClickListener() {
 		    @Override
 		    public void onClick(DialogInterface dialog, int which) {
 		        dialog.dismiss();
-		        if(which >=0 && which < 12)
+		        if(which >=0 && which < mMaxFeaturesValues.length)
 		        {
 		        	mParamMaxFeaturesIndex = which;
-			        if(RTABMapLib.setMappingParameter("Kp/MaxFeatures", which==0?"-1":which==11?"0":values[which]) != 0)
+			        if(RTABMapLib.setMappingParameter("Kp/MaxFeatures", which==0?"-1":which==mMaxFeaturesValues.length-1?"0":mMaxFeaturesValues[which]) != 0)
 			        {
 			        	mToast.makeText(getActivity(),"Failed to set parameter \"Kp/MaxFeatures\"!", mToast.LENGTH_LONG).show();
 			        }
@@ -873,15 +875,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  // get double
 		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		  builder.setTitle("Loop Closure Threshold");
-		  final String[] values = {"Disabled", "0.11", "0.20", "0.30", "0.40", "0.50", "0.60", "0.70", "0.80", "0.90"};
-		  builder.setSingleChoiceItems(values, mParamTimeThrMsIndex, new DialogInterface.OnClickListener() {
+		  builder.setSingleChoiceItems(mLoopThrValues, mParamLoopThrMsIndex, new DialogInterface.OnClickListener() {
 		    @Override
 		    public void onClick(DialogInterface dialog, int which) {
 		        dialog.dismiss();
-		        if(which >=0 && which < 10)
+		        if(which >=0 && which < mLoopThrValues.length)
 		        {
 		        	mParamLoopThrMsIndex = which;
-			        if(RTABMapLib.setMappingParameter("Rtabmap/LoopThr", which==0?"1":values[which]) != 0)
+			        if(RTABMapLib.setMappingParameter("Rtabmap/LoopThr", which==0?"1":mLoopThrValues[which]) != 0)
 			        {
 			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/LoopThr\"!", mToast.LENGTH_LONG).show();
 			        }
