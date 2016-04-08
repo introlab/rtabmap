@@ -253,12 +253,13 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 
 		// transform back the keypoints in the original image
 		std::vector<cv::KeyPoint> kpts = decimatedData.keypoints();
+		double log2value = log(_imageDecimation)/log(2);
 		for(unsigned int i=0; i<kpts.size(); ++i)
 		{
 			kpts[i].pt.x *= _imageDecimation;
 			kpts[i].pt.y *= _imageDecimation;
 			kpts[i].size *= _imageDecimation;
-			kpts[i].octave += log2(_imageDecimation);
+			kpts[i].octave += log2value;
 		}
 		data.setFeatures(kpts, decimatedData.descriptors());
 
@@ -277,7 +278,7 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 				iter->second.pt.x *= _imageDecimation;
 				iter->second.pt.y *= _imageDecimation;
 				iter->second.size *= _imageDecimation;
-				iter->second.octave += log2(_imageDecimation);
+				iter->second.octave += log2value;
 			}
 		}
 	}
