@@ -244,7 +244,8 @@ private:
 	bool _generateIds;
 	bool _badSignaturesIgnored;
 	bool _mapLabelsAdded;
-	int _imageDecimation;
+	int _imagePreDecimation;
+	int _imagePostDecimation;
 	float _laserScanDownsampleStepSize;
 	bool _reextractLoopClosureFeatures;
 	float _rehearsalMaxDistance;

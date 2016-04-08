@@ -530,7 +530,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_createMapLabels->setObjectName(Parameters::kMemMapLabelsAdded().c_str());
 	_ui->general_checkBox_initWMWithAllNodes->setObjectName(Parameters::kMemInitWMWithAllNodes().c_str());
 	_ui->checkBox_localSpaceScanMatchingIDsSaved->setObjectName(Parameters::kRGBDScanMatchingIdsSavedInLinks().c_str());
-	_ui->spinBox_imageDecimation->setObjectName(Parameters::kMemImageDecimation().c_str());
+	_ui->spinBox_imagePreDecimation->setObjectName(Parameters::kMemImagePreDecimation().c_str());
+	_ui->spinBox_imagePostDecimation->setObjectName(Parameters::kMemImagePostDecimation().c_str());
 	_ui->general_spinBox_laserScanDownsample->setObjectName(Parameters::kMemLaserScanDownsampleStepSize().c_str());
 	_ui->checkBox_useOdomFeatures->setObjectName(Parameters::kMemUseOdomFeatures().c_str());
 
@@ -738,6 +739,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_keyframeThr->setObjectName(Parameters::kOdomKeyFrameThr().c_str());
 	_ui->odom_flow_scanKeyframeThr->setObjectName(Parameters::kOdomScanKeyFrameThr().c_str());
 	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomGuessMotion().c_str());
+	_ui->odom_imageDecimation->setObjectName(Parameters::kOdomImageDecimation().c_str());
 
 	//Odometry Frame to Map
 	_ui->odom_localHistory->setObjectName(Parameters::kOdomF2MMaxSize().c_str());

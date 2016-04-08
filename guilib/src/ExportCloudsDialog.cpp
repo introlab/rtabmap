@@ -905,7 +905,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
 						{
 							const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
-							UASSERT(polygonSize == vertices.vertices.size());
+							UASSERT(polygonSize == (int)vertices.vertices.size());
 							for(int k=0; k<polygonSize; ++k)
 							{
 								//uv

@@ -243,33 +243,36 @@ Transform RegistrationVis::computeTransformationImpl(
 
 		Feature2D * detector = createFeatureDetector();
 		std::vector<cv::KeyPoint> kptsFrom;
+		cv::Mat imageFrom = fromSignature.sensorData().imageRaw();
+		cv::Mat imageTo = toSignature.sensorData().imageRaw();
+
 		if(fromSignature.getWords().empty())
 		{
 			if(fromSignature.sensorData().keypoints().empty())
 			{
-				if(!fromSignature.sensorData().imageRaw().empty())
+				if(!imageFrom.empty())
 				{
-					if(fromSignature.sensorData().imageRaw().channels() > 1)
+					if(imageFrom.channels() > 1)
 					{
 						cv::Mat tmp;
-						cv::cvtColor(fromSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
-						fromSignature.sensorData().setImageRaw(tmp);
+						cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
+						imageFrom = tmp;
 					}
 
 					cv::Mat depthMask;
 					if(!fromSignature.sensorData().depthRaw().empty() &&
 					   detector->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
 					{
-						if(fromSignature.sensorData().imageRaw().rows % fromSignature.sensorData().depthRaw().rows == 0 &&
-							fromSignature.sensorData().imageRaw().cols % fromSignature.sensorData().depthRaw().cols == 0 &&
-							fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows == fromSignature.sensorData().imageRaw().cols/fromSignature.sensorData().depthRaw().cols)
+						if(imageFrom.rows % fromSignature.sensorData().depthRaw().rows == 0 &&
+						   imageFrom.cols % fromSignature.sensorData().depthRaw().cols == 0 &&
+						   imageFrom.rows/fromSignature.sensorData().depthRaw().rows == fromSignature.sensorData().imageRaw().cols/fromSignature.sensorData().depthRaw().cols)
 						{
 							depthMask = util2d::interpolate(fromSignature.sensorData().depthRaw(), fromSignature.sensorData().imageRaw().rows/fromSignature.sensorData().depthRaw().rows, 0.1f);
 						}
 					}
 
 					kptsFrom = detector->generateKeypoints(
-							fromSignature.sensorData().imageRaw(),
+							imageFrom,
 							depthMask);
 				}
 			}
@@ -290,22 +293,22 @@ Transform RegistrationVis::computeTransformationImpl(
 		std::multimap<int, cv::Mat> wordsDescFrom;
 		std::multimap<int, cv::Mat> wordsDescTo;
 		if(_correspondencesApproach == 1 && //Optical Flow
-		   !fromSignature.sensorData().imageRaw().empty() &&
-		   !toSignature.sensorData().imageRaw().empty())
+		   !imageFrom.empty() &&
+		   !imageTo.empty())
 		{
 			UDEBUG("");
 			// convert to grayscale
-			if(fromSignature.sensorData().imageRaw().channels() > 1)
+			if(imageFrom.channels() > 1)
 			{
 				cv::Mat tmp;
-				cv::cvtColor(fromSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
-				fromSignature.sensorData().setImageRaw(tmp);
+				cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
+				imageFrom = tmp;
 			}
-			if(toSignature.sensorData().imageRaw().channels() > 1)
+			if(imageTo.channels() > 1)
 			{
 				cv::Mat tmp;
-				cv::cvtColor(toSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
-				toSignature.sensorData().setImageRaw(tmp);
+				cv::cvtColor(imageTo, tmp, cv::COLOR_BGR2GRAY);
+				imageTo = tmp;
 			}
 
 			std::vector<cv::Point3f> kptsFrom3D;
@@ -318,7 +321,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				kptsFrom3D = uValues(fromSignature.getWords3());
 			}
 
-			if(!toSignature.sensorData().imageRaw().empty())
+			if(!imageTo.empty())
 			{
 				std::vector<cv::Point2f> cornersFrom;
 				cv::KeyPoint::convert(kptsFrom, cornersFrom);
@@ -345,8 +348,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				std::vector<float> err;
 				UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 				cv::calcOpticalFlowPyrLK(
-						fromSignature.sensorData().imageRaw(),
-						toSignature.sensorData().imageRaw(),
+						imageFrom,
+						imageTo,
 						cornersFrom,
 						cornersTo,
 						status,
@@ -364,8 +367,8 @@ Transform RegistrationVis::computeTransformationImpl(
 				for(unsigned int i=0; i<status.size(); ++i)
 				{
 					if(status[i] &&
-					   uIsInBounds(cornersTo[i].x, 0.0f, float(toSignature.sensorData().imageRaw().cols)) &&
-					   uIsInBounds(cornersTo[i].y, 0.0f, float(toSignature.sensorData().imageRaw().rows)))
+					   uIsInBounds(cornersTo[i].x, 0.0f, float(imageTo.cols)) &&
+					   uIsInBounds(cornersTo[i].y, 0.0f, float(imageTo.rows)))
 					{
 						kptsFrom[ki] = cv::KeyPoint(cornersFrom[i], 1);
 						kptsFrom3DKept[ki] = kptsFrom3D[i];
@@ -420,29 +423,29 @@ Transform RegistrationVis::computeTransformationImpl(
 			if(toSignature.getWords().empty())
 			{
 				if(toSignature.sensorData().keypoints().empty() &&
-				   !toSignature.sensorData().imageRaw().empty())
+				   !imageTo.empty())
 				{
-					if(toSignature.sensorData().imageRaw().channels() > 1)
+					if(imageTo.channels() > 1)
 					{
 						cv::Mat tmp;
-						cv::cvtColor(toSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
-						toSignature.sensorData().setImageRaw(tmp);
+						cv::cvtColor(imageTo, tmp, cv::COLOR_BGR2GRAY);
+						imageTo = tmp;
 					}
 
 					cv::Mat depthMask;
 					if(!toSignature.sensorData().depthRaw().empty() &&
 						detector->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
 					{
-						if(toSignature.sensorData().imageRaw().rows % toSignature.sensorData().depthRaw().rows == 0 &&
-							toSignature.sensorData().imageRaw().cols % toSignature.sensorData().depthRaw().cols == 0 &&
-							toSignature.sensorData().imageRaw().rows/toSignature.sensorData().depthRaw().rows == toSignature.sensorData().imageRaw().cols/toSignature.sensorData().depthRaw().cols)
+						if(imageTo.rows % toSignature.sensorData().depthRaw().rows == 0 &&
+						   imageTo.cols % toSignature.sensorData().depthRaw().cols == 0 &&
+						   imageTo.rows/toSignature.sensorData().depthRaw().rows == imageTo.cols/toSignature.sensorData().depthRaw().cols)
 						{
-							depthMask = util2d::interpolate(toSignature.sensorData().depthRaw(), toSignature.sensorData().imageRaw().rows/toSignature.sensorData().depthRaw().rows, 0.1f);
+							depthMask = util2d::interpolate(toSignature.sensorData().depthRaw(), imageTo.rows/toSignature.sensorData().depthRaw().rows, 0.1f);
 						}
 					}
 
 					kptsTo = detector->generateKeypoints(
-							toSignature.sensorData().imageRaw(),
+							imageTo,
 							depthMask);
 				}
 				else
@@ -477,15 +480,15 @@ Transform RegistrationVis::computeTransformationImpl(
 			{
 				descriptorsFrom = fromSignature.sensorData().descriptors();
 			}
-			else if(!fromSignature.sensorData().imageRaw().empty())
+			else if(!imageFrom.empty())
 			{
-				if(fromSignature.sensorData().imageRaw().channels() > 1)
+				if(imageFrom.channels() > 1)
 				{
 					cv::Mat tmp;
-					cv::cvtColor(fromSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
-					fromSignature.sensorData().setImageRaw(tmp);
+					cv::cvtColor(imageFrom, tmp, cv::COLOR_BGR2GRAY);
+					imageFrom = tmp;
 				}
-				descriptorsFrom = detector->generateDescriptors(fromSignature.sensorData().imageRaw(), kptsFrom);
+				descriptorsFrom = detector->generateDescriptors(imageFrom, kptsFrom);
 			}
 
 			cv::Mat descriptorsTo;
@@ -508,16 +511,16 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					descriptorsTo = toSignature.sensorData().descriptors();
 				}
-				else if(!toSignature.sensorData().imageRaw().empty())
+				else if(!imageTo.empty())
 				{
-					if(toSignature.sensorData().imageRaw().channels() > 1)
+					if(imageTo.channels() > 1)
 					{
 						cv::Mat tmp;
-						cv::cvtColor(toSignature.sensorData().imageRaw(), tmp, cv::COLOR_BGR2GRAY);
-						toSignature.sensorData().setImageRaw(tmp);
+						cv::cvtColor(imageTo, tmp, cv::COLOR_BGR2GRAY);
+						imageTo = tmp;
 					}
 
-					descriptorsTo = detector->generateDescriptors(toSignature.sensorData().imageRaw(), kptsTo);
+					descriptorsTo = detector->generateDescriptors(imageTo, kptsTo);
 				}
 			}
 
@@ -618,7 +621,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			// We have all data we need here, so match!
 			if(descriptorsFrom.rows > 0 && descriptorsTo.rows > 0)
 			{
-				cv::Size imageSize = toSignature.sensorData().imageRaw().size();
+				cv::Size imageSize = imageTo.size();
 				bool isCalibrated = false;
 				if(imageSize.height == 0 || imageSize.width == 0)
 				{
@@ -931,7 +934,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	float variance = 1.0f;
 	int inliersCount = 0;
 	int matchesCount = 0;
-	if(toSignature.getWords().size() || !toSignature.sensorData().imageRaw().empty())
+	if(toSignature.getWords().size())
 	{
 		Transform transforms[2];
 		std::vector<int> inliers[2];

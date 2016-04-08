@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/core/ParticleFilter.h"
+#include "rtabmap/core/util2d.h"
 
 namespace rtabmap {
 
@@ -75,6 +76,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_fillInfoData(Parameters::defaultOdomFillInfoData()),
 		_kalmanProcessNoise(Parameters::defaultOdomKalmanProcessNoise()),
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
+		_imageDecimation(Parameters::defaultOdomImageDecimation()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
 		distanceTravelled_(0)
@@ -97,6 +99,9 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	UASSERT(_particleLambdaR>0);
 	Parameters::parse(parameters, Parameters::kOdomKalmanProcessNoise(), _kalmanProcessNoise);
 	Parameters::parse(parameters, Parameters::kOdomKalmanMeasurementNoise(), _kalmanMeasurementNoise);
+	Parameters::parse(parameters, Parameters::kOdomImageDecimation(), _imageDecimation);
+	UASSERT(_imageDecimation>=1);
+
 	if(_filteringStrategy == 2)
 	{
 		// Initialize the Particle filters
@@ -223,7 +228,63 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 	}
 
 	UTimer time;
-	Transform t = this->computeTransform(data, guess, info);
+	Transform t;
+	if(_imageDecimation > 1)
+	{
+		// Decimation of images with calibrations
+		SensorData decimatedData = data;
+		decimatedData.setImageRaw(util2d::decimate(decimatedData.imageRaw(), _imageDecimation));
+		decimatedData.setDepthOrRightRaw(util2d::decimate(decimatedData.depthOrRightRaw(), _imageDecimation));
+		std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
+		for(unsigned int i=0; i<cameraModels.size(); ++i)
+		{
+			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imageDecimation));
+		}
+		decimatedData.setCameraModels(cameraModels);
+		StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
+		if(stereoModel.isValidForProjection())
+		{
+			stereoModel.scale(1.0/double(_imageDecimation));
+		}
+		decimatedData.setStereoCameraModel(stereoModel);
+
+		// compute transform
+		t = this->computeTransform(decimatedData, guess, info);
+
+		// transform back the keypoints in the original image
+		std::vector<cv::KeyPoint> kpts = decimatedData.keypoints();
+		for(unsigned int i=0; i<kpts.size(); ++i)
+		{
+			kpts[i].pt.x *= _imageDecimation;
+			kpts[i].pt.y *= _imageDecimation;
+			kpts[i].size *= _imageDecimation;
+			kpts[i].octave += log2(_imageDecimation);
+		}
+		data.setFeatures(kpts, decimatedData.descriptors());
+
+		if(info)
+		{
+			UASSERT(info->newCorners.size() == info->refCorners.size());
+			for(unsigned int i=0; i<info->newCorners.size(); ++i)
+			{
+				info->refCorners[i].x *= _imageDecimation;
+				info->refCorners[i].y *= _imageDecimation;
+				info->newCorners[i].x *= _imageDecimation;
+				info->newCorners[i].y *= _imageDecimation;
+			}
+			for(std::multimap<int, cv::KeyPoint>::iterator iter=info->words.begin(); iter!=info->words.end(); ++iter)
+			{
+				iter->second.pt.x *= _imageDecimation;
+				iter->second.pt.y *= _imageDecimation;
+				iter->second.size *= _imageDecimation;
+				iter->second.octave += log2(_imageDecimation);
+			}
+		}
+	}
+	else
+	{
+		t = this->computeTransform(data, guess, info);
+	}
 
 	if(info)
 	{

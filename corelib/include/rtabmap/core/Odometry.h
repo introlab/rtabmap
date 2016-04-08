@@ -83,6 +83,7 @@ private:
 	bool _fillInfoData;
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;
+	int _imageDecimation;
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;

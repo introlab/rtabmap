@@ -205,10 +205,11 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, RehearsalWeightIgnoredWhileMoving, bool, false, "When the robot is moving, weights are not updated on rehearsal.");
 	RTABMAP_PARAM(Mem, GenerateIds,             bool, true,     "True=Generate location IDs, False=use input image IDs.");
 	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
-	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,    "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
-	RTABMAP_PARAM(Mem, ImageDecimation,         int, 1,          "Image decimation (>=1) when creating a signature.");
-	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,  "If > 1, downsample the laser scans when creating a signature.");
-	RTABMAP_PARAM(Mem, UseOdomFeatures,         bool, false,   "Use odometry features.");
+	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,     "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
+	RTABMAP_PARAM(Mem, ImagePreDecimation,      int, 1,          "Image decimation (>=1) before features extraction.");
+	RTABMAP_PARAM(Mem, ImagePostDecimation,     int, 1,          "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image.");
+	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,      "If > 1, downsample the laser scans when creating a signature.");
+	RTABMAP_PARAM(Mem, UseOdomFeatures,             bool, false, "Use odometry features.");
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM(Kp, NNStrategy,            int, 1,            "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
@@ -365,6 +366,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, GuessMotion,            bool, false,      "Guess next transformation from the last motion computed.");
 	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,       "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,       "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
+	RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,           "Decimation of the images before registration.");
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomF2M, MaxSize,             int, 2000,    "[Visual] Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");

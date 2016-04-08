@@ -83,7 +83,8 @@ Memory::Memory(const ParametersMap & parameters) :
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
-	_imageDecimation(Parameters::defaultMemImageDecimation()),
+	_imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
+	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
@@ -397,7 +398,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
 	Parameters::parse(parameters, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
-	Parameters::parse(parameters, Parameters::kMemImageDecimation(), _imageDecimation);
+	Parameters::parse(parameters, Parameters::kMemImagePreDecimation(), _imagePreDecimation);
+	Parameters::parse(parameters, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
 	Parameters::parse(parameters, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
 	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
@@ -408,7 +410,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
 	UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
-	UASSERT(_imageDecimation >= 1);
+	UASSERT(_imagePreDecimation >= 1);
+	UASSERT(_imagePostDecimation >= 1);
 	UASSERT(_rehearsalMaxDistance >= 0.0f);
 	UASSERT(_rehearsalMaxAngle >= 0.0f);
 
@@ -3191,31 +3194,52 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		preUpdateThread.start();
 	}
 
+	int preDecimation = 1;
 	std::vector<cv::Point3f> keypoints3D;
 	if(!_useOdometryFeatures || data.keypoints().empty() || (int)data.keypoints().size() != data.descriptors().rows)
 	{
 		if(_feature2D->getMaxFeatures() >= 0 && !data.imageRaw().empty() && !isIntermediateNode)
 		{
+			SensorData decimatedData = data;
+			if(_imagePreDecimation > 1)
+			{
+				preDecimation = _imagePreDecimation;
+				decimatedData.setImageRaw(util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation));
+				decimatedData.setDepthOrRightRaw(util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation));
+				std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
+				for(unsigned int i=0; i<cameraModels.size(); ++i)
+				{
+					cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePreDecimation));
+				}
+				decimatedData.setCameraModels(cameraModels);
+				StereoCameraModel stereoModel = decimatedData.stereoCameraModel();
+				if(stereoModel.isValidForProjection())
+				{
+					stereoModel.scale(1.0/double(_imagePreDecimation));
+				}
+				decimatedData.setStereoCameraModel(stereoModel);
+			}
+
 			UINFO("Extract features");
 			cv::Mat imageMono;
-			if(data.imageRaw().channels() == 3)
+			if(decimatedData.imageRaw().channels() == 3)
 			{
-				cv::cvtColor(data.imageRaw(), imageMono, CV_BGR2GRAY);
+				cv::cvtColor(decimatedData.imageRaw(), imageMono, CV_BGR2GRAY);
 			}
 			else
 			{
-				imageMono = data.imageRaw();
+				imageMono = decimatedData.imageRaw();
 			}
 
 			cv::Mat depthMask;
-			if(!data.depthRaw().empty() &&
+			if(!decimatedData.depthRaw().empty() &&
 			   _feature2D->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
 			{
-				if(imageMono.rows % data.depthRaw().rows == 0 &&
-					imageMono.cols % data.depthRaw().cols == 0 &&
-					imageMono.rows/data.depthRaw().rows == imageMono.cols/data.depthRaw().cols)
+				if(imageMono.rows % decimatedData.depthRaw().rows == 0 &&
+					imageMono.cols % decimatedData.depthRaw().cols == 0 &&
+					imageMono.rows/decimatedData.depthRaw().rows == imageMono.cols/decimatedData.depthRaw().cols)
 				{
-					depthMask = util2d::interpolate(data.depthRaw(), imageMono.rows/data.depthRaw().rows, 0.1f);
+					depthMask = util2d::interpolate(decimatedData.depthRaw(), imageMono.rows/decimatedData.depthRaw().rows, 0.1f);
 				}
 			}
 
@@ -3236,10 +3260,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			{
 				descriptors = cv::Mat();
 			}
-			else if((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
-					(!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
+			else if((!decimatedData.depthRaw().empty() && decimatedData.cameraModels().size() && decimatedData.cameraModels()[0].isValidForProjection()) ||
+					(!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
 			{
-				keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
+				keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);
 				if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
 				{
 					UDEBUG("");
@@ -3400,20 +3424,20 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		UASSERT(wordIds.size() == keypoints.size());
 		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
+		float decimationRatio = preDecimation / _imagePostDecimation;
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
-			if(_imageDecimation > 1)
+			cv::KeyPoint kpt = keypoints[i];
+			if(preDecimation != _imagePostDecimation)
 			{
-				cv::KeyPoint kpt = keypoints[i];
-				kpt.pt.x /= float(_imageDecimation);
-				kpt.pt.y /= float(_imageDecimation);
-				kpt.size /= float(_imageDecimation);
-				words.insert(std::pair<int, cv::KeyPoint>(*iter, kpt));
+				// remap keypoints to final image size
+				kpt.pt.x *= decimationRatio;
+				kpt.pt.y *= decimationRatio;
+				kpt.size *= decimationRatio;
+				kpt.octave += log2(preDecimation);
 			}
-			else
-			{
-				words.insert(std::pair<int, cv::KeyPoint>(*iter, keypoints[i]));
-			}
+			words.insert(std::pair<int, cv::KeyPoint>(*iter, kpt));
+
 			if(keypoints3D.size())
 			{
 				words3D.insert(std::pair<int, cv::Point3f>(*iter, keypoints3D.at(i)));
@@ -3483,17 +3507,17 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	StereoCameraModel stereoCameraModel = data.stereoCameraModel();
 
 	// apply decimation?
-	if(_imageDecimation > 1)
+	if(_imagePostDecimation > 1)
 	{
-		image = util2d::decimate(image, _imageDecimation);
-		depthOrRightImage = util2d::decimate(depthOrRightImage, _imageDecimation);
+		image = util2d::decimate(image, _imagePostDecimation);
+		depthOrRightImage = util2d::decimate(depthOrRightImage, _imagePostDecimation);
 		for(unsigned int i=0; i<cameraModels.size(); ++i)
 		{
-			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imageDecimation));
+			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePostDecimation));
 		}
 		if(stereoCameraModel.isValidForProjection())
 		{
-			stereoCameraModel.scale(1.0/double(_imageDecimation));
+			stereoCameraModel.scale(1.0/double(_imagePostDecimation));
 		}
 	}
 

@@ -155,6 +155,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.11.3
+		removedParameters_.insert(std::make_pair("Mem/ImageDecimation",      std::make_pair(true, Parameters::kMemImagePostDecimation())));
+
 		// 0.11.2
 		removedParameters_.insert(std::make_pair("OdomLocalMap/HistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
 		removedParameters_.insert(std::make_pair("OdomLocalMap/FixedMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
