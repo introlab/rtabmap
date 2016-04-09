@@ -597,6 +597,9 @@ void RTABMapApp::setFullResolution(bool enabled)
 		{
 			camera_->setDecimation(fullResolution_?1:2);
 		}
+		rtabmap::ParametersMap parameters;
+		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImagePreDecimation(), std::string(fullResolution_?"2":"1")));
+		this->post(new rtabmap::ParamEvent(parameters));
 	}
 }
 
