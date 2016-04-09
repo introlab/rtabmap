@@ -335,7 +335,7 @@ int Scene::Render() {
 	{
 		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
 		{
-			if(mapRendering_ || iter->first < 0)
+			if((mapRendering_ || iter->first < 0) && iter->second->isVisible())
 			{
 				++cloudDrawn;
 				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_);

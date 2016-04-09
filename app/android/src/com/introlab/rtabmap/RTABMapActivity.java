@@ -581,7 +581,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	            @Override
 	            public boolean accept(File dir, String filename) {
 	                File sel = new File(dir, filename);
-	                return filename.endsWith(".db") || sel.isDirectory();
+	                return filename.endsWith(".db");
 	            }
 
 	        };
@@ -734,6 +734,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       {
     	  item.setChecked(!item.isChecked());
     	  RTABMapLib.setGraphOptimization(item.isChecked());
+      }
+      else if(itemId == R.id.nodes_filtering)
+      {
+    	  item.setChecked(!item.isChecked());
+    	  RTABMapLib.setNodesFiltering(item.isChecked());
       }
       else if(itemId == R.id.graph_visible)
       {
@@ -1001,6 +1006,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  final String extension = itemId == R.id.export_ply ? ".ply" : ".obj";
     	  final boolean isOBJ = itemId == R.id.export_obj;
     	  
+    	  final int polygons = Integer.parseInt(((TextView)findViewById(R.id.polygons)).getText().toString());
+    	  
     	  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 		  builder.setTitle(String.format("File Name (*%s):", extension));
 		  final EditText input = new EditText(this);
@@ -1027,7 +1034,21 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			                    	mItemExport.setEnabled(false);
 			                    			                    	
 			                    	mProgressDialog.setTitle("Exporting");
-			                  	    mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+extension));
+			                    	if(polygons > 1000000)
+			                    	{
+			                    		mProgressDialog.setMessage(String.format(
+			                    				"Please wait while exporting \"%s\"...\n"
+			                    				+ "Tip: With more than 1M polygons, to reduce exporting time and file size, consider:\n"
+			                    				+ " a) increasing triangle size (Rendering options)\n"
+			                    				+ " b) decreasing maximum camera depth (Rendering options)\n"
+			                    				+ " c) activate Nodes Filtering (Mapping options)\n"
+			                    				+ "then save/open to refresh the meshes.", fileName+extension));
+			                    	}
+			                    	else
+			                    	{
+			                    		mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+extension));
+			                    	}
+			                  	    
 			                  	    mProgressDialog.show();
 			                  	  
 			                    	Thread exportThread = new Thread(new Runnable() {

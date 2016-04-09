@@ -45,6 +45,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/ParamEvent.h>
 #include <rtabmap/core/Compression.h>
 #include <rtabmap/core/Optimizer.h>
+#include <rtabmap/core/VWDictionary.h>
+#include <rtabmap/core/Memory.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
@@ -87,6 +89,7 @@ RTABMapApp::RTABMapApp() :
 		logHandler_(0),
 		odomCloudShown_(true),
 		graphOptimization_(true),
+		nodesFiltering_(false),
 		localizationMode_(false),
 		trajectoryMode_(false),
 		autoExposure_(false),
@@ -196,6 +199,9 @@ void RTABMapApp::openDatabase(const std::string & databasePath)
 	clearSceneOnNextRender_ = true;
 	rtabmap::Statistics stats;
 	stats.setSignatures(signatures);
+	stats.addStatistic(rtabmap::Statistics::kMemoryWorking_memory_size(), (float)rtabmap_->getWMSize());
+	stats.addStatistic(rtabmap::Statistics::kKeypointDictionary_size(), (float)rtabmap_->getMemory()->getVWDictionary()->getVisualWords().size());
+	stats.addStatistic(rtabmap::Statistics::kMemoryDatabase_memory_used(), (float)rtabmap_->getMemory()->getDatabaseMemoryUsed());
 	stats.setPoses(poses);
 	stats.setConstraints(links);
 	rtabmapEvents_.push_back(stats);
@@ -257,6 +263,20 @@ void RTABMapApp::SetViewPort(int width, int height)
 	UINFO("");
 	main_scene_.SetupViewPort(width, height);
 }
+
+class PostRenderEvent : public UEvent
+{
+public:
+	PostRenderEvent(const rtabmap::Statistics & stats) :
+		stats_(stats)
+	{
+
+	}
+	virtual std::string getClassName() const {return "PostRenderEvent";}
+	const rtabmap::Statistics & getStats() const {return stats_;}
+private:
+	rtabmap::Statistics stats_;
+};
 
 // OpenGL thread
 int RTABMapApp::Render()
@@ -357,20 +377,14 @@ int RTABMapApp::Render()
 			}
 		}
 
+		const std::multimap<int, rtabmap::Link> & links = rtabmapEvents.back().constraints();
 		if(poses.size())
 		{
-			const std::multimap<int, rtabmap::Link> & links = rtabmapEvents.back().constraints();
-
 			//update graph
 			main_scene_.updateGraph(poses, links);
 
 			// update clouds
-
-			//filter poses?
-
-			// make sure the last pose is here though
-			//poses.insert(*rtabmapEvents.back().poses().rbegin());
-
+			boost::mutex::scoped_lock  lock(meshesMutex_);
 			std::set<std::string> strIds;
 			for(std::map<int, rtabmap::Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
@@ -382,6 +396,15 @@ int RTABMapApp::Render()
 						//just update pose
 						main_scene_.setCloudPose(id, iter->second);
 						main_scene_.setCloudVisible(id, true);
+						std::map<int, Mesh>::iterator meshIter = createdMeshes_.find(id);
+						if(meshIter!=createdMeshes_.end())
+						{
+							meshIter->second.pose = iter->second;
+						}
+						else
+						{
+							UERROR("Not found mesh %d !?!?", id);
+						}
 					}
 					else if(uContains(bufferedSensorData, id))
 					{
@@ -423,7 +446,6 @@ int RTABMapApp::Render()
 
 
 									// protect createdMeshes_ used also by exportMesh() method
-									boost::mutex::scoped_lock  lock(meshesMutex_);
 									std::pair<std::map<int, Mesh>::iterator, bool> inserted = createdMeshes_.insert(std::make_pair(id, Mesh()));
 									UASSERT(inserted.second);
 									inserted.first->second.cloud = outputCloud;
@@ -438,6 +460,22 @@ int RTABMapApp::Render()
 							}
 							totalPoints_+=indices->size();
 						}
+					}
+				}
+			}
+		}
+
+		//filter poses?
+		if(poses.size() > 2)
+		{
+			if(nodesFiltering_)
+			{
+				for(std::multimap<int, rtabmap::Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					if(iter->second.type() != rtabmap::Link::kNeighbor)
+					{
+						int oldId = iter->second.to()>iter->second.from()?iter->second.from():iter->second.to();
+						poses.erase(oldId);
 					}
 				}
 			}
@@ -506,6 +544,13 @@ int RTABMapApp::Render()
 
     lastDrawnCloudsCount_ = main_scene_.Render();
 
+    if(rtabmapEvents.size())
+    {
+    	// send statistics to GUI
+		LOGI("Posting PostRenderEvent!");
+		UEventsManager::post(new PostRenderEvent(rtabmapEvents.back()));
+    }
+
     return notifyDataLoaded?1:0;
 }
 
@@ -567,6 +612,27 @@ void RTABMapApp::setTrajectoryMode(bool enabled)
 void RTABMapApp::setGraphOptimization(bool enabled)
 {
 	graphOptimization_ = enabled;
+	if(!camera_->isRunning())
+	{
+		std::map<int, rtabmap::Transform> poses;
+		std::multimap<int, rtabmap::Link> links;
+		rtabmap_->getGraph(poses, links, true, true);
+		if(poses.size())
+		{
+			boost::mutex::scoped_lock  lock(rtabmapMutex_);
+			rtabmap::Statistics stats = rtabmap_->getStatistics();
+			stats.setPoses(poses);
+			stats.setConstraints(links);
+			rtabmapEvents_.push_back(stats);
+
+			rtabmap_->setOptimizedPoses(poses);
+		}
+	}
+}
+void RTABMapApp::setNodesFiltering(bool enabled)
+{
+	nodesFiltering_ = enabled;
+	setGraphOptimization(graphOptimization_); // this will resend the graph if paused
 }
 void RTABMapApp::setGraphVisible(bool visible)
 {
@@ -659,6 +725,7 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 	{
 		pcl::TextureMesh textureMesh;
 		std::vector<cv::Mat> textures;
+		int totalPolygons = 0;
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 		{
 			boost::mutex::scoped_lock  lock(meshesMutex_);
@@ -716,6 +783,7 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 						textureMesh.tex_polygons[oi][j] = vertices;
 
 					}
+					totalPolygons += densePolygons.size();
 					polygonsStep += denseCloud->size();
 
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(denseCloud, iter->second.pose);
@@ -761,7 +829,7 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 					textureMesh.tex_materials[i].tex_file = uSplit(UFile::getName(filePath), '.').front()+"/"+textureMesh.tex_materials[i].tex_name+".png";
 				}
 
-				UINFO("Saving obj to %s.", filePath.c_str());
+				UINFO("Saving obj (%d vertices, %d polygons) to %s.", (int)mergedClouds->size(), totalPolygons, filePath.c_str());
 				success = pcl::io::saveOBJFile(filePath, textureMesh) == 0;
 				if(success)
 				{
@@ -814,7 +882,7 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 			pcl::toPCLPointCloud2(*mergedClouds, mesh.cloud);
 			mesh.polygons = mergedPolygons;
 
-			UINFO("Saving ply to %s.", filePath.c_str());
+			UINFO("Saving ply (%d vertices, %d polygons) to %s.", (int)mergedClouds->size(), (int)mergedPolygons.size(), filePath.c_str());
 			success = pcl::io::savePLYFileBinary(filePath, mesh) == 0;
 			if(success)
 			{
@@ -878,7 +946,7 @@ int RTABMapApp::postProcessing(int approach)
 		if(poses.size())
 		{
 			boost::mutex::scoped_lock  lock(rtabmapMutex_);
-			rtabmap::Statistics stats;
+			rtabmap::Statistics stats = rtabmap_->getStatistics();
 			stats.setPoses(poses);
 			stats.setConstraints(links);
 			rtabmapEvents_.push_back(stats);
@@ -900,7 +968,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 		// called from events manager thread, so protect the data
 		if(event->getClassName().compare("OdometryEvent") == 0)
 		{
-			LOGI("GUI: Received OdometryEvent!");
+			LOGI("Received OdometryEvent!");
 			if(odomMutex_.try_lock())
 			{
 				odomEvents_.clear();
@@ -914,67 +982,11 @@ void RTABMapApp::handleEvent(UEvent * event)
 		if(status_.first == rtabmap::RtabmapEventInit::kInitialized &&
 		   event->getClassName().compare("RtabmapEvent") == 0)
 		{
-			LOGI("GUI: Received RtabmapEvent!");
-			int nodes =0;
-			int words = 0;
-			int loopClosureId = 0;
-			float updateTime = 0.0f;
-			int databaseMemoryUsed = 0;
-			int inliers = 0;
-			int featuresExtracted = 0;
-			float hypothesis = 0.0f;
+			LOGI("Received RtabmapEvent!");
+			if(camera_->isRunning())
 			{
-				boost::mutex::scoped_lock  lock(rtabmapMutex_);
-				if(camera_->isRunning())
-				{
-					rtabmapEvents_.push_back(((rtabmap::RtabmapEvent*)event)->getStats());
-					nodes = (int)uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kMemoryWorking_memory_size(), 0.0f) +
-							uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kMemoryShort_time_memory_size(), 0.0f);
-					words = (int)uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kKeypointDictionary_size(), 0.0f);
-					updateTime = uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kTimingTotal(), 0.0f);
-					loopClosureId = rtabmapEvents_.back().loopClosureId()>0?rtabmapEvents_.back().loopClosureId():rtabmapEvents_.back().proximityDetectionId()>0?rtabmapEvents_.back().proximityDetectionId():0;
-					databaseMemoryUsed = (int)uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kMemoryDatabase_memory_used(), 0.0f);
-					inliers = (int)uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kLoopVisual_inliers(), 0.0f);
-					featuresExtracted = rtabmapEvents_.back().getSignatures().size()?rtabmapEvents_.back().getSignatures().rbegin()->second.getWords().size():0;
-					hypothesis = uValue(rtabmapEvents_.back().data(), rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f);
-				}
-			}
-
-			// Call JAVA callback with some stats
-			bool success = false;
-			if(jvm && RTABMapActivity)
-			{
-				JNIEnv *env = 0;
-				jint rs = jvm->AttachCurrentThread(&env, NULL);
-				if(rs == JNI_OK && env)
-				{
-					jclass clazz = env->GetObjectClass(RTABMapActivity);
-					if(clazz)
-					{
-						jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIFI)V" );
-						if(methodID)
-						{
-							env->CallVoidMethod(RTABMapActivity, methodID,
-									nodes,
-									words,
-									totalPoints_,
-									totalPolygons_,
-									updateTime,
-									loopClosureId,
-									databaseMemoryUsed,
-									inliers,
-									featuresExtracted,
-									hypothesis,
-									lastDrawnCloudsCount_);
-							success = true;
-						}
-					}
-				}
-				jvm->DetachCurrentThread();
-			}
-			if(!success)
-			{
-				UERROR("Failed to call RTABMapActivity::updateStatsCallback");
+				boost::mutex::scoped_lock lock(rtabmapMutex_);
+				rtabmapEvents_.push_back(((rtabmap::RtabmapEvent*)event)->getStats());
 			}
 		}
 	}
@@ -1025,7 +1037,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 
 	if(event->getClassName().compare("RtabmapEventInit") == 0)
 	{
-		LOGI("GUI: Received RtabmapEventInit!");
+		LOGI("Received RtabmapEventInit!");
 		status_.first = ((rtabmap::RtabmapEventInit*)event)->getStatus();
 		status_.second = ((rtabmap::RtabmapEventInit*)event)->getInfo();
 
@@ -1060,6 +1072,59 @@ void RTABMapApp::handleEvent(UEvent * event)
 		if(!success)
 		{
 			UERROR("Failed to call RTABMapActivity::rtabmapInitEventsCallback");
+		}
+	}
+
+	if(event->getClassName().compare("PostRenderEvent") == 0)
+	{
+		LOGI("Received PostRenderEvent!");
+		const rtabmap::Statistics & stats = ((PostRenderEvent*)event)->getStats();
+		int nodes = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryWorking_memory_size(), 0.0f) +
+				uValue(stats.data(), rtabmap::Statistics::kMemoryShort_time_memory_size(), 0.0f);
+		int words = (int)uValue(stats.data(), rtabmap::Statistics::kKeypointDictionary_size(), 0.0f);
+		float updateTime = uValue(stats.data(), rtabmap::Statistics::kTimingTotal(), 0.0f);
+		int loopClosureId = stats.loopClosureId()>0?stats.loopClosureId():stats.proximityDetectionId()>0?stats.proximityDetectionId():0;
+		int databaseMemoryUsed = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryDatabase_memory_used(), 0.0f);
+		int inliers = (int)uValue(stats.data(), rtabmap::Statistics::kLoopVisual_inliers(), 0.0f);
+		int featuresExtracted = stats.getSignatures().size()?stats.getSignatures().rbegin()->second.getWords().size():0;
+		float hypothesis = uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f);
+
+		// Call JAVA callback with some stats
+		UINFO("Send statistics to GUI");
+		bool success = false;
+		if(jvm && RTABMapActivity)
+		{
+			JNIEnv *env = 0;
+			jint rs = jvm->AttachCurrentThread(&env, NULL);
+			if(rs == JNI_OK && env)
+			{
+				jclass clazz = env->GetObjectClass(RTABMapActivity);
+				if(clazz)
+				{
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIFI)V" );
+					if(methodID)
+					{
+						env->CallVoidMethod(RTABMapActivity, methodID,
+								nodes,
+								words,
+								totalPoints_,
+								totalPolygons_,
+								updateTime,
+								loopClosureId,
+								databaseMemoryUsed,
+								inliers,
+								featuresExtracted,
+								hypothesis,
+								lastDrawnCloudsCount_);
+						success = true;
+					}
+				}
+			}
+			jvm->DetachCurrentThread();
+		}
+		if(!success)
+		{
+			UERROR("Failed to call RTABMapActivity::updateStatsCallback");
 		}
 	}
 }

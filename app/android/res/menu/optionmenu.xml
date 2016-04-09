@@ -48,6 +48,7 @@
 	           <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
 	           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
 	           <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
+	           <item android:id="@+id/nodes_filtering" android:checked="false" android:title="Nodes Filtering" />
 	           <item android:id="@+id/update_rate" android:checkable="false" android:title="Map Update Rate..." />
 	           <item android:id="@+id/time_threshold" android:checkable="false" android:title="Time Threshold..." />
 	           <item android:id="@+id/loop_threshold" android:checkable="false" android:title="Loop Closure Threshold..." />

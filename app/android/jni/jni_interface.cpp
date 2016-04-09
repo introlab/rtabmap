@@ -156,6 +156,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setGraphOptimization(
 	return app.setGraphOptimization(enabled);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setNodesFiltering(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setNodesFiltering(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGraphVisible(
 		JNIEnv*, jobject, bool visible)
 {

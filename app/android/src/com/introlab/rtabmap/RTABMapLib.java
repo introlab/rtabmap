@@ -50,6 +50,7 @@ public class RTABMapLib
     public static native void setLocalizationMode(boolean enabled);
     public static native void setTrajectoryMode(boolean enabled);
     public static native void setGraphOptimization(boolean enabled);
+    public static native void setNodesFiltering(boolean enabled);
     public static native void setGraphVisible(boolean visible);
     public static native void setAutoExposure(boolean enabled);
     public static native void setFullResolution(boolean enabled);

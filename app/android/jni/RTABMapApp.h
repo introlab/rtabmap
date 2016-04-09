@@ -119,6 +119,7 @@ class RTABMapApp : public UEventsHandler {
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
+  void setNodesFiltering(bool enabled);
   void setGraphVisible(bool visible);
   void setAutoExposure(bool enabled);
   void setFullResolution(bool enabled);
@@ -146,6 +147,7 @@ class RTABMapApp : public UEventsHandler {
 
   bool odomCloudShown_;
   bool graphOptimization_;
+  bool nodesFiltering_;
   bool localizationMode_;
   bool trajectoryMode_;
   bool autoExposure_;

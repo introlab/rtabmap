@@ -9,7 +9,7 @@
     <string name="third_person">Third</string>
     <string name="top_down">Top</string>
     <string name="start">Start</string>
-    <string name="nodes">"Nodes: "</string>
+    <string name="nodes">"Nodes (WM): "</string>
     <string name="points">"Number of points: "</string>
     <string name="update_time">"Update time (ms): "</string>
     <string name="loop_closure">"Loop closure ID: "</string>
