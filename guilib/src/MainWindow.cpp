@@ -2589,6 +2589,11 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	{
 		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 		this->changeState(MainWindow::kInitialized);
+
+		if(!_openedDatabasePath.isEmpty())
+		{
+			this->downloadAllClouds();
+		}
 	}
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosing)
 	{
@@ -3152,6 +3157,10 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 	{
 		this->setWindowModified(true);
 	}
+    else if(event->type() == QEvent::FileOpen )
+    {
+        openDatabase(((QFileOpenEvent*)event)->file());
+    }
 	return QWidget::eventFilter(obj, event);
 }
 
@@ -3317,23 +3326,39 @@ void MainWindow::newDatabase()
 
 void MainWindow::openDatabase()
 {
-	if(_state != MainWindow::kIdle)
-	{
-		UERROR("This method can be called only in IDLE state.");
-		return;
-	}
-	_openedDatabasePath.clear();
-	_newDatabasePath.clear();
-	_newDatabasePathOutput.clear();
-	_databaseUpdated = false;
 	QString path = QFileDialog::getOpenFileName(this, tr("Open database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
 	if(!path.isEmpty())
 	{
+		this->openDatabase(path);
+	}
+}
+
+void MainWindow::openDatabase(const QString & path)
+{
+	if(_state != MainWindow::kIdle)
+	{
+		UERROR("Database can only be opened in IDLE state.");
+		return;
+	}
+
+	std::string value = path.toStdString();
+	if(UFile::exists(value) &&
+	   UFile::getExtension(value).compare("db") == 0)
+	{
+		_openedDatabasePath.clear();
+		_newDatabasePath.clear();
+		_newDatabasePathOutput.clear();
+		_databaseUpdated = false;
+
 		this->clearTheCache();
 		_openedDatabasePath = path;
-		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, path.toStdString(), 0, _preferencesDialog->getAllParameters()));
+		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, value, 0, _preferencesDialog->getAllParameters()));
+		applyPrefSettings(_preferencesDialog->getAllParameters(), false);
 	}
-	applyPrefSettings(_preferencesDialog->getAllParameters(), false);
+	else
+	{
+		UERROR("File \"%s\" not valid.", value.c_str());
+	}
 }
 
 bool MainWindow::closeDatabase()

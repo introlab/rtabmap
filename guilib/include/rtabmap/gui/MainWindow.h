@@ -108,6 +108,7 @@ public:
 public slots:
 	void processStats(const rtabmap::Statistics & stat);
 	void updateCacheFromDatabase(const QString & path);
+	void openDatabase(const QString & path);
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);
