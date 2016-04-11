@@ -85,11 +85,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private int mParamTimeThrMsIndex = 4;
   private int mParamMaxFeaturesIndex = 4;
   private int mParamLoopThrMsIndex = 1;
+  private int mParamOptimizeErrorIndex = 3;
   
   final String[] mUpdateRateValues = {"0.5", "1", "2", "Max"};
   final String[] mTimeThrValues = {"400", "500", "600", "700", "800", "900", "1000", "1100", "1200", "1300", "1400", "1500", "No Limit"};
   final String[] mMaxFeaturesValues = {"Disabled", "100", "200", "300", "400", "500", "600", "700", "800", "900", "1000", "No Limit"};
   final String[] mLoopThrValues = {"Disabled", "0.11", "0.20", "0.30", "0.40", "0.50", "0.60", "0.70", "0.80", "0.90"};
+  final String[] mOptimizeErrorValues = {"Disabled", "0.01", "0.025", "0.05", "0.1", "0.2", "0.35", "0.5", "1"};
   
   private LinearLayout mLayoutDebug;
   
@@ -310,11 +312,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  int polygons,
 		  float updateTime, 
 		  int loopClosureId,
+		  int highestHypId,
 		  int databaseMemoryUsed,
 		  int inliers,
 		  int featuresExtracted,
 		  float hypothesis,
-		  int nodesDrawn)
+		  int nodesDrawn,
+		  int rejected)
   {
 	  if(mItemPause!=null)
 	  {
@@ -330,13 +334,21 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  ((TextView)findViewById(R.id.inliers)).setText(String.valueOf(inliers));
 	  ((TextView)findViewById(R.id.features)).setText(String.format("%d / %s", featuresExtracted, mMaxFeaturesValues[mParamMaxFeaturesIndex]));
 	  ((TextView)findViewById(R.id.update_time)).setText(String.format("%.3f / %s", updateTime, mTimeThrValues[mParamTimeThrMsIndex]));
-	  ((TextView)findViewById(R.id.hypothesis)).setText(String.format("%.3f / %s (%d)", hypothesis, mLoopThrValues[mParamLoopThrMsIndex], loopClosureId));
-	  if(loopClosureId > 0)
+	  ((TextView)findViewById(R.id.hypothesis)).setText(String.format("%.3f / %s (%d)", hypothesis, mLoopThrValues[mParamLoopThrMsIndex], loopClosureId>0?loopClosureId:highestHypId));
+	  if(mItemPause!=null && !mItemPause.isChecked())
 	  {
-		  ++mTotalLoopClosures;
-
-		  mToast.setText("Loop closure detected!");
-		  mToast.show();
+		  if(loopClosureId > 0)
+		  {
+			  ++mTotalLoopClosures;
+	
+			  mToast.setText("Loop closure detected!");
+			  mToast.show();
+		  }
+		  else if(rejected > 0 && inliers >= 15)
+		  {
+			  mToast.setText("Loop closure rejected after graph optimization.");
+			  mToast.show();
+		  }
 	  }
 	  ((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
   }
@@ -349,17 +361,19 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  final int polygons,
 		  final float updateTime, 
 		  final int loopClosureId,
+		  final int highestHypId,
 		  final int databaseMemoryUsed,
 		  final int inliers,
 		  final int features,
 		  final float hypothesis,
-		  final int nodesDrawn)
+		  final int nodesDrawn,
+		  final int rejected)
   {
 	  Log.i(TAG, String.format("updateStatsCallback()"));
 
 	  runOnUiThread(new Runnable() {
 		    public void run() {
-		    	updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, databaseMemoryUsed, inliers, features, hypothesis, nodesDrawn);
+		    	updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, highestHypId, databaseMemoryUsed, inliers, features, hypothesis, nodesDrawn, rejected);
 		    } 
 		});
   }
@@ -629,6 +643,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								mProgressDialog.dismiss();
 								if(loopDetected >= 0)
 								{
+									mTotalLoopClosures+=loopDetected;
 									mToast.makeText(getActivity(), String.format("Detection done! %d new loop closure(s) added.", loopDetected), mToast.LENGTH_SHORT).show();
 								}
 								else if(loopDetected < 0)
@@ -890,6 +905,27 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			        if(RTABMapLib.setMappingParameter("Rtabmap/LoopThr", which==0?"1":mLoopThrValues[which]) != 0)
 			        {
 			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/LoopThr\"!", mToast.LENGTH_LONG).show();
+			        }
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.optimize_error)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Max Optimization Error (m)");
+		  builder.setSingleChoiceItems(mOptimizeErrorValues, mParamOptimizeErrorIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which < mOptimizeErrorValues.length)
+		        {
+		        	mParamOptimizeErrorIndex = which;
+			        if(RTABMapLib.setMappingParameter("RGBD/OptimizeMaxError", which==0?"0":mOptimizeErrorValues[which]) != 0)
+			        {
+			        	mToast.makeText(getActivity(), "Failed to set parameter \"RGBD/OptimizeMaxError\"!", mToast.LENGTH_LONG).show();
 			        }
 		        }
 		    }

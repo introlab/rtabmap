@@ -77,7 +77,8 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeFromGraphEnd(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), std::string("15")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), std::string("0"))); // PnP
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), std::string("0"))); // 0=3D-3D 1=PnP
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("0.05")));
 
 	return parameters;
 }
@@ -1084,8 +1085,10 @@ void RTABMapApp::handleEvent(UEvent * event)
 		int words = (int)uValue(stats.data(), rtabmap::Statistics::kKeypointDictionary_size(), 0.0f);
 		float updateTime = uValue(stats.data(), rtabmap::Statistics::kTimingTotal(), 0.0f);
 		int loopClosureId = stats.loopClosureId()>0?stats.loopClosureId():stats.proximityDetectionId()>0?stats.proximityDetectionId():0;
+		int highestHypId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_id(), 0.0f);
 		int databaseMemoryUsed = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryDatabase_memory_used(), 0.0f);
 		int inliers = (int)uValue(stats.data(), rtabmap::Statistics::kLoopVisual_inliers(), 0.0f);
+		int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
 		int featuresExtracted = stats.getSignatures().size()?stats.getSignatures().rbegin()->second.getWords().size():0;
 		float hypothesis = uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 
@@ -1101,7 +1104,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIFI)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIFII)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,
@@ -1111,11 +1114,13 @@ void RTABMapApp::handleEvent(UEvent * event)
 								totalPolygons_,
 								updateTime,
 								loopClosureId,
+								highestHypId,
 								databaseMemoryUsed,
 								inliers,
 								featuresExtracted,
 								hypothesis,
-								lastDrawnCloudsCount_);
+								lastDrawnCloudsCount_,
+								rejected);
 						success = true;
 					}
 				}

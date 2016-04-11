@@ -49,11 +49,16 @@
 	           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
 	           <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
 	           <item android:id="@+id/nodes_filtering" android:checked="false" android:title="Nodes Filtering" />
-	           <item android:id="@+id/update_rate" android:checkable="false" android:title="Map Update Rate..." />
-	           <item android:id="@+id/time_threshold" android:checkable="false" android:title="Time Threshold..." />
-	           <item android:id="@+id/loop_threshold" android:checkable="false" android:title="Loop Closure Threshold..." />
-	           <item android:id="@+id/features" android:checkable="false" android:title="Max Features Extracted..." />
 	           <item android:id="@+id/resolution" android:checked="false" android:title="720p Mode" />
+	           <item android:id="@+id/menu_param_settings" android:checkable="false" android:title="Parameters...">
+		           <menu >
+			           <item android:id="@+id/update_rate" android:title="Map Update Rate..." />
+			           <item android:id="@+id/time_threshold" android:title="Time Threshold..." />
+			           <item android:id="@+id/loop_threshold" android:title="Loop Closure Threshold..." />
+			           <item android:id="@+id/optimize_error" android:title="Max Optimization Error..." />
+			           <item android:id="@+id/features" android:title="Max Features Extracted..." />
+			       </menu>
+			    </item>
 	       </group>   
 	       </menu>
 	   </item>
