@@ -1928,10 +1928,8 @@ bool Rtabmap::process(
 								{
 									// path filtering
 									std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _proximityFilteringRadius, 0, true);
-									// make sure the nearest and farthest poses are still here
+									// make sure the current pose is still here
 									filteredPath.insert(*path.find(nearestId));
-									filteredPath.insert(*path.begin());
-									filteredPath.insert(*path.rbegin());
 									path = filteredPath;
 								}
 							}

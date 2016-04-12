@@ -53,6 +53,7 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_scanFromDepth(false),
 		_scanDecimation(4),
 		_scanMaxDepth(4.0f),
+		_scanMinDepth(0.0f),
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
 		_stereoDense(new StereoBM(parameters))
@@ -174,7 +175,7 @@ void CameraThread::mainLoop()
 				UASSERT(_scanDecimation >= 1);
 				UTimer timer;
 				pcl::IndicesPtr validIndices(new std::vector<int>);
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth, 0.0f, 0, validIndices.get());
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth, _scanMinDepth, validIndices.get());
 				float maxPoints = (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation);
 				if(_scanVoxelSize>0.0f)
 				{

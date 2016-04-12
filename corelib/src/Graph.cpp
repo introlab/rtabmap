@@ -616,7 +616,7 @@ std::map<int, Transform> radiusPosesFiltering(
 		float angle,
 		bool keepLatest)
 {
-	if(poses.size() > 1 && radius > 0.0f)
+	if(poses.size() > 2 && radius > 0.0f)
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		cloud->resize(poses.size());
@@ -709,6 +709,10 @@ std::map<int, Transform> radiusPosesFiltering(
 		{
 			keptPoses.insert(std::make_pair(names.at(*iter), transforms.at(*iter)));
 		}
+
+		// make sure the first and last poses are still here
+		keptPoses.insert(*poses.begin());
+		keptPoses.insert(*poses.rbegin());
 
 		return keptPoses;
 	}

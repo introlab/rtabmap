@@ -245,6 +245,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		float fx, float fy,
 		int decimation,
 		float maxDepth,
+		float minDepth,
 		std::vector<int> * validIndices)
 {
 	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
@@ -275,7 +276,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 			pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
 
 			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, cx, cy, fx, fy, false);
-			if(maxDepth<=0.0f || ptXYZ.z <= maxDepth)
+			if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
 			{
 				pt.x = ptXYZ.x;
 				pt.y = ptXYZ.y;
@@ -307,6 +308,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		float fx, float fy,
 		int decimation,
 		float maxDepth,
+		float minDepth,
 		std::vector<int> * validIndices)
 {
 	UDEBUG("");
@@ -381,7 +383,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 			}
 
 			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w*rgbToDepthFactorX, h*rgbToDepthFactorY, depthCx, depthCy, depthFx, depthFy, false);
-			if(pcl::isFinite(ptXYZ) && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
+			if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
 			{
 				pt.x = ptXYZ.x;
 				pt.y = ptXYZ.y;
@@ -415,6 +417,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 		const StereoCameraModel & model,
 		int decimation,
 		float maxDepth,
+		float minDepth,
 		std::vector<int> * validIndices)
 {
 	UASSERT(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1);
@@ -443,7 +446,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 			{
 				float disp = float(imageDisparity.at<short>(h,w))/16.0f;
 				cv::Point3f pt = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
-				if(maxDepth <= 0.0f || pt.z <= maxDepth)
+				if(pt.z >= minDepth && (maxDepth <= 0.0f || pt.z <= maxDepth))
 				{
 					cloud->at((h/decimation)*cloud->width + (w/decimation)) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 					if(validIndices)
@@ -469,7 +472,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 			{
 				float disp = imageDisparity.at<float>(h,w);
 				cv::Point3f pt = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
-				if(maxDepth <= 0.0f || pt.z <= maxDepth)
+				if(pt.z > minDepth && (maxDepth <= 0.0f || pt.z <= maxDepth))
 				{
 					cloud->at((h/decimation)*cloud->width + (w/decimation)) = pcl::PointXYZ(pt.x, pt.y, pt.z);
 					if(validIndices)
@@ -500,6 +503,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 		const StereoCameraModel & model,
 		int decimation,
 		float maxDepth,
+		float minDepth,
 		std::vector<int> * validIndices)
 {
 	UASSERT(!imageRgb.empty() && !imageDisparity.empty());
@@ -554,7 +558,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 
 			float disp = imageDisparity.type()==CV_16SC1?float(imageDisparity.at<short>(h,w))/16.0f:imageDisparity.at<float>(h,w);
 			cv::Point3f ptXYZ = projectDisparityTo3D(cv::Point2f(w, h), disp, model);
-			if(util3d::isFinite(ptXYZ) && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
+			if(util3d::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
 			{
 				pt.x = ptXYZ.x;
 				pt.y = ptXYZ.y;
@@ -583,6 +587,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 		const StereoCameraModel & model,
 		int decimation,
 		float maxDepth,
+		float minDepth,
 		std::vector<int> * validIndices)
 {
 	UASSERT(!imageLeft.empty() && !imageRight.empty());
@@ -622,6 +627,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 			modelDecimation,
 			decimation,
 			maxDepth,
+			minDepth,
 			validIndices);
 }
 
@@ -629,8 +635,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		const SensorData & sensorData,
 		int decimation,
 		float maxDepth,
-		float voxelSize,
-		int samples,
+		float minDepth,
 		std::vector<int> * validIndices)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -652,36 +657,16 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 						sensorData.cameraModels()[i].fy(),
 						decimation,
 						maxDepth,
+						minDepth,
 						sensorData.cameraModels().size()==1?validIndices:0);
 
 				if(tmp->size())
 				{
-					bool filtered = false;
-
-					if(tmp->size() && voxelSize)
-					{
-						tmp = util3d::voxelize(tmp, voxelSize);
-						filtered = true;
-					}
-
-					if(tmp->size() && samples)
-					{
-						tmp = util3d::randomSampling(tmp, samples);
-						filtered = true;
-					}
-
-					if(tmp->size() && !filtered && sensorData.cameraModels().size() > 1)
-					{
-						tmp = util3d::removeNaNFromPointCloud(tmp);
-					}
-
-					if(tmp->size())
-					{
-						tmp = util3d::transformPointCloud(tmp, sensorData.cameraModels()[i].localTransform());
-					}
+					tmp = util3d::transformPointCloud(tmp, sensorData.cameraModels()[i].localTransform());
 
 					if(sensorData.cameraModels().size() > 1)
 					{
+						tmp = util3d::removeNaNFromPointCloud(tmp);
 						*cloud += *tmp;
 					}
 					else
@@ -694,11 +679,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 			{
 				UERROR("Camera model %d is invalid", i);
 			}
-		}
-
-		if(cloud->size() && voxelSize && sensorData.cameraModels().size() > 1)
-		{
-			cloud = util3d::voxelize(cloud, voxelSize);
 		}
 	}
 	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
@@ -720,15 +700,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 				sensorData.stereoCameraModel(),
 				decimation,
 				maxDepth,
+				minDepth,
 				validIndices);
 
 		if(cloud->size())
 		{
-			if(cloud->size() && voxelSize)
-			{
-				cloud = util3d::voxelize(cloud, voxelSize);
-			}
-
 			if(cloud->size())
 			{
 				cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
@@ -742,8 +718,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		const SensorData & sensorData,
 		int decimation,
 		float maxDepth,
-		float voxelSize,
-		int samples,
+		float minDepth,
 		std::vector<int> * validIndices)
 {
 	UASSERT(!sensorData.imageRaw().empty());
@@ -785,35 +760,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 						sensorData.cameraModels()[i].fy(),
 						decimation,
 						maxDepth,
+						minDepth,
 						sensorData.cameraModels().size() == 1?validIndices:0);
 
 				if(tmp->size())
 				{
-					bool filtered = false;
-					if(tmp->size() && voxelSize)
-					{
-						tmp = util3d::voxelize(tmp, voxelSize);
-						filtered = true;
-					}
-
-					if(tmp->size() && samples)
-					{
-						tmp = util3d::randomSampling(tmp, samples);
-						filtered = true;
-					}
-
-					if(tmp->size() && !filtered && sensorData.cameraModels().size() > 1)
-					{
-						tmp = util3d::removeNaNFromPointCloud(tmp);
-					}
-
-					if(tmp->size())
-					{
-						tmp = util3d::transformPointCloud(tmp, sensorData.cameraModels()[i].localTransform());
-					}
+					tmp = util3d::transformPointCloud(tmp, sensorData.cameraModels()[i].localTransform());
 
 					if(sensorData.cameraModels().size() > 1)
 					{
+						tmp = util3d::removeNaNFromPointCloud(tmp);
 						*cloud += *tmp;
 					}
 					else
@@ -826,11 +782,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 			{
 				UERROR("Camera model %d is invalid", i);
 			}
-		}
-
-		if(cloud->size() && voxelSize && sensorData.cameraModels().size() > 1)
-		{
-			cloud = util3d::voxelize(cloud, voxelSize);
 		}
 
 		if(cloud->is_dense && validIndices)
@@ -852,19 +803,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 				sensorData.stereoCameraModel(),
 				decimation,
 				maxDepth,
+				minDepth,
 				validIndices);
 
 		if(cloud->size())
 		{
-			if(cloud->size() && voxelSize)
-			{
-				cloud = util3d::voxelize(cloud, voxelSize);
-			}
-
-			if(cloud->size())
-			{
-				cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
-			}
+			cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
 		}
 	}
 	return cloud;
@@ -877,6 +821,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
 					float cx,
 					float cy,
 					float maxDepth,
+					float minDepth,
 					const Transform & localTransform)
 {
 	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
@@ -891,7 +836,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
 		for(int i=0; i<depthImage.cols; ++i)
 		{
 			pcl::PointXYZ pt = util3d::projectDepthTo3D(depthImage, i, middle, cx, cy, fx, fy, false);
-			if(pcl::isFinite(pt) && (maxDepth == 0 || pt.z < maxDepth))
+			if(pcl::isFinite(pt) && pt.z >= minDepth && (maxDepth == 0 || pt.z < maxDepth))
 			{
 				if(!localTransform.isIdentity())
 				{

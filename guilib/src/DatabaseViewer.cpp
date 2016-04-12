@@ -239,6 +239,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->spinBox_projDecimation, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
+	connect(ui_->doubleSpinBox_projMinDepth, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_projMaxAngle, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 	connect(ui_->spinBox_projClusterSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 
@@ -268,6 +269,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_projDecimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_projMinDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_projMaxAngle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_projClusterSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
@@ -276,6 +278,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 
 	connect(ui_->spinBox_icp_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_icp_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_icp_minDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->checkBox_icp_laserScan, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	
 	connect(ui_->doubleSpinBox_detectMore_radius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -388,6 +391,7 @@ void DatabaseViewer::readSettings()
 	ui_->doubleSpinBox_gridCellSize->setValue(settings.value("gridCellSize", ui_->doubleSpinBox_gridCellSize->value()).toDouble());
 	ui_->spinBox_projDecimation->setValue(settings.value("projDecimation", ui_->spinBox_projDecimation->value()).toInt());
 	ui_->doubleSpinBox_projMaxDepth->setValue(settings.value("projMaxDepth", ui_->doubleSpinBox_projMaxDepth->value()).toDouble());
+	ui_->doubleSpinBox_projMinDepth->setValue(settings.value("projMinDepth", ui_->doubleSpinBox_projMinDepth->value()).toDouble());
 	ui_->doubleSpinBox_projMaxAngle->setValue(settings.value("projMaxAngle", ui_->doubleSpinBox_projMaxAngle->value()).toDouble());
 	ui_->spinBox_projClusterSize->setValue(settings.value("projClusterSize", ui_->spinBox_projClusterSize->value()).toInt());
 	ui_->groupBox_posefiltering->setChecked(settings.value("poseFiltering", ui_->groupBox_posefiltering->isChecked()).toBool());
@@ -411,6 +415,7 @@ void DatabaseViewer::readSettings()
 	settings.beginGroup("icp");
 	ui_->spinBox_icp_decimation->setValue(settings.value("decimation", ui_->spinBox_icp_decimation->value()).toInt());
 	ui_->doubleSpinBox_icp_maxDepth->setValue(settings.value("maxDepth", ui_->doubleSpinBox_icp_maxDepth->value()).toDouble());
+	ui_->doubleSpinBox_icp_minDepth->setValue(settings.value("minDepth", ui_->doubleSpinBox_icp_minDepth->value()).toDouble());
 	ui_->checkBox_icp_laserScan->setChecked(settings.value("icpLaserScan", ui_->checkBox_icp_laserScan->isChecked()).toBool());
 	settings.endGroup();
 	// Visual parameters
@@ -474,6 +479,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("gridCellSize", ui_->doubleSpinBox_gridCellSize->value());
 	settings.setValue("projDecimation", ui_->spinBox_projDecimation->value());
 	settings.setValue("projMaxDepth", ui_->doubleSpinBox_projMaxDepth->value());
+	settings.setValue("projMinDepth", ui_->doubleSpinBox_projMinDepth->value());
 	settings.setValue("projMaxAngle", ui_->doubleSpinBox_projMaxAngle->value());
 	settings.setValue("projClusterSize", ui_->spinBox_projClusterSize->value());
 	settings.setValue("poseFiltering", ui_->groupBox_posefiltering->isChecked());
@@ -497,6 +503,7 @@ void DatabaseViewer::writeSettings()
 	settings.beginGroup("icp");
 	settings.setValue("decimation", ui_->spinBox_icp_decimation->value());
 	settings.setValue("maxDepth", ui_->doubleSpinBox_icp_maxDepth->value());
+	settings.setValue("minDepth", ui_->doubleSpinBox_icp_minDepth->value());
 	settings.setValue("icpLaserScan", ui_->checkBox_icp_laserScan->isChecked());
 	settings.endGroup();
 	
@@ -1710,20 +1717,26 @@ void DatabaseViewer::generate3DMap()
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
 							UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
-							cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth, assemble?0.01:0);
+							pcl::IndicesPtr validIndices(new std::vector<int>);
+							cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth, 0, validIndices.get());
 
 							if(assemble)
 							{
 								if(cloud->size())
 								{
-									cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
-									if(assembledCloud->size() == 0)
+									cloud = util3d::voxelize(cloud, validIndices, 0.01);
+
+									if(cloud->size())
 									{
-										*assembledCloud = *cloud;
-									}
-									else
-									{
-										*assembledCloud += *cloud;
+										cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
+										if(assembledCloud->size() == 0)
+										{
+											*assembledCloud = *cloud;
+										}
+										else
+										{
+											*assembledCloud += *cloud;
+										}
 									}
 								}
 								UINFO("Created cloud %d (%d points)", iter->first, (int)cloud->size());
@@ -3282,10 +3295,16 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						if(!data.depthOrRightRaw().empty())
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+							pcl::IndicesPtr validIndices(new std::vector<int>);
 							cloud = util3d::cloudFromSensorData(data,
 									ui_->spinBox_projDecimation->value(),
 									ui_->doubleSpinBox_projMaxDepth->value(),
-									ui_->doubleSpinBox_gridCellSize->value());
+									ui_->doubleSpinBox_projMinDepth->value(),
+									validIndices.get());
+							if(ui_->doubleSpinBox_gridCellSize->value())
+							{
+								cloud = util3d::voxelize(cloud, validIndices, ui_->doubleSpinBox_gridCellSize->value());
+							}
 
 							if(cloud->size())
 							{
@@ -3607,9 +3626,10 @@ void DatabaseViewer::updateGraphView()
 
 void DatabaseViewer::updateGrid()
 {
-	if((sender() != ui_->spinBox_projDecimation && sender() != ui_->doubleSpinBox_projMaxDepth && sender()!=ui_->doubleSpinBox_projMaxAngle && sender()!=ui_->spinBox_projClusterSize) ||
+	if((sender() != ui_->spinBox_projDecimation && sender() != ui_->doubleSpinBox_projMaxDepth && sender() != ui_->doubleSpinBox_projMinDepth && sender()!=ui_->doubleSpinBox_projMaxAngle && sender()!=ui_->spinBox_projClusterSize) ||
 	   (sender() == ui_->spinBox_projDecimation && ui_->groupBox_gridFromProjection->isChecked()) ||
 	   (sender() == ui_->doubleSpinBox_projMaxDepth && ui_->groupBox_gridFromProjection->isChecked()) ||
+	   (sender() == ui_->doubleSpinBox_projMinDepth && ui_->groupBox_gridFromProjection->isChecked()) ||
 	   (sender() == ui_->doubleSpinBox_projMaxAngle && ui_->groupBox_gridFromProjection->isChecked()) ||
 	   (sender() == ui_->spinBox_projClusterSize && ui_->groupBox_gridFromProjection->isChecked()))
 	{
@@ -3723,11 +3743,13 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom = util3d::cloudFromSensorData(
 				dataFrom,
 				ui_->spinBox_icp_decimation->value(),
-				ui_->doubleSpinBox_icp_maxDepth->value());
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_minDepth->value());
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo = util3d::cloudFromSensorData(
 				dataTo,
 				ui_->spinBox_icp_decimation->value(),
-				ui_->doubleSpinBox_icp_maxDepth->value());
+				ui_->doubleSpinBox_icp_maxDepth->value(),
+				ui_->doubleSpinBox_icp_minDepth->value());
 		int maxLaserScans = cloudFrom->size();
 		dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0);
 		dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0);

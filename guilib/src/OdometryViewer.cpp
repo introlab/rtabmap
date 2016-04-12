@@ -235,11 +235,18 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 		// visualization: buffering the clouds
 		// Create the new cloud
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+		pcl::IndicesPtr validIndices(new std::vector<int>);
 		cloud = util3d::cloudRGBFromSensorData(
 				odom.data(),
 				validDecimationValue_,
-				0.0f,
-				voxelSpin_->value());
+				0,
+				0,
+				validIndices.get());
+
+		if(voxelSpin_->value())
+		{
+			cloud = util3d::voxelize(cloud, validIndices, voxelSpin_->value());
+		}
 
 		if(cloud->size())
 		{

@@ -44,7 +44,7 @@ LoopClosureViewer::LoopClosureViewer(QWidget * parent) :
 	QWidget(parent),
 	decimation_(1),
 	maxDepth_(0),
-	samples_(0)
+	minDepth_(0)
 {
 	ui_ = new Ui_loopClosureViewer();
 	ui_->setupUi(this);
@@ -73,17 +73,17 @@ void LoopClosureViewer::updateView(const Transform & transform)
 	{
 		int decimation = 1;
 		float maxDepth = 0;
-		int samples = 0;
+		float minDepth = 0;
 
 		if(!ui_->checkBox_rawCloud->isChecked())
 		{			decimation = decimation_;
 			maxDepth = maxDepth_;
-			samples = samples_;
+			minDepth = minDepth_;
 		}
 
 		UDEBUG("decimation = %d", decimation);
 		UDEBUG("maxDepth = %f", maxDepth);
-		UDEBUG("samples = %d", samples);
+		UDEBUG("minDepth = %d", minDepth);
 
 		Transform t;
 		if(!transform.isNull())
@@ -106,8 +106,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		{
 			//cloud 3d
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA, cloudB;
-			cloudA = util3d::cloudRGBFromSensorData(sA_.sensorData(), decimation, maxDepth, 0.0f, samples);
-			cloudB = util3d::cloudRGBFromSensorData(sB_.sensorData(), decimation, maxDepth, 0.0f, samples);
+			cloudA = util3d::cloudRGBFromSensorData(sA_.sensorData(), decimation, maxDepth, minDepth);
+			cloudB = util3d::cloudRGBFromSensorData(sB_.sensorData(), decimation, maxDepth, minDepth);
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;

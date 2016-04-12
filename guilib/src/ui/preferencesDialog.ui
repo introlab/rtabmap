@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-466</y>
             <width>686</width>
             <height>2023</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>14</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -773,7 +773,17 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        <enum>QFrame::Raised</enum>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,1">
-                       <item row="11" column="0">
+                       <item row="9" column="0">
+                        <widget class="QCheckBox" name="checkBox_showScans">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="12" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_scan">
                          <property name="suffix">
                           <string/>
@@ -792,7 +802,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="2">
+                       <item row="9" column="2">
                         <widget class="QLabel" name="label_110">
                          <property name="text">
                           <string>Show scans.</string>
@@ -818,7 +828,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="1">
+                       <item row="14" column="1">
                         <widget class="QCheckBox" name="checkBox_showOdomFeatures">
                          <property name="text">
                           <string/>
@@ -828,7 +838,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="0">
+                       <item row="14" column="0">
                         <widget class="QCheckBox" name="checkBox_showFeatures">
                          <property name="text">
                           <string/>
@@ -902,7 +912,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="0">
+                       <item row="7" column="0">
                         <widget class="QSpinBox" name="spinBox_ptsize">
                          <property name="minimum">
                           <number>1</number>
@@ -915,7 +925,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="11" column="1">
+                       <item row="12" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom_scan">
                          <property name="suffix">
                           <string/>
@@ -931,16 +941,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="value">
                           <double>1.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="8" column="0">
-                        <widget class="QCheckBox" name="checkBox_showScans">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
                          </property>
                         </widget>
                        </item>
@@ -970,7 +970,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="2">
+                       <item row="6" column="2">
                         <widget class="QLabel" name="label_155">
                          <property name="text">
                           <string>3D cloud opacity.</string>
@@ -983,7 +983,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="1">
+                       <item row="7" column="1">
                         <widget class="QSpinBox" name="spinBox_ptsize_odom">
                          <property name="minimum">
                           <number>1</number>
@@ -996,7 +996,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="1">
+                       <item row="13" column="1">
                         <widget class="QSpinBox" name="spinBox_ptsize_odom_scan">
                          <property name="minimum">
                           <number>1</number>
@@ -1006,7 +1006,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="2">
+                       <item row="13" column="2">
                         <widget class="QLabel" name="label_158">
                          <property name="text">
                           <string>Scan point size (1..64).</string>
@@ -1019,7 +1019,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="0">
+                       <item row="11" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan">
                          <property name="suffix">
                           <string> m</string>
@@ -1038,7 +1038,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="2">
+                       <item row="11" column="2">
                         <widget class="QLabel" name="label_271">
                          <property name="text">
                           <string>Scan voxel size.</string>
@@ -1051,7 +1051,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="1">
+                       <item row="10" column="1">
                         <widget class="QSpinBox" name="spinBox_downsamplingScan_odom">
                          <property name="minimum">
                           <number>1</number>
@@ -1061,7 +1061,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="11" column="2">
+                       <item row="12" column="2">
                         <widget class="QLabel" name="label_156">
                          <property name="text">
                           <string>Scan opacity.</string>
@@ -1097,7 +1097,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="0">
+                       <item row="6" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity">
                          <property name="suffix">
                           <string/>
@@ -1116,7 +1116,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="1">
+                       <item row="9" column="1">
                         <widget class="QCheckBox" name="checkBox_showOdomScans">
                          <property name="text">
                           <string/>
@@ -1126,7 +1126,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="15" column="2">
+                       <item row="16" column="2">
                         <widget class="QLabel" name="label_213">
                          <property name="text">
                           <string>Show graphs.</string>
@@ -1139,7 +1139,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="15" column="0">
+                       <item row="16" column="0">
                         <widget class="QCheckBox" name="checkBox_showGraphs">
                          <property name="text">
                           <string/>
@@ -1149,7 +1149,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="1">
+                       <item row="6" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom">
                          <property name="suffix">
                           <string/>
@@ -1168,7 +1168,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="12" column="0">
+                       <item row="13" column="0">
                         <widget class="QSpinBox" name="spinBox_ptsize_scan">
                          <property name="minimum">
                           <number>1</number>
@@ -1188,7 +1188,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="16" column="2">
+                       <item row="17" column="2">
                         <widget class="QLabel" name="label_243">
                          <property name="text">
                           <string>Show labels.</string>
@@ -1201,7 +1201,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="16" column="0">
+                       <item row="17" column="0">
                         <widget class="QCheckBox" name="checkBox_showLabels">
                          <property name="text">
                           <string/>
@@ -1211,7 +1211,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="10" column="1">
+                       <item row="11" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan_odom">
                          <property name="suffix">
                           <string> m</string>
@@ -1230,7 +1230,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="2">
+                       <item row="10" column="2">
                         <widget class="QLabel" name="label_273">
                          <property name="text">
                           <string>Scan downsampling step size.</string>
@@ -1243,7 +1243,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="9" column="0">
+                       <item row="10" column="0">
                         <widget class="QSpinBox" name="spinBox_downsamplingScan">
                          <property name="minimum">
                           <number>1</number>
@@ -1253,7 +1253,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="2">
+                       <item row="7" column="2">
                         <widget class="QLabel" name="label_157">
                          <property name="text">
                           <string>3D cloud point size (1..64).</string>
@@ -1279,7 +1279,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="13" column="2">
+                       <item row="14" column="2">
                         <widget class="QLabel" name="label_123">
                          <property name="text">
                           <string>Show 3D features.</string>
@@ -1292,7 +1292,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="2">
+                       <item row="15" column="2">
                         <widget class="QLabel" name="label_166">
                          <property name="text">
                           <string>Feature point size.</string>
@@ -1305,7 +1305,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="1">
+                       <item row="15" column="1">
                         <widget class="QSpinBox" name="spinBox_ptsize_odom_features">
                          <property name="minimum">
                           <number>1</number>
@@ -1315,13 +1315,67 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="14" column="0">
+                       <item row="15" column="0">
                         <widget class="QSpinBox" name="spinBox_ptsize_features">
                          <property name="minimum">
                           <number>1</number>
                          </property>
                          <property name="maximum">
                           <number>64</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="2">
+                        <widget class="QLabel" name="label_150">
+                         <property name="text">
+                          <string>3D cloud minimum depth.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_minDepth">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <double>100.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_minDepth_odom">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>100.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.000000000000000</double>
                          </property>
                         </widget>
                        </item>

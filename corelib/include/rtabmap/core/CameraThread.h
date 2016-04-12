@@ -91,6 +91,7 @@ private:
 	bool _scanFromDepth;
 	int _scanDecimation;
 	float _scanMaxDepth;
+	float _scanMinDepth;
 	float _scanVoxelSize;
 	int _scanNormalsK;
 	StereoDense * _stereoDense;

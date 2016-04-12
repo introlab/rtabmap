@@ -56,7 +56,7 @@ public:
 public slots:
 	void setDecimation(int decimation) {decimation_ = decimation;}
 	void setMaxDepth(int maxDepth) {maxDepth_ = maxDepth;}
-	void setSamples(int samples) {samples_ = samples;}
+	void setMinDepth(int minDepth) {minDepth_ = minDepth;}
 	void updateView(const Transform & AtoB = Transform());
 
 protected:
@@ -71,7 +71,7 @@ private:
 
 	int decimation_;
 	float maxDepth_;
-	int samples_;
+	float minDepth_;
 };
 
 } /* namespace rtabmap */

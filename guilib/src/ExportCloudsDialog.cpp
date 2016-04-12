@@ -75,6 +75,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->groupBox_regenerate, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
 	connect(_ui->groupBox_filtering, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_filteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -143,6 +144,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate", _ui->groupBox_regenerate->isChecked());
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
+	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
 
 
 	settings.setValue("filtering", _ui->groupBox_filtering->isChecked());
@@ -197,6 +199,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->groupBox_regenerate->setChecked(settings.value("regenerate", _ui->groupBox_regenerate->isChecked()).toBool());
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value()).toDouble());
+	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
 
 	_ui->groupBox_filtering->setChecked(settings.value("filtering", _ui->groupBox_filtering->isChecked()).toBool());
 	_ui->doubleSpinBox_filteringRadius->setValue(settings.value("filtering_radius", _ui->doubleSpinBox_filteringRadius->value()).toDouble());
@@ -245,6 +248,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->groupBox_regenerate->setChecked(false);
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
+	_ui->doubleSpinBox_minDepth->setValue(0);
 
 	_ui->groupBox_filtering->setChecked(false);
 	_ui->doubleSpinBox_filteringRadius->setValue(0.02);
@@ -1015,11 +1019,19 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 								d,
 								_ui->spinBox_decimation->value(),
 								_ui->doubleSpinBox_maxDepth->value(),
-								// Don't voxelize if we create organized mesh
-								_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()?0:_ui->doubleSpinBox_voxelSize_assembled->value(),
-								0,
+								_ui->doubleSpinBox_minDepth->value(),
 								indices.get());
 
+						// Don't voxelize if we create organized mesh
+						if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()))
+						{
+							cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _ui->doubleSpinBox_voxelSize_assembled->value());
+							indices->resize(cloudWithoutNormals->size());
+							for(unsigned int i=0; i<indices->size(); ++i)
+							{
+								indices->at(i) = i;
+							}
+						}
 
 						cloud = util3d::computeNormals(
 								cloudWithoutNormals,

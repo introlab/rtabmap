@@ -148,6 +148,7 @@ public:
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
+	double getCloudMinDepth(int index) const;  // 0=map, 1=odom
 	double getCloudOpacity(int index) const;   // 0=map, 1=odom
 	int getCloudPointSize(int index) const;    // 0=map, 1=odom
 
@@ -340,6 +341,7 @@ private:
 	QVector<QCheckBox*> _3dRenderingShowClouds;
 	QVector<QSpinBox*> _3dRenderingDecimation;
 	QVector<QDoubleSpinBox*> _3dRenderingMaxDepth;
+	QVector<QDoubleSpinBox*> _3dRenderingMinDepth;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacity;
 	QVector<QSpinBox*> _3dRenderingPtSize;
 	QVector<QCheckBox*> _3dRenderingShowScans;

@@ -416,7 +416,7 @@ int RTABMapApp::Render()
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
 							LOGI("Creating node cloud %d (image size=%dx%d)", id, data.imageRaw().cols, data.imageRaw().rows);
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, data.imageRaw().rows/data.depthRaw().rows, maxCloudDepth_, 0, 0, indices.get());
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, data.imageRaw().rows/data.depthRaw().rows, maxCloudDepth_, 0, indices.get());
 
 							if(cloud->size() && indices->size())
 							{

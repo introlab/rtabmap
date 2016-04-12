@@ -79,6 +79,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
 		float fx, float fy,
 		int decimation = 1,
 		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
@@ -88,6 +89,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
 		float fx, float fy,
 		int decimation = 1,
 		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDisparity(
@@ -95,6 +97,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDisparity(
 		const StereoCameraModel & model,
 		int decimation = 1,
 		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDisparityRGB(
@@ -103,6 +106,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDisparityRGB(
 		const StereoCameraModel & model,
 		int decimation = 1,
 		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
@@ -111,29 +115,26 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
 		const StereoCameraModel & model,
 		int decimation = 1,
 		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		const SensorData & sensorData,
 		int decimation = 1,
 		float maxDepth = 0.0f,
-		float voxelSize = 0.0f,
-		int samples = 0,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
 /**
- * Create an RGB cloud from the images contained in SensorData. If "voxelSize" and
- * "samples" are not set (0), the returned cloud is organized. Otherwise, all NaN
+ * Create an RGB cloud from the images contained in SensorData. If there is only one camera,
+ * the returned cloud is organized. Otherwise, all NaN
  * points are removed and the cloud will be dense.
- *
- * Note that multiple RGB-D camera images will result in a dense cloud.
  *
  * @param sensorData, the sensor data.
  * @param decimation, images are decimated by this factor before projecting points to 3D. The factor
  * should be a factor of the image width and height.
  * @param maxDepth, maximum depth of the projected points (farther points are set to null in case of an organized cloud).
- * @param voxelSize, use a voxel grid filter with this size of voxel.
- * @param samples, random sampling filtering target cloud size.
+ * @param minDepth, minimum depth of the projected points (closer points are set to null in case of an organized cloud).
  * @param validIndices, the indices of valid points in the cloud
  * @return a RGB cloud.
  */
@@ -141,8 +142,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		const SensorData & sensorData,
 		int decimation = 1,
 		float maxDepth = 0.0f,
-		float voxelSize = 0.0f,
-		int samples = 0,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
@@ -152,6 +152,7 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					float cx,
 					float cy,
 					float maxDepth = 0,
+					float minDepth = 0,
 					const Transform & localTransform = Transform::getIdentity());
 
 // return CV_32FC3

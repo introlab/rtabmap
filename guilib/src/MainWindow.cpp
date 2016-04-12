@@ -861,8 +861,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 					cloud = util3d::cloudRGBFromSensorData(odom.data(),
 							_preferencesDialog->getCloudDecimation(1),
 							_preferencesDialog->getCloudMaxDepth(1),
-							0,
-							0,
+							_preferencesDialog->getCloudMinDepth(1),
 							indices.get());
 					if(indices->size())
 					{
@@ -1726,8 +1725,6 @@ void MainWindow::updateMapCloud(
 		float radius = _preferencesDialog->getCloudFilteringRadius();
 		float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
 		poses = rtabmap::graph::radiusPosesFiltering(posesIn, radius, angle);
-		// make sure the last is here
-		poses.insert(*posesIn.rbegin());
 		for(std::map<int, Transform>::iterator iter= poses.begin(); iter!=poses.end(); ++iter)
 		{
 			std::map<int, int>::const_iterator jter = mapIdsIn.find(iter->first);
@@ -2167,8 +2164,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		cloudWithoutNormals = util3d::cloudRGBFromSensorData(data,
 				_preferencesDialog->getCloudDecimation(0),
 				_preferencesDialog->getCloudMaxDepth(0),
-				0,
-				0,
+				_preferencesDialog->getCloudMinDepth(0),
 				indices.get());
 
 		//compute normals
