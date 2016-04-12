@@ -2190,9 +2190,9 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			float groundNormalMaxAngle = M_PI_4;
 			int minClusterSize = 20;
 			cv::Mat ground, obstacles;
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelCloud = util3d::voxelize(cloud, indices, cellSize);
 			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGBNormal>(
-					cloud,
-					indices,
+					voxelCloud,
 					ground,
 					obstacles,
 					cellSize,
