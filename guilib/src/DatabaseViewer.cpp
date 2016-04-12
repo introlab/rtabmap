@@ -3315,10 +3315,13 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 									ui_->doubleSpinBox_projMaxDepth->value(),
 									ui_->doubleSpinBox_projMinDepth->value(),
 									validIndices.get());
-							if(ui_->doubleSpinBox_gridCellSize->value())
-							{
-								cloud = util3d::voxelize(cloud, validIndices, ui_->doubleSpinBox_gridCellSize->value());
-							}
+							UASSERT(ui_->doubleSpinBox_gridCellSize->value() > 0);
+							cloud = util3d::voxelize(cloud, validIndices, ui_->doubleSpinBox_gridCellSize->value());
+
+							// add pose rotation without yaw
+							float roll, pitch, yaw;
+							graphFiltered.at(ids[i]).getEulerAngles(roll, pitch, yaw);
+							cloud = util3d::transformPointCloud(cloud, Transform(0,0,0, roll, pitch, 0));
 
 							if(cloud->size())
 							{
