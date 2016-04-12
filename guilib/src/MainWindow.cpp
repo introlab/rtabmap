@@ -874,12 +874,25 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 							output = util3d::extractIndices(cloud, indices, false, true);
 
 							// Fast organized mesh
+							Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+							if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+							{
+								viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
+								viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
+								viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
+							}
+							else if(!odom.data().stereoCameraModel().localTransform().isNull())
+							{
+								viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
+								viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
+								viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
+							}
 							std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 									output,
 									_preferencesDialog->getCloudMeshingAngle(),
 									_preferencesDialog->isCloudMeshingQuad(),
 									_preferencesDialog->getCloudMeshingTriangleSize(),
-									Eigen::Vector3f(pose.x(), pose.y(), pose.z()));
+									Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
 							if(polygons.size())
 							{
 								if(!_ui->widget_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
@@ -2208,9 +2221,9 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				rtabmap::Transform t = pose.inverse() * _currentPosesMap.at(_previousCloud.first);
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first, t);
 
-				UWARN("saved new.pcd and old.pcd");
-				pcl::io::savePCDFile("new.pcd", *cloud, *indices);
-				pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
+				//UWARN("saved new.pcd and old.pcd");
+				//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
+				//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
 
 				indices = rtabmap::util3d::subtractFiltering(
 						cloud,
@@ -2243,11 +2256,25 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
 				// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
 				output = util3d::extractIndices(cloud, indices, false, true);
+				Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+				if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+				{
+					viewpoint[0] = data.cameraModels()[0].localTransform().x();
+					viewpoint[1] = data.cameraModels()[0].localTransform().y();
+					viewpoint[2] = data.cameraModels()[0].localTransform().z();
+				}
+				else if(!data.stereoCameraModel().localTransform().isNull())
+				{
+					viewpoint[0] = data.stereoCameraModel().localTransform().x();
+					viewpoint[1] = data.stereoCameraModel().localTransform().y();
+					viewpoint[2] = data.stereoCameraModel().localTransform().z();
+				}
 				std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 						output,
 						_preferencesDialog->getCloudMeshingAngle(),
 						_preferencesDialog->isCloudMeshingQuad(),
-						_preferencesDialog->getCloudMeshingTriangleSize());
+						_preferencesDialog->getCloudMeshingTriangleSize(),
+						viewpoint);
 				if(polygons.size())
 				{
 					// remove unused vertices to save memory

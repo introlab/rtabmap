@@ -3538,7 +3538,7 @@ bool PreferencesDialog::isCloudMeshing() const
 }
 double PreferencesDialog::getCloudMeshingAngle() const
 {
-	return _ui->doubleSpinBox_mesh_angleTolerance->value()*M_PI/180.0f;
+	return _ui->doubleSpinBox_mesh_angleTolerance->value()*M_PI/180.0;
 }
 bool PreferencesDialog::isCloudMeshingQuad() const
 {

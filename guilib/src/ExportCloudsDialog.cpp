@@ -698,11 +698,29 @@ bool ExportCloudsDialog::getExportedClouds(
 					UASSERT(iter->second->isOrganized());
 					if(iter->second->size())
 					{
+						Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+						if(cachedSignatures.contains(iter->first))
+						{
+							const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
+							if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+							{
+								viewpoint[0] = data.cameraModels()[0].localTransform().x();
+								viewpoint[1] = data.cameraModels()[0].localTransform().y();
+								viewpoint[2] = data.cameraModels()[0].localTransform().z();
+							}
+							else if(!data.stereoCameraModel().localTransform().isNull())
+							{
+								viewpoint[0] = data.stereoCameraModel().localTransform().x();
+								viewpoint[1] = data.stereoCameraModel().localTransform().y();
+								viewpoint[2] = data.stereoCameraModel().localTransform().z();
+							}
+						}
 						std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 								iter->second,
 								_ui->doubleSpinBox_mesh_angleTolerance->value()*M_PI/180.0,
 								_ui->checkBox_mesh_quad->isEnabled() && _ui->checkBox_mesh_quad->isChecked(),
-								_ui->spinBox_mesh_triangleSize->value());
+								_ui->spinBox_mesh_triangleSize->value(),
+								viewpoint);
 						_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(polygons.size()).arg(++i).arg(clouds.size()));
 
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);

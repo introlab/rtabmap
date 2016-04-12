@@ -2266,11 +2266,25 @@ void DatabaseViewer::update(int value,
 							{
 								if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
 								{
+									Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+									if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+									{
+										viewpoint[0] = data.cameraModels()[0].localTransform().x();
+										viewpoint[1] = data.cameraModels()[0].localTransform().y();
+										viewpoint[2] = data.cameraModels()[0].localTransform().z();
+									}
+									else if(!data.stereoCameraModel().localTransform().isNull())
+									{
+										viewpoint[0] = data.stereoCameraModel().localTransform().x();
+										viewpoint[1] = data.stereoCameraModel().localTransform().y();
+										viewpoint[2] = data.stereoCameraModel().localTransform().z();
+									}
 									std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 											cloud,
 											float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
 											ui_->checkBox_mesh_quad->isChecked(),
-											ui_->spinBox_mesh_triangleSize->value());
+											ui_->spinBox_mesh_triangleSize->value(),
+											viewpoint);
 									view3D->removeCloud("0");
 									view3D->addCloudMesh("0", cloud, polygons);
 								}
