@@ -23,8 +23,9 @@ void segmentObstaclesFromGround(
 		const typename pcl::IndicesPtr & indices,
 		pcl::IndicesPtr & ground,
 		pcl::IndicesPtr & obstacles,
-		float normalRadiusSearch,
+		int normalKSearch,
 		float groundNormalAngle,
+		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles)
 {
@@ -39,7 +40,7 @@ void segmentObstaclesFromGround(
 				indices,
 				groundNormalAngle,
 				Eigen::Vector4f(0,0,1,0),
-				normalRadiusSearch*2.0f,
+				normalKSearch,
 				Eigen::Vector4f(0,0,100,0));
 
 		if(segmentFlatObstacles)
@@ -48,7 +49,7 @@ void segmentObstaclesFromGround(
 			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = extractClusters(
 					cloud,
 					flatSurfaces,
-					normalRadiusSearch*2.0f,
+					clusterRadius,
 					minClusterSize,
 					std::numeric_limits<int>::max(),
 					&biggestFlatSurfaceIndex);
@@ -86,7 +87,7 @@ void segmentObstaclesFromGround(
 			std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
 					cloud,
 					otherStuffIndices,
-					normalRadiusSearch*2.0f,
+					clusterRadius,
 					minClusterSize);
 
 			// merge indices
@@ -100,8 +101,9 @@ void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		pcl::IndicesPtr & ground,
 		pcl::IndicesPtr & obstacles,
-		float normalRadiusSearch,
+		int normalKSearch,
 		float groundNormalAngle,
+		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles)
 {
@@ -111,8 +113,9 @@ void segmentObstaclesFromGround(
 			indices,
 			ground,
 			obstacles,
-			normalRadiusSearch,
+			normalKSearch,
 			groundNormalAngle,
+			clusterRadius,
 			minClusterSize,
 			segmentFlatObstacles);
 }
@@ -138,8 +141,9 @@ void occupancy2DFromCloud3D(
 			indices,
 			groundIndices,
 			obstaclesIndices,
-			cellSize,
+			20,
 			groundNormalAngle,
+			cellSize*2.0f,
 			minClusterSize);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);

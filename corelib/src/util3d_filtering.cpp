@@ -1219,21 +1219,21 @@ pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return normalFiltering(cloud, indices, angleMax, normal, radiusSearch, viewpoint);
+	return normalFiltering(cloud, indices, angleMax, normal, normalKSearch, viewpoint);
 }
 pcl::IndicesPtr normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return normalFiltering(cloud, indices, angleMax, normal, radiusSearch, viewpoint);
+	return normalFiltering(cloud, indices, angleMax, normal, normalKSearch, viewpoint);
 }
 
 
@@ -1243,7 +1243,7 @@ pcl::IndicesPtr normalFiltering(
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint)
 {
 	pcl::IndicesPtr output(new std::vector<int>());
@@ -1274,7 +1274,7 @@ pcl::IndicesPtr normalFiltering(
 
 		pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
 
-		ne.setRadiusSearch (radiusSearch);
+		ne.setKSearch(normalKSearch);
 		if(viewpoint[0] != 0 || viewpoint[1] != 0 || viewpoint[2] != 0)
 		{
 			ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
@@ -1303,7 +1303,7 @@ pcl::IndicesPtr normalFiltering(
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint)
 {
 	pcl::IndicesPtr output(new std::vector<int>());
@@ -1334,7 +1334,7 @@ pcl::IndicesPtr normalFiltering(
 
 		pcl::PointCloud<pcl::Normal>::Ptr cloud_normals (new pcl::PointCloud<pcl::Normal>);
 
-		ne.setRadiusSearch (radiusSearch);
+		ne.setKSearch (normalKSearch);
 		if(viewpoint[0] != 0 || viewpoint[1] != 0 || viewpoint[2] != 0)
 		{
 			ne.setViewPoint(viewpoint[0], viewpoint[1], viewpoint[2]);
@@ -1363,7 +1363,7 @@ pcl::IndicesPtr normalFiltering(
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint)
 {
 	pcl::IndicesPtr output(new std::vector<int>());

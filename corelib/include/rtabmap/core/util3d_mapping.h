@@ -86,8 +86,9 @@ void segmentObstaclesFromGround(
 		const pcl::IndicesPtr & indices,
 		pcl::IndicesPtr & ground,
 		pcl::IndicesPtr & obstacles,
-		float normalRadiusSearch,
+		int normalKSearch,
 		float groundNormalAngle,
+		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles = false);
 template<typename PointT>
@@ -95,8 +96,9 @@ void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		pcl::IndicesPtr & ground,
 		pcl::IndicesPtr & obstacles,
-		float normalRadiusSearch,
+		int normalKSearch,
 		float groundNormalAngle,
+		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles = false);
 

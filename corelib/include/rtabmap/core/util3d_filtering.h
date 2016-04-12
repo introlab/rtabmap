@@ -344,13 +344,13 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint);
 
 /**
@@ -365,7 +365,7 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
  * @param indices the input indices of the cloud to process, if empty, all points in the cloud are processed.
  * @param angleMax the maximum angle.
  * @param normal the normal to which each point's normal is compared.
- * @param radiusSearch radius parameter used for normal estimation (see pcl::NormalEstimation).
+ * @param normalKSearch number of neighbor points used for normal estimation (see pcl::NormalEstimation).
  * @param viewpoint from which viewpoint the normals should be estimated (see pcl::NormalEstimation).
  * @return the indices of the points which respect the normal constraint.
  */
@@ -375,21 +375,21 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint);
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float angleMax,
 		const Eigen::Vector4f & normal,
-		float radiusSearch,
+		int normalKSearch,
 		const Eigen::Vector4f & viewpoint);
 
 /**
