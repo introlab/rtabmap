@@ -98,6 +98,10 @@ public:
 	bool isLocalRadiusVisible() const;
 	float getLoopClosureOutlierThr() const {return _loopClosureOutlierThr;}
 	float getMaxLinkLength() const {return _maxLinkLength;}
+	bool isGraphVisible() const;
+	bool isGlobalPathVisible() const;
+	bool isLocalPathVisible() const;
+	bool isGtGraphVisible() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -124,6 +128,10 @@ public:
 	void setLocalRadiusVisible(bool visible);
 	void setLoopClosureOutlierThr(float value);
 	void setMaxLinkLength(float value);
+	void setGraphVisible(bool visible);
+	void setGlobalPathVisible(bool visible);
+	void setLocalPathVisible(bool visible);
+	void setGtGraphVisible(bool visible);
 
 signals:
 	void configChanged();
@@ -153,6 +161,10 @@ private:
 	QColor _loopInterSessionColor;
 	bool _intraInterSessionColors;
 	QGraphicsItem * _root;
+	QGraphicsItem * _graphRoot;
+	QGraphicsItem * _globalPathRoot;
+	QGraphicsItem * _localPathRoot;
+	QGraphicsItem * _gtGraphRoot;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;
 	QMap<int, NodeItem*> _gtNodeItems;
@@ -168,7 +180,6 @@ private:
 	QGraphicsEllipseItem * _localRadius;
 	float _loopClosureOutlierThr;
 	float _maxLinkLength;
-	int _coordinateSystem;
 };
 
 } /* namespace rtabmap */
