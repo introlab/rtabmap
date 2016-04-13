@@ -2975,6 +2975,13 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 
 		rtabmap::ParametersMap parametersModified = parameters;
 
+		if(uContains(parameters, Parameters::kRtabmapWorkingDirectory()))
+		{
+			_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+			_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+			_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+		}
+
 		if(_state != kIdle && parametersModified.size())
 		{
 			if(parametersModified.erase(Parameters::kRtabmapWorkingDirectory()) &&
@@ -2990,14 +2997,6 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 			{
 				this->post(new ParamEvent(parametersModified));
 			}
-		}
-
-		if(_state != kMonitoring && _state != kMonitoringPaused &&
-		   uContains(parameters, Parameters::kRtabmapWorkingDirectory()))
-		{
-			_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-			_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-			_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 		}
 
 		// update loop closure viewer parameters (Use Map parameters)
@@ -5429,7 +5428,6 @@ void MainWindow::changeState(MainWindow::State newState)
 	_ui->actionDump_the_prediction_matrix->setVisible(!monitoring);
 	_ui->actionGenerate_map->setVisible(!monitoring);
 	_ui->actionUpdate_cache_from_database->setVisible(monitoring);
-	_ui->actionOpen_working_directory->setVisible(!monitoring);
 	_ui->actionData_recorder->setVisible(!monitoring);
 	_ui->menuSelect_source->menuAction()->setVisible(!monitoring);
 	_ui->doubleSpinBox_stats_imgRate->setVisible(!monitoring);

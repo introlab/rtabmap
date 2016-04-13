@@ -2269,10 +2269,6 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 	if(_monitoringState)
 	{
 		// In monitoring state, you cannot change remote paths
-		_ui->lineEdit_workingDirectory->setEnabled(false);
-		_ui->toolButton_workingDirectory->setEnabled(false);
-		_ui->label_workingDirectory->setEnabled(false);
-
 		_ui->lineEdit_dictionaryPath->setEnabled(false);
 		_ui->toolButton_dictionaryPath->setEnabled(false);
 		_ui->label_dictionaryPath->setEnabled(false);
@@ -2287,10 +2283,6 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 	}
 	else
 	{
-		_ui->lineEdit_workingDirectory->setEnabled(true);
-		_ui->toolButton_workingDirectory->setEnabled(true);
-		_ui->label_workingDirectory->setEnabled(true);
-
 		_ui->lineEdit_dictionaryPath->setEnabled(true);
 		_ui->toolButton_dictionaryPath->setEnabled(true);
 		_ui->label_dictionaryPath->setEnabled(true);
