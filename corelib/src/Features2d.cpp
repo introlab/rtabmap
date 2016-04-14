@@ -505,7 +505,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 				if(((unsigned short*)maskIn.data)[i] > 0 &&
 				   ((unsigned short*)maskIn.data)[i] < std::numeric_limits<unsigned short>::max())
 				{
-					value = float(((unsigned short*)maskIn.data)[i])*0.0001f;
+					value = float(((unsigned short*)maskIn.data)[i])*0.001f;
 				}
 			}
 			else
