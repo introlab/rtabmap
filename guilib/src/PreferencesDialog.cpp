@@ -2866,18 +2866,6 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 						  combo->currentText().toStdString().c_str());
 					ok = false;
 				}
-				else if(valueInt==1 &&
-						(combo->objectName().toStdString().compare(Parameters::kKpNNStrategy()) == 0 ||
-						 combo->objectName().toStdString().compare(Parameters::kVisCorNNType()) == 0))
-
-				{
-					UWARN("Trying to set \"%s\" to KdTree but RTAB-Map isn't built "
-						  "with the nonfree module from OpenCV and kdTree cannot be used "
-						  "with binary descriptors. Keeping default combo value: %s.",
-						  combo->objectName().toStdString().c_str(),
-						  combo->currentText().toStdString().c_str());
-					ok = false;
-				}
 #endif
 				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 				{
