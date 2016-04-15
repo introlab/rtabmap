@@ -27,7 +27,8 @@ void segmentObstaclesFromGround(
 		float groundNormalAngle,
 		float clusterRadius,
 		int minClusterSize,
-		bool segmentFlatObstacles)
+		bool segmentFlatObstacles,
+		float maxGroundHeight)
 {
 	ground.reset(new std::vector<int>);
 	obstacles.reset(new std::vector<int>);
@@ -56,20 +57,31 @@ void segmentObstaclesFromGround(
 
 
 			// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
-			ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
-			Eigen::Vector4f min,max;
-			pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
-
-			for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
+			if(clusteredFlatSurfaces.size())
 			{
-				if((int)i!=biggestFlatSurfaceIndex)
+				ground = clusteredFlatSurfaces.at(biggestFlatSurfaceIndex);
+				Eigen::Vector4f min,max;
+				pcl::getMinMax3D(*cloud, *clusteredFlatSurfaces.at(biggestFlatSurfaceIndex), min, max);
+
+				if(maxGroundHeight <= 0 || min[2] < maxGroundHeight)
 				{
-					Eigen::Vector4f centroid;
-					pcl::compute3DCentroid(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-					if(centroid[2] >= min[2] && centroid[2] <= max[2])
+					for(unsigned int i=0; i<clusteredFlatSurfaces.size(); ++i)
 					{
-						ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
+						if((int)i!=biggestFlatSurfaceIndex)
+						{
+							Eigen::Vector4f centroid;
+							pcl::compute3DCentroid(*cloud, *clusteredFlatSurfaces.at(i), centroid);
+							if(centroid[2] >= min[2] && centroid[2] <= max[2])
+							{
+								ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
+							}
+						}
 					}
+				}
+				else
+				{
+					// reject ground!
+					ground.reset(new std::vector<int>);
 				}
 			}
 		}
@@ -105,7 +117,8 @@ void segmentObstaclesFromGround(
 		float groundNormalAngle,
 		float clusterRadius,
 		int minClusterSize,
-		bool segmentFlatObstacles)
+		bool segmentFlatObstacles,
+		float maxGroundHeight)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	segmentObstaclesFromGround<PointT>(
@@ -117,7 +130,8 @@ void segmentObstaclesFromGround(
 			groundNormalAngle,
 			clusterRadius,
 			minClusterSize,
-			segmentFlatObstacles);
+			segmentFlatObstacles,
+			maxGroundHeight);
 }
 
 template<typename PointT>
@@ -128,7 +142,9 @@ void occupancy2DFromCloud3D(
 		cv::Mat & obstacles,
 		float cellSize,
 		float groundNormalAngle,
-		int minClusterSize)
+		int minClusterSize,
+		bool segmentFlatObstacles,
+		float maxGroundHeight)
 {
 	if(cloud->size() == 0)
 	{
@@ -144,7 +160,9 @@ void occupancy2DFromCloud3D(
 			20,
 			groundNormalAngle,
 			cellSize*2.0f,
-			minClusterSize);
+			minClusterSize,
+			segmentFlatObstacles,
+			maxGroundHeight);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -197,10 +215,12 @@ void occupancy2DFromCloud3D(
 		cv::Mat & obstacles,
 		float cellSize,
 		float groundNormalAngle,
-		int minClusterSize)
+		int minClusterSize,
+		bool segmentFlatObstacles,
+		float maxGroundHeight)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	occupancy2DFromCloud3D<PointT>(cloud, indices, ground, obstacles, cellSize, groundNormalAngle, minClusterSize);
+	occupancy2DFromCloud3D<PointT>(cloud, indices, ground, obstacles, cellSize, groundNormalAngle, minClusterSize, segmentFlatObstacles, maxGroundHeight);
 }
 
 }
