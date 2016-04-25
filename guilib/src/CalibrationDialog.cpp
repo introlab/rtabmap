@@ -80,6 +80,7 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
 	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
+	connect(ui_->spinBox_maxScale, SIGNAL(valueChanged(int)), this, SLOT(setMaxScale(int)));
 
 	connect(ui_->buttonBox, SIGNAL(rejected()), this, SLOT(close()));
 
@@ -112,6 +113,7 @@ void CalibrationDialog::saveSettings(QSettings & settings, const QString & group
 	settings.setValue("board_width", ui_->spinBox_boardWidth->value());
 	settings.setValue("board_height", ui_->spinBox_boardHeight->value());
 	settings.setValue("board_square_size", ui_->doubleSpinBox_squareSize->value());
+	settings.setValue("max_scale", ui_->spinBox_maxScale->value());
 	settings.setValue("geometry", this->saveGeometry());
 	if(!group.isEmpty())
 	{
@@ -128,6 +130,7 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	this->setBoardWidth(settings.value("board_width", ui_->spinBox_boardWidth->value()).toInt());
 	this->setBoardHeight(settings.value("board_height", ui_->spinBox_boardHeight->value()).toInt());
 	this->setSquareSize(settings.value("board_square_size", ui_->doubleSpinBox_squareSize->value()).toDouble());
+	this->setMaxScale(settings.value("max_scale", ui_->spinBox_maxScale->value()).toDouble());
 	QByteArray bytes = settings.value("geometry", QByteArray()).toByteArray();
 	if(!bytes.isEmpty())
 	{
@@ -202,6 +205,14 @@ void CalibrationDialog::setSquareSize(double size)
 	{
 		ui_->doubleSpinBox_squareSize->setValue(size);
 		this->restart();
+	}
+}
+
+void CalibrationDialog::setMaxScale(int scale)
+{
+	if(scale != ui_->spinBox_maxScale->value())
+	{
+		ui_->spinBox_maxScale->setValue(scale);
 	}
 }
 
@@ -360,7 +371,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 				if(!viewGray.empty())
 				{
-					int maxScale = viewGray.cols < 640?2:1;
+					int maxScale = ui_->spinBox_maxScale->value();
 					for( int scale = 1; scale <= maxScale; scale++ )
 					{
 						cv::Mat timg;

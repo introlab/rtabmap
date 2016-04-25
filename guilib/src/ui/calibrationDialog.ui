@@ -232,6 +232,29 @@
             </property>
            </widget>
           </item>
+          <item row="4" column="1">
+           <widget class="QSpinBox" name="spinBox_maxScale">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>3</number>
+            </property>
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_22">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
+            </property>
+            <property name="text">
+             <string>Max scale</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
