@@ -348,7 +348,8 @@ SensorData::SensorData(
 	else if(!left.empty())
 	{
 		UASSERT(left.type() == CV_8UC1 || // Mono
-				left.type() == CV_8UC3);  // RGB
+				left.type() == CV_8UC3 || // RGB
+				left.type() == CV_16UC1); // IR
 		_imageRaw = left;
 	}
 	if(right.rows == 1)
@@ -358,7 +359,8 @@ SensorData::SensorData(
 	}
 	else if(!right.empty())
 	{
-		UASSERT(right.type() == CV_8UC1); // Mono
+		UASSERT(right.type() == CV_8UC1 || // Mono
+				right.type() == CV_16UC1);  // IR
 		_depthOrRightRaw = right;
 	}
 

@@ -55,6 +55,7 @@ public:
 	const rtabmap::CameraModel & getLeftCameraModel() const {return models_[0];}
 	const rtabmap::CameraModel & getRightCameraModel() const {return models_[1];}
 	const rtabmap::StereoCameraModel & getStereoCameraModel() const {return stereoModel_;}
+	bool isProcessing() const {return processingData_;}
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");

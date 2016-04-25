@@ -260,6 +260,7 @@ void CalibrationDialog::handleEvent(UEvent * event)
 
 void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName)
 {
+	UDEBUG("Processing images");
 	processingData_ = true;
 	if(cameraName_.isEmpty())
 	{
@@ -306,6 +307,18 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		{
 			if(images[id].type() == CV_16UC1)
 			{
+				double min, max;
+				cv::minMaxLoc(images[id], &min, &max);
+				UDEBUG("Camera IR %d: min=%f max=%f", id, min, max);
+				if(minIrs_[id] == 0)
+				{
+					minIrs_[id] = min;
+				}
+				if(maxIrs_[id] == 0x7fff)
+				{
+					maxIrs_[id] = max;
+				}
+
 				depthDetected = true;
 				//assume IR image: convert to gray scaled
 				const float factor = 255.0f / float((maxIrs_[id] - minIrs_[id]));
