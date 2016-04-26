@@ -128,6 +128,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 	int argc = 0;
 	_visualizer = new pcl::visualization::PCLVisualizer(argc, 0, "PCLVisualizer", vtkSmartPointer<MyInteractorStyle>(new MyInteractorStyle()), false);
 
+	_visualizer->setShowFPS(false);
+
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
 	// Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
