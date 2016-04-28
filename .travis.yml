@@ -12,7 +12,7 @@ addons:
       - cmake
       - libopencv-dev
       - libqt4-dev
-      - libpcl-1.7-all-dev
+      - libpcl-all
       - libfreenect-dev
       - libsqlite3-dev
 
