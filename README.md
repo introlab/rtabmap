@@ -1,4 +1,4 @@
-rtabmap
+rtabmap [![Build Status](https://travis-ci.org/introlab/rtabmap.svg?branch=master)](https://travis-ci.org/introlab/rtabmap)
 =======
 
 RTAB-Map library and standalone application.
