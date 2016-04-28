@@ -12,9 +12,10 @@ addons:
       - cmake
       - libopencv-dev
       - libqt4-dev
-      - libpcl-all
-      - libfreenect-dev
       - libsqlite3-dev
+
+install:
+    - "sudo apt-get install libpcl-1.7-all-dev libfreenect-dev"
 
 script: 
     - mkdir -p build && cd build
