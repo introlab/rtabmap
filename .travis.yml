@@ -15,7 +15,7 @@ addons:
       - libsqlite3-dev
 
 install:
-    - "sudo apt-get install libpcl-1.7-all-dev libfreenect-dev"
+    - "sudo apt-get install libpcl-1.7-all libfreenect-dev"
 
 script: 
     - mkdir -p build && cd build
