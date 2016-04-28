@@ -1,0 +1,22 @@
+sudo: true
+dist: trusty
+language: cpp
+
+compiler:
+  - gcc
+  - clang
+
+addons:
+  apt:
+    packages:
+      - cmake
+      - libopencv-dev
+      - libqt4-dev
+      - libpcl-1.7-all-dev
+      - libfreenect-dev
+      - libsqlite3-dev
+
+script: 
+    - mkdir -p build && cd build
+    - cmake .. 
+    - make
