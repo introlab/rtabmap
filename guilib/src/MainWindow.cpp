@@ -794,351 +794,349 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	_processingOdometry = true;
 	UTimer time;
 	// Process Data
-	if(!odom.data().imageRaw().empty())
+
+	// Set color code as tooltip
+	if(_ui->imageView_odometry->toolTip().isEmpty())
 	{
-		// Set color code as tooltip
-		if(_ui->imageView_odometry->toolTip().isEmpty())
-		{
-			_ui->imageView_odometry->setToolTip(
-				"Background Color Code:\n"
-				"  Dark Red = Odometry Lost\n"
-				"  Dark Yellow = Low Inliers");
-		}
+		_ui->imageView_odometry->setToolTip(
+			"Background Color Code:\n"
+			"  Dark Red = Odometry Lost\n"
+			"  Dark Yellow = Low Inliers");
+	}
 
-		Transform pose = odom.pose();
-		bool lost = false;
-		bool lostStateChanged = false;
+	Transform pose = odom.pose();
+	bool lost = false;
+	bool lostStateChanged = false;
 
-		if(pose.isNull())
-		{
-			UDEBUG("odom lost"); // use last pose
-			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
-			_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
-			_ui->imageView_odometry->setBackgroundColor(Qt::darkRed);
+	if(pose.isNull())
+	{
+		UDEBUG("odom lost"); // use last pose
+		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
+		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
+		_ui->imageView_odometry->setBackgroundColor(Qt::darkRed);
 
-			pose = _lastOdomPose;
-			lost = true;
-		}
-		else if(odom.info().inliers>0 &&
-				_preferencesDialog->getOdomQualityWarnThr() &&
-				odom.info().inliers < _preferencesDialog->getOdomQualityWarnThr())
-		{
-			UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, _preferencesDialog->getOdomQualityWarnThr());
-			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-			_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
-			_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
-		}
-		else
-		{
-			UDEBUG("odom ok");
-			lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-			_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
-			_ui->imageView_odometry->setBackgroundColor(Qt::black);
-		}
+		pose = _lastOdomPose;
+		lost = true;
+	}
+	else if(odom.info().inliers>0 &&
+			_preferencesDialog->getOdomQualityWarnThr() &&
+			odom.info().inliers < _preferencesDialog->getOdomQualityWarnThr())
+	{
+		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, _preferencesDialog->getOdomQualityWarnThr());
+		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
+		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
+		_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
+	}
+	else
+	{
+		UDEBUG("odom ok");
+		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
+		_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
+		_ui->imageView_odometry->setBackgroundColor(Qt::black);
+	}
 
-		if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
-		{
-			_lastOdomPose = pose;
-			_odometryReceived = true;
-		}
+	if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
+	{
+		_lastOdomPose = pose;
+		_odometryReceived = true;
+	}
 
-		if(_ui->dockWidget_cloudViewer->isVisible())
+	if(_ui->dockWidget_cloudViewer->isVisible())
+	{
+		bool cloudUpdated = false;
+		bool scanUpdated = false;
+		bool featuresUpdated = false;
+		if(!pose.isNull())
 		{
-			bool cloudUpdated = false;
-			bool scanUpdated = false;
-			bool featuresUpdated = false;
-			if(!pose.isNull())
+			// 3d cloud
+			if(odom.data().depthOrRightRaw().cols == odom.data().imageRaw().cols &&
+			   odom.data().depthOrRightRaw().rows == odom.data().imageRaw().rows &&
+			   !odom.data().depthOrRightRaw().empty() &&
+			   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValidForProjection()) &&
+			   _preferencesDialog->isCloudsShown(1))
 			{
-				// 3d cloud
-				if(odom.data().depthOrRightRaw().cols == odom.data().imageRaw().cols &&
-				   odom.data().depthOrRightRaw().rows == odom.data().imageRaw().rows &&
-				   !odom.data().depthOrRightRaw().empty() &&
-				   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValidForProjection()) &&
-				   _preferencesDialog->isCloudsShown(1))
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+				pcl::IndicesPtr indices(new std::vector<int>);
+				cloud = util3d::cloudRGBFromSensorData(odom.data(),
+						_preferencesDialog->getCloudDecimation(1),
+						_preferencesDialog->getCloudMaxDepth(1),
+						_preferencesDialog->getCloudMinDepth(1),
+						indices.get());
+				if(indices->size())
 				{
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					pcl::IndicesPtr indices(new std::vector<int>);
-					cloud = util3d::cloudRGBFromSensorData(odom.data(),
-							_preferencesDialog->getCloudDecimation(1),
-							_preferencesDialog->getCloudMaxDepth(1),
-							_preferencesDialog->getCloudMinDepth(1),
-							indices.get());
-					if(indices->size())
+					cloud = util3d::transformPointCloud(cloud, pose);
+
+					if(_preferencesDialog->isCloudMeshing())
 					{
-						cloud = util3d::transformPointCloud(cloud, pose);
+						// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+						output = util3d::extractIndices(cloud, indices, false, true);
 
-						if(_preferencesDialog->isCloudMeshing())
+						// Fast organized mesh
+						Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+						if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
 						{
-							// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-							output = util3d::extractIndices(cloud, indices, false, true);
-
-							// Fast organized mesh
-							Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-							if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
-							{
-								viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
-								viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
-								viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
-							}
-							else if(!odom.data().stereoCameraModel().localTransform().isNull())
-							{
-								viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
-								viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
-								viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
-							}
-							std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-									output,
-									_preferencesDialog->getCloudMeshingAngle(),
-									_preferencesDialog->isCloudMeshingQuad(),
-									_preferencesDialog->getCloudMeshingTriangleSize(),
-									Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
-							if(polygons.size())
-							{
-								if(!_ui->widget_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
-								{
-									UERROR("Adding cloudOdom to viewer failed!");
-								}
-							}
+							viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
+							viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
+							viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
 						}
-						else
+						else if(!odom.data().stereoCameraModel().localTransform().isNull())
 						{
-							if(!_ui->widget_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
+							viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
+							viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
+							viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
+						}
+						std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+								output,
+								_preferencesDialog->getCloudMeshingAngle(),
+								_preferencesDialog->isCloudMeshingQuad(),
+								_preferencesDialog->getCloudMeshingTriangleSize(),
+								Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
+						if(polygons.size())
+						{
+							if(!_ui->widget_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
 							{
 								UERROR("Adding cloudOdom to viewer failed!");
 							}
 						}
-						_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
-						_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-						_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
-
-						cloudUpdated = true;
 					}
-				}
+					else
+					{
+						if(!_ui->widget_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
+						{
+							UERROR("Adding cloudOdom to viewer failed!");
+						}
+					}
+					_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
+					_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+					_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 
-				if(_preferencesDialog->isScansShown(1))
+					cloudUpdated = true;
+				}
+			}
+
+			if(_preferencesDialog->isScansShown(1))
+			{
+				// scan local map
+				if(!odom.info().localScanMap.empty())
 				{
-					// scan local map
-					if(!odom.info().localScanMap.empty())
+					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+					cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
+					if(!_ui->widget_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
 					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-						cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
-						if(!_ui->widget_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
-						{
-							UERROR("Adding scanMapOdom to viewer failed!");
-						}
-						else
-						{
-							_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", true);
-							_ui->widget_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
-							_ui->widget_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
-							scanUpdated = true;
-						}
+						UERROR("Adding scanMapOdom to viewer failed!");
 					}
-					// scan cloud
-					if(!odom.data().laserScanRaw().empty())
+					else
 					{
-						cv::Mat scan = odom.data().laserScanRaw();
-
-						if(_preferencesDialog->getDownsamplingStepScan(1) > 0)
-						{
-							scan = util3d::downsample(scan, _preferencesDialog->getDownsamplingStepScan(1));
-						}
-
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-						cloud = util3d::laserScanToPointCloudNormal(scan, pose);
-						if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
-						{
-							cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
-						}
-
-						if(!_ui->widget_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta))
-						{
-							UERROR("Adding scanOdom to viewer failed!");
-						}
-						else
-						{
-							_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
-							_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-							_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
-							scanUpdated = true;
-						}
+						_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", true);
+						_ui->widget_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
+						_ui->widget_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
+						scanUpdated = true;
 					}
 				}
-
-				// 3d features
-				if(_preferencesDialog->isFeaturesShown(1))
+				// scan cloud
+				if(!odom.data().laserScanRaw().empty())
 				{
-					if(!odom.info().localMap.empty())
+					cv::Mat scan = odom.data().laserScanRaw();
+
+					if(_preferencesDialog->getDownsamplingStepScan(1) > 0)
 					{
-						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-						cloud->resize(odom.info().localMap.size());
-						int i=0;
-						for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
-						{
-							(*cloud)[i].x = iter->second.x;
-							(*cloud)[i].y = iter->second.y;
-							(*cloud)[i].z = iter->second.z;
+						scan = util3d::downsample(scan, _preferencesDialog->getDownsamplingStepScan(1));
+					}
 
-							// green = inlier, yellow = outliers
-							bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
-							(*cloud)[i].r = inlier?0:255;
-							(*cloud)[i].g = 255;
-							(*cloud)[i++].b = 0;
-						}
+					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+					cloud = util3d::laserScanToPointCloudNormal(scan, pose);
+					if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
+					{
+						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
+					}
 
-						_ui->widget_cloudViewer->addCloud("featuresOdom", cloud, _odometryCorrection);
-						_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", true);
-						_ui->widget_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
-
-						featuresUpdated = true;
+					if(!_ui->widget_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta))
+					{
+						UERROR("Adding scanOdom to viewer failed!");
+					}
+					else
+					{
+						_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
+						_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+						_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+						scanUpdated = true;
 					}
 				}
 			}
-			if(!cloudUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("cloudOdom"))
+
+			// 3d features
+			if(_preferencesDialog->isFeaturesShown(1))
 			{
-				_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
-			}
-			if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanOdom"))
-			{
-				_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
-			}
-			if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanMapOdom"))
-			{
-				_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", false);
-			}
-			if(!featuresUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("featuresOdom"))
-			{
-				_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", false);
+				if(!odom.info().localMap.empty())
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+					cloud->resize(odom.info().localMap.size());
+					int i=0;
+					for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
+					{
+						(*cloud)[i].x = iter->second.x;
+						(*cloud)[i].y = iter->second.y;
+						(*cloud)[i].z = iter->second.z;
+
+						// green = inlier, yellow = outliers
+						bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
+						(*cloud)[i].r = inlier?0:255;
+						(*cloud)[i].g = 255;
+						(*cloud)[i++].b = 0;
+					}
+
+					_ui->widget_cloudViewer->addCloud("featuresOdom", cloud, _odometryCorrection);
+					_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", true);
+					_ui->widget_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
+
+					featuresUpdated = true;
+				}
 			}
 		}
-
-		if(!odom.pose().isNull())
+		if(!cloudUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("cloudOdom"))
 		{
-			// update camera position
-			_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+			_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
 		}
-		_ui->widget_cloudViewer->update();
-
-		if(_ui->graphicsView_graphView->isVisible())
+		if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanOdom"))
 		{
-			if(!pose.isNull() && !odom.pose().isNull())
+			_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
+		}
+		if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanMapOdom"))
+		{
+			_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", false);
+		}
+		if(!featuresUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("featuresOdom"))
+		{
+			_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", false);
+		}
+	}
+
+	if(!odom.pose().isNull())
+	{
+		// update camera position
+		_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+	}
+	_ui->widget_cloudViewer->update();
+
+	if(_ui->graphicsView_graphView->isVisible())
+	{
+		if(!pose.isNull() && !odom.pose().isNull())
+		{
+			_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*odom.pose());
+			_ui->graphicsView_graphView->update();
+		}
+	}
+
+	if(_ui->dockWidget_odometry->isVisible() &&
+	   !odom.data().imageRaw().empty())
+	{
+		if(_ui->imageView_odometry->isFeaturesShown())
+		{
+			if(odom.info().type == 0)
 			{
-				_ui->graphicsView_graphView->updateReferentialPosition(_odometryCorrection*odom.pose());
-				_ui->graphicsView_graphView->update();
+				_ui->imageView_odometry->setFeatures(
+						odom.info().words,
+						odom.data().depthRaw(),
+						Qt::yellow);
+			}
+			else if(odom.info().type == 1)
+			{
+				std::vector<cv::KeyPoint> kpts;
+				cv::KeyPoint::convert(odom.info().refCorners, kpts);
+				_ui->imageView_odometry->setFeatures(
+						kpts,
+						odom.data().depthRaw(),
+						Qt::red);
 			}
 		}
 
-		if(_ui->dockWidget_odometry->isVisible() &&
-		   !odom.data().imageRaw().empty())
+		//detect if it is OdometryMono intitialization
+		bool monoInitialization = false;
+		if(_preferencesDialog->getOdomStrategy() == 2 && odom.info().type == 1)
 		{
-			if(_ui->imageView_odometry->isFeaturesShown())
+			monoInitialization = true;
+		}
+
+		_ui->imageView_odometry->clearLines();
+		if(lost && !monoInitialization)
+		{
+			if(lostStateChanged)
 			{
-				if(odom.info().type == 0)
-				{
-					_ui->imageView_odometry->setFeatures(
-							odom.info().words,
-							odom.data().depthRaw(),
-							Qt::yellow);
-				}
-				else if(odom.info().type == 1)
-				{
-					std::vector<cv::KeyPoint> kpts;
-					cv::KeyPoint::convert(odom.info().refCorners, kpts);
-					_ui->imageView_odometry->setFeatures(
-							kpts,
-							odom.data().depthRaw(),
-							Qt::red);
-				}
+				// save state
+				_odomImageShow = _ui->imageView_odometry->isImageShown();
+				_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
+			}
+			_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().imageRaw()));
+			_ui->imageView_odometry->setImageShown(true);
+			_ui->imageView_odometry->setImageDepthShown(true);
+		}
+		else
+		{
+			if(lostStateChanged)
+			{
+				// restore state
+				_ui->imageView_odometry->setImageShown(_odomImageShow);
+				_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
 			}
 
-			//detect if it is OdometryMono intitialization
-			bool monoInitialization = false;
-			if(_preferencesDialog->getOdomStrategy() == 2 && odom.info().type == 1)
+			_ui->imageView_odometry->setImage(uCvMat2QImage(odom.data().imageRaw()));
+			if(_ui->imageView_odometry->isImageDepthShown())
 			{
-				monoInitialization = true;
+				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
 			}
 
-			_ui->imageView_odometry->clearLines();
-			if(lost && !monoInitialization)
+			if(odom.info().type == 0)
 			{
-				if(lostStateChanged)
+				if(_ui->imageView_odometry->isFeaturesShown())
 				{
-					// save state
-					_odomImageShow = _ui->imageView_odometry->isImageShown();
-					_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
-				}
-				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().imageRaw()));
-				_ui->imageView_odometry->setImageShown(true);
-				_ui->imageView_odometry->setImageDepthShown(true);
-			}
-			else
-			{
-				if(lostStateChanged)
-				{
-					// restore state
-					_ui->imageView_odometry->setImageShown(_odomImageShow);
-					_ui->imageView_odometry->setImageDepthShown(_odomImageDepthShow);
-				}
-
-				_ui->imageView_odometry->setImage(uCvMat2QImage(odom.data().imageRaw()));
-				if(_ui->imageView_odometry->isImageDepthShown())
-				{
-					_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
-				}
-
-				if(odom.info().type == 0)
-				{
-					if(_ui->imageView_odometry->isFeaturesShown())
+					for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
 					{
-						for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
-						{
-							_ui->imageView_odometry->setFeatureColor(odom.info().wordMatches[i], Qt::red); // outliers
-						}
-						for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
-						{
-							_ui->imageView_odometry->setFeatureColor(odom.info().wordInliers[i], Qt::green); // inliers
-						}
+						_ui->imageView_odometry->setFeatureColor(odom.info().wordMatches[i], Qt::red); // outliers
 					}
-				}
-				if(odom.info().type == 1 && odom.info().refCorners.size())
-				{
-					if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
+					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
 					{
-						//draw lines
-						UASSERT(odom.info().refCorners.size() == odom.info().newCorners.size());
-						std::set<int> inliers(odom.info().cornerInliers.begin(), odom.info().cornerInliers.end());
-						for(unsigned int i=0; i<odom.info().refCorners.size(); ++i)
-						{
-							if(_ui->imageView_odometry->isFeaturesShown() && inliers.find(i) != inliers.end())
-							{
-								_ui->imageView_odometry->setFeatureColor(i, Qt::green); // inliers
-							}
-							if(_ui->imageView_odometry->isLinesShown())
-							{
-								_ui->imageView_odometry->addLine(
-										odom.info().refCorners[i].x,
-										odom.info().refCorners[i].y,
-										odom.info().newCorners[i].x,
-										odom.info().newCorners[i].y,
-										inliers.find(i) != inliers.end()?Qt::blue:Qt::yellow);
-							}
-						}
+						_ui->imageView_odometry->setFeatureColor(odom.info().wordInliers[i], Qt::green); // inliers
 					}
 				}
 			}
-			if(!odom.data().imageRaw().empty())
+			if(odom.info().type == 1 && odom.info().refCorners.size())
 			{
-				_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)odom.data().imageRaw().cols, (float)odom.data().imageRaw().rows));
+				if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
+				{
+					//draw lines
+					UASSERT(odom.info().refCorners.size() == odom.info().newCorners.size());
+					std::set<int> inliers(odom.info().cornerInliers.begin(), odom.info().cornerInliers.end());
+					for(unsigned int i=0; i<odom.info().refCorners.size(); ++i)
+					{
+						if(_ui->imageView_odometry->isFeaturesShown() && inliers.find(i) != inliers.end())
+						{
+							_ui->imageView_odometry->setFeatureColor(i, Qt::green); // inliers
+						}
+						if(_ui->imageView_odometry->isLinesShown())
+						{
+							_ui->imageView_odometry->addLine(
+									odom.info().refCorners[i].x,
+									odom.info().refCorners[i].y,
+									odom.info().newCorners[i].x,
+									odom.info().newCorners[i].y,
+									inliers.find(i) != inliers.end()?Qt::blue:Qt::yellow);
+						}
+					}
+				}
 			}
-
-			_ui->imageView_odometry->update();
 		}
-
-		if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
+		if(!odom.data().imageRaw().empty())
 		{
-			this->captureScreen(_autoScreenCaptureRAM);
+			_ui->imageView_odometry->setSceneRect(QRectF(0,0,(float)odom.data().imageRaw().cols, (float)odom.data().imageRaw().rows));
 		}
+
+		_ui->imageView_odometry->update();
+	}
+
+	if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
+	{
+		this->captureScreen(_autoScreenCaptureRAM);
 	}
 
 	//Process info
