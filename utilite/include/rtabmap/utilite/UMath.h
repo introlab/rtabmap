@@ -41,12 +41,10 @@
 template<class T>
 inline bool uIsNan(const T & value)
 {
-#ifdef __APPLE__
-	return std::isnan(value);
-#elif _MSC_VER
+#if _MSC_VER
 	return _isnan(value) != 0;
 #else
-	return isnan(value);
+	return std::isnan(value);
 #endif
 }
 
