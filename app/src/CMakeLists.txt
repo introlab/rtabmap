@@ -5,7 +5,7 @@ SET(headers_ui
 )
 
 #This will generate moc_* for Qt
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+IF(QT4_FOUND)
     QT4_WRAP_CPP(moc_srcs ${headers_ui})
 ELSE()
     QT5_WRAP_CPP(moc_srcs ${headers_ui})
@@ -25,9 +25,9 @@ SET(INCLUDE_DIRS
     ${PCL_INCLUDE_DIRS}
 )
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+IF(QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
-ENDIF()
+ENDIF(QT4_FOUND)
 
 SET(LIBRARIES
     ${QT_LIBRARIES} 
@@ -73,9 +73,9 @@ ELSE()
   ADD_EXECUTABLE(rtabmap ${SRC_FILES})
 ENDIF()
 TARGET_LINK_LIBRARIES(rtabmap rtabmap_core rtabmap_gui rtabmap_utilite ${LIBRARIES})
-IF("${RTABMAP_QT_VERSION}" STREQUAL "5")
+IF(Qt5_FOUND)
     QT5_USE_MODULES(rtabmap Widgets Core Gui Svg PrintSupport)
-ENDIF()
+ENDIF(Qt5_FOUND)
 
 IF(APPLE AND BUILD_AS_BUNDLE)
   SET_TARGET_PROPERTIES(rtabmap PROPERTIES

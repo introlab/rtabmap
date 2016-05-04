@@ -32,8 +32,6 @@ SET(PROJECT_VERSION_PATCH ${RTABMAP_PATCH_VERSION})
 
 SET(PROJECT_SOVERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
-SET(RTABMAP_QT_VERSION 4 CACHE STRING "Which QT version to use")
-
 ####### COMPILATION PARAMS #######
 # In case of Makefiles if the user does not setup CMAKE_BUILD_TYPE, assume it's Release:
 IF(${CMAKE_GENERATOR} MATCHES ".*Makefiles")
@@ -143,6 +141,11 @@ FIND_PACKAGE(OpenCV REQUIRED QUIET)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET)
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
 
+# fix libproj.so not found on Xenial
+if(NOT "${PCL_LIBRARIES}" STREQUAL "")
+   list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
+endif()
+
 # OpenMP ("-fopenmp" should be added for flann included in PCL)
 # the gcc-4.2.1 coming with MacOS X is not compatible with the OpenMP pragmas we use, so disabling OpenMP for it
 if((NOT APPLE) OR (NOT CMAKE_COMPILER_IS_GNUCXX) OR (GCC_VERSION VERSION_GREATER 4.2.1) OR (CMAKE_CXX_COMPILER_ID STREQUAL "Clang"))
@@ -167,12 +170,13 @@ IF(ZLIB_FOUND)
 ENDIF(ZLIB_FOUND)
 
 IF(WITH_QT)
-# If Qt is here, the GUI will be built
-    IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+    # If Qt is here, the GUI will be built
+    # look for Qt5 before Qt4
+    FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+    IF(NOT Qt5_FOUND)
         FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
-    ELSE()
-        FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
-    ENDIF()
+    ENDIF(NOT Qt5_FOUND)
+        
     IF(QT4_FOUND OR Qt5_FOUND)
         FIND_PACKAGE(VTK REQUIRED)
         IF("${VTK_MAJOR_VERSION}" EQUAL 5)
@@ -592,7 +596,7 @@ MESSAGE(STATUS "  With Qt5                  = YES (License: Open Source or Comme
 ELSEIF(NOT WITH_QT)
 MESSAGE(STATUS "  With Qt                   = NO (WITH_QT=OFF)")
 ELSE()
-MESSAGE(STATUS "  With Qt                   = NO (Qt not found, to use Qt5 you should set -DRTABMAP_QT_VERSION=5)")
+MESSAGE(STATUS "  With Qt                   = NO (Qt not found)")
 ENDIF()
 
 MESSAGE(STATUS "--------------------------------------------")

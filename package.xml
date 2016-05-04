@@ -12,19 +12,17 @@
 
   <buildtool_depend>cmake</buildtool_depend>
   
-  <build_depend>libpcl-all-dev</build_depend>
-  <build_depend>libqt4-dev</build_depend>
-  <build_depend>libvtk-qt</build_depend>
+  <build_depend>libpcl-all-dev</build_depend> <!-- include qt and vtk -->
   <build_depend>libsqlite3-dev</build_depend>
   <build_depend>zlib</build_depend>
   <build_depend>libfreenect</build_depend>
   <build_depend>libopenni-dev</build_depend>
   <build_depend>libopenni2-dev</build_depend>
   <build_depend>cv_bridge</build_depend>
+  <!-- libproj-dev needed due to error in vtk6 (kinetic)-->
+  <build_depend>libproj-dev</build_depend>
   
   <run_depend>libpcl-all-dev</run_depend>
-  <run_depend>libqt4-dev</run_depend>
-  <run_depend>libvtk-qt</run_depend>
   <run_depend>libsqlite3-dev</run_depend>
   <run_depend>zlib</run_depend>
   <run_depend>libfreenect</run_depend>

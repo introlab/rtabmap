@@ -16,7 +16,6 @@ if(internal)
 		rtabmap_gui
 		rtabmap_utilite
 	)  
-	SET(MY_QT_VERSION ${RTABMAP_QT_VERSION})
 else()
 	# external build
 	PROJECT( MyProject )
@@ -25,15 +24,11 @@ else()
 	FIND_PACKAGE(OpenCV REQUIRED)
 	FIND_PACKAGE(PCL 1.7 REQUIRED)
 	
-	# Use Qt4 or Qt5
-	SET(MY_QT_VERSION 4 CACHE STRING "Which Qt version to use")
-	IF("${MY_QT_VERSION}" STREQUAL "4")
-		message("4")
-	    FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
-	ELSE()
-		message("5")
-	    FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
-	ENDIF()
+	# Find Qt5 first
+	FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+    	IF(NOT Qt5_FOUND)
+       		FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
+    	ENDIF(NOT Qt5_FOUND)
 endif()
 
 SET(INCLUDE_DIRS
@@ -42,9 +37,9 @@ SET(INCLUDE_DIRS
     ${PCL_INCLUDE_DIRS}
 )
 
-IF("${MY_QT_VERSION}" STREQUAL "4")
+IF(QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
-ENDIF()
+ENDIF(QT4_FOUND)
 
 SET(LIBRARIES
 	${RTABMap_LIBRARIES}
@@ -55,7 +50,7 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-IF("${MY_QT_VERSION}" STREQUAL "4")
+IF(QT4_FOUND)
     QT4_WRAP_CPP(moc_srcs MapBuilder.h)
 ELSE()
     QT5_WRAP_CPP(moc_srcs MapBuilder.h)
