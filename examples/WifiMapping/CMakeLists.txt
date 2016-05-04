@@ -25,7 +25,7 @@ else()
 	FIND_PACKAGE(PCL 1.7 REQUIRED)
 	
 	# Find Qt5 first
-	FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+	FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg QUIET)
     	IF(NOT Qt5_FOUND)
        		FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
     	ENDIF(NOT Qt5_FOUND)
@@ -50,7 +50,7 @@ SET(LIBRARIES
 
 INCLUDE_DIRECTORIES(${INCLUDE_DIRS})
 
-IF("${MY_QT_VERSION}" STREQUAL "4")
+IF(QT4_FOUND)
     QT4_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
 ELSE()
     QT5_WRAP_CPP(moc_srcs MapBuilder.h MapBuilderWifi.h)
