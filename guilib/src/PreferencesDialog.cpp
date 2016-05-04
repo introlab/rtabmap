@@ -821,6 +821,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_progressDialog = new QProgressDialog(this);
 	_progressDialog->setWindowTitle(tr("Read parameters..."));
 	_progressDialog->setMaximum(2);
+	_progressDialog->setValue(2);
 }
 
 PreferencesDialog::~PreferencesDialog() {
