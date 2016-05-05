@@ -2508,10 +2508,10 @@ void Memory::removeVirtualLinks(int signatureId)
 void Memory::dumpMemory(std::string directory) const
 {
 	UINFO("Dumping memory to directory \"%s\"", directory.c_str());
-	this->dumpDictionary((directory+"DumpMemoryWordRef.txt").c_str(), (directory+"DumpMemoryWordDesc.txt").c_str());
-	this->dumpSignatures((directory + "DumpMemorySign.txt").c_str(), false);
-	this->dumpSignatures((directory + "DumpMemorySign3.txt").c_str(), true);
-	this->dumpMemoryTree((directory + "DumpMemoryTree.txt").c_str());
+	this->dumpDictionary((directory+"/DumpMemoryWordRef.txt").c_str(), (directory+"/DumpMemoryWordDesc.txt").c_str());
+	this->dumpSignatures((directory + "/DumpMemorySign.txt").c_str(), false);
+	this->dumpSignatures((directory + "/DumpMemorySign3.txt").c_str(), true);
+	this->dumpMemoryTree((directory + "/DumpMemoryTree.txt").c_str());
 }
 
 void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const
@@ -2524,6 +2524,7 @@ void Memory::dumpDictionary(const char * fileNameRef, const char * fileNameDesc)
 
 void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
 {
+	UDEBUG("");
 	FILE* foutSign = 0;
 #ifdef _MSC_VER
 	fopen_s(&foutSign, fileNameSign, "w");
@@ -2571,6 +2572,7 @@ void Memory::dumpSignatures(const char * fileNameSign, bool words3D) const
 
 void Memory::dumpMemoryTree(const char * fileNameTree) const
 {
+	UDEBUG("");
 	FILE* foutTree = 0;
 	#ifdef _MSC_VER
 		fopen_s(&foutTree, fileNameTree, "w");
