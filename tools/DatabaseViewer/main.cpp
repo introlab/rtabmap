@@ -51,6 +51,7 @@ int main(int argc, char * argv[])
 
 	delete mainWindow;
 	delete app;
+	UINFO("All done! closing...");
 
 	return 0;
 }

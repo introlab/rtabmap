@@ -52,6 +52,7 @@ class CameraOpenni;
 class CameraFreenect;
 class OdometryThread;
 class CloudViewer;
+class LoopClosureViewer;
 }
 
 class QGraphicsScene;
@@ -306,6 +307,9 @@ private:
 	PdfPlotCurve * _rawLikelihoodCurve;
 
 	ProgressDialog * _initProgressDialog;
+
+	CloudViewer * _cloudViewer;
+	LoopClosureViewer * _loopClosureViewer;
 
 	QString _graphSavingFileName;
 	QMap<int, QString> _exportPosesFileName;

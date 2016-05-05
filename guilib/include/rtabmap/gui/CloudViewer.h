@@ -206,6 +206,8 @@ public:
 	Transform getTargetPose() const;
 
 	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
+	void setRenderingRate(double rate);
+	double getRenderingRate() const;
 
 	void getCameraPosition(
 			float & x, float & y, float & z,
@@ -275,6 +277,7 @@ private:
     QAction * _aSetGridCellCount;
     QAction * _aSetGridCellSize;
     QAction * _aSetBackgroundColor;
+    QAction * _aSetRenderingRate;
     QMenu * _menu;
     std::set<std::string> _graphes;
     std::set<std::string> _coordinates;
@@ -297,6 +300,7 @@ private:
     QColor _currentBgColor;
     bool _backfaceCulling;
     bool _frontfaceCulling;
+    double _renderingRate;
 };
 
 } /* namespace rtabmap */

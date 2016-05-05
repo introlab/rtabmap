@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/gui/KeypointItem.h"
+#include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/utilite/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_transforms.h"
@@ -113,8 +114,22 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->dockWidget_stereoView->setVisible(false);
 	ui_->dockWidget_view3d->setVisible(false);
 
-	ui_->constraintsViewer->setCameraLockZ(false);
-	ui_->constraintsViewer->setCameraFree();
+	// Create cloud viewers
+	constraintsViewer_ = new CloudViewer(ui_->dockWidgetContents);
+	cloudViewerA_ = new CloudViewer(ui_->dockWidgetContents_3dviews);
+	cloudViewerB_ = new CloudViewer(ui_->dockWidgetContents_3dviews);
+	stereoViewer_ = new CloudViewer(ui_->dockWidgetContents_stereo);
+	constraintsViewer_->setObjectName("constraintsViewer");
+	cloudViewerA_->setObjectName("cloudViewerA");
+	cloudViewerB_->setObjectName("cloudViewerB");
+	stereoViewer_->setObjectName("stereoViewer");
+	ui_->layout_constraintsViewer->addWidget(constraintsViewer_);
+	ui_->horizontalLayout_3dviews->addWidget(cloudViewerA_, 1);
+	ui_->horizontalLayout_3dviews->addWidget(cloudViewerB_, 1);
+	ui_->horizontalLayout_stereo->addWidget(stereoViewer_, 1);
+
+	constraintsViewer_->setCameraLockZ(false);
+	constraintsViewer_->setCameraFree();
 
 	ui_->graphicsView_stereo->setAlpha(255);
 
@@ -2068,7 +2083,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_labelA,
 			ui_->label_stampA,
 			ui_->graphicsView_A,
-			ui_->widget_cloudA,
+			cloudViewerA_,
 			ui_->label_idA,
 			ui_->label_mapA,
 			ui_->label_poseA,
@@ -2086,7 +2101,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_labelB,
 			ui_->label_stampB,
 			ui_->graphicsView_B,
-			ui_->widget_cloudB,
+			cloudViewerB_,
 			ui_->label_idB,
 			ui_->label_mapB,
 			ui_->label_poseB,
@@ -2235,7 +2250,7 @@ void DatabaseViewer::update(int value,
 				}
 				else
 				{
-					ui_->stereoViewer->clear();
+					stereoViewer_->clear();
 					ui_->graphicsView_stereo->clear();
 				}
 
@@ -2430,7 +2445,7 @@ void DatabaseViewer::update(int value,
 			ui_->horizontalSlider_loops->blockSignals(false);
 			ui_->horizontalSlider_neighbors->blockSignals(false);
 
-			ui_->constraintsViewer->removeAllClouds();
+			constraintsViewer_->removeAllClouds();
 
 			// make a fake link using globally optimized poses
 			if(graphes_.size())
@@ -2449,7 +2464,7 @@ void DatabaseViewer::update(int value,
 				}
 			}
 
-			ui_->constraintsViewer->update();
+			constraintsViewer_->update();
 
 		}
 	}
@@ -2590,9 +2605,9 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		UINFO("correspondences = %d/%d (%f) (time kpt=%fs stereo=%fs)",
 				(int)cloud->size(), (int)leftCorners.size(), float(cloud->size())/float(leftCorners.size()), timeKpt, timeStereo);
 
-		ui_->stereoViewer->updateCameraTargetPosition(Transform::getIdentity());
-		ui_->stereoViewer->addCloud("stereo", cloud);
-		ui_->stereoViewer->update();
+		stereoViewer_->updateCameraTargetPosition(Transform::getIdentity());
+		stereoViewer_->addCloud("stereo", cloud);
+		stereoViewer_->update();
 
 		ui_->label_stereo_inliers->setNum(inliers);
 		ui_->label_stereo_flowOutliers->setNum(flowOutliers);
@@ -2885,7 +2900,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_labelA,
 					ui_->label_stampA,
 					ui_->graphicsView_A,
-					ui_->widget_cloudA,
+					cloudViewerA_,
 					ui_->label_idA,
 					ui_->label_mapA,
 					ui_->label_poseA,
@@ -2899,7 +2914,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_labelB,
 					ui_->label_stampB,
 					ui_->graphicsView_B,
-					ui_->widget_cloudB,
+					cloudViewerB_,
 					ui_->label_idB,
 					ui_->label_mapB,
 					ui_->label_poseB,
@@ -2907,7 +2922,7 @@ void DatabaseViewer::updateConstraintView(
 					false); // don't update constraints view!
 	}
 
-	if(ui_->constraintsViewer->isVisible())
+	if(constraintsViewer_->isVisible())
 	{
 		SensorData dataFrom, dataTo;
 
@@ -2939,18 +2954,18 @@ void DatabaseViewer::updateConstraintView(
 
 				if(cloudFrom.get() && cloudFrom->size())
 				{
-					ui_->constraintsViewer->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+					constraintsViewer_->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 				}
 				if(cloudTo.get() && cloudTo->size())
 				{
 					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
-					ui_->constraintsViewer->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+					constraintsViewer_->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
 			else
 			{
-				ui_->constraintsViewer->removeCloud("cloud0");
-				ui_->constraintsViewer->removeCloud("cloud1");
+				constraintsViewer_->removeCloud("cloud0");
+				constraintsViewer_->removeCloud("cloud1");
 			}
 			if(ui_->checkBox_show3DWords->isChecked())
 			{
@@ -2998,28 +3013,28 @@ void DatabaseViewer::updateConstraintView(
 
 					if(cloudFrom->size())
 					{
-						ui_->constraintsViewer->addCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
+						constraintsViewer_->addCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
 					}
 					else
 					{
 						UWARN("Empty 3D words for node %d", link.from());
-						ui_->constraintsViewer->removeCloud("words0");
+						constraintsViewer_->removeCloud("words0");
 					}
 					if(cloudTo->size())
 					{
-						ui_->constraintsViewer->addCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
+						constraintsViewer_->addCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
 					}
 					else
 					{
 						UWARN("Empty 3D words for node %d", link.to());
-						ui_->constraintsViewer->removeCloud("words1");
+						constraintsViewer_->removeCloud("words1");
 					}
 				}
 				else
 				{
 					UERROR("Not found signature %d or %d in RAM", link.from(), link.to());
-					ui_->constraintsViewer->removeCloud("words0");
-					ui_->constraintsViewer->removeCloud("words1");
+					constraintsViewer_->removeCloud("words0");
+					constraintsViewer_->removeCloud("words1");
 				}
 				//cleanup
 				for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
@@ -3029,19 +3044,19 @@ void DatabaseViewer::updateConstraintView(
 			}
 			else
 			{
-				ui_->constraintsViewer->removeCloud("words0");
-				ui_->constraintsViewer->removeCloud("words1");
+				constraintsViewer_->removeCloud("words0");
+				constraintsViewer_->removeCloud("words1");
 			}
 		}
 		else
 		{
 			if(cloudFrom->size())
 			{
-				ui_->constraintsViewer->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+				constraintsViewer_->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
 			}
 			if(cloudTo->size())
 			{
-				ui_->constraintsViewer->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+				constraintsViewer_->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 			}
 		}
 
@@ -3051,8 +3066,8 @@ void DatabaseViewer::updateConstraintView(
 			{
 				//cloud 2d
 
-				ui_->constraintsViewer->removeCloud("scan2");
-				ui_->constraintsViewer->removeGraph("scan2graph");
+				constraintsViewer_->removeCloud("scan2");
+				constraintsViewer_->removeGraph("scan2graph");
 				if(link.type() == Link::kLocalSpaceClosure &&
 				   !link.userDataCompressed().empty())
 				{
@@ -3150,11 +3165,11 @@ void DatabaseViewer::updateConstraintView(
 
 							if(assembledScans->size())
 							{
-								ui_->constraintsViewer->addCloud("scan2", assembledScans, Transform::getIdentity(), Qt::cyan);
+								constraintsViewer_->addCloud("scan2", assembledScans, Transform::getIdentity(), Qt::cyan);
 							}
 							if(graph->size())
 							{
-								ui_->constraintsViewer->addOrUpdateGraph("scan2graph", graph, Qt::cyan);
+								constraintsViewer_->addOrUpdateGraph("scan2graph", graph, Qt::cyan);
 							}
 						}
 					}
@@ -3167,62 +3182,62 @@ void DatabaseViewer::updateConstraintView(
 				scanB = rtabmap::util3d::transformPointCloud(scanB, t);
 				if(scanA->size())
 				{
-					ui_->constraintsViewer->addCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
+					constraintsViewer_->addCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
 				}
 				else
 				{
-					ui_->constraintsViewer->removeCloud("scan0");
+					constraintsViewer_->removeCloud("scan0");
 				}
 				if(scanB->size())
 				{
-					ui_->constraintsViewer->addCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
+					constraintsViewer_->addCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
 				}
 				else
 				{
-					ui_->constraintsViewer->removeCloud("scan1");
+					constraintsViewer_->removeCloud("scan1");
 				}
 			}
 			else
 			{
-				ui_->constraintsViewer->removeCloud("scan0");
-				ui_->constraintsViewer->removeCloud("scan1");
-				ui_->constraintsViewer->removeCloud("scan2");
+				constraintsViewer_->removeCloud("scan0");
+				constraintsViewer_->removeCloud("scan1");
+				constraintsViewer_->removeCloud("scan2");
 			}
 		}
 		else
 		{
 			if(scanFrom->size())
 			{
-				ui_->constraintsViewer->addCloud("scan0", scanFrom, Transform::getIdentity(), Qt::yellow);
+				constraintsViewer_->addCloud("scan0", scanFrom, Transform::getIdentity(), Qt::yellow);
 			}
 			else
 			{
-				ui_->constraintsViewer->removeCloud("scan0");
+				constraintsViewer_->removeCloud("scan0");
 			}
 			if(scanTo->size())
 			{
-				ui_->constraintsViewer->addCloud("scan1", scanTo, Transform::getIdentity(), Qt::magenta);
+				constraintsViewer_->addCloud("scan1", scanTo, Transform::getIdentity(), Qt::magenta);
 			}
 			else
 			{
-				ui_->constraintsViewer->removeCloud("scan1");
+				constraintsViewer_->removeCloud("scan1");
 			}
-			ui_->constraintsViewer->removeCloud("scan2");
+			constraintsViewer_->removeCloud("scan2");
 		}
 
 		//update coordinate
 
-		ui_->constraintsViewer->addOrUpdateCoordinate("from_coordinate", Transform::getIdentity(), 0.2);
-		ui_->constraintsViewer->addOrUpdateCoordinate("to_coordinate", t, 0.2);
+		constraintsViewer_->addOrUpdateCoordinate("from_coordinate", Transform::getIdentity(), 0.2);
+		constraintsViewer_->addOrUpdateCoordinate("to_coordinate", t, 0.2);
 		if(uContains(groundTruthPoses_, link.from()) && uContains(groundTruthPoses_, link.to()))
 		{
-			ui_->constraintsViewer->addOrUpdateCoordinate("to_coordinate_gt",
+			constraintsViewer_->addOrUpdateCoordinate("to_coordinate_gt",
 					groundTruthPoses_.at(link.from()).inverse()*groundTruthPoses_.at(link.to()), 0.1);
 		}
 
-		ui_->constraintsViewer->clearTrajectory();
+		constraintsViewer_->clearTrajectory();
 
-		ui_->constraintsViewer->update();
+		constraintsViewer_->update();
 	}
 
 	// update buttons
@@ -4209,8 +4224,8 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 	else
 	{
 		ui_->horizontalSlider_loops->setEnabled(false);
-		ui_->constraintsViewer->removeAllClouds();
-		ui_->constraintsViewer->update();
+		constraintsViewer_->removeAllClouds();
+		constraintsViewer_->update();
 		updateConstraintButtons();
 	}
 }

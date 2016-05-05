@@ -31,7 +31,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
-#include <rtabmap/core/util3d.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/common/transforms.h>
 #include <QMenu>
@@ -42,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QKeyEvent>
 #include <QColorDialog>
 #include <QtGui/QVector3D>
+#include <QMainWindow>
 #include <set>
 
 #include <vtkCamera.h>
@@ -121,22 +121,29 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_defaultBgColor(Qt::black),
 		_currentBgColor(Qt::black),
 		_backfaceCulling(false),
-		_frontfaceCulling(false)
+		_frontfaceCulling(false),
+		_renderingRate(5.0)
 {
+	UDEBUG("");
 	this->setMinimumSize(200, 200);
 
 	int argc = 0;
-	_visualizer = new pcl::visualization::PCLVisualizer(argc, 0, "PCLVisualizer", vtkSmartPointer<MyInteractorStyle>(new MyInteractorStyle()), false);
+	_visualizer = new pcl::visualization::PCLVisualizer(
+		argc, 
+		0, 
+		"PCLVisualizer", 
+		vtkSmartPointer<MyInteractorStyle>(new MyInteractorStyle()), 
+		false);
 
 	_visualizer->setShowFPS(false);
-
+	
 	this->SetRenderWindow(_visualizer->getRenderWindow());
 
 	// Replaced by the second line, to avoid a crash in Mac OS X on close, as well as
 	// the "Invalid drawable" warning when the view is not visible.
 	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
 	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
-	_visualizer->getInteractorStyle()->GetInteractor()->SetDesiredUpdateRate(5.0);
+	setRenderingRate(_renderingRate);
 
 	_visualizer->setCameraPosition(
 				-1, 0, 0,
@@ -205,7 +212,8 @@ void CloudViewer::createMenu()
 	_aShowGrid->setCheckable(true);
 	_aSetGridCellCount = new QAction("Set cell count...", this);
 	_aSetGridCellSize = new QAction("Set cell size...", this);
-	_aSetBackgroundColor = new QAction("Set background color...", this);
+	_aSetBackgroundColor = new QAction("Set background color...", this);	
+	_aSetRenderingRate = new QAction("Set rendering rate...", this);
 
 	QMenu * cameraMenu = new QMenu("Camera", this);
 	cameraMenu->addAction(_aLockCamera);
@@ -241,6 +249,7 @@ void CloudViewer::createMenu()
 	_menu->addMenu(frustumMenu);
 	_menu->addMenu(gridMenu);
 	_menu->addAction(_aSetBackgroundColor);
+	_menu->addAction(_aSetRenderingRate);
 }
 
 void CloudViewer::saveSettings(QSettings & settings, const QString & group) const
@@ -290,6 +299,7 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("camera_lockZ", this->isCameraLockZ());
 
 	settings.setValue("bg_color", this->getDefaultBackgroundColor());
+	settings.setValue("rendering_rate", this->getRenderingRate());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -331,6 +341,9 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setCameraLockZ(settings.value("camera_lockZ", this->isCameraLockZ()).toBool());
 
 	this->setDefaultBackgroundColor(settings.value("bg_color", this->getDefaultBackgroundColor()).value<QColor>());
+	
+	this->setRenderingRate(settings.value("rendering_rate", this->getRenderingRate()).toDouble());
+
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -1136,6 +1149,12 @@ void CloudViewer::setBackfaceCulling(bool enabled, bool frontfaceCulling)
 	_frontfaceCulling = frontfaceCulling;
 }
 
+void CloudViewer::setRenderingRate(double rate)
+{
+	_renderingRate = rate;
+	_visualizer->getInteractorStyle()->GetInteractor()->SetDesiredUpdateRate(_renderingRate);
+}
+
 void CloudViewer::getCameraPosition(
 		float & x, float & y, float & z,
 		float & focalX, float & focalY, float & focalZ,
@@ -1438,6 +1457,10 @@ float CloudViewer::getGridCellSize() const
 {
 	return _gridCellSize;
 }
+double CloudViewer::getRenderingRate() const
+{
+	return _renderingRate;
+}
 
 void CloudViewer::setGridCellCount(unsigned int count)
 {
@@ -1555,7 +1578,7 @@ void CloudViewer::keyReleaseEvent(QKeyEvent * event) {
 	}
 	else
 	{
-		QVTKWidget::keyPressEvent(event);
+		QWidget::keyPressEvent(event);
 	}
 }
 
@@ -1655,7 +1678,7 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 	}
 	else
 	{
-		QVTKWidget::keyPressEvent(event);
+		QWidget::keyPressEvent(event);
 	}
 }
 
@@ -1813,6 +1836,15 @@ void CloudViewer::handleAction(QAction * a)
 		{
 			this->setDefaultBackgroundColor(color);
 			this->update();
+		}
+	}
+	else if(a == _aSetRenderingRate)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Rendering rate"), tr("Rate (hz)"), _renderingRate, 0, 60, 0, &ok);
+		if(ok)
+		{
+			this->setRenderingRate(value);
 		}
 	}
 	else if(a == _aLockViewZ)

@@ -285,7 +285,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -323,7 +332,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -566,7 +584,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -587,7 +614,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -608,7 +644,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -624,17 +669,23 @@
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_5">
+   <widget class="QWidget" name="layout_cloudViewer">
     <layout class="QVBoxLayout" name="verticalLayout_3">
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
       <number>0</number>
      </property>
-     <item>
-      <widget class="rtabmap::CloudViewer" name="widget_cloudViewer" native="true"/>
-     </item>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
     </layout>
    </widget>
   </widget>
@@ -645,17 +696,23 @@
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_7">
+   <widget class="QWidget" name="layout_loopClosureViewer">
     <layout class="QVBoxLayout" name="verticalLayout_7">
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
       <number>0</number>
      </property>
-     <item>
-      <widget class="rtabmap::LoopClosureViewer" name="widget_loopClosureViewer" native="true"/>
-     </item>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
+      <number>0</number>
+     </property>
     </layout>
    </widget>
   </widget>
@@ -674,7 +731,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -695,7 +761,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -719,7 +794,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -789,7 +873,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -1321,18 +1414,6 @@
    <class>rtabmap::ConsoleWidget</class>
    <extends>QWidget</extends>
    <header>../include/rtabmap/gui/ConsoleWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>rtabmap::CloudViewer</class>
-   <extends>QWidget</extends>
-   <header>../include/rtabmap/gui/CloudViewer.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>rtabmap::LoopClosureViewer</class>
-   <extends>QWidget</extends>
-   <header>../include/rtabmap/gui/LoopClosureViewer.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

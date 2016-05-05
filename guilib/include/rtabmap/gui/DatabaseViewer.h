@@ -157,6 +157,10 @@ private:
 
 private:
 	Ui_DatabaseViewer * ui_;
+	CloudViewer * constraintsViewer_;
+	CloudViewer * cloudViewerA_;
+	CloudViewer * cloudViewerB_;
+	CloudViewer * stereoViewer_;
 	QList<int> ids_;
 	std::map<int, int> mapIds_;
 	QMap<int, int> idToIndex_;

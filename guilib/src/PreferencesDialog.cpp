@@ -98,12 +98,17 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui(0),
 	_indexModel(0),
 	_initialized(false),
+	_progressDialog(new QProgressDialog(this)),
 	_calibrationDialog(new CalibrationDialog(false, ".", this)),
 	_createCalibrationDialog(new CreateSimpleCalibrationDialog(".", "", this))
 {
 	ULOGGER_DEBUG("");
 	_calibrationDialog->setWindowFlags(Qt::Window);
 	_calibrationDialog->setWindowTitle(tr("Calibration"));
+
+	_progressDialog->setWindowTitle(tr("Read parameters..."));
+	_progressDialog->setMaximum(2);
+	_progressDialog->setValue(2);
 
 	_ui = new Ui_preferencesDialog();
 	_ui->setupUi(this);
@@ -817,11 +822,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	this->setupTreeView();
 
 	_obsoletePanels = kPanelAll;
-
-	_progressDialog = new QProgressDialog(this);
-	_progressDialog->setWindowTitle(tr("Read parameters..."));
-	_progressDialog->setMaximum(2);
-	_progressDialog->setValue(2);
 }
 
 PreferencesDialog::~PreferencesDialog() {

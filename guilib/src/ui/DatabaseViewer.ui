@@ -21,7 +21,16 @@
     <property name="spacing">
      <number>0</number>
     </property>
-    <property name="margin">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
      <number>0</number>
     </property>
     <item>
@@ -52,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>202</width>
+           <width>205</width>
            <height>196</height>
           </rect>
          </property>
@@ -210,7 +219,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>201</width>
+           <width>204</width>
            <height>196</height>
           </rect>
          </property>
@@ -357,7 +366,16 @@
       </item>
       <item row="1" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout">
-        <property name="margin">
+        <property name="leftMargin">
+         <number>12</number>
+        </property>
+        <property name="topMargin">
+         <number>12</number>
+        </property>
+        <property name="rightMargin">
+         <number>12</number>
+        </property>
+        <property name="bottomMargin">
          <number>12</number>
         </property>
         <item>
@@ -413,7 +431,16 @@
       </item>
       <item row="1" column="1">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <property name="margin">
+        <property name="leftMargin">
+         <number>12</number>
+        </property>
+        <property name="topMargin">
+         <number>12</number>
+        </property>
+        <property name="rightMargin">
+         <number>12</number>
+        </property>
+        <property name="bottomMargin">
          <number>12</number>
         </property>
         <item>
@@ -541,7 +568,11 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QVBoxLayout" name="verticalLayout_8" stretch="1,0,0,0">
      <item>
-      <widget class="rtabmap::CloudViewer" name="constraintsViewer" native="true"/>
+      <layout class="QVBoxLayout" name="layout_constraintsViewer">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+      </layout>
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_10">
@@ -983,7 +1014,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>333</width>
+          <width>340</width>
           <height>186</height>
          </rect>
         </property>
@@ -1118,8 +1149,8 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-51</y>
-          <width>278</width>
+          <y>0</y>
+          <width>282</width>
           <height>611</height>
          </rect>
         </property>
@@ -1530,7 +1561,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
+          <width>205</width>
           <height>117</height>
          </rect>
         </property>
@@ -1630,8 +1661,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>289</width>
-          <height>182</height>
+          <width>267</width>
+          <height>157</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1725,21 +1756,27 @@
    <attribute name="dockWidgetArea">
     <number>4</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_5">
+   <widget class="QWidget" name="dockWidgetContents_stereo">
     <layout class="QVBoxLayout" name="verticalLayout_11" stretch="1,0">
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_9" stretch="1,1">
+      <layout class="QHBoxLayout" name="horizontalLayout_stereo" stretch="1">
        <item>
         <widget class="rtabmap::ImageView" name="graphicsView_stereo" native="true"/>
-       </item>
-       <item>
-        <widget class="rtabmap::CloudViewer" name="stereoViewer" native="true"/>
        </item>
       </layout>
      </item>
@@ -1841,25 +1878,28 @@
    <attribute name="dockWidgetArea">
     <number>4</number>
    </attribute>
-   <widget class="QWidget" name="dockWidgetContents_6">
+   <widget class="QWidget" name="dockWidgetContents_3dviews">
     <layout class="QVBoxLayout" name="verticalLayout_5" stretch="1,0">
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3dviews" stretch="1,1">
+      <layout class="QHBoxLayout" name="horizontalLayout_3dviews">
        <property name="spacing">
         <number>1</number>
        </property>
-       <item>
-        <widget class="rtabmap::CloudViewer" name="widget_cloudA" native="true"/>
-       </item>
-       <item>
-        <widget class="rtabmap::CloudViewer" name="widget_cloudB" native="true"/>
-       </item>
       </layout>
      </item>
      <item>
@@ -1906,7 +1946,16 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_7">
     <layout class="QVBoxLayout" name="verticalLayout_13">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -2032,12 +2081,6 @@
   </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>rtabmap::CloudViewer</class>
-   <extends>QWidget</extends>
-   <header>rtabmap/gui/CloudViewer.h</header>
-   <container>1</container>
-  </customwidget>
   <customwidget>
    <class>rtabmap::ImageView</class>
    <extends>QWidget</extends>

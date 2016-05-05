@@ -45,7 +45,7 @@ class RTABMAPGUI_EXP LoopClosureViewer : public QWidget {
 	Q_OBJECT
 
 public:
-	LoopClosureViewer(QWidget * parent);
+	LoopClosureViewer(QWidget * parent = 0);
 	virtual ~LoopClosureViewer();
 
 	void setData(const Signature & sA, const Signature & sB); // sB contains loop transform as pose() from sA

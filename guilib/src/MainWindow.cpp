@@ -48,6 +48,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/PdfPlot.h"
 #include "rtabmap/gui/StatsToolBox.h"
 #include "rtabmap/gui/ProgressDialog.h"
+#include "rtabmap/gui/CloudViewer.h"
+#include "rtabmap/gui/LoopClosureViewer.h"
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -175,7 +177,22 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_postProcessingDialog->setObjectName("PostProcessingDialog");
 
 	_ui = new Ui_mainWindow();
+	UDEBUG("Setup ui...");
 	_ui->setupUi(this);
+
+	// Add cloud viewers
+	// Note that we add them here manually because there is a crash issue
+	// when adding them in a DockWidget of the *.ui file. The cloud viewer is 
+	// created in a widget which is not yet linked to main window when the CloudViewer constructor
+	// is called (see order in generated ui file). VTK needs to get the top 
+	// level window at the time CloudViewer is created, otherwise it may crash on some systems.
+	_cloudViewer = new CloudViewer(_ui->layout_cloudViewer);
+	_cloudViewer->setObjectName("widget_cloudViewer");
+	_ui->layout_cloudViewer->layout()->addWidget(_cloudViewer);
+	_loopClosureViewer = new LoopClosureViewer(_ui->layout_loopClosureViewer);
+	_loopClosureViewer->setObjectName("widget_loopClosureViewer");
+	_ui->layout_loopClosureViewer->layout()->addWidget(_loopClosureViewer);
+	UDEBUG("Setup ui... end");
 
 	QString title("RTAB-Map[*]");
 	this->setWindowTitle(title);
@@ -196,6 +213,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	{
 		_preferencesDialog = new PreferencesDialog(this);
 	}
+
 	_preferencesDialog->setObjectName("PreferencesDialog");
 	_preferencesDialog->init();
 
@@ -347,6 +365,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_GUI_config->setShortcut(QKeySequence::Save);
+	// Qt5 issue, we should explicitly add actions not in 
+	// menu bar to have shortcut working
+	this->addAction(_ui->actionSave_GUI_config);
 	_ui->actionReset_Odometry->setEnabled(false);
 	_ui->actionPost_processing->setEnabled(false);
 	_ui->actionAnchor_clouds_to_ground_truth->setEnabled(false);
@@ -415,7 +436,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->imageView_loopClosure, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->imageView_odometry, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->graphicsView_graphView, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
-	connect(_ui->widget_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_exportCloudsDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_exportScansDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
@@ -467,9 +488,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-	_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-	_ui->widget_cloudViewer->setBackfaceCulling(true, false);
-	_preferencesDialog->loadWidgetState(_ui->widget_cloudViewer);
+	_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+	_cloudViewer->setBackfaceCulling(true, false);
+	_preferencesDialog->loadWidgetState(_cloudViewer);
 
 	//dialog states
 	_preferencesDialog->loadWidgetState(_exportCloudsDialog);
@@ -533,8 +554,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
 
 	// update loop closure viewer parameters
-	_ui->widget_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
-	_ui->widget_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
+	_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
+	_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
 	//update ui
 	_ui->doubleSpinBox_stats_detectionRate->setValue(_preferencesDialog->getDetectionRate());
@@ -811,8 +832,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	if(pose.isNull())
 	{
 		UDEBUG("odom lost"); // use last pose
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() != Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkRed);
+		lostStateChanged = _cloudViewer->getBackgroundColor() != Qt::darkRed;
+		_cloudViewer->setBackgroundColor(Qt::darkRed);
 		_ui->imageView_odometry->setBackgroundColor(Qt::darkRed);
 
 		pose = _lastOdomPose;
@@ -823,15 +844,15 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 			odom.info().inliers < _preferencesDialog->getOdomQualityWarnThr())
 	{
 		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, _preferencesDialog->getOdomQualityWarnThr());
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(Qt::darkYellow);
+		lostStateChanged = _cloudViewer->getBackgroundColor() == Qt::darkRed;
+		_cloudViewer->setBackgroundColor(Qt::darkYellow);
 		_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
 	}
 	else
 	{
 		UDEBUG("odom ok");
-		lostStateChanged = _ui->widget_cloudViewer->getBackgroundColor() == Qt::darkRed;
-		_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
+		lostStateChanged = _cloudViewer->getBackgroundColor() == Qt::darkRed;
+		_cloudViewer->setBackgroundColor(_cloudViewer->getDefaultBackgroundColor());
 		_ui->imageView_odometry->setBackgroundColor(Qt::black);
 	}
 
@@ -894,7 +915,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 								Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
 						if(polygons.size())
 						{
-							if(!_ui->widget_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
+							if(!_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
 							{
 								UERROR("Adding cloudOdom to viewer failed!");
 							}
@@ -902,14 +923,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 					}
 					else
 					{
-						if(!_ui->widget_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
+						if(!_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
 						{
 							UERROR("Adding cloudOdom to viewer failed!");
 						}
 					}
-					_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", true);
-					_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-					_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
+					_cloudViewer->setCloudVisibility("cloudOdom", true);
+					_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+					_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 
 					cloudUpdated = true;
 				}
@@ -922,15 +943,15 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
 					cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
-					if(!_ui->widget_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
+					if(!_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
 					{
 						UERROR("Adding scanMapOdom to viewer failed!");
 					}
 					else
 					{
-						_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", true);
-						_ui->widget_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
-						_ui->widget_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
+						_cloudViewer->setCloudVisibility("scanMapOdom", true);
+						_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
+						_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
 						scanUpdated = true;
 					}
 				}
@@ -951,15 +972,15 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
 					}
 
-					if(!_ui->widget_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta))
+					if(!_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta))
 					{
 						UERROR("Adding scanOdom to viewer failed!");
 					}
 					else
 					{
-						_ui->widget_cloudViewer->setCloudVisibility("scanOdom", true);
-						_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-						_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+						_cloudViewer->setCloudVisibility("scanOdom", true);
+						_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+						_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 						scanUpdated = true;
 					}
 				}
@@ -986,38 +1007,38 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 						(*cloud)[i++].b = 0;
 					}
 
-					_ui->widget_cloudViewer->addCloud("featuresOdom", cloud, _odometryCorrection);
-					_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", true);
-					_ui->widget_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
+					_cloudViewer->addCloud("featuresOdom", cloud, _odometryCorrection);
+					_cloudViewer->setCloudVisibility("featuresOdom", true);
+					_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
 
 					featuresUpdated = true;
 				}
 			}
 		}
-		if(!cloudUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("cloudOdom"))
+		if(!cloudUpdated && _cloudViewer->getAddedClouds().contains("cloudOdom"))
 		{
-			_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
+			_cloudViewer->setCloudVisibility("cloudOdom", false);
 		}
-		if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanOdom"))
+		if(!scanUpdated && _cloudViewer->getAddedClouds().contains("scanOdom"))
 		{
-			_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
+			_cloudViewer->setCloudVisibility("scanOdom", false);
 		}
-		if(!scanUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("scanMapOdom"))
+		if(!scanUpdated && _cloudViewer->getAddedClouds().contains("scanMapOdom"))
 		{
-			_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", false);
+			_cloudViewer->setCloudVisibility("scanMapOdom", false);
 		}
-		if(!featuresUpdated && _ui->widget_cloudViewer->getAddedClouds().contains("featuresOdom"))
+		if(!featuresUpdated && _cloudViewer->getAddedClouds().contains("featuresOdom"))
 		{
-			_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", false);
+			_cloudViewer->setCloudVisibility("featuresOdom", false);
 		}
 	}
 
 	if(!odom.pose().isNull())
 	{
 		// update camera position
-		_ui->widget_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 	}
-	_ui->widget_cloudViewer->update();
+	_cloudViewer->update();
 
 	if(_ui->graphicsView_graphView->isVisible())
 	{
@@ -1529,11 +1550,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				// the last loop closure data
 				Transform loopClosureTransform = stat.loopClosureTransform();
 				signature.setPose(loopClosureTransform);
-				_ui->widget_loopClosureViewer->setData(loopSignature, signature);
+				_loopClosureViewer->setData(loopSignature, signature);
 				if(_ui->dockWidget_loopClosureViewer->isVisible())
 				{
 					UTimer loopTimer;
-					_ui->widget_loopClosureViewer->updateView();
+					_loopClosureViewer->updateView();
 					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
 					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
 				}
@@ -1790,7 +1811,7 @@ void MainWindow::updateMapCloud(
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
 	UDEBUG("Update map with %d locations (currentPose=%s)", poses.size(), currentPose.prettyPrint().c_str());
-	QMap<std::string, Transform> viewerClouds = _ui->widget_cloudViewer->getAddedClouds();
+	QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
 	int i=1;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
@@ -1799,24 +1820,24 @@ void MainWindow::updateMapCloud(
 			std::string cloudName = uFormat("cloud%d", iter->first);
 
 			// 3d point cloud
-			if((_ui->widget_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)) ||
+			if((_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)) ||
 				(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible() && _preferencesDialog->isGridMapFrom3DCloud()))
 			{
 				if(viewerClouds.contains(cloudName))
 				{
 					// Update only if the pose has changed
 					Transform tCloud;
-					_ui->widget_cloudViewer->getPose(cloudName, tCloud);
+					_cloudViewer->getPose(cloudName, tCloud);
 					if(tCloud.isNull() || iter->second != tCloud)
 					{
-						if(!_ui->widget_cloudViewer->updateCloudPose(cloudName, iter->second))
+						if(!_cloudViewer->updateCloudPose(cloudName, iter->second))
 						{
 							UERROR("Updating pose cloud %d failed!", iter->first);
 						}
 					}
-					_ui->widget_cloudViewer->setCloudVisibility(cloudName, true);
-					_ui->widget_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
-					_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+					_cloudViewer->setCloudVisibility(cloudName, true);
+					_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
+					_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 				}
 				else if(_cachedSignatures.contains(iter->first))
 				{
@@ -1825,29 +1846,29 @@ void MainWindow::updateMapCloud(
 			}
 			else if(viewerClouds.contains(cloudName))
 			{
-				_ui->widget_cloudViewer->setCloudVisibility(cloudName.c_str(), false);
+				_cloudViewer->setCloudVisibility(cloudName.c_str(), false);
 			}
 
 			// 2d point cloud
 			std::string scanName = uFormat("scan%d", iter->first);
-			if((_ui->widget_cloudViewer->isVisible() && (_preferencesDialog->isScansShown(0) || _preferencesDialog->getGridMapShown())) ||
+			if((_cloudViewer->isVisible() && (_preferencesDialog->isScansShown(0) || _preferencesDialog->getGridMapShown())) ||
 				(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible()))
 			{
 				if(viewerClouds.contains(scanName))
 				{
 					// Update only if the pose has changed
 					Transform tScan;
-					_ui->widget_cloudViewer->getPose(scanName, tScan);
+					_cloudViewer->getPose(scanName, tScan);
 					if(tScan.isNull() || iter->second != tScan)
 					{
-						if(!_ui->widget_cloudViewer->updateCloudPose(scanName, iter->second))
+						if(!_cloudViewer->updateCloudPose(scanName, iter->second))
 						{
 							UERROR("Updating pose scan %d failed!", iter->first);
 						}
 					}
-					_ui->widget_cloudViewer->setCloudVisibility(scanName, _preferencesDialog->isScansShown(0));
-					_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-					_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+					_cloudViewer->setCloudVisibility(scanName, _preferencesDialog->isScansShown(0));
+					_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+					_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 				}
 				else if(_cachedSignatures.contains(iter->first))
 				{
@@ -1860,27 +1881,27 @@ void MainWindow::updateMapCloud(
 			}
 			else if(viewerClouds.contains(scanName))
 			{
-				_ui->widget_cloudViewer->setCloudVisibility(scanName.c_str(), false);
+				_cloudViewer->setCloudVisibility(scanName.c_str(), false);
 			}
 
 			// 3d features
 			std::string featuresName = uFormat("features%d", iter->first);
-			if(_ui->widget_cloudViewer->isVisible() && _preferencesDialog->isFeaturesShown(0))
+			if(_cloudViewer->isVisible() && _preferencesDialog->isFeaturesShown(0))
 			{
 				if(viewerClouds.contains(featuresName))
 				{
 					// Update only if the pose has changed
 					Transform tFeatures;
-					_ui->widget_cloudViewer->getPose(featuresName, tFeatures);
+					_cloudViewer->getPose(featuresName, tFeatures);
 					if(tFeatures.isNull() || iter->second != tFeatures)
 					{
-						if(!_ui->widget_cloudViewer->updateCloudPose(featuresName, iter->second))
+						if(!_cloudViewer->updateCloudPose(featuresName, iter->second))
 						{
 							UERROR("Updating pose features %d failed!", iter->first);
 						}
 					}
-					_ui->widget_cloudViewer->setCloudVisibility(featuresName, _preferencesDialog->isFeaturesShown(0));
-					_ui->widget_cloudViewer->setCloudPointSize(featuresName, _preferencesDialog->getFeaturesPointSize(0));
+					_cloudViewer->setCloudVisibility(featuresName, _preferencesDialog->isFeaturesShown(0));
+					_cloudViewer->setCloudPointSize(featuresName, _preferencesDialog->getFeaturesPointSize(0));
 				}
 				else if(_cachedSignatures.contains(iter->first))
 				{
@@ -1893,7 +1914,7 @@ void MainWindow::updateMapCloud(
 			}
 			else if(viewerClouds.contains(featuresName))
 			{
-				_ui->widget_cloudViewer->setCloudVisibility(featuresName.c_str(), false);
+				_cloudViewer->setCloudVisibility(featuresName.c_str(), false);
 			}
 
 			if(verboseProgress)
@@ -1929,10 +1950,10 @@ void MainWindow::updateMapCloud(
 			int id = std::atoi(splitted.back().c_str());
 			if(poses.find(id) == poses.end())
 			{
-				if(_ui->widget_cloudViewer->getCloudVisibility(iter.key()))
+				if(_cloudViewer->getCloudVisibility(iter.key()))
 				{
 					UDEBUG("Hide %s", iter.key().c_str());
-					_ui->widget_cloudViewer->setCloudVisibility(iter.key(), false);
+					_cloudViewer->setCloudVisibility(iter.key(), false);
 				}
 			}
 		}
@@ -1941,8 +1962,8 @@ void MainWindow::updateMapCloud(
 	UDEBUG("");
 
 	// update 3D graphes (show all poses)
-	_ui->widget_cloudViewer->removeAllGraphs();
-	_ui->widget_cloudViewer->removeCloud("graph_nodes");
+	_cloudViewer->removeAllGraphs();
+	_cloudViewer->removeCloud("graph_nodes");
 	if(_preferencesDialog->isGraphsShown() && _currentPosesMap.size())
 	{
 		// Find all graphs
@@ -1983,14 +2004,14 @@ void MainWindow::updateMapCloud(
 			{
 				color = (Qt::GlobalColor)((iter->first+3) % 12 + 7 );
 			}
-			_ui->widget_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
+			_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
 		}
 	}
 
 	UDEBUG("labels.size()=%d", (int)labels.size());
 
 	// Update labels
-	_ui->widget_cloudViewer->removeAllTexts();
+	_cloudViewer->removeAllTexts();
 	if(_preferencesDialog->isLabelsShown() && labels.size())
 	{
 		for(std::map<int, std::string>::const_iterator iter=labels.begin(); iter!=labels.end(); ++iter)
@@ -2003,7 +2024,7 @@ void MainWindow::updateMapCloud(
 				{
 					color = (Qt::GlobalColor)((mapId+3) % 12 + 7 );
 				}
-				_ui->widget_cloudViewer->addOrUpdateText(
+				_cloudViewer->addOrUpdateText(
 						std::string("label_") + uNumber2Str(iter->first),
 						iter->second,
 						_currentPosesMap.at(iter->first),
@@ -2048,7 +2069,7 @@ void MainWindow::updateMapCloud(
 			if(_preferencesDialog->getGridMapShown())
 			{
 				float opacity = _preferencesDialog->getGridMapOpacity();
-				_ui->widget_cloudViewer->addOccupancyGridMap(map8U, resolution, xMin, yMin, opacity);
+				_cloudViewer->addOccupancyGridMap(map8U, resolution, xMin, yMin, opacity);
 			}
 			if(_ui->graphicsView_graphView->isVisible())
 			{
@@ -2063,7 +2084,7 @@ void MainWindow::updateMapCloud(
 	if(!_preferencesDialog->getGridMapShown())
 	{
 		UDEBUG("");
-		_ui->widget_cloudViewer->removeOccupancyGridMap();
+		_cloudViewer->removeOccupancyGridMap();
 	}
 
 	if(viewerClouds.contains("cloudOdom"))
@@ -2071,14 +2092,14 @@ void MainWindow::updateMapCloud(
 		if(!_preferencesDialog->isCloudsShown(1))
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->setCloudVisibility("cloudOdom", false);
+			_cloudViewer->setCloudVisibility("cloudOdom", false);
 		}
 		else
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->updateCloudPose("cloudOdom", _odometryCorrection);
-			_ui->widget_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-			_ui->widget_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
+			_cloudViewer->updateCloudPose("cloudOdom", _odometryCorrection);
+			_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+			_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 		}
 	}
 	if(viewerClouds.contains("scanOdom"))
@@ -2086,14 +2107,14 @@ void MainWindow::updateMapCloud(
 		if(!_preferencesDialog->isScansShown(1))
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->setCloudVisibility("scanOdom", false);
+			_cloudViewer->setCloudVisibility("scanOdom", false);
 		}
 		else
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->updateCloudPose("scanOdom", _odometryCorrection);
-			_ui->widget_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
-			_ui->widget_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
+			_cloudViewer->updateCloudPose("scanOdom", _odometryCorrection);
+			_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
+			_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 		}
 	}
 	if(viewerClouds.contains("scanMapOdom"))
@@ -2101,14 +2122,14 @@ void MainWindow::updateMapCloud(
 		if(!_preferencesDialog->isScansShown(1))
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->setCloudVisibility("scanMapOdom", false);
+			_cloudViewer->setCloudVisibility("scanMapOdom", false);
 		}
 		else
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->updateCloudPose("scanMapOdom", _odometryCorrection);
-			_ui->widget_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
-			_ui->widget_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
+			_cloudViewer->updateCloudPose("scanMapOdom", _odometryCorrection);
+			_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
+			_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
 		}
 	}
 	if(viewerClouds.contains("featuresOdom"))
@@ -2116,24 +2137,24 @@ void MainWindow::updateMapCloud(
 		if(!_preferencesDialog->isFeaturesShown(1))
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->setCloudVisibility("featuresOdom", false);
+			_cloudViewer->setCloudVisibility("featuresOdom", false);
 		}
 		else
 		{
 			UDEBUG("");
-			_ui->widget_cloudViewer->updateCloudPose("featuresOdom", _odometryCorrection);
-			_ui->widget_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
+			_cloudViewer->updateCloudPose("featuresOdom", _odometryCorrection);
+			_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
 		}
 	}
 
 	if(!currentPose.isNull())
 	{
 		UDEBUG("");
-		_ui->widget_cloudViewer->updateCameraTargetPosition(currentPose);
+		_cloudViewer->updateCameraTargetPosition(currentPose);
 	}
 
 	UDEBUG("");
-	_ui->widget_cloudViewer->update();
+	_cloudViewer->update();
 	UDEBUG("");
 }
 
@@ -2142,7 +2163,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 	UDEBUG("");
 	UASSERT(!pose.isNull());
 	std::string cloudName = uFormat("cloud%d", nodeId);
-	if(_ui->widget_cloudViewer->getAddedClouds().contains(cloudName))
+	if(_cloudViewer->getAddedClouds().contains(cloudName))
 	{
 		UERROR("Cloud %d already added to map.", nodeId);
 		return;
@@ -2285,7 +2306,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 					std::vector<pcl::Vertices> outputPolygons;
 					util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
-					if(!_ui->widget_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
+					if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
 					{
 						UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 					}
@@ -2302,7 +2323,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 				}
 
-				if(!_ui->widget_cloudViewer->addCloud(cloudName, output, pose, color))
+				if(!_cloudViewer->addCloud(cloudName, output, pose, color))
 				{
 					UERROR("Adding cloud %d to viewer failed!", nodeId);
 				}
@@ -2314,15 +2335,15 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		return;
 	}
 
-	_ui->widget_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
-	_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+	_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
+	_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 	UDEBUG("");
 }
 
 void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int mapId)
 {
 	std::string scanName = uFormat("scan%d", nodeId);
-	if(_ui->widget_cloudViewer->getAddedClouds().contains(scanName))
+	if(_cloudViewer->getAddedClouds().contains(scanName))
 	{
 		UERROR("Scan %d already added to map.", nodeId);
 		return;
@@ -2358,7 +2379,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
-			if(!_ui->widget_cloudViewer->addCloud(scanName, cloud, pose, color))
+			if(!_cloudViewer->addCloud(scanName, cloud, pose, color))
 			{
 				UERROR("Adding cloud %d to viewer failed!", nodeId);
 			}
@@ -2385,7 +2406,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
-			if(!_ui->widget_cloudViewer->addCloud(scanName, cloud, pose, color))
+			if(!_cloudViewer->addCloud(scanName, cloud, pose, color))
 			{
 				UERROR("Adding cloud %d to viewer failed!", nodeId);
 			}
@@ -2413,8 +2434,8 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 				}
 			}
 		}
-		_ui->widget_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-		_ui->widget_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+		_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+		_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 	}
 }
 
@@ -2423,7 +2444,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 	UDEBUG("");
 	UASSERT(!pose.isNull());
 	std::string cloudName = uFormat("features%d", nodeId);
-	if(_ui->widget_cloudViewer->getAddedClouds().contains(cloudName))
+	if(_cloudViewer->getAddedClouds().contains(cloudName))
 	{
 		UERROR("Features cloud %d already added to map.", nodeId);
 		return;
@@ -2492,7 +2513,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 				(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
 			}
 		}
-		if(!_ui->widget_cloudViewer->addCloud(cloudName, cloud, pose, color))
+		if(!_cloudViewer->addCloud(cloudName, cloud, pose, color))
 		{
 			UERROR("Adding features cloud %d to viewer failed!", nodeId);
 		}
@@ -2506,7 +2527,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		return;
 	}
 
-	_ui->widget_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getFeaturesPointSize(0));
+	_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getFeaturesPointSize(0));
 	UDEBUG("");
 }
 
@@ -2564,7 +2585,7 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 {
 	if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
 	{
-		QMap<std::string, Transform> viewerClouds = _ui->widget_cloudViewer->getAddedClouds();
+		QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
 		if(_preferencesDialog->isCloudsShown(0))
 		{
 			std::string cloudName = uFormat("cloud%d", nodeId);
@@ -2577,9 +2598,9 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 				if(visible)
 				{
 					//make sure the transformation was done
-					_ui->widget_cloudViewer->updateCloudPose(cloudName, _currentPosesMap.find(nodeId)->second);
+					_cloudViewer->updateCloudPose(cloudName, _currentPosesMap.find(nodeId)->second);
 				}
-				_ui->widget_cloudViewer->setCloudVisibility(cloudName, visible);
+				_cloudViewer->setCloudVisibility(cloudName, visible);
 			}
 		}
 
@@ -2595,13 +2616,13 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 				if(visible)
 				{
 					//make sure the transformation was done
-					_ui->widget_cloudViewer->updateCloudPose(scanName, _currentPosesMap.find(nodeId)->second);
+					_cloudViewer->updateCloudPose(scanName, _currentPosesMap.find(nodeId)->second);
 				}
-				_ui->widget_cloudViewer->setCloudVisibility(scanName, visible);
+				_cloudViewer->setCloudVisibility(scanName, visible);
 			}
 		}
 	}
-	_ui->widget_cloudViewer->update();
+	_cloudViewer->update();
 }
 
 void MainWindow::processRtabmapEventInit(int status, const QString & info)
@@ -2977,7 +2998,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 		{
 			_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 			_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-			_ui->widget_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+			_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 		}
 
 		if(_state != kIdle && parametersModified.size())
@@ -2998,8 +3019,8 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 		}
 
 		// update loop closure viewer parameters (Use Map parameters)
-		_ui->widget_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
-		_ui->widget_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
+		_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
+		_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
 		// update graph view parameters
 		if(uContains(parameters, Parameters::kRGBDLocalRadius()))
@@ -3291,7 +3312,7 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveMainWindowState(this);
 	_preferencesDialog->saveWindowGeometry(_preferencesDialog);
 	_preferencesDialog->saveWindowGeometry(_aboutDialog);
-	_preferencesDialog->saveWidgetState(_ui->widget_cloudViewer);
+	_preferencesDialog->saveWidgetState(_cloudViewer);
 	_preferencesDialog->saveWidgetState(_ui->imageView_source);
 	_preferencesDialog->saveWidgetState(_ui->imageView_loopClosure);
 	_preferencesDialog->saveWidgetState(_ui->imageView_odometry);
@@ -4649,9 +4670,9 @@ void MainWindow::clearTheCache()
 	_gridLocalMaps.clear();
 	_projectionLocalMaps.clear();
 	_createdFeatures.clear();
-	_ui->widget_cloudViewer->clear();
-	_ui->widget_cloudViewer->setBackgroundColor(_ui->widget_cloudViewer->getDefaultBackgroundColor());
-	_ui->widget_cloudViewer->clearTrajectory();
+	_cloudViewer->clear();
+	_cloudViewer->setBackgroundColor(_cloudViewer->getDefaultBackgroundColor());
+	_cloudViewer->clearTrajectory();
 	_ui->widget_mapVisibility->clear();
 	_currentPosesMap.clear();
 	_currentGTPosesMap.clear();
@@ -4781,7 +4802,7 @@ void MainWindow::setDefaultViews()
 	_ui->toolBar_2->setVisible(true);
 	_ui->statusbar->setVisible(false);
 	this->setAspectRatio720p();
-	_ui->widget_cloudViewer->resetCamera();
+	_cloudViewer->resetCamera();
 }
 
 void MainWindow::selectScreenCaptureFormat(bool checked)
