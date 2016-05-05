@@ -1546,18 +1546,17 @@ void VWDictionary::deleteUnusedWords()
 
 void VWDictionary::exportDictionary(const char * fileNameReferences, const char * fileNameDescriptors) const
 {
+	UDEBUG("");
 	if(_visualWords.empty())
 	{
 		UWARN("Dictionary is empty, cannot export it!");
 		return;
 	}
-
-	if(_visualWords.at(0)->getDescriptor().type() != CV_32FC1)
+	if(_visualWords.begin()->second->getDescriptor().type() != CV_32FC1)
 	{
 		UERROR("Exporting binary descriptors is not implemented!");
 		return;
 	}
-
     FILE* foutRef = 0;
     FILE* foutDesc = 0;
 #ifdef _MSC_VER
@@ -1580,10 +1579,12 @@ void VWDictionary::exportDictionary(const char * fileNameReferences, const char 
 		}
 		else
 		{
+			UDEBUG("");
 			fprintf(foutDesc, "WordID Descriptors...%d\n", (*_visualWords.begin()).second->getDescriptor().cols);
 		}
 	}
 
+	UDEBUG("Export %d words...", _visualWords.size());
     for(std::map<int, VisualWord *>::const_iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
     {
     	// References
