@@ -17,6 +17,7 @@
   <build_depend>zlib</build_depend>
   <build_depend>libfreenect-dev</build_depend>
   <build_depend>libopenni-dev</build_depend>
+  <build_depend>libvtk-qt</build_depend>
   <!--<build_depend>libopenni2-dev</build_depend> --> <!-- not available on Jessie -->
   <build_depend>cv_bridge</build_depend>
   <!-- libproj-dev needed due to error in vtk6 (kinetic)-->
@@ -27,6 +28,7 @@
   <run_depend>zlib</run_depend>
   <run_depend>libfreenect-dev</run_depend>
   <run_depend>libopenni-dev</run_depend>
+  <run_depend>libvtk-qt</run_depend>
   <!-- <run_depend>libopenni2-dev</run_depend> -->
   <run_depend>cv_bridge</run_depend>
 
