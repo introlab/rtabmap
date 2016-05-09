@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package>
   <name>rtabmap</name>
-  <version>0.11.4</version>
+  <version>0.11.5</version>
   <description>RTAB-Map's standalone library. RTAB-Map is a RGB-D SLAM approach with real-time constraints.</description>
   <maintainer email="matlabbe@gmail.com">Mathieu Labbe</maintainer>
   <author>Mathieu Labbe</author>
@@ -12,7 +12,7 @@
 
   <buildtool_depend>cmake</buildtool_depend>
   
-  <build_depend>qt_gui_core</build_depend> <!-- libqt4-dev or libqt5-dev -->
+  <build_depend>qt_gui_cpp</build_depend> <!-- libqt4-dev or libqt5-dev -->
   <build_depend>libpcl-all-dev</build_depend>
   <build_depend>libsqlite3-dev</build_depend>
   <build_depend>zlib</build_depend>
@@ -24,7 +24,7 @@
   <!-- libproj-dev needed due to error in vtk6 (kinetic)-->
   <build_depend>proj</build_depend>
   
-  <run_depend>qt_gui_core</run_depend>
+  <run_depend>qt_gui_cpp</run_depend>
   <run_depend>libpcl-all-dev</run_depend>
   <run_depend>libsqlite3-dev</run_depend>
   <run_depend>zlib</run_depend>
