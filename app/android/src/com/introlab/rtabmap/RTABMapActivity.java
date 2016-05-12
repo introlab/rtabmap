@@ -9,8 +9,10 @@ import android.app.Notification;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.ProgressDialog;
+import android.content.ComponentName;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
@@ -20,6 +22,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Debug;
+import android.os.IBinder;
 import android.text.Editable;
 import android.text.InputType;
 import android.util.Log;
@@ -99,6 +102,24 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   
   private Toast mToast = null;
   
+  //Tango Service connection.
+  ServiceConnection mTangoServiceConnection = new ServiceConnection() {
+     public void onServiceConnected(ComponentName name, IBinder service) {
+       if(!RTABMapLib.onTangoServiceConnected(service))
+       {
+    	   mToast.makeText(getApplicationContext(), 
+    				String.format("Failed to intialize Tango!"), mToast.LENGTH_SHORT).show();
+       }
+     }
+
+     public void onServiceDisconnected(ComponentName name) {
+       // Handle this if you need to gracefully shutdown/retry
+       // in the event that Tango itself crashes/gets upgraded while running.
+       mToast.makeText(getApplicationContext(), 
+ 				String.format("Tango disconnected!"), mToast.LENGTH_SHORT).show();
+     }
+   };
+  
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
@@ -172,7 +193,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 						Environment.getExternalStorageState()), mToast.LENGTH_LONG).show();
     }
     
-    RTABMapLib.initialize(this);
+    RTABMapLib.onCreate(this);
     RTABMapLib.openDatabase(mTempDatabasePath);
   }
   
@@ -193,6 +214,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   protected void onResume() {
     super.onResume();
     
+    TangoInitializationHelper.bindTangoService(this, mTangoServiceConnection);
+    
     Log.i(TAG, String.format("onResume()"));
     
     if (Tango.hasPermission(this, Tango.PERMISSIONTYPE_MOTION_TRACKING)) {
@@ -207,12 +230,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	    mItemSave.setEnabled(false);
     		mItemExport.setEnabled(false);
     		mItemPostProcessing.setEnabled(false);
-        }
-
-        if(RTABMapLib.onResume()!=0)
-        {
-        	mToast.makeText(getApplicationContext(), 
-    				String.format("Failed to connect with Tango!"), mToast.LENGTH_SHORT).show();
         }
 
     } else {
@@ -232,6 +249,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     RTABMapLib.onPause();
     mOpenedDatabasePath = "";
     RTABMapLib.openDatabase(mTempDatabasePath);
+    
+    unbindService(mTangoServiceConnection);
   }
 
   @Override
@@ -318,6 +337,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  int featuresExtracted,
 		  float hypothesis,
 		  int nodesDrawn,
+		  float fps,
 		  int rejected)
   {
 	  if(mItemPause!=null)
@@ -335,6 +355,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  ((TextView)findViewById(R.id.features)).setText(String.format("%d / %s", featuresExtracted, mMaxFeaturesValues[mParamMaxFeaturesIndex]));
 	  ((TextView)findViewById(R.id.update_time)).setText(String.format("%.3f / %s", updateTime, mTimeThrValues[mParamTimeThrMsIndex]));
 	  ((TextView)findViewById(R.id.hypothesis)).setText(String.format("%.3f / %s (%d)", hypothesis, mLoopThrValues[mParamLoopThrMsIndex], loopClosureId>0?loopClosureId:highestHypId));
+	  ((TextView)findViewById(R.id.fps)).setText(String.format("%.3f Hz", fps));
 	  if(mItemPause!=null && !mItemPause.isChecked())
 	  {
 		  if(loopClosureId > 0)
@@ -367,13 +388,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  final int features,
 		  final float hypothesis,
 		  final int nodesDrawn,
+		  final float fps,
 		  final int rejected)
   {
 	  Log.i(TAG, String.format("updateStatsCallback()"));
 
 	  runOnUiThread(new Runnable() {
 		    public void run() {
-		    	updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, highestHypId, databaseMemoryUsed, inliers, features, hypothesis, nodesDrawn, rejected);
+		    	updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, highestHypId, databaseMemoryUsed, inliers, features, hypothesis, nodesDrawn, fps, rejected);
 		    } 
 		});
   }
@@ -469,6 +491,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			((TextView)findViewById(R.id.features)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.update_time)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.hypothesis)).setText(String.valueOf(0));
+			((TextView)findViewById(R.id.fps)).setText(String.valueOf(0));
 			mTotalLoopClosures = 0;
 			((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
 			
@@ -764,6 +787,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       {
     	  item.setChecked(!item.isChecked());
     	  RTABMapLib.setAutoExposure(item.isChecked());
+    	  
+    	  // restart Tango service
+    	  onPause();
+    	  onResume();    	  
       }
       else if(itemId == R.id.resolution)
       {
@@ -1024,6 +1051,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  ((TextView)findViewById(R.id.features)).setText(String.valueOf(0));
     	  ((TextView)findViewById(R.id.update_time)).setText(String.valueOf(0));
     	  ((TextView)findViewById(R.id.hypothesis)).setText(String.valueOf(0));
+    	  ((TextView)findViewById(R.id.fps)).setText(String.valueOf(0));
 		  mTotalLoopClosures = 0;
 		  ((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
     	  

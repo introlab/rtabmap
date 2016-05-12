@@ -48,11 +48,11 @@ void GetJStringContent(JNIEnv *AEnv, jstring AStr, std::string &ARes) {
   AEnv->ReleaseStringUTFChars(AStr,s);
 }
 
-JNIEXPORT jint JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_initialize(
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_onCreate(
     JNIEnv* env, jobject, jobject activity)
 {
-	return app.TangoInitialize(env, activity);
+	return app.onCreate(env, activity);
 }
 
 JNIEXPORT void JNICALL
@@ -64,10 +64,10 @@ Java_com_introlab_rtabmap_RTABMapLib_openDatabase(
 	return app.openDatabase(databasePathC);
 }
 
-JNIEXPORT jint JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_onResume(
-    JNIEnv*, jobject) {
-  return app.onResume();
+JNIEXPORT bool JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_onTangoServiceConnected(
+		JNIEnv* env, jobject, jobject iBinder) {
+  return app.onTangoServiceConnected(env, iBinder);
 }
 
 JNIEXPORT void JNICALL

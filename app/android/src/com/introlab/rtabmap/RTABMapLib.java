@@ -1,6 +1,8 @@
 
 package com.introlab.rtabmap;
+import android.os.IBinder;
 import android.view.KeyEvent;
+import android.util.Log;
 
 
 // Wrapper for native library
@@ -8,19 +10,29 @@ import android.view.KeyEvent;
 public class RTABMapLib
 {
 
-    static
-    {
-      System.loadLibrary("NativeRTABMap");
+	static {
+        // This project depends on tango_client_api, so we need to make sure we load
+        // the correct library first.
+        if (TangoInitializationHelper.loadTangoSharedLibrary() ==
+                TangoInitializationHelper.ARCH_ERROR) {
+            Log.e(RTABMapActivity.class.getSimpleName(), "ERROR! Unable to load libtango_client_api.so!");
+        }
+        System.loadLibrary("NativeRTABMap");
     }
 
  // Initialize the Tango Service, this function starts the communication
     // between the application and Tango Service.
     // The activity object is used for checking if the API version is outdated.
-    public static native int initialize(RTABMapActivity activity);
+    public static native void onCreate(RTABMapActivity activity);
     
     public static native void openDatabase(String databasePath);
     
-    public static native int onResume();
+    /*
+     * Called when the Tango service is connected.
+     *
+     * @param binder The native binder object.
+     */
+    public static native boolean onTangoServiceConnected(IBinder binder);
 
     // Release all non OpenGl resources that are allocated from the program.
     public static native void onPause();

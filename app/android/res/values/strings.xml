@@ -20,5 +20,6 @@
     <string name="polygons">"Polygons: "</string>
     <string name="memory">"Memory (MB): "</string>
     <string name="hypothesis">"Hypothesis: "</string>
+    <string name="fps">"FPS (rendering): "</string>
     
 </resources>

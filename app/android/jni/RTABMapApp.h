@@ -50,14 +50,11 @@ class RTABMapApp : public UEventsHandler {
   RTABMapApp();
   ~RTABMapApp();
 
-  // Initialize the Tango Service, this function starts the communication
-  // between the application and the Tango Service.
-  // The activity object is used for checking if the API version is outdated.
-  int TangoInitialize(JNIEnv* env, jobject caller_activity);
+  void onCreate(JNIEnv* env, jobject caller_activity);
 
   void openDatabase(const std::string & databasePath);
 
-  int onResume();
+  bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
 
   // Explicitly reset motion tracking and restart the pipeline.
   // Note that this will cause motion tracking to re-initialize.
@@ -163,6 +160,7 @@ class RTABMapApp : public UEventsHandler {
   int totalPoints_;
   int totalPolygons_;
   int lastDrawnCloudsCount_;
+  float renderingFPS_;
 
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.

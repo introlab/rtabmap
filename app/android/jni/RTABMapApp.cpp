@@ -56,6 +56,10 @@ const int kVersionStringLength = 128;
 static JavaVM *jvm;
 static jobject RTABMapActivity = 0;
 
+namespace {
+constexpr int kTangoCoreMinimumVersion = 9377;
+}  // anonymous namespace.
+
 rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 {
 	rtabmap::ParametersMap parameters;
@@ -101,7 +105,9 @@ RTABMapApp::RTABMapApp() :
 		clearSceneOnNextRender_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
-		lastDrawnCloudsCount_(0)
+		lastDrawnCloudsCount_(0),
+		renderingFPS_(0.0f)
+
 {
 
 }
@@ -122,19 +128,19 @@ RTABMapApp::~RTABMapApp() {
   }
 }
 
-int RTABMapApp::TangoInitialize(JNIEnv* env, jobject caller_activity)
+void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 {
-
 	env->GetJavaVM(&jvm);
 	RTABMapActivity = env->NewGlobalRef(caller_activity);
 
-	LOGI("RTABMapApp::TangoInitialize()");
+	LOGI("RTABMapApp::onCreate()");
 	createdMeshes_.clear();
 	rawPoses_.clear();
 	clearSceneOnNextRender_ = true;
 	totalPoints_ = 0;
 	totalPolygons_ = 0;
 	lastDrawnCloudsCount_ = 0;
+	renderingFPS_ = 0.0f;
 
 	if(camera_)
 	{
@@ -158,12 +164,6 @@ int RTABMapApp::TangoInitialize(JNIEnv* env, jobject caller_activity)
 	this->registerToEventsManager();
 
 	camera_ = new rtabmap::CameraTango(fullResolution_?1:2, autoExposure_);
-
-
-  // The first thing we need to do for any Tango enabled application is to
-  // initialize the service. We'll do that here, passing on the JNI environment
-  // and jobject corresponding to the Android activity that is calling us.
-  return TangoService_initialize(env, caller_activity);
 }
 
 void RTABMapApp::openDatabase(const std::string & databasePath)
@@ -218,22 +218,27 @@ void RTABMapApp::openDatabase(const std::string & databasePath)
 	rtabmapMutex_.unlock();
 }
 
-int RTABMapApp::onResume()
+bool RTABMapApp::onTangoServiceConnected(JNIEnv* env, jobject iBinder)
 {
-	LOGW("onResume()");
+	LOGW("onTangoServiceConnected()");
 	if(camera_)
 	{
 		camera_->join(true);
+
+		if (TangoService_setBinder(env, iBinder) != TANGO_SUCCESS) {
+		    LOGE("TangoHandler::ConnectTango, TangoService_setBinder error");
+		    return false;
+		}
 
 		if(camera_->init())
 		{
 			LOGI("Start camera thread");
 			camera_->start();
-			return TANGO_SUCCESS;
+			return true;
 		}
 		LOGE("Failed camera initialization!");
 	}
-	return TANGO_ERROR;
+	return false;
 }
 
 void RTABMapApp::onPause()
@@ -307,6 +312,7 @@ int RTABMapApp::Render()
 		totalPoints_ = 0;
 		totalPolygons_ = 0;
 		lastDrawnCloudsCount_ = 0;
+		renderingFPS_ = 0.0f;
 	}
 
 	// Process events
@@ -543,7 +549,9 @@ int RTABMapApp::Render()
 		}
 	}
 
+	UTimer fpsTime;
     lastDrawnCloudsCount_ = main_scene_.Render();
+    renderingFPS_ = 1.0/fpsTime.elapsed();
 
     if(rtabmapEvents.size())
     {
@@ -647,10 +655,7 @@ void RTABMapApp::setAutoExposure(bool enabled)
 		autoExposure_ = enabled;
 		if(camera_)
 		{
-			camera_->join(true);
-			camera_->close();
 			camera_->setAutoExposure(autoExposure_);
-			onResume();
 		}
 	}
 }
@@ -1104,7 +1109,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIFII)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIFIFI)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,
@@ -1120,6 +1125,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 								featuresExtracted,
 								hypothesis,
 								lastDrawnCloudsCount_,
+								renderingFPS_,
 								rejected);
 						success = true;
 					}
