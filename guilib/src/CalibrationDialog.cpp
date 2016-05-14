@@ -38,7 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QCloseEvent>
 
 #include <rtabmap/core/CameraEvent.h>
-#include <rtabmap/gui/UCv2Qt.h>
+#include <rtabmap/utilite/UCv2Qt.h>
 
 #include <rtabmap/utilite/ULogger.h>
 
@@ -75,10 +75,12 @@ CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirector
 	connect(ui_->pushButton_restart, SIGNAL(clicked()), this, SLOT(restart()));
 	connect(ui_->pushButton_save, SIGNAL(clicked()), this, SLOT(save()));
 	connect(ui_->checkBox_switchImages, SIGNAL(stateChanged(int)), this, SLOT(restart()));
+	connect(ui_->checkBox_unlock, SIGNAL(stateChanged(int)), SLOT(unlock()));
 
 	connect(ui_->spinBox_boardWidth, SIGNAL(valueChanged(int)), this, SLOT(setBoardWidth(int)));
 	connect(ui_->spinBox_boardHeight, SIGNAL(valueChanged(int)), this, SLOT(setBoardHeight(int)));
 	connect(ui_->doubleSpinBox_squareSize, SIGNAL(valueChanged(double)), this, SLOT(setSquareSize(double)));
+	connect(ui_->spinBox_maxScale, SIGNAL(valueChanged(int)), this, SLOT(setMaxScale(int)));
 
 	connect(ui_->buttonBox, SIGNAL(rejected()), this, SLOT(close()));
 
@@ -111,6 +113,7 @@ void CalibrationDialog::saveSettings(QSettings & settings, const QString & group
 	settings.setValue("board_width", ui_->spinBox_boardWidth->value());
 	settings.setValue("board_height", ui_->spinBox_boardHeight->value());
 	settings.setValue("board_square_size", ui_->doubleSpinBox_squareSize->value());
+	settings.setValue("max_scale", ui_->spinBox_maxScale->value());
 	settings.setValue("geometry", this->saveGeometry());
 	if(!group.isEmpty())
 	{
@@ -127,6 +130,7 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	this->setBoardWidth(settings.value("board_width", ui_->spinBox_boardWidth->value()).toInt());
 	this->setBoardHeight(settings.value("board_height", ui_->spinBox_boardHeight->value()).toInt());
 	this->setSquareSize(settings.value("board_square_size", ui_->doubleSpinBox_squareSize->value()).toDouble());
+	this->setMaxScale(settings.value("max_scale", ui_->spinBox_maxScale->value()).toDouble());
 	QByteArray bytes = settings.value("geometry", QByteArray()).toByteArray();
 	if(!bytes.isEmpty())
 	{
@@ -136,6 +140,13 @@ void CalibrationDialog::loadSettings(QSettings & settings, const QString & group
 	{
 		settings.endGroup();
 	}
+}
+
+void CalibrationDialog::resetSettings()
+{
+	this->setBoardWidth(8);
+	this->setBoardHeight(6);
+	this->setSquareSize(0.033);
 }
 
 void CalibrationDialog::setSwitchedImages(bool switched)
@@ -167,6 +178,7 @@ void CalibrationDialog::setStereoMode(bool stereo)
 	ui_->lineEdit_R_2->setVisible(stereo_);
 	ui_->lineEdit_P_2->setVisible(stereo_);
 	ui_->radioButton_stereoRectified->setVisible(stereo_);
+	ui_->checkBox_switchImages->setVisible(stereo_);
 }
 
 void CalibrationDialog::setBoardWidth(int width)
@@ -196,9 +208,20 @@ void CalibrationDialog::setSquareSize(double size)
 	}
 }
 
+void CalibrationDialog::setMaxScale(int scale)
+{
+	if(scale != ui_->spinBox_maxScale->value())
+	{
+		ui_->spinBox_maxScale->setValue(scale);
+	}
+}
+
 void CalibrationDialog::closeEvent(QCloseEvent* event)
 {
-	if(!savedCalibration_ && models_[0].isValid() && (!stereo_ || stereoModel_.isValid()))
+	if(!savedCalibration_ && models_[0].isValidForRectification() &&
+			(!stereo_ ||
+					(stereoModel_.isValidForRectification() &&
+					(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0))))
 	{
 		QMessageBox::StandardButton b = QMessageBox::question(this, tr("Save calibration?"),
 				tr("The camera is calibrated but you didn't "
@@ -234,13 +257,12 @@ void CalibrationDialog::handleEvent(UEvent * event)
 		if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			rtabmap::CameraEvent * e = (rtabmap::CameraEvent *)event;
-			if(e->getCode() == rtabmap::CameraEvent::kCodeImage ||
-			   e->getCode() == rtabmap::CameraEvent::kCodeImageDepth)
+			if(e->getCode() == rtabmap::CameraEvent::kCodeData)
 			{
 				processingData_ = true;
 				QMetaObject::invokeMethod(this, "processImages",
-						Q_ARG(cv::Mat, e->data().image()),
-						Q_ARG(cv::Mat, e->data().depthOrRightImage()),
+						Q_ARG(cv::Mat, e->data().imageRaw()),
+						Q_ARG(cv::Mat, e->data().depthOrRightRaw()),
 						Q_ARG(QString, QString(e->cameraName().c_str())));
 			}
 		}
@@ -249,6 +271,7 @@ void CalibrationDialog::handleEvent(UEvent * event)
 
 void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName)
 {
+	UDEBUG("Processing images");
 	processingData_ = true;
 	if(cameraName_.isEmpty())
 	{
@@ -287,6 +310,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 	std::vector<std::vector<cv::Point2f> > pointBuf(2);
 
+	bool depthDetected = false;
 	for(int id=0; id<(stereo_?2:1); ++id)
 	{
 		cv::Mat viewGray;
@@ -294,6 +318,19 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 		{
 			if(images[id].type() == CV_16UC1)
 			{
+				double min, max;
+				cv::minMaxLoc(images[id], &min, &max);
+				UDEBUG("Camera IR %d: min=%f max=%f", id, min, max);
+				if(minIrs_[id] == 0)
+				{
+					minIrs_[id] = min;
+				}
+				if(maxIrs_[id] == 0x7fff)
+				{
+					maxIrs_[id] = max;
+				}
+
+				depthDetected = true;
 				//assume IR image: convert to gray scaled
 				const float factor = 255.0f / float((maxIrs_[id] - minIrs_[id]));
 				viewGray = cv::Mat(images[id].rows, images[id].cols, CV_8UC1);
@@ -334,7 +371,7 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 				if(!viewGray.empty())
 				{
-					int maxScale = viewGray.cols < 640?2:1;
+					int maxScale = ui_->spinBox_maxScale->value();
 					for( int scale = 1; scale <= maxScale; scale++ )
 					{
 						cv::Mat timg;
@@ -488,6 +525,8 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 			}
 		}
 	}
+	ui_->label_baseline->setVisible(!depthDetected);
+	ui_->label_baseline_name->setVisible(!depthDetected);
 
 	if(stereo_ && ((boardAccepted[0] && boardFound[1]) || (boardAccepted[1] && boardFound[0])))
 	{
@@ -498,25 +537,28 @@ void CalibrationDialog::processImages(const cv::Mat & imageLeft, const cv::Mat &
 
 	if(!stereo_ && readyToCalibrate[0])
 	{
-		ui_->pushButton_calibrate->setEnabled(true);
+		unlock();
 	}
 	else if(stereo_ && readyToCalibrate[0] && readyToCalibrate[1] && stereoImagePoints_[0].size())
 	{
-		ui_->pushButton_calibrate->setEnabled(true);
+		unlock();
 	}
 
 	if(ui_->radioButton_rectified->isChecked())
 	{
-		if(models_[0].isValid())
+		if(models_[0].isValidForRectification())
 		{
 			images[0] = models_[0].rectifyImage(images[0]);
 		}
-		if(models_[1].isValid())
+		if(models_[1].isValidForRectification())
 		{
 			images[1] = models_[1].rectifyImage(images[1]);
 		}
 	}
-	else if(ui_->radioButton_stereoRectified->isChecked() && stereoModel_.isValid())
+	else if(ui_->radioButton_stereoRectified->isChecked() &&
+			(stereoModel_.left().isValidForRectification() &&
+			stereoModel_.right().isValidForRectification()&&
+			(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0)))
 	{
 		images[0] = stereoModel_.left().rectifyImage(images[0]);
 		images[1] = stereoModel_.right().rectifyImage(images[1]);
@@ -565,7 +607,7 @@ void CalibrationDialog::restart()
 	minIrs_[1] = 0x0000;
 	maxIrs_[1] = 0x7fff;
 
-	ui_->pushButton_calibrate->setEnabled(false);
+	ui_->pushButton_calibrate->setEnabled(ui_->checkBox_unlock->isChecked());
 	ui_->pushButton_save->setEnabled(false);
 	ui_->radioButton_raw->setChecked(true);
 	ui_->radioButton_rectified->setEnabled(false);
@@ -604,6 +646,11 @@ void CalibrationDialog::restart()
 	ui_->lineEdit_D_2->clear();
 	ui_->lineEdit_R_2->clear();
 	ui_->lineEdit_P_2->clear();
+}
+
+void CalibrationDialog::unlock()
+{
+	ui_->pushButton_calibrate->setEnabled(true);
 }
 
 void CalibrationDialog::calibrate()
@@ -720,7 +767,7 @@ void CalibrationDialog::calibrate()
 		}
 	}
 
-	if(stereo_ && models_[0].isValid() && models_[1].isValid())
+	if(stereo_ && models_[0].isValidForRectification() && models_[1].isValidForRectification())
 	{
 		UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
 		cv::Size imageSize = imageSize_[0].width > imageSize_[1].width?imageSize_[0]:imageSize_[1];
@@ -736,72 +783,81 @@ void CalibrationDialog::calibrate()
 		objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
 
 		// calibrate extrinsic
-		double rms = cv::stereoCalibrate(objectPoints, stereoImagePoints_[0], stereoImagePoints_[1],
-						models_[0].K(), models_[0].D(),
-						models_[1].K(), models_[1].D(),
-						imageSize, R, T, E, F,
-						cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
-						cv::CALIB_FIX_INTRINSIC);
+#if CV_MAJOR_VERSION < 3
+		double rms = cv::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				models_[0].K_raw(), models_[0].D_raw(),
+				models_[1].K_raw(), models_[1].D_raw(),
+				imageSize, R, T, E, F,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
+				cv::CALIB_FIX_INTRINSIC);
+#else
+		double rms = cv::stereoCalibrate(
+				objectPoints,
+				stereoImagePoints_[0],
+				stereoImagePoints_[1],
+				models_[0].K_raw(), models_[0].D_raw(),
+				models_[1].K_raw(), models_[1].D_raw(),
+				imageSize, R, T, E, F,
+				cv::CALIB_FIX_INTRINSIC,
+				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
+#endif
 		UINFO("stereo calibration... done with RMS error=%f", rms);
 
-		double err = 0;
-		int npoints = 0;
-		std::vector<cv::Vec3f> lines[2];
-		UINFO("Computing avg re-projection error...");
-		for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
+		if(imageSize_[0] == imageSize_[1])
 		{
-			int npt = (int)stereoImagePoints_[0][i].size();
-			cv::Mat imgpt[2];
-			for(int k = 0; k < 2; k++ )
+			//Stereo, compute stereo rectification
+
+			cv::Mat R1, R2, P1, P2, Q;
+			cv::stereoRectify(models_[0].K_raw(), models_[0].D_raw(),
+							models_[1].K_raw(), models_[1].D_raw(),
+							imageSize, R, T, R1, R2, P1, P2, Q,
+							cv::CALIB_ZERO_DISPARITY, 0, imageSize);
+
+			double err = 0;
+			int npoints = 0;
+			std::vector<cv::Vec3f> lines[2];
+			UINFO("Computing avg re-projection error...");
+			for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
 			{
-				imgpt[k] = cv::Mat(stereoImagePoints_[k][i]);
-				cv::undistortPoints(imgpt[k], imgpt[k], models_[k].K(), models_[k].D(), cv::Mat(), models_[k].K());
-				computeCorrespondEpilines(imgpt[k], k+1, F, lines[k]);
+				int npt = (int)stereoImagePoints_[0][i].size();
+
+					cv::Mat imgpt0 = cv::Mat(stereoImagePoints_[0][i]);
+					cv::Mat imgpt1 = cv::Mat(stereoImagePoints_[1][i]);
+					cv::undistortPoints(imgpt0, imgpt0, models_[0].K_raw(), models_[0].D_raw(), R1, P1);
+					cv::undistortPoints(imgpt1, imgpt1, models_[1].K_raw(), models_[1].D_raw(), R2, P2);
+					computeCorrespondEpilines(imgpt0, 1, F, lines[0]);
+					computeCorrespondEpilines(imgpt1, 2, F, lines[1]);
+
+				for(int j = 0; j < npt; j++ )
+				{
+					double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
+										stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
+								   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
+										stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
+					err += errij;
+				}
+				npoints += npt;
 			}
-			for(int j = 0; j < npt; j++ )
-			{
-				double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
-									stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
-							   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
-									stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
-				err += errij;
-			}
-			npoints += npt;
-		}
-		double totalAvgErr = err/(double)npoints;
+			double totalAvgErr = err/(double)npoints;
+			UINFO("stereo avg re projection error = %f", totalAvgErr);
 
-		UINFO("stereo avg re projection error = %f", totalAvgErr);
-
-		cv::Mat R1, R2, P1, P2, Q;
-		cv::Rect validRoi[2];
-
-		cv::stereoRectify(models_[0].K(), models_[0].D(),
-						models_[1].K(), models_[1].D(),
-						imageSize, R, T, R1, R2, P1, P2, Q,
-						cv::CALIB_ZERO_DISPARITY, 0, imageSize, &validRoi[0], &validRoi[1]);
-
-		UINFO("Valid ROI1 = %d,%d,%d,%d  ROI2 = %d,%d,%d,%d newImageSize=%d/%d",
-				validRoi[0].x, validRoi[0].y, validRoi[0].width, validRoi[0].height,
-				validRoi[1].x, validRoi[1].y, validRoi[1].width, validRoi[1].height,
-				imageSize.width, imageSize.height);
-
-		if(imageSize_[0].width == imageSize_[1].width)
-		{
-			//Stereo, keep new extrinsic projection matrix
 			stereoModel_ = StereoCameraModel(
-					cameraName_.toStdString(),
-					imageSize_[0], models_[0].K(), models_[0].D(), R1, P1,
-					imageSize_[1], models_[1].K(), models_[1].D(), R2, P2,
-					R, T, E, F);
+							cameraName_.toStdString(),
+							imageSize_[0], models_[0].K_raw(), models_[0].D_raw(), R1, P1,
+							imageSize_[1], models_[1].K_raw(), models_[1].D_raw(), R2, P2,
+							R, T, E, F);
 		}
 		else
 		{
-			//Kinect
+			//Kinect, ignore the stereo rectification
 			stereoModel_ = StereoCameraModel(
-					cameraName_.toStdString(),
-					imageSize_[0], models_[0].K(), models_[0].D(), cv::Mat::eye(3,3,CV_64FC1), models_[0].P(),
-					imageSize_[1], models_[1].K(), models_[1].D(), cv::Mat::eye(3,3,CV_64FC1), models_[1].P(),
-					R, T, E, F);
+							cameraName_.toStdString(),
+							imageSize_[0], models_[0].K_raw(), models_[0].D_raw(), models_[0].R(), models_[0].P(),
+							imageSize_[1], models_[1].K_raw(), models_[1].D_raw(), models_[1].R(), models_[1].P(),
+							R, T, E, F);
 		}
 
 		std::stringstream strR1, strP1, strR2, strP2;
@@ -818,15 +874,20 @@ void CalibrationDialog::calibrate()
 		//ui_->label_error_stereo->setNum(totalAvgErr);
 	}
 
-	if(stereo_ && stereoModel_.isValid())
+	if(stereo_ &&
+		stereoModel_.isValidForRectification())
 	{
+		stereoModel_.initRectificationMap();
+		models_[0].initRectificationMap();
+		models_[1].initRectificationMap();
 		ui_->radioButton_rectified->setEnabled(true);
 		ui_->radioButton_stereoRectified->setEnabled(true);
 		ui_->radioButton_stereoRectified->setChecked(true);
 		ui_->pushButton_save->setEnabled(true);
 	}
-	else if(models_[0].isValid())
+	else if(models_[0].isValidForRectification())
 	{
+		models_[0].initRectificationMap();
 		ui_->radioButton_rectified->setEnabled(true);
 		ui_->radioButton_rectified->setChecked(true);
 		ui_->pushButton_save->setEnabled(!stereo_);
@@ -842,13 +903,16 @@ bool CalibrationDialog::save()
 	processingData_ = true;
 	if(!stereo_)
 	{
-		UASSERT(models_[0].isValid());
+		UASSERT(models_[0].isValidForRectification());
 		QString cameraName = models_[0].name().c_str();
 		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_+"/"+cameraName+".yaml", "*.yaml");
 
 		if(!filePath.isEmpty())
 		{
-			if(models_[0].save(filePath.toStdString()))
+			QString name = QFileInfo(filePath).baseName();
+			QString dir = QFileInfo(filePath).absoluteDir().absolutePath();
+			models_[0].setName(name.toStdString());
+			if(models_[0].save(dir.toStdString()))
 			{
 				QMessageBox::information(this, tr("Export"), tr("Calibration file saved to \"%1\".").arg(filePath));
 				UINFO("Saved \"%s\"!", filePath.toStdString().c_str());
@@ -863,18 +927,21 @@ bool CalibrationDialog::save()
 	}
 	else
 	{
-		UASSERT(stereoModel_.isValid());
+		UASSERT(stereoModel_.left().isValidForRectification() &&
+				stereoModel_.right().isValidForRectification() &&
+				(!ui_->label_baseline->isVisible() || stereoModel_.baseline() > 0.0));
 		QString cameraName = stereoModel_.name().c_str();
 		QString filePath = QFileDialog::getSaveFileName(this, tr("Export"), savingDirectory_ + "/" + cameraName, "*.yaml");
 		QString name = QFileInfo(filePath).baseName();
 		QString dir = QFileInfo(filePath).absoluteDir().absolutePath();
 		if(!name.isEmpty())
 		{
+			stereoModel_.setName(name.toStdString());
 			std::string base = (dir+QDir::separator()+name).toStdString();
 			std::string leftPath = base+"_left.yaml";
 			std::string rightPath = base+"_right.yaml";
 			std::string posePath = base+"_pose.yaml";
-			if(stereoModel_.save(dir.toStdString(), name.toStdString()))
+			if(stereoModel_.save(dir.toStdString(), false))
 			{
 				QMessageBox::information(this, tr("Export"), tr("Calibration files saved:\n  \"%1\"\n  \"%2\"\n  \"%3\".").
 						arg(leftPath.c_str()).arg(rightPath.c_str()).arg(posePath.c_str()));

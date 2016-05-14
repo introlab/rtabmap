@@ -25,8 +25,10 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryMono.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/OdometryEvent.h"
@@ -34,8 +36,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryThread::OdometryThread(Odometry * odometry) :
+OdometryThread::OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize) :
 	_odometry(odometry),
+	_dataBufferMaxSize(dataBufferMaxSize),
 	_resetOdometry(false)
 {
 	UASSERT(_odometry != 0);
@@ -59,13 +62,9 @@ void OdometryThread::handleEvent(UEvent * event)
 		if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			CameraEvent * cameraEvent = (CameraEvent*)event;
-			if(cameraEvent->getCode() == CameraEvent::kCodeImageDepth)
+			if(cameraEvent->getCode() == CameraEvent::kCodeData)
 			{
 				this->addData(cameraEvent->data());
-			}
-			else if(cameraEvent->getCode() == CameraEvent::kCodeNoMoreImages)
-			{
-				this->post(new CameraEvent()); // forward the event
 			}
 		}
 		else if(event->getClassName().compare("OdometryResetEvent") == 0)
@@ -92,21 +91,21 @@ void OdometryThread::mainLoop()
 	}
 
 	SensorData data;
-	getData(data);
-	if(data.isValid())
+	if(getData(data))
 	{
 		OdometryInfo info;
 		Transform pose = _odometry->process(data, &info);
-		data.setPose(pose, info.variance, info.variance); // a null pose notify that odometry could not be computed
-		this->post(new OdometryEvent(data, info));
+		// a null pose notify that odometry could not be computed
+		double variance = info.variance>0?info.variance:1;
+		this->post(new OdometryEvent(data, pose, variance, variance, info));
 	}
 }
 
 void OdometryThread::addData(const SensorData & data)
 {
-	if(dynamic_cast<OdometryMono*>(_odometry) == 0)
+	if(dynamic_cast<OdometryMono*>(_odometry) == 0 && dynamic_cast<OdometryF2M*>(_odometry) == 0)
 	{
-		if(data.image().empty() || data.depthOrRightImage().empty() || data.fx() == 0.0f || data.fyOrBaseline() == 0.0f)
+		if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
 		{
 			ULOGGER_ERROR("Missing some information (images empty or missing calibration)!?");
 			return;
@@ -114,7 +113,8 @@ void OdometryThread::addData(const SensorData & data)
 	}
 	else
 	{
-		if(data.image().empty() || data.fx() == 0.0f || data.fyOrBaseline() == 0.0f)
+		// Mono and BOW can accept RGB only
+		if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
 		{
 			ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");
 			return;
@@ -124,8 +124,13 @@ void OdometryThread::addData(const SensorData & data)
 	bool notify = true;
 	_dataMutex.lock();
 	{
-		notify = !_dataBuffer.isValid();
-		_dataBuffer = data;
+		_dataBuffer.push_back(data);
+		while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
+		{
+			UDEBUG("Data buffer is full, the oldest data is removed to add the new one.");
+			_dataBuffer.pop_front();
+			notify = false;
+		}
 	}
 	_dataMutex.unlock();
 
@@ -135,18 +140,21 @@ void OdometryThread::addData(const SensorData & data)
 	}
 }
 
-void OdometryThread::getData(SensorData & data)
+bool OdometryThread::getData(SensorData & data)
 {
+	bool dataFilled = false;
 	_dataAdded.acquire();
 	_dataMutex.lock();
 	{
-		if(_dataBuffer.isValid())
+		if(!_dataBuffer.empty())
 		{
-			data = _dataBuffer;
-			_dataBuffer = SensorData();
+			data = _dataBuffer.front();
+			_dataBuffer.pop_front();
+			dataFilled = true;
 		}
 	}
 	_dataMutex.unlock();
+	return dataFilled;
 }
 
 } // namespace rtabmap

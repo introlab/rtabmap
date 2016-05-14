@@ -77,7 +77,8 @@ void KeypointItem::showDescription()
 					"Hessian = %4\n"
 					"X = %5\n"
 					"Y = %6\n"
-					"Size = %7").arg(_id).arg(_kpt.angle).arg(_kpt.response).arg(_kpt.pt.x).arg(_kpt.pt.y).arg(_kpt.size));
+					"Size = %7\n"
+					"Octave = %8").arg(_id).arg(_kpt.angle).arg(_kpt.response).arg(_kpt.pt.x).arg(_kpt.pt.y).arg(_kpt.size).arg(_kpt.octave));
 		}
 		else
 		{
@@ -87,7 +88,8 @@ void KeypointItem::showDescription()
 					"X = %5\n"
 					"Y = %6\n"
 					"Size = %7\n"
-					"Depth = %8 m").arg(_id).arg(_kpt.angle).arg(_kpt.response).arg(_kpt.pt.x).arg(_kpt.pt.y).arg(_kpt.size).arg(_depth));
+					"Octave = %8\n"
+					"Depth = %9 m").arg(_id).arg(_kpt.angle).arg(_kpt.response).arg(_kpt.pt.x).arg(_kpt.pt.y).arg(_kpt.size).arg(_kpt.octave).arg(_depth));
 		}
 		_placeHolder->setRect(text->boundingRect());
 	}

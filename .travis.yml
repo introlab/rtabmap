@@ -1,0 +1,29 @@
+sudo: true
+dist: trusty
+language: cpp
+
+compiler:
+  - gcc
+  - clang
+
+addons:
+  apt:
+    packages:
+      - cmake
+      - libopencv-dev
+      - libqt4-dev
+      - libsqlite3-dev
+
+install:
+    - sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu trusty main" > /etc/apt/sources.list.d/ros-latest.list'
+    - wget http://packages.ros.org/ros.key -O - | sudo apt-key add -
+    - sudo apt-get update
+    - sudo apt-get -y install libpcl-1.7-all libfreenect-dev
+
+script: 
+    - mkdir -p build && cd build
+    - cmake .. 
+    - make
+
+notifications:
+  email: false

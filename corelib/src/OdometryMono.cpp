@@ -25,29 +25,41 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "rtabmap/core/Odometry.h"
+#include "rtabmap/core/OdometryMono.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/Signature.h"
+#include "rtabmap/core/util3d_transforms.h"
+#include "rtabmap/core/util3d_motion_estimation.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util2d.h"
+#include "rtabmap/core/util3d_features.h"
 #include "rtabmap/core/EpipolarGeometry.h"
+#include "rtabmap/core/Stereo.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UMath.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/video/tracking.hpp>
+#include <pcl/common/centroid.h>
 
 namespace rtabmap {
 
 OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	Odometry(parameters),
-	flowWinSize_(Parameters::defaultOdomFlowWinSize()),
-	flowIterations_(Parameters::defaultOdomFlowIterations()),
-	flowEps_(Parameters::defaultOdomFlowEps()),
-	flowMaxLevel_(Parameters::defaultOdomFlowMaxLevel()),
-	localHistoryMaxSize_(Parameters::defaultOdomBowLocalHistorySize()),
+	flowWinSize_(Parameters::defaultVisCorFlowWinSize()),
+	flowIterations_(Parameters::defaultVisCorFlowIterations()),
+	flowEps_(Parameters::defaultVisCorFlowEps()),
+	flowMaxLevel_(Parameters::defaultVisCorFlowMaxLevel()),
+	minInliers_(Parameters::defaultVisMinInliers()),
+	iterations_(Parameters::defaultVisIterations()),
+	pnpReprojError_(Parameters::defaultVisPnPReprojError()),
+	pnpFlags_(Parameters::defaultVisPnPFlags()),
+	pnpRefineIterations_(Parameters::defaultVisPnPRefineIterations()),
+	localHistoryMaxSize_(Parameters::defaultOdomF2MMaxSize()),
 	initMinFlow_(Parameters::defaultOdomMonoInitMinFlow()),
 	initMinTranslation_(Parameters::defaultOdomMonoInitMinTranslation()),
 	minTranslation_(Parameters::defaultOdomMonoMinTranslation()),
@@ -55,11 +67,17 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	fundMatrixConfidence_(Parameters::defaultVhEpRansacParam2()),
 	maxVariance_(Parameters::defaultOdomMonoMaxVariance())
 {
-	Parameters::parse(parameters, Parameters::kOdomFlowWinSize(), flowWinSize_);
-	Parameters::parse(parameters, Parameters::kOdomFlowIterations(), flowIterations_);
-	Parameters::parse(parameters, Parameters::kOdomFlowEps(), flowEps_);
-	Parameters::parse(parameters, Parameters::kOdomFlowMaxLevel(), flowMaxLevel_);
-	Parameters::parse(parameters, Parameters::kOdomBowLocalHistorySize(), localHistoryMaxSize_);
+	Parameters::parse(parameters, Parameters::kVisCorFlowWinSize(), flowWinSize_);
+	Parameters::parse(parameters, Parameters::kVisCorFlowIterations(), flowIterations_);
+	Parameters::parse(parameters, Parameters::kVisCorFlowEps(), flowEps_);
+	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), flowMaxLevel_);
+	Parameters::parse(parameters, Parameters::kVisMinInliers(), minInliers_);
+	UASSERT(minInliers_ >= 1);
+	Parameters::parse(parameters, Parameters::kVisIterations(), iterations_);
+	Parameters::parse(parameters, Parameters::kVisPnPReprojError(), pnpReprojError_);
+	Parameters::parse(parameters, Parameters::kVisPnPFlags(), pnpFlags_);
+	Parameters::parse(parameters, Parameters::kVisPnPRefineIterations(), pnpRefineIterations_);
+	Parameters::parse(parameters, Parameters::kOdomF2MMaxSize(), localHistoryMaxSize_);
 
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinFlow(), initMinFlow_);
 	Parameters::parse(parameters, Parameters::kOdomMonoInitMinTranslation(), initMinTranslation_);
@@ -71,33 +89,39 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 
 	// Setup memory
 	ParametersMap customParameters;
-	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(this->getMaxDepth())));
-	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), this->getRoiRatios()));
+	float minDepth = Parameters::defaultVisMinDepth();
+	float maxDepth = Parameters::defaultVisMaxDepth();
+	std::string roi = Parameters::defaultVisRoiRatios();
+	Parameters::parse(parameters, Parameters::kVisMinDepth(), minDepth);
+	Parameters::parse(parameters, Parameters::kVisMaxDepth(), maxDepth);
+	Parameters::parse(parameters, Parameters::kVisRoiRatios(), roi);
+	customParameters.insert(ParametersPair(Parameters::kKpMinDepth(), uNumber2Str(minDepth)));
+	customParameters.insert(ParametersPair(Parameters::kKpMaxDepth(), uNumber2Str(maxDepth)));
+	customParameters.insert(ParametersPair(Parameters::kKpRoiRatios(), roi));
 	customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
 	customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "false"));
-	customParameters.insert(ParametersPair(Parameters::kMemImageKept(), "true"));
 	customParameters.insert(ParametersPair(Parameters::kMemSTMSize(), "0"));
 	customParameters.insert(ParametersPair(Parameters::kMemNotLinkedNodesKept(), "false"));
 	customParameters.insert(ParametersPair(Parameters::kKpTfIdfLikelihoodUsed(), "false"));
-	int nn = Parameters::defaultOdomBowNNType();
-	float nndr = Parameters::defaultOdomBowNNDR();
-	int featureType = Parameters::defaultOdomFeatureType();
-	int maxFeatures = Parameters::defaultOdomMaxFeatures();
-	Parameters::parse(parameters, Parameters::kOdomBowNNType(), nn);
-	Parameters::parse(parameters, Parameters::kOdomBowNNDR(), nndr);
-	Parameters::parse(parameters, Parameters::kOdomFeatureType(), featureType);
-	Parameters::parse(parameters, Parameters::kOdomMaxFeatures(), maxFeatures);
+	int nn = Parameters::defaultVisCorNNType();
+	float nndr = Parameters::defaultVisCorNNDR();
+	int featureType = Parameters::defaultVisFeatureType();
+	int maxFeatures = Parameters::defaultVisMaxFeatures();
+	Parameters::parse(parameters, Parameters::kVisCorNNType(), nn);
+	Parameters::parse(parameters, Parameters::kVisCorNNDR(), nndr);
+	Parameters::parse(parameters, Parameters::kVisFeatureType(), featureType);
+	Parameters::parse(parameters, Parameters::kVisMaxFeatures(), maxFeatures);
 	customParameters.insert(ParametersPair(Parameters::kKpNNStrategy(), uNumber2Str(nn)));
 	customParameters.insert(ParametersPair(Parameters::kKpNndrRatio(), uNumber2Str(nndr)));
 	customParameters.insert(ParametersPair(Parameters::kKpDetectorStrategy(), uNumber2Str(featureType)));
-	customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), uNumber2Str(maxFeatures)));
+	customParameters.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(maxFeatures)));
 
-	int subPixWinSize = Parameters::defaultOdomSubPixWinSize();
-	int subPixIterations = Parameters::defaultOdomSubPixIterations();
-	double subPixEps = Parameters::defaultOdomSubPixEps();
-	Parameters::parse(parameters, Parameters::kOdomSubPixWinSize(), subPixWinSize);
-	Parameters::parse(parameters, Parameters::kOdomSubPixIterations(), subPixIterations);
-	Parameters::parse(parameters, Parameters::kOdomSubPixEps(), subPixEps);
+	int subPixWinSize = Parameters::defaultVisSubPixWinSize();
+	int subPixIterations = Parameters::defaultVisSubPixIterations();
+	double subPixEps = Parameters::defaultVisSubPixEps();
+	Parameters::parse(parameters, Parameters::kVisSubPixWinSize(), subPixWinSize);
+	Parameters::parse(parameters, Parameters::kVisSubPixIterations(), subPixIterations);
+	Parameters::parse(parameters, Parameters::kVisSubPixEps(), subPixEps);
 	customParameters.insert(ParametersPair(Parameters::kKpSubPixWinSize(), uNumber2Str(subPixWinSize)));
 	customParameters.insert(ParametersPair(Parameters::kKpSubPixIterations(), uNumber2Str(subPixIterations)));
 	customParameters.insert(ParametersPair(Parameters::kKpSubPixEps(), uNumber2Str(subPixEps)));
@@ -105,15 +129,7 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	// add only feature stuff
 	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		std::string group = uSplit(iter->first, '/').front();
-		if(group.compare("SURF") == 0 ||
-			group.compare("SIFT") == 0 ||
-			group.compare("BRIEF") == 0 ||
-			group.compare("FAST") == 0 ||
-			group.compare("ORB") == 0 ||
-			group.compare("FREAK") == 0 ||
-			group.compare("GFTT") == 0 ||
-			group.compare("BRISK") == 0)
+		if(Parameters::isFeatureParameter(iter->first))
 		{
 			customParameters.insert(*iter);
 		}
@@ -124,11 +140,23 @@ OdometryMono::OdometryMono(const rtabmap::ParametersMap & parameters) :
 	{
 		UERROR("Error initializing the memory for Mono Odometry.");
 	}
+
+	bool stereoOpticalFlow = Parameters::defaultStereoOpticalFlow();
+	Parameters::parse(parameters, Parameters::kStereoOpticalFlow(), stereoOpticalFlow);
+	if(stereoOpticalFlow)
+	{
+		stereo_ = new StereoOpticalFlow(parameters);
+	}
+	else
+	{
+		stereo_ = new Stereo(parameters);
+	}
 }
 
 OdometryMono::~OdometryMono()
 {
 	delete memory_;
+	delete stereo_;
 }
 
 void OdometryMono::reset(const Transform & initialPose)
@@ -136,19 +164,32 @@ void OdometryMono::reset(const Transform & initialPose)
 	Odometry::reset(initialPose);
 	memory_->init("", false, ParametersMap());
 	localMap_.clear();
-	refDepth_ = cv::Mat();
+	refDepthOrRight_ = cv::Mat();
 	cornersMap_.clear();
 	keyFrameWords3D_.clear();
 	keyFramePoses_.clear();
 }
 
-Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo * info)
+Transform OdometryMono::computeTransform(SensorData & data, const Transform & guess, OdometryInfo * info)
 {
-	UASSERT(!data.image().empty());
-	UASSERT(data.fx());
+	Transform output;
+
+	if(data.imageRaw().empty())
+	{
+		UERROR("Image empty! Cannot compute odometry...");
+		return output;
+	}
+
+	if(!(((data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForProjection()) || data.stereoCameraModel().isValidForProjection())))
+	{
+		UERROR("Odometry cannot be done without calibration or on multi-camera!");
+		return output;
+	}
+
+
+	const CameraModel & cameraModel = data.stereoCameraModel().isValidForProjection()?data.stereoCameraModel().left():data.cameraModels()[0];
 
 	UTimer timer;
-	Transform output;
 
 	int inliers = 0;
 	int correspondences = 0;
@@ -156,13 +197,13 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 
 	cv::Mat newFrame;
 	// convert to grayscale
-	if(data.image().channels() > 1)
+	if(data.imageRaw().channels() > 1)
 	{
-		cv::cvtColor(data.image(), newFrame, cv::COLOR_BGR2GRAY);
+		cv::cvtColor(data.imageRaw(), newFrame, cv::COLOR_BGR2GRAY);
 	}
 	else
 	{
-		newFrame = data.image().clone();
+		newFrame = data.imageRaw().clone();
 	}
 
 	if(memory_->getStMem().size() >= 1)
@@ -185,20 +226,17 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 				const Signature * newS = memory_->getLastWorkingSignature();
 				UDEBUG("newWords=%d", (int)newS->getWords().size());
 				nFeatures = (int)newS->getWords().size();
-				if((int)newS->getWords().size() > this->getMinInliers())
+				if((int)newS->getWords().size() > minInliers_)
 				{
-					cv::Mat K = (cv::Mat_<double>(3,3) <<
-						data.fx(), 0, data.cx(),
-						0, data.fy()==0?data.fx():data.fy(), data.cy(),
-						0, 0, 1);
-					Transform guess = (this->getPose() * data.localTransform()).inverse();
+					cv::Mat K = cameraModel.K();
+					Transform pnpGuess = ((this->getPose() * (guess.isNull()?Transform::getIdentity():guess)) * cameraModel.localTransform()).inverse();
 					cv::Mat R = (cv::Mat_<double>(3,3) <<
-							(double)guess.r11(), (double)guess.r12(), (double)guess.r13(),
-							(double)guess.r21(), (double)guess.r22(), (double)guess.r23(),
-							(double)guess.r31(), (double)guess.r32(), (double)guess.r33());
+							(double)pnpGuess.r11(), (double)pnpGuess.r12(), (double)pnpGuess.r13(),
+							(double)pnpGuess.r21(), (double)pnpGuess.r22(), (double)pnpGuess.r23(),
+							(double)pnpGuess.r31(), (double)pnpGuess.r32(), (double)pnpGuess.r33());
 					cv::Mat rvec(1,3, CV_64FC1);
 					cv::Rodrigues(R, rvec);
-					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)guess.x(), (double)guess.y(), (double)guess.z());
+					cv::Mat tvec = (cv::Mat_<double>(1,3) << (double)pnpGuess.x(), (double)pnpGuess.y(), (double)pnpGuess.z());
 
 					std::vector<cv::Point3f> objectPoints;
 					std::vector<cv::Point2f> imagePoints;
@@ -213,7 +251,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					UDEBUG("project points to previous image");
 					std::vector<cv::Point2f> prevImagePoints;
 					const Signature * prevS = memory_->getSignature(*(++memory_->getStMem().rbegin()));
-					Transform prevGuess = (keyFramePoses_.at(prevS->id()) * data.localTransform()).inverse();
+					Transform prevGuess = (keyFramePoses_.at(prevS->id()) * cameraModel.localTransform()).inverse();
 					cv::Mat prevR = (cv::Mat_<double>(3,3) <<
 							(double)prevGuess.r11(), (double)prevGuess.r12(), (double)prevGuess.r13(),
 							(double)prevGuess.r21(), (double)prevGuess.r22(), (double)prevGuess.r23(),
@@ -237,8 +275,8 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					{
 						if(uIsInBounds(int(imagePoints[i].x), 0, newFrame.cols) &&
 						   uIsInBounds(int(imagePoints[i].y), 0, newFrame.rows) &&
-						   uIsInBounds(int(prevImagePoints[i].x), 0, prevS->getImageRaw().cols) &&
-						   uIsInBounds(int(prevImagePoints[i].y), 0, prevS->getImageRaw().rows))
+						   uIsInBounds(int(prevImagePoints[i].x), 0, prevS->sensorData().imageRaw().cols) &&
+						   uIsInBounds(int(prevImagePoints[i].y), 0, prevS->sensorData().imageRaw().rows))
 						{
 							refCorners[oi] = prevImagePoints[i];
 							newCorners[oi] = imagePoints[i];
@@ -270,7 +308,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					std::vector<float> err;
 					UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 					cv::calcOpticalFlowPyrLK(
-							prevS->getImageRaw(),
+							prevS->sensorData().imageRaw(),
 							newFrame,
 							refCorners,
 							newCorners,
@@ -318,15 +356,15 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					}
 					correspondences = (int)matches.size();
 
-					if((int)matches.size() < this->getMinInliers())
+					if((int)matches.size() < minInliers_)
 					{
-						UWARN("not enough matches (%d < %d)...", (int)matches.size(), this->getMinInliers());
+						UWARN("not enough matches (%d < %d)...", (int)matches.size(), minInliers_);
 					}
 					else
 					{
 						//PnPRansac
 						std::vector<int> inliersV;
-						cv::solvePnPRansac(
+						util3d::solvePnPRansac(
 								objectPoints,
 								imagePoints,
 								K,
@@ -334,18 +372,19 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 								rvec,
 								tvec,
 								true,
-								this->getIterations(),
-								this->getPnPReprojError(),
-								0,
+								iterations_,
+								pnpReprojError_,
+								0, // min inliers
 								inliersV,
-								this->getPnPFlags());
+								pnpFlags_,
+								pnpRefineIterations_);
 
 						UDEBUG("inliers=%d/%d", (int)inliersV.size(), (int)objectPoints.size());
 
 						inliers = (int)inliersV.size();
-						if((int)inliersV.size() < this->getMinInliers())
+						if((int)inliersV.size() < minInliers_)
 						{
-							UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), this->getMinInliers());
+							UWARN("PnP not enough inliers (%d < %d), rejecting the transform...", (int)inliersV.size(), minInliers_);
 						}
 						else
 						{
@@ -354,7 +393,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							Transform pnp = Transform(R.at<double>(0,0), R.at<double>(0,1), R.at<double>(0,2), tvec.at<double>(0),
 													  R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
 													  R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
-							output = this->getPose().inverse() * pnp.inverse() * data.localTransform().inverse();
+							output = this->getPose().inverse() * pnp.inverse() * cameraModel.localTransform().inverse();
 
 							if(this->isInfoDataFilled() && info && inliersV.size())
 							{
@@ -388,33 +427,32 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							UDEBUG("cameraTransform guess=  %s (norm^2=%f)", cameraTransform.prettyPrint().c_str(), cameraTransform.getNormSquared());
 							if(cameraTransform.getNorm() < minTranslation_)
 							{
-								UWARN("Translation with the nearest frame is too small (%f<%f) to add new points to local map",
+								UINFO("Translation with the nearest frame is too small (%f<%f) to add new points to local map",
 										cameraTransform.getNorm(), minTranslation_);
 							}
 							else
 							{
 
 								double variance = 0;
-								const std::multimap<int, pcl::PointXYZ> & previousGuess = keyFrameWords3D_.find(previousS->id())->second;
-								std::multimap<int, pcl::PointXYZ> inliers3D = util3d::generateWords3DMono(
-										previousS->getWords(),
-										newS->getWords(),
-										data.fx(), data.fy()?data.fy():data.fx(),
-										data.cx(), data.cy(),
-										data.localTransform(),
+								const std::map<int, cv::Point3f> & previousGuess = keyFrameWords3D_.find(previousS->id())->second;
+								std::map<int, cv::Point3f> inliers3D = util3d::generateWords3DMono(
+										uMultimapToMapUnique(previousS->getWords()),
+										uMultimapToMapUnique(newS->getWords()),
+										cameraModel,
 										cameraTransform,
-										this->getIterations(),
-										this->getPnPReprojError(),
-										this->getPnPFlags(),
+										iterations_,
+										pnpReprojError_,
+										pnpFlags_,
+										pnpRefineIterations_,
 										fundMatrixReprojError_,
 										fundMatrixConfidence_,
 										previousGuess,
 										&variance);
 
-								if((int)inliers3D.size() < this->getMinInliers())
+								if((int)inliers3D.size() < minInliers_)
 								{
 									UWARN("Epipolar geometry not enough inliers (%d < %d), rejecting the transform (%s)...",
-									(int)inliers3D.size(), this->getMinInliers(), cameraTransform.prettyPrint().c_str());
+									(int)inliers3D.size(), minInliers_, cameraTransform.prettyPrint().c_str());
 								}
 								else if(variance == 0 || variance > maxVariance_)
 								{
@@ -427,7 +465,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 									UDEBUG("cameraTransform=  %s", cameraTransform.prettyPrint().c_str());
 
 									std::multimap<int, cv::Point3f> wordsToAdd;
-									for(std::multimap<int, pcl::PointXYZ>::iterator iter=inliers3D.begin();
+									for(std::map<int, cv::Point3f>::iterator iter=inliers3D.begin();
 										iter != inliers3D.end();
 										++iter)
 									{
@@ -437,8 +475,8 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 										if(!uContains(localMap_, iter->first))
 										{
 											//UDEBUG("Add new point %d to local map", iter->first);
-											pcl::PointXYZ newPt = util3d::transformPoint(iter->second, newPose);
-											wordsToAdd.insert(std::make_pair(iter->first, cv::Point3f(newPt.x, newPt.y, newPt.z)));
+											cv::Point3f newPt = util3d::transformPoint(iter->second, newPose);
+											wordsToAdd.insert(std::make_pair(iter->first, newPt));
 										}
 									}
 
@@ -512,7 +550,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 			std::vector<float> err;
 			UDEBUG("cv::calcOpticalFlowPyrLK() begin");
 			cv::calcOpticalFlowPyrLK(
-					refS->getImageRaw(),
+					refS->sensorData().imageRaw(),
 					newFrame,
 					refCorners,
 					refCornersGuess,
@@ -583,7 +621,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 
 			UDEBUG("Filtering optical flow outliers...done! (inliers=%d/%d)", oi, (int)statusFlowInliers.size());
 
-			if(flow > initMinFlow_ && oi > this->getMinInliers())
+			if(flow > initMinFlow_ && oi > minInliers_)
 			{
 				UDEBUG("flow=%f", flow);
 				// compute fundamental matrix
@@ -596,7 +634,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 						cv::RANSAC,
 						fundMatrixReprojError_,
 						fundMatrixConfidence_);
-				std::cout << "F=" << F << std::endl;
+				//std::cout << "F=" << F << std::endl;
 
 				if(!F.empty())
 				{
@@ -636,7 +674,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					}
 					UDEBUG("Filtering fundamental matrix outliers...done! (inliers=%d/%d)", oi, (int)statusFInliers.size());
 
-					if((int)refCorners.size() > this->getMinInliers())
+					if((int)refCorners.size() > minInliers_)
 					{
 						std::vector<cv::Point2f> refCornersRefined;
 						std::vector<cv::Point2f> newCornersRefined;
@@ -649,10 +687,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 						//UDEBUG("Correcting matches...done!");
 
 						UDEBUG("Computing P...");
-						cv::Mat K = (cv::Mat_<double>(3,3) <<
-									data.fx(), 0, data.cx(),
-									0, data.fy()==0?data.fx():data.fy(), data.cy(),
-									0, 0, 1);
+						cv::Mat K = cameraModel.K();
 
 						cv::Mat Kinv = K.inv();
 						cv::Mat E = K.t()*F*K;
@@ -685,7 +720,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							P0.at<double>(2,2) = 1;
 
 							UDEBUG("Computing P...done!");
-							std::cout << "P=" << P << std::endl;
+							//std::cout << "P=" << P << std::endl;
 
 							cv::Mat R, T;
 							EpipolarGeometry::findRTFromP(P, R, T);
@@ -695,32 +730,73 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 							EpipolarGeometry::triangulatePoints(x_norm, xp_norm, P0, P, cloud, reprojErrors);
 
-							pcl::PointCloud<pcl::PointXYZ>::Ptr inliersRef(new pcl::PointCloud<pcl::PointXYZ>);
-							pcl::PointCloud<pcl::PointXYZ>::Ptr inliersRefGuess(new pcl::PointCloud<pcl::PointXYZ>);
+							std::vector<cv::Point3f> inliersRef;
+							std::vector<cv::Point3f> inliersRefGuess;
 							std::vector<cv::Point2f> imagePoints(cloud->size());
-							inliersRef->resize(cloud->size());
-							inliersRefGuess->resize(cloud->size());
+							inliersRef.resize(cloud->size());
+							inliersRefGuess.resize(cloud->size());
 							tmpCornersId.resize(cloud->size());
 
 							oi = 0;
 							UASSERT(newCorners.size() == cloud->size());
+
+							std::vector<cv::Point3f> newCorners3D;
+
+							if(!refDepthOrRight_.empty())
+							{
+								if(refDepthOrRight_.type() == CV_8UC1)
+								{
+									StereoCameraModel m = data.stereoCameraModel();
+									m.setLocalTransform(Transform::getIdentity());
+									std::vector<unsigned char> stereoStatus;
+									std::vector<cv::Point2f> rightCorners;
+									rightCorners = stereo_->computeCorrespondences(
+											refS->sensorData().imageRaw(),
+											refDepthOrRight_,
+											refCorners,
+											stereoStatus);
+
+									newCorners3D = util3d::generateKeypoints3DStereo(
+											refCorners,
+											rightCorners,
+											m,
+											stereoStatus);
+								}
+								else if(refDepthOrRight_.type() == CV_32FC1 || refDepthOrRight_.type() == CV_16UC1)
+								{
+									std::vector<cv::KeyPoint> tmpKpts;
+									cv::KeyPoint::convert(refCorners, tmpKpts);
+									CameraModel m(cameraModel.fx(), cameraModel.fy(), cameraModel.cx(), cameraModel.cy());
+									 newCorners3D = util3d::generateKeypoints3DDepth(
+											 tmpKpts,
+											 refDepthOrRight_,
+											 m);
+								}
+								else
+								{
+									UWARN("Depth or right image type not supported: %d", refDepthOrRight_.type());
+								}
+							}
+
 							for(unsigned int i=0; i<cloud->size(); ++i)
 							{
 								if(cloud->at(i).z>0)
 								{
 									imagePoints[oi] = newCorners[i];
 									tmpCornersId[oi] = cornerIds[i];
-									(*inliersRef)[oi] = cloud->at(i);
-									if(!refDepth_.empty())
+									inliersRef[oi].x = cloud->at(i).x;
+									inliersRef[oi].y = cloud->at(i).y;
+									inliersRef[oi].z = cloud->at(i).z;
+									if(!newCorners3D.empty())
 									{
-										(*inliersRefGuess)[oi] = util3d::projectDepthTo3D(refDepth_, refCorners[i].x, refCorners[i].y, data.cx(), data.cy(), data.fx(), data.fy(), true);
+										inliersRefGuess[oi] = newCorners3D.at(i);
 									}
 									++oi;
 								}
 							}
 							imagePoints.resize(oi);
-							inliersRef->resize(oi);
-							inliersRefGuess->resize(oi);
+							inliersRef.resize(oi);
+							inliersRefGuess.resize(oi);
 							tmpCornersId.resize(oi);
 							cornerIds = tmpCornersId;
 
@@ -729,58 +805,75 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							//estimate scale
 							float scale = 1;
 							std::multimap<float, float> scales; // <variance, scale>
-							if(!refDepth_.empty()) // scale known
+							if(!newCorners3D.empty()) // scale known
 							{
-								UASSERT(inliersRefGuess->size() == inliersRef->size());
-								for(unsigned int i=0; i<inliersRef->size(); ++i)
+								UASSERT(inliersRefGuess.size() == inliersRef.size());
+								for(unsigned int i=0; i<inliersRef.size(); ++i)
 								{
-									if(pcl::isFinite(inliersRefGuess->at(i)))
+									if(util3d::isFinite(inliersRefGuess.at(i)))
 									{
-										float s = inliersRefGuess->at(i).z/inliersRef->at(i).z;
-										std::vector<float> errorSqrdDists(inliersRef->size());
-										for(unsigned int j=0; j<inliersRef->size(); ++j)
+										float s = inliersRefGuess.at(i).z/inliersRef.at(i).z;
+										std::vector<float> errorSqrdDists(inliersRef.size());
+										oi = 0;
+										for(unsigned int j=0; j<inliersRef.size(); ++j)
 										{
 											if(cloud->at(j).z>0)
 											{
-												pcl::PointXYZ refPt = inliersRef->at(j);
+												cv::Point3f refPt = inliersRef.at(j);
 												refPt.x *= s;
 												refPt.y *= s;
 												refPt.z *= s;
-												const pcl::PointXYZ & guess = inliersRefGuess->at(j);
-												errorSqrdDists[j] = uNormSquared(refPt.x-guess.x, refPt.y-guess.y, refPt.z-guess.z);
+												const cv::Point3f & guess = inliersRefGuess.at(j);
+												errorSqrdDists[oi++] = uNormSquared(refPt.x-guess.x, refPt.y-guess.y, refPt.z-guess.z);
 											}
 										}
-										std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-										double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-										float variance = 2.1981 * median_error_sqr;
-										//UDEBUG("scale %d = %f variance = %f", i, s, variance);
-										if(variance > 0)
+										errorSqrdDists.resize(oi);
+										if(errorSqrdDists.size() > 2)
 										{
-											scales.insert(std::make_pair(variance, s));
+											std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
+											double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
+											float variance = 2.1981 * median_error_sqr;
+											//UDEBUG("scale %d = %f variance = %f", i, s, variance);
+											if(variance > 0)
+											{
+												scales.insert(std::make_pair(variance, s));
+											}
 										}
 									}
 								}
-								UASSERT(scales.size());
-
-								scale = scales.begin()->second;
-								UDEBUG("scale used = %f (variance=%f)", scale, scales.begin()->first);
-
-								maxVariance_ = 0.01;
-								UDEBUG("Max noise variance = %f current variance=%f", 0.01, scales.begin()->first);
-								if(scales.begin()->first > 0.01)
+								if(scales.size() == 0)
 								{
-									UWARN("Too high variance %f (should be < 0.01)");
-									reject = true; // 20 cm for good initialization
+									UWARN("No scales found!?");
+									reject = true;
+								}
+								else
+								{
+									scale = scales.begin()->second;
+									UWARN("scale used = %f (variance=%f scales=%d)", scale, scales.begin()->first, (int)scales.size());
+
+									UDEBUG("Max noise variance = %f current variance=%f", maxVariance_, scales.begin()->first);
+									if(scales.begin()->first > maxVariance_)
+									{
+										UWARN("Too high variance %f (should be < %f)", scales.begin()->first, maxVariance_);
+										reject = true; // 20 cm for good initialization
+									}
 								}
 
 							}
-							else if(inliersRef->size())
+							else if(inliersRef.size())
 							{
 								// find centroid of the cloud and set it to 1 meter
-								Eigen::Vector4f centroid;
-								pcl::compute3DCentroid(*inliersRef, centroid);
+								Eigen::Vector4f centroid(0,0,0,0);
+								pcl::PointCloud<pcl::PointXYZ> inliersRefCloud;
+								inliersRefCloud.resize(inliersRef.size());
+								for(unsigned int i=0; i<inliersRef.size(); ++i)
+								{
+									inliersRefCloud[i].x = inliersRef[i].x;
+									inliersRefCloud[i].y = inliersRef[i].y;
+									inliersRefCloud[i].z = inliersRef[i].z;
+								}
+								pcl::compute3DCentroid(inliersRefCloud, centroid);
 								scale = 1.0f / centroid[2];
-								maxVariance_ = 0.01;
 							}
 							else
 							{
@@ -790,17 +883,17 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 							if(!reject)
 							{
 								//PnPRansac
-								std::vector<cv::Point3f> objectPoints(inliersRef->size());
-								for(unsigned int i=0; i<inliersRef->size(); ++i)
+								std::vector<cv::Point3f> objectPoints(inliersRef.size());
+								for(unsigned int i=0; i<inliersRef.size(); ++i)
 								{
-									objectPoints[i].x = inliersRef->at(i).x * scale;
-									objectPoints[i].y = inliersRef->at(i).y * scale;
-									objectPoints[i].z = inliersRef->at(i).z * scale;
+									objectPoints[i].x = inliersRef.at(i).x * scale;
+									objectPoints[i].y = inliersRef.at(i).y * scale;
+									objectPoints[i].z = inliersRef.at(i).z * scale;
 								}
 								cv::Mat rvec;
 								cv::Mat tvec;
 								std::vector<int> inliersPnP;
-								cv::solvePnPRansac(
+								util3d::solvePnPRansac(
 										objectPoints, // 3D points in ref referential
 										imagePoints,  // 2D points in new referential
 										K,
@@ -808,11 +901,12 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 										rvec,
 										tvec,
 										false,
-										this->getIterations(),
-										this->getPnPReprojError(),
-										0,
+										iterations_,
+										pnpReprojError_,
+										0, // min inliers
 										inliersPnP,
-										this->getPnPFlags());
+										pnpFlags_,
+										pnpRefineIterations_);
 
 								UDEBUG("PnP inliers = %d / %d", (int)inliersPnP.size(), (int)objectPoints.size());
 
@@ -821,7 +915,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 											  R.at<double>(1,0), R.at<double>(1,1), R.at<double>(1,2), tvec.at<double>(1),
 											  R.at<double>(2,0), R.at<double>(2,1), R.at<double>(2,2), tvec.at<double>(2));
 
-								output = data.localTransform() * pnp.inverse() * data.localTransform().inverse();
+								output = cameraModel.localTransform() * pnp.inverse() * cameraModel.localTransform().inverse();
 								if(output.getNorm() < minTranslation_*5)
 								{
 									reject = true;
@@ -835,13 +929,16 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 									std::vector<int> wordsId = uKeys(memory_->getLastWorkingSignature()->getWords());
 									UASSERT(wordsId.size());
 									UASSERT(cornerIds.size() == objectPoints.size());
-									std::multimap<int, pcl::PointXYZ> keyFrameWords3D;
+									std::map<int, cv::Point3f> keyFrameWords3D;
+									Transform t = this->getPose()*cameraModel.localTransform();
 									for(unsigned int i=0; i<inliersPnP.size(); ++i)
 									{
 										int index  =inliersPnP.at(i);
 										int id = cornerIds[index];
 										UASSERT(id > 0 && id <= *wordsId.rbegin());
-										pcl::PointXYZ pt =  util3d::transformPoint(pcl::PointXYZ(objectPoints.at(index).x, objectPoints.at(index).y, objectPoints.at(index).z), this->getPose()*data.localTransform());
+										cv::Point3f pt =  util3d::transformPoint(
+												objectPoints.at(index),
+												t);
 										localMap_.insert(std::make_pair(id, cv::Point3f(pt.x, pt.y, pt.z)));
 										keyFrameWords3D.insert(std::make_pair(id, pt));
 									}
@@ -858,7 +955,7 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 					}
 					else
 					{
-						UWARN("Not enough inliers %d/%d", (int)refCorners.size(), this->getMinInliers());
+						UWARN("Not enough inliers %d/%d", (int)refCorners.size(), minInliers_);
 					}
 				}
 				else
@@ -876,18 +973,26 @@ Transform OdometryMono::computeTransform(const SensorData & data, OdometryInfo *
 	{
 		//return Identity
 		output = Transform::getIdentity();
+		if(info)
+		{
+			// a very high variance tells that the new pose is not linked with the previous one
+			info->variance = 9999;
+		}
 
 			// generate kpts
 		if(memory_->update(SensorData(newFrame)))
 		{
 			const std::multimap<int, cv::KeyPoint> & words = memory_->getLastWorkingSignature()->getWords();
-			if((int)words.size() > this->getMinInliers())
+			if((int)words.size() > minInliers_)
 			{
 				for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 				{
-					cornersMap_.insert(std::make_pair(iter->first, iter->second.pt));
+					if(words.count(iter->first) == 1)
+					{
+						cornersMap_.insert(std::make_pair(iter->first, iter->second.pt));
+					}
 				}
-				refDepth_ = data.depth().clone();
+				refDepthOrRight_ = data.depthOrRightRaw().clone();
 				keyFramePoses_.insert(std::make_pair(memory_->getLastSignatureId(), Transform::getIdentity()));
 			}
 			else

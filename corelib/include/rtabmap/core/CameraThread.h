@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
+#include <rtabmap/core/Parameters.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEventsSender.h>
 
@@ -36,7 +37,7 @@ namespace rtabmap
 {
 
 class Camera;
-class CameraRGBD;
+class StereoDense;
 
 /**
  * Class CameraThread
@@ -48,11 +49,27 @@ class RTABMAP_EXP CameraThread :
 {
 public:
 	// ownership transferred
-	CameraThread(Camera * camera);
-	CameraThread(CameraRGBD * camera);
+	CameraThread(Camera * camera, const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraThread();
 
-	bool init(); // call camera->init()
+	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
+	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
+	void setImageDecimation(int decimation) {_imageDecimation = decimation;}
+	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
+
+	void setScanFromDepth(
+			bool enabled,
+			int decimation=4,
+			float maxDepth=4.0f,
+			float voxelSize = 0.0f,
+			int normalsK = 0)
+	{
+		_scanFromDepth = enabled;
+		_scanDecimation=decimation;
+		_scanMaxDepth = maxDepth;
+		_scanVoxelSize = voxelSize;
+		_scanNormalsK = normalsK;
+	}
 
 	//getters
 	bool isPaused() const {return !this->isRunning();}
@@ -60,15 +77,24 @@ public:
 	void setImageRate(float imageRate);
 
 	Camera * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
-	CameraRGBD * cameraRGBD() {return _cameraRGBD;} // return null if not set, valid until CameraThread is deleted
 
 private:
 	virtual void mainLoop();
+	virtual void mainLoopKill();
 
 private:
 	Camera * _camera;
-	CameraRGBD * _cameraRGBD;
-	int _seq;
+	bool _mirroring;
+	bool _colorOnly;
+	int _imageDecimation;
+	bool _stereoToDepth;
+	bool _scanFromDepth;
+	int _scanDecimation;
+	float _scanMaxDepth;
+	float _scanMinDepth;
+	float _scanVoxelSize;
+	int _scanNormalsK;
+	StereoDense * _stereoDense;
 };
 
 } // namespace rtabmap

@@ -28,7 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
 #include "rtabmap/core/Rtabmap.h"
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -53,24 +53,12 @@ void showUsage()
 			"  -rateHz #.##                    Acquisition rate (Hz), for convenience\n"
 			"  -repeat #                       Repeat the process on the data set # times (minimum of 1)\n"
 			"  -createGT                       Generate a ground truth file\n"
-			"  -image_width #                  Force an image width (Default 0: original size used).\n"
-			"                                   The height must be also specified if changed.\n"
-			"  -image_height #                 Force an image height (Default 0: original size used)\n"
-			"                                   The height must be also specified if changed.\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
-			"                                   to start processing at image # (default 1)."
-			"  -\"parameter name\" \"value\"       Overwrite a specific RTAB-Map's parameter :\n"
-			"                                     -SURF/HessianThreshold 150\n"
-			"                                   For parameters in table format, add ',' between values :\n"
-			"                                     -Kp/RoiRatios 0,0,0.1,0\n"
-			"  -default_params                 Show default RTAB-Map's parameters\n"
-			"  -debug                          Set Log level to Debug (Default Error)\n"
-			"  -info                           Set Log level to Info (Default Error)\n"
-			"  -warn                           Set Log level to Warning (Default Error)\n"
-			"  -exit_warn                      Set exit level to Warning (Default Fatal)\n"
-			"  -exit_error                     Set exit level to Error (Default Fatal)\n"
+			"                                   to start processing at image # (default 0).\n"
 			"  -v                              Get version of RTAB-Map\n"
-			"  -input \"path\"                 Load previous database if it exists.\n");
+			"  -input \"path\"                 Load previous database if it exists.\n"
+			"%s\n",
+			rtabmap::Parameters::showUsage());
 	exit(1);
 }
 
@@ -88,26 +76,19 @@ int main(int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	/*for(int i=0; i<argc; i++)
-	{
-		printf("argv[%d] = %s\n", i, argv[i]);
-	}*/
-	const ParametersMap & defaultParameters = Parameters::getDefaultParameters();
+	ULogger::setType(ULogger::kTypeConsole);
+	ULogger::setLevel(ULogger::kWarning);
+
+	ParametersMap pm = Parameters::parseArguments(argc, argv);
+	pm.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), "."));
+
 	if(argc < 2)
 	{
 		showUsage();
 	}
 	else if(argc == 2 && strcmp(argv[1], "-v") == 0)
 	{
-		printf("%s\n", Rtabmap::getVersion().c_str());
-		exit(0);
-	}
-	else if(argc == 2 && strcmp(argv[1], "-default_params") == 0)
-	{
-		for(ParametersMap::const_iterator iter = defaultParameters.begin(); iter!=defaultParameters.end(); ++iter)
-		{
-			printf("%s=%s\n", iter->first.c_str(), iter->second.c_str());
-		}
+		printf("%s\n", Parameters::getVersion().c_str());
 		exit(0);
 	}
 	printf("\n");
@@ -118,12 +99,7 @@ int main(int argc, char * argv[])
 	int repeat = 0;
 	bool createGT = false;
 	std::string inputDbPath;
-	int imageWidth = 0;
-	int imageHeight = 0;
-	int startAt = 1;
-	ParametersMap pm;
-	ULogger::Level logLevel = ULogger::kError;
-	ULogger::Level exitLevel = ULogger::kFatal;
+	int startAt = 0;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -194,40 +170,6 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-image_width") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				imageWidth = std::atoi(argv[i]);
-				if(imageWidth < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-		if(strcmp(argv[i], "-image_height") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				imageHeight = std::atoi(argv[i]);
-				if(imageHeight < 0)
-				{
-					showUsage();
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
 		if(strcmp(argv[i], "-start_at") == 0)
 		{
 			++i;
@@ -263,75 +205,15 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
-		if(strcmp(argv[i], "-debug") == 0)
+		if(strcmp(argv[i], "-help") == 0 || strcmp(argv[i], "--help") == 0)
 		{
-			logLevel = ULogger::kDebug;
-			continue;
+			showUsage();
 		}
-		if(strcmp(argv[i], "-info") == 0)
-		{
-			logLevel = ULogger::kInfo;
-			continue;
-		}
-		if(strcmp(argv[i], "-warn") == 0)
-		{
-			logLevel = ULogger::kWarning;
-			continue;
-		}
-		if(strcmp(argv[i], "-exit_warn") == 0)
-		{
-			exitLevel = ULogger::kWarning;
-			continue;
-		}
-		if(strcmp(argv[i], "-exit_error") == 0)
-		{
-			exitLevel = ULogger::kError;
-			continue;
-		}
-
-		// Check for RTAB-Map's parameters
-		std::string key = argv[i];
-		key = uSplit(key, '-').back();
-		if(defaultParameters.find(key) != defaultParameters.end())
-		{
-			++i;
-			if(i < argc)
-			{
-				std::string value = argv[i];
-				if(value.empty())
-				{
-					showUsage();
-				}
-				else
-				{
-					value = uReplaceChar(value, ',', ' ');
-				}
-				std::pair<ParametersMap::iterator, bool> inserted = pm.insert(ParametersPair(key, value));
-				if(inserted.second == false)
-				{
-					inserted.first->second = value;
-				}
-			}
-			else
-			{
-				showUsage();
-			}
-			continue;
-		}
-
-		printf("Unrecognized option : %s\n", argv[i]);
-		showUsage();
 	}
 
 	if(repeat && createGT)
 	{
 		printf("Cannot create a Ground truth if repeat is on.\n");
-		showUsage();
-	}
-	else if((imageWidth && imageHeight == 0) ||
-			(imageHeight && imageWidth == 0))
-	{
-		printf("If imageWidth is set, imageHeight must be too.\n");
 		showUsage();
 	}
 
@@ -342,11 +224,12 @@ int main(int argc, char * argv[])
 	Camera * camera = 0;
 	if(UDirectory::exists(path))
 	{
-		camera = new CameraImages(path, startAt, false, 1/rate, imageWidth, imageHeight);
+		camera = new CameraImages(path, rate>0.0f?1.0f/rate:0.0f);
+		((CameraImages*)camera)->setStartIndex(startAt);
 	}
 	else
 	{
-		camera = new CameraVideo(path, 1/rate, imageWidth, imageHeight);
+		camera = new CameraVideo(path, false, rate>0.0f?1.0f/rate:0.0f);
 	}
 
 	if(!camera || !camera->init())
@@ -356,12 +239,6 @@ int main(int argc, char * argv[])
 	}
 
 	std::map<int, int> groundTruth;
-
-	ULogger::setType(ULogger::kTypeConsole);
-	//ULogger::setType(ULogger::kTypeFile, rtabmap.getWorkingDir()+"/LogConsole.txt", false);
-	//ULogger::setBuffered(true);
-	ULogger::setLevel(logLevel);
-	ULogger::setExitLevel(exitLevel);
 
 	// Create tasks
 	Rtabmap rtabmap;
@@ -377,13 +254,14 @@ int main(int argc, char * argv[])
 	{
 		printf("Loading database \"%s\".\n", inputDbPath.c_str());
 	}
+
 	// Disable statistics (we don't need them)
-	pm.insert(ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
-	pm.insert(ParametersPair(Parameters::kRGBDEnabled(), "false"));
+	uInsert(pm, ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
+	uInsert(pm, ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
 	rtabmap.init(pm, inputDbPath);
 
-	printf("Avpd init time = %fs\n", timer.ticks());
+	printf("rtabmap init time = %fs\n", timer.ticks());
 
 	// Start thread's task
 	int loopClosureId;
@@ -395,7 +273,6 @@ int main(int argc, char * argv[])
 	printf(" Time threshold = %1.2f ms\n", rtabmap.getTimeThreshold());
 	printf(" Image rate = %1.2f s (%1.2f Hz)\n", rate, 1/rate);
 	printf(" Repeating data set = %s\n", repeat?"true":"false");
-	printf(" Camera width=%d, height=%d (0 is default)\n", imageWidth, imageHeight);
 	printf(" Camera starts at image %d (default 1)\n", startAt);
 	if(createGT)
 	{
@@ -422,23 +299,23 @@ int main(int argc, char * argv[])
 	std::list<std::vector<float> > teleopActions;
 	while(loopDataset <= repeat && g_forever)
 	{
-		cv::Mat img = camera->takeImage();
+		SensorData data = camera->takeImage();
 		int i=0;
 		double maxIterationTime = 0.0;
 		int maxIterationTimeId = 0;
-		while(!img.empty() && g_forever)
+		while(!data.imageRaw().empty() && g_forever)
 		{
 			++imagesProcessed;
 			iterationTimer.start();
 			rtabmapTimer.start();
-			rtabmap.process(img);
+			rtabmap.process(data.imageRaw());
 			double rtabmapTime = rtabmapTimer.elapsed();
 			loopClosureId = rtabmap.getLoopClosureId();
 			if(rtabmap.getLoopClosureId())
 			{
 				++countLoopDetected;
 			}
-			img = camera->takeImage();
+			data = camera->takeImage();
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",
@@ -521,8 +398,7 @@ int main(int argc, char * argv[])
 
 		// Generate the ground truth file
 		printf("Generate ground truth to file %s, size of %d\n", GENERATED_GT_NAME, groundTruthMat.rows);
-		IplImage img = groundTruthMat;
-		cvSaveImage(GENERATED_GT_NAME, &img);
+		cv::imwrite(GENERATED_GT_NAME, groundTruthMat);
 		printf(" Creating ground truth file = %fs\n", timer.ticks());
 	}
 

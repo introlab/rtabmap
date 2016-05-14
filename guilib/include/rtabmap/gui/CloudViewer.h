@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/PolygonMesh.h>
+#include <pcl/TextureMesh.h>
 #include "rtabmap/core/Transform.h"
 #include <QtCore/QMap>
 #include <QtCore/QSet>
@@ -42,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QSettings>
 
 #include <opencv2/opencv.hpp>
+#include <set>
 
 #include <pcl/visualization/mouse_event.h>
 #include <pcl/PCLPointCloud2.h>
@@ -71,59 +73,65 @@ public:
 		const std::string & id,
 		const Transform & pose); //including mesh
 
-	bool updateCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
-
-	bool updateCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
-
-	bool addOrUpdateCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
-
-	bool addOrUpdateCloud(
-			const std::string & id,
-			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-			const Transform & pose = Transform::getIdentity(),
-			const QColor & color = QColor());
-
 	bool addCloud(
 			const std::string & id,
 			const pcl::PCLPointCloud2Ptr & binaryCloud,
 			const Transform & pose,
 			bool rgb,
+			bool haveNormals,
 			const QColor & color = QColor());
 
 	bool addCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool addCloud(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		const Transform & pose = Transform::getIdentity(),
-		const QColor & color = QColor());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool addCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool addCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
 
 	bool addCloudMesh(
-		const std::string & id,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const std::vector<pcl::Vertices> & polygons,
-		const Transform & pose = Transform::getIdentity());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+			const std::vector<pcl::Vertices> & polygons,
+			const Transform & pose = Transform::getIdentity());
 
 	bool addCloudMesh(
-		const std::string & id,
-		const pcl::PolygonMesh::Ptr & mesh,
-		const Transform & pose = Transform::getIdentity());
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const std::vector<pcl::Vertices> & polygons,
+			const Transform & pose = Transform::getIdentity());
+
+	bool addCloudMesh(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+			const std::vector<pcl::Vertices> & polygons,
+			const Transform & pose = Transform::getIdentity());
+
+	bool addCloudMesh(
+			const std::string & id,
+			const pcl::PolygonMesh::Ptr & mesh,
+			const Transform & pose = Transform::getIdentity());
+
+	bool addCloudTextureMesh(
+			const std::string & id,
+			const pcl::TextureMesh::Ptr & textureMesh,
+			const Transform & pose = Transform::getIdentity());
 
 	bool addOccupancyGridMap(
 			const cv::Mat & map8U,
@@ -136,6 +144,27 @@ public:
 	void updateCameraTargetPosition(
 		const Transform & pose);
 
+	void addOrUpdateCoordinate(
+			const std::string & id,
+			const Transform & transform,
+			double scale);
+	bool updateCoordinatePose(
+			const std::string & id,
+			const Transform & transform);
+	void removeCoordinate(const std::string & id);
+	void removeAllCoordinates();
+
+	void addOrUpdateFrustum(
+			const std::string & id,
+			const Transform & transform,
+			double scale,
+			const QColor & color = QColor());
+	bool updateFrustumPose(
+			const std::string & id,
+			const Transform & pose);
+	void removeFrustum(const std::string & id);
+	void removeAllFrustums();
+
 	void addOrUpdateGraph(
 			const std::string & id,
 			const pcl::PointCloud<pcl::PointXYZ>::Ptr & graph,
@@ -143,11 +172,27 @@ public:
 	void removeGraph(const std::string & id);
 	void removeAllGraphs();
 
+	void addOrUpdateText(
+			const std::string & id,
+			const std::string & text,
+			const Transform & position,
+			double scale,
+			const QColor & color);
+	void removeText(const std::string & id);
+	void removeAllTexts();
+
 	bool isTrajectoryShown() const;
 	unsigned int getTrajectorySize() const;
 	void setTrajectoryShown(bool shown);
 	void setTrajectorySize(unsigned int value);
 	void clearTrajectory();
+	bool isFrustumShown() const;
+	float getFrustumScale() const;
+	QColor getFrustumColor() const;
+	void setFrustumShown(bool shown);
+	void setFrustumScale(float value);
+	void setFrustumColor(QColor value);
+	void resetCamera();
 
 	void removeAllClouds(); //including meshes
 	bool removeCloud(const std::string & id); //including mesh
@@ -159,6 +204,11 @@ public:
 	const QColor & getDefaultBackgroundColor() const;
 	const QColor & getBackgroundColor() const;
 	Transform getTargetPose() const;
+
+	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
+	void setRenderingRate(double rate);
+	double getRenderingRate() const;
+
 	void getCameraPosition(
 			float & x, float & y, float & z,
 			float & focalX, float & focalY, float & focalZ,
@@ -182,6 +232,7 @@ public:
 	void setGridShown(bool shown);
 	void setGridCellCount(unsigned int count);
 	void setGridCellSize(float size);
+
 	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
 
 public slots:
@@ -190,7 +241,7 @@ public slots:
 	void setCloudVisibility(const std::string & id, bool isVisible);
 	void setCloudOpacity(const std::string & id, double opacity = 1.0);
 	void setCloudPointSize(const std::string & id, int size);
-	virtual void clear() {removeAllClouds(); clearTrajectory();}
+	virtual void clear();
 
 signals:
 	void configChanged();
@@ -200,13 +251,13 @@ protected:
 	virtual void keyPressEvent(QKeyEvent * event);
 	virtual void mousePressEvent(QMouseEvent * event);
 	virtual void mouseMoveEvent(QMouseEvent * event);
+	virtual void wheelEvent(QWheelEvent * event);
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 	virtual void handleAction(QAction * event);
 	QMenu * menu() {return _menu;}
 
 private:
 	void createMenu();
-	void mouseEventOccurred (const pcl::visualization::MouseEvent &event, void* viewer_void);
 	void addGrid();
 	void removeGrid();
 
@@ -219,16 +270,27 @@ private:
     QAction * _aShowTrajectory;
     QAction * _aSetTrajectorySize;
     QAction * _aClearTrajectory;
+    QAction * _aShowFrustum;
+    QAction * _aSetFrustumScale;
+    QAction * _aSetFrustumColor;
     QAction * _aShowGrid;
     QAction * _aSetGridCellCount;
     QAction * _aSetGridCellSize;
     QAction * _aSetBackgroundColor;
+    QAction * _aSetRenderingRate;
     QMenu * _menu;
     std::set<std::string> _graphes;
+    std::set<std::string> _coordinates;
+    std::set<std::string> _texts;
+    std::set<std::string> _frustums;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
+    float _frustumScale;
+    QColor _frustumColor;
     unsigned int _gridCellCount;
     float _gridCellSize;
+    cv::Vec3d _lastCameraOrientation;
+    cv::Vec3d _lastCameraPose;
     QMap<std::string, Transform> _addedClouds; // include cloud, scan, meshes
     Transform _lastPose;
     std::list<std::string> _gridLines;
@@ -236,6 +298,9 @@ private:
     QString _workingDirectory;
     QColor _defaultBgColor;
     QColor _currentBgColor;
+    bool _backfaceCulling;
+    bool _frontfaceCulling;
+    double _renderingRate;
 };
 
 } /* namespace rtabmap */

@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
 #include <rtabmap/utilite/UEvent.h>
+#include <rtabmap/utilite/UVariant.h>
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Parameters.h"
 
@@ -58,49 +59,73 @@ class RtabmapEventCmd : public UEvent
 public:
 	enum dummy {d}; // Hack, to fix Eclipse complaining about not defined Cmd enum ?!
 	enum Cmd {
-			kCmdInit,
+			kCmdInit,             // params: [string] database path + ParametersMap
 			kCmdResetMemory,
-			kCmdClose,
+			kCmdClose,            // params: [bool] database saved (default true)
 			kCmdDumpMemory,
 			kCmdDumpPrediction,
-			kCmdGenerateDOTGraph, // params: path
-			kCmdGenerateDOTLocalGraph, // params: path, id, margin
-			kCmdGenerateTOROGraphLocal, // params: path, optimized
-			kCmdGenerateTOROGraphGlobal, // params: path, optimized
+			kCmdGenerateDOTGraph, // params: [bool] global, [string] path, if global=false: [int] id, [int] margin
+			kCmdExportPoses,      // params: [bool] global, [bool] optimized, [string] path, [int] type (0=raw format, 1=RGBD-SLAM format, 2=KITTI format, 3=TORO, 4=g2o)
 			kCmdCleanDataBuffer,
-			kCmdPublish3DMapLocal, // params: optimized
-			kCmdPublish3DMapGlobal, // params: optimized
-			kCmdPublishTOROGraphGlobal, // params: optimized
-			kCmdPublishTOROGraphLocal, // params: optimized
+			kCmdPublish3DMap,     // params: [bool] global, [bool] optimized, [bool] graphOnly
 			kCmdTriggerNewMap,
 			kCmdPause,
-			kCmdGoal}; // params: label or location ID
+			kCmdResume,
+			kCmdGoal,             // params: [string] label or [int] location ID
+			kCmdCancelGoal,
+			kCmdLabel             // params: [string] label, [int] location ID
+	};
 public:
-	RtabmapEventCmd(Cmd cmd, const std::string & strValue = "", int intValue = 0, const ParametersMap & parameters = ParametersMap()) :
+	RtabmapEventCmd(Cmd cmd, const ParametersMap & parameters = ParametersMap()) :
 			UEvent(0),
-			_cmd(cmd),
-			_strValue(strValue),
-			_intValue(intValue),
-			_parameters(parameters){}
+			cmd_(cmd),
+			parameters_(parameters){}
+	RtabmapEventCmd(Cmd cmd, const UVariant & value1, const ParametersMap & parameters = ParametersMap()) :
+			UEvent(0),
+			cmd_(cmd),
+			value1_(value1),
+			parameters_(parameters){}
+	RtabmapEventCmd(Cmd cmd, const UVariant & value1, const UVariant & value2, const ParametersMap & parameters = ParametersMap()) :
+			UEvent(0),
+			cmd_(cmd),
+			value1_(value1),
+			value2_(value2),
+			parameters_(parameters){}
+	RtabmapEventCmd(Cmd cmd, const UVariant & value1, const UVariant & value2, const UVariant & value3, const ParametersMap & parameters = ParametersMap()) :
+			UEvent(0),
+			cmd_(cmd),
+			value1_(value1),
+			value2_(value2),
+			value3_(value3),
+			parameters_(parameters){}
+	RtabmapEventCmd(Cmd cmd, const UVariant & value1, const UVariant & value2, const UVariant & value3, const UVariant & value4, const ParametersMap & parameters = ParametersMap()) :
+			UEvent(0),
+			cmd_(cmd),
+			value1_(value1),
+			value2_(value2),
+			value3_(value3),
+			value4_(value4),
+			parameters_(parameters){}
 
 	virtual ~RtabmapEventCmd() {}
-	Cmd getCmd() const {return _cmd;}
+	Cmd getCmd() const {return cmd_;}
 
-	void setStr(const std::string & str) {_strValue = str;}
-	const std::string & getStr() const {return _strValue;}
+	const UVariant & value1() const {return value1_;}
+	const UVariant & value2() const {return value2_;}
+	const UVariant & value3() const {return value3_;}
+	const UVariant & value4() const {return value4_;}
 
-	void setInt(int v) {_intValue = v;}
-	int getInt() const {return _intValue;}
-
-	const ParametersMap & getParameters() const {return _parameters;}
+	const ParametersMap & getParameters() const {return parameters_;}
 
 	virtual std::string getClassName() const {return std::string("RtabmapEventCmd");}
 
 private:
-	Cmd _cmd;
-	std::string _strValue;
-	int _intValue;
-	ParametersMap _parameters;
+	Cmd cmd_;
+	UVariant value1_;
+	UVariant value2_;
+	UVariant value3_;
+	UVariant value4_;
+	ParametersMap parameters_;
 };
 
 class RtabmapEventInit : public UEvent
@@ -148,19 +173,11 @@ public:
 	RtabmapEvent3DMap(
 			const std::map<int, Signature> & signatures,
 			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & constraints,
-			const std::map<int, int> & mapIds,
-			const std::map<int, double> & stamps,
-			const std::map<int, std::string> & labels,
-			const std::map<int, std::vector<unsigned char> > & userDatas) :
+			const std::multimap<int, Link> & constraints) :
 		UEvent(0),
 		_signatures(signatures),
 		_poses(poses),
-		_constraints(constraints),
-		_mapIds(mapIds),
-		_stamps(stamps),
-		_labels(labels),
-		_userDatas(userDatas)
+		_constraints(constraints)
 	{}
 
 	virtual ~RtabmapEvent3DMap() {}
@@ -168,10 +185,6 @@ public:
 	const std::map<int, Signature> & getSignatures() const {return _signatures;}
 	const std::map<int, Transform> & getPoses() const {return _poses;}
 	const std::multimap<int, Link> & getConstraints() const {return _constraints;}
-	const std::map<int, int> & getMapIds() const {return _mapIds;}
-	const std::map<int, double> & getStamps() const {return _stamps;}
-	const std::map<int, std::string> & getLabels() const {return _labels;}
-	const std::map<int, std::vector<unsigned char> > & getUserDatas() const {return _userDatas;}
 
 	virtual std::string getClassName() const {return std::string("RtabmapEvent3DMap");}
 
@@ -179,28 +192,68 @@ private:
 	std::map<int, Signature> _signatures;
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
-	std::map<int, int> _mapIds;
-	std::map<int, double> _stamps;
-	std::map<int, std::string> _labels;
-	std::map<int, std::vector<unsigned char> > _userDatas;
 };
 
 class RtabmapGlobalPathEvent : public UEvent
 {
 public:
 	RtabmapGlobalPathEvent():
-		UEvent(0) {}
-	RtabmapGlobalPathEvent(int goalId, const std::vector<std::pair<int, Transform> > & poses) :
-		UEvent(goalId),
-		_poses(poses) {}
+		UEvent(0),
+		_planningTime(0.0) {}
+	RtabmapGlobalPathEvent(
+			int goalId,
+			const std::vector<std::pair<int, Transform> > & poses,
+			double planningTime) :
+				UEvent(goalId),
+				_poses(poses),
+				_planningTime(planningTime) {}
+	RtabmapGlobalPathEvent(
+			int goalId,
+			const std::string & goalLabel,
+			const std::vector<std::pair<int, Transform> > & poses,
+			double planningTime) :
+				UEvent(goalId),
+				_goalLabel(goalLabel),
+				_poses(poses),
+				_planningTime(planningTime) {}
 
 	virtual ~RtabmapGlobalPathEvent() {}
 	int getGoal() const {return this->getCode();}
+	const std::string & getGoalLabel() const {return _goalLabel;}
+	double getPlanningTime() const {return _planningTime;}
 	const std::vector<std::pair<int, Transform> > & getPoses() const {return _poses;}
 	virtual std::string getClassName() const {return std::string("RtabmapGlobalPathEvent");}
 
 private:
+	std::string _goalLabel;
 	std::vector<std::pair<int, Transform> > _poses;
+	double _planningTime;
+};
+
+class RtabmapLabelErrorEvent : public UEvent
+{
+public:
+	RtabmapLabelErrorEvent(int id, const std::string & label):
+		UEvent(id),
+		_label(label){}
+
+	virtual ~RtabmapLabelErrorEvent() {}
+	int id() const {return this->getCode();}
+	const std::string & label() const {return _label;}
+	virtual std::string getClassName() const {return std::string("RtabmapLabelErrorEvent");}
+
+private:
+	std::string _label;
+};
+
+class RtabmapGoalStatusEvent : public UEvent
+{
+public:
+	RtabmapGoalStatusEvent(int status):
+		UEvent(status){}
+
+	virtual ~RtabmapGoalStatusEvent() {}
+	virtual std::string getClassName() const {return std::string("RtabmapGoalStatusEvent");}
 };
 
 } // namespace rtabmap

@@ -30,851 +30,406 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UTimer.h>
+#include <rtabmap/utilite/UFile.h>
+#include <rtabmap/core/GeodeticCoords.h>
+#include <rtabmap/core/Memory.h>
+#include <rtabmap/core/util3d_filtering.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
 #include <pcl/common/common.h>
 #include <set>
 #include <queue>
-#include "toro3d/treeoptimizer3.hh"
-#include "toro3d/treeoptimizer2.hh"
+#include <fstream>
 
-#ifdef WITH_G2O
-#include "g2o/core/sparse_optimizer.h"
-#include "g2o/core/block_solver.h"
-#include "g2o/core/factory.h"
-#include "g2o/core/optimization_algorithm_factory.h"
-#include "g2o/core/optimization_algorithm_gauss_newton.h"
-#include "g2o/core/optimization_algorithm_levenberg.h"
-#include "g2o/solvers/csparse/linear_solver_csparse.h"
-#include "g2o/types/slam3d/vertex_se3.h"
-#include "g2o/types/slam3d/edge_se3.h"
-#include "g2o/types/slam2d/vertex_se2.h"
-#include "g2o/types/slam2d/edge_se2.h"
-#endif
+#include <rtabmap/core/OptimizerTORO.h>
+#include <rtabmap/core/OptimizerG2O.h>
 
 namespace rtabmap {
 
 namespace graph {
 
-////////////////////////////////////////////
-// Graph optimizers
-////////////////////////////////////////////
-
-Optimizer * Optimizer::create(const ParametersMap & parameters)
-{
-	int optimizerTypeInt = Parameters::defaultRGBDOptimizeStrategy();
-	Parameters::parse(parameters, Parameters::kRGBDOptimizeStrategy(), optimizerTypeInt);
-	graph::Optimizer::Type type = (graph::Optimizer::Type)optimizerTypeInt;
-
-	if(!G2OOptimizer::available() && type == Optimizer::kTypeG2O)
-	{
-		UWARN("g2o optimizer not available. TORO will be used instead.");
-		type = Optimizer::kTypeTORO;
-	}
-	Optimizer * optimizer = 0;
-	switch(type)
-	{
-	case Optimizer::kTypeG2O:
-		optimizer = new G2OOptimizer(parameters);
-		break;
-	case Optimizer::kTypeTORO:
-	default:
-		optimizer = new TOROOptimizer(parameters);
-		type = Optimizer::kTypeTORO;
-		break;
-
-	}
-	return optimizer;
-}
-
-Optimizer * Optimizer::create(Optimizer::Type & type, const ParametersMap & parameters)
-{
-	if(!G2OOptimizer::available() && type == Optimizer::kTypeG2O)
-	{
-		UWARN("g2o optimizer not available. TORO will be used instead.");
-		type = Optimizer::kTypeTORO;
-	}
-	Optimizer * optimizer = 0;
-	switch(type)
-	{
-	case Optimizer::kTypeG2O:
-		optimizer = new G2OOptimizer(parameters);
-		break;
-	case Optimizer::kTypeTORO:
-	default:
-		optimizer = new TOROOptimizer(parameters);
-		type = Optimizer::kTypeTORO;
-		break;
-
-	}
-	return optimizer;
-}
-
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored) :
-		iterations_(iterations),
-		slam2d_(slam2d),
-		covarianceIgnored_(covarianceIgnored)
-{
-}
-
-Optimizer::Optimizer(const ParametersMap & parameters) :
-		iterations_(100),
-		slam2d_(false),
-		covarianceIgnored_(false)
-{
-	parseParameters(parameters);
-}
-
-void Optimizer::parseParameters(const ParametersMap & parameters)
-{
-	Parameters::parse(parameters, Parameters::kRGBDOptimizeIterations(), iterations_);
-	Parameters::parse(parameters, Parameters::kRGBDOptimizeVarianceIgnored(), covarianceIgnored_);
-	Parameters::parse(parameters, Parameters::kRGBDOptimizeSlam2D(), slam2d_);
-}
-
-void Optimizer::getConnectedGraph(
-		int fromId,
-		const std::map<int, Transform> & posesIn,
-		const std::multimap<int, Link> & linksIn,
-		std::map<int, Transform> & posesOut,
-		std::multimap<int, Link> & linksOut,
-		int depth)
-{
-	UASSERT(depth >= 0);
-	UASSERT(fromId>0);
-	UASSERT(uContains(posesIn, fromId));
-
-	posesOut.clear();
-	linksOut.clear();
-
-	std::set<int> ids;
-	std::set<int> curentDepth;
-	std::set<int> nextDepth;
-	nextDepth.insert(fromId);
-	int d = 0;
-	while((depth == 0 || d < depth) && nextDepth.size())
-	{
-		curentDepth = nextDepth;
-		nextDepth.clear();
-
-		for(std::set<int>::iterator jter = curentDepth.begin(); jter!=curentDepth.end(); ++jter)
-		{
-			if(ids.find(*jter) == ids.end())
-			{
-				ids.insert(*jter);
-				posesOut.insert(*posesIn.find(*jter));
-
-				for(std::multimap<int, Link>::const_iterator iter=linksIn.begin(); iter!=linksIn.end(); ++iter)
-				{
-					if(iter->second.from() == *jter)
-					{
-						if(ids.find(iter->second.to()) == ids.end() && uContains(posesIn, iter->second.to()))
-						{
-							nextDepth.insert(iter->second.to());
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*iter);
-							}
-							else if(curentDepth.find(iter->second.to()) != curentDepth.end() ||
-									ids.find(iter->second.to()) != ids.end())
-							{
-								linksOut.insert(*iter);
-							}
-						}
-					}
-					else if(iter->second.to() == *jter)
-					{
-						if(ids.find(iter->second.from()) == ids.end() && uContains(posesIn, iter->second.from()))
-						{
-							nextDepth.insert(iter->second.from());
-
-							if(depth == 0 || d < depth-1)
-							{
-								linksOut.insert(*iter);
-							}
-							else if(curentDepth.find(iter->second.from()) != curentDepth.end() ||
-									ids.find(iter->second.from()) != ids.end())
-							{
-								linksOut.insert(*iter);
-							}
-						}
-					}
-				}
-			}
-		}
-		++d;
-	}
-}
-
-//////////////////
-// TORO
-//////////////////
-std::map<int, Transform> TOROOptimizer::optimize(
-		int rootId,
+bool exportPoses(
+		const std::string & filePath,
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o
 		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes) // contains poses after tree init to last one before the end
+		const std::multimap<int, Link> & constraints, // required for formats 3 and 4
+		const std::map<int, double> & stamps, // required for format 1
+		bool g2oRobust) // optional for format 4
 {
-	std::map<int, Transform> optimizedPoses;
-	UDEBUG("Optimizing graph (pose=%d constraints=%d)...", (int)poses.size(), (int)edgeConstraints.size());
-	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
+	UDEBUG("%s", filePath.c_str());
+	std::string tmpPath = filePath;
+	if(format==3) // TORO
 	{
-		// Apply TORO optimization
-		AISNavigation::TreeOptimizer2 pg2;
-		AISNavigation::TreeOptimizer3 pg3;
-		pg2.verboseLevel = 0;
-		pg3.verboseLevel = 0;
-
-		UDEBUG("fill poses to TORO...");
-		if(isSlam2d())
+		if(UFile::getExtension(tmpPath).empty())
 		{
-			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-			{
-				UASSERT(!iter->second.isNull());
-				AISNavigation::TreePoseGraph2::Pose p(iter->second.x(), iter->second.y(), iter->second.theta());
-				AISNavigation::TreePoseGraph2::Vertex* v = pg2.addVertex(iter->first, p);
-				UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
-			}
+			tmpPath+=".graph";
 		}
-		else
-		{
-			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-			{
-				UASSERT(!iter->second.isNull());
-				float x,y,z, roll,pitch,yaw;
-				iter->second.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
-				AISNavigation::TreePoseGraph3::Vertex* v = pg3.addVertex(iter->first, p);
-				UASSERT_MSG(v != 0, uFormat("cannot insert vertex %d!?", iter->first).c_str());
-				v->transformation=AISNavigation::TreePoseGraph3::Transformation(p);
-			}
-
-		}
-
-		UDEBUG("fill edges to TORO...");
-		if(isSlam2d())
-		{
-			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
-			{
-				UASSERT(!iter->second.transform().isNull());
-				AISNavigation::TreePoseGraph2::Pose p(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta());
-				AISNavigation::TreePoseGraph2::InformationMatrix inf;
-				//Identity:
-				inf.values[0][0] = 1.0f; inf.values[0][1] = 0.0f; inf.values[0][2] = 0.0f; // x
-				inf.values[1][0] = 0.0f; inf.values[1][1] = 1.0f; inf.values[1][2] = 0.0f; // y
-				inf.values[2][0] = 0.0f; inf.values[2][1] = 0.0f; inf.values[2][2] = 1.0f; // theta
-				if(!isCovarianceIgnored())
-				{
-					if(iter->second.transVariance()>0)
-					{
-						inf.values[0][0] = 1.0f/iter->second.transVariance(); // x
-						inf.values[1][1] = 1.0f/iter->second.transVariance(); // y
-					}
-					if(iter->second.rotVariance()>0)
-					{
-						inf.values[2][2] = 1.0f/iter->second.rotVariance(); // theta
-					}
-				}
-
-				int id1 = iter->first;
-				int id2 = iter->second.to();
-				AISNavigation::TreePoseGraph2::Vertex* v1=pg2.vertex(id1);
-				AISNavigation::TreePoseGraph2::Vertex* v2=pg2.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				AISNavigation::TreePoseGraph2::Transformation t(p);
-				if (!pg2.addEdge(v1, v2, t, inf))
-				{
-					UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
-				}
-			}
-		}
-		else
-		{
-			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
-			{
-				UASSERT(!iter->second.transform().isNull());
-				float x,y,z, roll,pitch,yaw;
-				iter->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-
-				AISNavigation::TreePoseGraph3::Pose p(x, y, z, roll, pitch, yaw);
-				AISNavigation::TreePoseGraph3::InformationMatrix inf = DMatrix<double>::I(6);
-				if(!isCovarianceIgnored())
-				{
-					if(iter->second.rotVariance()>0)
-					{
-						inf[0][0] = 1.0f/iter->second.rotVariance(); // roll
-						inf[1][1] = 1.0f/iter->second.rotVariance(); // pitch
-						inf[2][2] = 1.0f/iter->second.rotVariance(); // yaw
-					}
-					if(iter->second.transVariance()>0)
-					{
-						inf[3][3] = 1.0f/iter->second.transVariance(); // x
-						inf[4][4] = 1.0f/iter->second.transVariance(); // y
-						inf[5][5] = 1.0f/iter->second.transVariance(); // z
-					}
-				}
-
-				int id1 = iter->first;
-				int id2 = iter->second.to();
-				AISNavigation::TreePoseGraph3::Vertex* v1=pg3.vertex(id1);
-				AISNavigation::TreePoseGraph3::Vertex* v2=pg3.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				AISNavigation::TreePoseGraph3::Transformation t(p);
-				if (!pg3.addEdge(v1, v2, t, inf))
-				{
-					UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
-				}
-			}
-		}
-		UDEBUG("buildMST...");
-		UASSERT(uContains(poses, rootId));
-		if(isSlam2d())
-		{
-			pg2.buildMST(rootId); // pg.buildSimpleTree();
-			pg2.initializeOnTree();
-			pg2.initializeTreeParameters();
-			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
-				   "TORO is not able to find the root of the graph!)");
-			pg2.initializeOptimization();
-		}
-		else
-		{
-			pg3.buildMST(rootId); // pg.buildSimpleTree();
-			pg3.initializeOnTree();
-			pg3.initializeTreeParameters();
-			UDEBUG("Building TORO tree... (if a crash happens just after this msg, "
-				   "TORO is not able to find the root of the graph!)");
-			pg3.initializeOptimization();
-		}
-
-		UINFO("TORO iterate begin (iterations=%d)", iterations());
-		for (int i=0; i<iterations(); i++)
-		{
-			if(intermediateGraphes && i>0)
-			{
-				std::map<int, Transform> tmpPoses;
-				if(isSlam2d())
-				{
-					for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-					{
-						AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
-						float roll, pitch, yaw;
-						iter->second.getEulerAngles(roll, pitch, yaw);
-						Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
-
-						UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
-					}
-				}
-				else
-				{
-					for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-					{
-						AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
-						AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
-						Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
-
-						UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-						tmpPoses.insert(std::pair<int, Transform>(iter->first, newPose));
-					}
-				}
-				intermediateGraphes->push_back(tmpPoses);
-			}
-			if(isSlam2d())
-			{
-				pg2.iterate();
-
-				// compute the error and dump it
-				double error=pg2.error();
-				UDEBUG("iteration %d global error=%f error/constraint=%f", i, error, error/pg2.edges.size());
-			}
-			else
-			{
-				pg3.iterate();
-
-				// compute the error and dump it
-				double mte, mre, are, ate;
-				double error=pg3.error(&mre, &mte, &are, &ate);
-				UDEBUG("i %d RotGain=%f global error=%f error/constraint=%f",
-						i, pg3.getRotGain(), error, error/pg3.edges.size());
-			}
-		}
-		UINFO("TORO iterate end");
-
-		if(isSlam2d())
-		{
-			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-			{
-				AISNavigation::TreePoseGraph2::Vertex* v=pg2.vertex(iter->first);
-				float roll, pitch, yaw;
-				iter->second.getEulerAngles(roll, pitch, yaw);
-				Transform newPose(v->pose.x(), v->pose.y(), iter->second.z(), roll, pitch, v->pose.theta());
-
-				UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
-			}
-		}
-		else
-		{
-			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-			{
-				AISNavigation::TreePoseGraph3::Vertex* v=pg3.vertex(iter->first);
-				AISNavigation::TreePoseGraph3::Pose pose=v->transformation.toPoseType();
-				Transform newPose(pose.x(), pose.y(), pose.z(), pose.roll(), pose.pitch(), pose.yaw());
-
-				UASSERT_MSG(!newPose.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-				optimizedPoses.insert(std::pair<int, Transform>(iter->first, newPose));
-			}
-		}
+		return OptimizerTORO::saveGraph(tmpPath, poses, constraints);
 	}
-	else if(poses.size() == 1 || iterations() <= 0)
+	else if(format == 4) // g2o
 	{
-		optimizedPoses = poses;
-	}
-	else
-	{
-		UWARN("This method should be called at least with 1 pose!");
-	}
-	UDEBUG("Optimizing graph...end!");
-	return optimizedPoses;
-}
-
-bool TOROOptimizer::saveGraph(
-		const std::string & fileName,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints)
-{
-	FILE * file = 0;
-
-#ifdef _MSC_VER
-	fopen_s(&file, fileName.c_str(), "w");
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".g2o";
+		}
+#ifdef WITH_G2O
+		return OptimizerG2O::saveGraph(tmpPath, poses, constraints, g2oRobust);
 #else
-	file = fopen(fileName.c_str(), "w");
+		UERROR("Cannot export in g2o format because RTAB-Map is not built with g2o support!");
+		return false;
 #endif
-
-	if(file)
-	{
-		// VERTEX3 id x y z phi theta psi
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-		{
-			float x,y,z, yaw,pitch,roll;
-			pcl::getTranslationAndEulerAngles(iter->second.toEigen3f(), x,y,z, roll, pitch, yaw);
-			fprintf(file, "VERTEX3 %d %f %f %f %f %f %f\n",
-					iter->first,
-					x,
-					y,
-					z,
-					roll,
-					pitch,
-					yaw);
-		}
-
-		//EDGE3 observed_vertex_id observing_vertex_id x y z roll pitch yaw inf_11 inf_12 .. inf_16 inf_22 .. inf_66
-		for(std::multimap<int, Link>::const_iterator iter = edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
-		{
-			float x,y,z, yaw,pitch,roll;
-			pcl::getTranslationAndEulerAngles(iter->second.transform().toEigen3f(), x,y,z, roll, pitch, yaw);
-			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f 0 0 0 0 0 %f 0 0 0 0 %f 0 0 0 %f 0 0 %f 0 %f\n",
-					iter->first,
-					iter->second.to(),
-					x,
-					y,
-					z,
-					roll,
-					pitch,
-					yaw,
-					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
-					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
-					iter->second.rotVariance()>0?1.0f/iter->second.rotVariance():1.0f,
-					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f,
-					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f,
-					iter->second.transVariance()>0?1.0f/iter->second.transVariance():1.0f);
-		}
-		UINFO("Graph saved to %s", fileName.c_str());
-		fclose(file);
 	}
 	else
 	{
-		UERROR("Cannot save to file %s", fileName.c_str());
+		if(UFile::getExtension(tmpPath).empty())
+		{
+			tmpPath+=".txt";
+		}
+
+		if(format == 1)
+		{
+			if(stamps.size() != poses.size())
+			{
+				UERROR("When exporting poses to format 1 (RGBD-SLAM), stamps and poses maps should have the same size!");
+				return false;
+			}
+		}
+
+		FILE* fout = 0;
+#ifdef _MSC_VER
+		fopen_s(&fout, tmpPath.c_str(), "w");
+#else
+		fout = fopen(tmpPath.c_str(), "w");
+#endif
+		if(fout)
+		{
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				if(format == 1) // rgbd-slam format
+				{
+					// put the pose in rgbd-slam world reference
+					Transform t( 0, 0, 1, 0,
+								 0, -1, 0, 0,
+								 1, 0, 0, 0);
+					Transform pose = t.inverse() * iter->second;
+					t = Transform( 0, 0, 1, 0,
+								  -1, 0, 0, 0,
+								   0,-1, 0, 0);
+					pose = t.inverse() * pose * t;
+
+					// Format: stamp x y z qx qy qz qw
+					Eigen::Quaternionf q = pose.getQuaternionf();
+
+					UASSERT(uContains(stamps, iter->first));
+					fprintf(fout, "%f %f %f %f %f %f %f %f\n",
+							stamps.at(iter->first),
+							pose.x(),
+							pose.y(),
+							pose.z(),
+							q.x(),
+							q.y(),
+							q.z(),
+							q.w());
+				}
+				else // default / KITTI format
+				{
+					Transform pose = iter->second;
+					if(format == 2)
+					{
+						// for KITTI, we need to remove optical rotation
+						// z pointing front, x left, y down
+						Transform t( 0, 0, 1, 0,
+									-1, 0, 0, 0,
+									 0,-1, 0, 0);
+						pose = t.inverse() * pose * t;
+					}
+
+					// Format: r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+					const float * p = (const float *)pose.data();
+
+					fprintf(fout, "%f", p[0]);
+					for(int i=1; i<pose.size(); i++)
+					{
+						fprintf(fout, " %f", p[i]);
+					}
+					fprintf(fout, "\n");
+				}
+			}
+			fclose(fout);
+			return true;
+		}
+	}
+	return false;
+}
+
+bool importPoses(
+		const std::string & filePath,
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
+		std::map<int, Transform> & poses,
+		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
+		std::map<int, double> * stamps) // optional for format 1
+{
+	UDEBUG("%s format=%d", filePath.c_str(), format);
+	if(format==3) // TORO
+	{
+		std::multimap<int, Link> constraintsTmp;
+		if(OptimizerTORO::loadGraph(filePath, poses, constraintsTmp))
+		{
+			if(constraints)
+			{
+				*constraints = constraintsTmp;
+			}
+			return true;
+		}
 		return false;
 	}
-	return true;
-}
-
-bool TOROOptimizer::loadGraph(
-		const std::string & fileName,
-		std::map<int, Transform> & poses,
-		std::multimap<int, Link> & edgeConstraints)
-{
-	FILE * file = 0;
-#ifdef _MSC_VER
-	fopen_s(&file, fileName.c_str(), "r");
-#else
-	file = fopen(fileName.c_str(), "r");
-#endif
-
-	if(file)
+	else if(format == 4) // g2o
 	{
-		char line[400];
-		while ( fgets (line , 400 , file) != NULL )
+		std::multimap<int, Link> constraintsTmp;
+		UERROR("Cannot import from g2o format because it is not yet supported!");
+		return false;
+	}
+	else
+	{
+		std::ifstream file;
+		file.open(filePath.c_str(), std::ifstream::in);
+		if(!file.good())
 		{
-			std::vector<std::string> strList = uListToVector(uSplit(uReplaceChar(line, '\n', ' '), ' '));
-			if(strList.size() == 8)
+			return false;
+		}
+		int id=1;
+		GeodeticCoords origin;
+		Transform originPose;
+		while(file.good())
+		{
+			std::string str;
+			std::getline(file, str);
+
+			if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
 			{
-				//VERTEX3
-				int id = atoi(strList[1].c_str());
-				float x = uStr2Float(strList[2]);
-				float y = uStr2Float(strList[3]);
-				float z = uStr2Float(strList[4]);
-				float roll = uStr2Float(strList[5]);
-				float pitch = uStr2Float(strList[6]);
-				float yaw = uStr2Float(strList[7]);
-				Transform pose = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
-				if(poses.find(id) == poses.end())
+				continue;
+			}
+
+			if(format == 8) // Karlsruhe format
+			{
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  10)
 				{
+					// timestamp,lat,lon,alt,x,y,z,roll,pitch,yaw
+
+					// stamp is 1252400096825289728, transform to 1252400096.825289728
+					double stamp = uStr2Double(strList[0].insert(10, 1, '.'));
+					double x = uStr2Double(strList[4]);
+					double y = uStr2Double(strList[5]);
+					double z = uStr2Double(strList[6]);
+					double roll = uStr2Double(strList[8]);
+					double pitch = uStr2Double(strList[7]);
+					double yaw = -(uStr2Double(strList[9])-M_PI_2);
+					if(stamps)
+					{
+						stamps->insert(std::make_pair(id, stamp));
+					}
+					Transform pose = Transform(x,y,z,roll,pitch,yaw);
+					if(poses.size() == 0)
+					{
+						originPose = pose.inverse();
+					}
+					pose = originPose * pose; // transform in local coordinate where first value is the origin
 					poses.insert(std::make_pair(id, pose));
 				}
 				else
 				{
-					UFATAL("Pose %d already added", id);
+					UERROR("Error parsing \"%s\" with Karlsruhe format (should have 10 values)", str.c_str());
 				}
 			}
-			else if(strList.size() == 30)
+			else if(format == 7) // St Lucia format
 			{
-				//EDGE3
-				int idFrom = atoi(strList[1].c_str());
-				int idTo = atoi(strList[2].c_str());
-				float x = uStr2Float(strList[3]);
-				float y = uStr2Float(strList[4]);
-				float z = uStr2Float(strList[5]);
-				float roll = uStr2Float(strList[6]);
-				float pitch = uStr2Float(strList[7]);
-				float yaw = uStr2Float(strList[8]);
-				float infR = uStr2Float(strList[9]);
-				float infP = uStr2Float(strList[15]);
-				float infW = uStr2Float(strList[20]);
-				UASSERT_MSG(infR > 0 && infP > 0 && infW > 0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
-				float rotVariance = infR<=infP && infR<=infW?infR:infP<=infW?infP:infW; // maximum variance
-				float infX = uStr2Float(strList[24]);
-				float infY = uStr2Float(strList[27]);
-				float infZ = uStr2Float(strList[29]);
-				UASSERT_MSG(infX > 0 && infY > 0 && infZ > 0, uFormat("Information matrix should not be null! line=\"%s\"", line).c_str());
-				float transVariance = 1.0f/(infX<=infY && infX<=infZ?infX:infY<=infW?infY:infZ); // maximum variance
-				UINFO("id=%d rotV=%f transV=%f", idFrom, rotVariance, transVariance);
-				Transform transform = Transform::fromEigen3f(pcl::getTransformation(x, y, z, roll, pitch, yaw));
-				if(poses.find(idFrom) != poses.end() && poses.find(idTo) != poses.end())
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  12)
 				{
-					//Link type is unknown
-					Link link(idFrom, idTo, Link::kUndef, transform, rotVariance, transVariance);
-					edgeConstraints.insert(std::pair<int, Link>(idFrom, link));
+					// Data Type
+					//0=Timestamp (seconds)
+					//1=Timestamp (millisec)
+					//2=Latitude (deg)
+					//3=Longitude (deg)
+					//4=Altitude (m)
+					//5=Height AMSL (m)
+					//6=vENU X
+					//7=vENU Y
+					//8=vENU Z
+					//9=Roll (rad)
+					//10=Pitch (rad)
+					//11=Yaw (rad)
+
+					// the millisec str needs 0-padding if size < 6
+					std::string millisecStr = strList[1];
+					while(millisecStr.size() < 6)
+					{
+						millisecStr = "0" + millisecStr;
+					}
+					double stamp = uStr2Double(strList[0] + "." + millisecStr);
+
+					// conversion GPS to local coordinate XYZ
+					double longitude = uStr2Double(strList[2]);
+					double latitude = uStr2Double(strList[3]);
+					double altitude = uStr2Double(strList[4]);
+					if(poses.empty())
+					{
+						origin = GeodeticCoords(longitude, latitude, altitude);
+					}
+					cv::Point3d coordENU = GeodeticCoords(longitude, latitude, altitude).toENU_WGS84(origin);
+					double roll = uStr2Double(strList[10]);
+					double pitch = uStr2Double(strList[9]);
+					double yaw = -(uStr2Double(strList[11])-M_PI_2);
+					if(stamps)
+					{
+						stamps->insert(std::make_pair(id, stamp));
+					}
+					poses.insert(std::make_pair(id, Transform(coordENU.x,coordENU.y,coordENU.z, roll,pitch,yaw)));
 				}
 				else
 				{
-					UFATAL("Referred poses from the link not exist!");
+					UERROR("Error parsing \"%s\" with St Lucia format (should have 12 values, e.g., 101215_153851_Ins0.log)", str.c_str());
 				}
 			}
-			else if(strList.size())
+			else if(format == 6) // MALAGA URBAN format
 			{
-				UFATAL("Error parsing graph file %s on line \"%s\" (strList.size()=%d)", fileName.c_str(), line, (int)strList.size());
-			}
-		}
-
-		UINFO("Graph loaded from %s", fileName.c_str());
-		fclose(file);
-	}
-	else
-	{
-		UERROR("Cannot open file %s", fileName.c_str());
-		return false;
-	}
-	return true;
-}
-
-
-//////////////////////
-// g2o
-//////////////////////
-bool G2OOptimizer::available()
-{
-#ifdef WITH_G2O
-	return true;
-#else
-	return false;
-#endif
-}
-
-std::map<int, Transform> G2OOptimizer::optimize(
-		int rootId,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & edgeConstraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes)
-{
-	std::map<int, Transform> optimizedPoses;
-#ifdef WITH_G2O
-	UDEBUG("Optimizing graph...");
-	optimizedPoses.clear();
-	if(edgeConstraints.size()>=1 && poses.size()>=2 && iterations() > 0)
-	{
-		// Apply g2o optimization
-
-		// create the linear solver
-		g2o::BlockSolverX::LinearSolverType * linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolverX::PoseMatrixType>();
-
-		// create the block solver on top of the linear solver
-		g2o::BlockSolverX* blockSolver = new g2o::BlockSolverX(linearSolver);
-
-		// create the algorithm to carry out the optimization
-		//g2o::OptimizationAlgorithmGaussNewton* optimizationAlgorithm = new g2o::OptimizationAlgorithmGaussNewton(blockSolver);
-		g2o::OptimizationAlgorithmLevenberg* optimizationAlgorithm = new g2o::OptimizationAlgorithmLevenberg(blockSolver);
-
-		// create the optimizer to load the data and carry out the optimization
-		g2o::SparseOptimizer optimizer;
-		optimizer.setVerbose(false);
-		optimizer.setAlgorithm(optimizationAlgorithm);
-
-		UDEBUG("fill poses to g2o...");
-		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-		{
-			UASSERT(!iter->second.isNull());
-			g2o::HyperGraph::Vertex * vertex = 0;
-			if(isSlam2d())
-			{
-				g2o::VertexSE2 * v2 = new g2o::VertexSE2();
-				v2->setEstimate(g2o::SE2(iter->second.x(), iter->second.y(), iter->second.theta()));
-				vertex = v2;
-			}
-			else
-			{
-				g2o::VertexSE3 * v3 = new g2o::VertexSE3();
-				Eigen::Isometry3d pose;
-				Eigen::Affine3d a = iter->second.toEigen3d();
-				pose.translation() = a.translation();
-				pose.linear() = a.rotation();
-				v3->setEstimate(pose);
-				vertex = v3;
-			}
-			vertex->setId(iter->first);
-			UASSERT_MSG(optimizer.addVertex(vertex), uFormat("cannot insert vertex %d!?", iter->first).c_str());
-		}
-
-		UDEBUG("fill edges to g2o...");
-		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
-		{
-			int id1 = iter->first;
-			int id2 = iter->second.to();
-
-			UASSERT(!iter->second.transform().isNull());
-
-			g2o::HyperGraph::Edge * edge = 0;
-
-			if(isSlam2d())
-			{
-				Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
-				if(!isCovarianceIgnored())
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  25)
 				{
-					if(iter->second.transVariance()>0)
+					// 0=Time
+					// Lat Lon Alt fix #sats speed dir
+					// 8=Local_X
+					// 9=Local_Y
+					// 10=Local_Z
+					// rawlog_ID Geocen_X Geocen_Y Geocen_Z GPS_X GPS_Y GPS_Z GPS_VX GPS_VY GPS_VZ Local_VX Local_VY Local_VZ SAT_Time
+					double stamp = uStr2Double(strList[0]);
+					double x = uStr2Double(strList[8]);
+					double y = uStr2Double(strList[9]);
+					double z = uStr2Double(strList[10]);
+					if(stamps)
 					{
-						information(0,0) = 1.0f/iter->second.transVariance(); // x
-						information(1,1) = 1.0f/iter->second.transVariance(); // y
+						stamps->insert(std::make_pair(id, stamp));
 					}
-					if(iter->second.rotVariance()>0)
+					float yaw = 0.0f;
+					if(uContains(poses, id-1))
 					{
-						information(2,2) = 1.0f/iter->second.rotVariance(); // theta
+						// set yaw depending on successive poses
+						Transform & previousPose = poses.at(id-1);
+						yaw = atan2(y-previousPose.y(),x-previousPose.x());
+						previousPose = Transform(previousPose.x(), previousPose.y(), yaw);
 					}
+					poses.insert(std::make_pair(id, Transform(x,y,z,0,0,yaw)));
 				}
-
-				g2o::EdgeSE2 * e = new g2o::EdgeSE2();
-				g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-				g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				e->setVertex(0, v1);
-				e->setVertex(1, v2);
-				e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
-				e->setInformation(information);
-				edge = e;
-			}
-			else
-			{
-				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-				if(!isCovarianceIgnored())
+				else
 				{
-					if(iter->second.transVariance()>0)
-					{
-						information(0,0) = 1.0f/iter->second.transVariance(); // x
-						information(1,1) = 1.0f/iter->second.transVariance(); // y
-						information(2,2) = 1.0f/iter->second.transVariance(); // z
-					}
-					if(iter->second.rotVariance()>0)
-					{
-						information(3,3) = 1.0f/iter->second.rotVariance(); // roll
-						information(4,4) = 1.0f/iter->second.rotVariance(); // pitch
-						information(5,5) = 1.0f/iter->second.rotVariance(); // yaw
-					}
+					UERROR("Error parsing \"%s\" with Malaga Urban format (should have 25 values, *_GPS.txt)", str.c_str());
 				}
-
-				Eigen::Affine3d a = iter->second.transform().toEigen3d();
-				Eigen::Isometry3d constraint;
-				constraint.translation() = a.translation();
-				constraint.linear() = a.rotation();
-
-				g2o::EdgeSE3 * e = new g2o::EdgeSE3();
-				g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-				g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				e->setVertex(0, v1);
-				e->setVertex(1, v2);
-				e->setMeasurement(constraint);
-				e->setInformation(information);
-				edge = e;
 			}
-
-			if (!optimizer.addEdge(edge))
+			else if(format == 5) // NewCollege format
 			{
-				delete edge;
-				UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
-			}
-		}
-
-		UDEBUG("Initial optimization...");
-		UASSERT(uContains(poses, rootId));
-		if(isSlam2d())
-		{
-			g2o::VertexSE2* firstRobotPose = (g2o::VertexSE2*)optimizer.vertex(rootId);
-			UASSERT(firstRobotPose != 0);
-			firstRobotPose->setFixed(true);
-		}
-		else
-		{
-			g2o::VertexSE3* firstRobotPose = (g2o::VertexSE3*)optimizer.vertex(rootId);
-			UASSERT(firstRobotPose != 0);
-			firstRobotPose->setFixed(true);
-		}
-
-		UINFO("g2o iterate begin (max iterations=%d)", iterations());
-		int it = 0;
-		if(intermediateGraphes)
-		{
-			optimizer.initializeOptimization();
-			for(int i=0; i<iterations(); ++i)
-			{
-				if(i > 0)
+				std::vector<std::string> strList = uListToVector(uSplit(str));
+				if(strList.size() ==  3)
 				{
-					std::map<int, Transform> tmpPoses;
-					if(isSlam2d())
+					if( uIsNumber(uReplaceChar(strList[0], ' ', "")) && 
+						uIsNumber(uReplaceChar(strList[1], ' ', "")) && 
+						uIsNumber(uReplaceChar(strList[2], ' ', "")) &&
+						(strList.size()==3 || uIsNumber(uReplaceChar(strList[3], ' ', ""))))
 					{
-						for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+						double stamp = uStr2Double(uReplaceChar(strList[0], ' ', ""));
+						double x = uStr2Double(uReplaceChar(strList[1], ' ', ""));
+						double y = uStr2Double(uReplaceChar(strList[2], ' ', ""));
+
+						if(stamps)
 						{
-							const g2o::VertexSE2* v = (const g2o::VertexSE2*)optimizer.vertex(iter->first);
-							if(v)
-							{
-								float roll, pitch, yaw;
-								iter->second.getEulerAngles(roll, pitch, yaw);
-								Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
-								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
-								UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-							}
-							else
-							{
-								UERROR("Vertex %d not found!?", iter->first);
-							}
+							stamps->insert(std::make_pair(id, stamp));
 						}
+						float yaw = 0.0f; 
+						if(uContains(poses, id-1))
+						{
+							// set yaw depending on successive poses
+							Transform & previousPose = poses.at(id-1);
+							yaw = atan2(y-previousPose.y(),x-previousPose.x());
+							previousPose = Transform(previousPose.x(), previousPose.y(), yaw);
+						}
+						Transform pose = Transform(x,y,0,0,0,yaw);
+						if(poses.size() == 0)
+						{
+							originPose = pose.inverse();
+						}
+						pose = originPose * pose; // transform in local coordinate where first value is the origin
+						poses.insert(std::make_pair(id, pose));
 					}
 					else
 					{
-						for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-						{
-							const g2o::VertexSE3* v = (const g2o::VertexSE3*)optimizer.vertex(iter->first);
-							if(v)
-							{
-								Transform t = Transform::fromEigen3d(v->estimate());
-								tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
-								UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
-							}
-							else
-							{
-								UERROR("Vertex %d not found!?", iter->first);
-							}
-						}
+						UDEBUG("Not valid values detected:  \"%s\"", str.c_str());
 					}
-					intermediateGraphes->push_back(tmpPoses);
-				}
-
-				it += optimizer.optimize(1);
-				if(ULogger::level() == ULogger::kDebug)
-				{
-					optimizer.computeActiveErrors();
-					UDEBUG("iteration %d: %d nodes, %d edges, chi2: %f", i, (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
-				}
-			}
-		}
-		else
-		{
-			optimizer.initializeOptimization();
-			it = optimizer.optimize(iterations());
-			optimizer.computeActiveErrors();
-			UDEBUG("%d nodes, %d edges, chi2: %f", (int)optimizer.vertices().size(), (int)optimizer.edges().size(), optimizer.chi2());
-		}
-		UINFO("g2o iterate end (%d iterations done)", it);
-
-		if(isSlam2d())
-		{
-			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
-			{
-				const g2o::VertexSE2* v = (const g2o::VertexSE2*)optimizer.vertex(iter->first);
-				if(v)
-				{
-					float roll, pitch, yaw;
-					iter->second.getEulerAngles(roll, pitch, yaw);
-					Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
-					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
-					UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 				}
 				else
 				{
-					UERROR("Vertex %d not found!?", iter->first);
+					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y)", str.c_str());
 				}
 			}
-		}
-		else
-		{
-			for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+			else if(format == 1) // rgbd-slam format
 			{
-				const g2o::VertexSE3* v = (const g2o::VertexSE3*)optimizer.vertex(iter->first);
-				if(v)
+				std::list<std::string> strList = uSplit(str);
+				if(strList.size() ==  8)
 				{
-					Transform t = Transform::fromEigen3d(v->estimate());
-					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
-					UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+					double stamp = uStr2Double(strList.front());
+					strList.pop_front();
+					str = uJoin(strList, " ");
+					Transform pose = Transform::fromString(str);
+					if(pose.isNull())
+					{
+						UWARN("Null transform read!? line parsed: \"%s\"", str.c_str());
+					}
+					else
+					{
+						if(stamps)
+						{
+							stamps->insert(std::make_pair(id, stamp));
+						}
+						// we need to remove optical rotation
+						// z pointing front, x left, y down
+						Transform t( 0, 0, 1, 0,
+									-1, 0, 0, 0,
+									 0,-1, 0, 0);
+						pose = t * pose * t.inverse();
+						t = Transform( 0, 0, 1, 0,
+									   0, -1, 0, 0,
+									   1, 0, 0, 0);
+						pose = t*pose;
+						poses.insert(std::make_pair(id, pose));
+					}
 				}
 				else
 				{
-					UERROR("Vertex %d not found!?", iter->first);
+					UERROR("Error parsing \"%s\" with RGBD-SLAM format (should have 8 values: stamp x y z qw qx qy qz)", str.c_str());
 				}
 			}
+			else // default / KITTI format
+			{
+				Transform pose = Transform::fromString(str);
+				if(format == 2)
+				{
+					// for KITTI, we need to remove optical rotation
+					// z pointing front, x left, y down
+					Transform t( 0, 0, 1, 0,
+								-1, 0, 0, 0,
+								 0,-1, 0, 0);
+					pose = t * pose * t.inverse();
+				}
+				poses.insert(std::make_pair(id, pose));
+			}
+			++id;
 		}
-		optimizer.clear();
-		g2o::Factory::destroy();
-		g2o::OptimizationAlgorithmFactory::destroy();
-		g2o::HyperGraphActionLibrary::destroy();
+		file.close();
+		return true;
 	}
-	else if(poses.size() == 1 || iterations() <= 0)
-	{
-		optimizedPoses = poses;
-	}
-	else
-	{
-		UWARN("This method should be called at least with 1 pose!");
-	}
-	UDEBUG("Optimizing graph...end!");
-#else
-	UERROR("Not built with G2O support!");
-#endif
-	return optimizedPoses;
+	return false;
 }
+
 
 ////////////////////////////////////////////
 // Graph utilities
@@ -882,7 +437,8 @@ std::map<int, Transform> G2OOptimizer::optimize(
 std::multimap<int, Link>::iterator findLink(
 		std::multimap<int, Link> & links,
 		int from,
-		int to)
+		int to,
+		bool checkBothWays)
 {
 	std::multimap<int, Link>::iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
@@ -894,15 +450,18 @@ std::multimap<int, Link>::iterator findLink(
 		++iter;
 	}
 
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
+	if(checkBothWays)
 	{
-		if(iter->second.to() == from)
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
 		{
-			return iter;
+			if(iter->second.to() == from)
+			{
+				return iter;
+			}
+			++iter;
 		}
-		++iter;
 	}
 	return links.end();
 }
@@ -910,7 +469,8 @@ std::multimap<int, Link>::iterator findLink(
 std::multimap<int, int>::iterator findLink(
 		std::multimap<int, int> & links,
 		int from,
-		int to)
+		int to,
+		bool checkBothWays)
 {
 	std::multimap<int, int>::iterator iter = links.find(from);
 	while(iter != links.end() && iter->first == from)
@@ -922,17 +482,132 @@ std::multimap<int, int>::iterator findLink(
 		++iter;
 	}
 
-	// let's try to -> from
-	iter = links.find(to);
-	while(iter != links.end() && iter->first == to)
+	if(checkBothWays)
 	{
-		if(iter->second == from)
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second == from)
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+std::multimap<int, Link>::const_iterator findLink(
+		const std::multimap<int, Link> & links,
+		int from,
+		int to,
+		bool checkBothWays)
+{
+	std::multimap<int, Link>::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second.to() == to)
 		{
 			return iter;
 		}
 		++iter;
 	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second.to() == from)
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
 	return links.end();
+}
+
+std::multimap<int, int>::const_iterator findLink(
+		const std::multimap<int, int> & links,
+		int from,
+		int to,
+		bool checkBothWays)
+{
+	std::multimap<int, int>::const_iterator iter = links.find(from);
+	while(iter != links.end() && iter->first == from)
+	{
+		if(iter->second == to)
+		{
+			return iter;
+		}
+		++iter;
+	}
+
+	if(checkBothWays)
+	{
+		// let's try to -> from
+		iter = links.find(to);
+		while(iter != links.end() && iter->first == to)
+		{
+			if(iter->second == from)
+			{
+				return iter;
+			}
+			++iter;
+		}
+	}
+	return links.end();
+}
+
+std::map<int, Transform> frustumPosesFiltering(
+		const std::map<int, Transform> & poses,
+		const Transform & cameraPose,
+		float horizontalFOV, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance,
+		float farClipPlaneDistance,
+		bool negative)
+{
+	std::map<int, Transform> output;
+
+	if(poses.size())
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+		std::vector<int> ids(poses.size());
+
+		cloud->resize(poses.size());
+		ids.resize(poses.size());
+		int oi=0;
+		for(std::map<int, rtabmap::Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(!iter->second.isNull())
+			{
+				(*cloud)[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+				ids[oi++] = iter->first;
+			}
+		}
+		cloud->resize(oi);
+		ids.resize(oi);
+
+		pcl::IndicesPtr indices = util3d::frustumFiltering(
+				cloud,
+				pcl::IndicesPtr(new std::vector<int>),
+				cameraPose,
+				horizontalFOV,
+				verticalFOV,
+				nearClipPlaneDistance,
+				farClipPlaneDistance,
+				negative);
+
+
+		for(unsigned int i=0; i<indices->size(); ++i)
+		{
+			output.insert(*poses.find(ids[indices->at(i)]));
+		}
+	}
+	return output;
 }
 
 std::map<int, Transform> radiusPosesFiltering(
@@ -941,7 +616,7 @@ std::map<int, Transform> radiusPosesFiltering(
 		float angle,
 		bool keepLatest)
 {
-	if(poses.size() > 1 && radius > 0.0f)
+	if(poses.size() > 2 && radius > 0.0f)
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		cloud->resize(poses.size());
@@ -1035,6 +710,10 @@ std::map<int, Transform> radiusPosesFiltering(
 			keptPoses.insert(std::make_pair(names.at(*iter), transforms.at(*iter)));
 		}
 
+		// make sure the first and last poses are still here
+		keptPoses.insert(*poses.begin());
+		keptPoses.insert(*poses.rbegin());
+
 		return keptPoses;
 	}
 	else
@@ -1099,6 +778,192 @@ std::multimap<int, int> radiusPosesClustering(const std::map<int, Transform> & p
 	return clusters;
 }
 
+void reduceGraph(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		std::multimap<int, int> & hyperNodes, //<parent ID, child ID>
+		std::multimap<int, Link> & hyperLinks)
+{
+	UINFO("Input: poses=%d links=%d", (int)poses.size(), (int)links.size());
+	UTimer timer;
+	std::map<int, int> posesToHyperNodes;
+	std::map<int, std::multimap<int, Link> > clusterloopClosureLinks;
+
+	{
+		std::multimap<int, Link> bidirectionalLoopClosureLinks;
+		for(std::multimap<int, Link>::const_iterator jter=links.begin(); jter!=links.end(); ++jter)
+		{
+			if(jter->second.type() != Link::kNeighbor &&
+			   jter->second.type() != Link::kNeighborMerged &&
+			   jter->second.userDataCompressed().empty())
+			{
+				if(uContains(poses, jter->second.from()) &&
+				   uContains(poses, jter->second.to()))
+				{
+					UASSERT_MSG(graph::findLink(links, jter->second.to(), jter->second.from(), false) == links.end(), "Input links should be unique!");
+					bidirectionalLoopClosureLinks.insert(std::make_pair(jter->second.from(), jter->second));
+					//bidirectionalLoopClosureLinks.insert(std::make_pair(jter->second.to(), jter->second.inverse()));
+				}
+			}
+		}
+
+		UINFO("Clustering hyper nodes...");
+		// largest ID to smallest ID
+		for(std::map<int, Transform>::const_reverse_iterator iter=poses.rbegin(); iter!=poses.rend(); ++iter)
+		{
+			if(posesToHyperNodes.find(iter->first) == posesToHyperNodes.end())
+			{
+				int hyperNodeId = iter->first;
+				std::list<int> loopClosures;
+				std::set<int> loopClosuresAdded;
+				loopClosures.push_back(iter->first);
+				std::multimap<int, Link> clusterLinks;
+				while(loopClosures.size())
+				{
+					int id = loopClosures.front();
+					loopClosures.pop_front();
+
+					UASSERT(posesToHyperNodes.find(id) == posesToHyperNodes.end());
+
+					posesToHyperNodes.insert(std::make_pair(id, hyperNodeId));
+					hyperNodes.insert(std::make_pair(hyperNodeId, id));
+
+					for(std::multimap<int, Link>::const_iterator jter=bidirectionalLoopClosureLinks.find(id); jter!=bidirectionalLoopClosureLinks.end() && jter->first==id; ++jter)
+					{
+						if(posesToHyperNodes.find(jter->second.to()) == posesToHyperNodes.end() &&
+						   loopClosuresAdded.find(jter->second.to()) == loopClosuresAdded.end())
+						{
+							loopClosures.push_back(jter->second.to());
+							loopClosuresAdded.insert(jter->second.to());
+							clusterLinks.insert(*jter);
+							clusterLinks.insert(std::make_pair(jter->second.to(), jter->second.inverse()));
+							if(jter->second.from() < jter->second.to())
+							{
+								UWARN("Child to Parent link? %d->%d (type=%d)",
+										jter->second.from(),
+										jter->second.to(),
+										jter->second.type());
+							}
+						}
+					}
+				}
+				UASSERT(clusterloopClosureLinks.find(hyperNodeId) == clusterloopClosureLinks.end());
+				clusterloopClosureLinks.insert(std::make_pair(hyperNodeId, clusterLinks));
+				UDEBUG("Created hyper node %d with %d children (%f%%)",
+						hyperNodeId, (int)loopClosuresAdded.size(), float(posesToHyperNodes.size())/float(poses.size())*100.0f);
+			}
+		}
+		UINFO("Clustering hyper nodes... done! (%f s)", timer.ticks());
+	}
+
+	UINFO("Creating hyper links...");
+	int i=0;
+	for(std::multimap<int, Link>::const_reverse_iterator jter=links.rbegin(); jter!=links.rend(); ++jter)
+	{
+		if((jter->second.type() == Link::kNeighbor ||
+		   jter->second.type() == Link::kNeighborMerged ||
+		   !jter->second.userDataCompressed().empty()) &&
+		   uContains(poses, jter->second.from()) &&
+		   uContains(poses, jter->second.to()))
+		{
+			UASSERT_MSG(uContains(posesToHyperNodes, jter->second.from()), uFormat("%d->%d (type=%d)", jter->second.from(), jter->second.to(), jter->second.type()).c_str());
+			UASSERT_MSG(uContains(posesToHyperNodes, jter->second.to()), uFormat("%d->%d (type=%d)", jter->second.from(), jter->second.to(), jter->second.type()).c_str());
+			int hyperNodeIDFrom = posesToHyperNodes.at(jter->second.from());
+			int hyperNodeIDTo = posesToHyperNodes.at(jter->second.to());
+
+			// ignore links inside a hyper node
+			if(hyperNodeIDFrom != hyperNodeIDTo)
+			{
+				std::multimap<int, Link>::iterator tmpIter = graph::findLink(hyperLinks, hyperNodeIDFrom, hyperNodeIDTo);
+				if(tmpIter!=hyperLinks.end() &&
+					hyperNodeIDFrom == jter->second.from() &&
+					hyperNodeIDTo == jter->second.to() &&
+					tmpIter->second.type() > Link::kNeighbor &&
+					jter->second.type() == Link::kNeighbor)
+				{
+					// neighbor links have priority, so remove the previously added link
+					hyperLinks.erase(tmpIter);
+				}
+
+				// only add unique link between two hyper nodes (keeping only the more recent)
+				if(graph::findLink(hyperLinks, hyperNodeIDFrom, hyperNodeIDTo) == hyperLinks.end())
+				{
+					UASSERT(clusterloopClosureLinks.find(hyperNodeIDFrom) != clusterloopClosureLinks.end());
+					UASSERT(clusterloopClosureLinks.find(hyperNodeIDTo) != clusterloopClosureLinks.end());
+					std::multimap<int, Link> tmpLinks = clusterloopClosureLinks.at(hyperNodeIDFrom);
+					tmpLinks.insert(clusterloopClosureLinks.at(hyperNodeIDTo).begin(), clusterloopClosureLinks.at(hyperNodeIDTo).end());
+					tmpLinks.insert(std::make_pair(jter->second.from(), jter->second));
+
+					std::list<int> path = computePath(tmpLinks, hyperNodeIDFrom, hyperNodeIDTo, false, true);
+					UASSERT_MSG(path.size()>1,
+							uFormat("path.size()=%d, hyperNodeIDFrom=%d, hyperNodeIDTo=%d",
+									(int)path.size(),
+									hyperNodeIDFrom,
+									hyperNodeIDTo).c_str());
+
+					if(path.size() > 10)
+					{
+						UWARN("Large path! %d nodes", (int)path.size());
+						std::stringstream stream;
+						for(std::list<int>::const_iterator iter=path.begin(); iter!=path.end();++iter)
+						{
+							if(iter!=path.begin())
+							{
+								stream << ",";
+							}
+
+							stream << *iter;
+						}
+						UWARN("Path = [%s]", stream.str().c_str());
+					}
+
+					// create the hyperlink
+					std::list<int>::iterator iter=path.begin();
+					int from = *iter;
+					++iter;
+					int to = *iter;
+					std::multimap<int, Link>::const_iterator foundIter = graph::findLink(tmpLinks, from, to, false);
+					UASSERT(foundIter != tmpLinks.end());
+					Link hyperLink = foundIter->second;
+					++iter;
+					from = to;
+					for(; iter!=path.end(); ++iter)
+					{
+						to = *iter;
+						std::multimap<int, Link>::const_iterator foundIter = graph::findLink(tmpLinks, from, to, false);
+						UASSERT(foundIter != tmpLinks.end());
+						hyperLink = hyperLink.merge(foundIter->second, jter->second.type());
+
+						from = to;
+					}
+
+					UASSERT(hyperLink.from() == hyperNodeIDFrom);
+					UASSERT(hyperLink.to() == hyperNodeIDTo);
+					hyperLinks.insert(std::make_pair(hyperNodeIDFrom, hyperLink));
+
+					UDEBUG("Created hyper link %d->%d (%f%%)",
+							hyperLink.from(), hyperLink.to(), float(i)/float(links.size())*100.0f);
+					if(hyperLink.transform().getNorm() > jter->second.transform().getNorm()+1)
+					{
+						UWARN("Large hyper link %d->%d (%f m)! original %d->%d (%f m)",
+								hyperLink.from(),
+								hyperLink.to(),
+								hyperLink.transform().getNorm(),
+								jter->second.from(),
+								jter->second.to(),
+								jter->second.transform().getNorm());
+
+					}
+				}
+			}
+		}
+		++i;
+	}
+	UINFO("Creating hyper links... done! (%f s)", timer.ticks());
+
+	UINFO("Output: poses=%d links=%d", (int)uUniqueKeys(hyperNodes).size(), (int)links.size());
+}
+
 
 class Node
 {
@@ -1129,6 +994,7 @@ public:
 	void setFromId(int fromId) {fromId_ = fromId;}
 	void setCostSoFar(float costSoFar) {costSoFar_ = costSoFar;}
 	void setDistToEnd(float distToEnd) {distToEnd_ = distToEnd;}
+	void setPose(const Transform & pose) {pose_ = pose;}
 
 private:
 	int id_;
@@ -1148,6 +1014,7 @@ struct Order
     }
 };
 
+// A*
 std::list<std::pair<int, Transform> > computePath(
 			const std::map<int, rtabmap::Transform> & poses,
 			const std::multimap<int, int> & links,
@@ -1157,7 +1024,6 @@ std::list<std::pair<int, Transform> > computePath(
 {
 	std::list<std::pair<int, Transform> > path;
 
-	//A*
 	int startNode = from;
 	int endNode = to;
 	rtabmap::Transform endPose = poses.at(endNode);
@@ -1210,18 +1076,25 @@ std::list<std::pair<int, Transform> > computePath(
 			if(nodeIter == nodes.end())
 			{
 				std::map<int, rtabmap::Transform>::const_iterator poseIter = poses.find(iter->second);
-				UASSERT(poseIter != poses.end());
-				Node n(iter->second, currentNode->id(), poseIter->second);
-				n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
-				n.setDistToEnd(n.distFrom(endPose));
-				nodes.insert(std::make_pair(iter->second, n));
-				if(updateNewCosts)
+				if(poseIter == poses.end())
 				{
-					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+					UERROR("Next pose %d (from %d) should be found in poses! Ignoring it!", iter->second, iter->first);
 				}
 				else
 				{
-					pq.push(Pair(n.id(), n.totalCost()));
+					Node n(iter->second, currentNode->id(), poseIter->second);
+					n.setCostSoFar(currentNode->costSoFar() + currentNode->distFrom(poseIter->second));
+					n.setDistToEnd(n.distFrom(endPose));
+
+					nodes.insert(std::make_pair(iter->second, n));
+					if(updateNewCosts)
+					{
+						pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+					}
+					else
+					{
+						pq.push(Pair(n.id(), n.totalCost()));
+					}
 				}
 			}
 			else if(updateNewCosts && nodeIter->second.isOpened())
@@ -1244,6 +1117,318 @@ std::list<std::pair<int, Transform> > computePath(
 			}
 		}
 	}
+	return path;
+}
+
+// Dijksta
+std::list<int> RTABMAP_EXP computePath(
+			const std::multimap<int, Link> & links,
+			int from,
+			int to,
+			bool updateNewCosts,
+			bool useSameCostForAllLinks)
+{
+	std::list<int> path;
+
+	int startNode = from;
+	int endNode = to;
+	std::map<int, Node> nodes;
+	nodes.insert(std::make_pair(startNode, Node(startNode, 0, Transform())));
+	std::priority_queue<Pair, std::vector<Pair>, Order> pq;
+	std::multimap<float, int> pqmap;
+	if(updateNewCosts)
+	{
+		pqmap.insert(std::make_pair(0, startNode));
+	}
+	else
+	{
+		pq.push(Pair(startNode, 0));
+	}
+
+	while((updateNewCosts && pqmap.size()) || (!updateNewCosts && pq.size()))
+	{
+		Node * currentNode;
+		if(updateNewCosts)
+		{
+			currentNode = &nodes.find(pqmap.begin()->second)->second;
+			pqmap.erase(pqmap.begin());
+		}
+		else
+		{
+			currentNode = &nodes.find(pq.top().first)->second;
+			pq.pop();
+		}
+
+		currentNode->setClosed(true);
+
+		if(currentNode->id() == endNode)
+		{
+			while(currentNode->id()!=startNode)
+			{
+				path.push_front(currentNode->id());
+				currentNode = &nodes.find(currentNode->fromId())->second;
+			}
+			path.push_front(startNode);
+			break;
+		}
+
+		// lookup neighbors
+		for(std::multimap<int, Link>::const_iterator iter = links.find(currentNode->id());
+			iter!=links.end() && iter->first == currentNode->id();
+			++iter)
+		{
+			std::map<int, Node>::iterator nodeIter = nodes.find(iter->second.to());
+			float cost = 1;
+			if(!useSameCostForAllLinks)
+			{
+				cost = iter->second.transform().getNorm();
+			}
+			if(nodeIter == nodes.end())
+			{
+				Node n(iter->second.to(), currentNode->id(), Transform());
+
+				n.setCostSoFar(currentNode->costSoFar() + cost);
+				nodes.insert(std::make_pair(iter->second.to(), n));
+				if(updateNewCosts)
+				{
+					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+				}
+				else
+				{
+					pq.push(Pair(n.id(), n.totalCost()));
+				}
+			}
+			else if(!useSameCostForAllLinks && updateNewCosts && nodeIter->second.isOpened())
+			{
+				float newCostSoFar = currentNode->costSoFar() + cost;
+				if(nodeIter->second.costSoFar() > newCostSoFar)
+				{
+					// update the cost in the priority queue
+					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					{
+						if(mapIter->second == nodeIter->first)
+						{
+							pqmap.erase(mapIter);
+							nodeIter->second.setCostSoFar(newCostSoFar);
+							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+	return path;
+}
+
+
+// return path starting from "fromId" (Identity pose for the first node)
+std::list<std::pair<int, Transform> > computePath(
+		int fromId,
+		int toId,
+		const Memory * memory,
+		bool lookInDatabase,
+		bool updateNewCosts,
+		float linearVelocity,  // m/sec
+		float angularVelocity) // rad/sec
+{
+	UASSERT(memory!=0);
+	UASSERT(fromId>=0);
+	UASSERT(toId>=0);
+	std::list<std::pair<int, Transform> > path;
+	UDEBUG("fromId=%d, toId=%d, lookInDatabase=%d, updateNewCosts=%d, linearVelocity=%f, angularVelocity=%f",
+			fromId,
+			toId,
+			lookInDatabase?1:0,
+			updateNewCosts?1:0,
+			linearVelocity,
+			angularVelocity);
+
+	std::multimap<int, Link> allLinks;
+	if(lookInDatabase)
+	{
+		// Faster to load all links in one query
+		UTimer t;
+		allLinks = memory->getAllLinks(lookInDatabase);
+		UINFO("getting all %d links time = %f s", (int)allLinks.size(), t.ticks());
+	}
+
+	//dijkstra
+	int startNode = fromId;
+	int endNode = toId;
+	std::map<int, Node> nodes;
+	nodes.insert(std::make_pair(startNode, Node(startNode, 0, Transform::getIdentity())));
+	std::priority_queue<Pair, std::vector<Pair>, Order> pq;
+	std::multimap<float, int> pqmap;
+	if(updateNewCosts)
+	{
+		pqmap.insert(std::make_pair(0, startNode));
+	}
+	else
+	{
+		pq.push(Pair(startNode, 0));
+	}
+
+	while((updateNewCosts && pqmap.size()) || (!updateNewCosts && pq.size()))
+	{
+		Node * currentNode;
+		if(updateNewCosts)
+		{
+			currentNode = &nodes.find(pqmap.begin()->second)->second;
+			pqmap.erase(pqmap.begin());
+		}
+		else
+		{
+			currentNode = &nodes.find(pq.top().first)->second;
+			pq.pop();
+		}
+
+		currentNode->setClosed(true);
+
+		if(currentNode->id() == endNode)
+		{
+			while(currentNode->id()!=startNode)
+			{
+				path.push_front(std::make_pair(currentNode->id(), currentNode->pose()));
+				currentNode = &nodes.find(currentNode->fromId())->second;
+			}
+			path.push_front(std::make_pair(startNode, currentNode->pose()));
+			break;
+		}
+
+		// lookup neighbors
+		std::map<int, Link> links;
+		if(allLinks.size() == 0)
+		{
+			links = memory->getLinks(currentNode->id(), lookInDatabase);
+		}
+		else
+		{
+			for(std::multimap<int, Link>::const_iterator iter = allLinks.lower_bound(currentNode->id());
+				iter!=allLinks.end() && iter->first == currentNode->id();
+				++iter)
+			{
+				links.insert(std::make_pair(iter->second.to(), iter->second));
+			}
+		}
+		for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+		{
+			Transform nextPose = currentNode->pose()*iter->second.transform();
+			float cost = 0.0f;
+			if(linearVelocity <= 0.0f && angularVelocity <= 0.0f)
+			{
+				// use distance only
+				cost = iter->second.transform().getNorm();
+			}
+			else // use time
+			{
+				if(linearVelocity > 0.0f)
+				{
+					cost += iter->second.transform().getNorm()/linearVelocity;
+				}
+				if(angularVelocity > 0.0f)
+				{
+					Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-currentNode->pose().x(), nextPose.y()-currentNode->pose().y(), nextPose.z()-currentNode->pose().z(), 1.0f);
+					Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+					float angle = pcl::getAngle3D(v1, v2);
+					cost += angle / angularVelocity;
+				}
+			}
+
+			std::map<int, Node>::iterator nodeIter = nodes.find(iter->first);
+			if(nodeIter == nodes.end())
+			{
+				Node n(iter->second.to(), currentNode->id(), nextPose);
+
+				n.setCostSoFar(currentNode->costSoFar() + cost);
+				nodes.insert(std::make_pair(iter->second.to(), n));
+				if(updateNewCosts)
+				{
+					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+				}
+				else
+				{
+					pq.push(Pair(n.id(), n.totalCost()));
+				}
+			}
+			else if(updateNewCosts && nodeIter->second.isOpened())
+			{
+				float newCostSoFar = currentNode->costSoFar() + cost;
+				if(nodeIter->second.costSoFar() > newCostSoFar)
+				{
+					// update pose with new link
+					nodeIter->second.setPose(nextPose);
+
+					// update the cost in the priority queue
+					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					{
+						if(mapIter->second == nodeIter->first)
+						{
+							pqmap.erase(mapIter);
+							nodeIter->second.setCostSoFar(newCostSoFar);
+							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Debugging stuff
+	if(ULogger::level() == ULogger::kDebug)
+	{
+		std::stringstream stream;
+		std::vector<int> linkTypes(Link::kUndef, 0);
+		std::list<std::pair<int, Transform> >::const_iterator previousIter = path.end();
+		float length = 0.0f;
+		for(std::list<std::pair<int, Transform> >::const_iterator iter=path.begin(); iter!=path.end();++iter)
+		{
+			if(iter!=path.begin())
+			{
+				stream << ",";
+			}
+
+			if(previousIter!=path.end())
+			{
+				//UDEBUG("current  %d = %s", iter->first, iter->second.prettyPrint().c_str());
+				if(allLinks.size())
+				{
+					std::multimap<int, Link>::iterator jter = graph::findLink(allLinks, previousIter->first, iter->first);
+					if(jter != allLinks.end())
+					{
+						//Transform nextPose = iter->second;
+						//Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-previousIter->second.x(), nextPose.y()-previousIter->second.y(), nextPose.z()-previousIter->second.z(), 1.0f);
+						//Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+						//float angle = pcl::getAngle3D(v1, v2);
+						//float cost = angle ;
+						//UDEBUG("v1=%f,%f,%f v2=%f,%f,%f a=%f", v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], cost);
+
+						UASSERT(jter->second.type() >= Link::kNeighbor && jter->second.type()<Link::kUndef);
+						++linkTypes[jter->second.type()];
+						stream << "[" << jter->second.type() << "]";
+						length += jter->second.transform().getNorm();
+					}
+				}
+			}
+
+			stream << iter->first;
+
+			previousIter=iter;
+		}
+		UDEBUG("Path (%f m) = [%s]", length, stream.str().c_str());
+		std::stringstream streamB;
+		for(unsigned int i=0; i<linkTypes.size(); ++i)
+		{
+			if(i > 0)
+			{
+				streamB << " ";
+			}
+			streamB << i << "=" << linkTypes[i];
+		}
+		UDEBUG("Link types = %s", streamB.str().c_str());
+	}
+
 	return path;
 }
 
@@ -1320,15 +1505,14 @@ std::map<int, float> getNodesInRadius(
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
 		kdTree->setInputCloud(cloud);
 		std::vector<int> ind;
-		std::vector<float> dist;
+		std::vector<float> sqrdDist;
 		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, dist, 0);
+		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
 			if(ind[i] >=0)
 			{
-				UDEBUG("Inlier %d: %f", ids[ind[i]], sqrt(dist[i]));
-				foundNodes.insert(std::make_pair(ids[ind[i]], dist[i]));
+				foundNodes.insert(std::make_pair(ids[ind[i]], sqrdDist[i]));
 			}
 		}
 	}
@@ -1340,7 +1524,8 @@ std::map<int, float> getNodesInRadius(
 std::map<int, Transform> getPosesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
-		float radius)
+		float radius,
+		float angle)
 {
 	UASSERT(uContains(nodes, nodeId));
 	std::map<int, Transform> foundNodes;
@@ -1373,15 +1558,31 @@ std::map<int, Transform> getPosesInRadius(
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
 		kdTree->setInputCloud(cloud);
 		std::vector<int> ind;
-		std::vector<float> dist;
+		std::vector<float> sqrdDist;
 		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
-		kdTree->radiusSearch(pt, radius, ind, dist, 0);
+		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
+
+		Eigen::Vector3f vA = fromT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
 			if(ind[i] >=0)
 			{
-				UDEBUG("Inlier %d: %f", ids[ind[i]], sqrt(dist[i]));
-				foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
+				if(angle > 0.0f)
+				{
+					const Transform & checkT = nodes.at(ids[ind[i]]);
+					// same orientation?
+					Eigen::Vector3f vB = checkT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+					if(a <= angle)
+					{
+						foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
+					}
+				}
+				else
+				{
+					foundNodes.insert(std::make_pair(ids[ind[i]], nodes.at(ids[ind[i]])));
+				}
 			}
 		}
 	}
@@ -1412,6 +1613,39 @@ float computePathLength(
 		length = sqrt(x*x + y*y + z*z);
 	}
 	return length;
+}
+
+// return all paths linked only by neighbor links
+std::list<std::map<int, Transform> > getPaths(
+		std::map<int, Transform> poses,
+		const std::multimap<int, Link> & links)
+{
+	std::list<std::map<int, Transform> > paths;
+	if(poses.size() && links.size())
+	{
+		// Segment poses connected only by neighbor links
+		while(poses.size())
+		{
+			std::map<int, Transform> path;
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+			{
+				std::multimap<int, Link>::const_iterator jter = findLink(links, path.rbegin()->first, iter->first);
+				if(path.size() == 0 || (jter != links.end() && (jter->second.type() == Link::kNeighbor || jter->second.type() == Link::kNeighborMerged)))
+				{
+					path.insert(*iter);
+					poses.erase(iter++);
+				}
+				else
+				{
+					break;
+				}
+			}
+			UASSERT(path.size());
+			paths.push_back(path);
+		}
+
+	}
+	return paths;
 }
 
 } /* namespace graph */

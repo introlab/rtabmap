@@ -54,8 +54,7 @@ typedef unsigned int uint;
 #define LINESIZE 81920
 
 
-#define DEBUG(i) \
-        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 
 bool TreePoseGraph2::load(const char* filename, bool overrideCovariances){
@@ -75,8 +74,8 @@ bool TreePoseGraph2::load(const char* filename, bool overrideCovariances){
       int id;
       Pose p;
       ls >> id >> p.x() >> p.y() >> p.theta(); 
-      if (addVertex(id,p))
- 	DEBUG(2) << "V " << id << endl;
+      addVertex(id,p);
+ 	//DEBUG(2) << "V " << id << endl;
       
     }
 
@@ -98,8 +97,8 @@ bool TreePoseGraph2::load(const char* filename, bool overrideCovariances){
       TreePoseGraph2::Vertex* v1=vertex(id1);
       TreePoseGraph2::Vertex* v2=vertex(id2);
       Transformation t(p);
-      if (addEdge(v1, v2,t ,m))
-	 DEBUG(2) << "E " << id1 << " " << id2 <<  endl;
+      addEdge(v1, v2,t ,m);
+	 //DEBUG(2) << "E " << id1 << " " << id2 <<  endl;
     }
   }
   return true;
@@ -411,11 +410,11 @@ void TreePoseGraph2::collapseEdge(Edge* e){
       double s=scale1.values[2][2]*sin(p1x.theta())+ scale2.values[2][2]*sin(p2x.theta());
       double c=scale1.values[2][2]*cos(p1x.theta())+ scale2.values[2][2]*cos(p2x.theta());
       
-      DEBUG(2) << "p1x= " << p1x.x() << " " << p1x.y() << " " << p1x.theta() << endl;
-      DEBUG(2) << "p1x_pred= " << p2x.x() << " " << p2x.y() << " " << p2x.theta() << endl;
+      //DEBUG(2) << "p1x= " << p1x.x() << " " << p1x.y() << " " << p1x.theta() << endl;
+      //DEBUG(2) << "p1x_pred= " << p2x.x() << " " << p2x.y() << " " << p2x.theta() << endl;
       
       Pose pFinal(p1.x()+p2.x(), p1.y()+p2.y(), atan2(s,c));
-      DEBUG(2) << "p1x_final= " << pFinal.x() << " " << pFinal.y() << " " << pFinal.theta() << endl;
+      //DEBUG(2) << "p1x_final= " << pFinal.x() << " " << pFinal.y() << " " << pFinal.theta() << endl;
       
       e1x->transformation=Transformation(pFinal);
       e1x->informationMatrix=IM;

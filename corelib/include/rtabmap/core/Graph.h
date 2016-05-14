@@ -33,122 +33,61 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <list>
 #include <rtabmap/core/Link.h>
-#include <rtabmap/core/Parameters.h>
 
 namespace rtabmap {
+class Memory;
 
 namespace graph {
 
 ////////////////////////////////////////////
-// Graph optimizers
-////////////////////////////////////////////
-class RTABMAP_EXP Optimizer
-{
-public:
-	enum Type {
-		kTypeUndef = -1,
-		kTypeTORO = 0,
-		kTypeG2O = 1
-	};
-	static Optimizer * create(const ParametersMap & parameters);
-	static Optimizer * create(Optimizer::Type & type, const ParametersMap & parameters = ParametersMap());
-
-	// Get connected poses and constraints from a set of links
-	static void getConnectedGraph(
-			int fromId,
-			const std::map<int, Transform> & posesIn,
-			const std::multimap<int, Link> & linksIn,
-			std::map<int, Transform> & posesOut,
-			std::multimap<int, Link> & linksOut,
-			int depth = 0);
-
-public:
-	virtual ~Optimizer() {}
-
-	virtual Type type() const = 0;
-
-	int iterations() const {return iterations_;}
-	bool isSlam2d() const {return slam2d_;}
-	bool isCovarianceIgnored() const {return covarianceIgnored_;}
-
-	virtual std::map<int, Transform> optimize(
-			int rootId,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & constraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0) = 0;
-
-	virtual void parseParameters(const ParametersMap & parameters);
-
-protected:
-	Optimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false);
-	Optimizer(const ParametersMap & parameters);
-
-private:
-	int iterations_;
-	bool slam2d_;
-	bool covarianceIgnored_;
-};
-
-class RTABMAP_EXP TOROOptimizer : public Optimizer
-{
-public:
-	static bool saveGraph(
-			const std::string & fileName,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints);
-	static bool loadGraph(
-			const std::string & fileName,
-			std::map<int, Transform> & poses,
-			std::multimap<int, Link> & edgeConstraints);
-
-public:
-	TOROOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
-		Optimizer(iterations, slam2d, covarianceIgnored) {}
-	TOROOptimizer(const ParametersMap & parameters) :
-		Optimizer(parameters) {}
-	virtual ~TOROOptimizer() {}
-
-	virtual Type type() const {return kTypeTORO;}
-
-	virtual std::map<int, Transform> optimize(
-			int rootId,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
-};
-
-class RTABMAP_EXP G2OOptimizer : public Optimizer
-{
-public:
-	static bool available();
-
-public:
-	G2OOptimizer(int iterations = 100, bool slam2d = false, bool covarianceIgnored = false) :
-		Optimizer(iterations, slam2d, covarianceIgnored) {}
-	G2OOptimizer(const ParametersMap & parameters) :
-		Optimizer(parameters) {}
-	virtual ~G2OOptimizer() {}
-
-	virtual Type type() const {return kTypeG2O;}
-
-	virtual std::map<int, Transform> optimize(
-			int rootId,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0);
-};
-
-////////////////////////////////////////////
 // Graph utilities
 ////////////////////////////////////////////
+
+bool RTABMAP_EXP exportPoses(
+		const std::string & filePath,
+		int format, // 0=Raw (*.txt), 1=RGBD-SLAM (*.txt), 2=KITTI (*.txt), 3=TORO (*.graph), 4=g2o (*.g2o)
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints = std::multimap<int, Link>(), // required for formats 3 and 4
+		const std::map<int, double> & stamps = std::map<int, double>(),  // required for format 1
+		bool g2oRobust = false); // optional for format 4
+
+bool RTABMAP_EXP importPoses(
+		const std::string & filePath,
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, GPS (t,x,y)
+		std::map<int, Transform> & poses,
+		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
+		std::map<int, double> * stamps = 0); // optional for format 1
+
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,
-		int to);
+		int to,
+		bool checkBothWays = true);
 std::multimap<int, int>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, int> & links,
 		int from,
-		int to);
+		int to,
+		bool checkBothWays = true);
+std::multimap<int, Link>::const_iterator RTABMAP_EXP findLink(
+		const std::multimap<int, Link> & links,
+		int from,
+		int to,
+		bool checkBothWays = true);
+std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
+		const std::multimap<int, int> & links,
+		int from,
+		int to,
+		bool checkBothWays = true);
+
+//Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
+std::map<int, Transform> RTABMAP_EXP frustumPosesFiltering(
+		const std::map<int, Transform> & poses,
+		const Transform & cameraPose,
+		float horizontalFOV = 45.0f, // in degrees, xfov = atan((image_width/2)/fx)*2
+		float verticalFOV = 45.0f,   // in degrees, yfov = atan((image_height/2)/fy)*2
+		float nearClipPlaneDistance = 0.1f,
+		float farClipPlaneDistance = 100.0f,
+		bool negative = false);
 
 /**
  * Get only the the most recent or older poses in the defined radius.
@@ -176,6 +115,12 @@ std::multimap<int, int> RTABMAP_EXP radiusPosesClustering(
 		float radius,
 		float angle);
 
+void reduceGraph(
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		std::multimap<int, int> & hyperNodes, //<parent ID, child ID>
+		std::multimap<int, Link> & hyperLinks);
+
 /**
  * Perform A* path planning in the graph.
  * @param poses The graph's poses
@@ -192,6 +137,41 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 			int to,
 			bool updateNewCosts = false);
 
+/**
+ * Perform Dijkstra path planning in the graph.
+ * @param poses The graph's poses
+ * @param links The graph's links (from node id -> to node id)
+ * @param from initial node
+ * @param to final node
+ * @param updateNewCosts Keep up-to-date costs while traversing the graph.
+ * @param useSameCostForAllLinks Ignore distance between nodes
+ * @return the path ids from id "from" to id "to" including initial and final nodes.
+ */
+std::list<int> RTABMAP_EXP computePath(
+			const std::multimap<int, Link> & links,
+			int from,
+			int to,
+			bool updateNewCosts = false,
+			bool useSameCostForAllLinks = false);
+
+/**
+ * Perform Dijkstra path planning in the graph.
+ * @param fromId initial node
+ * @param toId final node
+ * @param memory The graph's memory
+ * @param lookInDatabase check links in database
+ * @param updateNewCosts Keep up-to-date costs while traversing the graph.
+ * @return the path ids from id "fromId" to id "toId" including initial and final nodes (Identity pose for the first node).
+ */
+std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
+		int fromId,
+		int toId,
+		const Memory * memory,
+		bool lookInDatabase = true,
+		bool updateNewCosts = false,
+		float linearVelocity = 0.0f,   // m/sec
+		float angularVelocity = 0.0f); // rad/sec
+
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
 		const rtabmap::Transform & targetPose);
@@ -200,7 +180,6 @@ int RTABMAP_EXP findNearestNode(
  * Get nodes near the query
  * @param nodeId the query id
  * @param nodes the nodes to search for
- * @param maxNearestNeighbors Maximum nearest neighbor to get. 0 means all.
  * @param radius radius to search for (m)
  * @return the nodes with squared distance to query node.
  */
@@ -211,12 +190,17 @@ std::map<int, float> RTABMAP_EXP getNodesInRadius(
 std::map<int, Transform> RTABMAP_EXP getPosesInRadius(
 		int nodeId,
 		const std::map<int, Transform> & nodes,
-		float radius);
+		float radius,
+		float angle = 0.0f);
 
 float RTABMAP_EXP computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,
 		unsigned int fromIndex = 0,
 		unsigned int toIndex = 0);
+
+std::list<std::map<int, Transform> > RTABMAP_EXP getPaths(
+		std::map<int, Transform> poses,
+		const std::multimap<int, Link> & links);
 
 
 } /* namespace graph */

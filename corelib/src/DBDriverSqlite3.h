@@ -32,7 +32,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/DBDriver.h"
 #include <opencv2/features2d/features2d.hpp>
 #include "sqlite3/sqlite3.h"
-#include <pcl/point_types.h>
 
 namespace rtabmap {
 
@@ -49,10 +48,20 @@ public:
 	void setTempStore(int tempStore);
 
 private:
-	virtual bool connectDatabaseQuery(const std::string & url, bool overwirtten = false);
-	virtual void disconnectDatabaseQuery();
+	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false);
+	virtual void disconnectDatabaseQuery(bool save = true);
 	virtual bool isConnectedQuery() const;
 	virtual long getMemoryUsedQuery() const; // In bytes
+	virtual bool getDatabaseVersionQuery(std::string & version) const;
+	virtual long getImagesMemoryUsedQuery() const;
+	virtual long getDepthImagesMemoryUsedQuery() const;
+	virtual long getLaserScansMemoryUsedQuery() const;
+	virtual long getUserDataMemoryUsedQuery() const;
+	virtual long getWordsMemoryUsedQuery() const;
+	virtual int getLastNodesSizeQuery() const;
+	virtual int getLastDictionarySizeQuery() const;
+	virtual int getTotalNodesSizeQuery() const;
+	virtual int getTotalDictionarySizeQuery() const;
 
 	virtual void executeNoResultQuery(const std::string & sql) const;
 
@@ -63,6 +72,9 @@ private:
 	virtual void updateQuery(const std::list<Signature *> & signatures, bool updateTimestamp) const;
 	virtual void updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const;
 
+	virtual void addLinkQuery(const Link & link) const;
+	virtual void updateLinkQuery(const Link & link) const;
+
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
@@ -70,21 +82,11 @@ private:
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;
 	virtual void loadLinksQuery(int signatureId, std::map<int, Link> & links, Link::Type type = Link::kUndef) const;
 
-	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool loadMetricData) const;
-	virtual void getNodeDataQuery(
-			int signatureId,
-			cv::Mat & imageCompressed,
-			cv::Mat & depthCompressed,
-			cv::Mat & laserScanCompressed,
-			float & fx,
-			float & fy,
-			float & cx,
-			float & cy,
-			Transform & localTransform,
-			int & laserScanMaxPts) const;
-	virtual void getNodeDataQuery(int signatureId, cv::Mat & imageCompressed) const;
-	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, std::vector<unsigned char> & userData) const;
-	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren) const;
+	virtual void loadNodeDataQuery(std::list<Signature *> & signatures) const;
+	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const;
+	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose) const;
+	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const;
+	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const;
 	virtual void getLastIdQuery(const std::string & tableName, int & id) const;
 	virtual void getInvertedIndexNiQuery(int signatureId, int & ni) const;
 	virtual void getNodeIdByLabelQuery(const std::string & label, int & id) const;
@@ -94,6 +96,8 @@ private:
 	std::string queryStepNode() const;
 	std::string queryStepImage() const;
 	std::string queryStepDepth() const;
+	std::string queryStepSensorData() const;
+	std::string queryStepLinkUpdate() const;
 	std::string queryStepLink() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
@@ -102,25 +106,15 @@ private:
 			sqlite3_stmt * ppStmt,
 			int id,
 			const cv::Mat & imageBytes) const;
-	void stepDepth(
-			sqlite3_stmt * ppStmt,
-			int id,
-			const cv::Mat & depthBytes,
-			const cv::Mat & depth2dBytes,
-			float fx,
-			float fy,
-			float cx,
-			float cy,
-			const Transform & localTransform,
-			int depth2dMaxPts) const;
-	void stepLink(sqlite3_stmt * ppStmt, int fromId, int toId, Link::Type type, float rotVariance, float transVariance, const Transform & transform) const;
+	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
+	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
+	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
-	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const pcl::PointXYZ & pt) const;
+	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt, const cv::Mat & descriptor) const;
 
 private:
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
-	bool getVersion(std::string &) const;
 
 private:
 	sqlite3 * _ppDb;

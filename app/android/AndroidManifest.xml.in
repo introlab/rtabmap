@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- BEGIN_INCLUDE(manifest) -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+        package="com.introlab.rtabmap"
+        android:versionCode="9"
+        android:versionName="@RTABMAP_VERSION@">
+
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_FRAME_BUFFER" />
+    <uses-permission android:name="android.permission.ACCESS_SURFACE_FLINGER" />
+    <uses-feature android:glEsVersion="0x00020000" />
+    <uses-library android:name="com.projecttango.libtango_device2" android:required="true" />
+
+    <!-- This is the platform API where NativeActivity was introduced. -->
+    <uses-sdk android:minSdkVersion="17" />
+
+    <!-- This .apk has no Java code itself, so set hasCode to false. -->
+    <application 
+        android:label="@string/app_name" 
+        android:icon="@drawable/ic_launcher">
+
+        <!-- Our activity is the built-in NativeActivity framework class.
+             This will take care of integrating with our NDK code. -->
+        <activity android:name="RTABMapActivity"
+                android:label="@string/app_name"
+                android:launchMode="singleTask"
+                android:screenOrientation="nosensor">
+            <!-- Tell NativeActivity the name of our .so -->
+            <meta-data android:name="android.app.lib_name"
+                    android:value="NativeRTABMap" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
+<!-- END_INCLUDE(manifest) -->

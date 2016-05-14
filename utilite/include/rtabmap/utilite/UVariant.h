@@ -20,47 +20,73 @@
 #ifndef UVARIANT_H
 #define UVARIANT_H
 
+#include "rtabmap/utilite/UtiLiteExp.h" // DLL export/import defines
 #include <string>
+#include <vector>
 
 /**
  * Experimental class...
  */
-class UVariant
+class UTILITE_EXP UVariant
 {
 public:
+	enum Type{
+		kBool,
+		kChar,
+		kUChar,
+		kShort,
+		kUShort,
+		kInt,
+		kUInt,
+		kFloat,
+		kDouble,
+		kStr,
+		kUndef
+		};
+public:
+	UVariant();
+	UVariant(const bool & value);
+	UVariant(const char & value);
+	UVariant(const unsigned char & value);
+	UVariant(const short & value);
+	UVariant(const unsigned short & value);
+	UVariant(const int & value);
+	UVariant(const unsigned int & value);
+	UVariant(const float & value);
+	UVariant(const double & value);
+	UVariant(const char * value);
+	UVariant(const std::string & value);
+
+	Type type() const {return type_;}
+
+	bool isUndef() const {return type_ == kUndef;}
+	bool isBool() const {return type_ == kBool;}
+	bool isChar() const {return type_ == kChar;}
+	bool isUChar() const {return type_ == kUChar;}
+	bool isShort() const {return type_ == kShort;}
+	bool isUShort() const {return type_ == kUShort;}
+	bool isInt() const {return type_ == kInt;}
+	bool isUInt() const {return type_ == kUInt;}
+	bool isFloat() const {return type_ == kFloat;}
+	bool isDouble() const {return type_ == kDouble;}
+	bool isStr() const {return type_ == kStr;}
+
+	bool toBool() const;
+	char toChar(bool * ok = 0) const;
+	unsigned char toUChar(bool * ok = 0) const;
+	short toShort(bool * ok = 0) const;
+	unsigned short toUShort(bool * ok = 0) const;
+	int toInt(bool * ok = 0) const;
+	unsigned int toUInt(bool * ok = 0) const;
+	float toFloat(bool * ok = 0) const;
+	double toDouble(bool * ok = 0) const;
+	std::string toStr(bool * ok = 0) const;
+
 	virtual ~UVariant() {}
 
-	virtual std::string className() const = 0;
-
-	template<class T>
-	const T * data() const {
-		if(data_)
-			return (T*)data_;
-		return (const T*)constData_;
-	}
-
-	template<class T>
-	T * takeDataOwnership() {
-		T * data = (T*)data_;
-		constData_ = 0;
-		data_=0;
-		return data;
-	}
-
-protected:
-	UVariant(void * data) :
-		data_(data),
-		constData_(0)
-	{}
-
-	UVariant(const void * data) :
-		data_(0),
-		constData_(data)
-	{}
-
-protected:
-	void * data_;
-	const void * constData_;
+private:
+	Type type_;
+	std::vector<unsigned char> data_;
 };
 
 #endif /* UVARIANT_H */

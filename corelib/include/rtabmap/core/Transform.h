@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
@@ -46,25 +47,33 @@ public:
 	Transform(float r11, float r12, float r13, float o14,
 		      float r21, float r22, float r23, float o24,
 			  float r31, float r32, float r33, float o34);
+	// should have 3 rows, 4 cols and type CV_32FC1
+	Transform(const cv::Mat & transformationMatrix);
 	// x,y,z, roll,pitch,yaw
 	Transform(float x, float y, float z, float roll, float pitch, float yaw);
+	// x,y,z, qx,qy,qz,qw
+	Transform(float x, float y, float z, float qx, float qy, float qz, float qw);
+	// x,y, theta
+	Transform(float x, float y, float theta);
 
-	float r11() const {return data_[0];}
-	float r12() const {return data_[1];}
-	float r13() const {return data_[2];}
-	float r21() const {return data_[4];}
-	float r22() const {return data_[5];}
-	float r23() const {return data_[6];}
-	float r31() const {return data_[8];}
-	float r32() const {return data_[9];}
-	float r33() const {return data_[10];}
+	float r11() const {return data()[0];}
+	float r12() const {return data()[1];}
+	float r13() const {return data()[2];}
+	float r21() const {return data()[4];}
+	float r22() const {return data()[5];}
+	float r23() const {return data()[6];}
+	float r31() const {return data()[8];}
+	float r32() const {return data()[9];}
+	float r33() const {return data()[10];}
 
-	float o14() const {return data_[3];}
-	float o24() const {return data_[7];}
-	float o34() const {return data_[11];}
+	float o14() const {return data()[3];}
+	float o24() const {return data()[7];}
+	float o34() const {return data()[11];}
 
-	float & operator[](int index) {return data_[index];}
-	const float & operator[](int index) const {return data_[index];}
+	float & operator[](int index) {return data()[index];}
+	const float & operator[](int index) const {return data()[index];}
+	float & operator()(int row, int col) {return data()[row*4 + col];}
+	const float & operator()(int row, int col) const {return data()[row*4 + col];}
 
 	bool isNull() const;
 	bool isIdentity() const;
@@ -72,22 +81,27 @@ public:
 	void setNull();
 	void setIdentity();
 
-	const float * data() const {return data_.data();}
-	float * data() {return data_.data();}
-	int size() const {return (int)data_.size();}
+	const cv::Mat & dataMatrix() const {return data_;}
+	const float * data() const {return (const float *)data_.data;}
+	float * data() {return (float *)data_.data;}
+	int size() const {return 12;}
 
-	float & x() {return data_[3];}
-	float & y() {return data_[7];}
-	float & z() {return data_[11];}
-	const float & x() const {return data_[3];}
-	const float & y() const {return data_[7];}
-	const float & z() const {return data_[11];}
+	float & x() {return data()[3];}
+	float & y() {return data()[7];}
+	float & z() {return data()[11];}
+	const float & x() const {return data()[3];}
+	const float & y() const {return data()[7];}
+	const float & z() const {return data()[11];}
 
 	float theta() const;
 
 	Transform inverse() const;
 	Transform rotation() const;
 	Transform translation() const;
+	Transform to3DoF() const;
+
+	cv::Mat rotationMatrix() const;
+	cv::Mat translationMatrix() const;
 
 	void getTranslationAndEulerAngles(float & x, float & y, float & z, float & roll, float & pitch, float & yaw) const;
 	void getEulerAngles(float & roll, float & pitch, float & yaw) const;
@@ -96,6 +110,7 @@ public:
 	float getNormSquared() const;
 	float getDistance(const Transform & t) const;
 	float getDistanceSquared(const Transform & t) const;
+	Transform interpolate(float t, const Transform & other) const;
 	std::string prettyPrint() const;
 
 	Transform operator*(const Transform & t) const;
@@ -120,8 +135,18 @@ public:
 	static Transform fromEigen3f(const Eigen::Isometry3f & matrix);
 	static Transform fromEigen3d(const Eigen::Isometry3d & matrix);
 
+	/**
+	 * Format (3 values): x y z
+	 * Format (6 values): x y z roll pitch yaw
+	 * Format (7 values): x y z qx qy qz qw
+	 * Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33
+	 * Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz
+	 */
+	static Transform fromString(const std::string & string);
+	static bool canParseString(const std::string & string);
+
 private:
-	std::vector<float> data_;
+	cv::Mat data_;
 };
 
 RTABMAP_EXP std::ostream& operator<<(std::ostream& os, const Transform& s);

@@ -25,9 +25,9 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "PdfPlot.h"
+#include "rtabmap/gui/PdfPlot.h"
 #include <rtabmap/utilite/ULogger.h>
-#include "rtabmap/gui/UCv2Qt.h"
+#include "rtabmap/utilite/UCv2Qt.h"
 #include "rtabmap/core/util3d.h"
 
 namespace rtabmap {
@@ -70,10 +70,10 @@ void PdfPlotItem::showDescription(bool shown)
 		{
 			QImage img;
 			QMap<int, Signature>::const_iterator iter = _signaturesRef->find(int(this->data().x()));
-			if(iter != _signaturesRef->constEnd() && !iter.value().getImageCompressed().empty())
+			if(iter != _signaturesRef->constEnd() && !iter.value().sensorData().imageCompressed().empty())
 			{
 				cv::Mat image;
-				iter.value().uncompressDataConst(&image, 0, 0);
+				iter.value().sensorData().uncompressDataConst(&image, 0, 0);
 				if(!image.empty())
 				{
 					img = uCvMat2QImage(image);
@@ -159,10 +159,9 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 
 		// update values
 		QList<QGraphicsItem*>::iterator iter = _items.begin();
-		QMap<int, int>::const_iterator j=weightsMap.begin();
-		for(QMap<int, float>::const_iterator i=dataMap.begin(); i!=dataMap.end(); ++i, ++j)
+		for(QMap<int, float>::const_iterator i=dataMap.begin(); i!=dataMap.end(); ++i)
 		{
-			((PdfPlotItem*)*iter)->setLikelihood(i.key(),  i.value(), j!=weightsMap.end()?j.value():-1);
+			((PdfPlotItem*)*iter)->setLikelihood(i.key(),  i.value(), weightsMap.value(i.key(), -1));
 			//2 times...
 			++iter;
 			++iter;

@@ -41,12 +41,10 @@
 template<class T>
 inline bool uIsNan(const T & value)
 {
-#ifdef __APPLE__
-	return std::isnan(value);
-#elif _MSC_VER
+#if _MSC_VER
 	return _isnan(value) != 0;
 #else
-	return isnan(value);
+	return std::isnan(value);
 #endif
 }
 
@@ -61,6 +59,28 @@ inline bool uIsFinite(const T & value)
 #else
 	return std::isfinite(value);
 #endif
+}
+
+/**
+ * Get the minimum of the 3 values.
+ * @return the minimum value
+ */
+template<class T>
+inline T uMin3( const T& a, const T& b, const T& c)
+{
+	float m=a<b?a:b;
+	return m<c?m:c;
+}
+
+/**
+ * Get the maximum of the 3 values.
+ * @return the maximum value
+ */
+template<class T>
+inline T uMax3( const T& a, const T& b, const T& c)
+{
+	float m=a>b?a:b;
+	return m>c?m:c;
 }
 
 /**
@@ -913,7 +933,7 @@ inline std::vector<float> uHamming(unsigned int L)
 template <typename T>
 bool uIsInBounds(const T& value, const T& low, const T& high)
 {
-	return !(value < low) && !(value >= high);
+	return uIsFinite(value) && !(value < low) && !(value >= high);
 }
 
 #endif // UMATH_H

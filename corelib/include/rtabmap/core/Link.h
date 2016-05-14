@@ -28,34 +28,39 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef LINK_H_
 #define LINK_H_
 
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
 #include <rtabmap/core/Transform.h>
-#include <rtabmap/utilite/ULogger.h>
-#include <rtabmap/utilite/UMath.h>
+#include <opencv2/core/core.hpp>
 
 namespace rtabmap {
 
-class Link
+class RTABMAP_EXP Link
 {
 public:
-	enum Type {kNeighbor, kGlobalClosure, kLocalSpaceClosure, kLocalTimeClosure, kUserClosure, kVirtualClosure, kUndef};
-	Link() :
-		from_(0),
-		to_(0),
-		type_(kUndef),
-		rotVariance_(1.0f),
-		transVariance_(1.0f)
-	{
-	}
-	Link(int from, int to, Type type, const Transform & transform, float rotVariance, float transVariance) :
-		from_(from),
-		to_(to),
-		transform_(transform),
-		type_(type),
-		rotVariance_(rotVariance),
-		transVariance_(transVariance)
-	{
-		UASSERT_MSG(uIsFinite(rotVariance) && rotVariance>0 && uIsFinite(transVariance) && transVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
-	}
+	enum Type {
+		kNeighbor,
+		kGlobalClosure,
+		kLocalSpaceClosure,
+		kLocalTimeClosure,
+		kUserClosure,
+		kVirtualClosure,
+		kNeighborMerged,
+		kUndef};
+	Link();
+	Link(int from,
+			int to,
+			Type type,
+			const Transform & transform,
+			const cv::Mat & infMatrix = cv::Mat::eye(6,6,CV_64FC1),
+			const cv::Mat & userData = cv::Mat());
+	Link(int from,
+			int to,
+			Type type,
+			const Transform & transform,
+			double rotVariance,
+			double transVariance,
+			const cv::Mat & userData = cv::Mat());
 
 	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
 
@@ -63,26 +68,37 @@ public:
 	int to() const {return to_;}
 	const Transform & transform() const {return transform_;}
 	Type type() const {return type_;}
-	float rotVariance() const {return rotVariance_;}
-	float transVariance() const {return transVariance_;}
+	const cv::Mat & infMatrix() const {return infMatrix_;}
+	double rotVariance() const;
+	double transVariance() const;
 
 	void setFrom(int from) {from_ = from;}
 	void setTo(int to) {to_ = to;}
 	void setTransform(const Transform & transform) {transform_ = transform;}
 	void setType(Type type) {type_ = type;}
-	void setVariance(float rotVariance, float transVariance) {
-		UASSERT_MSG(uIsFinite(rotVariance) && rotVariance>0 && uIsFinite(transVariance) && transVariance>0, "Rotational and transitional variances should not be null! (set to 1 if unknown)");
-		rotVariance_ = rotVariance;
-		transVariance_ = transVariance;
-	}
+	void setInfMatrix(const cv::Mat & infMatrix);
+	void setVariance(double rotVariance, double transVariance);
+
+	void setUserDataRaw(const cv::Mat & userDataRaw); // only set raw
+	void setUserData(const cv::Mat & userData); // detect automatically if raw or compressed. If raw, the data is compressed too.
+	const cv::Mat & userDataRaw() const {return _userDataRaw;}
+	const cv::Mat & userDataCompressed() const {return _userDataCompressed;}
+	void uncompressUserData();
+	cv::Mat uncompressUserDataConst() const;
+
+	Link merge(const Link & link, Type outputType) const;
+	Link inverse() const;
 
 private:
 	int from_;
 	int to_;
 	Transform transform_;
 	Type type_;
-	float rotVariance_;
-	float transVariance_;
+	cv::Mat infMatrix_; // Information matrix = covariance matrix ^ -1
+
+	// user data
+	cv::Mat _userDataCompressed;      // compressed data
+	cv::Mat _userDataRaw;
 };
 
 }

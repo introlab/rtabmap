@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/core/Transform.h>
-#include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/OdometryEvent.h>
 
 #include <opencv2/core/core.hpp>
 
@@ -50,16 +50,18 @@ public:
 	DBReader(const std::string & databasePath,
 			 float frameRate = 0.0f,
 			 bool odometryIgnored = false,
-			 bool ignoreGoalDelay = false);
+			 bool ignoreGoalDelay = false,
+			 bool goalsIgnored = false);
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f,
 			 bool odometryIgnored = false,
-			 bool ignoreGoalDelay = false);
+			 bool ignoreGoalDelay = false,
+			 bool goalsIgnored = false);
 	virtual ~DBReader();
 
 	bool init(int startIndex=0);
 	void setFrameRate(float frameRate);
-	SensorData getNextData();
+	OdometryEvent getNextData();
 
 protected:
 	virtual void mainLoopBegin();
@@ -70,12 +72,14 @@ private:
 	float _frameRate; // -1 = use Database stamps, 0 = inf
 	bool _odometryIgnored;
 	bool _ignoreGoalDelay;
+	bool _goalsIgnored;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;
 	std::set<int> _ids;
 	std::set<int>::iterator _currentId;
 	double _previousStamp;
+	int _previousMapID;
 };
 
 } /* namespace rtabmap */

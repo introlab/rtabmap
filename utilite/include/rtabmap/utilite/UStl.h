@@ -26,6 +26,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <stdlib.h>
 
 /**
  * \file UStl.h
@@ -449,6 +450,23 @@ inline void uInsert(std::map<K, V> & map, const std::pair<K, V> & pair)
 }
 
 /**
+ * Insert items in the map. Contrary to the insert in the STL,
+ * if the key already exists, the value will be replaced by the new one.
+ */
+template<class K, class V>
+inline void uInsert(std::map<K, V> & map, const std::map<K, V> & items)
+{
+	for(typename std::map<K, V>::const_iterator iter=items.begin(); iter!=items.end(); ++iter)
+	{
+		std::pair<typename std::map<K, V>::iterator, bool> inserted = map.insert(*iter);
+		if(inserted.second == false)
+		{
+			inserted.first->second = iter->second;
+		}
+	}
+}
+
+/**
  * Convert a std::list to a std::vector.
  * @param list the list
  * @return the vector
@@ -468,6 +486,35 @@ template<class V>
 inline std::list<V> uVectorToList(const std::vector<V> & v)
 {
 	return std::list<V>(v.begin(), v.end());
+}
+
+/**
+ * Convert a std::multimap to a std::map
+ * @see uMultimapToMapUnique to keep only unique keys
+ */
+template<class K, class V>
+inline std::map<K, V> uMultimapToMap(const std::multimap<K, V> & m)
+{
+	return std::map<K, V>(m.begin(), m.end());
+}
+
+/**
+ * Convert a std::multimap to a std::map, keeping only unique keys!
+ */
+template<class K, class V>
+inline std::map<K, V> uMultimapToMapUnique(const std::multimap<K, V> & m)
+{
+	std::map<K, V> mapOut;
+	std::list<K> uniqueKeys = uUniqueKeys(m);
+	for(typename std::list<K>::const_iterator iter = uniqueKeys.begin(); iter!=uniqueKeys.end(); ++iter)
+	{
+		if(m.count(*iter) == 1)
+		{
+			typename std::multimap<K, V>::const_iterator jter=m.find(*iter);
+			mapOut.insert(mapOut.end(), std::pair<K,V>(jter->first, jter->second));
+		}
+	}
+	return mapOut;
 }
 
 /**
@@ -540,14 +587,77 @@ inline std::list<std::string> uSplit(const std::string & str, char separator = '
 }
 
 /**
+ * Join multiple strings into one string with optional separator.
+ * Example:
+ * @code
+ *      std::list<std::string> v;
+ *      v.push_back("Hello");
+ *      v.push_back("world!");
+ * 	    std::string joined = split(v, " ");
+ * @endcode
+ * The output string is "Hello world!"
+ * @param strings a list of strings
+ * @param separator the separator string
+ * @return the joined string
+ */
+inline std::string uJoin(const std::list<std::string> & strings, const std::string & separator = "")
+{
+	std::string out;
+	for(std::list<std::string>::const_iterator iter = strings.begin(); iter!=strings.end(); ++iter)
+	{
+		if(iter!=strings.begin() && !separator.empty())
+		{
+			out += separator;
+		}
+		out+=*iter;
+	}
+	return out;
+}
+
+/**
  * Check if a character is a digit.
  * @param c the character
- * @return if the character is a digit (if c >= '0' && c <= '9')
+ * @return true if the character is a digit (if c >= '0' && c <= '9')
  */
 inline bool uIsDigit(const char c)
 {
 	return c >= '0' && c <= '9';
 }
+
+/**
+ * Check if a string is a integer number.
+ * @param str the string
+ * @return true if the string is a integer number
+ */
+inline bool uIsInteger(const std::string & str, bool checkForSign = true)
+{
+	bool isInteger = str.size()!=0;
+	for(unsigned int i=0; i<str.size() && isInteger; ++i)
+	{
+		isInteger = (checkForSign && i==0 && str[i]=='-') || uIsDigit(str[i]);
+	}
+	return isInteger;
+}
+
+/**
+ * Check if a string is a number (integer or float).
+ * @param str the string
+ * @return true if the string is a number
+ */
+inline bool uIsNumber(const std::string & str)
+{
+	std::list<std::string> list = uSplit(str, '.');
+	if(list.size() == 1)
+	{
+		return uIsInteger(str);
+	}
+	else if(list.size() == 2)
+	{
+		return uIsInteger(list.front()) && uIsInteger(list.back(), false);
+	}
+	return false;
+}
+
 
 /**
  * Split a string into number and character strings.
@@ -677,6 +787,28 @@ inline int uStrNumCmp(const std::string & a, const std::string & b)
 inline bool uStrContains(const std::string & string, const std::string & substring)
 {
 	return string.find(substring) != std::string::npos;
+}
+
+inline int uCompareVersion(const std::string & version, int major, int minor=-1, int patch=-1)
+{
+	std::vector<std::string> v = uListToVector(uSplit(version, '.'));
+	if(v.size() == 3)
+	{
+		int vMajor = atoi(v[0].c_str());
+		int vMinor = atoi(v[1].c_str());
+		int vPatch = atoi(v[2].c_str());
+		if(vMajor > major ||
+		(vMajor == major && minor!=-1 && vMinor > minor) ||
+		(vMajor == major && minor!=-1 && vMinor == minor && patch!=-1 && vPatch > patch))
+		{
+			return 1;
+		}
+		else if(vMajor == major && (minor == -1 || (vMinor == minor && (patch == -1 || vPatch == patch))))
+		{
+			return 0;
+		}
+	}
+	return -1;
 }
 
 #endif /* USTL_H */

@@ -28,14 +28,21 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/DBDriver.h"
 
 #include "rtabmap/core/Signature.h"
-#include "VisualWord.h"
+#include "rtabmap/core/VisualWord.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
+#include "DBDriverSqlite3.h"
 
 namespace rtabmap {
+
+DBDriver * DBDriver::create(const ParametersMap & parameters)
+{
+	// well, we only have Sqlite3 database type for now :P
+	return new DBDriverSqlite3(parameters);
+}
 
 DBDriver::DBDriver(const ParametersMap & parameters) :
 	_emptyTrashesTime(0),
@@ -54,14 +61,24 @@ void DBDriver::parseParameters(const ParametersMap & parameters)
 {
 }
 
-void DBDriver::closeConnection()
+void DBDriver::closeConnection(bool save)
 {
 	UDEBUG("isRunning=%d", this->isRunning());
 	this->join(true);
 	UDEBUG("");
-	this->emptyTrashes();
+	if(save)
+	{
+		this->emptyTrashes();
+	}
+	else
+	{
+		_trashesMutex.lock();
+		_trashSignatures.clear();
+		_trashVisualWords.clear();
+		_trashesMutex.unlock();
+	}
 	_dbSafeAccessMutex.lock();
-	this->disconnectDatabaseQuery();
+	this->disconnectDatabaseQuery(save);
 	_dbSafeAccessMutex.unlock();
 	UDEBUG("");
 }
@@ -97,6 +114,88 @@ long DBDriver::getMemoryUsed() const
 	bytes = getMemoryUsedQuery();
 	_dbSafeAccessMutex.unlock();
 	return bytes;
+}
+
+long DBDriver::getImagesMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getImagesMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getDepthImagesMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getDepthImagesMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getLaserScansMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getLaserScansMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getUserDataMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getUserDataMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getWordsMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getWordsMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+int DBDriver::getLastNodesSize() const
+{
+	int nodes;
+	_dbSafeAccessMutex.lock();
+	nodes = getLastNodesSizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return nodes;
+}
+int DBDriver::getLastDictionarySize() const
+{
+	int words;
+	_dbSafeAccessMutex.lock();
+	words = getLastDictionarySizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return words;
+}
+int DBDriver::getTotalNodesSize() const
+{
+	int words;
+	_dbSafeAccessMutex.lock();
+	words = getTotalNodesSizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return words;
+}
+int DBDriver::getTotalDictionarySize() const
+{
+	int words;
+	_dbSafeAccessMutex.lock();
+	words = getTotalDictionarySizeQuery();
+	_dbSafeAccessMutex.unlock();
+	return words;
+}
+
+std::string DBDriver::getDatabaseVersion() const
+{
+	std::string version = "0.0.0";
+	_dbSafeAccessMutex.lock();
+	getDatabaseVersionQuery(version);
+	_dbSafeAccessMutex.unlock();
+	return version;
 }
 
 void DBDriver::mainLoop()
@@ -282,6 +381,23 @@ void DBDriver::saveOrUpdate(const std::vector<VisualWord *> & words) const
 	}
 }
 
+void DBDriver::addLink(const Link & link)
+{
+	_dbSafeAccessMutex.lock();
+	this->addLinkQuery(link);
+	_dbSafeAccessMutex.unlock();
+}
+void DBDriver::removeLink(int from, int to)
+{
+	this->executeNoResult(uFormat("DELETE FROM Link WHERE from_id=%d and to_id=%d", from, to).c_str());
+}
+void DBDriver::updateLink(const Link & link)
+{
+	_dbSafeAccessMutex.lock();
+	this->updateLinkQuery(link);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::load(VWDictionary * dictionary) const
 {
 	_dbSafeAccessMutex.lock();
@@ -390,7 +506,7 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 	}
 }
 
-void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetricData) const
+void DBDriver::loadNodeData(std::list<Signature *> & signatures) const
 {
 	// Don't look in the trash, we assume that if we want to load
 	// data of a signature, it is not in thrash! Print an error if so.
@@ -406,21 +522,13 @@ void DBDriver::loadNodeData(std::list<Signature *> & signatures, bool loadMetric
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->loadNodeDataQuery(signatures, loadMetricData);
+	this->loadNodeDataQuery(signatures);
 	_dbSafeAccessMutex.unlock();
 }
 
 void DBDriver::getNodeData(
 		int signatureId,
-		cv::Mat & imageCompressed,
-		cv::Mat & depthCompressed,
-		cv::Mat & laserScanCompressed,
-		float & fx,
-		float & fy,
-		float & cx,
-		float & cy,
-		Transform & localTransform,
-		int & laserScanMaxPts) const
+		SensorData & data) const
 {
 	bool found = false;
 	// look in the trash
@@ -428,17 +536,9 @@ void DBDriver::getNodeData(
 	if(uContains(_trashSignatures, signatureId))
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
-		if(!s->getImageCompressed().empty() || !s->isSaved())
+		if(!s->sensorData().imageCompressed().empty() || !s->isSaved())
 		{
-			imageCompressed = s->getImageCompressed();
-			depthCompressed = s->getDepthCompressed();
-			laserScanCompressed = s->getLaserScanCompressed();
-			fx = s->getFx();
-			fy = s->getFy();
-			cx = s->getCx();
-			cy = s->getCy();
-			localTransform = s->getLocalTransform();
-			laserScanMaxPts = s->getLaserScanMaxPts();
+			data = (SensorData)s->sensorData();
 			found = true;
 		}
 	}
@@ -447,42 +547,48 @@ void DBDriver::getNodeData(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		this->getNodeDataQuery(signatureId, imageCompressed, depthCompressed, laserScanCompressed, fx, fy, cx, cy, localTransform, laserScanMaxPts);
+		std::list<Signature *> signatures;
+		Signature tmp(signatureId);
+		signatures.push_back(&tmp);
+		loadNodeDataQuery(signatures);
+		data = signatures.front()->sensorData();
 		_dbSafeAccessMutex.unlock();
 	}
 }
 
-void DBDriver::getNodeData(int signatureId, cv::Mat & imageCompressed) const
+bool DBDriver::getCalibration(
+		int signatureId,
+		std::vector<CameraModel> & models,
+		StereoCameraModel & stereoModel) const
 {
 	bool found = false;
 	// look in the trash
 	_trashesMutex.lock();
 	if(uContains(_trashSignatures, signatureId))
 	{
-		const Signature * s = _trashSignatures.at(signatureId);
-		if(!s->getImageCompressed().empty() || !s->isSaved())
-		{
-			imageCompressed = s->getImageCompressed();
-			found = true;
-		}
+		models = _trashSignatures.at(signatureId)->sensorData().cameraModels();
+		stereoModel = _trashSignatures.at(signatureId)->sensorData().stereoCameraModel();
+		found = true;
 	}
 	_trashesMutex.unlock();
 
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		this->getNodeDataQuery(signatureId, imageCompressed);
+		found = this->getCalibrationQuery(signatureId, models, stereoModel);
 		_dbSafeAccessMutex.unlock();
 	}
+	return found;
 }
 
-bool DBDriver::getNodeInfo(int signatureId,
+bool DBDriver::getNodeInfo(
+		int signatureId,
 		Transform & pose,
 		int & mapId,
 		int & weight,
 		std::string & label,
 		double & stamp,
-		std::vector<unsigned char> & userData) const
+		Transform & groundTruthPose) const
 {
 	bool found = false;
 	// look in the trash
@@ -494,7 +600,7 @@ bool DBDriver::getNodeInfo(int signatureId,
 		weight = _trashSignatures.at(signatureId)->getWeight();
 		label = _trashSignatures.at(signatureId)->getLabel();
 		stamp = _trashSignatures.at(signatureId)->getStamp();
-		userData = _trashSignatures.at(signatureId)->getUserData();
+		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -502,7 +608,7 @@ bool DBDriver::getNodeInfo(int signatureId,
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, userData);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;
@@ -558,7 +664,7 @@ void DBDriver::getWeight(int signatureId, int & weight) const
 	}
 }
 
-void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
+void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const
 {
 	// look in the trash
 	_trashesMutex.lock();
@@ -573,7 +679,8 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
 						nIter!=sIter->second->getLinks().end();
 						++nIter)
 				{
-					if(nIter->second.type() == Link::kNeighbor)
+					if(nIter->second.type() == Link::kNeighbor ||
+					   nIter->second.type() == Link::kNeighborMerged)
 					{
 						hasNeighbors = true;
 						break;
@@ -592,8 +699,35 @@ void DBDriver::getAllNodeIds(std::set<int> & ids, bool ignoreChildren) const
 	_trashesMutex.unlock();
 
 	_dbSafeAccessMutex.lock();
-	this->getAllNodeIdsQuery(ids, ignoreChildren);
+	this->getAllNodeIdsQuery(ids, ignoreChildren, ignoreBadSignatures);
 	_dbSafeAccessMutex.unlock();
+}
+
+void DBDriver::getAllLinks(std::multimap<int, Link> & links, bool ignoreNullLinks) const
+{
+	_dbSafeAccessMutex.lock();
+	this->getAllLinksQuery(links, ignoreNullLinks);
+	_dbSafeAccessMutex.unlock();
+
+	// look in the trash
+	_trashesMutex.lock();
+	if(_trashSignatures.size())
+	{
+		for(std::map<int, Signature*>::const_iterator iter=_trashSignatures.begin(); iter!=_trashSignatures.end(); ++iter)
+		{
+			links.erase(iter->first);
+			for(std::map<int, Link>::const_iterator jter=iter->second->getLinks().begin();
+				jter!=iter->second->getLinks().end();
+				++jter)
+			{
+				if(!ignoreNullLinks || jter->second.isValid())
+				{
+					links.insert(std::make_pair(iter->first, jter->second));
+				}
+			}
+		}
+	}
+	_trashesMutex.unlock();
 }
 
 void DBDriver::getLastNodeId(int & id) const
@@ -714,6 +848,177 @@ void DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int proce
 			  << dictionarySize << ");";
 
 		this->executeNoResultQuery(query.str());
+	}
+}
+
+void DBDriver::generateGraph(
+		const std::string & fileName,
+		const std::set<int> & idsInput,
+		const std::map<int, Signature *> & otherSignatures)
+{
+	if(this->isConnected())
+	{
+		if(!fileName.empty())
+		{
+			FILE* fout = 0;
+			#ifdef _MSC_VER
+				fopen_s(&fout, fileName.c_str(), "w");
+			#else
+				fout = fopen(fileName.c_str(), "w");
+			#endif
+
+			 if (!fout)
+			 {
+				 UERROR("Cannot open file %s!", fileName.c_str());
+				 return;
+			 }
+
+			 std::set<int> ids;
+			 if(idsInput.size() == 0)
+			 {
+				 this->getAllNodeIds(ids);
+				 UDEBUG("ids.size()=%d", ids.size());
+				 for(std::map<int, Signature*>::const_iterator iter=otherSignatures.begin(); iter!=otherSignatures.end(); ++iter)
+				 {
+					 ids.insert(iter->first);
+				 }
+			 }
+			 else
+			 {
+				 ids = idsInput;
+			 }
+
+			 const char * colorG = "green";
+			 const char * colorP = "pink";
+			 const char * colorNM = "blue";
+			 UINFO("Generating map with %d locations", ids.size());
+			 fprintf(fout, "digraph G {\n");
+			 for(std::set<int>::iterator i=ids.begin(); i!=ids.end(); ++i)
+			 {
+				 if(otherSignatures.find(*i) == otherSignatures.end())
+				 {
+					 int id = *i;
+					 std::map<int, Link> links;
+					 this->loadLinks(id, links);
+					 int weight = 0;
+					 this->getWeight(id, weight);
+					 for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 {
+						 int weightNeighbor = 0;
+						 if(otherSignatures.find(iter->first) == otherSignatures.end())
+						 {
+							 this->getWeight(iter->first, weightNeighbor);
+						 }
+						 else
+						 {
+							 weightNeighbor = otherSignatures.find(iter->first)->second->getWeight();
+						 }
+						 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+						 if(iter->second.type() == Link::kNeighbor)
+						 {
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor);
+						 }
+						 else if(iter->second.type() == Link::kNeighborMerged)
+						 {
+							 //merged neighbor
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"M\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorNM);
+						 }
+						 else if(iter->first > id)
+						 {
+							 //loop
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorG);
+						 }
+						 else
+						 {
+							 //child
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorP);
+						 }
+					 }
+				 }
+			 }
+			 for(std::map<int, Signature*>::const_iterator i=otherSignatures.begin(); i!=otherSignatures.end(); ++i)
+			 {
+				 if(ids.find(i->first) != ids.end())
+				 {
+					 int id = i->second->id();
+					 const std::map<int, Link> & links = i->second->getLinks();
+					 int weight = i->second->getWeight();
+					 for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
+					 {
+						 int weightNeighbor = 0;
+						 const Signature * s = uValue(otherSignatures, iter->first, (Signature*)0);
+						 if(s)
+						 {
+							 weightNeighbor = s->getWeight();
+						 }
+						 else
+						 {
+							 this->getWeight(iter->first, weightNeighbor);
+						 }
+						 //UDEBUG("Add neighbor link from %d to %d", id, iter->first);
+						 if(iter->second.type() == Link::kNeighbor)
+						 {
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\"\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor);
+						 }
+						 else if(iter->second.type() == Link::kNeighborMerged)
+						 {
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"M\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorNM);
+						 }
+						 else if(iter->first > id)
+						 {
+							 //loop
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"L\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorG);
+						 }
+						 else
+						 {
+							 //child
+							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",
+									 id,
+									 weight,
+									 iter->first,
+									 weightNeighbor,
+									 colorP);
+						 }
+					 }
+				 }
+			 }
+			 fprintf(fout, "}\n");
+			 fclose(fout);
+			 UINFO("Graph saved to \"%s\" (Tip: $ neato -Tpdf \"%s\" -o out.pdf)", fileName.c_str(), fileName.c_str());
+		}
 	}
 }
 

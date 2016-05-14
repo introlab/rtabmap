@@ -19,30 +19,21 @@ CREATE TABLE Node (
 	weight INTEGER,
 	stamp FLOAT,
 	pose BLOB,
+	ground_truth_pose BLOB,
 	label TEXT,
-	user_data BLOB,
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE Image (
+CREATE TABLE Data (
 	id INTEGER NOT NULL,
-	data BLOB,       -- compressed image (RGB)
-	time_enter DATE,
-	PRIMARY KEY (id)
-);
-
--- TODO: Merge "Image" and "Depth" tables to "Data" table.
-CREATE TABLE Depth (
-	id INTEGER NOT NULL,
-	data BLOB,       -- compressed image (Depth or Right image)
-	fx FLOAT,
-	fy FLOAT,        -- baseline if stereo
-	cx FLOAT,
-	cy FLOAT,
-	local_transform BLOB,
-	data2d BLOB,     -- compressed data (Laser scan)
-	data2d_max_pts INTEGER,   -- Laser scan max points
+	image BLOB,               -- compressed image (Grayscale or RGB)
+	depth BLOB,               -- compressed image (Depth or Right image)
+	calibration BLOB,         -- fx, fy, cx, cy, [baseline,] width, height, local_transform
+	scan BLOB,                -- compressed data (Laser scan)
+	scan_max_pts INTEGER,     -- Laser scan max points
+	scan_max_range FLOAT,     -- Laser max range
+	user_data BLOB,           -- compressed data (User data)
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
@@ -50,10 +41,11 @@ CREATE TABLE Depth (
 CREATE TABLE Link (
 	from_id INTEGER NOT NULL,
 	to_id INTEGER NOT NULL,
-	type INTEGER NOT NULL, -- neighbor=0, loop=1, child=2
+	type INTEGER NOT NULL,    -- neighbor=0, loop=1, child=2
 	rot_variance FLOAT NOT NULL,
 	trans_variance FLOAT NOT NULL,
 	transform BLOB,
+	user_data BLOB,           -- compressed data (User data)
 	FOREIGN KEY (from_id) REFERENCES Node(id),
 	FOREIGN KEY (to_id) REFERENCES Node(id)
 );
@@ -78,6 +70,8 @@ CREATE TABLE Map_Node_Word (
 	depth_x FLOAT,
 	depth_y FLOAT,
 	depth_z FLOAT,
+	descriptor_size INTEGER,
+	descriptor BLOB,
 	FOREIGN KEY (node_id) REFERENCES Node(id),
 	FOREIGN KEY (word_id) REFERENCES Word(id)
 );
@@ -92,7 +86,7 @@ CREATE TABLE Statistics (
 );
 
 CREATE TABLE Admin (
-	version INTEGER,
+	version TEXT,
 	time_enter DATE
 );
 

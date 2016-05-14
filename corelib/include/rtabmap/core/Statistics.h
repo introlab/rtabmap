@@ -57,25 +57,30 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Highest_hypothesis_id,);
 	RTABMAP_STATS(Loop, Highest_hypothesis_value,);
 	RTABMAP_STATS(Loop, Vp_hypothesis,);
-	RTABMAP_STATS(Loop, ReactivateId,);
+	RTABMAP_STATS(Loop, Reactivate_id,);
 	RTABMAP_STATS(Loop, Hypothesis_ratio,);
 	RTABMAP_STATS(Loop, Hypothesis_reactivated,);
-	RTABMAP_STATS(Loop, VisualInliers,);
+	RTABMAP_STATS(Loop, Visual_inliers,);
 	RTABMAP_STATS(Loop, Last_id,);
+	RTABMAP_STATS(Loop, Optimization_max_error, m);
+	RTABMAP_STATS(Loop, Optimization_error, );
+	RTABMAP_STATS(Loop, Optimization_iterations, );
 
-	RTABMAP_STATS(LocalLoop, Time_closures,);
-	RTABMAP_STATS(LocalLoop, Space_last_closure_id,);
-	RTABMAP_STATS(LocalLoop, Space_paths,);
-	RTABMAP_STATS(LocalLoop, Space_closures_added_visually,);
-	RTABMAP_STATS(LocalLoop, Space_closures_added_icp_only,);
+	RTABMAP_STATS(Proximity, Time_detections,);
+	RTABMAP_STATS(Proximity, Space_last_detection_id,);
+	RTABMAP_STATS(Proximity, Space_paths,);
+	RTABMAP_STATS(Proximity, Space_detections_added_visually,);
+	RTABMAP_STATS(Proximity, Space_detections_added_icp_only,);
 
-	RTABMAP_STATS(OdomCorrection, Accepted,);
-	RTABMAP_STATS(OdomCorrection, Inliers,);
-	RTABMAP_STATS(OdomCorrection, Inliers_ratio,);
-	RTABMAP_STATS(OdomCorrection, Variance,);
+	RTABMAP_STATS(NeighborLinkRefining, Accepted,);
+	RTABMAP_STATS(NeighborLinkRefining, Inliers,);
+	RTABMAP_STATS(NeighborLinkRefining, Inliers_ratio,);
+	RTABMAP_STATS(NeighborLinkRefining, Variance,);
+	RTABMAP_STATS(NeighborLinkRefining, Pts,);
 
 	RTABMAP_STATS(Memory, Working_memory_size,);
 	RTABMAP_STATS(Memory, Short_time_memory_size,);
+	RTABMAP_STATS(Memory, Database_memory_used, MB);
 	RTABMAP_STATS(Memory, Signatures_removed,);
 	RTABMAP_STATS(Memory, Immunized_globally,);
 	RTABMAP_STATS(Memory, Immunized_locally,);
@@ -83,13 +88,16 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Signatures_retrieved,);
 	RTABMAP_STATS(Memory, Images_buffered,);
 	RTABMAP_STATS(Memory, Rehearsal_sim,);
+	RTABMAP_STATS(Memory, Rehearsal_id,);
 	RTABMAP_STATS(Memory, Rehearsal_merged,);
 	RTABMAP_STATS(Memory, Local_graph_size,);
+	RTABMAP_STATS(Memory, Small_movement,);
+	RTABMAP_STATS(Memory, Distance_travelled, m);
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
-	RTABMAP_STATS(Timing, Scan_matching, ms);
-	RTABMAP_STATS(Timing, Local_detection_TIME, ms);
-	RTABMAP_STATS(Timing, Local_detection_SPACE, ms);
+	RTABMAP_STATS(Timing, Neighbor_link_refining, ms);
+	RTABMAP_STATS(Timing, Proximity_by_time, ms);
+	RTABMAP_STATS(Timing, Proximity_by_space, ms);
 	RTABMAP_STATS(Timing, Cleaning_neighbors, ms);
 	RTABMAP_STATS(Timing, Reactivation, ms);
 	RTABMAP_STATS(Timing, Add_loop_closure_link, ms);
@@ -118,6 +126,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Compressing_data, ms);
 
 	RTABMAP_STATS(Keypoint, Dictionary_size, words);
+	RTABMAP_STATS(Keypoint, Indexed_words, words);
+	RTABMAP_STATS(Keypoint, Index_memory_usage, KB);
 	RTABMAP_STATS(Keypoint, Response_threshold,);
 
 public:
@@ -134,13 +144,9 @@ public:
 	void setExtended(bool extended) {_extended = extended;}
 	void setRefImageId(int refImageId) {_refImageId = refImageId;}
 	void setLoopClosureId(int loopClosureId) {_loopClosureId = loopClosureId;}
-	void setLocalLoopClosureId(int localLoopClosureId) {_localLoopClosureId = localLoopClosureId;}
+	void setProximityDetectionId(int id) {_proximiyDetectionId = id;}
 
-	void setMapIds(const std::map<int, int> & mapIds) {_mapIds = mapIds;}
-	void setLabels(const std::map<int, std::string> & labels) {_labels = labels;}
-	void setStamps(const std::map<int, double> & stamps) {_stamps = stamps;}
-	void setUserDatas(const std::map<int, std::vector<unsigned char> > & userDatas) {_userDatas = userDatas;}
-	void setSignature(const Signature & s) {_signature = s;}
+	void setSignatures(const std::map<int, Signature> & signatures) {_signatures = signatures;}
 
 	void setPoses(const std::map<int, Transform> & poses) {_poses = poses;}
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
@@ -152,18 +158,15 @@ public:
 	void setRawLikelihood(const std::map<int, float> & rawLikelihood) {_rawLikelihood = rawLikelihood;}
 	void setLocalPath(const std::vector<int> & localPath) {_localPath=localPath;}
 	void setCurrentGoalId(int goal) {_currentGoalId=goal;}
+	void setReducedIds(const std::map<int, int> & reducedIds) {_reducedIds = reducedIds;}
 
 	// getters
 	bool extended() const {return _extended;}
 	int refImageId() const {return _refImageId;}
 	int loopClosureId() const {return _loopClosureId;}
-	int localLoopClosureId() const {return _localLoopClosureId;}
+	int proximityDetectionId() const {return _proximiyDetectionId;}
 
-	const std::map<int, int> & getMapIds() const {return _mapIds;}
-	const std::map<int, std::string> & getLabels() const {return _labels;}
-	const std::map<int, double> & getStamps() const {return _stamps;}
-	const std::map<int, std::vector<unsigned char> > & getUserDatas() const {return _userDatas;}
-	const Signature & getSignature() const {return _signature;}
+	const std::map<int, Signature> & getSignatures() const {return _signatures;}
 
 	const std::map<int, Transform> & poses() const {return _poses;}
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
@@ -175,6 +178,7 @@ public:
 	const std::map<int, float> & rawLikelihood() const {return _rawLikelihood;}
 	const std::vector<int> & localPath() const {return _localPath;}
 	int currentGoalId() const {return _currentGoalId;}
+	const std::map<int, int> & reducedIds() const {return _reducedIds;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -183,16 +187,9 @@ private:
 
 	int _refImageId;
 	int _loopClosureId;
-	int _localLoopClosureId;
+	int _proximiyDetectionId;
 
-	// extended data start here...
-	std::map<int, int> _mapIds;
-	std::map<int, std::string> _labels;
-	std::map<int, double> _stamps;
-	std::map<int, std::vector<unsigned char> > _userDatas;
-
-	// Signature data
-	Signature _signature;
+	std::map<int, Signature> _signatures;
 
 	std::map<int, Transform> _poses;
 	std::multimap<int, Link> _constraints;
@@ -206,6 +203,8 @@ private:
 
 	std::vector<int> _localPath;
 	int _currentGoalId;
+
+	std::map<int, int> _reducedIds;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}

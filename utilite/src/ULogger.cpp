@@ -50,11 +50,10 @@ bool ULogger::printEndline_ = true;
 bool ULogger::printColored_ = true;
 bool ULogger::printWhere_ = true;
 bool ULogger::printWhereFullPath_ = false;
+bool ULogger::printThreadID_ = false;
 bool ULogger::limitWhereLength_ = false;
 bool ULogger::buffered_ = false;
-bool ULogger::exitingState_ = false;
 ULogger::Level ULogger::level_ = kInfo; // By default, we show all info msgs + upper level (Warning, Error)
-ULogger::Level ULogger::exitLevel_ = kFatal;
 ULogger::Level ULogger::eventLevel_ = kFatal;
 const char * ULogger::levelName_[5] = {"DEBUG", " INFO", " WARN", "ERROR", "FATAL"};
 ULogger* ULogger::instance_ = 0;
@@ -210,6 +209,7 @@ void ULogger::reset()
 	printColored_ = true;
 	printWhere_ = true;
 	printWhereFullPath_ = false;
+	printThreadID_ = false;
 	limitWhereLength_ = false;
 	level_ = kInfo; // By default, we show all info msgs + upper level (Warning, Error)
 	logFileName_ = ULogger::kDefaultLogFileName;
@@ -311,25 +311,20 @@ void ULogger::write(ULogger::Level level,
 		const char* msg,
 		...)
 {
-	if(exitingState_)
-	{
-		// Ignore messages after a fatal exit...
-		return;
-	}
 	loggerMutex_.lock();
-	if(type_ == kTypeNoLog && level < kFatal)
+	if(type_ == kTypeNoLog && level < kFatal && level < eventLevel_)
 	{
 		loggerMutex_.unlock();
 		return;
 	}
-	if(strlen(msg) == 0 && !printWhere_ && level < exitLevel_)
+	if(strlen(msg) == 0 && !printWhere_ && level < kFatal)
 	{
 		loggerMutex_.unlock();
 		// No need to show an empty message if we don't print where.
 		return;
 	}
 
-    if(level >= level_)
+    if(level >= level_ || level >= eventLevel_)
     {
 #ifdef _WIN32
     	int color = 0;
@@ -381,6 +376,12 @@ void ULogger::write(ULogger::Level level,
 #endif
 			levelStr = buf;
 			levelStr.append(" ");
+		}
+
+		std::string pidStr;
+		if(printThreadID_)
+		{
+			pidStr = uFormat("{%lu} ", UThread::currentThreadId());
 		}
 
 		std::string whereStr = "";
@@ -449,6 +450,7 @@ void ULogger::write(ULogger::Level level,
 			if(buffered_)
 			{
 				bufferedMsgs_.append(levelStr.c_str());
+				bufferedMsgs_.append(pidStr.c_str());
 				bufferedMsgs_.append(time.c_str());
 				bufferedMsgs_.append(whereStr.c_str());
 				bufferedMsgs_.append(uFormatv(msg, args));
@@ -456,6 +458,7 @@ void ULogger::write(ULogger::Level level,
 			else
 			{
 				ULogger::getInstance()->_writeStr(levelStr.c_str());
+				ULogger::getInstance()->_writeStr(pidStr.c_str());
 				ULogger::getInstance()->_writeStr(time.c_str());
 				ULogger::getInstance()->_writeStr(whereStr.c_str());
 				ULogger::getInstance()->_write(msg, args);
@@ -488,15 +491,14 @@ void ULogger::write(ULogger::Level level,
 
 		if(level >= eventLevel_)
 		{
-			std::string fullMsg = uFormat("%s%s%s", levelStr.c_str(), time.c_str(), whereStr.c_str());
+			std::string fullMsg = uFormat("%s%s%s%s", levelStr.c_str(), pidStr.c_str(), time.c_str(), whereStr.c_str());
 			va_start(args, msg);
 			fullMsg.append(uFormatv(msg, args));
 			va_end(args);
-			if(level >= exitLevel_)
+			if(level >= kFatal)
 			{
 				// Send it synchronously, then receivers
 				// can do something before the code (exiting) below is executed.
-				exitingState_ = true;
 				UEventsManager::post(new ULogEvent(fullMsg, kFatal), false);
 			}
 			else
@@ -505,23 +507,23 @@ void ULogger::write(ULogger::Level level,
 			}
 		}
 
-		if(level >= exitLevel_)
+		if(level >= kFatal)
 		{
-			printf("\n*******\n%s message occurred! Application will now exit.\n", levelName_[level]);
-			if(type_ != kTypeConsole)
+			std::string fullMsg = uFormat("%s%s%s%s", levelStr.c_str(), pidStr.c_str(), time.c_str(), whereStr.c_str());
+			va_start(args, msg);
+			fullMsg.append(uFormatv(msg, args));
+			va_end(args);
+
+			if(instance_)
 			{
-				printf("  %s%s%s", levelStr.c_str(), time.c_str(), whereStr.c_str());
-				va_start(args, msg);
-				vprintf(msg, args);
-				va_end(args);
+				destroyer_.setDoomed(0);
+				delete instance_; // If a FileLogger is used, this will close the file.
+				instance_ = 0;
 			}
-			printf("\n*******\n");
-			destroyer_.setDoomed(0);
-			delete instance_; // If a FileLogger is used, this will close the file.
-			instance_ = 0;
 			//========================================================================
-			//                          EXIT APPLICATION
-			exit(1);
+			//                          Throw exception
+			loggerMutex_.unlock();
+			 throw UException(fullMsg);
 			//========================================================================
 		}
     }

@@ -29,23 +29,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include <opencv2/highgui/highgui.hpp>
-#include "rtabmap/core/SensorData.h"
 #include "rtabmap/utilite/UMutex.h"
 #include "rtabmap/utilite/USemaphore.h"
 #include "rtabmap/core/CameraModel.h"
-#include <set>
-#include <stack>
-#include <list>
-#include <vector>
+#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 
+#include <pcl/pcl_config.h>
+
+#ifdef HAVE_OPENNI
 #include <pcl/io/openni_camera/openni_depth_image.h>
 #include <pcl/io/openni_camera/openni_image.h>
+#endif
 
 #include <boost/signals2/connection.hpp>
-
-class UDirectory;
-class UTimer;
 
 namespace openni
 {
@@ -67,73 +64,20 @@ class Registration;
 class PacketPipeline;
 }
 
-namespace FlyCapture2
-{
-class Camera;
-}
-
 typedef struct _freenect_context freenect_context;
 typedef struct _freenect_device freenect_device;
 
 namespace rtabmap
 {
 
-/**
- * Class CameraRGBD
- *
- */
-class RTABMAP_EXP CameraRGBD
-{
-public:
-	virtual ~CameraRGBD();
-	void takeImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
-
-	virtual bool init(const std::string & calibrationFolder = ".") = 0;
-	virtual bool isCalibrated() const = 0;
-	virtual std::string getSerial() const = 0;
-
-	//getters
-	float getImageRate() const {return _imageRate;}
-	const Transform & getLocalTransform() const {return _localTransform;}
-	bool isMirroringEnabled() const {return _mirroring;}
-	bool isColorOnly() const {return _colorOnly;}
-
-	//setters
-	void setImageRate(float imageRate) {_imageRate = imageRate;}
-	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
-	void setMirroringEnabled(bool mirroring) {_mirroring = mirroring;}
-	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
-
-protected:
-	/**
-	 * Constructor
-	 *
-	 * @param imageRate : image/second , 0 for fast as the camera can
-	 */
-	CameraRGBD(float imageRate = 0,
-				const Transform & localTransform = Transform::getIdentity());
-
-	/**
-	 * returned rgb and depth images should be already rectified
-	 */
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy) = 0;
-
-private:
-	float _imageRate;
-	Transform _localTransform;
-	bool _mirroring;
-	bool _colorOnly;
-	UTimer * _frameRateTimer;
-};
-
 /////////////////////////
 // CameraOpenNIPCL
 /////////////////////////
 class RTABMAP_EXP CameraOpenni :
-	public CameraRGBD
+	public Camera
 {
 public:
-	static bool available() {return true;}
+	static bool available();
 
 public:
 	// default local transform z in, x right, y down));
@@ -141,18 +85,19 @@ public:
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenni();
-
+#ifdef HAVE_OPENNI
     void image_cb (
     		const boost::shared_ptr<openni_wrapper::Image>& rgb,
 			const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
 			float constant);
+#endif
 
-    virtual bool init(const std::string & calibrationFolder = ".");
+    virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
     virtual bool isCalibrated() const;
     virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual SensorData captureImage();
 
 private:
     pcl::Grabber* interface_;
@@ -169,7 +114,7 @@ private:
 // CameraOpenNICV
 /////////////////////////
 class RTABMAP_EXP CameraOpenNICV :
-	public CameraRGBD
+	public Camera
 {
 
 public:
@@ -181,12 +126,12 @@ public:
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNICV();
 
-	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const {return "";} // unknown with OpenCV
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual SensorData captureImage();
 
 private:
 	bool _asus;
@@ -198,7 +143,7 @@ private:
 // CameraOpenNI2
 /////////////////////////
 class RTABMAP_EXP CameraOpenNI2 :
-	public CameraRGBD
+	public Camera
 {
 
 public:
@@ -211,7 +156,7 @@ public:
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNI2();
 
-	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
@@ -220,9 +165,10 @@ public:
 	bool setExposure(int value);
 	bool setGain(int value);
 	bool setMirroring(bool enabled);
+	void setOpenNI2StampsAndIDsUsed(bool used) {_openNI2StampsAndIDsUsed = used;}
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual SensorData captureImage();
 
 private:
 	openni::Device * _device;
@@ -231,6 +177,7 @@ private:
 	float _depthFx;
 	float _depthFy;
 	std::string _deviceId;
+	bool _openNI2StampsAndIDsUsed;
 };
 
 
@@ -240,7 +187,7 @@ private:
 class FreenectDevice;
 
 class RTABMAP_EXP CameraFreenect :
-	public CameraRGBD
+	public Camera
 {
 public:
 	static bool available();
@@ -252,12 +199,12 @@ public:
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect();
 
-	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual SensorData captureImage();
 
 private:
 	int deviceId_;
@@ -270,32 +217,39 @@ private:
 /////////////////////////
 
 class RTABMAP_EXP CameraFreenect2 :
-	public CameraRGBD
+	public Camera
 {
 public:
 	static bool available();
 
 	enum Type{
-		kTypeRGBDepthSD,
-		kTypeRGBDepthHD,
+		kTypeColor2DepthSD,
+		kTypeDepth2ColorSD,
+		kTypeDepth2ColorHD,
+		kTypeDepth2ColorHD2,
 		kTypeIRDepth,
-		kTypeRGBIR
+		kTypeColorIR
 	};
 
 public:
 	// default local transform z in, x right, y down));
 	CameraFreenect2(int deviceId= 0,
-					Type type = kTypeRGBDepthSD,
+					Type type = kTypeColor2DepthSD,
 					float imageRate=0.0f,
-					const Transform & localTransform = Transform::getIdentity());
+					const Transform & localTransform = Transform::getIdentity(),
+					float minDepth = 0.3f,
+					float maxDepth = 12.0f,
+					bool bilateralFiltering = true,
+					bool edgeAwareFiltering = true,
+					bool noiseFiltering = true);
 	virtual ~CameraFreenect2();
 
-	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & rgb, cv::Mat & depth, float & fx, float & fy, float & cx, float & cy);
+	virtual SensorData captureImage();
 
 private:
 	int deviceId_;
@@ -303,61 +257,44 @@ private:
 	StereoCameraModel stereoModel_;
 	libfreenect2::Freenect2 * freenect2_;
 	libfreenect2::Freenect2Device *dev_;
-	libfreenect2::PacketPipeline * pipeline_;
 	libfreenect2::SyncMultiFrameListener * listener_;
 	libfreenect2::Registration * reg_;
+	float minKinect2Depth_;
+	float maxKinect2Depth_;
+	bool bilateralFiltering_;
+	bool edgeAwareFiltering_;
+	bool noiseFiltering_;
 };
 
-/////////////////////////
-// CameraStereoDC1394
-/////////////////////////
-class DC1394Device;
 
-class RTABMAP_EXP CameraStereoDC1394 :
-	public CameraRGBD
+/////////////////////////
+// CameraRGBDImages
+/////////////////////////
+class CameraImages;
+class RTABMAP_EXP CameraRGBDImages :
+	public CameraImages
 {
 public:
 	static bool available();
 
 public:
-	CameraStereoDC1394( float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
-	virtual ~CameraStereoDC1394();
+	CameraRGBDImages(
+			const std::string & pathRGBImages,
+			const std::string & pathDepthImages,
+			float depthScaleFactor = 1.0f,
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraRGBDImages();
 
-	virtual bool init(const std::string & calibrationFolder = ".");
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
 protected:
-	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
+	virtual SensorData captureImage();
 
 private:
-	DC1394Device *device_;
-	StereoCameraModel stereoModel_;
-};
-
-/////////////////////////
-// CameraStereoFlyCapture2
-/////////////////////////
-class RTABMAP_EXP CameraStereoFlyCapture2 :
-	public CameraRGBD
-{
-public:
-	static bool available();
-
-public:
-	CameraStereoFlyCapture2( float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
-	virtual ~CameraStereoFlyCapture2();
-
-	virtual bool init(const std::string & calibrationFolder = ".");
-	virtual bool isCalibrated() const;
-	virtual std::string getSerial() const;
-
-protected:
-	virtual void captureImage(cv::Mat & left, cv::Mat & right, float & fx, float & baseline, float & cx, float & cy);
-
-private:
-	FlyCapture2::Camera * camera_;
-	void * triclopsCtx_; // TriclopsContext
+	CameraImages cameraDepth_;
 };
 
 } // namespace rtabmap

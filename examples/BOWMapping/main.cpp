@@ -26,7 +26,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
 #include "rtabmap/core/Rtabmap.h"
-#include "rtabmap/core/Camera.h"
+#include "rtabmap/core/CameraRGB.h"
 #include <opencv2/core/core.hpp>
 #include "rtabmap/utilite/UFile.h"
 #include <stdio.h>
@@ -97,7 +97,7 @@ int main(int argc, char * argv[])
 	// Appearance-based only, disable RGB-D mode
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDEnabled(), "false"));
 
-	std::string databasePath = rtabmap::Parameters::defaultRtabmapWorkingDirectory()+"/"+rtabmap::Parameters::getDefaultDatabaseName();
+	std::string databasePath = rtabmap::Parameters::createDefaultWorkingDirectory()+"/"+rtabmap::Parameters::getDefaultDatabaseName();
 	if(localizationMode)
 	{
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), "false"));
@@ -118,12 +118,12 @@ int main(int argc, char * argv[])
 
 	int countLoopDetected=0;
 	int i=0;
-	cv::Mat img = camera.takeImage();
+	rtabmap::SensorData data = camera.takeImage();
 	int nextIndex = rtabmap.getLastLocationId()+1;
-	while(!img.empty())
+	while(!data.imageRaw().empty())
 	{
 		// Process image : Main loop of RTAB-Map
-		rtabmap.process(img, nextIndex);
+		rtabmap.process(data.imageRaw(), nextIndex);
 
 		// Check if a loop closure is detected and print some info
 		if(rtabmap.getLoopClosureId())
@@ -157,7 +157,7 @@ int main(int argc, char * argv[])
 		++nextIndex;
 
 		//Get next image
-		img = camera.takeImage();
+		data = camera.takeImage();
 	}
 
 	printf("Processing images completed. Loop closures found = %d\n", countLoopDetected);

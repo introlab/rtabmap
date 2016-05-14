@@ -1,0 +1,7 @@
+/lib
+.DS_Store
+.settings/language.settings.xml
+app/android/.classpath
+app/android/.project
+app/android/AndroidManifest.xml
+app/android/res/raw/

@@ -6,13 +6,13 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/PreferencesDialog.h
 	../include/${PROJECT_PREFIX}/gui/DatabaseViewer.h
 	./AboutDialog.h
-	./ConsoleWidget.h
+	../include/${PROJECT_PREFIX}/gui/ConsoleWidget.h
 	../include/${PROJECT_PREFIX}/gui/ImageView.h
-	./PdfPlot.h
-	./StatsToolBox.h
-	./DetailedProgressDialog.h
-	./utilite/UPlot.h
-	./utilite/UImageView.h
+	../include/${PROJECT_PREFIX}/gui/PdfPlot.h
+	../include/${PROJECT_PREFIX}/gui/StatsToolBox.h
+	../include/${PROJECT_PREFIX}/gui/ProgressDialog.h
+	../include/${PROJECT_PREFIX}/utilite/UPlot.h
+	../include/${PROJECT_PREFIX}/utilite/UImageView.h
 	../include/${PROJECT_PREFIX}/gui/CloudViewer.h
 	../include/${PROJECT_PREFIX}/gui/OdometryViewer.h
 	../include/${PROJECT_PREFIX}/gui/LoopClosureViewer.h
@@ -22,8 +22,11 @@ SET(headers_ui
 	./ExportDialog.h
 	./PostProcessingDialog.h
 	./ExportCloudsDialog.h
+	./ExportScansDialog.h
 	./MapVisibilityWidget.h
-	./GraphViewer.h
+	../include/${PROJECT_PREFIX}/gui/GraphViewer.h
+	./CreateSimpleCalibrationDialog.h
+	./ParametersToolBox.h
 )
 
 SET(uis
@@ -36,14 +39,16 @@ SET(uis
     ./ui/exportDialog.ui
     ./ui/postProcessingDialog.ui
     ./ui/exportCloudsDialog.ui
+    ./ui/exportScansDialog.ui
     ./ui/calibrationDialog.ui
+    ./ui/createSimpleCalibrationDialog.ui
 )
 
 SET(qrc 
     ./GuiLib.qrc
 )
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+IF(QT4_FOUND)
     # generate rules for building source files from the resources
     QT4_ADD_RESOURCES(srcs_qrc ${qrc})
 
@@ -67,7 +72,7 @@ SET(SRC_FILES
 	./ImageView.cpp
 	./PdfPlot.cpp
 	./StatsToolBox.cpp
-	./DetailedProgressDialog.cpp
+	./ProgressDialog.cpp
 	./AboutDialog.cpp
 	./ConsoleWidget.cpp
 	./DatabaseViewer.cpp
@@ -81,8 +86,11 @@ SET(SRC_FILES
 	./ExportDialog.cpp
 	./PostProcessingDialog.cpp
 	./ExportCloudsDialog.cpp
+	./ExportScansDialog.cpp
 	./MapVisibilityWidget.cpp
 	./GraphViewer.cpp
+	./CreateSimpleCalibrationDialog.cpp
+	./ParametersToolBox.cpp
 	${moc_srcs} 
 	${moc_uis} 
 	${srcs_qrc}
@@ -98,9 +106,9 @@ SET(INCLUDE_DIRS
 	${PCL_INCLUDE_DIRS}
 )
 
-IF("${RTABMAP_QT_VERSION}" STREQUAL "4")
+IF(QT4_FOUND)
     INCLUDE(${QT_USE_FILE})
-ENDIF()
+ENDIF(QT4_FOUND)
 
 SET(LIBRARIES
     ${QT_LIBRARIES} 
@@ -123,9 +131,9 @@ ADD_LIBRARY(rtabmap_gui ${SRC_FILES})
 # Linking with Qt libraries
 
 TARGET_LINK_LIBRARIES(rtabmap_gui rtabmap_core rtabmap_utilite ${LIBRARIES})
-IF("${RTABMAP_QT_VERSION}" STREQUAL "5")
+IF(Qt5_FOUND)
     QT5_USE_MODULES(rtabmap_gui Widgets Core Gui Svg PrintSupport)
-ENDIF()
+ENDIF(Qt5_FOUND)
 
 SET_TARGET_PROPERTIES(
      rtabmap_gui

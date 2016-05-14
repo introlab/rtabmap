@@ -92,6 +92,10 @@ public:
     enum Priority{kPLow, kPBelowNormal, kPNormal, kPAboveNormal, kPRealTime};
 
 public:
+    //return caller thread id
+    static unsigned long currentThreadId() {return (unsigned long)UThreadC<void>::Self();}
+
+public:
     /**
      * The constructor.
      * @see Priority
@@ -165,7 +169,7 @@ public:
     bool isKilled() const;
 
     Handle getThreadHandle() const {return handle_;}
-
+    unsigned long getThreadId() const {return threadId_;}
 
 protected:
 
@@ -241,25 +245,23 @@ private:
     //Methods from UThread<void> class hided
     static int Join( Handle H )
 	  { return UThreadC<void>::Join(H); }
+#ifndef ANDROID
 	static int Kill( Handle H )
 	  { return UThreadC<void>::Kill(H); }
+#endif
 	static int Detach( Handle H )
 	  { return UThreadC<void>::Detach(H); }
 
 private:
 	void operator=(UThread & t) {}
-	UThread( const UThread & t ) {}
+	UThread( const UThread & t ) : state_(kSIdle) {}
 
 private:
     enum State{kSIdle, kSCreating, kSRunning, kSKilled}; /* Enum of states. */
     State state_; 			/* The thread state. */
     Priority priority_; 	/* The thread priority. */
     Handle handle_; 	/* The thread handle. */
-#ifdef _WIN32
-    int threadId_; 			/* The thread id. */
-#else
     unsigned long threadId_; /* The thread id. */
-#endif
     int cpuAffinity_; /* The cpu affinity. */
     UMutex killSafelyMutex_;	/* Mutex used to protect the kill() method. */
     UMutex runningMutex_;	    /* Mutex used to notify the join method when the thread has finished. */

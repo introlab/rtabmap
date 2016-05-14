@@ -47,11 +47,14 @@ namespace rtabmap {
 
 class Signature;
 class DBDriver;
-class GraphNode;
 class VWDictionary;
 class VisualWord;
 class Feature2D;
 class Statistics;
+class Registration;
+class RegistrationInfo;
+class RegistrationIcp;
+class Stereo;
 
 class RTABMAP_EXP Memory
 {
@@ -65,24 +68,32 @@ public:
 	virtual ~Memory();
 
 	virtual void parseParameters(const ParametersMap & parameters);
-	bool update(const SensorData & data, Statistics * stats = 0);
+	virtual const ParametersMap & getParameters() const {return parameters_;}
+	bool update(const SensorData & data,
+			Statistics * stats = 0);
+	bool update(const SensorData & data,
+			const Transform & pose,
+			const cv::Mat & covariance,
+			Statistics * stats = 0);
 	bool init(const std::string & dbUrl,
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
 			bool postInitClosingEvents = false);
+	void close(bool databaseSaved = true, bool postInitClosingEvents = false);
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
-	int incrementMapId();
+	int incrementMapId(std::map<int, int> * reducedIds = 0);
 	void updateAge(int signatureId);
 
 	std::list<int> forget(const std::set<int> & ignoredIds = std::set<int>());
 	std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 
-	std::list<int> cleanup(const std::list<int> & ignoredIds = std::list<int>());
+	int cleanup();
 	void emptyTrash();
 	void joinTrashThread();
-	bool addLink(int to, int from, const Transform & transform, Link::Type type, float rotVariance, float transVariance);
+	bool addLink(const Link & link, bool addInDatabase = false);
 	void updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance);
+	void updateLink(int fromId, int toId, const Transform & transform, const cv::Mat & covariance);
 	void removeAllVirtualLinks();
 	void removeVirtualLinks(int signatureId);
 	std::map<int, int> getNeighborsId(
@@ -91,6 +102,7 @@ public:
 			int maxCheckedInDatabase = -1,
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
+			bool ignoreIntermediateNodes = false,
 			double * dbAccessTime = 0) const;
 	std::map<int, float> getNeighborsIdRadius(
 			int signatureId,
@@ -99,6 +111,7 @@ public:
 			int maxGraphDepth) const;
 	void deleteLocation(int locationId, std::list<int> * deletedWords = 0);
 	void removeLink(int idA, int idB);
+	void removeRawData(int id, bool image = true, bool scan = true, bool userData = true);
 
 	//getters
 	const std::map<int, double> & getWorkingMem() const {return _workingMem;}
@@ -108,7 +121,9 @@ public:
 			bool lookInDatabase = false) const;
 	std::map<int, Link> getLoopClosureLinks(int signatureId,
 			bool lookInDatabase = false) const;
-	bool isRawDataKept() const {return _rawDataKept;}
+	std::map<int, Link> getLinks(int signatureId,
+			bool lookInDatabase = false) const;
+	std::multimap<int, Link> getAllLinks(bool lookInDatabase, bool ignoreNullLinks = true) const;
 	bool isBinDataKept() const {return _binDataKept;}
 	float getSimilarityThreshold() const {return _similarityThreshold;}
 	std::map<int, int> getWeights() const;
@@ -117,21 +132,30 @@ public:
 	int getSignatureIdByLabel(const std::string & label, bool lookInDatabase = true) const;
 	bool labelSignature(int id, const std::string & label);
 	std::map<int, std::string> getAllLabels() const;
-	bool setUserData(int id, const std::vector<unsigned char> & data);
+	bool setUserData(int id, const cv::Mat & data);
 	int getDatabaseMemoryUsed() const; // in bytes
+	std::string getDatabaseVersion() const;
 	double getDbSavingTime() const;
 	Transform getOdomPose(int signatureId, bool lookInDatabase = false) const;
+	Transform getGroundTruthPose(int signatureId, bool lookInDatabase = false) const;
 	bool getNodeInfo(int signatureId,
 			Transform & odomPose,
 			int & mapId,
 			int & weight,
 			std::string & label,
 			double & stamp,
-			std::vector<unsigned char> & userData,
+			Transform & groundTruth,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
-	Signature getSignatureData(int locationId, bool uncompressedData = false);
-	Signature getSignatureDataConst(int locationId) const;
+	SensorData getNodeData(int nodeId, bool uncompressedData = false) const;
+	void getNodeWords(int nodeId,
+			std::multimap<int, cv::KeyPoint> & words,
+			std::multimap<int, cv::Point3f> & words3,
+			std::multimap<int, cv::Mat> & wordsDescriptors);
+	void getNodeCalibration(int nodeId,
+			std::vector<CameraModel> & models,
+			StereoCameraModel & stereoModel);
+	SensorData getSignatureDataConst(int locationId) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -142,22 +166,17 @@ public:
 	bool isIDsGenerated() const {return _generateIds;}
 	int getLastGlobalLoopClosureId() const {return _lastGlobalLoopClosureId;}
 	const Feature2D * getFeature2D() const {return _feature2D;}
-
-	void setRoi(const std::string & roi);
+	bool isGraphReduced() const {return _reduceGraph;}
 
 	void dumpMemoryTree(const char * fileNameTree) const;
 	virtual void dumpMemory(std::string directory) const;
 	virtual void dumpSignatures(const char * fileNameSign, bool words3D) const;
 	void dumpDictionary(const char * fileNameRef, const char * fileNameDesc) const;
 
-	void generateGraph(const std::string & fileName, std::set<int> ids = std::set<int>());
-	void createGraph(GraphNode * parent,
-			unsigned int maxDepth,
-			const std::set<int> & endIds = std::set<int>());
+	void generateGraph(const std::string & fileName, const std::set<int> & ids = std::set<int>());
 
 	//keypoint stuff
 	const VWDictionary * getVWDictionary() const;
-	Feature2D::Type getFeatureType() const {return _featureType;}
 
 	// RGB-D stuff
 	void getMetricConstraints(
@@ -165,30 +184,24 @@ public:
 			std::map<int, Transform> & poses,
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
-	float getBowInlierDistance() const {return _bowInlierDistance;}
-	int getBowIterations() const {return _bowIterations;}
-	int getBowMinInliers() const {return _bowMinInliers;}
-	float getBowMaxDepth() const {return _bowMaxDepth;}
-	bool getBowForce2D() const {return _bowForce2D;}
-	Transform computeVisualTransform(int oldId, int newId, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
-	Transform computeVisualTransform(const Signature & oldS, const Signature & newS, std::string * rejectedMsg = 0, int * inliers = 0, double * variance = 0) const;
-	Transform computeIcpTransform(int oldId, int newId, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * correspondences = 0, double * variance = 0, float * correspondencesRatio = 0);
-	Transform computeIcpTransform(const Signature & oldS, const Signature & newS, Transform guess, bool icp3D, std::string * rejectedMsg = 0, int * correspondences = 0, double * variance = 0, float * correspondencesRatio = 0) const;
-	Transform computeScanMatchingTransform(
+
+	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0) const;
+	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
+	Transform computeIcpTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
+	Transform computeIcpTransformMulti(
 			int newId,
 			int oldId,
 			const std::map<int, Transform> & poses,
-			std::string * rejectedMsg = 0,
-			int * inliers = 0,
-			double * variance = 0);
+			RegistrationInfo * info = 0);
 
 private:
 	void preUpdate();
-	void addSignatureToStm(Signature * signature, float poseRotVariance, float poseTransVariance);
+	void addSignatureToStm(Signature * signature, const cv::Mat & covariance);
 	void clear();
 	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
-	void addSignatureToWm(Signature * signature);
+	void moveSignatureToWMFromSTM(int id, int * reducedTo = 0);
+	void addSignatureToWmFromLTM(Signature * signature);
 	Signature * _getSignature(int id) const;
 	std::list<Signature *> getRemovableSignatures(int count,
 			const std::set<int> & ignoredIds = std::set<int>());
@@ -202,6 +215,7 @@ private:
 	void copyData(const Signature * from, Signature * to);
 	Signature * createSignature(
 			const SensorData & data,
+			const Transform & pose,
 			Statistics * stats = 0);
 
 	//keypoint stuff
@@ -215,23 +229,29 @@ protected:
 
 private:
 	// parameters
+	ParametersMap parameters_;
 	float _similarityThreshold;
-	bool _rawDataKept;
 	bool _binDataKept;
+	bool _rawDescriptorsKept;
+	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
 	bool _incrementalMemory;
+	bool _reduceGraph;
 	int _maxStMemSize;
 	float _recentWmRatio;
 	bool _transferSortingByWeightId;
 	bool _idUpdatedToNewOneRehearsal;
 	bool _generateIds;
 	bool _badSignaturesIgnored;
-	int _imageDecimation;
-	float _laserScanVoxelSize;
-	bool _localSpaceLinksKeptInWM;
+	bool _mapLabelsAdded;
+	int _imagePreDecimation;
+	int _imagePostDecimation;
+	float _laserScanDownsampleStepSize;
+	bool _reextractLoopClosureFeatures;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
+	bool _useOdometryFeatures;
 
 	int _idCount;
 	int _idMapCount;
@@ -240,7 +260,6 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
-	bool _postInitClosingEvents;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id
@@ -249,47 +268,12 @@ private:
 	//Keypoint stuff
 	VWDictionary * _vwd;
 	Feature2D * _feature2D;
-	Feature2D::Type _featureType;
 	float _badSignRatio;;
 	bool _tfIdfLikelihoodUsed;
 	bool _parallelized;
-	float _wordsMaxDepth; // 0=inf
-	std::vector<float> _roiRatios; // size 4
 
-	// RGBD-SLAM stuff
-	int _bowMinInliers;
-	float _bowInlierDistance;
-	int _bowIterations;
-	float _bowMaxDepth;
-	bool _bowForce2D;
-	bool _bowEpipolarGeometry;
-	float _bowEpipolarGeometryVar;
-	float _icpMaxTranslation;
-	float _icpMaxRotation;
-	int _icpDecimation;
-	float _icpMaxDepth;
-	float _icpVoxelSize;
-	int _icpSamples;
-	float _icpMaxCorrespondenceDistance;
-	int _icpMaxIterations;
-	float _icpCorrespondenceRatio;
-	bool _icpPointToPlane;
-	int _icpPointToPlaneNormalNeighbors;
-	float _icp2MaxCorrespondenceDistance;
-	int _icp2MaxIterations;
-	float _icp2CorrespondenceRatio;
-	float _icp2VoxelSize;
-
-	// Stereo stuff
-	int _stereoFlowWinSize;
-	int _stereoFlowIterations;
-	double _stereoFlowEpsilon;
-	int _stereoFlowMaxLevel;
-	float _stereoMaxSlope;
-
-	int _subPixWinSize;
-	int _subPixIterations;
-	double _subPixEps;
+	Registration * _registrationPipeline;
+	RegistrationIcp * _registrationIcp;
 };
 
 } // namespace rtabmap

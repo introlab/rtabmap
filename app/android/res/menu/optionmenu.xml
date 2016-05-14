@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <group android:id="@+id/group_pause" android:checkableBehavior="all">
+        <item android:id="@+id/pause" android:checked="false" android:title="Pause"/>
+    </group>
+    
+    <group android:id="@+id/group_actions">
+       <item android:id="@+id/post_processing" android:title="Post-Processing...">
+          <menu>
+	         <group android:id="@+id/group_post_processing">
+	            <item android:id="@+id/detect_more_loop_closures" android:title="Detect More Loop Closures" />
+	            <item android:id="@+id/global_graph_optimization" android:title="Global Graph Optimization" />
+	            <item android:id="@+id/sba" android:title="Bundle Adjustement" />
+	         </group>   
+          </menu>
+       </item>
+       <item android:id="@+id/open" android:title="Open"/>
+       <item android:id="@+id/save" android:title="Save"/>
+       <item android:id="@+id/export" android:title="Export...">
+          <menu>
+	         <group android:id="@+id/group_export">
+	            <item android:id="@+id/export_ply" android:title="Mesh (.ply)" />
+	            <item android:id="@+id/export_obj" android:title="Mesh with texture (*.obj)" />
+	         </group>   
+          </menu>
+       </item>
+       <item android:id="@+id/reset" android:title="Reset"/>
+       
+       <item android:id="@+id/menu_rendering_settings" android:title="Rendering Options...">
+        <menu >
+        <group android:id="@+id/group_rendering_visibility" android:checkableBehavior="all">
+            <item android:id="@+id/debug" android:checked="false" android:title="Debug" />
+            <item android:id="@+id/mesh_rendering" android:checked="true" android:title="Mesh Rendering" />
+            <item android:id="@+id/map_shown" android:checked="true" android:title="Map Visible" />
+            <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
+            <item android:id="@+id/graph_visible" android:checked="true" android:title="Graph Visible" />
+            <item android:id="@+id/auto_exposure" android:checked="false" android:title="Auto Exposure" />
+            <item android:id="@+id/max_depth" android:checkable="false" android:title="Cloud/Mesh Max Depth..." />
+            <item android:id="@+id/mesh_angle_tolerance" android:checkable="false" android:title="Mesh Angle Tolerance..." />
+            <item android:id="@+id/mesh_triangle_size" android:checkable="false" android:title="Mesh Triangle Size..." />
+        </group>   
+        </menu>
+	    </item>
+	    <item android:id="@+id/menu_mapping_settings" android:title="Mapping Options...">
+	       <menu >
+	       <group android:id="@+id/group_mapping_visibility" android:checkableBehavior="all">
+	           <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
+	           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
+	           <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
+	           <item android:id="@+id/nodes_filtering" android:checked="false" android:title="Nodes Filtering" />
+	           <item android:id="@+id/resolution" android:checked="false" android:title="720p Mode" />
+	           <item android:id="@+id/menu_param_settings" android:checkable="false" android:title="Parameters...">
+		           <menu >
+			           <item android:id="@+id/update_rate" android:title="Map Update Rate..." />
+			           <item android:id="@+id/time_threshold" android:title="Time Threshold..." />
+			           <item android:id="@+id/loop_threshold" android:title="Loop Closure Threshold..." />
+			           <item android:id="@+id/optimize_error" android:title="Max Optimization Error..." />
+			           <item android:id="@+id/features" android:title="Max Features Extracted..." />
+			       </menu>
+			    </item>
+	       </group>   
+	       </menu>
+	   </item>
+       
+       <item android:id="@+id/about" android:title="About"/>
+    </group>
+</menu>

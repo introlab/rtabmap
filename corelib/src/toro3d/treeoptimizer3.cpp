@@ -50,8 +50,7 @@ using namespace std;
 
 namespace AISNavigation {
 
-#define DEBUG(i) \
-        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 
 TreeOptimizer3::TreeOptimizer3(){
@@ -180,7 +179,7 @@ double TreeOptimizer3::error(const Edge* e) const{
 
   Pose ps=e->informationMatrix*p12;
   double err=p12*ps;
-  DEBUG(100) << "e(" << v1->id << "," << v2->id << ")" << err << endl;
+  //DEBUG(100) << "e(" << v1->id << "," << v2->id << ")" << err << endl;
   return err;
  
 }
@@ -294,10 +293,10 @@ void TreeOptimizer3::initializeOptimization(EdgeCompareMode mode){
   edgeCompareMode=mode;
   // compute the size of the preconditioning matrix
   int sz=maxIndex()+1;
-  DEBUG(1) << "Size= " << sz << endl;
+  //DEBUG(1) << "Size= " << sz << endl;
   M.resize(sz);
 
-  DEBUG(1) << "allocating M(" << sz << ")" << endl;
+  //DEBUG(1) << "allocating M(" << sz << ")" << endl;
   iteration=1;
 
   // sorting edges
@@ -313,9 +312,9 @@ void TreeOptimizer3::initializeOptimization(EdgeCompareMode mode){
 
 void TreeOptimizer3::initializeOnlineIterations(){
   int sz=maxIndex()+1;
-  DEBUG(1) << "Size= " << sz << endl;
+  //DEBUG(1) << "Size= " << sz << endl;
   M.resize(sz);
-  DEBUG(1) << "allocating M(" << sz << ")" << endl;
+  //DEBUG(1) << "allocating M(" << sz << ")" << endl;
   iteration=1;
   maxRotationalErrors.clear();
   maxTranslationalErrors.clear();
@@ -337,18 +336,18 @@ void TreeOptimizer3::initializeOnlineOptimization(EdgeCompareMode mode){
 }
 
 void TreeOptimizer3::onStepStart(Edge* e){
-  DEBUG(5) << "entering edge" << e << endl;
+  //DEBUG(5) << "entering edge" << e << endl;
 }  
 void TreeOptimizer3::onStepFinished(Edge* e){
-  DEBUG(5) << "exiting edge" << e << endl;
+  //DEBUG(5) << "exiting edge" << e << endl;
 }
 
 void TreeOptimizer3::onIterationStart(int iteration){
-  DEBUG(5) << "entering iteration " << iteration << endl;
+  //DEBUG(5) << "entering iteration " << iteration << endl;
 }
 
 void TreeOptimizer3::onIterationFinished(int iteration){
-  DEBUG(5) << "exiting iteration " << iteration << endl;
+  //DEBUG(5) << "exiting iteration " << iteration << endl;
 }
 
 void TreeOptimizer3::onRestartBegin(){}

@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/gui/ImageView.h>
-#include <rtabmap/gui/UCv2Qt.h>
+#include <rtabmap/utilite/UCv2Qt.h>
 #include <QtCore/QMetaType>
 #include <QMessageBox>
 #include <QtGui/QCloseEvent>
@@ -71,8 +71,10 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 	{
 		ParametersMap customParameters;
 		customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-		customParameters.insert(ParametersPair(Parameters::kKpWordsPerImage(), "-1")); // desactivate keypoints extraction
+		customParameters.insert(ParametersPair(Parameters::kKpMaxFeatures(), "-1")); // desactivate keypoints extraction
 		customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "true")); // to keep images
+		customParameters.insert(ParametersPair(Parameters::kMemMapLabelsAdded(), "false")); // don't create map labels
+		customParameters.insert(ParametersPair(Parameters::kMemBadSignaturesIgnored(), "true")); // make usre memory cleanup is done
 		if(!recordInRAM)
 		{
 			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false"));
@@ -120,7 +122,7 @@ DataRecorder::~DataRecorder()
 	this->closeRecorder();
 }
 
-void DataRecorder::addData(const rtabmap::SensorData & data)
+void DataRecorder::addData(const rtabmap::SensorData & data, const Transform & pose, const cv::Mat & covariance)
 {
 	memoryMutex_.lock();
 	if(memory_)
@@ -134,10 +136,11 @@ void DataRecorder::addData(const rtabmap::SensorData & data)
 
 		//save to database
 		UTimer time;
-		memory_->update(data);
+		memory_->update(data, pose, covariance);
 		const Signature * s = memory_->getLastWorkingSignature();
-		totalSizeKB_ += (int)s->getImageCompressed().total()/1000;
-		totalSizeKB_ += (int)s->getDepthCompressed().total()/1000;
+		totalSizeKB_ += (int)s->sensorData().imageCompressed().total()/1000;
+		totalSizeKB_ += (int)s->sensorData().depthOrRightCompressed().total()/1000;
+		totalSizeKB_ += (int)s->sensorData().laserScanCompressed().total()/1000;
 		memory_->cleanup();
 
 		if(++count_ % 30)
@@ -171,8 +174,7 @@ void DataRecorder::handleEvent(UEvent * event)
 		if(event->getClassName().compare("CameraEvent") == 0)
 		{
 			CameraEvent * camEvent = (CameraEvent*)event;
-			if(camEvent->getCode() == CameraEvent::kCodeImageDepth ||
-			   camEvent->getCode() == CameraEvent::kCodeImage)
+			if(camEvent->getCode() == CameraEvent::kCodeData)
 			{
 				if(camEvent->data().isValid())
 				{
@@ -183,8 +185,8 @@ void DataRecorder::handleEvent(UEvent * event)
 					{
 						processingImages_ = true;
 						QMetaObject::invokeMethod(this, "showImage",
-								Q_ARG(cv::Mat, camEvent->data().image()),
-								Q_ARG(cv::Mat, camEvent->data().depthOrRightImage()));
+								Q_ARG(cv::Mat, camEvent->data().imageRaw()),
+								Q_ARG(cv::Mat, camEvent->data().depthOrRightRaw()));
 					}
 				}
 			}

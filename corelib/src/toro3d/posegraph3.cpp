@@ -51,8 +51,7 @@ namespace AISNavigation {
 #define LINESIZE 81920
 
 
-#define DEBUG(i) \
-        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 
 bool TreePoseGraph3::load(const char* filename, bool overrideCovariances, bool twoDimensions){

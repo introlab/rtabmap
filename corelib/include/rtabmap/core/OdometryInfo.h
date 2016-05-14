@@ -28,6 +28,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef ODOMETRYINFO_H_
 #define ODOMETRYINFO_H_
 
+#include <map>
+#include "rtabmap/core/Transform.h"
+#include <opencv2/features2d/features2d.hpp>
+
 namespace rtabmap {
 
 class OdometryInfo
@@ -35,31 +39,69 @@ class OdometryInfo
 public:
 	OdometryInfo() :
 		lost(true),
-		matches(-1),
-		inliers(-1),
-		variance(-1),
-		features(-1),
-		localMapSize(-1),
-		time(-1),
-		type(-1)
+		matches(0),
+		inliers(0),
+		icpInliersRatio(0.0f),
+		variance(0.0f),
+		features(0),
+		localMapSize(0),
+		localScanMapSize(0),
+		timeEstimation(0.0f),
+		timeParticleFiltering(0.0f),
+		stamp(0),
+		interval(0),
+		distanceTravelled(0.0f),
+		type(0)
 	{}
+
+	OdometryInfo copyWithoutData() const
+	{
+		OdometryInfo output;
+		output.lost = lost;
+		output.matches = matches;
+		output.inliers = inliers;
+		output.icpInliersRatio = icpInliersRatio;
+		output.variance = variance;
+		output.features = features;
+		output.localMapSize = localMapSize;
+		output.localScanMapSize = localScanMapSize;
+		output.timeEstimation = timeEstimation;
+		output.timeParticleFiltering = timeParticleFiltering;
+		output.stamp = stamp;
+		output.transform = transform;
+		output.transformFiltered = transformFiltered;
+		output.transformGroundTruth = transformGroundTruth;
+		output.distanceTravelled = distanceTravelled;
+		return output;
+	}
+
 	bool lost;
 	int matches;
 	int inliers;
+	float icpInliersRatio;
 	float variance;
 	int features;
 	int localMapSize;
-	float time;
+	int localScanMapSize;
+	float timeEstimation;
+	float timeParticleFiltering;
+	double stamp;
+	double interval;
+	Transform transform;
+	Transform transformFiltered;
+	Transform transformGroundTruth;
+	float distanceTravelled;
 
-	int type; // 0=BOW, 1=Optical Flow, 2=ICP
+	int type; // 0=F2M, 1=F2F
 
-	// BOW odometry
+	// F2M
 	std::multimap<int, cv::KeyPoint> words;
 	std::vector<int> wordMatches;
 	std::vector<int> wordInliers;
-	std::multimap<int, cv::Point3f> localMap;
+	std::map<int, cv::Point3f> localMap;
+	cv::Mat localScanMap;
 
-	// Optical Flow odometry
+	// F2F
 	std::vector<cv::Point2f> refCorners;
 	std::vector<cv::Point2f> newCorners;
 	std::vector<int> cornerInliers;

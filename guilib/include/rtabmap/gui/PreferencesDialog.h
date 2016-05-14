@@ -59,8 +59,9 @@ namespace rtabmap {
 
 class Signature;
 class LoopClosureViewer;
-class CameraRGBD;
+class Camera;
 class CalibrationDialog;
+class CreateSimpleCalibrationDialog;
 
 class RTABMAPGUI_EXP PreferencesDialog : public QDialog
 {
@@ -79,18 +80,29 @@ public:
 	Q_DECLARE_FLAGS(PANEL_FLAGS, PanelFlag);
 
 	enum Src {
-		kSrcUndef,
-		kSrcUsbDevice,
-		kSrcImages,
-		kSrcVideo,
-		kSrcOpenNI_PCL,
-		kSrcFreenect,
-		kSrcOpenNI_CV,
-		kSrcOpenNI_CV_ASUS,
-		kSrcOpenNI2,
-		kSrcFreenect2,
-		kSrcStereoDC1394,
-		kSrcStereoFlyCapture2
+		kSrcUndef = -1,
+
+		kSrcRGBD           = 0,
+		kSrcOpenNI_PCL     = 0,
+		kSrcFreenect       = 1,
+		kSrcOpenNI_CV      = 2,
+		kSrcOpenNI_CV_ASUS = 3,
+		kSrcOpenNI2        = 4,
+		kSrcFreenect2      = 5,
+		kSrcRGBDImages     = 6,
+
+		kSrcStereo         = 100,
+		kSrcDC1394         = 100,
+		kSrcFlyCapture2    = 101,
+		kSrcStereoImages   = 102,
+		kSrcStereoVideo    = 103,
+
+		kSrcRGB            = 200,
+		kSrcUsbDevice      = 200,
+		kSrcImages         = 201,
+		kSrcVideo          = 202,
+
+		kSrcDatabase       = 300
 	};
 
 public:
@@ -98,21 +110,23 @@ public:
 	virtual ~PreferencesDialog();
 
 	virtual QString getIniFilePath() const;
+	virtual QString getTmpIniFilePath() const;
 	void init();
+	void setCurrentPanelToSource();
 
 	// save stuff
 	void saveSettings();
 	void saveWindowGeometry(const QWidget * window);
 	void loadWindowGeometry(QWidget * window);
 	void saveMainWindowState(const QMainWindow * mainWindow);
-	void loadMainWindowState(QMainWindow * mainWindow, bool & maximized);
+	void loadMainWindowState(QMainWindow * mainWindow, bool & maximized, bool & statusBarShown);
 	void saveWidgetState(const QWidget * widget);
 	void loadWidgetState(QWidget * widget);
 
 	void saveCustomConfig(const QString & section, const QString & key, const QString & value);
 	QString loadCustomConfig(const QString & section, const QString & key);
 
-	rtabmap::ParametersMap getAllParameters();
+	rtabmap::ParametersMap getAllParameters() const;
 
 	//General panel
 	int getGeneralLoggerLevel() const;
@@ -120,6 +134,7 @@ public:
 	int getGeneralLoggerPauseLevel() const;
 	int getGeneralLoggerType() const;
 	bool getGeneralLoggerPrintTime() const;
+	bool getGeneralLoggerPrintThreadId() const;
 	bool isVerticalLayoutUsed() const;
 	bool imageRejectedShown() const;
 	bool imageHighestHypShown() const;
@@ -129,26 +144,30 @@ public:
 	bool isPosteriorGraphView() const;
 
 	bool isGraphsShown() const;
-	bool isCloudMeshing() const;
+	bool isLabelsShown() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
-	double getCloudVoxelSize(int index) const; // 0=map, 1=odom
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
+	double getCloudMinDepth(int index) const;  // 0=map, 1=odom
 	double getCloudOpacity(int index) const;   // 0=map, 1=odom
 	int getCloudPointSize(int index) const;    // 0=map, 1=odom
 
 	bool isScansShown(int index) const;       // 0=map, 1=odom
+	int getDownsamplingStepScan(int index) const; // 0=map, 1=odom
+	double getCloudVoxelSizeScan(int index) const; // 0=map, 1=odom
 	double getScanOpacity(int index) const;    // 0=map, 1=odom
 	int getScanPointSize(int index) const;     // 0=map, 1=odom
 
-	int getMeshNormalKSearch() const;
-	double getMeshGP3Radius() const;
-	bool getMeshSmoothing() const;
-	double getMeshSmoothingRadius() const;
+	bool isFeaturesShown(int index) const;     // 0=map, 1=odom
+	int getFeaturesPointSize(int index) const; // 0=map, 1=odom
 
 	bool isCloudFiltering() const;
+	bool isSubtractFiltering() const;
 	double getCloudFilteringRadius() const;
 	double getCloudFilteringAngle() const;
+	int getSubtractFilteringMinPts() const;
+	double getSubtractFilteringRadius() const;
+	double getSubtractFilteringAngle() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;
@@ -156,41 +175,38 @@ public:
 	bool isGridMapEroded() const;
 	double getGridMapOpacity() const;
 
+	bool isCloudMeshing() const;
+	double getCloudMeshingAngle() const;
+	bool isCloudMeshingQuad() const;
+	int getCloudMeshingTriangleSize();
+
 	QString getWorkingDirectory() const;
 
 	// source panel
 	double getGeneralInputRate() const;
 	bool isSourceMirroring() const;
-	bool isSourceImageUsed() const;
-	bool isSourceDatabaseUsed() const;
-	bool isSourceRGBDUsed() const;
-	PreferencesDialog::Src getSourceImageType() const;
-	QString getSourceImageTypeStr() const;
-	int getSourceWidth() const;
-	int getSourceHeight() const;
-	QString getSourceImagesPath() const;	//Images group
-	QString getSourceImagesSuffix() const;	//Images group
-	int getSourceImagesSuffixIndex() const;	//Images group
-	int getSourceImagesStartPos() const;	//Images group
-	bool getSourceImagesRefreshDir() const;	//Images group
-	QString getSourceVideoPath() const;	//Video group
-	int getSourceUsbDeviceId() const;		//UsbDevice group
+	PreferencesDialog::Src getSourceType() const;
+	PreferencesDialog::Src getSourceDriver() const;
+	QString getSourceDriverStr() const;
+	QString getSourceDevice() const;
+
 	QString getSourceDatabasePath() const; //Database group
 	bool getSourceDatabaseOdometryIgnored() const; //Database group
 	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
+	bool getSourceDatabaseGoalsIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
-	Src getSourceRGBD() const; 			// Openni group
-	bool getSourceOpenni2AutoWhiteBalance() const;  //Openni group
-	bool getSourceOpenni2AutoExposure() const;  //Openni group
-	int getSourceOpenni2Exposure() const;  //Openni group
-	int getSourceOpenni2Gain() const;   //Openni group
-	bool getSourceOpenni2Mirroring() const; //Openni group
-	int getSourceFreenect2Format() const; //Openni group
 	bool isSourceRGBDColorOnly() const;
-	QString getSourceOpenniDevice() const;            //Openni group
-	Transform getSourceOpenniLocalTransform() const;    //Openni group
-	CameraRGBD * createCameraRGBD(bool forCalibration = false); // return camera should be deleted if not null
+	int getSourceImageDecimation() const;
+	bool isSourceStereoDepthGenerated() const;
+	bool isSourceScanFromDepth() const;
+	int getSourceScanFromDepthDecimation() const;
+	double getSourceScanFromDepthMaxDepth() const;
+	double getSourceScanVoxelSize() const;
+	int getSourceScanNormalsK() const;
+	Transform getSourceLocalTransform() const;    //Openni group
+	Transform getLaserLocalTransform() const; // directory images
+	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 
@@ -204,7 +220,10 @@ public:
 	bool isStatisticsPublished() const;
 	double getLoopThr() const;
 	double getVpThr() const;
+	double getSimThr() const;
 	int getOdomStrategy() const;
+	int getOdomBufferSize() const;
+	bool getRegVarianceFromInliersCount() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//
@@ -219,10 +238,9 @@ public slots:
 	void setDetectionRate(double value);
 	void setTimeLimit(float value);
 	void setSLAMMode(bool enabled);
-	void selectSourceImage(Src src = kSrcUndef);
-	void selectSourceDatabase(bool user = false);
-	void selectSourceRGBD(Src src = kSrcUndef);
+	void selectSourceDriver(Src src);
 	void calibrate();
+	void calibrateSimple();
 
 private slots:
 	void closeDialog ( QAbstractButton * button );
@@ -235,22 +253,39 @@ private slots:
 	void makeObsoleteCloudRenderingPanel();
 	void makeObsoleteLoggingPanel();
 	void makeObsoleteSourcePanel();
-	void clicked(const QModelIndex &index);
+	void clicked(const QModelIndex & current, const QModelIndex & previous);
 	void addParameter(int value);
 	void addParameter(bool value);
 	void addParameter(double value);
 	void addParameter(const QString & value);
 	void updatePredictionPlot();
 	void updateKpROI();
+	void updateG2oVisibility();
+	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
+	void changeOdomBowFixedLocalMapPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
-	void updateRGBDCameraGroupBoxVisibility();
+	void selectSourceDatabase();
+	void selectCalibrationPath();
+	void selectSourceImagesStamps();
+	void selectSourceRGBDImagesPathRGB();
+	void selectSourceRGBDImagesPathDepth();
+	void selectSourceImagesPathScans();
+	void selectSourceImagesPathGt();
+	void selectSourceStereoImagesPathLeft();
+	void selectSourceStereoImagesPathRight();
+	void selectSourceImagesPath();
+	void selectSourceVideoPath();
+	void selectSourceStereoVideoPath();
+	void selectSourceOniPath();
+	void selectSourceOni2Path();
+	void updateSourceGrpVisibility();
 	void testOdometry();
-	void testRGBDCamera();
+	void testCamera();
 
 protected:
 	virtual void showEvent ( QShowEvent * event );
@@ -260,19 +295,17 @@ protected:
 
 	virtual QString getParamMessage();
 
-	virtual void readSettings(const QString & filePath = QString());
 	virtual void readGuiSettings(const QString & filePath = QString());
 	virtual void readCameraSettings(const QString & filePath = QString());
 	virtual bool readCoreSettings(const QString & filePath = QString());
 
-	virtual void writeSettings(const QString & filePath = QString());
 	virtual void writeGuiSettings(const QString & filePath = QString()) const;
 	virtual void writeCameraSettings(const QString & filePath = QString()) const;
 	virtual void writeCoreSettings(const QString & filePath = QString()) const;
 
-	virtual QString getTmpIniFilePath() const;
-
 private:
+	void readSettings(const QString & filePath = QString());
+	void writeSettings(const QString & filePath = QString());
 	bool validateForm();
 	void setupSignals();
 	void setupKpRoiPanel();
@@ -283,17 +316,17 @@ private:
 	void addParameter(const QObject * object, double value);
 	void addParameter(const QObject * object, const QString & value);
 	void addParameters(const QObjectList & children);
-	void addParameters(const QStackedWidget * stackedWidget);
+	void addParameters(const QStackedWidget * stackedWidget, int panel = -1);
 	void addParameters(const QGroupBox * box);
 	QList<QGroupBox*> getGroupBoxes();
 	void readSettingsBegin();
-	void testOdometry(int type);
 
 protected:
-	rtabmap::ParametersMap _parameters;
 	PANEL_FLAGS _obsoletePanels;
 
 private:
+	rtabmap::ParametersMap _modifiedParameters;
+	rtabmap::ParametersMap _parameters;
 	Ui_preferencesDialog * _ui;
 	QStandardItemModel * _indexModel;
 	bool _initialized;
@@ -303,16 +336,21 @@ private:
 
 	//calibration
 	CalibrationDialog * _calibrationDialog;
+	CreateSimpleCalibrationDialog * _createCalibrationDialog;
 
 	QVector<QCheckBox*> _3dRenderingShowClouds;
-	QVector<QDoubleSpinBox*> _3dRenderingVoxelSize;
 	QVector<QSpinBox*> _3dRenderingDecimation;
 	QVector<QDoubleSpinBox*> _3dRenderingMaxDepth;
+	QVector<QDoubleSpinBox*> _3dRenderingMinDepth;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacity;
 	QVector<QSpinBox*> _3dRenderingPtSize;
 	QVector<QCheckBox*> _3dRenderingShowScans;
+	QVector<QSpinBox*> _3dRenderingDownsamplingScan;
+	QVector<QDoubleSpinBox*> _3dRenderingVoxelSizeScan;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
 	QVector<QSpinBox*> _3dRenderingPtSizeScan;
+	QVector<QCheckBox*> _3dRenderingShowFeatures;
+	QVector<QSpinBox*> _3dRenderingPtSizeFeatures;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS(PreferencesDialog::PANEL_FLAGS)

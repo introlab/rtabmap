@@ -50,6 +50,7 @@ protected:
 
 private slots:
 	void signalVisibility();
+	void selectAll(bool);
 
 private:
 	void updateCheckBoxes();

@@ -37,6 +37,7 @@ void showUsage()
 {
 	printf("Usage:\n"
 			"imagesJoiner.exe [option] path\n"
+			"imagesJoiner.exe path_left path_right\n"
 			"  Options:\n"
 			"    -inv       option for copying odd images on the right\n\n");
 	exit(1);
@@ -58,15 +59,33 @@ int main(int argc, char * argv[])
 			printf(" Inversing option activated...\n");
 			continue;
 		}
-		showUsage();
-		printf(" Not recognized option: \"%s\"\n", argv[i]);
+		if(argc > 3)
+		{
+			showUsage();
+			printf(" Not recognized option: \"%s\"\n", argv[i]);
+		}
 	}
 
-	std::string path = argv[argc-1];
-	printf(" Path = %s\n", path.c_str());
+	std::string path, pathRight;
+
+	if(argc == 3 && !inv)
+	{
+		//two paths
+		path = argv[1];
+		pathRight = argv[2];
+
+		printf(" Path left = %s\n", path.c_str());
+		printf(" Path right = %s\n", pathRight.c_str());
+	}
+	else
+	{
+		path = argv[argc-1];
+		printf(" Path = %s\n", path.c_str());
+	}
 
 	UDirectory dir(path, "jpg bmp png tiff jpeg");
-	if(!dir.isValid())
+	UDirectory dirRight(pathRight, "jpg bmp png tiff jpeg");
+	if(!dir.isValid() || (!pathRight.empty() && !dirRight.isValid()))
 	{
 		printf("Path invalid!\n");
 		exit(-1);
@@ -78,7 +97,15 @@ int main(int argc, char * argv[])
 
 
 	std::string fileNameA = dir.getNextFilePath();
-	std::string fileNameB = dir.getNextFilePath();
+	std::string fileNameB;
+	if(dirRight.isValid())
+	{
+		fileNameB = dirRight.getNextFilePath();
+	}
+	else
+	{
+		fileNameB = dir.getNextFilePath();
+	}
 
 	int i=1;
 	while(!fileNameA.empty() && !fileNameB.empty())
@@ -94,59 +121,48 @@ int main(int argc, char * argv[])
 
 		std::string targetFilePath = targetDirectory+UDirectory::separator()+uNumber2Str(i++)+"."+ext;
 
-		IplImage * imageA = cvLoadImage(fileNameA.c_str(), CV_LOAD_IMAGE_COLOR);
-		IplImage * imageB = cvLoadImage(fileNameB.c_str(), CV_LOAD_IMAGE_COLOR);
+		cv::Mat imageA = cv::imread(fileNameA.c_str());
+		cv::Mat imageB = cv::imread(fileNameB.c_str());
 
 		fileNameA.clear();
 		fileNameB.clear();
 
-		if(imageA && imageB)
+		if(!imageA.empty() && !imageB.empty())
 		{
-			CvSize sizeA = cvGetSize(imageA);
-			CvSize sizeB = cvGetSize(imageB);
-			CvSize targetSize = {0};
+			cv::Size sizeA = imageA.size();
+			cv::Size sizeB = imageB.size();
+			cv::Size targetSize(0,0);
 			targetSize.width = sizeA.width + sizeB.width;
 			targetSize.height = sizeA.height > sizeB.height ? sizeA.height : sizeB.height;
-			IplImage* targetImage = cvCreateImage(targetSize, imageA->depth, imageA->nChannels);
-			if(targetImage)
+			cv::Mat targetImage(targetSize, imageA.type());
+
+			cv::Mat roiA(targetImage, cv::Rect( 0, 0, sizeA.width, sizeA.height ));
+			imageA.copyTo(roiA);
+			cv::Mat roiB( targetImage, cvRect( sizeA.width, 0, sizeB.width, sizeB.height ) );
+			imageB.copyTo(roiB);
+
+			if(!cv::imwrite(targetFilePath.c_str(), targetImage))
 			{
-				cvSetImageROI( targetImage, cvRect( 0, 0, sizeA.width, sizeA.height ) );
-				cvCopy( imageA, targetImage );
-				cvSetImageROI( targetImage, cvRect( sizeA.width, 0, sizeB.width, sizeB.height ) );
-				cvCopy( imageB, targetImage );
-				cvResetImageROI( targetImage );
-
-				if(!cvSaveImage(targetFilePath.c_str(), targetImage))
-				{
-					printf("Error : saving to \"%s\" goes wrong...\n", targetFilePath.c_str());
-				}
-				else
-				{
-					printf("Saved \"%s\" \n", targetFilePath.c_str());
-				}
-
-				cvReleaseImage(&targetImage);
-
-				fileNameA = dir.getNextFilePath();
-				fileNameB = dir.getNextFilePath();
+				printf("Error : saving to \"%s\" goes wrong...\n", targetFilePath.c_str());
 			}
 			else
 			{
-				printf("Error : can't allocated the target image with size (%d,%d)\n", targetSize.width, targetSize.height);
+				printf("Saved \"%s\" \n", targetFilePath.c_str());
+			}
+
+			fileNameA = dir.getNextFilePath();
+			if(dirRight.isValid())
+			{
+				fileNameB = dirRight.getNextFilePath();
+			}
+			else
+			{
+				fileNameB = dir.getNextFilePath();
 			}
 		}
 		else
 		{
 			printf("Error: loading images failed!\n");
-		}
-
-		if(imageA)
-		{
-			cvReleaseImage(&imageA);
-		}
-		if(imageB)
-		{
-			cvReleaseImage(&imageB);
 		}
 	}
 	printf("%d files processed\n", i-1);

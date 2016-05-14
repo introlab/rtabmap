@@ -88,7 +88,16 @@ std::vector<unsigned char> compressImage(const cv::Mat & image, const std::strin
 	std::vector<unsigned char> bytes;
 	if(!image.empty())
 	{
-		cv::imencode(format, image, bytes);
+		if(image.type() == CV_32FC1)
+		{
+			//save in 8bits-4channel
+			cv::Mat bgra(image.size(), CV_8UC4, image.data);
+			cv::imencode(format, bgra, bytes);
+		}
+		else
+		{
+			cv::imencode(format, image, bytes);
+		}
 	}
 	return bytes;
 }
@@ -114,6 +123,10 @@ cv::Mat uncompressImage(const cv::Mat & bytes)
 #else
 		image = cv::imdecode(bytes, -1);
 #endif
+		if(image.type() == CV_8UC4)
+		{
+			image = cv::Mat(image.size(), CV_32FC1, image.data).clone();
+		}
 	}
 	return image;
 }
@@ -128,6 +141,10 @@ cv::Mat uncompressImage(const std::vector<unsigned char> & bytes)
 #else
 		image = cv::imdecode(bytes, -1);
 #endif
+		if(image.type() == CV_8UC4)
+		{
+			image = cv::Mat(image.size(), CV_32FC1, image.data).clone();
+		}
 	}
 	return image;
 }
@@ -213,11 +230,6 @@ cv::Mat uncompressData(const unsigned char * bytes, unsigned long size)
 		int height = *((int*)&bytes[size-3*sizeof(int)]);
 		int width = *((int*)&bytes[size-2*sizeof(int)]);
 		int type = *((int*)&bytes[size-1*sizeof(int)]);
-
-		// If the size is higher, it may be a wrong data format.
-		UASSERT_MSG(height>=0 && height<10000 &&
-				    width>=0 && width<10000,
-				    uFormat("size=%d, height=%d width=%d type=%d", size, height, width, type).c_str());
 
 		data = cv::Mat(height, width, type);
 		uLongf totalUncompressed = uLongf(data.total())*uLongf(data.elemSize());

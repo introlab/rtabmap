@@ -33,6 +33,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/MainWindow.h"
 #include <QMessageBox>
 #include "rtabmap/utilite/UObjDeletionThread.h"
+#include "rtabmap/utilite/UFile.h"
+#include "rtabmap/utilite/UConversion.h"
 #include "ObjDeletionHandler.h"
 
 using namespace rtabmap;
@@ -46,6 +48,19 @@ int main(int argc, char* argv[])
 	/* Create tasks */
 	QApplication * app = new QApplication(argc, argv);
 	MainWindow * mainWindow = new MainWindow();
+    app->installEventFilter(mainWindow); // to catch FileOpen events.
+    
+    std::string database;
+    for(int i=1; i<argc; ++i)
+    {
+        std::string value = uReplaceChar(argv[i], '~', UDirectory::homeDir());
+        if(UFile::exists(value) &&
+           UFile::getExtension(value).compare("db") == 0)
+        {
+            database = value;
+            break;
+        }
+    }
 
 	UINFO("Program started...");
 
@@ -64,6 +79,11 @@ int main(int argc, char* argv[])
 	RtabmapThread * rtabmap = new RtabmapThread(new Rtabmap());
 	rtabmap->start(); // start it not initialized... will be initialized by event from the gui
 	UEventsManager::addHandler(rtabmap);
+    
+    if(!database.empty())
+    {
+    	QMetaObject::invokeMethod(mainWindow, "openDatabase", Qt::QueuedConnection, Q_ARG(QString, QString(database.c_str())));
+    }
 
 	// Now wait for application to finish
 	app->connect( app, SIGNAL( lastWindowClosed() ),

@@ -1,0 +1,12 @@
+builddir=@CMAKE_CURRENT_BINARY_DIR@
+srcdir=@CMAKE_CURRENT_SOURCE_DIR@
+
+source.dir=${srcdir}/src
+gen.dir=${builddir}/gen
+out.dir=${builddir}/bin
+asset.dir=${builddir}/assets
+resource.absolute.dir=${srcdir}/res
+
+jar.libs.dir=${builddir}/libs
+external.libs.dir=${builddir}/libs
+native.libs.dir=${builddir}/libs

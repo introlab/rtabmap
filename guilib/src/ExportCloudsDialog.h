@@ -29,12 +29,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define EXPORTCLOUDSDIALOG_H_
 
 #include <QDialog>
+#include <QMap>
 #include <QtCore/QSettings>
+
+#include <rtabmap/core/Signature.h>
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/PolygonMesh.h>
+#include <pcl/TextureMesh.h>
+#include <pcl/pcl_base.h>
 
 class Ui_ExportCloudsDialog;
 class QAbstractButton;
 
 namespace rtabmap {
+class ProgressDialog;
 
 class ExportCloudsDialog : public QDialog
 {
@@ -48,37 +58,19 @@ public:
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 
-	void setSaveButton();
-	void setOkButton();
-	void enableRegeneration(bool enabled);
+	void exportClouds(
+			const std::map<int, Transform> & poses,
+			const std::map<int, int> & mapIds,
+			const QMap<int, Signature> & cachedSignatures,
+			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds,
+			const QString & workingDirectory);
 
-	//getters
-	bool getAssemble() const;
-	double getAssembleVoxel() const;
-	bool getGenerate() const;
-	int getGenerateDecimation() const;
-	double getGenerateVoxel() const;
-	double getGenerateMaxDepth() const;
-	bool getBinaryFile() const;
-	bool getMLS() const;
-	double getMLSRadius() const;
-	bool getMesh() const;
-	int getMeshNormalKSearch() const;
-	double getMeshGp3Radius() const;
-
-	//setters
-	void setAssemble(bool on);
-	void setAssembleVoxel(double voxel);
-	void setGenerate(bool on);
-	void setGenerateDecimation(int decimation);
-	void setGenerateVoxel(double voxel);
-	void setGenerateMaxDepth(double maxDepth);
-	void setBinaryFile(bool on);
-	void setMLS(bool on);
-	void setMLSRadius(double radius);
-	void setMesh(bool on);
-	void setMeshNormalKSearch(int k);
-	void setMeshGp3Radius(double radius);
+	void viewClouds(
+			const std::map<int, Transform> & poses,
+			const std::map<int, int> & mapIds,
+			const QMap<int, Signature> & cachedSignatures,
+			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds,
+			const QString & workingDirectory);
 
 signals:
 	void configChanged();
@@ -86,8 +78,35 @@ signals:
 public slots:
 	void restoreDefaults();
 
+private slots:
+	void updateReconstructionFlavor();
+	void updateMLSGrpVisibility();
+
+private:
+	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > getClouds(
+			const std::map<int, Transform> & poses,
+			const QMap<int, Signature> & cachedSignatures,
+			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds) const;
+	bool getExportedClouds(
+				const std::map<int, Transform> & poses,
+				const std::map<int, int> & mapIds,
+				const QMap<int, Signature> & cachedSignatures,
+				const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds,
+				const QString & workingDirectory,
+				std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
+				std::map<int, pcl::PolygonMesh::Ptr> & meshes,
+				std::map<int, pcl::TextureMesh::Ptr> & textureMeshes);
+	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
+	void saveMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
+	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::TextureMesh::Ptr> & meshes);
+
+	void setSaveButton();
+	void setOkButton();
+	void enableRegeneration(bool enabled);
+
 private:
 	Ui_ExportCloudsDialog * _ui;
+	ProgressDialog * _progressDialog;
 };
 
 }

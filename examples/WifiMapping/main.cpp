@@ -25,11 +25,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
-#include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryThread.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
@@ -56,7 +56,7 @@ int main(int argc, char * argv[])
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kWarning);
 
-	std::string interfaceName = "eth0";
+	std::string interfaceName = "wlan0";
 	int driver = 0;
 	bool mirroring = false;
 
@@ -109,7 +109,7 @@ int main(int argc, char * argv[])
 
 	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
-	CameraRGBD * camera = 0;
+	Camera * camera = 0;
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	if(driver == 1)
 	{
@@ -152,16 +152,17 @@ int main(int argc, char * argv[])
 		camera = new rtabmap::CameraOpenni("", 0, opticalRotation);
 	}
 
+
+	if(!camera->init())
+	{
+		UERROR("Camera init failed! Try another camera driver.");
+		showUsage();
+		exit(1);
+	}
+	CameraThread cameraThread(camera);
 	if(mirroring)
 	{
-		camera->setMirroringEnabled(true);
-	}
-
-	CameraThread cameraThread(camera);
-	if(!cameraThread.init())
-	{
-		UERROR("Camera init failed!");
-		//exit(1);
+		cameraThread.setMirroringEnabled(true);
 	}
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
@@ -170,7 +171,7 @@ int main(int argc, char * argv[])
 	MapBuilderWifi mapBuilderWifi(&cameraThread);
 
 	// Create an odometry thread to process camera events, it will send OdometryEvent.
-	OdometryThread odomThread(new OdometryBOW());
+	OdometryThread odomThread(new OdometryF2M());
 
 	// Create RTAB-Map to process OdometryEvent
 	Rtabmap * rtabmap = new Rtabmap();

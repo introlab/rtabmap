@@ -25,15 +25,18 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/RtabmapThread.h"
 #include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
-#include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryThread.h"
+#include "rtabmap/core/Graph.h"
 #include "rtabmap/utilite/UEventsManager.h"
 #include <QApplication>
 #include <stdio.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 
 #include "MapBuilder.h"
 
@@ -71,7 +74,7 @@ int main(int argc, char * argv[])
 
 	// Create the OpenNI camera, it will send a CameraEvent at the rate specified.
 	// Set transform to camera so z is up, y is left and x going forward
-	CameraRGBD * camera = 0;
+	Camera * camera = 0;
 	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	if(driver == 1)
 	{
@@ -114,12 +117,13 @@ int main(int argc, char * argv[])
 		camera = new rtabmap::CameraOpenni("", 0, opticalRotation);
 	}
 
-	CameraThread cameraThread(camera);
-	if(!cameraThread.init())
+	if(!camera->init())
 	{
 		UERROR("Camera init failed!");
-		exit(1);
 	}
+
+	CameraThread cameraThread(camera);
+
 
 	// GUI stuff, there the handler will receive RtabmapEvent and construct the map
 	// We give it the camera so the GUI can pause/resume the camera
@@ -127,7 +131,7 @@ int main(int argc, char * argv[])
 	MapBuilder mapBuilder(&cameraThread);
 
 	// Create an odometry thread to process camera events, it will send OdometryEvent.
-	OdometryThread odomThread(new OdometryBOW());
+	OdometryThread odomThread(new OdometryF2M());
 
 
 	// Create RTAB-Map to process OdometryEvent
@@ -165,6 +169,52 @@ int main(int argc, char * argv[])
 	cameraThread.kill();
 	odomThread.join(true);
 	rtabmapThread.join(true);
+
+	// Save 3D map
+	printf("Saving rtabmap_cloud.pcd...\n");
+	std::map<int, Signature> nodes;
+	std::map<int, Transform> optimizedPoses;
+	std::multimap<int, Link> links;
+	rtabmap->get3DMap(nodes, optimizedPoses, links, true, true);
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+	{
+		Signature node = nodes.find(iter->first)->second;
+
+		// uncompress data
+		node.sensorData().uncompressData();
+
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp = util3d::cloudRGBFromSensorData(
+				node.sensorData(),
+				4,           // image decimation before creating the clouds
+				4.0f,        // maximum depth of the cloud
+				0.01f);  // Voxel grid filtering
+		*cloud += *util3d::transformPointCloud(tmp, iter->second); // transform the point cloud to its pose
+	}
+	if(cloud->size())
+	{
+		printf("Voxel grid filtering of the assembled cloud (voxel=%f, %d points)\n", 0.01f, (int)cloud->size());
+		cloud = util3d::voxelize(cloud, 0.01f);
+
+		printf("Saving rtabmap_cloud.pcd... done! (%d points)\n", (int)cloud->size());
+		pcl::io::savePCDFile("rtabmap_cloud.pcd", *cloud);
+		//pcl::io::savePLYFile("rtabmap_cloud.ply", *cloud); // to save in PLY format
+	}
+	else
+	{
+		printf("Saving rtabmap_cloud.pcd... failed! The cloud is empty.\n");
+	}
+
+	// Save trajectory
+	printf("Saving rtabmap_trajectory.txt ...\n");
+	if(optimizedPoses.size() && graph::exportPoses("rtabmap_trajectory.txt", 0, optimizedPoses, links))
+	{
+		printf("Saving rtabmap_trajectory.txt... done!\n");
+	}
+	else
+	{
+		printf("Saving rtabmap_trajectory.txt... failed!\n");
+	}
 
 	return 0;
 }

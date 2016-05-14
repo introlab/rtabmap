@@ -117,6 +117,12 @@ std::string UTILITE_EXP uNumber2Str(float number);
  */
 std::string UTILITE_EXP uNumber2Str(double number);
 
+/**
+ * Convert a string to an integer.
+ * @param the string
+ * @return the number
+ */
+int UTILITE_EXP uStr2Int(const std::string & str);
 
 /**
  * Convert a string to a float independent of the locale (comma/dot).
@@ -148,6 +154,7 @@ std::string UTILITE_EXP uBool2Str(bool boolean);
  * @return the boolean
  */
 bool UTILITE_EXP uStr2Bool(const char * str);
+bool UTILITE_EXP uStr2Bool(const std::string & str);
 
 /**
  * Convert a string to an array of bytes including the null character ('\0').

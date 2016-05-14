@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">RTAB-Map</string>
+    <string name="sys_name">RTAB-Map</string>
+    <string name="menu_name">Real-Time Appearance-Based Mapping</string>
+    <string name="status">"Status: "</string>
+    <string name="words">"Words: "</string>
+    <string name="first_person">First</string>
+    <string name="third_person">Third</string>
+    <string name="top_down">Top</string>
+    <string name="start">Start</string>
+    <string name="nodes">"Nodes (WM): "</string>
+    <string name="points">"Number of points: "</string>
+    <string name="update_time">"Update time (ms): "</string>
+    <string name="loop_closure">"Loop closure ID: "</string>
+    <string name="db_size">"Database (MB): "</string>
+    <string name="total_loop">"Loop closures: "</string>
+    <string name="inliers">"Inliers: "</string>
+    <string name="features">"Features: "</string>
+    <string name="polygons">"Polygons: "</string>
+    <string name="memory">"Memory (MB): "</string>
+    <string name="hypothesis">"Hypothesis: "</string>
+    <string name="fps">"FPS (rendering): "</string>
+    
+</resources>

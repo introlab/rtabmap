@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/core/CameraRGBD.h>
+#include <rtabmap/core/CameraStereo.h>
 #include <rtabmap/core/Camera.h>
 #include <rtabmap/core/CameraThread.h>
 #include <rtabmap/gui/DataRecorder.h>
@@ -174,7 +175,7 @@ int main (int argc, char * argv[])
 	signal(SIGTERM, &sighandler);
 	signal(SIGINT, &sighandler);
 
-	rtabmap::CameraRGBD * camera = 0;
+	rtabmap::Camera * camera = 0;
 	rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
 	if(driver == 0)
 	{
@@ -223,7 +224,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Freenect2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect2(deviceId.size()?atoi(deviceId.c_str()):0, rtabmap::CameraFreenect2::kTypeRGBDepthSD, rate, t);
+		camera = new rtabmap::CameraFreenect2(deviceId.size()?atoi(deviceId.c_str()):0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate, t);
 	}
 	else if(driver == 6)
 	{
@@ -263,7 +264,7 @@ int main (int argc, char * argv[])
 			app->processEvents();
 		}
 
-		if(cam->init())
+		if(camera->init())
 		{
 			cam->start();
 

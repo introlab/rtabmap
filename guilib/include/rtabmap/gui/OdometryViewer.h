@@ -30,14 +30,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include "rtabmap/core/SensorData.h"
-#include "rtabmap/core/OdometryInfo.h"
+#include "rtabmap/core/OdometryEvent.h"
 #include <QDialog>
 #include "rtabmap/utilite/UEventsHandler.h"
 
 class QSpinBox;
 class QDoubleSpinBox;
 class QLabel;
+class QCheckBox;
 
 namespace rtabmap {
 
@@ -49,7 +49,7 @@ class RTABMAPGUI_EXP OdometryViewer : public QDialog, public UEventsHandler
 	Q_OBJECT
 
 public:
-	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, int qualityWarningThr=0, QWidget * parent = 0);
+	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, float maxDepth = 0, int qualityWarningThr=0, QWidget * parent = 0);
 	virtual ~OdometryViewer();
 
 public slots:
@@ -59,7 +59,8 @@ protected:
 	virtual void handleEvent(UEvent * event);
 
 private slots:
-	void processData(const rtabmap::SensorData & data, const rtabmap::OdometryInfo & info);
+	void reset();
+	void processData(const rtabmap::OdometryEvent & odom);
 
 private:
 	ImageView* imageView_;
@@ -76,6 +77,10 @@ private:
 	QSpinBox * maxCloudsSpin_;
 	QDoubleSpinBox * voxelSpin_;
 	QSpinBox * decimationSpin_;
+	QDoubleSpinBox * maxDepthSpin_;
+	QCheckBox * cloudShown_;
+	QCheckBox * scanShown_;
+	QCheckBox * featuresShown_;
 	QLabel * timeLabel_;
 	int validDecimationValue_;
 };

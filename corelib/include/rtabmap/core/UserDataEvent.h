@@ -40,17 +40,17 @@ namespace rtabmap
 class UserDataEvent : public UEvent
 {
 public:
-	UserDataEvent(const std::vector<unsigned char> & data) :
+	UserDataEvent(const cv::Mat & data) :
 		UEvent(0),
 		data_(data)
 	{}
 	~UserDataEvent() {}
 	virtual std::string getClassName() const {return "UserDataEvent";}
 
-	const std::vector<unsigned char> & data() const {return data_;}
+	const cv::Mat & data() const {return data_;}
 
 private:
-	std::vector<unsigned char> data_;
+	cv::Mat data_;
 };
 
 }

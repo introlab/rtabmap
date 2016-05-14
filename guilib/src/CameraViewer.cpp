@@ -29,13 +29,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/CameraEvent.h>
 #include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util2d.h>
+#include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/gui/ImageView.h>
 #include <rtabmap/gui/CloudViewer.h>
-#include <rtabmap/gui/UCv2Qt.h>
+#include <rtabmap/utilite/UCv2Qt.h>
+#include <rtabmap/utilite/ULogger.h>
 #include <QtCore/QMetaType>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QLabel>
+#include <QSpinBox>
 #include <QDialogButtonBox>
+#include <QCheckBox>
+#include <QPushButton>
 
 namespace rtabmap {
 
@@ -44,7 +51,8 @@ CameraViewer::CameraViewer(QWidget * parent) :
 		QDialog(parent),
 	imageView_(new ImageView(this)),
 	cloudView_(new CloudViewer(this)),
-	processingImages_(false)
+	processingImages_(false),
+	validDecimationValue_(1)
 {
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
 
@@ -55,15 +63,38 @@ CameraViewer::CameraViewer(QWidget * parent) :
 	layout->addWidget(imageView_,1);
 	layout->addWidget(cloudView_,1);
 
+	QLabel * decimationLabel = new QLabel("Decimation", this);
+	decimationSpin_ = new QSpinBox(this);
+	decimationSpin_->setMinimum(1);
+	decimationSpin_->setMaximum(16);
+	decimationSpin_->setValue(1);
+
+	pause_ = new QPushButton("Pause", this);
+	pause_->setCheckable(true);
+	showCloudCheckbox_ = new QCheckBox("Show RGB-D cloud", this);
+	showCloudCheckbox_->setEnabled(false);
+	showCloudCheckbox_->setChecked(true);
+	showScanCheckbox_ = new QCheckBox("Show scan", this);
+	showScanCheckbox_->setEnabled(false);
+
 	QDialogButtonBox * buttonBox = new QDialogButtonBox(this);
 	buttonBox->setStandardButtons(QDialogButtonBox::Close);
 	connect(buttonBox, SIGNAL(rejected()), this, SLOT(reject()));
+
+	QHBoxLayout * layout2 = new QHBoxLayout();
+	layout2->addWidget(pause_);
+	layout2->addWidget(decimationLabel);
+	layout2->addWidget(decimationSpin_);
+	layout2->addWidget(showCloudCheckbox_);
+	layout2->addWidget(showScanCheckbox_);
+	layout2->addStretch(1);
+	layout2->addWidget(buttonBox);
 
 	QVBoxLayout * vlayout = new QVBoxLayout(this);
 	vlayout->setMargin(0);
 	vlayout->setSpacing(0);
 	vlayout->addLayout(layout, 1);
-	vlayout->addWidget(buttonBox);
+	vlayout->addLayout(layout2);
 
 	this->setLayout(vlayout);
 }
@@ -75,44 +106,100 @@ CameraViewer::~CameraViewer()
 
 void CameraViewer::showImage(const rtabmap::SensorData & data)
 {
+	if(!data.imageRaw().empty() || !data.depthOrRightRaw().empty())
+	{
+		if(data.imageRaw().cols % decimationSpin_->value() == 0 &&
+		   data.imageRaw().rows % decimationSpin_->value() == 0 &&
+		   data.depthOrRightRaw().cols % decimationSpin_->value() == 0 &&
+		   data.depthOrRightRaw().rows % decimationSpin_->value() == 0)
+		{
+			validDecimationValue_ = decimationSpin_->value();
+		}
+		else
+		{
+			UWARN("Decimation (%d) must be a denominator of the width and height of "
+					"the image (color=%d/%d depth=%d/%d). Using last valid decimation value (%d).",
+					decimationSpin_->value(),
+					data.imageRaw().cols,
+					data.imageRaw().rows,
+					data.depthOrRightRaw().cols,
+					data.depthOrRightRaw().rows,
+					validDecimationValue_);
+		}
+	}
+
 	processingImages_ = true;
-	imageView_->setImage(uCvMat2QImage(data.image()));
-	imageView_->setImageDepth(uCvMat2QImage(data.depthOrRightImage()));
-	if(!data.depth().empty() && data.fx() && data.fy())
+	if(!data.imageRaw().empty())
 	{
-		cloudView_->addOrUpdateCloud("cloud",
-				util3d::cloudFromDepthRGB(data.image(), data.depth(), data.cx(), data.cy(), data.fx(), data.fy()),
-				data.localTransform());
+		imageView_->setImage(uCvMat2QImage(util2d::decimate(data.imageRaw(), validDecimationValue_)));
 	}
-	else if(!data.rightImage().empty() && data.fx() && data.baseline())
+	if(!data.depthOrRightRaw().empty())
 	{
-		cloudView_->addOrUpdateCloud("cloud",
-				util3d::cloudFromStereoImages(data.image(), data.rightImage(), data.cx(), data.cy(), data.fx(), data.baseline()),
-				data.localTransform());
+		imageView_->setImageDepth(uCvMat2QImage(util2d::decimate(data.depthOrRightRaw(), validDecimationValue_)));
 	}
-	else
+
+	if(!data.depthOrRightRaw().empty() &&
+	   (data.stereoCameraModel().isValidForProjection() || (data.cameraModels().size() && data.cameraModels().at(0).isValidForProjection())))
 	{
-		cloudView_->setVisible(false);
+		if(showCloudCheckbox_->isChecked())
+		{
+			if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
+			{
+				showCloudCheckbox_->setEnabled(true);
+				cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(data, validDecimationValue_));
+			}
+			else if(!data.depthOrRightRaw().empty())
+			{
+				showCloudCheckbox_->setEnabled(true);
+				cloudView_->addCloud("cloud", util3d::cloudFromSensorData(data, validDecimationValue_));
+			}
+		}
 	}
-	cloudView_->update();
+
+	if(!data.laserScanRaw().empty())
+	{
+		showScanCheckbox_->setEnabled(true);
+		if(showScanCheckbox_->isChecked())
+		{
+			cloudView_->addCloud("scan", util3d::downsample(util3d::laserScanToPointCloud(data.laserScanRaw()), validDecimationValue_), Transform::getIdentity(), Qt::yellow);
+		}
+	}
+
+	cloudView_->setVisible((showCloudCheckbox_->isEnabled() && showCloudCheckbox_->isChecked()) ||
+						   (showScanCheckbox_->isEnabled() && showScanCheckbox_->isChecked()));
+	if(cloudView_->isVisible())
+	{
+		cloudView_->update();
+	}
+	if(cloudView_->getAddedClouds().contains("cloud"))
+	{
+		cloudView_->setCloudVisibility("cloud", showCloudCheckbox_->isChecked());
+	}
+	if(cloudView_->getAddedClouds().contains("scan"))
+	{
+		cloudView_->setCloudVisibility("scan", showScanCheckbox_->isChecked());
+	}
+
 	processingImages_ = false;
 }
 
 void CameraViewer::handleEvent(UEvent * event)
 {
-	if(event->getClassName().compare("CameraEvent") == 0)
+	if(!pause_->isChecked())
 	{
-		CameraEvent * camEvent = (CameraEvent*)event;
-		if(camEvent->getCode() == CameraEvent::kCodeImageDepth ||
-		   camEvent->getCode() == CameraEvent::kCodeImage)
+		if(event->getClassName().compare("CameraEvent") == 0)
 		{
-			if(camEvent->data().isValid())
+			CameraEvent * camEvent = (CameraEvent*)event;
+			if(camEvent->getCode() == CameraEvent::kCodeData)
 			{
-				if(!processingImages_ && this->isVisible() && camEvent->data().isValid())
+				if(camEvent->data().isValid())
 				{
-					processingImages_ = true;
-					QMetaObject::invokeMethod(this, "showImage",
-							Q_ARG(rtabmap::SensorData, camEvent->data()));
+					if(!processingImages_ && this->isVisible() && camEvent->data().isValid())
+					{
+						processingImages_ = true;
+						QMetaObject::invokeMethod(this, "showImage",
+								Q_ARG(rtabmap::SensorData, camEvent->data()));
+					}
 				}
 			}
 		}

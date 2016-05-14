@@ -42,8 +42,7 @@ using namespace std;
 
 namespace AISNavigation {
 
-#define DEBUG(i) \
-        if (verboseLevel>i) cerr
+//#define DEBUG(i) if (verboseLevel>i) cerr
 
 //helper functions. Should I explain :-)?
 inline double max3( const double& a, const double& b, const double& c){
@@ -94,8 +93,8 @@ void TreeOptimizer3::computePreconditioner(){
   int edgeCount=0;
   for (EdgeSet::iterator it=sortedEdges->begin(); it!=sortedEdges->end(); it++){
     edgeCount++;
-    if (! (edgeCount%1000))
-      DEBUG(1) << "m";
+    //if (! (edgeCount%1000))
+    //  DEBUG(1) << "m";
 
     Edge* e=*it;
     //Transformation t=e->transformation;
@@ -138,8 +137,8 @@ void TreeOptimizer3::propagateErrors(bool usePreconditioner){
   onIterationStart(iteration);
   for (EdgeSet::iterator it=sortedEdges->begin(); it!=sortedEdges->end(); it++){
     edgeCount++;
-    if (! (edgeCount%1000))
-      DEBUG(1) << "c";
+    //if (! (edgeCount%1000))
+    //  DEBUG(1) << "c";
 
     if (isDone())
       return;
@@ -153,7 +152,7 @@ void TreeOptimizer3::propagateErrors(bool usePreconditioner){
     
     recomputeTransformations(v1,top);
     recomputeTransformations(v2,top);
-    DEBUG(2) << "Edge: " << v1->id << " " << v2->id << ", top=" << top->id << ", length="<< l <<endl;
+    //DEBUG(2) << "Edge: " << v1->id << " " << v2->id << ", top=" << top->id << ", length="<< l <<endl;
 
     //BEGIN: Path and weight computation 
     int pc=0;

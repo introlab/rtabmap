@@ -29,6 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_loopClosureViewer.h"
 
 #include "rtabmap/core/Memory.h"
+#include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/utilite/ULogger.h"
@@ -42,7 +44,7 @@ LoopClosureViewer::LoopClosureViewer(QWidget * parent) :
 	QWidget(parent),
 	decimation_(1),
 	maxDepth_(0),
-	samples_(0)
+	minDepth_(0)
 {
 	ui_ = new Ui_loopClosureViewer();
 	ui_->setupUi(this);
@@ -71,17 +73,17 @@ void LoopClosureViewer::updateView(const Transform & transform)
 	{
 		int decimation = 1;
 		float maxDepth = 0;
-		int samples = 0;
+		float minDepth = 0;
 
 		if(!ui_->checkBox_rawCloud->isChecked())
 		{			decimation = decimation_;
 			maxDepth = maxDepth_;
-			samples = samples_;
+			minDepth = minDepth_;
 		}
 
 		UDEBUG("decimation = %d", decimation);
 		UDEBUG("maxDepth = %f", maxDepth);
-		UDEBUG("samples = %d", samples);
+		UDEBUG("minDepth = %d", minDepth);
 
 		Transform t;
 		if(!transform.isNull())
@@ -103,93 +105,34 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		if(!t.isNull())
 		{
 			//cloud 3d
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA;
-			if(sA_.getDepthRaw().type() == CV_8UC1)
-			{
-				cloudA = util3d::cloudFromStereoImages(
-						sA_.getImageRaw(),
-						sA_.getDepthRaw(),
-						sA_.getCx(), sA_.getCy(),
-						sA_.getFx(), sA_.getFy(),
-						decimation);
-			}
-			else
-			{
-				cloudA = util3d::cloudFromDepthRGB(
-						sA_.getImageRaw(),
-						sA_.getDepthRaw(),
-						sA_.getCx(), sA_.getCy(),
-						sA_.getFx(), sA_.getFy(),
-						decimation);
-			}
-
-			cloudA = util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudA);
-
-			if(maxDepth>0.0)
-			{
-				cloudA = util3d::passThrough<pcl::PointXYZRGB>(cloudA, "z", 0, maxDepth);
-			}
-			if(samples>0 && (int)cloudA->size() > samples)
-			{
-				cloudA = util3d::sampling<pcl::PointXYZRGB>(cloudA, samples);
-			}
-			cloudA = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudA, sA_.getLocalTransform());
-
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudB;
-			if(sB_.getDepthRaw().type() == CV_8UC1)
-			{
-				cloudB = util3d::cloudFromStereoImages(
-						sB_.getImageRaw(),
-						sB_.getDepthRaw(),
-						sB_.getCx(), sB_.getCy(),
-						sB_.getFx(), sB_.getFy(),
-						decimation);
-			}
-			else
-			{
-				cloudB = util3d::cloudFromDepthRGB(
-						sB_.getImageRaw(),
-						sB_.getDepthRaw(),
-						sB_.getCx(), sB_.getCy(),
-						sB_.getFx(), sB_.getFy(),
-						decimation);
-			}
-
-			cloudB = util3d::removeNaNFromPointCloud<pcl::PointXYZRGB>(cloudB);
-
-			if(maxDepth>0.0)
-			{
-				cloudB = util3d::passThrough<pcl::PointXYZRGB>(cloudB, "z", 0, maxDepth);
-			}
-			if(samples>0 && (int)cloudB->size() > samples)
-			{
-				cloudB = util3d::sampling<pcl::PointXYZRGB>(cloudB, samples);
-			}
-			cloudB = util3d::transformPointCloud<pcl::PointXYZRGB>(cloudB, t*sB_.getLocalTransform());
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA, cloudB;
+			cloudA = util3d::cloudRGBFromSensorData(sA_.sensorData(), decimation, maxDepth, minDepth);
+			cloudB = util3d::cloudRGBFromSensorData(sB_.sensorData(), decimation, maxDepth, minDepth);
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-			scanA = util3d::laserScanToPointCloud(sA_.getLaserScanRaw());
-			scanB = util3d::laserScanToPointCloud(sB_.getLaserScanRaw());
-			scanB = util3d::transformPointCloud<pcl::PointXYZ>(scanB, t);
+			scanA = util3d::laserScanToPointCloud(sA_.sensorData().laserScanRaw());
+			scanB = util3d::laserScanToPointCloud(sB_.sensorData().laserScanRaw());
+			scanB = util3d::transformPointCloud(scanB, t);
 
 			ui_->label_idA->setText(QString("[%1 (%2) -> %3 (%4)]").arg(sB_.id()).arg(cloudB->size()).arg(sA_.id()).arg(cloudA->size()));
 
 			if(cloudA->size())
 			{
-				ui_->cloudViewerTransform->addOrUpdateCloud("cloud0", cloudA);
+				ui_->cloudViewerTransform->addCloud("cloud0", cloudA);
 			}
 			if(cloudB->size())
 			{
-				ui_->cloudViewerTransform->addOrUpdateCloud("cloud1", cloudB);
+				cloudB = util3d::transformPointCloud(cloudB, t);
+				ui_->cloudViewerTransform->addCloud("cloud1", cloudB);
 			}
 			if(scanA->size())
 			{
-				ui_->cloudViewerTransform->addOrUpdateCloud("scan0", scanA);
+				ui_->cloudViewerTransform->addCloud("scan0", scanA);
 			}
 			if(scanB->size())
 			{
-				ui_->cloudViewerTransform->addOrUpdateCloud("scan1", scanB);
+				ui_->cloudViewerTransform->addCloud("scan1", scanB);
 			}
 		}
 		else

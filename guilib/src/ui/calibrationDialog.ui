@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1314</width>
-    <height>795</height>
+    <height>860</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -232,6 +232,29 @@
             </property>
            </widget>
           </item>
+          <item row="4" column="1">
+           <widget class="QSpinBox" name="spinBox_maxScale">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>3</number>
+            </property>
+            <property name="value">
+             <number>1</number>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_22">
+            <property name="toolTip">
+             <string>Number of inner squares on the board</string>
+            </property>
+            <property name="text">
+             <string>Max scale</string>
+            </property>
+           </widget>
+          </item>
          </layout>
         </widget>
        </item>
@@ -404,11 +427,22 @@
         </widget>
        </item>
        <item>
-        <widget class="QPushButton" name="pushButton_calibrate">
-         <property name="text">
-          <string>Calibrate</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="1,0">
+         <item>
+          <widget class="QPushButton" name="pushButton_calibrate">
+           <property name="text">
+            <string>Calibrate</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBox_unlock">
+           <property name="text">
+            <string>Unlock</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QGroupBox" name="groupBox_3">
@@ -712,7 +746,7 @@
   <customwidget>
    <class>UImageView</class>
    <extends>QWidget</extends>
-   <header>utilite/UImageView.h</header>
+   <header>rtabmap/utilite/UImageView.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
