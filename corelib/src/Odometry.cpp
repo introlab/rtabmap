@@ -401,15 +401,7 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 			else if(!_holonomic)
 			{
 				// arc trajectory around ICR
-				float tmpY = vyaw!=0.0f ? vx / tan((CV_PI-vyaw)/2.0f) : 0.0f;
-				if(fabs(tmpY) < fabs(vy) || (tmpY<=0 && vy >=0) || (tmpY>=0 && vy<=0))
-				{
-					vy = tmpY;
-				}
-				else
-				{
-					vyaw = (atan(vx/vy)*2.0f-CV_PI)*-1;
-				}
+				vy = vyaw!=0.0f ? vx / tan((CV_PI-vyaw)/2.0f) : 0.0f;
 				if(_force3DoF)
 				{
 					vz = 0.0f;

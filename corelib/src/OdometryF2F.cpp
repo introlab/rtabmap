@@ -39,8 +39,7 @@ namespace rtabmap {
 OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	Odometry(parameters),
 	keyFrameThr_(Parameters::defaultOdomKeyFrameThr()),
-	scanKeyFrameThr_(Parameters::defaultOdomScanKeyFrameThr()),
-	motionSinceLastKeyFrame_(Transform::getIdentity())
+	scanKeyFrameThr_(Parameters::defaultOdomScanKeyFrameThr())
 {
 	registrationPipeline_ = Registration::create(parameters);
 	Parameters::parse(parameters, Parameters::kOdomKeyFrameThr(), keyFrameThr_);
@@ -58,7 +57,7 @@ void OdometryF2F::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
 	refFrame_ = Signature();
-	motionSinceLastKeyFrame_.setIdentity();
+	lastKeyFramePose_.setNull();
 }
 
 // return not null transform if odometry is correctly computed
@@ -83,6 +82,13 @@ Transform OdometryF2F::computeTransform(
 
 	RegistrationInfo regInfo;
 
+	UASSERT(!this->getPose().isNull());
+	if(lastKeyFramePose_.isNull())
+	{
+		lastKeyFramePose_ = this->getPose(); // reset to current pose
+	}
+	Transform motionSinceLastKeyFrame = lastKeyFramePose_.inverse()*this->getPose();
+
 	Signature newFrame(data);
 	if(refFrame_.sensorData().isValid())
 	{
@@ -90,7 +96,7 @@ Transform OdometryF2F::computeTransform(
 		output = registrationPipeline_->computeTransformationMod(
 				tmpRefFrame,
 				newFrame,
-				!guess.isNull()?motionSinceLastKeyFrame_*guess:Transform(),
+				!guess.isNull()?motionSinceLastKeyFrame*guess:Transform(),
 				&regInfo);
 
 		if(info && this->isInfoDataFilled())
@@ -117,7 +123,7 @@ Transform OdometryF2F::computeTransform(
 				info->cornerInliers[i] = idToIndex.at(regInfo.inliersIDs[i]);
 			}
 
-			Transform t = this->getPose()*motionSinceLastKeyFrame_.inverse();
+			Transform t = this->getPose()*motionSinceLastKeyFrame.inverse();
 			for(std::multimap<int, cv::Point3f>::const_iterator iter=tmpRefFrame.getWords3().begin(); iter!=tmpRefFrame.getWords3().end(); ++iter)
 			{
 				info->localMap.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, t)));
@@ -135,8 +141,7 @@ Transform OdometryF2F::computeTransform(
 
 	if(!output.isNull())
 	{
-		output = motionSinceLastKeyFrame_.inverse() * output;
-		motionSinceLastKeyFrame_ *= output;
+		output = motionSinceLastKeyFrame.inverse() * output;
 
 		// new key-frame?
 		if( (registrationPipeline_->isImageRequired() && (keyFrameThr_ == 0 || float(regInfo.inliers) <= keyFrameThr_*float(refFrame_.sensorData().keypoints().size()))) ||
@@ -167,7 +172,7 @@ Transform OdometryF2F::computeTransform(
 				refFrame_.setWordsDescriptors(std::multimap<int, cv::Mat>());
 
 				//reset motion
-				motionSinceLastKeyFrame_.setIdentity();
+				lastKeyFramePose_.setNull();
 			}
 			else
 			{
