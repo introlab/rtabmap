@@ -229,7 +229,6 @@ private:
 	void update3DMapVisibility(bool cloudsShown, bool scansShown);
 	void updateMapCloud(
 			const std::map<int, Transform> & poses,
-			const Transform & pose,
 			const std::multimap<int, Link> & constraints,
 			const std::map<int, int> & mapIds,
 			const std::map<int, std::string> & labels,

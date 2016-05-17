@@ -775,6 +775,8 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		{
 			// we receive too many odometry events! just send without data
 			SensorData data(cv::Mat(), odomEvent->data().id(), odomEvent->data().stamp());
+			data.setCameraModels(odomEvent->data().cameraModels());
+			data.setStereoCameraModel(odomEvent->data().stereoCameraModel());
 			data.setGroundTruth(odomEvent->data().groundTruth());
 			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->covariance(), odomEvent->info().copyWithoutData());
 			emit odometryReceived(tmp);
@@ -1036,7 +1038,17 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 	if(!odom.pose().isNull())
 	{
 		// update camera position
-		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+		Transform localTransform;
+		if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+		{
+			localTransform = odom.data().cameraModels()[0].localTransform();
+		}
+		else if(!odom.data().stereoCameraModel().localTransform().isNull())
+		{
+			localTransform = odom.data().stereoCameraModel().localTransform();
+		}
+
+		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose(), localTransform);
 	}
 	_cloudViewer->update();
 
@@ -1527,9 +1539,30 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			Transform groundTruthOffset = alignPosesToGroundTruth(poses, groundTruth);
 			UDEBUG("time= %d ms", time.restart());
 
+			if(!_odometryReceived && poses.size())
+			{
+				Transform localTransform = Transform::getIdentity();
+				std::map<int, Signature>::const_iterator iter = stat.getSignatures().find(poses.rbegin()->first);
+				if(iter != stat.getSignatures().end())
+				{
+					if(iter->second.sensorData().cameraModels().size() && !iter->second.sensorData().cameraModels()[0].localTransform().isNull())
+					{
+						localTransform = iter->second.sensorData().cameraModels()[0].localTransform();
+					}
+					else if(!iter->second.sensorData().stereoCameraModel().localTransform().isNull())
+					{
+						localTransform = iter->second.sensorData().stereoCameraModel().localTransform();
+					}
+				}
+				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second, localTransform);
+				if(_ui->graphicsView_graphView->isVisible())
+				{
+					_ui->graphicsView_graphView->updateReferentialPosition(poses.rbegin()->second);
+				}
+			}
+
 			updateMapCloud(
 					poses,
-					_odometryReceived||poses.size()==0?Transform():poses.rbegin()->second,
 					stat.constraints(),
 					mapIds,
 					labels,
@@ -1725,15 +1758,14 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 void MainWindow::updateMapCloud(
 		const std::map<int, Transform> & posesIn,
-		const Transform & currentPose,
 		const std::multimap<int, Link> & constraints,
 		const std::map<int, int> & mapIdsIn,
 		const std::map<int, std::string> & labels,
 		const std::map<int, Transform> & groundTruths, // ground truth should contain only valid transforms
 		bool verboseProgress)
 {
-	UDEBUG("posesIn=%d constraints=%d mapIdsIn=%d labelsIn=%d currentPose=%s",
-			(int)posesIn.size(), (int)constraints.size(), (int)mapIdsIn.size(), (int)labels.size(), currentPose.prettyPrint().c_str());
+	UDEBUG("posesIn=%d constraints=%d mapIdsIn=%d labelsIn=%d",
+			(int)posesIn.size(), (int)constraints.size(), (int)mapIdsIn.size(), (int)labels.size());
 	if(posesIn.size())
 	{
 		_currentPosesMap = posesIn;
@@ -1810,7 +1842,7 @@ void MainWindow::updateMapCloud(
 	}
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
-	UDEBUG("Update map with %d locations (currentPose=%s)", poses.size(), currentPose.prettyPrint().c_str());
+	UDEBUG("Update map with %d locations", poses.size());
 	QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
 	int i=1;
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
@@ -2040,11 +2072,6 @@ void MainWindow::updateMapCloud(
 	if(_ui->graphicsView_graphView->isVisible())
 	{
 		_ui->graphicsView_graphView->updateGraph(posesIn, constraints, mapIdsIn);
-		if(!currentPose.isNull())
-		{
-			_ui->graphicsView_graphView->updateReferentialPosition(currentPose);
-		}
-
 		_ui->graphicsView_graphView->updateGTGraph(_currentGTPosesMap);
 	}
 	cv::Mat map8U;
@@ -2145,12 +2172,6 @@ void MainWindow::updateMapCloud(
 			_cloudViewer->updateCloudPose("featuresOdom", _odometryCorrection);
 			_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
 		}
-	}
-
-	if(!currentPose.isNull())
-	{
-		UDEBUG("");
-		_cloudViewer->updateCameraTargetPosition(currentPose);
 	}
 
 	UDEBUG("");
@@ -2813,7 +2834,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			QApplication::processEvents();
 			std::map<int, Transform> poses = event.getPoses();
 			alignPosesToGroundTruth(poses, groundTruth);
-			this->updateMapCloud(poses, Transform(), event.getConstraints(), mapIds, labels, groundTruth, true);
+			this->updateMapCloud(poses, event.getConstraints(), mapIds, labels, groundTruth, true);
 			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
@@ -2957,7 +2978,6 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		{
 			this->updateMapCloud(
 					std::map<int, Transform>(_currentPosesMap),
-					Transform(),
 					std::multimap<int, Link>(_currentLinksMap),
 					std::map<int, int>(_currentMapIds),
 					std::map<int, std::string>(_currentLabels),
@@ -4289,7 +4309,6 @@ void MainWindow::postProcessing()
 	alignPosesToGroundTruth(optimizedPoses, _currentGTPosesMap);
 	this->updateMapCloud(
 			optimizedPoses,
-			Transform(),
 			std::multimap<int, Link>(_currentLinksMap),
 			std::map<int, int>(_currentMapIds),
 			std::map<int, std::string>(_currentLabels),
@@ -4652,7 +4671,6 @@ void MainWindow::anchorCloudsToGroundTruth()
 {
 	this->updateMapCloud(
 			std::map<int, Transform>(_currentPosesMap),
-			Transform(),
 			std::multimap<int, Link>(_currentLinksMap),
 			std::map<int, int>(_currentMapIds),
 			std::map<int, std::string>(_currentLabels),

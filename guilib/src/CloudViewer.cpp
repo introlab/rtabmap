@@ -172,6 +172,7 @@ void CloudViewer::clear()
 	this->removeAllClouds();
 	this->removeAllGraphs();
 	this->removeAllCoordinates();
+	this->removeAllArrows();
 	this->removeAllFrustums();
 	this->removeAllTexts();
 	this->clearTrajectory();
@@ -792,6 +793,62 @@ void CloudViewer::removeAllCoordinates()
 	UASSERT(_coordinates.empty());
 }
 
+void CloudViewer::addOrUpdateArrow(
+			const std::string & id,
+			const Transform & from,
+			const Transform & to,
+			const QColor & color)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	removeArrow(id);
+
+	if(!from.isNull() && !to.isNull())
+	{
+		_arrows.insert(id);
+
+		QColor c = Qt::gray;
+		if(color.isValid())
+		{
+			c = color;
+		}
+
+		pcl::PointXYZ pt1(from.x(), from.y(), from.z());
+		pcl::PointXYZ pt2(to.x(), to.y(), to.z());
+
+		_visualizer->addArrow(pt2, pt1, c.redF(), c.greenF(), c.blueF(), false, id);
+	}
+}
+
+void CloudViewer::removeArrow(const std::string & id)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	if(_arrows.find(id) != _arrows.end())
+	{
+		_visualizer->removeShape(id);
+		_arrows.erase(id);
+	}
+}
+
+void CloudViewer::removeAllArrows()
+{
+	std::set<std::string> arrows = _arrows;
+	for(std::set<std::string>::iterator iter = arrows.begin(); iter!=arrows.end(); ++iter)
+	{
+		this->removeArrow(*iter);
+	}
+	UASSERT(_arrows.empty());
+}
+
 static const float frustum_vertices[] = {
     0.0f,  0.0f, 0.0f,
 	1.0f, 1.0f, 1.0f,
@@ -1055,6 +1112,7 @@ void CloudViewer::setFrustumShown(bool shown)
 	if(!shown)
 	{
 		this->removeFrustum("reference_frustum");
+		this->removeArrow("reference_frustum_arrow");
 		this->update();
 	}
 	_aShowFrustum->setChecked(shown);
@@ -1074,8 +1132,12 @@ void CloudViewer::setFrustumColor(QColor value)
 	if(_frustums.find("reference_frustum") != _frustums.end())
 	{
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), "reference_frustum");
-		this->update();
 	}
+	if(_arrows.find("reference_frustum_arrow") != _arrows.end())
+	{
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), "reference_frustum_arrow");
+	}
+	this->update();
 	_frustumColor = value;
 }
 
@@ -1189,7 +1251,7 @@ void CloudViewer::setCameraPosition(
 	_visualizer->setCameraPosition(x,y,z, focalX,focalY,focalX, upX,upY,upZ);
 }
 
-void CloudViewer::updateCameraTargetPosition(const Transform & pose)
+void CloudViewer::updateCameraTargetPosition(const Transform & pose, const Transform & localTransform)
 {
 	if(!pose.isNull())
 	{
@@ -1305,7 +1367,17 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 			}
 			else */ if(_aShowFrustum->isChecked())
 			{
-				this->addOrUpdateFrustum("reference_frustum", pose, _frustumScale, _frustumColor);
+				Transform baseToCamera = Transform::getIdentity();
+				Transform opticalRot(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+				if(!localTransform.isNull() && !localTransform.isIdentity())
+				{
+					baseToCamera = localTransform*opticalRot.inverse();
+				}
+				this->addOrUpdateFrustum("reference_frustum", pose * baseToCamera, _frustumScale, _frustumColor);
+				if(!baseToCamera.isIdentity())
+				{
+					this->addOrUpdateArrow("reference_frustum_arrow", pose, pose * baseToCamera, _frustumColor);
+				}
 			}
 
 			vtkRenderer* renderer = _visualizer->getRendererCollection()->GetFirstRenderer();
