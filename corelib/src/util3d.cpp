@@ -249,8 +249,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		std::vector<int> * validIndices)
 {
 	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
-	UASSERT(imageDepth.rows % decimation == 0);
-	UASSERT(imageDepth.cols % decimation == 0);
+	UASSERT_MSG(imageDepth.rows % decimation == 0, uFormat("rows=%d decimation=%d", imageDepth.rows, decimation).c_str());
+	UASSERT_MSG(imageDepth.cols % decimation == 0, uFormat("cols=%d decimation=%d", imageDepth.cols, decimation).c_str());
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	if(decimation < 1)
