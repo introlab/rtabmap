@@ -1133,10 +1133,6 @@ void CloudViewer::setFrustumColor(QColor value)
 	{
 		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), "reference_frustum");
 	}
-	if(_arrows.find("reference_frustum_arrow") != _arrows.end())
-	{
-		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), "reference_frustum_arrow");
-	}
 	this->update();
 	_frustumColor = value;
 }
