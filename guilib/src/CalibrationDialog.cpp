@@ -722,8 +722,8 @@ void CalibrationDialog::calibrate()
 		P.at<double>(2,3) = 1;
 		K.copyTo(P.colRange(0,3).rowRange(0,3));
 
-		std::cout << "cameraMatrix = " << K << std::endl;
-		std::cout << "distCoeffs = " << D << std::endl;
+		std::cout << "K = " << K << std::endl;
+		std::cout << "D = " << D << std::endl;
 		std::cout << "width = " << imageSize_[id].width << std::endl;
 		std::cout << "height = " << imageSize_[id].height << std::endl;
 
@@ -738,8 +738,8 @@ void CalibrationDialog::calibrate()
 			ui_->label_error->setNum(totalAvgErr);
 
 			std::stringstream strK, strD, strR, strP;
-			strK << models_[id].K();
-			strD << models_[id].D();
+			strK << models_[id].K_raw();
+			strD << models_[id].D_raw();
 			strR << models_[id].R();
 			strP << models_[id].P();
 			ui_->lineEdit_K->setText(strK.str().c_str());
@@ -756,8 +756,8 @@ void CalibrationDialog::calibrate()
 			ui_->label_error_2->setNum(totalAvgErr);
 
 			std::stringstream strK, strD, strR, strP;
-			strK << models_[id].K();
-			strD << models_[id].D();
+			strK << models_[id].K_raw();
+			strD << models_[id].D_raw();
 			strR << models_[id].R();
 			strP << models_[id].P();
 			ui_->lineEdit_K_2->setText(strK.str().c_str());
@@ -805,6 +805,11 @@ void CalibrationDialog::calibrate()
 				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
 #endif
 		UINFO("stereo calibration... done with RMS error=%f", rms);
+
+		std::cout << "R = " << R << std::endl;
+		std::cout << "T = " << T << std::endl;
+		std::cout << "E = " << E << std::endl;
+		std::cout << "F = " << F << std::endl;
 
 		if(imageSize_[0] == imageSize_[1])
 		{
