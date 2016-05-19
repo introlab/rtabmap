@@ -214,7 +214,7 @@ Transform Registration::computeTransformationMod(
 		}
 		else if(!guess.isNull())
 		{
-			// This registration approach failed, continue with the guess for the next registration
+			UDEBUG("This registration approach failed, continue with the guess for the next registration");
 			t = child_->computeTransformationMod(from, to, guess, &info);
 		}
 	}

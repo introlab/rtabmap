@@ -2138,10 +2138,14 @@ Transform Memory::computeTransform(
 			// Remove descriptors, this will avoid recomputation of the correspondences in regVis
 			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
 			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
-			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+			Transform t = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
 			// set back descriptors
 			tmpFrom.setWordsDescriptors(fromS.getWordsDescriptors());
 			tmpTo.setWordsDescriptors(toS.getWordsDescriptors());
+			if(!t.isNull())
+			{
+				guess = t;
+			}
 		}
 
 		if(_reextractLoopClosureFeatures)
@@ -2157,44 +2161,32 @@ Transform Memory::computeTransform(
 			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
 		}
 
-		if(guess.isNull())
-		{
-			if(!_registrationPipeline->isImageRequired())
-			{
-				UDEBUG("");
-				// no visual in the pipeline, make visual registration for guess
-				guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
-			}
-			else
-			{
-				UDEBUG("");
-				guess.setIdentity();
-			}
-		}
-
-		if(!guess.isNull())
+		if(guess.isNull() && !_registrationPipeline->isImageRequired())
 		{
 			UDEBUG("");
-			transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+			// no visual in the pipeline, make visual registration for guess
+			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+		}
 
-			if(!transform.isNull())
+		transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+
+		if(!transform.isNull())
+		{
+			UDEBUG("");
+			// verify if it is a 180 degree transform, well verify > 90
+			float x,y,z, roll,pitch,yaw;
+			transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+			if(fabs(roll) > CV_PI/2 ||
+			   fabs(pitch) > CV_PI/2 ||
+			   fabs(yaw) > CV_PI/2)
 			{
-				UDEBUG("");
-				// verify if it is a 180 degree transform, well verify > 90
-				float x,y,z, roll,pitch,yaw;
-				transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-				if(fabs(roll) > CV_PI/2 ||
-				   fabs(pitch) > CV_PI/2 ||
-				   fabs(yaw) > CV_PI/2)
+				transform.setNull();
+				std::string msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
+						roll, pitch, yaw);
+				UINFO(msg.c_str());
+				if(info)
 				{
-					transform.setNull();
-					std::string msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
-							roll, pitch, yaw);
-					UINFO(msg.c_str());
-					if(info)
-					{
-						info->rejectedMsg = msg;
-					}
+					info->rejectedMsg = msg;
 				}
 			}
 		}

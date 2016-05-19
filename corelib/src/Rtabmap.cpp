@@ -1017,7 +1017,7 @@ bool Rtabmap::process(
 				//============================================================
 				if(!signature->sensorData().laserScanCompressed().empty())
 				{
-					UINFO("Odometry refining");
+					UINFO("Odometry refining: guess = %s", guess.prettyPrint().c_str());
 					RegistrationInfo info;
 					Transform t = _memory->computeTransform(oldId, signature->id(), guess, &info);
 					if(!t.isNull())
