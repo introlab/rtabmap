@@ -186,6 +186,11 @@ Transform Registration::computeTransformationMod(
 		info = *infoOut;
 	}
 
+	if(!guess.isNull() && force3DoF_)
+	{
+		guess = guess.to3DoF();
+	}
+
 	Transform t = computeTransformationImpl(from, to, guess, info);
 
 	if(varianceFromInliersCount_)
@@ -206,6 +211,11 @@ Transform Registration::computeTransformationMod(
 		if(!t.isNull())
 		{
 			t = child_->computeTransformationMod(from, to, force3DoF_?t.to3DoF():t, &info);
+		}
+		else if(!guess.isNull())
+		{
+			// This registration approach failed, continue with the guess for the next registration
+			t = child_->computeTransformationMod(from, to, guess, &info);
 		}
 	}
 	else if(!t.isNull() && force3DoF_)
