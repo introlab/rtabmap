@@ -1013,17 +1013,16 @@ bool Rtabmap::process(
 			else
 			{
 				//============================================================
-				// Scan matching
+				// Refine neighbor links
 				//============================================================
 				if(!signature->sensorData().laserScanCompressed().empty())
 				{
-					UINFO("Odometry correction by scan matching");
-					Transform guess = signature->getLinks().begin()->second.transform().inverse();
+					UINFO("Odometry refining");
 					RegistrationInfo info;
-					Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &info);
+					Transform t = _memory->computeTransform(oldId, signature->id(), guess, &info);
 					if(!t.isNull())
 					{
-						UINFO("Scan matching: update neighbor link (%d->%d, variance=%f) from %s to %s",
+						UINFO("Odometry refining: update neighbor link (%d->%d, variance=%f) from %s to %s",
 								oldId,
 								signature->id(),
 								info.variance,
@@ -1050,7 +1049,7 @@ bool Rtabmap::process(
 					}
 					else
 					{
-						UINFO("Scan matching rejected: %s", info.rejectedMsg.c_str());
+						UINFO("Odometry refining rejected: %s", info.rejectedMsg.c_str());
 						if(info.variance > 0)
 						{
 							double sqrtVar = sqrt(info.variance);
@@ -1065,7 +1064,7 @@ bool Rtabmap::process(
 				}
 			}
 			timeNeighborLinkRefining = timer.ticks();
-			ULOGGER_INFO("timeScanMatching=%fs", timeNeighborLinkRefining);
+			ULOGGER_INFO("timeOdometryRefining=%fs", timeNeighborLinkRefining);
 
 			UASSERT(oldS->hasLink(signature->id()));
 			UASSERT(uContains(_optimizedPoses, oldId));
