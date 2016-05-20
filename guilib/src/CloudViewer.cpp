@@ -1654,7 +1654,7 @@ void CloudViewer::keyReleaseEvent(QKeyEvent * event) {
 	}
 	else
 	{
-		QWidget::keyPressEvent(event);
+		QVTKWidget::keyPressEvent(event);
 	}
 }
 
@@ -1754,7 +1754,7 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 	}
 	else
 	{
-		QWidget::keyPressEvent(event);
+		QVTKWidget::keyPressEvent(event);
 	}
 }
 
