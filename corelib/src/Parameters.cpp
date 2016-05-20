@@ -155,14 +155,17 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.11.6
+		removedParameters_.insert(std::make_pair("RGBD/ProximityPathScansMerged", std::make_pair(false,  "")));
+
 		// 0.11.3
-		removedParameters_.insert(std::make_pair("Mem/ImageDecimation",      std::make_pair(true, Parameters::kMemImagePostDecimation())));
+		removedParameters_.insert(std::make_pair("Mem/ImageDecimation",           std::make_pair(true, Parameters::kMemImagePostDecimation())));
 
 		// 0.11.2
 		removedParameters_.insert(std::make_pair("OdomLocalMap/HistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
 		removedParameters_.insert(std::make_pair("OdomLocalMap/FixedMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
 		removedParameters_.insert(std::make_pair("OdomF2F/GuessMotion",           std::make_pair(true, Parameters::kOdomGuessMotion())));
-		removedParameters_.insert(std::make_pair("OdomF2F/KeyFrameThr",          std::make_pair(false, Parameters::kOdomKeyFrameThr())));
+		removedParameters_.insert(std::make_pair("OdomF2F/KeyFrameThr",           std::make_pair(false, Parameters::kOdomKeyFrameThr())));
 
 		// 0.11.0
 		removedParameters_.insert(std::make_pair("OdomBow/LocalHistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
@@ -244,7 +247,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionBySpace",             std::make_pair(true,  Parameters::kRGBDProximityBySpace())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionTime",                std::make_pair(true,  Parameters::kRGBDProximityByTime())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionSpace",               std::make_pair(true,  Parameters::kRGBDProximityBySpace())));
-		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathScansMerged",     std::make_pair(true,  Parameters::kRGBDProximityPathScansMerged())));
+		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathScansMerged",     std::make_pair(false,  "")));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionMaxGraphDepth",       std::make_pair(true,  Parameters::kRGBDProximityMaxGraphDepth())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathFilteringRadius", std::make_pair(true,  Parameters::kRGBDProximityPathFilteringRadius())));
 		removedParameters_.insert(std::make_pair("RGBD/LocalLoopDetectionPathRawPosesUsed",    std::make_pair(true,  Parameters::kRGBDProximityPathRawPosesUsed())));

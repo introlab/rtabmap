@@ -155,13 +155,14 @@ public:
 	void removeCoordinate(const std::string & id);
 	void removeAllCoordinates();
 
-	void addOrUpdateArrow(
+	void addOrUpdateLine(
 				const std::string & id,
 				const Transform & from,
 				const Transform & to,
-				const QColor & color);
-	void removeArrow(const std::string & id);
-	void removeAllArrows();
+				const QColor & color,
+				bool arrow = false);
+	void removeLine(const std::string & id);
+	void removeAllLines();
 
 	void addOrUpdateFrustum(
 			const std::string & id,
@@ -291,7 +292,7 @@ private:
     std::set<std::string> _graphes;
     std::set<std::string> _coordinates;
     std::set<std::string> _texts;
-    std::set<std::string> _arrows;
+    std::set<std::string> _lines;
     std::set<std::string> _frustums;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;

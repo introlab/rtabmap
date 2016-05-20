@@ -113,7 +113,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	if(!guess.isNull() && !dataFrom.laserScanRaw().empty() && !dataTo.laserScanRaw().empty())
 	{
 		// ICP with guess transform
-		int maxLaserScans = dataTo.laserScanMaxPts();
+		int maxLaserScans = dataTo.laserScanMaxPts()?dataTo.laserScanMaxPts():dataFrom.laserScanMaxPts();
 		cv::Mat fromScan = dataFrom.laserScanRaw();
 		cv::Mat toScan = dataTo.laserScanRaw();
 		if(_downsamplingStep>1)
@@ -309,8 +309,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 					else
 					{
-						UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute!",
-								dataTo.id());
+						static bool warningShown = false;
+						if(!warningShown)
+						{
+							UWARN("Maximum laser scans points not set for signature %d, correspondences ratio set relative instead of absolute! This message will only appear once.",
+									dataTo.id());
+							warningShown = true;
+						}
 						correspondencesRatio = float(correspondences)/float(toScan.cols>fromScan.cols?toScan.cols:fromScan.cols);
 					}
 

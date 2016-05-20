@@ -3080,6 +3080,7 @@ void DatabaseViewer::updateConstraintView(
 					   memcmp(userData.data, "SCANS:", 6) == 0)
 					{
 						std::string scansStr = (const char *)userData.data;
+						UINFO("Detected \"%s\" in links's user data", scansStr.c_str());
 						if(!scansStr.empty())
 						{
 							std::list<std::string> strs = uSplit(scansStr, ':');
@@ -3127,6 +3128,22 @@ void DatabaseViewer::updateConstraintView(
 									updateLinksWithModifications(links_),
 									posesOut,
 									linksOut);
+
+							if(poses.size() != posesOut.size())
+							{
+								UWARN("Scan poses input and output are different! %d vs %d", (int)poses.size(), (int)posesOut.size());
+								UWARN("Input poses: ");
+								for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+								{
+									UWARN(" %d", iter->first);
+								}
+								UWARN("Input links: ");
+								std::multimap<int, Link> modifiedLinks = updateLinksWithModifications(links_);
+								for(std::multimap<int, Link>::iterator iter=modifiedLinks.begin(); iter!=modifiedLinks.end(); ++iter)
+								{
+									UWARN(" %d->%d", iter->second.from(), iter->second.to());
+								}
+							}
 
 							QTime time;
 							time.start();

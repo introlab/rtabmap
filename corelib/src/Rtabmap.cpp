@@ -100,7 +100,6 @@ Rtabmap::Rtabmap() :
 	_proximityMaxGraphDepth(Parameters::defaultRGBDProximityMaxGraphDepth()),
 	_proximityFilteringRadius(Parameters::defaultRGBDProximityPathFilteringRadius()),
 	_proximityRawPosesUsed(Parameters::defaultRGBDProximityPathRawPosesUsed()),
-	_proximityScansMerged(Parameters::defaultRGBDProximityPathScansMerged()),
 	_proximityAngle(Parameters::defaultRGBDProximityAngle()*M_PI/180.0f),
 	_databasePath(""),
 	_optimizeFromGraphEnd(Parameters::defaultRGBDOptimizeFromGraphEnd()),
@@ -411,7 +410,6 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDProximityMaxGraphDepth(), _proximityMaxGraphDepth);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathFilteringRadius(), _proximityFilteringRadius);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathRawPosesUsed(), _proximityRawPosesUsed);
-	Parameters::parse(parameters, Parameters::kRGBDProximityPathScansMerged(), _proximityScansMerged);
 	Parameters::parse(parameters, Parameters::kRGBDProximityAngle(), _proximityAngle);
 	_proximityAngle *= M_PI/180.0f;
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
@@ -1901,47 +1899,37 @@ bool Rtabmap::process(
 						   (_proximityFilteringRadius <= 0.0f ||
 							_optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 						{
-							if(!_proximityScansMerged)
+							// Assemble scans in the path and do ICP only
+							if(_proximityRawPosesUsed)
 							{
-								//only keep the nearest node
-								std::map<int, Transform> tmp;
-								tmp.insert(*path.find(nearestId));
-								path = tmp;
+								//optimize the path's poses locally
+								path = optimizeGraph(nearestId, uKeysSet(path), std::map<int, Transform>(), false);
+								// transform local poses in optimized graph referential
+								UASSERT(uContains(path, nearestId));
+								Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
+								for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
+								{
+									jter->second = t * jter->second;
+								}
 							}
-							else
+							std::map<int, Transform> filteredPath = path;
+							if(path.size() > 2 && _proximityFilteringRadius > 0.0f)
 							{
-								// Assemble scans in the path and do ICP only
-								if(_proximityRawPosesUsed)
-								{
-									//optimize the path's poses locally
-									path = optimizeGraph(nearestId, uKeysSet(path), std::map<int, Transform>(), false);
-									// transform local poses in optimized graph referential
-									UASSERT(uContains(path, nearestId));
-									Transform t = _optimizedPoses.at(nearestId) * path.at(nearestId).inverse();
-									for(std::map<int, Transform>::iterator jter=path.begin(); jter!=path.end(); ++jter)
-									{
-										jter->second = t * jter->second;
-									}
-								}
-								if(path.size() > 2 && _proximityFilteringRadius > 0.0f)
-								{
-									// path filtering
-									std::map<int, Transform> filteredPath = graph::radiusPosesFiltering(path, _proximityFilteringRadius, 0, true);
-									// make sure the current pose is still here
-									filteredPath.insert(*path.find(nearestId));
-									path = filteredPath;
-								}
+								// path filtering
+								filteredPath = graph::radiusPosesFiltering(path, _proximityFilteringRadius, 0, true);
+								// make sure the current pose is still here
+								filteredPath.insert(*path.find(nearestId));
 							}
 
-							if(path.size() > 0)
+							if(filteredPath.size() > 0)
 							{
 								// add current node to poses
-								path.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
+								filteredPath.insert(std::make_pair(signature->id(), _optimizedPoses.at(signature->id())));
 								//The nearest will be the reference for a loop closure transform
 								if(signature->getLinks().find(nearestId) == signature->getLinks().end())
 								{
 									RegistrationInfo info;
-									Transform transform = _memory->computeIcpTransformMulti(signature->id(), nearestId, path, &info);
+									Transform transform = _memory->computeIcpTransformMulti(signature->id(), nearestId, filteredPath, &info);
 									if(!transform.isNull())
 									{
 										if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
@@ -1958,14 +1946,11 @@ bool Rtabmap::process(
 												stream << "SCANS:";
 												for(std::map<int, Transform>::iterator iter=path.begin(); iter!=path.end(); ++iter)
 												{
-													if(iter->first!=signature->id())
+													if(iter != path.begin())
 													{
-														if(iter != path.begin())
-														{
-															stream << ";";
-														}
-														stream << uNumber2Str(iter->first);
+														stream << ";";
 													}
+													stream << uNumber2Str(iter->first);
 												}
 												std::string scansStr = stream.str();
 												scanMatchingIds = cv::Mat(1, int(scansStr.size()+1), CV_8SC1, (void *)scansStr.c_str());

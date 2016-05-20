@@ -172,7 +172,7 @@ void CloudViewer::clear()
 	this->removeAllClouds();
 	this->removeAllGraphs();
 	this->removeAllCoordinates();
-	this->removeAllArrows();
+	this->removeAllLines();
 	this->removeAllFrustums();
 	this->removeAllTexts();
 	this->clearTrajectory();
@@ -793,11 +793,12 @@ void CloudViewer::removeAllCoordinates()
 	UASSERT(_coordinates.empty());
 }
 
-void CloudViewer::addOrUpdateArrow(
+void CloudViewer::addOrUpdateLine(
 			const std::string & id,
 			const Transform & from,
 			const Transform & to,
-			const QColor & color)
+			const QColor & color,
+			bool arrow)
 {
 	if(id.empty())
 	{
@@ -805,11 +806,11 @@ void CloudViewer::addOrUpdateArrow(
 		return;
 	}
 
-	removeArrow(id);
+	removeLine(id);
 
 	if(!from.isNull() && !to.isNull())
 	{
-		_arrows.insert(id);
+		_lines.insert(id);
 
 		QColor c = Qt::gray;
 		if(color.isValid())
@@ -820,11 +821,18 @@ void CloudViewer::addOrUpdateArrow(
 		pcl::PointXYZ pt1(from.x(), from.y(), from.z());
 		pcl::PointXYZ pt2(to.x(), to.y(), to.z());
 
-		_visualizer->addArrow(pt2, pt1, c.redF(), c.greenF(), c.blueF(), false, id);
+		if(arrow)
+		{
+			_visualizer->addArrow(pt2, pt1, c.redF(), c.greenF(), c.blueF(), false, id);
+		}
+		else
+		{
+			_visualizer->addLine(pt2, pt1, c.redF(), c.greenF(), c.blueF(), id);
+		}
 	}
 }
 
-void CloudViewer::removeArrow(const std::string & id)
+void CloudViewer::removeLine(const std::string & id)
 {
 	if(id.empty())
 	{
@@ -832,21 +840,21 @@ void CloudViewer::removeArrow(const std::string & id)
 		return;
 	}
 
-	if(_arrows.find(id) != _arrows.end())
+	if(_lines.find(id) != _lines.end())
 	{
 		_visualizer->removeShape(id);
-		_arrows.erase(id);
+		_lines.erase(id);
 	}
 }
 
-void CloudViewer::removeAllArrows()
+void CloudViewer::removeAllLines()
 {
-	std::set<std::string> arrows = _arrows;
+	std::set<std::string> arrows = _lines;
 	for(std::set<std::string>::iterator iter = arrows.begin(); iter!=arrows.end(); ++iter)
 	{
-		this->removeArrow(*iter);
+		this->removeLine(*iter);
 	}
-	UASSERT(_arrows.empty());
+	UASSERT(_lines.empty());
 }
 
 static const float frustum_vertices[] = {
@@ -1112,7 +1120,7 @@ void CloudViewer::setFrustumShown(bool shown)
 	if(!shown)
 	{
 		this->removeFrustum("reference_frustum");
-		this->removeArrow("reference_frustum_arrow");
+		this->removeLine("reference_frustum_line");
 		this->update();
 	}
 	_aShowFrustum->setChecked(shown);
@@ -1372,7 +1380,7 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose, const Trans
 				this->addOrUpdateFrustum("reference_frustum", pose * baseToCamera, _frustumScale, _frustumColor);
 				if(!baseToCamera.isIdentity())
 				{
-					this->addOrUpdateArrow("reference_frustum_arrow", pose, pose * baseToCamera, _frustumColor);
+					this->addOrUpdateLine("reference_frustum_line", pose, pose * baseToCamera, _frustumColor);
 				}
 			}
 

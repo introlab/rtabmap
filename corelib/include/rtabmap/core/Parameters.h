@@ -323,7 +323,6 @@ class RTABMAP_EXP Parameters
 	// Local/Proximity loop closure detection
 	RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, 	"Detection over all locations in STM.");
 	RTABMAP_PARAM(RGBD, ProximityBySpace,             bool, true, 	"Detection over locations (in Working Memory or STM) near in space.");
-	RTABMAP_PARAM(RGBD, ProximityPathScansMerged,     bool, true, 	"Merge close laser scans on each path. If false, only the nearest laser scan on the path is used for ICP.");
 	RTABMAP_PARAM(RGBD, ProximityMaxGraphDepth,       int, 50,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
 	RTABMAP_PARAM(RGBD, ProximityPathFilteringRadius, float, 0.5,   "Path filtering radius.");
 	RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,   "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");

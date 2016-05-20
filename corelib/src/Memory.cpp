@@ -2290,6 +2290,7 @@ Transform Memory::computeIcpTransformMulti(
 		SensorData assembledData;
 		Transform toPose = poses.at(toId);
 		std::string msg;
+		int maxPoints = fromScan.cols;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
@@ -2301,6 +2302,10 @@ Transform Memory::computeIcpTransformMulti(
 					cv::Mat scan;
 					s->sensorData().uncompressData(0, 0, &scan);
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, toPose.inverse() * iter->second);
+					if(scan.cols > maxPoints)
+					{
+						maxPoints = scan.cols;
+					}
 					*assembledToClouds += *cloud;
 				}
 				else
@@ -2311,7 +2316,7 @@ Transform Memory::computeIcpTransformMulti(
 		}
 		if(assembledToClouds->size())
 		{
-			assembledData.setLaserScanRaw(util3d::laserScanFromPointCloud(*assembledToClouds, Transform()), fromS->sensorData().laserScanMaxPts(), fromS->sensorData().laserScanMaxRange());
+			assembledData.setLaserScanRaw(util3d::laserScanFromPointCloud(*assembledToClouds, Transform()), fromS->sensorData().laserScanMaxPts()?fromS->sensorData().laserScanMaxPts():maxPoints, fromS->sensorData().laserScanMaxRange());
 		}
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
