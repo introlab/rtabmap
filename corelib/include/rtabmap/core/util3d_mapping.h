@@ -91,7 +91,8 @@ void segmentObstaclesFromGround(
 		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles = false,
-		float maxGroundHeight = 0.0f);
+		float maxGroundHeight = 0.0f,
+		pcl::IndicesPtr * flatObstacles = 0);
 template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
@@ -102,7 +103,8 @@ void segmentObstaclesFromGround(
 		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles = false,
-		float maxGroundHeight = 0.0f);
+		float maxGroundHeight = 0.0f,
+		pcl::IndicesPtr * flatObstacles = 0);
 
 template<typename PointT>
 void occupancy2DFromCloud3D(

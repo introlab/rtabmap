@@ -28,10 +28,15 @@ void segmentObstaclesFromGround(
 		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles,
-		float maxGroundHeight)
+		float maxGroundHeight,
+		pcl::IndicesPtr * flatObstacles)
 {
 	ground.reset(new std::vector<int>);
 	obstacles.reset(new std::vector<int>);
+	if(flatObstacles)
+	{
+		flatObstacles->reset(new std::vector<int>);
+	}
 
 	if(cloud->size())
 	{
@@ -75,6 +80,10 @@ void segmentObstaclesFromGround(
 							{
 								ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
 							}
+							else if(flatObstacles)
+							{
+								*flatObstacles = util3d::concatenate(*flatObstacles, clusteredFlatSurfaces.at(i));
+							}
 						}
 					}
 				}
@@ -82,6 +91,10 @@ void segmentObstaclesFromGround(
 				{
 					// reject ground!
 					ground.reset(new std::vector<int>);
+					if(flatObstacles)
+					{
+						*flatObstacles = flatSurfaces;
+					}
 				}
 			}
 		}
@@ -118,7 +131,8 @@ void segmentObstaclesFromGround(
 		float clusterRadius,
 		int minClusterSize,
 		bool segmentFlatObstacles,
-		float maxGroundHeight)
+		float maxGroundHeight,
+		pcl::IndicesPtr * flatObstacles)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	segmentObstaclesFromGround<PointT>(
@@ -131,7 +145,8 @@ void segmentObstaclesFromGround(
 			clusterRadius,
 			minClusterSize,
 			segmentFlatObstacles,
-			maxGroundHeight);
+			maxGroundHeight,
+			flatObstacles);
 }
 
 template<typename PointT>

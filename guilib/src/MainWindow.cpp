@@ -2230,14 +2230,17 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			float groundNormalMaxAngle = M_PI_4;
 			int minClusterSize = 20;
 			cv::Mat ground, obstacles;
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelCloud = util3d::voxelize(cloud, indices, cellSize);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = util3d::voxelize(cloudWithoutNormals, indices, cellSize);
 
 			// add pose rotation without yaw
 			float roll, pitch, yaw;
 			pose.getEulerAngles(roll, pitch, yaw);
 			voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0,0, roll, pitch, 0));
 
-			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGBNormal>(
+			pcl::io::savePCDFile("cloud.pcd", *voxelCloud);
+			UWARN("saved cloud.pcd");
+
+			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
 					voxelCloud,
 					ground,
 					obstacles,
