@@ -308,10 +308,9 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> &
 		}
 
 		//right roi
-		roi.width = width - roi.x;
 		if(roiRatios[1] > 0 && roiRatios[1] < 1 - roiRatios[0])
 		{
-			roi.width -= width * roiRatios[1];
+			roi.width -= width * roiRatios[1] + width * roiRatios[0];
 		}
 
 		//top roi
@@ -321,10 +320,9 @@ cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::vector<float> &
 		}
 
 		//bottom roi
-		roi.height = height - roi.y;
 		if(roiRatios[3] > 0 && roiRatios[3] < 1 - roiRatios[2])
 		{
-			roi.height -= height * roiRatios[3];
+			roi.height -= height * roiRatios[3] + height * roiRatios[2];
 		}
 		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
 
