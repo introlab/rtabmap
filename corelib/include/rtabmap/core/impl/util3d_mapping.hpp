@@ -76,7 +76,8 @@ void segmentObstaclesFromGround(
 						{
 							Eigen::Vector4f centroid;
 							pcl::compute3DCentroid(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-							if(centroid[2] >= min[2]-0.01 && centroid[2] <= max[2]+0.01) // epsilon
+							if(centroid[2] >= min[2]-0.01 &&
+							  (centroid[2] <= max[2]+0.01 || (maxGroundHeight>0 && centroid[2] <= maxGroundHeight+0.01))) // epsilon
 							{
 								ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
 							}
@@ -107,6 +108,12 @@ void segmentObstaclesFromGround(
 		{
 			// Remove ground
 			pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, ground, true);
+
+			// If ground height is set, remove obstacles under it
+			if(maxGroundHeight > 0.0f)
+			{
+				otherStuffIndices = rtabmap::util3d::passThrough(cloud, otherStuffIndices, "z", maxGroundHeight, std::numeric_limits<float>::max());
+			}
 
 			//Cluster remaining stuff (obstacles)
 			std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(

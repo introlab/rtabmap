@@ -108,6 +108,20 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP randomSampling(
 		int samples);
 
 
+pcl::IndicesPtr RTABMAP_EXP passThrough(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::string & axis,
+		float min,
+		float max,
+		bool negative = false);
+pcl::IndicesPtr RTABMAP_EXP passThrough(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const std::string & axis,
+		float min,
+		float max,
+		bool negative = false);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP passThrough(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const std::string & axis,
