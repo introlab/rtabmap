@@ -261,6 +261,7 @@ pcl::IndicesPtr passThrough(
 	filter.setFilterFieldName(axis);
 	filter.setFilterLimits(min, max);
 	filter.setInputCloud(cloud);
+	filter.setIndices(indices);
 	filter.filter(*output);
 	return output;
 }
@@ -281,6 +282,7 @@ pcl::IndicesPtr passThrough(
 	filter.setFilterFieldName(axis);
 	filter.setFilterLimits(min, max);
 	filter.setInputCloud(cloud);
+	filter.setIndices(indices);
 	filter.filter(*output);
 	return output;
 }
