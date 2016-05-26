@@ -1867,7 +1867,7 @@ void MainWindow::updateMapCloud(
 							UERROR("Updating pose cloud %d failed!", iter->first);
 						}
 					}
-					_cloudViewer->setCloudVisibility(cloudName, true);
+					_cloudViewer->setCloudVisibility(cloudName, (_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)));
 					_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 					_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 				}
