@@ -561,6 +561,36 @@ std::multimap<int, int>::const_iterator findLink(
 	return links.end();
 }
 
+std::multimap<int, Link> filterLinks(
+		const std::multimap<int, Link> & links,
+		Link::Type filteredType)
+{
+	std::multimap<int, Link> output;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		if(iter->second.type() != filteredType)
+		{
+			output.insert(*iter);
+		}
+	}
+	return output;
+}
+
+std::map<int, Link> filterLinks(
+		const std::map<int, Link> & links,
+		Link::Type filteredType)
+{
+	std::map<int, Link> output;
+	for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		if(iter->second.type() != filteredType)
+		{
+			output.insert(*iter);
+		}
+	}
+	return output;
+}
+
 std::map<int, Transform> frustumPosesFiltering(
 		const std::map<int, Transform> & poses,
 		const Transform & cameraPose,

@@ -79,6 +79,13 @@ std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
 		int to,
 		bool checkBothWays = true);
 
+std::multimap<int, Link> RTABMAP_EXP filterLinks(
+		const std::multimap<int, Link> & links,
+		Link::Type filteredType);
+std::map<int, Link> RTABMAP_EXP filterLinks(
+		const std::map<int, Link> & links,
+		Link::Type filteredType);
+
 //Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
 std::map<int, Transform> RTABMAP_EXP frustumPosesFiltering(
 		const std::map<int, Transform> & poses,

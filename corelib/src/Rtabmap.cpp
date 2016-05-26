@@ -2035,14 +2035,17 @@ bool Rtabmap::process(
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
+		//used in localization mode: filter virtual links
+		std::map<int, Link> localizationLinks = graph::filterLinks(signature->getLinks(), Link::kVirtualClosure);
+
 		// Note that in localization mode, we don't re-optimize the graph
 		// if:
 		//  1- there are no signatures retrieved,
 		//  2- we are relocalizing on a node already in the optimized graph
 		if(!_memory->isIncremental() &&
 		   signaturesRetrieved.size() == 0 &&
-		   signature->getLinks().size() &&
-		   uContains(_optimizedPoses, signature->getLinks().begin()->first))
+		   localizationLinks.size() &&
+		   uContains(_optimizedPoses, localizationLinks.begin()->first))
 		{
 			// If there are no signatures retrieved, we don't
 			// need to re-optimize the graph. Just update the last
@@ -2054,8 +2057,8 @@ bool Rtabmap::process(
 				// update all previous nodes
 				// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
 				// parameters just changed state, we should put back all poses without map correction.
-				Transform oldPose = _optimizedPoses.at(signature->getLinks().begin()->first);
-				Transform u = signature->getPose() * signature->getLinks().begin()->second.transform();
+				Transform oldPose = _optimizedPoses.at(localizationLinks.begin()->first);
+				Transform u = signature->getPose() * localizationLinks.begin()->second.transform();
 				Transform up = u * oldPose.inverse();
 				Transform mapCorrectionInv = _mapCorrection.inverse();
 				for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
@@ -2066,7 +2069,7 @@ bool Rtabmap::process(
 			}
 			else
 			{
-				_optimizedPoses.at(signature->id()) = _optimizedPoses.at(signature->getLinks().begin()->first) * signature->getLinks().begin()->second.transform().inverse();
+				_optimizedPoses.at(signature->id()) = _optimizedPoses.at(localizationLinks.begin()->first) * localizationLinks.begin()->second.transform().inverse();
 			}
 		}
 		else
