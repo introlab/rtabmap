@@ -496,6 +496,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			{
 				UWARN("Switching from Mapping to Localization mode, the database will be saved and reloaded.");
 				this->init(_dbDriver->getUrl());
+				UWARN("Switching from Mapping to Localization mode, the database is reloaded!");
 			}
 		}
 		_incrementalMemory = value;
