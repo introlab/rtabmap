@@ -2237,9 +2237,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			pose.getEulerAngles(roll, pitch, yaw);
 			voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0,0, roll, pitch, 0));
 
-			pcl::io::savePCDFile("cloud.pcd", *voxelCloud);
-			UWARN("saved cloud.pcd");
-
 			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
 					voxelCloud,
 					ground,
