@@ -1141,7 +1141,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		for(int i=0; i<2; ++i)
 		{
 			_3dRenderingShowClouds[i]->setChecked(true);
-			_3dRenderingDecimation[i]->setValue(8);
+			_3dRenderingDecimation[i]->setValue(4);
 			_3dRenderingMaxDepth[i]->setValue(0.0);
 			_3dRenderingMinDepth[i]->setValue(0.0);
 			_3dRenderingShowScans[i]->setChecked(true);
