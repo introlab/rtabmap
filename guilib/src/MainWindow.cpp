@@ -1874,6 +1874,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
+					_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
 				}
 			}
 			else if(viewerClouds.contains(cloudName))
