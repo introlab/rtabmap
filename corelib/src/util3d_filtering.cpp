@@ -45,6 +45,18 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
 
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+#include <pcl/impl/instantiate.hpp>
+#include <pcl/point_types.h>
+#include <pcl/segmentation/impl/extract_clusters.hpp>
+#include <pcl/segmentation/extract_labeled_clusters.h>
+#include <pcl/segmentation/impl/extract_labeled_clusters.hpp>
+
+PCL_INSTANTIATE(EuclideanClusterExtraction, (pcl::PointXYZRGBNormal))
+PCL_INSTANTIATE(extractEuclideanClusters, (pcl::PointXYZRGBNormal))
+PCL_INSTANTIATE(extractEuclideanClusters_indices, (pcl::PointXYZRGBNormal))
+#endif
+
 namespace rtabmap
 {
 
@@ -88,7 +100,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr downsample(
 	}
 	else
 	{
-		int finalSize = cloud->size()/step;
+		int finalSize = int(cloud->size())/step;
 		output->resize(finalSize);
 		int oi = 0;
 		for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
@@ -111,7 +123,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsample(
 	}
 	else
 	{
-		int finalSize = cloud->size()/step;
+		int finalSize = int(cloud->size())/step;
 		output->resize(finalSize);
 		int oi = 0;
 		for(int i=0; i<(int)cloud->size()-step+1; i+=step)

@@ -46,6 +46,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "pcl18/surface/organized_fast_mesh.h"
 #else
 #include <pcl/surface/organized_fast_mesh.h>
+#include <pcl/surface/impl/marching_cubes.hpp>
+#include <pcl/surface/impl/organized_fast_mesh.hpp>
+#include <pcl/impl/instantiate.hpp>
+#include <pcl/point_types.h>
+
+// Instantiations of specific point types
+PCL_INSTANTIATE(OrganizedFastMesh, (pcl::PointXYZRGBNormal))
+
+#include <pcl/features/impl/normal_3d_omp.hpp>
+PCL_INSTANTIATE_PRODUCT(NormalEstimationOMP, ((pcl::PointXYZRGB))((pcl::Normal)))
 #endif
 
 namespace rtabmap
@@ -177,10 +187,10 @@ void appendMesh(
 	UDEBUG("cloudA=%d polygonsA=%d cloudB=%d polygonsB=%d", (int)cloudA.size(), (int)polygonsA.size(), (int)cloudB.size(), (int)polygonsB.size());
 	UASSERT(!cloudA.isOrganized() && !cloudB.isOrganized());
 
-	int sizeA = cloudA.size();
+	int sizeA = (int)cloudA.size();
 	cloudA += cloudB;
 
-	int sizePolygonsA = polygonsA.size();
+	int sizePolygonsA = (int)polygonsA.size();
 	polygonsA.resize(sizePolygonsA+polygonsB.size());
 
 	for(unsigned int i=0; i<polygonsB.size(); ++i)
@@ -203,10 +213,10 @@ void appendMesh(
 	UDEBUG("cloudA=%d polygonsA=%d cloudB=%d polygonsB=%d", (int)cloudA.size(), (int)polygonsA.size(), (int)cloudB.size(), (int)polygonsB.size());
 	UASSERT(!cloudA.isOrganized() && !cloudB.isOrganized());
 
-	int sizeA = cloudA.size();
+	int sizeA = (int)cloudA.size();
 	cloudA += cloudB;
 
-	int sizePolygonsA = polygonsA.size();
+	int sizePolygonsA = (int)polygonsA.size();
 	polygonsA.resize(sizePolygonsA+polygonsB.size());
 
 	for(unsigned int i=0; i<polygonsB.size(); ++i)
