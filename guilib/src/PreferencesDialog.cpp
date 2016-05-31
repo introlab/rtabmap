@@ -237,6 +237,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraStereo->setItemData(1, 0, Qt::UserRole - 1);
 	}
+	if (!CameraStereoZed::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(7, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(4, 0, Qt::UserRole - 1);
+	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
@@ -465,6 +470,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_cameraStereoVideo_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoVideoPath()));
 	connect(_ui->lineEdit_cameraStereoVideo_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereoVideo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
+	connect(_ui->checkBox_stereoZed_computeDisparity, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1271,6 +1278,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_stereoImages_rectify->setChecked(false);
 		_ui->lineEdit_cameraStereoVideo_path->setText("");
 		_ui->checkBox_stereoVideo_rectify->setChecked(false);
+		_ui->checkBox_stereoZed_computeDisparity->setChecked(true);
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
 		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
@@ -1594,6 +1602,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_cameraStereoVideo_path->setText(settings.value("path", _ui->lineEdit_cameraStereoVideo_path->text()).toString());
 	_ui->checkBox_stereoVideo_rectify->setChecked(settings.value("rectify",_ui->checkBox_stereoVideo_rectify->isChecked()).toBool());
 	settings.endGroup(); // StereoVideo
+
+	settings.beginGroup("StereoZed");
+	_ui->checkBox_stereoZed_computeDisparity->setChecked(settings.value("compute_disp", _ui->checkBox_stereoZed_computeDisparity->isChecked()).toBool());
+	settings.endGroup(); // StereoZed
+	
 
 	settings.beginGroup("Images");
 	_ui->source_images_lineEdit_path->setText(settings.value("path", _ui->source_images_lineEdit_path->text()).toString());
@@ -1978,6 +1991,12 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("path", 			_ui->lineEdit_cameraStereoVideo_path->text());
 	settings.setValue("rectify", 	    _ui->checkBox_stereoVideo_rectify->isChecked());
 	settings.endGroup(); // StereoVideo
+
+	settings.beginGroup("StereoZed");
+	settings.setValue("compute_disp", _ui->checkBox_stereoZed_computeDisparity->isChecked());
+	settings.endGroup(); // StereoZed
+
+	
 
 	settings.beginGroup("Images");
 	settings.setValue("path", 			_ui->source_images_lineEdit_path->text());
@@ -2556,17 +2575,16 @@ void PreferencesDialog::selectSourceDriver(Src src)
 	else if(src >= kSrcStereo && src<kSrcRGB)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(1);
-		_ui->comboBox_cameraRGBD->setCurrentIndex(src - kSrcStereo);
+		_ui->comboBox_cameraStereo->setCurrentIndex(src - kSrcStereo);
 	}
 	else if(src >= kSrcRGB && src<kSrcDatabase)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(2);
-		_ui->comboBox_cameraRGBD->setCurrentIndex(src - kSrcRGB);
+		_ui->source_comboBox_image_type->setCurrentIndex(src - kSrcRGB);
 	}
 	else if(src >= kSrcDatabase)
 	{
 		_ui->comboBox_sourceType->setCurrentIndex(3);
-		_ui->comboBox_cameraRGBD->setCurrentIndex(src - kSrcDatabase);
 	}
 
 	if(validateForm())
@@ -3427,8 +3445,13 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
 	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD);
 
-	_ui->stackedWidget_stereo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && (_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo || _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo));
+	_ui->stackedWidget_stereo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && 
+		(_ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo-kSrcStereo || 
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo ||
+		 _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo));
 	_ui->groupBox_cameraStereoImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo);
+	_ui->groupBox_cameraStereoVideo->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoVideo - kSrcStereo);
+	_ui->groupBox_cameraStereoZed->setVisible(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoZed - kSrcStereo);
 
 	_ui->stackedWidget_image->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 && (_ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB || _ui->source_comboBox_image_type->currentIndex() == kSrcVideo-kSrcRGB));
 	_ui->source_groupBox_images->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB);
@@ -3948,11 +3971,25 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
 	}
+	else if (driver == kSrcStereoUsb)
+	{
+		camera = new CameraStereoVideo(
+			this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+	}
 	else if(driver == kSrcStereoVideo)
 	{
 		camera = new CameraStereoVideo(
 			_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
 			_ui->checkBox_stereoVideo_rectify->isChecked() && !useRawImages,
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
+	}
+	else if (driver == kSrcStereoZed)
+	{
+		camera = new CameraStereoZed(
+			_ui->checkBox_stereoZed_computeDisparity->isChecked(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -4219,7 +4256,8 @@ void PreferencesDialog::testOdometry()
 					0.0f,
 					_ui->doubleSpinBox_maxDepth_odom->value(),
 					this->getOdomQualityWarnThr(),
-					this);
+					this,
+					this->getAllParameters());
 	odomViewer->setWindowTitle(tr("Odometry viewer"));
 	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
 	odomViewer->registerToEventsManager();
@@ -4269,7 +4307,7 @@ void PreferencesDialog::testOdometry()
 
 void PreferencesDialog::testCamera()
 {
-	CameraViewer * window = new CameraViewer(this);
+	CameraViewer * window = new CameraViewer(this, this->getAllParameters());
 	window->setWindowTitle(tr("Camera viewer"));
 	window->resize(1280, 480+QPushButton().minimumHeight());
 	window->registerToEventsManager();

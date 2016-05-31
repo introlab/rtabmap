@@ -47,12 +47,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 
-CameraViewer::CameraViewer(QWidget * parent) :
+CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 		QDialog(parent),
 	imageView_(new ImageView(this)),
 	cloudView_(new CloudViewer(this)),
 	processingImages_(false),
-	validDecimationValue_(1)
+	validDecimationValue_(1),
+	parameters_(parameters)
 {
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
 
@@ -146,12 +147,12 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 			if(!data.imageRaw().empty() && !data.depthOrRightRaw().empty())
 			{
 				showCloudCheckbox_->setEnabled(true);
-				cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(data, validDecimationValue_));
+				cloudView_->addCloud("cloud", util3d::cloudRGBFromSensorData(data, validDecimationValue_, 0, 0, 0, parameters_));
 			}
 			else if(!data.depthOrRightRaw().empty())
 			{
 				showCloudCheckbox_->setEnabled(true);
-				cloudView_->addCloud("cloud", util3d::cloudFromSensorData(data, validDecimationValue_));
+				cloudView_->addCloud("cloud", util3d::cloudFromSensorData(data, validDecimationValue_, 0, 0, 0, parameters_));
 			}
 		}
 	}

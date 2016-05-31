@@ -48,6 +48,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <fc2triclops.h>
 #endif
 
+#ifdef RTABMAP_ZED
+#include <zed/Camera.hpp>
+#endif
+
 namespace rtabmap
 {
 
@@ -732,6 +736,152 @@ SensorData CameraStereoFlyCapture2::captureImage()
 }
 
 //
+// CameraStereoZED
+//
+bool CameraStereoZed::available()
+{
+#ifdef RTABMAP_ZED
+	return true;
+#else
+	return false;
+#endif
+}
+
+CameraStereoZed::CameraStereoZed(bool rgbdMode, float imageRate, const Transform & localTransform) :
+		Camera(imageRate, localTransform),
+		zed_(0),
+		rgbdMode_(rgbdMode)
+{
+}
+
+CameraStereoZed::~CameraStereoZed()
+{
+#ifdef RTABMAP_ZED
+	if(zed_)
+	{
+		delete zed_;
+	}
+#endif
+}
+
+bool CameraStereoZed::init(const std::string & calibrationFolder, const std::string & cameraName)
+{
+#ifdef RTABMAP_ZED
+	if(zed_)
+	{
+		delete zed_;
+		zed_ = 0;
+	}
+	
+	if(zed_->isZEDconnected())
+	{
+		zed_ = new sl::zed::Camera(sl::zed::HD720); // Use in Live Mode
+		//zed_ = new sl::zed::Camera(argv[1]); // Use in SVO playback mode
+
+		int width = zed_->getImageSize().width;
+		int height = zed_->getImageSize().height;
+
+		//init WITH self-calibration (- last parameter to false -)
+		sl::zed::ERRCODE err = zed_->init(sl::zed::MODE::PERFORMANCE, 0, true, false, false);
+
+		// Quit if an error occurred
+		if (err != sl::zed::SUCCESS)
+		{
+			UERROR("ZED camera initialization failed: %s", sl::zed::errcode2str(err));
+			delete zed_;
+			zed_ = 0;
+			return false;
+		}
+	}
+	else
+	{
+		UERROR("ZED camera initialization failed: ZED is not connected!");
+		return false;
+	}
+	
+	sl::zed::StereoParameters * stereoParams = zed_->getParameters();
+	sl::zed::resolution res = zed_->getImageSize();
+				
+	stereoModel_ = StereoCameraModel(
+		stereoParams->LeftCam.fx, 
+		stereoParams->LeftCam.fy, 
+		stereoParams->LeftCam.cx, 
+		stereoParams->LeftCam.cy, 
+		stereoParams->baseline/1000.0f,
+		this->getLocalTransform(),
+		cv::Size(res.width, res.height));
+
+	return true;
+#else
+	UERROR("CameraStereoZED: RTAB-Map is not built with ZED sdk support!");
+#endif
+	return false;
+}
+
+bool CameraStereoZed::isCalibrated() const
+{
+	return stereoModel_.isValidForProjection();
+}
+
+std::string CameraStereoZed::getSerial() const
+{
+#ifdef RTABMAP_ZED
+	if(zed_)
+	{
+		return uFormat("%x", zed_->getZEDSerial());
+	}
+#endif
+	return "";
+}
+
+SensorData CameraStereoZed::captureImage()
+{
+	SensorData data;
+#ifdef RTABMAP_ZED
+	if(zed_)
+	{
+		sl::zed::SENSING_MODE dm_type = sl::zed::RAW;
+		bool res = zed_->grab(dm_type);
+
+		if(!res)
+		{
+			// get left image
+			cv::Mat rgbaLeft = slMat2cvMat(zed_->retrieveImage(static_cast<sl::zed::SIDE> (sl::zed::STEREO_LEFT)));
+			cv::Mat left;
+			cv::cvtColor(rgbaLeft, left, cv::COLOR_BGRA2BGR);
+
+			if(rgbdMode_)
+			{
+				// get depth image
+				cv::Mat depth;
+				slMat2cvMat(zed_->retrieveMeasure(sl::zed::MEASURE::DEPTH)).copyTo(depth);
+				depth /= 1000.0;
+
+				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), UTimer::now());
+			}
+			else
+			{
+				// get right image
+				cv::Mat rgbaRight = slMat2cvMat(zed_->retrieveImage(static_cast<sl::zed::SIDE> (sl::zed::STEREO_RIGHT)));
+				cv::Mat right;
+				cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
+			
+				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
+			}
+		}
+		else
+		{
+			UERROR("CameraStereoZed: Failed to grab images!");
+		}
+	}
+#else
+	UERROR("CameraStereoZED: RTAB-Map is not built with ZED sdk support!");
+#endif
+	return data;
+}
+
+
+//
 // CameraStereoImages
 //
 bool CameraStereoImages::available()
@@ -921,7 +1071,21 @@ CameraStereoVideo::CameraStereoVideo(
 		const Transform & localTransform) :
 		Camera(imageRate, localTransform),
 		path_(path),
-		rectifyImages_(rectifyImages)
+		rectifyImages_(rectifyImages),
+		src_(CameraVideo::kVideoFile),
+		usbDevice_(0)
+{
+}
+
+CameraStereoVideo::CameraStereoVideo(
+	int device,
+	float imageRate,
+	const Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	path_(""),
+	rectifyImages_(false),
+	src_(CameraVideo::kUsbDevice),
+	usbDevice_(device)
 {
 }
 
@@ -932,29 +1096,51 @@ CameraStereoVideo::~CameraStereoVideo()
 
 bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
+	cameraName_ = cameraName;
 	if(capture_.isOpened())
 	{
 		capture_.release();
 	}
-	ULOGGER_DEBUG("Camera: filename=\"%s\"", path_.c_str());
-	capture_.open(path_.c_str());
+
+	if (src_ == CameraVideo::kUsbDevice)
+	{
+		ULOGGER_DEBUG("CameraStereoVideo: Usb device initialization on device %d", usbDevice_);
+		capture_.open(usbDevice_);
+	}
+	else if (src_ == CameraVideo::kVideoFile)
+	{
+		ULOGGER_DEBUG("CameraStereoVideo: filename=\"%s\"", path_.c_str());
+		capture_.open(path_.c_str());
+	}
+	else
+	{
+		ULOGGER_ERROR("CameraStereoVideo: Unknown source...");
+	}
 
 	if(!capture_.isOpened())
 	{
-		ULOGGER_ERROR("Camera: Failed to create a capture object!");
+		ULOGGER_ERROR("CameraStereoVideo: Failed to create a capture object!");
 		capture_.release();
 		return false;
 	}
 	else
 	{
-		// look for calibration files
-		cameraName_ = cameraName;
-		if(!calibrationFolder.empty() && !cameraName.empty())
+		if (cameraName_.empty())
 		{
-			if(!stereoModel_.load(calibrationFolder, cameraName))
+			unsigned int guid = (unsigned int)capture_.get(CV_CAP_PROP_GUID);
+			if (guid != 0 && guid != 0xffffffff)
+			{
+				cameraName_ = uFormat("%08x", guid);
+			}
+		}
+
+		// look for calibration files
+		if(!calibrationFolder.empty() && !cameraName_.empty())
+		{
+			if(!stereoModel_.load(calibrationFolder, cameraName_))
 			{
 				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-						cameraName.c_str(), calibrationFolder.c_str());
+					cameraName_.c_str(), calibrationFolder.c_str());
 			}
 			else
 			{
@@ -1007,7 +1193,7 @@ SensorData CameraStereoVideo::captureImage()
 				rightCvt = true;
 			}
 
-			if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
+			if((src_ != CameraVideo::kVideoFile || rectifyImages_) && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
 			{
 				leftImage = stereoModel_.left().rectifyImage(leftImage);
 				rightImage = stereoModel_.right().rectifyImage(rightImage);

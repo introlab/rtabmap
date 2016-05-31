@@ -337,7 +337,8 @@ void ExportCloudsDialog::exportClouds(
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds,
-		const QString & workingDirectory)
+		const QString & workingDirectory,
+		const ParametersMap & parameters)
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
@@ -351,6 +352,7 @@ void ExportCloudsDialog::exportClouds(
 			cachedSignatures,
 			createdClouds,
 			workingDirectory,
+			parameters,
 			clouds,
 			meshes,
 			textureMeshes))
@@ -387,7 +389,8 @@ void ExportCloudsDialog::viewClouds(
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds,
-		const QString & workingDirectory)
+		const QString & workingDirectory,
+		const ParametersMap & parameters)
 {
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
@@ -401,6 +404,7 @@ void ExportCloudsDialog::viewClouds(
 			cachedSignatures,
 			createdClouds,
 			workingDirectory,
+			parameters,
 			clouds,
 			meshes,
 			textureMeshes))
@@ -517,6 +521,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds,
 		const QString & workingDirectory,
+		const ParametersMap & parameters,
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
 		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 		std::map<int, pcl::TextureMesh::Ptr> & textureMeshes)
@@ -550,7 +555,8 @@ bool ExportCloudsDialog::getExportedClouds(
 		std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > clouds = this->getClouds(
 				poses,
 				cachedSignatures,
-				createdClouds);
+				createdClouds,
+				parameters);
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
 		std::vector<int> rawCameraIndices;
@@ -1006,7 +1012,8 @@ bool ExportCloudsDialog::getExportedClouds(
 std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > ExportCloudsDialog::getClouds(
 		const std::map<int, Transform> & poses,
 		const QMap<int, Signature> & cachedSignatures,
-		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds) const
+		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > & createdClouds,
+		const ParametersMap & parameters) const
 {
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > clouds;
 	int i=0;
@@ -1038,7 +1045,8 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 								_ui->spinBox_decimation->value(),
 								_ui->doubleSpinBox_maxDepth->value(),
 								_ui->doubleSpinBox_minDepth->value(),
-								indices.get());
+								indices.get(),
+								parameters);
 
 						// Don't voxelize if we create organized mesh
 						if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()))

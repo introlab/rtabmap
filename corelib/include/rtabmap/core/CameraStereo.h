@@ -39,6 +39,14 @@ namespace FlyCapture2
 class Camera;
 }
 
+namespace sl
+{
+namespace zed
+{
+class Camera;
+}
+}
+
 namespace rtabmap
 {
 
@@ -95,6 +103,32 @@ private:
 };
 
 /////////////////////////
+// CameraStereoZED
+/////////////////////////
+class RTABMAP_EXP CameraStereoZed :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	CameraStereoZed(bool rgbdMode, float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraStereoZed();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage();
+
+private:
+	sl::zed::Camera * zed_;
+	StereoCameraModel stereoModel_;
+	bool rgbdMode_;
+};
+
+/////////////////////////
 // CameraStereoImages
 /////////////////////////
 class CameraImages;
@@ -147,6 +181,10 @@ public:
 			bool rectifyImages = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
+	CameraStereoVideo(
+			int device,
+			float imageRate = 0.0f,
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoVideo();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -162,6 +200,8 @@ private:
 	bool rectifyImages_;
 	StereoCameraModel stereoModel_;
 	std::string cameraName_;
+	CameraVideo::Source src_;
+	int usbDevice_;
 };
 
 } // namespace rtabmap

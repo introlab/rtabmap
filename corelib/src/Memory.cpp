@@ -3425,7 +3425,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		UASSERT(keypoints3D.size() == 0 || keypoints3D.size() == wordIds.size());
 		unsigned int i=0;
 		float decimationRatio = preDecimation / _imagePostDecimation;
-		double log2value = log(preDecimation)/log(2);
+		double log2value = log(double(preDecimation))/log(2.0);
 		for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end() && i < keypoints.size(); ++iter, ++i)
 		{
 			cv::KeyPoint kpt = keypoints[i];

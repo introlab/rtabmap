@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <QDialog>
 #include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Parameters.h>
 
 class QSpinBox;
 class QCheckBox;
@@ -47,7 +48,9 @@ class RTABMAPGUI_EXP CameraViewer : public QDialog, public UEventsHandler
 {
 	Q_OBJECT
 public:
-	CameraViewer(QWidget * parent = 0);
+	CameraViewer(
+		QWidget * parent = 0,
+		const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraViewer();
 
 public slots:
@@ -61,6 +64,7 @@ private:
 	bool processingImages_;
 	QSpinBox * decimationSpin_;
 	int validDecimationValue_;
+	ParametersMap parameters_;
 	QPushButton * pause_;
 	QCheckBox * showCloudCheckbox_;
 	QCheckBox * showScanCheckbox_;

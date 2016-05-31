@@ -399,6 +399,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionFreenect2, SIGNAL(triggered()), this, SLOT(selectFreenect2()));
 	connect(_ui->actionStereoDC1394, SIGNAL(triggered()), this, SLOT(selectStereoDC1394()));
 	connect(_ui->actionStereoFlyCapture2, SIGNAL(triggered()), this, SLOT(selectStereoFlyCapture2()));
+	connect(_ui->actionStereoZed, SIGNAL(triggered()), this, SLOT(selectStereoZed()));
+	connect(_ui->actionStereoUsb, SIGNAL(triggered()), this, SLOT(selectStereoUsb()));
 	_ui->actionFreenect->setEnabled(CameraFreenect::available());
 	_ui->actionOpenNI_CV->setEnabled(CameraOpenNICV::available());
 	_ui->actionOpenNI_CV_ASUS->setEnabled(CameraOpenNICV::available());
@@ -408,6 +410,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->actionFreenect2->setEnabled(CameraFreenect2::available());
 	_ui->actionStereoDC1394->setEnabled(CameraStereoDC1394::available());
 	_ui->actionStereoFlyCapture2->setEnabled(CameraStereoFlyCapture2::available());
+	_ui->actionStereoZed->setEnabled(CameraStereoZed::available());
 	this->updateSelectSourceMenu();
 
 	connect(_ui->actionPreferences, SIGNAL(triggered()), this, SLOT(openPreferences()));
@@ -884,7 +887,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 						_preferencesDialog->getCloudDecimation(1),
 						_preferencesDialog->getCloudMaxDepth(1),
 						_preferencesDialog->getCloudMinDepth(1),
-						indices.get());
+						indices.get(),
+						_preferencesDialog->getAllParameters());
 				if(indices->size())
 				{
 					cloud = util3d::transformPointCloud(cloud, pose);
@@ -1587,7 +1591,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				if(_ui->dockWidget_loopClosureViewer->isVisible())
 				{
 					UTimer loopTimer;
-					_loopClosureViewer->updateView();
+					_loopClosureViewer->updateView(Transform(), _preferencesDialog->getAllParameters());
 					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
 					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
 				}
@@ -2219,7 +2223,8 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				_preferencesDialog->getCloudDecimation(0),
 				_preferencesDialog->getCloudMaxDepth(0),
 				_preferencesDialog->getCloudMinDepth(0),
-				indices.get());
+				indices.get(),
+				_preferencesDialog->getAllParameters());
 
 		//compute normals
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::computeNormals(cloudWithoutNormals, 10);
@@ -2560,7 +2565,7 @@ Transform MainWindow::alignPosesToGroundTruth(
 	Transform t = Transform::getIdentity();
 	if(groundTruth.size() && poses.size())
 	{
-		unsigned int maxSize = poses.size()>groundTruth.size()?poses.size():groundTruth.size();
+		unsigned int maxSize = poses.size()>groundTruth.size()? (unsigned int)poses.size(): (unsigned int)groundTruth.size();
 		pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
 		cloud1.resize(maxSize);
 		cloud2.resize(maxSize);
@@ -3240,7 +3245,10 @@ void MainWindow::updateSelectSourceMenu()
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages ||
 			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcVideo ||
-			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages);
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages ||
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoVideo ||
+			_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRGBDImages
+	);
 
 	_ui->actionOpenNI_PCL->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI_PCL);
 	_ui->actionOpenNI_PCL_ASUS->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcOpenNI_PCL);
@@ -3253,6 +3261,8 @@ void MainWindow::updateSelectSourceMenu()
 	_ui->actionFreenect2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFreenect2);
 	_ui->actionStereoDC1394->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDC1394);
 	_ui->actionStereoFlyCapture2->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcFlyCapture2);
+	_ui->actionStereoZed->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoZed);
+	_ui->actionStereoUsb->setChecked(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoUsb);
 }
 
 void MainWindow::changeImgRateSetting()
@@ -4449,7 +4459,15 @@ void MainWindow::selectStereoFlyCapture2()
 {
 	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcFlyCapture2);
 }
+void MainWindow::selectStereoZed()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoZed);
+}
 
+void MainWindow::selectStereoUsb()
+{
+	_preferencesDialog->selectSourceDriver(PreferencesDialog::kSrcStereoUsb);
+}
 
 void MainWindow::dumpTheMemory()
 {
@@ -5089,7 +5107,8 @@ void MainWindow::exportClouds()
 			_currentMapIds,
 			_cachedSignatures,
 			_createdClouds,
-			_preferencesDialog->getWorkingDirectory());
+			_preferencesDialog->getWorkingDirectory(),
+			_preferencesDialog->getAllParameters());
 }
 
 void MainWindow::viewClouds()
@@ -5104,7 +5123,8 @@ void MainWindow::viewClouds()
 			_currentMapIds,
 			_cachedSignatures,
 			_createdClouds,
-			_preferencesDialog->getWorkingDirectory());
+			_preferencesDialog->getWorkingDirectory(),
+			_preferencesDialog->getAllParameters());
 
 }
 

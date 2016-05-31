@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <opencv2/core/core.hpp>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Parameters.h>
 
 namespace rtabmap
 {
@@ -68,7 +69,7 @@ void RTABMAP_EXP calcOpticalFlowPyrLKStereo( cv::InputArray _prevImg, cv::InputA
 cv::Mat RTABMAP_EXP disparityFromStereoImages(
 		const cv::Mat & leftImage,
 		const cv::Mat & rightImage,
-		int type = CV_32FC1); // CV_32FC1 or CV_16SC1
+	    const ParametersMap & parameters = ParametersMap());
 
 cv::Mat RTABMAP_EXP depthFromDisparity(const cv::Mat & disparity,
 		float fx, float baseline,

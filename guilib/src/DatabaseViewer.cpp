@@ -1509,7 +1509,7 @@ void DatabaseViewer::view3DMap()
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 						UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
 						UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
-						cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth);
+						cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth, 0, 0, ui_->parameters_toolbox->getParameters());
 
 						if(cloud->size())
 						{
@@ -1733,7 +1733,7 @@ void DatabaseViewer::generate3DMap()
 							UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
 							UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
 							pcl::IndicesPtr validIndices(new std::vector<int>);
-							cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth, 0, validIndices.get());
+							cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth, 0, validIndices.get(), ui_->parameters_toolbox->getParameters());
 
 							if(assemble)
 							{
@@ -2275,7 +2275,7 @@ void DatabaseViewer::update(int value,
 							}
 							else
 							{
-								cloud = util3d::cloudRGBFromSensorData(data);
+								cloud = util3d::cloudRGBFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
 							}
 							if(cloud->size())
 							{
@@ -2312,7 +2312,7 @@ void DatabaseViewer::update(int value,
 						else
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-							cloud = util3d::cloudFromSensorData(data);
+							cloud = util3d::cloudFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
 							if(cloud->size())
 							{
 								view3D->addCloud("0", cloud);
@@ -2945,11 +2945,11 @@ void DatabaseViewer::updateConstraintView(
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom, cloudTo;
 				if(!dataFrom.imageRaw().empty() && !dataFrom.depthOrRightRaw().empty())
 				{
-					cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1);
+					cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
 				}
 				if(!dataTo.imageRaw().empty() && !dataTo.depthOrRightRaw().empty())
 				{
-					cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1);
+					cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
 				}
 
 				if(cloudFrom.get() && cloudFrom->size())
@@ -3346,7 +3346,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 									ui_->spinBox_projDecimation->value(),
 									ui_->doubleSpinBox_projMaxDepth->value(),
 									ui_->doubleSpinBox_projMinDepth->value(),
-									validIndices.get());
+									validIndices.get(),
+									ui_->parameters_toolbox->getParameters());
 							UASSERT(ui_->doubleSpinBox_gridCellSize->value() > 0);
 							cloud = util3d::voxelize(cloud, validIndices, ui_->doubleSpinBox_gridCellSize->value());
 
@@ -3793,12 +3794,16 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 				dataFrom,
 				ui_->spinBox_icp_decimation->value(),
 				ui_->doubleSpinBox_icp_maxDepth->value(),
-				ui_->doubleSpinBox_icp_minDepth->value());
+				ui_->doubleSpinBox_icp_minDepth->value(),
+				0,
+				ui_->parameters_toolbox->getParameters());
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo = util3d::cloudFromSensorData(
 				dataTo,
 				ui_->spinBox_icp_decimation->value(),
 				ui_->doubleSpinBox_icp_maxDepth->value(),
-				ui_->doubleSpinBox_icp_minDepth->value());
+				ui_->doubleSpinBox_icp_minDepth->value(),
+				0,
+				ui_->parameters_toolbox->getParameters());
 		int maxLaserScans = cloudFrom->size();
 		dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0);
 		dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0);

@@ -57,7 +57,7 @@ public slots:
 	void setDecimation(int decimation) {decimation_ = decimation;}
 	void setMaxDepth(int maxDepth) {maxDepth_ = maxDepth;}
 	void setMinDepth(int minDepth) {minDepth_ = minDepth;}
-	void updateView(const Transform & AtoB = Transform());
+	void updateView(const Transform & AtoB = Transform(), const ParametersMap & parameters = ParametersMap());
 
 protected:
 	virtual void showEvent(QShowEvent * event);

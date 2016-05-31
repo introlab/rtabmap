@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1012</width>
-    <height>711</height>
+    <height>712</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -190,7 +190,19 @@
        <addaction name="actionStereoDC1394"/>
        <addaction name="actionStereoFlyCapture2"/>
       </widget>
+      <widget class="QMenu" name="menuZed_camera">
+       <property name="title">
+        <string>Zed camera</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/zed.png</normaloff>:/images/zed.png</iconset>
+       </property>
+       <addaction name="actionStereoZed"/>
+       <addaction name="actionStereoUsb"/>
+      </widget>
       <addaction name="menuBumblebee2_2"/>
+      <addaction name="menuZed_camera"/>
      </widget>
      <addaction name="menuRGB_D_camera"/>
      <addaction name="menuStereo_camera"/>
@@ -1325,7 +1337,7 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>More options...</string>
+    <string>More Options...</string>
    </property>
   </action>
   <action name="actionLabel_current_location">
@@ -1389,6 +1401,22 @@
    </property>
    <property name="text">
     <string>Anchor clouds to ground truth</string>
+   </property>
+  </action>
+  <action name="actionStereoZed">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Zed sdk</string>
+   </property>
+  </action>
+  <action name="actionStereoUsb">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Stereo Usb Camera</string>
    </property>
   </action>
  </widget>

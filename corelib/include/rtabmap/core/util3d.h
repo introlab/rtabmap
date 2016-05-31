@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/TextureMesh.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/SensorData.h>
+#include <rtabmap/core/Parameters.h>
 #include <opencv2/core/core.hpp>
 #include <map>
 #include <list>
@@ -116,14 +117,16 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
 		int decimation = 1,
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
-		std::vector<int> * validIndices = 0);
+		std::vector<int> * validIndices = 0,
+		const ParametersMap & parameters = ParametersMap());
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		const SensorData & sensorData,
 		int decimation = 1,
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
-		std::vector<int> * validIndices = 0);
+		std::vector<int> * validIndices = 0,
+		const ParametersMap & parameters = ParametersMap());
 
 /**
  * Create an RGB cloud from the images contained in SensorData. If there is only one camera,
@@ -143,7 +146,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		int decimation = 1,
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
-		std::vector<int> * validIndices = 0);
+		std::vector<int> * validIndices = 0,
+		const ParametersMap & parameters = ParametersMap());
 
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					const cv::Mat & depthImage,

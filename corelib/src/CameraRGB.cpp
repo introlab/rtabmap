@@ -722,7 +722,7 @@ CameraVideo::~CameraVideo()
 
 bool CameraVideo::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-	_guid.clear();
+	_guid = cameraName;
 	if(_capture.isOpened())
 	{
 		_capture.release();
@@ -750,19 +750,22 @@ bool CameraVideo::init(const std::string & calibrationFolder, const std::string 
 	}
 	else
 	{
-		unsigned int guid = (unsigned int)_capture.get(CV_CAP_PROP_GUID);
-		if(guid != 0 && guid != 0xffffffff)
+		if (_guid.empty())
 		{
-			_guid = uFormat("%08x", guid);
+			unsigned int guid = (unsigned int)_capture.get(CV_CAP_PROP_GUID);
+			if (guid != 0 && guid != 0xffffffff)
+			{
+				_guid = uFormat("%08x", guid);
+			}
 		}
 
 		// look for calibration files
-		if(!calibrationFolder.empty() && (!_guid.empty() || !cameraName.empty()))
+		if(!calibrationFolder.empty() && !_guid.empty())
 		{
-			if(!_model.load(calibrationFolder, (cameraName.empty()?_guid:cameraName)))
+			if(!_model.load(calibrationFolder, _guid))
 			{
 				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-						cameraName.empty()?_guid.c_str():cameraName.c_str(), calibrationFolder.c_str());
+						_guid.c_str(), calibrationFolder.c_str());
 			}
 			else
 			{

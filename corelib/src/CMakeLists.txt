@@ -209,6 +209,27 @@ IF(cvsba_FOUND)
 	)
 ENDIF(cvsba_FOUND)
 
+IF(ZED_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${ZED_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${ZED_LIBRARIES}
+	)
+	IF(CUDA_FOUND)
+		SET(INCLUDE_DIRS
+			${INCLUDE_DIRS}
+			${CUDA_INCLUDE_DIRS}
+		)
+		SET(LIBRARIES
+			${LIBRARIES}
+			${CUDA_LIBRARIES}
+		)
+	ENDIF(CUDA_FOUND)
+ENDIF(ZED_FOUND)
+
 ####################################
 # Generate resources files
 ####################################

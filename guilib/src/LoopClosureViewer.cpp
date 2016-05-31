@@ -67,7 +67,7 @@ void LoopClosureViewer::setData(const Signature & sA, const Signature & sB)
 	}
 }
 
-void LoopClosureViewer::updateView(const Transform & transform)
+void LoopClosureViewer::updateView(const Transform & transform, const ParametersMap & parameters)
 {
 	if(sA_.id()>0 && sB_.id()>0)
 	{
@@ -106,8 +106,8 @@ void LoopClosureViewer::updateView(const Transform & transform)
 		{
 			//cloud 3d
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudA, cloudB;
-			cloudA = util3d::cloudRGBFromSensorData(sA_.sensorData(), decimation, maxDepth, minDepth);
-			cloudB = util3d::cloudRGBFromSensorData(sB_.sensorData(), decimation, maxDepth, minDepth);
+			cloudA = util3d::cloudRGBFromSensorData(sA_.sensorData(), decimation, maxDepth, minDepth, 0, parameters);
+			cloudB = util3d::cloudRGBFromSensorData(sB_.sensorData(), decimation, maxDepth, minDepth, 0, parameters);
 
 			//cloud 2d
 			pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;

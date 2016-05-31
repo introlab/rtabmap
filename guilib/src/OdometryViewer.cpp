@@ -49,7 +49,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, float maxDepth, int qualityWarningThr, QWidget * parent) :
+OdometryViewer::OdometryViewer(
+	int maxClouds, 
+	int decimation, 
+	float voxelSize, 
+	float maxDepth, 
+	int qualityWarningThr, 
+	QWidget * parent,
+	const ParametersMap & parameters) :
 		QDialog(parent),
 		imageView_(new ImageView(this)),
 		cloudView_(new CloudViewer(this)),
@@ -59,7 +66,8 @@ OdometryViewer::OdometryViewer(int maxClouds, int decimation, float voxelSize, f
 		lastOdomPose_(Transform::getIdentity()),
 		qualityWarningThr_(qualityWarningThr),
 		id_(0),
-		validDecimationValue_(1)
+		validDecimationValue_(1),
+		parameters_(parameters)
 {
 
 	qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
@@ -241,7 +249,8 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 				validDecimationValue_,
 				0,
 				0,
-				validIndices.get());
+				validIndices.get(),
+				parameters_);
 
 		if(voxelSpin_->value())
 		{

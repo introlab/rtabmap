@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/StereoDense.h>
 #include <opencv2/calib3d/calib3d.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/video/tracking.hpp>
@@ -724,12 +725,11 @@ void calcOpticalFlowPyrLKStereo( cv::InputArray _prevImg, cv::InputArray _nextIm
 cv::Mat disparityFromStereoImages(
 		const cv::Mat & leftImage,
 		const cv::Mat & rightImage,
-		int type)
+		const ParametersMap & parameters)
 {
 	UASSERT(!leftImage.empty() && !rightImage.empty());
 	UASSERT(leftImage.cols == rightImage.cols && leftImage.rows == rightImage.rows);
 	UASSERT((leftImage.type() == CV_8UC1 || leftImage.type() == CV_8UC3) && rightImage.type() == CV_8UC1);
-	UASSERT(type == CV_32FC1 || type == CV_16SC1);
 
 	cv::Mat leftMono;
 	if(leftImage.channels() == 3)
@@ -741,32 +741,9 @@ cv::Mat disparityFromStereoImages(
 		leftMono = leftImage;
 	}
 	cv::Mat disparity;
-#if CV_MAJOR_VERSION < 3
-	cv::StereoBM stereo(cv::StereoBM::BASIC_PRESET);
-	stereo.state->SADWindowSize = 15;
-	stereo.state->minDisparity = 0;
-	stereo.state->numberOfDisparities = 64;
-	stereo.state->preFilterSize = 9;
-	stereo.state->preFilterCap = 31;
-	stereo.state->uniquenessRatio = 15;
-	stereo.state->textureThreshold = 10;
-	stereo.state->speckleWindowSize = 100;
-	stereo.state->speckleRange = 4;
-	stereo(leftMono, rightImage, disparity, type);
-#else
-	cv::Ptr<cv::StereoBM> stereo = cv::StereoBM::create();
-	stereo->setBlockSize(15);
-	stereo->setMinDisparity(0);
-	stereo->setNumDisparities(64);
-	stereo->setPreFilterSize(9);
-	stereo->setPreFilterCap(31);
-	stereo->setUniquenessRatio(15);
-	stereo->setTextureThreshold(10);
-	stereo->setSpeckleWindowSize(100);
-	stereo->setSpeckleRange(4);
-	stereo->compute(leftMono, rightImage, disparity);
-#endif
-	return disparity;
+
+	StereoBM stereo(parameters);
+	return stereo.computeDisparity(leftMono, rightImage);
 }
 
 cv::Mat depthFromDisparity(const cv::Mat & disparity,

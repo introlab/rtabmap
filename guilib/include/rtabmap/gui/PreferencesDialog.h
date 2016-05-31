@@ -96,6 +96,8 @@ public:
 		kSrcFlyCapture2    = 101,
 		kSrcStereoImages   = 102,
 		kSrcStereoVideo    = 103,
+		kSrcStereoZed      = 104,
+		kSrcStereoUsb      = 105,
 
 		kSrcRGB            = 200,
 		kSrcUsbDevice      = 200,

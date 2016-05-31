@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/Parameters.h"
 #include <QDialog>
 #include "rtabmap/utilite/UEventsHandler.h"
 
@@ -49,7 +50,14 @@ class RTABMAPGUI_EXP OdometryViewer : public QDialog, public UEventsHandler
 	Q_OBJECT
 
 public:
-	OdometryViewer(int maxClouds = 10, int decimation = 2, float voxelSize = 0.0f, float maxDepth = 0, int qualityWarningThr=0, QWidget * parent = 0);
+	OdometryViewer(
+		int maxClouds = 10, 
+		int decimation = 2, 
+		float voxelSize = 0.0f, 
+		float maxDepth = 0, 
+		int qualityWarningThr=0, 
+		QWidget * parent = 0,
+		const ParametersMap & parameters = ParametersMap());
 	virtual ~OdometryViewer();
 
 public slots:
@@ -83,6 +91,7 @@ private:
 	QCheckBox * featuresShown_;
 	QLabel * timeLabel_;
 	int validDecimationValue_;
+	ParametersMap parameters_;
 };
 
 } /* namespace rtabmap */
