@@ -778,16 +778,13 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		zed_ = new sl::zed::Camera(sl::zed::HD720); // Use in Live Mode
 		//zed_ = new sl::zed::Camera(argv[1]); // Use in SVO playback mode
 
-		int width = zed_->getImageSize().width;
-		int height = zed_->getImageSize().height;
-
 		//init WITH self-calibration (- last parameter to false -)
 		sl::zed::ERRCODE err = zed_->init(sl::zed::MODE::PERFORMANCE, 0, true, false, false);
 
 		// Quit if an error occurred
 		if (err != sl::zed::SUCCESS)
 		{
-			UERROR("ZED camera initialization failed: %s", sl::zed::errcode2str(err));
+			UERROR("ZED camera initialization failed: %s", sl::zed::errcode2str(err).c_str());
 			delete zed_;
 			zed_ = 0;
 			return false;
