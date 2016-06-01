@@ -61,6 +61,9 @@ if(@CONF_WITH_GUI@)
    set(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} ${RTABMap_GUI})
 endif(@CONF_WITH_GUI@)
 
+# Dependencies
+set(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} @CONF_DEPENDENCIES@)
+
 #backward compatibilities
 set(RTABMAP_CORE ${RTABMap_CORE})
 set(RTABMAP_UTILITE ${RTABMap_UTILITE})
