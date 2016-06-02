@@ -471,7 +471,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraStereoVideo_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereoVideo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
-	connect(_ui->checkBox_stereoZed_computeDisparity, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_stereoZed_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_stereoZed_quality, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_stereoZed_sensingMode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_stereoZed_confidenceThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->toolButton_zedSvoPath, SIGNAL(clicked()), this, SLOT(selectSourceSvoPath()));
+	connect(_ui->lineEdit_zedSvoPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1278,7 +1283,11 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_stereoImages_rectify->setChecked(false);
 		_ui->lineEdit_cameraStereoVideo_path->setText("");
 		_ui->checkBox_stereoVideo_rectify->setChecked(false);
-		_ui->checkBox_stereoZed_computeDisparity->setChecked(true);
+		_ui->comboBox_stereoZed_resolution->setCurrentIndex(2);
+		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
+		_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(1);
+		_ui->spinBox_stereoZed_confidenceThr->setValue(100);
+		_ui->lineEdit_zedSvoPath->clear();
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
 		_ui->checkBox_cameraImages_syncTimeStamps->setChecked(true);
@@ -1604,7 +1613,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("StereoZed");
-	_ui->checkBox_stereoZed_computeDisparity->setChecked(settings.value("compute_disp", _ui->checkBox_stereoZed_computeDisparity->isChecked()).toBool());
+	_ui->comboBox_stereoZed_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_stereoZed_resolution->currentIndex()).toInt());
+	_ui->comboBox_stereoZed_quality->setCurrentIndex(settings.value("quality", _ui->comboBox_stereoZed_quality->currentIndex()).toInt());
+	_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(settings.value("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex()).toInt());
+	_ui->spinBox_stereoZed_confidenceThr->setValue(settings.value("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value()).toInt());
+	_ui->lineEdit_zedSvoPath->setText(settings.value("svo_path", _ui->lineEdit_zedSvoPath->text()).toString());
 	settings.endGroup(); // StereoZed
 	
 
@@ -1993,7 +2006,11 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.endGroup(); // StereoVideo
 
 	settings.beginGroup("StereoZed");
-	settings.setValue("compute_disp", _ui->checkBox_stereoZed_computeDisparity->isChecked());
+	settings.setValue("resolution", _ui->comboBox_stereoZed_resolution->currentIndex());
+	settings.setValue("quality", _ui->comboBox_stereoZed_quality->currentIndex());
+	settings.setValue("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex());
+	settings.setValue("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value());
+	settings.setValue("svo_path", _ui->lineEdit_zedSvoPath->text());
 	settings.endGroup(); // StereoZed
 
 	
@@ -2830,6 +2847,20 @@ void PreferencesDialog::selectSourceOni2Path()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_openni2OniPath->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceSvoPath()
+{
+	QString dir = _ui->lineEdit_zedSvoPath->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_zedSvoPath->text(), tr("ZED (*.svo)"));
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_zedSvoPath->setText(path);
 	}
 }
 
@@ -3988,10 +4019,27 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	}
 	else if (driver == kSrcStereoZed)
 	{
-		camera = new CameraStereoZed(
-			_ui->checkBox_stereoZed_computeDisparity->isChecked(),
-			this->getGeneralInputRate(),
-			this->getSourceLocalTransform());
+		if(!_ui->lineEdit_zedSvoPath->text().isEmpty())
+		{
+			camera = new CameraStereoZed(
+				_ui->lineEdit_zedSvoPath->text().toStdString(),
+				_ui->comboBox_stereoZed_quality->currentIndex(),
+				_ui->comboBox_stereoZed_sensingMode->currentIndex(),
+				_ui->spinBox_stereoZed_confidenceThr->value(),
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
+		}
+		else
+		{
+			camera = new CameraStereoZed(
+				this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
+				_ui->comboBox_stereoZed_resolution->currentIndex(),
+				_ui->comboBox_stereoZed_quality->currentIndex(),
+				_ui->comboBox_stereoZed_sensingMode->currentIndex(),
+				_ui->spinBox_stereoZed_confidenceThr->value(),
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
+		}
 	}
 	else if(driver == kSrcUsbDevice)
 	{

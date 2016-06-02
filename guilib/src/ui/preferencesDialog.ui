@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>984</width>
-    <height>693</height>
+    <height>713</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,25 +63,16 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>685</width>
-            <height>1826</height>
+            <y>-477</y>
+            <width>686</width>
+            <height>2023</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -2120,7 +2111,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>6</number>
+                              <number>0</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -2788,7 +2779,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <item row="0" column="2">
                               <widget class="QLabel" name="label_240">
                                <property name="text">
-                                <string>Driver</string>
+                                <string>Driver.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -2805,7 +2796,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              <item row="1" column="2">
                               <widget class="QLabel" name="label_247">
                                <property name="text">
-                                <string>Generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images.</string>
+                                <string>Generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can found under StereoBM tab.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -2817,7 +2808,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>5</number>
+                              <number>4</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -3038,32 +3029,135 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <property name="title">
                                   <string>Zed sdk</string>
                                  </property>
-                                 <layout class="QVBoxLayout" name="verticalLayout_102">
-                                  <item>
-                                   <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
-                                    <item row="0" column="0">
-                                     <widget class="QCheckBox" name="checkBox_stereoZed_computeDisparity">
+                                 <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
+                                  <item row="2" column="0">
+                                   <widget class="QComboBox" name="comboBox_stereoZed_sensingMode">
+                                    <item>
+                                     <property name="text">
+                                      <string>FULL</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>RAW</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <layout class="QHBoxLayout" name="horizontalLayout_8">
+                                    <item>
+                                     <widget class="QToolButton" name="toolButton_zedSvoPath">
+                                      <property name="text">
+                                       <string>...</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QLineEdit" name="lineEdit_zedSvoPath">
                                       <property name="text">
                                        <string/>
                                       </property>
                                      </widget>
                                     </item>
-                                    <item row="0" column="1">
-                                     <widget class="QLabel" name="label_272">
-                                      <property name="text">
-                                       <string>Compute disparity with the GPU (using Zed sdk approach). Note that &quot;Generate disparity image...&quot; above will be ignored if set.</string>
-                                      </property>
-                                      <property name="wordWrap">
-                                       <bool>true</bool>
-                                      </property>
-                                      <property name="textInteractionFlags">
-                                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                      </property>
-                                     </widget>
-                                    </item>
                                    </layout>
                                   </item>
-                                  <item>
+                                  <item row="0" column="0">
+                                   <widget class="QComboBox" name="comboBox_stereoZed_resolution">
+                                    <item>
+                                     <property name="text">
+                                      <string>HD2K</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>HD1080</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>HD720</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>VGA</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_274">
+                                    <property name="text">
+                                     <string>Resolution. Not used when a SVO file is used.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QComboBox" name="comboBox_stereoZed_quality">
+                                    <item>
+                                     <property name="text">
+                                      <string>NONE</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>PERFORMANCE</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>QUALITY</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_290">
+                                    <property name="text">
+                                     <string>Quality. If NONE, the disparity is not computed on the GPU.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_291">
+                                    <property name="text">
+                                     <string>Sensing mode.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_305">
+                                    <property name="text">
+                                     <string>Path to a *.SVO file.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
                                    <spacer name="verticalSpacer_54">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -3071,10 +3165,30 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="sizeHint" stdset="0">
                                      <size>
                                       <width>20</width>
-                                      <height>0</height>
+                                      <height>13</height>
                                      </size>
                                     </property>
                                    </spacer>
+                                  </item>
+                                  <item row="3" column="1">
+                                   <widget class="QLabel" name="label_306">
+                                    <property name="text">
+                                     <string>Filtering value for the disparity map (and by extension the depth map). A lower value means more confidence and precision (but less density), an upper value reduces the filtering (more density, less certainty).</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="3" column="0">
+                                   <widget class="QSpinBox" name="spinBox_stereoZed_confidenceThr">
+                                    <property name="maximum">
+                                     <number>100</number>
+                                    </property>
+                                   </widget>
                                   </item>
                                  </layout>
                                 </widget>
@@ -3514,16 +3628,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -3531,7 +3636,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <item row="1" column="2">
                           <widget class="QLabel" name="label_255">
                            <property name="text">
-                            <string>Use file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;</string>
+                            <string>Use file names as timestamps. Format is epoch time. Example: &quot;1305031102.175304.png&quot;.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -8680,16 +8785,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -8829,16 +8925,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -8996,16 +9083,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -9085,16 +9163,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -9206,16 +9275,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>

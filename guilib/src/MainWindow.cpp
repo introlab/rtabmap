@@ -881,64 +881,78 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 			   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValidForProjection()) &&
 			   _preferencesDialog->isCloudsShown(1))
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-				pcl::IndicesPtr indices(new std::vector<int>);
-				cloud = util3d::cloudRGBFromSensorData(odom.data(),
-						_preferencesDialog->getCloudDecimation(1),
-						_preferencesDialog->getCloudMaxDepth(1),
-						_preferencesDialog->getCloudMinDepth(1),
-						indices.get(),
-						_preferencesDialog->getAllParameters());
-				if(indices->size())
+
+				if(odom.data().imageRaw().cols % _preferencesDialog->getCloudDecimation(1) != 0 ||
+				   odom.data().imageRaw().rows % _preferencesDialog->getCloudDecimation(1) != 0)
 				{
-					cloud = util3d::transformPointCloud(cloud, pose);
+					UERROR("Decimation (%d) is not modulo of the image resolution (%dx%d)! The cloud cannot be "
+							"created. Go to Preferences->3D Rendering under \"Odom\" column to modify this parameter.",
+							_preferencesDialog->getCloudDecimation(1),
+							odom.data().imageRaw().cols,
+							odom.data().imageRaw().rows);
+				}
+				else
+				{
 
-					if(_preferencesDialog->isCloudMeshing())
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+					pcl::IndicesPtr indices(new std::vector<int>);
+					cloud = util3d::cloudRGBFromSensorData(odom.data(),
+							_preferencesDialog->getCloudDecimation(1),
+							_preferencesDialog->getCloudMaxDepth(1),
+							_preferencesDialog->getCloudMinDepth(1),
+							indices.get(),
+							_preferencesDialog->getAllParameters());
+					if(indices->size())
 					{
-						// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
-						pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-						output = util3d::extractIndices(cloud, indices, false, true);
+						cloud = util3d::transformPointCloud(cloud, pose);
 
-						// Fast organized mesh
-						Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-						if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+						if(_preferencesDialog->isCloudMeshing())
 						{
-							viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
-							viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
-							viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
+							// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+							output = util3d::extractIndices(cloud, indices, false, true);
+
+							// Fast organized mesh
+							Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+							if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+							{
+								viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
+								viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
+								viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
+							}
+							else if(!odom.data().stereoCameraModel().localTransform().isNull())
+							{
+								viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
+								viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
+								viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
+							}
+							std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+									output,
+									_preferencesDialog->getCloudMeshingAngle(),
+									_preferencesDialog->isCloudMeshingQuad(),
+									_preferencesDialog->getCloudMeshingTriangleSize(),
+									Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
+							if(polygons.size())
+							{
+								if(!_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
+								{
+									UERROR("Adding cloudOdom to viewer failed!");
+								}
+							}
 						}
-						else if(!odom.data().stereoCameraModel().localTransform().isNull())
+						else
 						{
-							viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
-							viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
-							viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
-						}
-						std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-								output,
-								_preferencesDialog->getCloudMeshingAngle(),
-								_preferencesDialog->isCloudMeshingQuad(),
-								_preferencesDialog->getCloudMeshingTriangleSize(),
-								Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
-						if(polygons.size())
-						{
-							if(!_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
+							if(!_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
 							{
 								UERROR("Adding cloudOdom to viewer failed!");
 							}
 						}
-					}
-					else
-					{
-						if(!_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
-						{
-							UERROR("Adding cloudOdom to viewer failed!");
-						}
-					}
-					_cloudViewer->setCloudVisibility("cloudOdom", true);
-					_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-					_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
+						_cloudViewer->setCloudVisibility("cloudOdom", true);
+						_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+						_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 
-					cloudUpdated = true;
+						cloudUpdated = true;
+					}
 				}
 			}
 
@@ -2218,6 +2232,18 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
 		pcl::IndicesPtr indices(new std::vector<int>);
 		UASSERT(nodeId == data.id());
+
+		if(image.cols % _preferencesDialog->getCloudDecimation(0) != 0 ||
+		   image.rows % _preferencesDialog->getCloudDecimation(0) != 0)
+		{
+			UERROR("Decimation (%d) is not modulo of the image resolution (%dx%d)! The cloud cannot be "
+					"created. Go to Preferences->3D Rendering under \"Map\" column to modify this parameter.",
+					_preferencesDialog->getCloudDecimation(0),
+					image.cols,
+					image.rows);
+			return;
+		}
+
 		// Create organized cloud
 		cloudWithoutNormals = util3d::cloudRGBFromSensorData(data,
 				_preferencesDialog->getCloudDecimation(0),

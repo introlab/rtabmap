@@ -285,6 +285,7 @@ private slots:
 	void selectSourceStereoVideoPath();
 	void selectSourceOniPath();
 	void selectSourceOni2Path();
+	void selectSourceSvoPath();
 	void updateSourceGrpVisibility();
 	void testOdometry();
 	void testCamera();

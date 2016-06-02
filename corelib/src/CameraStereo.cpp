@@ -747,11 +747,55 @@ bool CameraStereoZed::available()
 #endif
 }
 
-CameraStereoZed::CameraStereoZed(bool rgbdMode, float imageRate, const Transform & localTransform) :
-		Camera(imageRate, localTransform),
-		zed_(0),
-		rgbdMode_(rgbdMode)
+CameraStereoZed::CameraStereoZed(
+		int deviceId,
+		int resolution,
+		int quality,
+		int sensingMode,
+		int confidenceThr,
+		float imageRate,
+		const Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	zed_(0),
+	src_(CameraVideo::kUsbDevice),
+	usbDevice_(deviceId),
+	svoFilePath_(""),
+	resolution_(resolution),
+	quality_(quality),
+	sensingMode_(sensingMode),
+	confidenceThr_(confidenceThr)
 {
+#ifdef RTABMAP_ZED
+	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <=sl::zed::VGA);
+	UASSERT(quality_ >= sl::zed::NONE && quality_ <=sl::zed::QUALITY);
+	UASSERT(sensingMode_ >= sl::zed::FULL && sensingMode_ <=sl::zed::RAW);
+	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
+#endif
+}
+
+CameraStereoZed::CameraStereoZed(
+		const std::string & filePath,
+		int quality,
+		int sensingMode,
+		int confidenceThr,
+		float imageRate,
+		const Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	zed_(0),
+	src_(CameraVideo::kVideoFile),
+	usbDevice_(0),
+	svoFilePath_(filePath),
+	resolution_(2),
+	quality_(quality),
+	sensingMode_(sensingMode),
+	confidenceThr_(confidenceThr)
+{
+#ifdef RTABMAP_ZED
+	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <=sl::zed::VGA);
+	UASSERT(quality_ >= sl::zed::NONE && quality_ <=sl::zed::QUALITY);
+	UASSERT(sensingMode_ >= sl::zed::FULL && sensingMode_ <=sl::zed::RAW);
+	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
+#endif
 }
 
 CameraStereoZed::~CameraStereoZed()
@@ -773,29 +817,41 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		zed_ = 0;
 	}
 	
-	if(zed_->isZEDconnected())
+
+	if(src_ == CameraVideo::kVideoFile)
 	{
-		zed_ = new sl::zed::Camera(sl::zed::HD720); // Use in Live Mode
-		//zed_ = new sl::zed::Camera(argv[1]); // Use in SVO playback mode
-
-		//init WITH self-calibration (- last parameter to false -)
-		sl::zed::ERRCODE err = zed_->init(sl::zed::MODE::PERFORMANCE, 0, true, false, false);
-
-		// Quit if an error occurred
-		if (err != sl::zed::SUCCESS)
-		{
-			UERROR("ZED camera initialization failed: %s", sl::zed::errcode2str(err).c_str());
-			delete zed_;
-			zed_ = 0;
-			return false;
-		}
+		zed_ = new sl::zed::Camera(svoFilePath_); // Use in SVO playback mode
 	}
 	else
 	{
-		UERROR("ZED camera initialization failed: ZED is not connected!");
+		if(zed_->isZEDconnected())
+		{
+			zed_ = new sl::zed::Camera((sl::zed::ZEDResolution_mode)resolution_, getImageRate(), usbDevice_); // Use in Live Mode
+		}
+		else
+		{
+			UERROR("ZED camera initialization failed: ZED is not connected!");
+			return false;
+		}
+	}
+
+	//init WITH self-calibration (- last parameter to false -)
+	sl::zed::ERRCODE err = zed_->init(
+			(sl::zed::MODE)quality_,
+			-1, // search for any GPU
+			true, false, false);
+
+	// Quit if an error occurred
+	if (err != sl::zed::SUCCESS)
+	{
+		UERROR("ZED camera initialization failed: %s", sl::zed::errcode2str(err).c_str());
+		delete zed_;
+		zed_ = 0;
 		return false;
 	}
-	
+
+	zed_->setConfidenceThreshold(confidenceThr_);
+
 	sl::zed::StereoParameters * stereoParams = zed_->getParameters();
 	sl::zed::resolution res = zed_->getImageSize();
 				
@@ -837,9 +893,7 @@ SensorData CameraStereoZed::captureImage()
 #ifdef RTABMAP_ZED
 	if(zed_)
 	{
-		sl::zed::SENSING_MODE dm_type = sl::zed::RAW;
-		bool res = zed_->grab(dm_type);
-
+		bool res = zed_->grab((sl::zed::SENSING_MODE)sensingMode_, quality_ > 0, quality_ > 0, false);
 		if(!res)
 		{
 			// get left image
@@ -847,12 +901,12 @@ SensorData CameraStereoZed::captureImage()
 			cv::Mat left;
 			cv::cvtColor(rgbaLeft, left, cv::COLOR_BGRA2BGR);
 
-			if(rgbdMode_)
+			if(quality_ > 0)
 			{
 				// get depth image
 				cv::Mat depth;
 				slMat2cvMat(zed_->retrieveMeasure(sl::zed::MEASURE::DEPTH)).copyTo(depth);
-				depth /= 1000.0;
+				depth /= 1000.0; // to meters
 
 				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), UTimer::now());
 			}
@@ -866,9 +920,13 @@ SensorData CameraStereoZed::captureImage()
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
 			}
 		}
-		else
+		else if(src_ == CameraVideo::kUsbDevice)
 		{
 			UERROR("CameraStereoZed: Failed to grab images!");
+		}
+		else
+		{
+			UWARN("CameraStereoZed: end of stream is reached!");
 		}
 	}
 #else

@@ -112,7 +112,21 @@ public:
 	static bool available();
 
 public:
-	CameraStereoZed(bool rgbdMode, float imageRate=0.0f, const Transform & localTransform = Transform::getIdentity());
+	CameraStereoZed(
+			int deviceId,
+			int resolution = 2, // 0=HD2K, 1=HD1080, 2=HD720, 3=VGA
+			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
+			int sensingMode = 1,// 0=FULL, 1=RAW
+			int confidenceThr = 100,
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+	CameraStereoZed(
+			const std::string & svoFilePath,
+			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
+			int sensingMode = 1,// 0=FULL, 1=RAW
+			int confidenceThr = 100,
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoZed();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -125,7 +139,13 @@ protected:
 private:
 	sl::zed::Camera * zed_;
 	StereoCameraModel stereoModel_;
-	bool rgbdMode_;
+	CameraVideo::Source src_;
+	int usbDevice_;
+	std::string svoFilePath_;
+	int resolution_;
+	int quality_;
+	int sensingMode_;
+	int confidenceThr_;
 };
 
 /////////////////////////
