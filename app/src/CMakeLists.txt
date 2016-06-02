@@ -137,11 +137,13 @@ IF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
   # Install needed Qt plugins by copying directories from the qt installation
   # One can cull what gets copied by using 'REGEX "..." EXCLUDE'
   # Exclude debug libraries
-  INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats" 
+  IF(QT_PLUGINS_DIR)
+    INSTALL(DIRECTORY "${QT_PLUGINS_DIR}/imageformats" 
           DESTINATION ${plugin_dest_dir}/plugins 
           COMPONENT runtime 
           REGEX ".*d4.dll" EXCLUDE
           REGEX ".*d4.a" EXCLUDE)
+  ENDIF(QT_PLUGINS_DIR)
   
   # install a qt.conf file
   # this inserts some cmake code into the install script to write the file
