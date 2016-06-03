@@ -1889,7 +1889,7 @@ void MainWindow::updateMapCloud(
 					_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 					_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 				}
-				else if(_createdClouds.find(iter->first) != _createdClouds.end() && _cachedSignatures.contains(iter->first))
+				else if(_createdClouds.find(iter->first) == _createdClouds.end() && _cachedSignatures.contains(iter->first))
 				{
 					this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					if(_createdClouds.find(iter->first) != _createdClouds.end())
