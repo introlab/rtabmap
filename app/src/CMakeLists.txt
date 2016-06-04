@@ -150,7 +150,7 @@ IF((APPLE AND BUILD_AS_BUNDLE) OR WIN32)
 		get_filename_component(plugin_dir ${plugin_loc} DIRECTORY)
 		string(REPLACE "plugins" ";" loc_list ${plugin_dir})
 		list(GET loc_list 1 plugin_type)
-	    #MESSAGE(STATUS "Qt5 plugin "${plugin_loc}" installed in "${plugin_dest_dir}/plugins${plugin_type}"")
+	    #MESSAGE(STATUS "Qt5 plugin \"${plugin_loc}\" installed in \"${plugin_dest_dir}/plugins${plugin_type}\"")
 		INSTALL(FILES ${plugin_loc}
           DESTINATION ${plugin_dest_dir}/plugins${plugin_type}
           COMPONENT runtime)
