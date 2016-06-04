@@ -893,7 +893,14 @@ SensorData CameraStereoZed::captureImage()
 #ifdef RTABMAP_ZED
 	if(zed_)
 	{
+		UTimer timer;
 		bool res = zed_->grab((sl::zed::SENSING_MODE)sensingMode_, quality_ > 0, quality_ > 0, false);
+		while (src_ == CameraVideo::kUsbDevice && res && timer.elapsed() < 2.0)
+		{
+			// maybe there is a latency with the USB, try again in 10 ms (for the next 2 seconds)
+			uSleep(10);
+			res = zed_->grab((sl::zed::SENSING_MODE)sensingMode_, quality_ > 0, quality_ > 0, false);
+		}
 		if(!res)
 		{
 			// get left image
@@ -922,7 +929,7 @@ SensorData CameraStereoZed::captureImage()
 		}
 		else if(src_ == CameraVideo::kUsbDevice)
 		{
-			UERROR("CameraStereoZed: Failed to grab images!");
+			UERROR("CameraStereoZed: Failed to grab images after 2 seconds!");
 		}
 		else
 		{
