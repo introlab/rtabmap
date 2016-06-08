@@ -255,7 +255,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_filteringMinNeighbors->setValue(2);
 
 	_ui->checkBox_assemble->setChecked(true);
-	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.01);
+	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.0);
 
 	_ui->groupBox_subtraction->setChecked(false);
 	_ui->doubleSpinBox_subtractPointFilteringRadius->setValue(0.02);
