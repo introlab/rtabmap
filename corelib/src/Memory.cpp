@@ -1902,6 +1902,7 @@ bool Memory::labelSignature(int id, const std::string & label)
 		if(s)
 		{
 			s->setLabel(label);
+			_linksChanged = s->isSaved(); // HACK to get label updated in Localization mode
 			UWARN("Label \"%s\" set to node %d", label.c_str(), id);
 			return true;
 		}
