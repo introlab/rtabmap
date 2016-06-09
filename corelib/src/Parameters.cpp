@@ -155,6 +155,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.11.8
+		removedParameters_.insert(std::make_pair("Reg/Force2D",                   std::make_pair(true,  Parameters::kRegForce3DoF())));
+
 		// 0.11.6
 		removedParameters_.insert(std::make_pair("RGBD/ProximityPathScansMerged", std::make_pair(false,  "")));
 
