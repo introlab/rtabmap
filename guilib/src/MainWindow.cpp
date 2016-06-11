@@ -1891,10 +1891,14 @@ void MainWindow::updateMapCloud(
 				}
 				else if(_createdClouds.find(iter->first) == _createdClouds.end() && _cachedSignatures.contains(iter->first))
 				{
-					this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
-					if(_createdClouds.find(iter->first) != _createdClouds.end())
+					if((_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)) ||
+					    _projectionLocalMaps.find(iter->first) == _projectionLocalMaps.end())
 					{
-						_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
+						this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
+						if(_createdClouds.find(iter->first) != _createdClouds.end())
+						{
+							_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
+						}
 					}
 				}
 			}
@@ -2255,135 +2259,185 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				indices.get(),
 				_preferencesDialog->getAllParameters());
 
+		// filtering pipeline
+		if(indices->size() && _preferencesDialog->getMapVoxel() > 0.0)
+		{
+			cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _preferencesDialog->getMapVoxel());
+			//generate indices for all points (they are all valid)
+			indices->resize(cloudWithoutNormals->size());
+			for(unsigned int i=0; i<cloudWithoutNormals->size(); ++i)
+			{
+				indices->at(i) = i;
+			}
+		}
+
+		// Do radius filtering after voxel filtering ( a lot faster)
+		if(indices->size() &&
+		   _preferencesDialog->getMapNoiseRadius() > 0.0 &&
+		   _preferencesDialog->getMapNoiseMinNeighbors() > 0)
+		{
+			indices = rtabmap::util3d::radiusFiltering(
+					cloudWithoutNormals,
+					indices,
+					_preferencesDialog->getMapNoiseRadius(),
+					_preferencesDialog->getMapNoiseMinNeighbors());
+		}
+
 		//compute normals
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::computeNormals(cloudWithoutNormals, 10);
 
-		if(indices->size() && _preferencesDialog->isGridMapFrom3DCloud())
+		if(indices->size() &&
+		  _preferencesDialog->isGridMapFrom3DCloud() &&
+		  _projectionLocalMaps.find(nodeId) == _projectionLocalMaps.end())
 		{
 			UTimer timer;
-			float cellSize = _preferencesDialog->getGridMapResolution();
-			float groundNormalMaxAngle = M_PI_4;
-			int minClusterSize = 20;
 			cv::Mat ground, obstacles;
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = util3d::voxelize(cloudWithoutNormals, indices, cellSize);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = cloudWithoutNormals;
+
+			// voxelize to grid cell size
+			if(_preferencesDialog->getMapVoxel() < _preferencesDialog->getGridMapResolution())
+			{
+				voxelCloud = util3d::voxelize(voxelCloud, indices, _preferencesDialog->getGridMapResolution());
+			}
 
 			// add pose rotation without yaw
-			float roll, pitch, yaw;
-			pose.getEulerAngles(roll, pitch, yaw);
-			voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0,0, roll, pitch, 0));
+			if(_preferencesDialog->projMapFrame())
+			{
+				float roll, pitch, yaw;
+				pose.getEulerAngles(roll, pitch, yaw);
+				voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0, pose.z(), roll, pitch, 0));
+			}
+
+			if(_preferencesDialog->projMaxObstaclesHeight())
+			{
+				voxelCloud = util3d::passThrough(voxelCloud, "z", std::numeric_limits<int>::min(), _preferencesDialog->projMaxObstaclesHeight());
+			}
 
 			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
 					voxelCloud,
 					ground,
 					obstacles,
-					cellSize,
-					groundNormalMaxAngle,
-					minClusterSize);
+					_preferencesDialog->getGridMapResolution(),
+					_preferencesDialog->projMaxGroundAngle(),
+					_preferencesDialog->projMinClusterSize(),
+					_preferencesDialog->projFlatObstaclesDetected(),
+					_preferencesDialog->projMaxGroundHeight());
 			if(!ground.empty() || !obstacles.empty())
 			{
 				_projectionLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 			}
-			UDEBUG("time gridMapFrom2DCloud = %f s", timer.ticks());
+			UDEBUG("time gridMapFrom3DCloud = %f s", timer.ticks());
 		}
 
-		if(_preferencesDialog->isSubtractFiltering() &&
-					_preferencesDialog->getSubtractFilteringRadius() > 0.0)
+		if(_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0))
 		{
-			pcl::IndicesPtr beforeFiltering = indices;
-			if(	cloud->size() &&
-				_previousCloud.first>0 &&
-				_previousCloud.second.first.get() != 0 &&
-				_previousCloud.second.second.get() != 0 &&
-				_previousCloud.second.second->size() &&
-				_currentPosesMap.find(_previousCloud.first) != _currentPosesMap.end())
+			if(_preferencesDialog->isSubtractFiltering() &&
+			   _preferencesDialog->getSubtractFilteringRadius() > 0.0)
 			{
-				UTimer time;
+				pcl::IndicesPtr beforeFiltering = indices;
+				if(	cloud->size() &&
+					_previousCloud.first>0 &&
+					_previousCloud.second.first.get() != 0 &&
+					_previousCloud.second.second.get() != 0 &&
+					_previousCloud.second.second->size() &&
+					_currentPosesMap.find(_previousCloud.first) != _currentPosesMap.end())
+				{
+					UTimer time;
 
-				rtabmap::Transform t = pose.inverse() * _currentPosesMap.at(_previousCloud.first);
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first, t);
+					rtabmap::Transform t = pose.inverse() * _currentPosesMap.at(_previousCloud.first);
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first, t);
 
-				//UWARN("saved new.pcd and old.pcd");
-				//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
-				//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
+					//UWARN("saved new.pcd and old.pcd");
+					//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
+					//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
 
-				indices = rtabmap::util3d::subtractFiltering(
-						cloud,
-						indices,
-						previousCloud,
-						_previousCloud.second.second,
-						_preferencesDialog->getSubtractFilteringRadius(),
-						_preferencesDialog->getSubtractFilteringAngle(),
-						_preferencesDialog->getSubtractFilteringMinPts());
-				UWARN("Time subtract filtering %d from %d -> %d (%fs)",
-						(int)_previousCloud.second.second->size(),
-						(int)beforeFiltering->size(),
-						(int)indices->size(),
-						time.ticks());
+					indices = rtabmap::util3d::subtractFiltering(
+							cloud,
+							indices,
+							previousCloud,
+							_previousCloud.second.second,
+							_preferencesDialog->getSubtractFilteringRadius(),
+							_preferencesDialog->getSubtractFilteringAngle(),
+							_preferencesDialog->getSubtractFilteringMinPts());
+					UWARN("Time subtract filtering %d from %d -> %d (%fs)",
+							(int)_previousCloud.second.second->size(),
+							(int)beforeFiltering->size(),
+							(int)indices->size(),
+							time.ticks());
+				}
+				// keep all indices for next subtraction
+				_previousCloud.first = nodeId;
+				_previousCloud.second.first = cloud;
+				_previousCloud.second.second = beforeFiltering;
 			}
-			// keep all indices for next subtraction
-			_previousCloud.first = nodeId;
-			_previousCloud.second.first = cloud;
-			_previousCloud.second.second = beforeFiltering;
-		}
 
-		// keep substracted clouds
-		_createdClouds.insert(std::make_pair(nodeId, std::make_pair(cloud, indices)));
+			// keep substracted clouds
+			_createdClouds.insert(std::make_pair(nodeId, std::make_pair(cloud, indices)));
 
-		if(indices->size())
-		{
-			if(_preferencesDialog->isCloudMeshing() && cloud->isOrganized())
+			if(indices->size())
 			{
-				// Fast organized mesh
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
-				// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
-				output = util3d::extractIndices(cloud, indices, false, true);
-				Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-				if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+				if(_preferencesDialog->isCloudMeshing() && cloud->isOrganized())
 				{
-					viewpoint[0] = data.cameraModels()[0].localTransform().x();
-					viewpoint[1] = data.cameraModels()[0].localTransform().y();
-					viewpoint[2] = data.cameraModels()[0].localTransform().z();
-				}
-				else if(!data.stereoCameraModel().localTransform().isNull())
-				{
-					viewpoint[0] = data.stereoCameraModel().localTransform().x();
-					viewpoint[1] = data.stereoCameraModel().localTransform().y();
-					viewpoint[2] = data.stereoCameraModel().localTransform().z();
-				}
-				std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-						output,
-						_preferencesDialog->getCloudMeshingAngle(),
-						_preferencesDialog->isCloudMeshingQuad(),
-						_preferencesDialog->getCloudMeshingTriangleSize(),
-						viewpoint);
-				if(polygons.size())
-				{
-					// remove unused vertices to save memory
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-					std::vector<pcl::Vertices> outputPolygons;
-					util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
-					if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
+					// Fast organized mesh
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
+					// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
+					output = util3d::extractIndices(cloud, indices, false, true);
+					Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+					if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
 					{
-						UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
+						viewpoint[0] = data.cameraModels()[0].localTransform().x();
+						viewpoint[1] = data.cameraModels()[0].localTransform().y();
+						viewpoint[2] = data.cameraModels()[0].localTransform().z();
+					}
+					else if(!data.stereoCameraModel().localTransform().isNull())
+					{
+						viewpoint[0] = data.stereoCameraModel().localTransform().x();
+						viewpoint[1] = data.stereoCameraModel().localTransform().y();
+						viewpoint[2] = data.stereoCameraModel().localTransform().z();
+					}
+					std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+							output,
+							_preferencesDialog->getCloudMeshingAngle(),
+							_preferencesDialog->isCloudMeshingQuad(),
+							_preferencesDialog->getCloudMeshingTriangleSize(),
+							viewpoint);
+					if(polygons.size())
+					{
+						// remove unused vertices to save memory
+						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+						std::vector<pcl::Vertices> outputPolygons;
+						util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
+						if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
+						{
+							UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
+						}
+					}
+				}
+				else
+				{
+					if(_preferencesDialog->isCloudMeshing())
+					{
+						UWARN("Online meshing is activated but the generated cloud is "
+							  "dense (voxel filtering is used or multiple cameras are used). Disable "
+							  "online meshing in Preferences->3D Rendering to hide this warning.");
+					}
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
+					// don't keep organized to save memory
+					output = util3d::extractIndices(cloud, indices, false, false);
+					QColor color = Qt::gray;
+					if(mapId >= 0)
+					{
+						color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+					}
+
+					if(!_cloudViewer->addCloud(cloudName, output, pose, color))
+					{
+						UERROR("Adding cloud %d to viewer failed!", nodeId);
 					}
 				}
 			}
-			else
-			{
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
-				// don't keep organized to save memory
-				output = util3d::extractIndices(cloud, indices, false, false);
-				QColor color = Qt::gray;
-				if(mapId >= 0)
-				{
-					color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
-				}
-
-				if(!_cloudViewer->addCloud(cloudName, output, pose, color))
-				{
-					UERROR("Adding cloud %d to viewer failed!", nodeId);
-				}
-			}
+			_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
+			_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 		}
 	}
 	else
@@ -2391,8 +2445,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		return;
 	}
 
-	_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
-	_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 	UDEBUG("");
 }
 

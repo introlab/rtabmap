@@ -348,6 +348,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeFeatures[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	}
+	connect(_ui->doubleSpinBox_voxel, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_noiseRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_noiseMinNeighbors, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -364,8 +367,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_opacity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->checkBox_map_occupancyFrom3DCloud, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_map_erode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->groupBox_map_occupancyFrom3DCloud, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_projMapFrame, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_projMaxGroundAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_projMaxGroundHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_projMinClusterSize, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_projMaxObstaclesHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_projFlatObstaclesDetected, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->groupBox_organized, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mesh_angleTolerance, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1167,6 +1176,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingPtSizeScan[i]->setValue(2);
 			_3dRenderingPtSizeFeatures[i]->setValue(3);
 		}
+		_ui->doubleSpinBox_voxel->setValue(0);
+		_ui->doubleSpinBox_noiseRadius->setValue(0);
+		_ui->spinBox_noiseMinNeighbors->setValue(5);
 
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showLabels->setChecked(false);
@@ -1182,9 +1194,15 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
-		_ui->checkBox_map_occupancyFrom3DCloud->setChecked(false);
 		_ui->checkBox_map_erode->setChecked(false);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
+		_ui->groupBox_map_occupancyFrom3DCloud->setChecked(false);
+		_ui->checkBox_projMapFrame->setChecked(true);
+		_ui->doubleSpinBox_projMaxGroundAngle->setValue(30);
+		_ui->doubleSpinBox_projMaxGroundHeight->setValue(0);
+		_ui->spinBox_projMinClusterSize->setValue(20);
+		_ui->doubleSpinBox_projMaxObstaclesHeight->setValue(0);
+		_ui->checkBox_projFlatObstaclesDetected->setChecked(true);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
@@ -1512,6 +1530,10 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
 		_3dRenderingPtSizeFeatures[i]->setValue(settings.value(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value()).toInt());
 	}
+	_ui->doubleSpinBox_voxel->setValue(settings.value("cloudVoxel", _ui->doubleSpinBox_voxel->value()).toDouble());
+	_ui->doubleSpinBox_noiseRadius->setValue(settings.value("cloudNoiseRadius", _ui->doubleSpinBox_noiseRadius->value()).toDouble());
+	_ui->spinBox_noiseMinNeighbors->setValue(settings.value("cloudNoiseMinNeighbors", _ui->spinBox_noiseMinNeighbors->value()).toInt());
+
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 
@@ -1526,9 +1548,15 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
-	_ui->checkBox_map_occupancyFrom3DCloud->setChecked(settings.value("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked()).toBool());
 	_ui->checkBox_map_erode->setChecked(settings.value("gridMapEroded", _ui->checkBox_map_erode->isChecked()).toBool());
 	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
+	_ui->groupBox_map_occupancyFrom3DCloud->setChecked(settings.value("gridMapOccupancyFrom3DCloud", _ui->groupBox_map_occupancyFrom3DCloud->isChecked()).toBool());
+	_ui->checkBox_projMapFrame->setChecked(settings.value("projMapFrame", _ui->checkBox_projMapFrame->isChecked()).toBool());
+	_ui->doubleSpinBox_projMaxGroundAngle->setValue(settings.value("projMaxGroundAngle", _ui->doubleSpinBox_projMaxGroundAngle->value()).toDouble());
+	_ui->doubleSpinBox_projMaxGroundHeight->setValue(settings.value("projMaxGroundHeight", _ui->doubleSpinBox_projMaxGroundHeight->value()).toDouble());
+	_ui->spinBox_projMinClusterSize->setValue(settings.value("projMinClusterSize", _ui->spinBox_projMinClusterSize->value()).toInt());
+	_ui->doubleSpinBox_projMaxObstaclesHeight->setValue(settings.value("projMaxObstaclesHeight", _ui->doubleSpinBox_projMaxObstaclesHeight->value()).toDouble());
+	_ui->checkBox_projFlatObstaclesDetected->setChecked(settings.value("projFlatObstaclesDetected", _ui->checkBox_projFlatObstaclesDetected->isChecked()).toBool());
 
 	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("meshing_angle", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
@@ -1904,6 +1932,10 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
 		settings.setValue(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value());
 	}
+	settings.setValue("cloudVoxel",             _ui->doubleSpinBox_voxel->value());
+	settings.setValue("cloudNoiseRadius",       _ui->doubleSpinBox_noiseRadius->value());
+	settings.setValue("cloudNoiseMinNeighbors", _ui->spinBox_noiseMinNeighbors->value());
+
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 
@@ -1914,13 +1946,21 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("subtractFiltering",       _ui->radioButton_subtractFiltering->isChecked());
 	settings.setValue("subtractFilteringMinPts", _ui->spinBox_subtractFilteringMinPts->value());
 	settings.setValue("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value());
-	settings.setValue("subtractFilteringAngle", _ui->doubleSpinBox_subtractFilteringAngle->value());
+	settings.setValue("subtractFilteringAngle",  _ui->doubleSpinBox_subtractFilteringAngle->value());
 
 	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapResolution",           _ui->doubleSpinBox_map_resolution->value());
-	settings.setValue("gridMapOccupancyFrom3DCloud", _ui->checkBox_map_occupancyFrom3DCloud->isChecked());
 	settings.setValue("gridMapEroded",               _ui->checkBox_map_erode->isChecked());
 	settings.setValue("gridMapOpacity",              _ui->doubleSpinBox_map_opacity->value());
+
+	settings.setValue("gridMapOccupancyFrom3DCloud", _ui->groupBox_map_occupancyFrom3DCloud->isChecked());
+	settings.setValue("projMapFrame",                _ui->checkBox_projMapFrame->isChecked());
+	settings.setValue("projMaxGroundAngle",          _ui->doubleSpinBox_projMaxGroundAngle->value());
+	settings.setValue("projMaxGroundHeight",         _ui->doubleSpinBox_projMaxGroundHeight->value());
+	settings.setValue("projMinClusterSize",          _ui->spinBox_projMinClusterSize->value());
+	settings.setValue("projMaxObstaclesHeight",      _ui->doubleSpinBox_projMaxObstaclesHeight->value());
+	settings.setValue("projFlatObstaclesDetected",   _ui->checkBox_projFlatObstaclesDetected->isChecked());
+
 
 	settings.setValue("meshing",               _ui->groupBox_organized->isChecked());
 	settings.setValue("meshing_angle",         _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -3558,6 +3598,20 @@ bool PreferencesDialog::isCloudsShown(int index) const
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingShowClouds[index]->isChecked();
 }
+
+double PreferencesDialog::getMapVoxel() const
+{
+	return _ui->doubleSpinBox_voxel->value();
+}
+double PreferencesDialog::getMapNoiseRadius() const
+{
+	return _ui->doubleSpinBox_noiseRadius->value();
+}
+int PreferencesDialog::getMapNoiseMinNeighbors() const
+{
+	return _ui->spinBox_noiseMinNeighbors->value();
+}
+
 bool PreferencesDialog::isGraphsShown() const
 {
 	return _ui->checkBox_showGraphs->isChecked();
@@ -3681,13 +3735,37 @@ double PreferencesDialog::getGridMapResolution() const
 {
 	return _ui->doubleSpinBox_map_resolution->value();
 }
-bool PreferencesDialog::isGridMapFrom3DCloud() const
-{
-	return _ui->checkBox_map_occupancyFrom3DCloud->isChecked();
-}
 bool PreferencesDialog::isGridMapEroded() const
 {
 	return _ui->checkBox_map_erode->isChecked();
+}
+bool PreferencesDialog::isGridMapFrom3DCloud() const
+{
+	return _ui->groupBox_map_occupancyFrom3DCloud->isChecked();
+}
+bool PreferencesDialog::projMapFrame() const
+{
+	return _ui->checkBox_projMapFrame->isChecked();
+}
+double PreferencesDialog::projMaxGroundAngle() const
+{
+	return _ui->doubleSpinBox_projMaxGroundAngle->value()*M_PI/180.0;
+}
+double PreferencesDialog::projMaxGroundHeight() const
+{
+	return _ui->doubleSpinBox_projMaxGroundHeight->value();
+}
+int PreferencesDialog::projMinClusterSize() const
+{
+	return _ui->spinBox_projMinClusterSize->value();
+}
+double PreferencesDialog::projMaxObstaclesHeight() const
+{
+	return _ui->doubleSpinBox_projMaxObstaclesHeight->value();
+}
+bool PreferencesDialog::projFlatObstaclesDetected() const
+{
+	return _ui->checkBox_projFlatObstaclesDetected->isChecked();
 }
 double PreferencesDialog::getGridMapOpacity() const
 {

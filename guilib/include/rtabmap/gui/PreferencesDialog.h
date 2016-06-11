@@ -147,6 +147,9 @@ public:
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
+	double getMapVoxel() const;
+	double getMapNoiseRadius() const;
+	int getMapNoiseMinNeighbors() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
@@ -172,9 +175,15 @@ public:
 	double getSubtractFilteringAngle() const;
 
 	bool getGridMapShown() const;
-	double getGridMapResolution() const;
-	bool isGridMapFrom3DCloud() const;
+	double getGridMapResolution() const;;
 	bool isGridMapEroded() const;
+	bool isGridMapFrom3DCloud() const;
+	bool projMapFrame() const;
+	double projMaxGroundAngle() const;
+	double projMaxGroundHeight() const;
+	int projMinClusterSize() const;
+	double projMaxObstaclesHeight() const;
+	bool projFlatObstaclesDetected() const;
 	double getGridMapOpacity() const;
 
 	bool isCloudMeshing() const;
