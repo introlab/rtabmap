@@ -173,6 +173,7 @@ public:
 	int getSubtractFilteringMinPts() const;
 	double getSubtractFilteringRadius() const;
 	double getSubtractFilteringAngle() const;
+	int getNormalKSearch() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;;

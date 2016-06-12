@@ -42,6 +42,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_surface.h>
 
+#include <pcl/common/io.h>
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -661,7 +663,9 @@ SensorData CameraImages::captureImage()
 			}
 			if(_scanNormalsK > 0 && cloud->size())
 			{
-				pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, _scanNormalsK);
+				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK);
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+				pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 				scan = util3d::laserScanFromPointCloud(*cloudNormals);
 			}
 			else

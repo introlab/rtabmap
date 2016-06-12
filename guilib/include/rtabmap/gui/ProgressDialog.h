@@ -63,6 +63,9 @@ public slots:
 	void clear();
 	void resetProgress();
 
+private slots:
+	void closeDialog();
+
 private:
 	QLabel * _text;
 	QTextEdit * _detailedText;

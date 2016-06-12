@@ -200,8 +200,15 @@ Transform RegistrationIcp::computeTransformationImpl(
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 				if(_pointToPlane) // ICP Point To Plane, only in 3D
 				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::computeNormals(fromCloudFiltered, _pointToPlaneNormalNeighbors);
-					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::computeNormals(toCloudFiltered, _pointToPlaneNormalNeighbors);
+					pcl::PointCloud<pcl::Normal>::Ptr normals;
+
+					normals = util3d::computeNormals(fromCloudFiltered, _pointToPlaneNormalNeighbors);
+					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+					pcl::concatenateFields(*fromCloudFiltered, *normals, *fromCloudNormals);
+
+					normals = util3d::computeNormals(toCloudFiltered, _pointToPlaneNormalNeighbors);
+					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+					pcl::concatenateFields(*toCloudFiltered, *normals, *toCloudNormals);
 
 					std::vector<int> indices;
 					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);

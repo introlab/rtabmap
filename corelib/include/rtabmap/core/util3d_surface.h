@@ -121,28 +121,29 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
 		const std::map<int, cv::Mat> & images,
-		const std::string & tmpDirectory = ".");
+		const std::string & tmpDirectory = ".",
+		int kNormalSearch = 20); // if mesh doesn't have normals, compute them with k neighbors
 
-pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int normalKSearch = 20);
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		int normalKSearch = 20);
-pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		int normalKSearch = 20);
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP computeNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		int normalKSearch = 20);
 
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeFastOrganizedNormals(
+pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float maxDepthChangeFactor = 0.02f,
 		float normalSmoothingSize = 10.0f);
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr computeFastOrganizedNormals(
+pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float maxDepthChangeFactor = 0.02f,

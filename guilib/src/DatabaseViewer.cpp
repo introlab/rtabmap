@@ -1629,7 +1629,9 @@ void DatabaseViewer::view3DLaserScans()
 						}
 
 						int normalK = uStr2Int(ui_->parameters_toolbox->getParameters().at(Parameters::kIcpPointToPlaneNormalNeighbors()));
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, normalK);
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, normalK);
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+						pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 
 						viewer->addCloud(uFormat("cloud%d", iter->first), cloudNormals, pose, color);
 
@@ -3457,8 +3459,11 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				   iter->second.type() == rtabmap::Link::kNeighborMerged)
 				{
 					Eigen::Vector3f vA, vB;
-					poseA.getTranslation(vA[0], vA[1], vA[2]);
-					poseB.getTranslation(vB[0], vB[1], vB[2]);
+					float x,y,z;
+					poseA.getTranslation(x,y,z);
+					vA[0] = x; vA[1] = y; vA[2] = z;
+					poseB.getTranslation(x,y,z);
+					vB[0] = x; vB[1] = y; vB[2] = z;
 					length += (vB - vA).norm();
 				}
 			}

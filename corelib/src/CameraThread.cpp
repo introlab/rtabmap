@@ -193,7 +193,10 @@ void CameraThread::mainLoop()
 				cv::Mat scan;
 				if(_scanNormalsK>0)
 				{
-					scan = util3d::laserScanFromPointCloud(*util3d::computeNormals(cloud, _scanNormalsK));
+					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK);
+					pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+					pcl::concatenateFields(*cloud, *normals, *cloudNormals);
+					scan = util3d::laserScanFromPointCloud(*cloudNormals);
 				}
 				else
 				{

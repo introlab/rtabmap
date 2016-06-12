@@ -336,9 +336,9 @@ bool ExportScansDialog::getExportedScans(
 
 					pcl::PointCloud<pcl::PointXYZ>::Ptr cloudXYZ(new pcl::PointCloud<pcl::PointXYZ>);
 					pcl::copyPointCloud(*assembledCloud, *cloudXYZ);
-					assembledCloud = util3d::computeNormals(
-							cloudXYZ,
-							_ui->spinBox_normalKSearch->value());
+
+					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudXYZ, _ui->spinBox_normalKSearch->value());
+					pcl::concatenateFields(*cloudXYZ, *normals, *assembledCloud);
 
 					_progressDialog->appendText(tr("Update %1 normals with %2 camera views...")
 							.arg(assembledCloud->size()).arg(poses.size()));
@@ -433,9 +433,8 @@ std::map<int, pcl::PointCloud<pcl::PointNormal>::Ptr> ExportScansDialog::getScan
 
 					if(!_ui->checkBox_assemble->isChecked() && _ui->spinBox_normalKSearch->value() > 0)
 					{
-						cloud = util3d::computeNormals(
-								cloudXYZ,
-								_ui->spinBox_normalKSearch->value());
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudXYZ, _ui->spinBox_normalKSearch->value());
+						pcl::concatenateFields(*cloudXYZ, *normals, *cloud);
 					}
 					else
 					{

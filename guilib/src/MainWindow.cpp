@@ -2236,7 +2236,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		SensorData data = iter->sensorData();
 		data.uncompressData(&image, &depth, 0);
 
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 		pcl::IndicesPtr indices(new std::vector<int>);
 		UASSERT(nodeId == data.id());
 
@@ -2252,7 +2252,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		}
 
 		// Create organized cloud
-		cloudWithoutNormals = util3d::cloudRGBFromSensorData(data,
+		cloud = util3d::cloudRGBFromSensorData(data,
 				_preferencesDialog->getCloudDecimation(0),
 				_preferencesDialog->getCloudMaxDepth(0),
 				_preferencesDialog->getCloudMinDepth(0),
@@ -2262,10 +2262,10 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		// filtering pipeline
 		if(indices->size() && _preferencesDialog->getMapVoxel() > 0.0)
 		{
-			cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _preferencesDialog->getMapVoxel());
+			cloud = util3d::voxelize(cloud, indices, _preferencesDialog->getMapVoxel());
 			//generate indices for all points (they are all valid)
-			indices->resize(cloudWithoutNormals->size());
-			for(unsigned int i=0; i<cloudWithoutNormals->size(); ++i)
+			indices->resize(cloud->size());
+			for(unsigned int i=0; i<cloud->size(); ++i)
 			{
 				indices->at(i) = i;
 			}
@@ -2277,14 +2277,11 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		   _preferencesDialog->getMapNoiseMinNeighbors() > 0)
 		{
 			indices = rtabmap::util3d::radiusFiltering(
-					cloudWithoutNormals,
+					cloud,
 					indices,
 					_preferencesDialog->getMapNoiseRadius(),
 					_preferencesDialog->getMapNoiseMinNeighbors());
 		}
-
-		//compute normals
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::computeNormals(cloudWithoutNormals, 10);
 
 		if(indices->size() &&
 		  _preferencesDialog->isGridMapFrom3DCloud() &&
@@ -2292,7 +2289,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		{
 			UTimer timer;
 			cv::Mat ground, obstacles;
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = cloudWithoutNormals;
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = cloud;
 
 			// voxelize to grid cell size
 			if(_preferencesDialog->getMapVoxel() < _preferencesDialog->getGridMapResolution())
@@ -2329,6 +2326,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			UDEBUG("time gridMapFrom3DCloud = %f s", timer.ticks());
 		}
 
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 		if(_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0))
 		{
 			if(_preferencesDialog->isSubtractFiltering() &&
@@ -2337,7 +2335,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				pcl::IndicesPtr beforeFiltering = indices;
 				if(	cloud->size() &&
 					_previousCloud.first>0 &&
-					_previousCloud.second.first.get() != 0 &&
+					_previousCloud.second.first.first.get() != 0 &&
 					_previousCloud.second.second.get() != 0 &&
 					_previousCloud.second.second->size() &&
 					_currentPosesMap.find(_previousCloud.first) != _currentPosesMap.end())
@@ -2345,20 +2343,53 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					UTimer time;
 
 					rtabmap::Transform t = pose.inverse() * _currentPosesMap.at(_previousCloud.first);
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first, t);
 
 					//UWARN("saved new.pcd and old.pcd");
 					//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
 					//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
 
-					indices = rtabmap::util3d::subtractFiltering(
-							cloud,
-							indices,
-							previousCloud,
-							_previousCloud.second.second,
-							_preferencesDialog->getSubtractFilteringRadius(),
-							_preferencesDialog->getSubtractFilteringAngle(),
-							_preferencesDialog->getSubtractFilteringMinPts());
+					if(_preferencesDialog->getSubtractFilteringAngle() > 0.0f)
+					{
+						//normals required
+						if(_preferencesDialog->getNormalKSearch() > 0)
+						{
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch());
+							pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+						}
+						else
+						{
+							UWARN("Cloud subtraction with angle filtering is activated but "
+								  "cloud normal K search is 0. Subtraction is done with angle.");
+						}
+					}
+
+					if(cloudWithNormals->size() &&
+						_previousCloud.second.first.second.get() &&
+						_previousCloud.second.first.second->size())
+					{
+						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.second, t);
+						indices = rtabmap::util3d::subtractFiltering(
+								cloudWithNormals,
+								indices,
+								previousCloud,
+								_previousCloud.second.second,
+								_preferencesDialog->getSubtractFilteringRadius(),
+								_preferencesDialog->getSubtractFilteringAngle(),
+								_preferencesDialog->getSubtractFilteringMinPts());
+					}
+					else
+					{
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.first, t);
+						indices = rtabmap::util3d::subtractFiltering(
+								cloud,
+								indices,
+								previousCloud,
+								_previousCloud.second.second,
+								_preferencesDialog->getSubtractFilteringRadius(),
+								_preferencesDialog->getSubtractFilteringMinPts());
+					}
+
+
 					UWARN("Time subtract filtering %d from %d -> %d (%fs)",
 							(int)_previousCloud.second.second->size(),
 							(int)beforeFiltering->size(),
@@ -2367,19 +2398,17 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				}
 				// keep all indices for next subtraction
 				_previousCloud.first = nodeId;
-				_previousCloud.second.first = cloud;
+				_previousCloud.second.first.first = cloud;
+				_previousCloud.second.first.second = cloudWithNormals;
 				_previousCloud.second.second = beforeFiltering;
 			}
-
-			// keep substracted clouds
-			_createdClouds.insert(std::make_pair(nodeId, std::make_pair(cloud, indices)));
 
 			if(indices->size())
 			{
 				if(_preferencesDialog->isCloudMeshing() && cloud->isOrganized())
 				{
 					// Fast organized mesh
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
 					// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
 					output = util3d::extractIndices(cloud, indices, false, true);
 					Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
@@ -2404,12 +2433,16 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					if(polygons.size())
 					{
 						// remove unused vertices to save memory
-						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
 						std::vector<pcl::Vertices> outputPolygons;
 						util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
 						if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
 						{
 							UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
+						}
+						else
+						{
+							_createdClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
 						}
 					}
 				}
@@ -2421,18 +2454,47 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 							  "dense (voxel filtering is used or multiple cameras are used). Disable "
 							  "online meshing in Preferences->3D Rendering to hide this warning.");
 					}
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output;
-					// don't keep organized to save memory
-					output = util3d::extractIndices(cloud, indices, false, false);
+
+					if(_preferencesDialog->getNormalKSearch() > 0 && cloudWithNormals->size() == 0)
+					{
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch());
+						pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+					}
+
 					QColor color = Qt::gray;
 					if(mapId >= 0)
 					{
 						color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 					}
 
-					if(!_cloudViewer->addCloud(cloudName, output, pose, color))
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
+					output = util3d::extractIndices(cloud, indices, false, true);
+
+					if(cloudWithNormals->size())
 					{
-						UERROR("Adding cloud %d to viewer failed!", nodeId);
+						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputWithNormals;
+						outputWithNormals = util3d::extractIndices(cloudWithNormals, indices, false, false);
+
+						if(!_cloudViewer->addCloud(cloudName, outputWithNormals, pose, color))
+						{
+							UERROR("Adding cloud %d to viewer failed!", nodeId);
+						}
+						else
+						{
+							_createdClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+						}
+					}
+					else
+					{
+
+						if(!_cloudViewer->addCloud(cloudName, output, pose, color))
+						{
+							UERROR("Adding cloud %d to viewer failed!", nodeId);
+						}
+						else
+						{
+							_createdClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+						}
 					}
 				}
 			}
@@ -4782,7 +4844,8 @@ void MainWindow::clearTheCache()
 	_cachedSignatures.clear();
 	_createdClouds.clear();
 	_previousCloud.first = 0;
-	_previousCloud.second.first.reset();
+	_previousCloud.second.first.first.reset();
+	_previousCloud.second.first.second.reset();
 	_previousCloud.second.second.reset();
 	_createdScans.clear();
 	_gridLocalMaps.clear();

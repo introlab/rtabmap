@@ -52,7 +52,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>201</width>
+           <width>198</width>
            <height>196</height>
           </rect>
          </property>
@@ -210,7 +210,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>201</width>
+           <width>197</width>
            <height>196</height>
           </rect>
          </property>
@@ -1122,9 +1122,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-236</y>
-          <width>297</width>
-          <height>704</height>
+          <y>-245</y>
+          <width>284</width>
+          <height>611</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1325,81 +1325,6 @@
               </property>
               <property name="value">
                <double>0.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="8" column="1">
-             <widget class="QLabel" name="label_69">
-              <property name="text">
-               <string>Flat obstacles detected</string>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxGroundHeight">
-              <property name="suffix">
-               <string> m</string>
-              </property>
-              <property name="decimals">
-               <number>2</number>
-              </property>
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>999.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="1">
-             <widget class="QLabel" name="label_68">
-              <property name="text">
-               <string>Max ground height</string>
-              </property>
-             </widget>
-            </item>
-            <item row="7" column="1">
-             <widget class="QLabel" name="label_70">
-              <property name="text">
-               <string>Max obstacles height</string>
-              </property>
-             </widget>
-            </item>
-            <item row="7" column="0">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxObstaclesHeight">
-              <property name="suffix">
-               <string> m</string>
-              </property>
-              <property name="decimals">
-               <number>2</number>
-              </property>
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>999.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="8" column="0">
-             <widget class="QCheckBox" name="checkBox_projFlatObstaclesDetected">
-              <property name="text">
-               <string/>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
               </property>
              </widget>
             </item>
@@ -1609,8 +1534,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>290</width>
-          <height>182</height>
+          <width>201</width>
+          <height>117</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1709,8 +1634,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>290</width>
-          <height>182</height>
+          <width>175</width>
+          <height>191</height>
          </rect>
         </property>
         <attribute name="label">

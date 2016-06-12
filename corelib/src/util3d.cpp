@@ -1441,7 +1441,9 @@ cv::Mat loadScan(
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = loadCloud(path, Transform::getIdentity(), downsampleStep, voxelSize);
 	if(normalsK > 0 && cloud->size())
 	{
-		pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals = util3d::computeNormals(cloud, normalsK);
+		pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, normalsK);
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+		pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 		scan = util3d::laserScanFromPointCloud(*cloudNormals, transform);
 	}
 	else

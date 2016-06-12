@@ -109,7 +109,7 @@ void ProgressDialog::setValue(int value)
 		}
 		else if(_closeWhenDoneCheckBox->isChecked())
 		{
-			QTimer::singleShot(_delayedClosingTime*1000, this, SLOT(close()));
+			QTimer::singleShot(_delayedClosingTime*1000, this, SLOT(closeDialog()));
 		}
 	}
 }
@@ -144,6 +144,14 @@ void ProgressDialog::resetProgress()
 {
 	_progressBar->reset();
 	_closeButton->setEnabled(false);
+}
+
+void ProgressDialog::closeDialog()
+{
+	if(_closeWhenDoneCheckBox->isChecked())
+	{
+		close();
+	}
 }
 
 void ProgressDialog::closeEvent(QCloseEvent *event)
