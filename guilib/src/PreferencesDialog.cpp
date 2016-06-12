@@ -270,6 +270,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// General panel
 	connect(_ui->general_checkBox_imagesKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->general_checkBox_cloudsKept, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_verticalLayoutUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageRejectedShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_imageHighestHypShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -1150,6 +1151,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	if(groupBox->objectName() == _ui->groupBox_generalSettingsGui0->objectName())
 	{
 		_ui->general_checkBox_imagesKept->setChecked(true);
+		_ui->general_checkBox_cloudsKept->setChecked(true);
 		_ui->checkBox_beep->setChecked(false);
 		_ui->checkBox_notifyWhenNewGlobalPathIsReceived->setChecked(false);
 		_ui->checkBox_verticalLayoutUsed->setChecked(true);
@@ -1448,7 +1450,9 @@ void PreferencesDialog::loadConfigFrom()
 	QString path = QFileDialog::getOpenFileName(this, tr("Load settings..."), this->getWorkingDirectory(), "*.ini");
 	if(!path.isEmpty())
 	{
+		_ui->checkBox_useOdomFeatures->blockSignals(true);
 		this->readSettings(path);
+		_ui->checkBox_useOdomFeatures->blockSignals(false);
 	}
 }
 
@@ -1501,6 +1505,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	settings.beginGroup("Gui");
 	settings.beginGroup("General");
 	_ui->general_checkBox_imagesKept->setChecked(settings.value("imagesKept", _ui->general_checkBox_imagesKept->isChecked()).toBool());
+	_ui->general_checkBox_cloudsKept->setChecked(settings.value("cloudsKept", _ui->general_checkBox_cloudsKept->isChecked()).toBool());
 	_ui->comboBox_loggerLevel->setCurrentIndex(settings.value("loggerLevel", _ui->comboBox_loggerLevel->currentIndex()).toInt());
 	_ui->comboBox_loggerEventLevel->setCurrentIndex(settings.value("loggerEventLevel", _ui->comboBox_loggerEventLevel->currentIndex()).toInt());
 	_ui->comboBox_loggerPauseLevel->setCurrentIndex(settings.value("loggerPauseLevel", _ui->comboBox_loggerPauseLevel->currentIndex()).toInt());
@@ -1904,6 +1909,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.beginGroup("General");
 	settings.remove("");
 	settings.setValue("imagesKept",           _ui->general_checkBox_imagesKept->isChecked());
+	settings.setValue("cloudsKept",           _ui->general_checkBox_cloudsKept->isChecked());
 	settings.setValue("loggerLevel",          _ui->comboBox_loggerLevel->currentIndex());
 	settings.setValue("loggerEventLevel",     _ui->comboBox_loggerEventLevel->currentIndex());
 	settings.setValue("loggerPauseLevel",     _ui->comboBox_loggerPauseLevel->currentIndex());
@@ -3440,8 +3446,8 @@ void PreferencesDialog::useOdomFeatures()
 	if(this->isVisible() && _ui->checkBox_useOdomFeatures->isChecked())
 	{
 		int r = QMessageBox::question(this, tr("Using odometry features for vocabulary..."),
-				tr("Do you want to match feature parameters "
-				   "below with corresponding ones used for odometry?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+				tr("Do you want to match vocabulary feature parameters "
+				   "with corresponding ones used for odometry?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
 
 		if(r == QMessageBox::Yes)
 		{
@@ -4269,6 +4275,10 @@ QString PreferencesDialog::getCameraInfoDir() const
 bool PreferencesDialog::isImagesKept() const
 {
 	return _ui->general_checkBox_imagesKept->isChecked();
+}
+bool PreferencesDialog::isCloudsKept() const
+{
+	return _ui->general_checkBox_cloudsKept->isChecked();
 }
 float PreferencesDialog::getTimeLimit() const
 {

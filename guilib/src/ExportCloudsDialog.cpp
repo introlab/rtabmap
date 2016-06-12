@@ -102,7 +102,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), this, SLOT(updateMLSGrpVisibility()));
 	updateMLSGrpVisibility();
 
-	connect(_ui->groupBox_gp3, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->groupBox_meshing, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -138,6 +138,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	{
 		settings.beginGroup(group);
 	}
+	settings.setValue("pipeline", _ui->comboBox_pipeline->currentIndex());
 	settings.setValue("binary", _ui->checkBox_binary->isChecked());
 	settings.setValue("normals_k", _ui->spinBox_normalKSearch->value());
 
@@ -169,7 +170,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value());
 	settings.setValue("mls_dilation_iterations", _ui->spinBox_dilationSteps->value());
 
-	settings.setValue("mesh", _ui->groupBox_gp3->isChecked());
+	settings.setValue("mesh", _ui->groupBox_meshing->isChecked());
 	settings.setValue("mesh_radius", _ui->doubleSpinBox_gp3Radius->value());
 	settings.setValue("mesh_mu", _ui->doubleSpinBox_gp3Mu->value());
 	settings.setValue("mesh_decimation_factor", _ui->doubleSpinBox_meshDecimationFactor->value());
@@ -193,6 +194,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 		settings.beginGroup(group);
 	}
 
+	_ui->comboBox_pipeline->setCurrentIndex(settings.value("pipeline", _ui->comboBox_pipeline->currentIndex()).toInt());
 	_ui->checkBox_binary->setChecked(settings.value("binary", _ui->checkBox_binary->isChecked()).toBool());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normals_k", _ui->spinBox_normalKSearch->value()).toInt());
 
@@ -223,7 +225,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(settings.value("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value()).toDouble());
 	_ui->spinBox_dilationSteps->setValue(settings.value("mls_dilation_iterations", _ui->spinBox_dilationSteps->value()).toInt());
 
-	_ui->groupBox_gp3->setChecked(settings.value("mesh", _ui->groupBox_gp3->isChecked()).toBool());
+	_ui->groupBox_meshing->setChecked(settings.value("mesh", _ui->groupBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(settings.value("mesh_decimation_factor",_ui->doubleSpinBox_meshDecimationFactor->value()).toDouble());
@@ -272,7 +274,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(0.01);
 	_ui->spinBox_dilationSteps->setValue(0);
 
-	_ui->groupBox_gp3->setChecked(false);
+	_ui->groupBox_meshing->setChecked(false);
 	_ui->doubleSpinBox_gp3Radius->setValue(0.04);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
@@ -336,7 +338,7 @@ void ExportCloudsDialog::exportClouds(
 		const std::map<int, Transform> & poses,
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
-		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 		const QString & workingDirectory,
 		const ParametersMap & parameters)
 {
@@ -350,7 +352,7 @@ void ExportCloudsDialog::exportClouds(
 			poses,
 			mapIds,
 			cachedSignatures,
-			createdClouds,
+			cachedClouds,
 			workingDirectory,
 			parameters,
 			clouds,
@@ -388,7 +390,7 @@ void ExportCloudsDialog::viewClouds(
 		const std::map<int, Transform> & poses,
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
-		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 		const QString & workingDirectory,
 		const ParametersMap & parameters)
 {
@@ -402,7 +404,7 @@ void ExportCloudsDialog::viewClouds(
 			poses,
 			mapIds,
 			cachedSignatures,
-			createdClouds,
+			cachedClouds,
 			workingDirectory,
 			parameters,
 			clouds,
@@ -519,7 +521,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		const std::map<int, Transform> & poses,
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
-		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 		const QString & workingDirectory,
 		const ParametersMap & parameters,
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
@@ -555,7 +557,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > clouds = this->getClouds(
 				poses,
 				cachedSignatures,
-				createdClouds,
+				cachedClouds,
 				parameters);
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -608,10 +610,30 @@ bool ExportCloudsDialog::getExportedClouds(
 			clouds.insert(std::make_pair(0, std::make_pair(assembledCloud, pcl::IndicesPtr(new std::vector<int>))));
 		}
 
+		std::map<int, Transform> viewPoints = poses;
 		if(_ui->groupBox_mls->isChecked())
 		{
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
 					"[search radius=%1m voxel=%2m]").arg(_ui->doubleSpinBox_mlsRadius->value()).arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
+			QApplication::processEvents();
+			QApplication::processEvents();
+
+			// Adjust view points with local transforms
+			for(std::map<int, Transform>::iterator iter= viewPoints.begin(); iter!=viewPoints.end(); ++iter)
+			{
+				if(cachedSignatures.contains(iter->first))
+				{
+					const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
+					if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+					{
+						iter->second *= data.cameraModels()[0].localTransform();
+					}
+					else if(!data.stereoCameraModel().localTransform().isNull())
+					{
+						iter->second *= data.stereoCameraModel().localTransform();
+					}
+				}
+			}
 		}
 
 		//fill cloudWithNormals
@@ -661,10 +683,11 @@ bool ExportCloudsDialog::getExportedClouds(
 								cloudWithNormals,
 								_ui->doubleSpinBox_voxelSize_assembled->value());
 					}
-
+				
 					_progressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(cloudWithNormals->size()).arg(poses.size()));
+
 					util3d::adjustNormalsToViewPoints(
-							poses,
+							viewPoints,
 							rawAssembledCloud,
 							rawCameraIndices,
 							cloudWithNormals);
@@ -691,6 +714,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			if(_ui->comboBox_pipeline->currentIndex() == 0)
 			{
 				_progressDialog->appendText(tr("Organized fast mesh... "));
+				QApplication::processEvents();
 				QApplication::processEvents();
 
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -838,6 +862,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			else
 			{
 				_progressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_ui->doubleSpinBox_gp3Radius->value()));
+				QApplication::processEvents();
 				QApplication::processEvents();
 
 				int i=0;
@@ -1018,7 +1043,7 @@ bool ExportCloudsDialog::getExportedClouds(
 std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > ExportCloudsDialog::getClouds(
 		const std::map<int, Transform> & poses,
 		const QMap<int, Signature> & cachedSignatures,
-		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 		const ParametersMap & parameters) const
 {
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > clouds;
@@ -1065,7 +1090,22 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							}
 						}
 
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value());
+						// view point
+						Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+						if(d.cameraModels().size() && !d.cameraModels()[0].localTransform().isNull())
+						{
+							viewPoint[0] = d.cameraModels()[0].localTransform().x();
+							viewPoint[1] = d.cameraModels()[0].localTransform().y();
+							viewPoint[2] = d.cameraModels()[0].localTransform().z();
+						}
+						else if(!d.stereoCameraModel().localTransform().isNull())
+						{
+							viewPoint[0] = d.stereoCameraModel().localTransform().x();
+							viewPoint[1] = d.stereoCameraModel().localTransform().y();
+							viewPoint[2] = d.stereoCameraModel().localTransform().z();
+						}
+
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
 						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 
 						if(_ui->groupBox_subtraction->isChecked() &&
@@ -1117,15 +1157,15 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					UERROR("Cloud %d not found in cache!", iter->first);
 				}
 			}
-			else if(uContains(createdClouds, iter->first))
+			else if(uContains(cachedClouds, iter->first))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
 				if(!_ui->groupBox_meshing->isChecked() &&
 				   _ui->doubleSpinBox_voxelSize_assembled->value() > 0.0)
 				{
 					cloudWithoutNormals = util3d::voxelize(
-							createdClouds.at(iter->first).first,
-							createdClouds.at(iter->first).second,
+							cachedClouds.at(iter->first).first,
+							cachedClouds.at(iter->first).second,
 							_ui->doubleSpinBox_voxelSize_assembled->value());
 
 					//generate indices for all points (they are all valid)
@@ -1137,11 +1177,40 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				}
 				else
 				{
-					cloudWithoutNormals = createdClouds.at(iter->first).first;
-					indices = createdClouds.at(iter->first).second;
+					cloudWithoutNormals = cachedClouds.at(iter->first).first;
+					indices = cachedClouds.at(iter->first).second;
 				}
-				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value());
+
+				// view point
+				Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+				if(cachedSignatures.contains(iter->first))
+				{
+					const Signature & s = cachedSignatures.find(iter->first).value();
+					SensorData d = s.sensorData();
+					if(d.cameraModels().size() && !d.cameraModels()[0].localTransform().isNull())
+					{
+						viewPoint[0] = d.cameraModels()[0].localTransform().x();
+						viewPoint[1] = d.cameraModels()[0].localTransform().y();
+						viewPoint[2] = d.cameraModels()[0].localTransform().z();
+					}
+					else if(!d.stereoCameraModel().localTransform().isNull())
+					{
+						viewPoint[0] = d.stereoCameraModel().localTransform().x();
+						viewPoint[1] = d.stereoCameraModel().localTransform().y();
+						viewPoint[2] = d.stereoCameraModel().localTransform().z();
+					}
+				}
+				else
+				{
+					_progressDialog->appendText(tr("Cached cloud %1 is not found in cached data, the view point for normal computation will not be set (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
+				}
+
+				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
 				pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+			}
+			else
+			{
+				_progressDialog->appendText(tr("Cached cloud %1 not found. You may want to regenerate the clouds (%2/%3).").arg(iter->first).arg(++i).arg(poses.size()));
 			}
 
 			if(indices->size())
@@ -1165,8 +1234,16 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 		if(points>0)
 		{
-			_progressDialog->appendText(tr("Generated cloud %1 with %2 points and %3 indices (%4/%5).")
-					.arg(iter->first).arg(points).arg(totalIndices).arg(++i).arg(poses.size()));
+			if(_ui->groupBox_regenerate->isChecked())
+			{
+				_progressDialog->appendText(tr("Generated cloud %1 with %2 points and %3 indices (%4/%5).")
+						.arg(iter->first).arg(points).arg(totalIndices).arg(++i).arg(poses.size()));
+			}
+			else
+			{
+				_progressDialog->appendText(tr("Copied cloud %1 from cache with %2 points and %3 indices (%4/%5).")
+						.arg(iter->first).arg(points).arg(totalIndices).arg(++i).arg(poses.size()));
+			}
 		}
 		else
 		{

@@ -224,6 +224,7 @@ public:
 
 	//
 	bool isImagesKept() const;
+	bool isCloudsKept() const;
 	float getTimeLimit() const;
 	float getDetectionRate() const;
 	bool isSLAMMode() const;

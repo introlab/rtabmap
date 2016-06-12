@@ -193,7 +193,21 @@ void CameraThread::mainLoop()
 				cv::Mat scan;
 				if(_scanNormalsK>0)
 				{
-					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK);
+					// view point
+					Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+					if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+					{
+						viewPoint[0] = data.cameraModels()[0].localTransform().x();
+						viewPoint[1] = data.cameraModels()[0].localTransform().y();
+						viewPoint[2] = data.cameraModels()[0].localTransform().z();
+					}
+					else if(!data.stereoCameraModel().localTransform().isNull())
+					{
+						viewPoint[0] = data.stereoCameraModel().localTransform().x();
+						viewPoint[1] = data.stereoCameraModel().localTransform().y();
+						viewPoint[2] = data.stereoCameraModel().localTransform().z();
+					}
+					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, viewPoint);
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 					pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 					scan = util3d::laserScanFromPointCloud(*cloudNormals);

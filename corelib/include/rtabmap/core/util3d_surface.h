@@ -126,28 +126,34 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		int normalKSearch = 20);
+		int normalKSearch = 20,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		int normalKSearch = 20);
+		int normalKSearch = 20,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch = 20);
+		int normalKSearch = 20,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch = 20);
+		int normalKSearch = 20,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
 pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float maxDepthChangeFactor = 0.02f,
-		float normalSmoothingSize = 10.0f);
+		float normalSmoothingSize = 10.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float maxDepthChangeFactor = 0.02f,
-		float normalSmoothingSize = 10.0f);
+		float normalSmoothingSize = 10.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,

@@ -281,12 +281,14 @@ private:
 	int _waypointsIndex;
 
 	QMap<int, Signature> _cachedSignatures;
+	long _cachedMemoryUsage;
 	std::map<int, Transform> _currentPosesMap; // <nodeId, pose>
 	std::map<int, Transform> _currentGTPosesMap; // <nodeId, pose>
 	std::multimap<int, Link> _currentLinksMap; // <nodeFromId, link>
 	std::map<int, int> _currentMapIds;   // <nodeId, mapId>
 	std::map<int, std::string> _currentLabels; // <nodeId, label>
-	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > _createdClouds;
+	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > _cachedClouds;
+	long _createdCloudsMemoryUsage;
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 
 	std::map<int, cv::Mat> _createdScans;

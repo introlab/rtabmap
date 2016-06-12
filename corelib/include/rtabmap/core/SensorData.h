@@ -194,6 +194,8 @@ public:
 	void setGroundTruth(const Transform & pose) {groundTruth_ = pose;}
 	const Transform & groundTruth() const {return groundTruth_;}
 
+	long getMemoryUsed() const; // Return memory usage in Bytes
+
 private:
 	int _id;
 	double _stamp;

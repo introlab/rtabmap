@@ -63,7 +63,7 @@ public:
 			const std::map<int, Transform> & poses,
 			const std::map<int, int> & mapIds,
 			const QMap<int, Signature> & cachedSignatures,
-			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 			const QString & workingDirectory,
 			const ParametersMap & parameters);
 
@@ -71,7 +71,7 @@ public:
 			const std::map<int, Transform> & poses,
 			const std::map<int, int> & mapIds,
 			const QMap<int, Signature> & cachedSignatures,
-			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 			const QString & workingDirectory,
 			const ParametersMap & parameters);
 
@@ -89,13 +89,13 @@ private:
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > getClouds(
 			const std::map<int, Transform> & poses,
 			const QMap<int, Signature> & cachedSignatures,
-			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 			const ParametersMap & parameters) const;
 	bool getExportedClouds(
 				const std::map<int, Transform> & poses,
 				const std::map<int, int> & mapIds,
 				const QMap<int, Signature> & cachedSignatures,
-				const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & createdClouds,
+				const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
 				const QString & workingDirectory,
 				const ParametersMap & parameters,
 				std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,

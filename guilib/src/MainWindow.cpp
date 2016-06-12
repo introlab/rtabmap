@@ -145,6 +145,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_odomImageDepthShow(false),
 	_savedMaximized(false),
 	_waypointsIndex(0),
+	_cachedMemoryUsage(0),
+	_createdCloudsMemoryUsage(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
 	_oneSecondTimer(0),
@@ -552,6 +554,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->updateStat("GUI/RGB-D cloud/ms", 0.0f);
 	_ui->statsToolBox->updateStat("GUI/RGB-D closure_view/ms", 0.0f);
 	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", 0.0f);
+	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", 0.0f);
+	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", 0.0f);
 
 	this->loadFigures();
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
@@ -1307,13 +1311,26 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		UDEBUG("");
 		bool highestHypothesisIsSaved = (bool)uValue(stat.data(), Statistics::kLoopHypothesis_reactivated(), 0.0f);
 
+		bool smallMovement = (bool)uValue(stat.data(), Statistics::kMemorySmall_movement(), 0.0f);
+
 		// update cache
 		Signature signature;
 		if(uContains(stat.getSignatures(), stat.refImageId()))
 		{
 			signature = stat.getSignatures().at(stat.refImageId());
 			signature.sensorData().uncompressData(); // make sure data are uncompressed
-			_cachedSignatures.insert(signature.id(), signature);
+
+			if(!smallMovement)
+			{
+				// keep in cache only compressed data
+				Signature signatureWithoutRawData = signature;
+				signatureWithoutRawData.sensorData().setImageRaw(cv::Mat());
+				signatureWithoutRawData.sensorData().setDepthOrRightRaw(cv::Mat());
+				signatureWithoutRawData.sensorData().setUserDataRaw(cv::Mat());
+				signatureWithoutRawData.sensorData().setLaserScanRaw(cv::Mat(), 0, 0);
+				_cachedSignatures.insert(signature.id(), signatureWithoutRawData);
+				_cachedMemoryUsage += signatureWithoutRawData.sensorData().getMemoryUsed();
+			}
 		}
 
 		// For intermediate empty nodes, keep latest image shown
@@ -1332,7 +1349,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
 		int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
 		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);
-		bool smallMovement = (bool)uValue(stat.data(), Statistics::kMemorySmall_movement(), 0.0f);
 		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
 		if(rehearsalMerged > 0)
@@ -1437,8 +1453,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
 				if(iter != _cachedSignatures.end())
 				{
-					iter.value().sensorData().uncompressData();
+					// uncompress after copy to avoid keeping uncompressed data in memory
 					loopSignature = iter.value();
+					loopSignature.sensorData().uncompressData();
 				}
 			}
 		}
@@ -1764,7 +1781,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	if(!_preferencesDialog->isImagesKept())
 	{
 		_cachedSignatures.clear();
+		_cachedMemoryUsage = 0;
 	}
+	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", stat.refImageId(), _cachedMemoryUsage/(1024*1024));
+	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", stat.refImageId(), _createdCloudsMemoryUsage/(1024*1024));
+
 	if(_state != kMonitoring && _state != kDetecting)
 	{
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
@@ -1889,13 +1910,13 @@ void MainWindow::updateMapCloud(
 					_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 					_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 				}
-				else if(_createdClouds.find(iter->first) == _createdClouds.end() && _cachedSignatures.contains(iter->first))
+				else if(_cachedClouds.find(iter->first) == _cachedClouds.end() && _cachedSignatures.contains(iter->first))
 				{
 					if((_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)) ||
 					    _projectionLocalMaps.find(iter->first) == _projectionLocalMaps.end())
 					{
 						this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
-						if(_createdClouds.find(iter->first) != _createdClouds.end())
+						if(viewerClouds.contains(cloudName))
 						{
 							_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
 						}
@@ -1992,8 +2013,8 @@ void MainWindow::updateMapCloud(
 	// activate actions
 	if(_state != kMonitoring && _state != kDetecting)
 	{
-		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
-		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
@@ -2223,11 +2244,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 		return;
 	}
 
-	if(_createdClouds.find(nodeId) != _createdClouds.end())
-	{
-		UDEBUG("Cloud %d already created.");
-		return;
-	}
+	UASSERT(_cachedClouds.find(nodeId) == _cachedClouds.end());
 
 	if((!iter->sensorData().imageCompressed().empty() || !iter->sensorData().imageRaw().empty()) &&
 	   (!iter->sensorData().depthOrRightCompressed().empty() || !iter->sensorData().depthOrRightRaw().empty()))
@@ -2258,6 +2275,21 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 				_preferencesDialog->getCloudMinDepth(0),
 				indices.get(),
 				_preferencesDialog->getAllParameters());
+
+		// view point
+		Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+		if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+		{
+			viewPoint[0] = data.cameraModels()[0].localTransform().x();
+			viewPoint[1] = data.cameraModels()[0].localTransform().y();
+			viewPoint[2] = data.cameraModels()[0].localTransform().z();
+		}
+		else if(!data.stereoCameraModel().localTransform().isNull())
+		{
+			viewPoint[0] = data.stereoCameraModel().localTransform().x();
+			viewPoint[1] = data.stereoCameraModel().localTransform().y();
+			viewPoint[2] = data.stereoCameraModel().localTransform().z();
+		}
 
 		// filtering pipeline
 		if(indices->size() && _preferencesDialog->getMapVoxel() > 0.0)
@@ -2353,7 +2385,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 						//normals required
 						if(_preferencesDialog->getNormalKSearch() > 0)
 						{
-							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch());
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
 							pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
 						}
 						else
@@ -2411,25 +2443,12 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
 					// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
 					output = util3d::extractIndices(cloud, indices, false, true);
-					Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-					if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
-					{
-						viewpoint[0] = data.cameraModels()[0].localTransform().x();
-						viewpoint[1] = data.cameraModels()[0].localTransform().y();
-						viewpoint[2] = data.cameraModels()[0].localTransform().z();
-					}
-					else if(!data.stereoCameraModel().localTransform().isNull())
-					{
-						viewpoint[0] = data.stereoCameraModel().localTransform().x();
-						viewpoint[1] = data.stereoCameraModel().localTransform().y();
-						viewpoint[2] = data.stereoCameraModel().localTransform().z();
-					}
 					std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 							output,
 							_preferencesDialog->getCloudMeshingAngle(),
 							_preferencesDialog->isCloudMeshingQuad(),
 							_preferencesDialog->getCloudMeshingTriangleSize(),
-							viewpoint);
+							viewPoint);
 					if(polygons.size())
 					{
 						// remove unused vertices to save memory
@@ -2440,9 +2459,10 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 						{
 							UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 						}
-						else
+						else if(_preferencesDialog->isCloudsKept())
 						{
-							_createdClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+							_cachedClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+							_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
 						}
 					}
 				}
@@ -2457,7 +2477,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 
 					if(_preferencesDialog->getNormalKSearch() > 0 && cloudWithNormals->size() == 0)
 					{
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch());
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
 						pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
 					}
 
@@ -2479,9 +2499,10 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 						{
 							UERROR("Adding cloud %d to viewer failed!", nodeId);
 						}
-						else
+						else if(_preferencesDialog->isCloudsKept())
 						{
-							_createdClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+							_cachedClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+							_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
 						}
 					}
 					else
@@ -2491,9 +2512,10 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 						{
 							UERROR("Adding cloud %d to viewer failed!", nodeId);
 						}
-						else
+						else if(_preferencesDialog->isCloudsKept())
 						{
-							_createdClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+							_cachedClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
+							_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
 						}
 					}
 				}
@@ -2965,6 +2987,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			   (_cachedSignatures.value(iter->first).sensorData().imageCompressed().empty() && !iter->second.sensorData().imageCompressed().empty()))
 			{
 				_cachedSignatures.insert(iter->first, iter->second);
+				_cachedMemoryUsage += iter->second.sensorData().getMemoryUsed();
 				++addedSignatures;
 			}
 			_initProgressDialog->incrementStep();
@@ -2997,6 +3020,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		if(!_preferencesDialog->isImagesKept())
 		{
 			_cachedSignatures.clear();
+			_cachedMemoryUsage = 0;
 		}
 		if(_state != kMonitoring && _state != kDetecting)
 		{
@@ -4842,7 +4866,9 @@ void MainWindow::anchorCloudsToGroundTruth()
 void MainWindow::clearTheCache()
 {
 	_cachedSignatures.clear();
-	_createdClouds.clear();
+	_cachedMemoryUsage = 0;
+	_cachedClouds.clear();
+	_createdCloudsMemoryUsage = 0;
 	_previousCloud.first = 0;
 	_previousCloud.second.first.first.reset();
 	_previousCloud.second.first.second.reset();
@@ -5250,7 +5276,7 @@ void MainWindow::exportClouds()
 			_ui->widget_mapVisibility->getVisiblePoses(),
 			_currentMapIds,
 			_cachedSignatures,
-			_createdClouds,
+			_cachedClouds,
 			_preferencesDialog->getWorkingDirectory(),
 			_preferencesDialog->getAllParameters());
 }
@@ -5266,7 +5292,7 @@ void MainWindow::viewClouds()
 			_currentPosesMap,
 			_currentMapIds,
 			_cachedSignatures,
-			_createdClouds,
+			_cachedClouds,
 			_preferencesDialog->getWorkingDirectory(),
 			_preferencesDialog->getAllParameters());
 
@@ -5713,8 +5739,8 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionGenerate_map->setEnabled(false);
 		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
-		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
-		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
@@ -5769,8 +5795,8 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionGenerate_map->setEnabled(true);
 		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
-		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
-		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
@@ -5895,8 +5921,8 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 			_ui->actionGenerate_map->setEnabled(true);
 			_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
-			_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
-			_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+			_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
+			_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 			_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 			_ui->actionView_scans->setEnabled(!_createdScans.empty());
@@ -5959,8 +5985,8 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
-		_ui->actionSave_point_cloud->setEnabled(!_createdClouds.empty());
-		_ui->actionView_high_res_point_cloud->setEnabled(!_createdClouds.empty());
+		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
