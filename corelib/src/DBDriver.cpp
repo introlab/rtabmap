@@ -188,6 +188,14 @@ int DBDriver::getTotalDictionarySize() const
 	_dbSafeAccessMutex.unlock();
 	return words;
 }
+ParametersMap DBDriver::getLastParameters() const
+{
+	ParametersMap parameters;
+	_dbSafeAccessMutex.lock();
+	parameters = getLastParametersQuery();
+	_dbSafeAccessMutex.unlock();
+	return parameters;
+}
 
 std::string DBDriver::getDatabaseVersion() const
 {
@@ -834,18 +842,38 @@ void DBDriver::getAllLabels(std::map<int, std::string> & labels) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const
+void DBDriver::addStatisticsAfterRun(
+		int stMemSize,
+		int lastSignAdded,
+		int processMemUsed,
+		int databaseMemUsed,
+		int dictionarySize,
+		const ParametersMap & parameters) const
 {
 	ULOGGER_DEBUG("");
 	if(this->isConnected())
 	{
 		std::stringstream query;
-		query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used,dictionary_size) values("
-			  << stMemSize << ","
-		      << lastSignAdded << ","
-		      << processMemUsed << ","
-		      << databaseMemUsed << ","
-			  << dictionarySize << ");";
+		if(uStrNumCmp(this->getDatabaseVersion(), "0.11.8") >= 0)
+		{
+			std::string param = Parameters::serialize(parameters);
+			query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used,dictionary_size,parameters) values("
+				  << stMemSize << ","
+				  << lastSignAdded << ","
+				  << processMemUsed << ","
+				  << databaseMemUsed << ","
+				  << dictionarySize << ","
+				  "\"" << param.c_str() << "\");";
+		}
+		else
+		{
+			query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used,dictionary_size) values("
+				  << stMemSize << ","
+				  << lastSignAdded << ","
+				  << processMemUsed << ","
+				  << databaseMemUsed << ","
+				  << dictionarySize << ");";
+		}
 
 		this->executeNoResultQuery(query.str());
 	}

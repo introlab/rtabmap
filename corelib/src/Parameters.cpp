@@ -82,6 +82,68 @@ std::string Parameters::getDefaultDatabaseName()
 	return "rtabmap.db";
 }
 
+std::string Parameters::serialize(const ParametersMap & parameters)
+{
+	std::stringstream output;
+	for(ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+	{
+		if(iter != parameters.begin())
+		{
+			output << ";";
+		}
+		// make sure there are no commas instead of dots
+		output << iter->first << ":" << uReplaceChar(iter->second, ',', '.');
+	}
+	return output.str();
+}
+
+ParametersMap Parameters::deserialize(const std::string & parameters)
+{
+	ParametersMap output;
+	std::list<std::string> tuplets = uSplit(parameters, ';');
+	for(std::list<std::string>::iterator iter=tuplets.begin(); iter!=tuplets.end(); ++iter)
+	{
+		std::list<std::string> p = uSplit(*iter, ':');
+		if(p.size() == 2)
+		{
+			std::string key = p.front();
+			std::string value = p.back();
+
+			// look for old parameter name
+			bool addParameter = true;
+			std::map<std::string, std::pair<bool, std::string> >::const_iterator oldIter = Parameters::getRemovedParameters().find(key);
+			if(oldIter!=Parameters::getRemovedParameters().end())
+			{
+				addParameter = oldIter->second.first;
+				if(addParameter)
+				{
+					key = oldIter->second.second;
+					UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
+							oldIter->first.c_str(), oldIter->second.second.c_str(), value.c_str());
+				}
+				else if(oldIter->second.second.empty())
+				{
+					UWARN("Parameter \"%s\" doesn't exist anymore.",
+								oldIter->first.c_str());
+				}
+				else
+				{
+					UWARN("Parameter \"%s\" doesn't exist anymore, you may want to use this similar parameter \"%s\":\"%s\".",
+								oldIter->first.c_str(), oldIter->second.second.c_str(), Parameters::getDescription(oldIter->second.second).c_str());
+				}
+
+			}
+
+			if(Parameters::getDefaultParameters().find(key) == Parameters::getDefaultParameters().end())
+			{
+				UWARN("Unknown parameter \"%s\"=\"%s\"! The parameter is still added to output map.", key.c_str(), value.c_str());
+			}
+			uInsert(output, ParametersPair(key, value));
+		}
+	}
+	return output;
+}
+
 bool Parameters::isFeatureParameter(const std::string & parameter)
 {
 	std::string group = uSplit(parameter, '/').front();

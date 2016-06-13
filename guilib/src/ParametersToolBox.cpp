@@ -249,43 +249,49 @@ void ParametersToolBox::updateParameter(const std::string & key, const std::stri
 	QString group = QString::fromStdString(key).split("/").first();
 	if(!ignoredGroups_.contains(group))
 	{
-		UASSERT_MSG(parameters_.find(key) != parameters_.end(), uFormat("key=\"%s\"", key.c_str()).c_str());
-		parameters_.at(key) = value;
-		QWidget * widget = this->findChild<QWidget*>(key.c_str());
-		QString type = QString::fromStdString(Parameters::getType(key));
-		if(type.compare("string") == 0)
+		if(parameters_.find(key) == parameters_.end())
 		{
-			QString valueQt = QString::fromStdString(value);
-			if(valueQt.contains(';'))
+			UWARN("key=\"%s\" doesn't exist", key.c_str());
+		}
+		else
+		{
+			parameters_.at(key) = value;
+			QWidget * widget = this->findChild<QWidget*>(key.c_str());
+			QString type = QString::fromStdString(Parameters::getType(key));
+			if(type.compare("string") == 0)
 			{
-				// It's a list, just change the index
-				QStringList splitted = valueQt.split(':');
-				((QComboBox*)widget)->setCurrentIndex(splitted.first().toInt());
+				QString valueQt = QString::fromStdString(value);
+				if(valueQt.contains(';'))
+				{
+					// It's a list, just change the index
+					QStringList splitted = valueQt.split(':');
+					((QComboBox*)widget)->setCurrentIndex(splitted.first().toInt());
+				}
+				else
+				{
+					((QLineEdit*)widget)->setText(valueQt);
+				}
 			}
-			else
+			else if(type.compare("int") == 0)
 			{
-				((QLineEdit*)widget)->setText(valueQt);
+				((QSpinBox*)widget)->setValue(uStr2Int(value));
 			}
-		}
-		else if(type.compare("int") == 0)
-		{
-			((QSpinBox*)widget)->setValue(uStr2Int(value));
-		}
-		else if(type.compare("uint") == 0)
-		{
-			((QSpinBox*)widget)->setValue(uStr2Int(value));
-		}
-		else if(type.compare("double") == 0)
-		{
-			((QDoubleSpinBox*)widget)->setValue(uStr2Double(value));
-		}
-		else if(type.compare("float") == 0)
-		{
-			((QDoubleSpinBox*)widget)->setValue(uStr2Float(value));
-		}
-		else if(type.compare("bool") == 0)
-		{
-			((QCheckBox*)widget)->setChecked(uStr2Bool(value));
+			else if(type.compare("uint") == 0)
+			{
+				((QSpinBox*)widget)->setValue(uStr2Int(value));
+			}
+			else if(type.compare("double") == 0)
+			{
+				((QDoubleSpinBox*)widget)->setValue(uStr2Double(value));
+			}
+			else if(type.compare("float") == 0)
+			{
+				((QDoubleSpinBox*)widget)->setValue(uStr2Float(value));
+			}
+			else if(type.compare("bool") == 0)
+			{
+				((QCheckBox*)widget)->setChecked(uStr2Bool(value));
+			}
 		}
 	}
 }

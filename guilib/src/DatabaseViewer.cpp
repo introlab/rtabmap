@@ -531,7 +531,18 @@ void DatabaseViewer::writeSettings()
 
 	settings.endGroup(); // DatabaseViewer
 
-	const ParametersMap & parameters = ui_->parameters_toolbox->getParameters();
+	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
+	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end();)
+	{
+		if(!ui_->parameters_toolbox->getParameterWidget(iter->first.c_str()))
+		{
+			parameters.erase(iter++);
+		}
+		else
+		{
+			++iter;
+		}
+	}
 	Parameters::writeINI(path.toStdString(), parameters);
 
 	this->setWindowModified(false);
@@ -588,6 +599,50 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		{
 			pathDatabase_ = UDirectory::getDir(path.toStdString()).c_str();
 			databaseFileName_ = UFile::getName(path.toStdString());
+
+			// look if there are saved parameters
+			ParametersMap parameters = dbDriver_->getLastParameters();
+
+			if(parameters.size())
+			{
+				const ParametersMap & currentParameters = ui_->parameters_toolbox->getParameters();
+				ParametersMap differentParameters;
+				for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+				{
+					ParametersMap::const_iterator jter = currentParameters.find(iter->first);
+					if(jter!=currentParameters.end() &&
+					   ui_->parameters_toolbox->getParameterWidget(QString(iter->first.c_str())) != 0 &&
+					   iter->second.compare(jter->second) != 0 &&
+					   iter->first.compare(Parameters::kRtabmapWorkingDirectory()) != 0)
+					{
+						differentParameters.insert(*iter);
+						QString msg = tr("Parameter \"%1\": database=\"%2\" Preferences=\"%3\"")
+								.arg(iter->first.c_str())
+								.arg(iter->second.c_str())
+								.arg(jter->second.c_str());
+						UWARN(msg.toStdString().c_str());
+					}
+				}
+
+				if(differentParameters.size())
+				{
+					int r = QMessageBox::question(this,
+							tr("Update parameters..."),
+							tr("The database is using %1 different parameter(s) than "
+							   "those currently set in Core parameters panel. Do you want "
+							   "to use database's parameters?").arg(differentParameters.size()),
+							QMessageBox::Yes | QMessageBox::No,
+							QMessageBox::Yes);
+					if(r == QMessageBox::Yes)
+					{
+						for(rtabmap::ParametersMap::const_iterator iter = differentParameters.begin(); iter!=differentParameters.end(); ++iter)
+						{
+							ui_->parameters_toolbox->updateParameter(iter->first, iter->second);
+						}
+					}
+				}
+			}
+
 			updateIds();
 			return true;
 		}

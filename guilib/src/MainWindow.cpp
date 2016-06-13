@@ -3597,6 +3597,56 @@ void MainWindow::openDatabase(const QString & path)
 
 		this->clearTheCache();
 		_openedDatabasePath = path;
+
+		// look if there are saved parameters
+		DBDriver * driver = DBDriver::create();
+		if(driver->openConnection(value, false))
+		{
+			ParametersMap parameters = driver->getLastParameters();
+			driver->closeConnection(false);
+			delete driver;
+
+			if(parameters.size())
+			{
+				ParametersMap currentParameters = _preferencesDialog->getAllParameters();
+				ParametersMap differentParameters;
+				for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+				{
+					ParametersMap::iterator jter = currentParameters.find(iter->first);
+					if(jter!=currentParameters.end() &&
+					   iter->second.compare(jter->second) != 0 &&
+					   iter->first.compare(Parameters::kRtabmapWorkingDirectory()) != 0)
+					{
+						differentParameters.insert(*iter);
+						QString msg = tr("Parameter \"%1\": database=\"%2\" Preferences=\"%3\"")
+										.arg(iter->first.c_str())
+										.arg(iter->second.c_str())
+										.arg(jter->second.c_str());
+						_ui->widget_console->appendMsg(msg);
+						UWARN(msg.toStdString().c_str());
+					}
+				}
+
+				if(differentParameters.size())
+				{
+					int r = QMessageBox::question(this,
+							tr("Update parameters..."),
+							tr("The database is using %1 different parameter(s) than "
+							   "those currently set in Preferences. Do you want "
+							   "to use database's parameters?").arg(differentParameters.size()),
+							QMessageBox::Yes | QMessageBox::No,
+							QMessageBox::Yes);
+					if(r == QMessageBox::Yes)
+					{
+						for(rtabmap::ParametersMap::const_iterator iter = differentParameters.begin(); iter!=differentParameters.end(); ++iter)
+						{
+							_preferencesDialog->setParameter(iter->first.c_str(), iter->second.c_str());
+						}
+					}
+				}
+			}
+		}
+
 		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdInit, value, 0, _preferencesDialog->getAllParameters()));
 		applyPrefSettings(_preferencesDialog->getAllParameters(), false);
 	}

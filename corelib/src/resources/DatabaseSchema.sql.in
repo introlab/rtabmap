@@ -82,6 +82,7 @@ CREATE TABLE Statistics (
 	process_mem_used INTEGER,
 	database_mem_used INTEGER,
 	dictionary_size INTEGER,
+	parameters TEXT,
 	time_enter DATE
 );
 

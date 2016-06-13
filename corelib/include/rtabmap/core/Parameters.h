@@ -495,6 +495,9 @@ public:
 	static std::string getVersion();
 	static std::string getDefaultDatabaseName();
 	
+	static std::string serialize(const ParametersMap & parameters);
+	static ParametersMap deserialize(const std::string & parameters);
+
 	static bool isFeatureParameter(const std::string & param);
 	static ParametersMap getDefaultOdometryParameters(bool stereo = false);
 	static ParametersMap getDefaultParameters(const std::string & group);

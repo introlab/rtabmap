@@ -129,6 +129,7 @@ public:
 	QString loadCustomConfig(const QString & section, const QString & key);
 
 	rtabmap::ParametersMap getAllParameters() const;
+	void setParameter(const std::string & key, const std::string & value);
 
 	//General panel
 	int getGeneralLoggerLevel() const;
@@ -304,8 +305,6 @@ private slots:
 protected:
 	virtual void showEvent ( QShowEvent * event );
 	virtual void closeEvent(QCloseEvent *event);
-
-	void setParameter(const std::string & key, const std::string & value);
 
 	virtual QString getParamMessage();
 

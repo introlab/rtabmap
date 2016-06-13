@@ -2679,7 +2679,6 @@ void PreferencesDialog::selectSourceDatabase()
 	if(paths.size())
 	{
 		int r = QMessageBox::question(this, tr("Odometry in database..."), tr("Use odometry saved in database (if some saved)?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
-
 		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
 		_ui->source_database_lineEdit_path->setText(paths.size()==1?paths.front():paths.join(";"));
 		_ui->source_spinBox_databaseStartPos->setValue(0);
@@ -2918,10 +2917,11 @@ void PreferencesDialog::selectSourceSvoPath()
 void PreferencesDialog::setParameter(const std::string & key, const std::string & value)
 {
 	UDEBUG("%s=%s", key.c_str(), value.c_str());
-	uInsert(_parameters, ParametersPair(key, value));
 	QWidget * obj = _ui->stackedWidget->findChild<QWidget*>(key.c_str());
 	if(obj)
 	{
+		uInsert(_parameters, ParametersPair(key, value));
+
 		QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
 		QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
 		QComboBox * combo = qobject_cast<QComboBox *>(obj);

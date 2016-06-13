@@ -699,6 +699,42 @@ int DBDriverSqlite3::getTotalDictionarySizeQuery() const
 	return size;
 }
 
+ParametersMap DBDriverSqlite3::getLastParametersQuery() const
+{
+	UDEBUG("");
+	ParametersMap parameters;
+	if(_ppDb)
+	{
+		if(uStrNumCmp(_version, "0.11.8") >= 0)
+		{
+			std::string query = "SELECT parameters "
+					 "FROM Statistics "
+					 "WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+
+			int rc = SQLITE_OK;
+			sqlite3_stmt * ppStmt = 0;
+			rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_step(ppStmt);
+			if(rc == SQLITE_ROW)
+			{
+				std::string text((const char *)sqlite3_column_text(ppStmt, 0));
+
+				if(text.size())
+				{
+					parameters = Parameters::deserialize(text);
+				}
+
+				rc = sqlite3_step(ppStmt);
+			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
+	return parameters;
+}
+
 void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) const
 {
 	UDEBUG("load data for %d signatures", (int)signatures.size());

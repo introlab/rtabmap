@@ -205,6 +205,7 @@ void RtabmapThread::mainLoop()
 	int id = 0;
 	cv::Mat userData;
 	UTimer timer;
+	std::string str;
 	switch(state)
 	{
 	case kStateDetecting:
@@ -212,12 +213,14 @@ void RtabmapThread::mainLoop()
 		break;
 	case kStateInit:
 		UASSERT(!parameters.at("RtabmapThread/DatabasePath").empty());
+		str = parameters.at("RtabmapThread/DatabasePath");
+		parameters.erase("RtabmapThread/DatabasePath");
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);
 		Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), _rate);
 		Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), _createIntermediateNodes);
 		UASSERT(_dataBufferMaxSize >= 0);
 		UASSERT(_rate >= 0.0f);
-		_rtabmap->init(parameters, parameters.at("RtabmapThread/DatabasePath"));
+		_rtabmap->init(parameters, str);
 		break;
 	case kStateChangingParameters:
 		Parameters::parse(parameters, Parameters::kRtabmapImageBufferSize(), _dataBufferMaxSize);

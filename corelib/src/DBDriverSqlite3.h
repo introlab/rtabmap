@@ -62,6 +62,7 @@ private:
 	virtual int getLastDictionarySizeQuery() const;
 	virtual int getTotalNodesSizeQuery() const;
 	virtual int getTotalDictionarySizeQuery() const;
+	virtual ParametersMap getLastParametersQuery() const;
 
 	virtual void executeNoResultQuery(const std::string & sql) const;
 

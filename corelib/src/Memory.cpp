@@ -1275,7 +1275,8 @@ void Memory::clear()
 					_lastSignature?_lastSignature->id():0,
 					UProcessInfo::getMemoryUsage(),
 					_dbDriver->getMemoryUsed(),
-					(int)_vwd->getVisualWords().size());
+					(int)_vwd->getVisualWords().size(),
+					parameters_);
 		}
 	}
 	UDEBUG("");

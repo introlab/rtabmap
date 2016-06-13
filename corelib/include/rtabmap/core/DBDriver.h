@@ -88,7 +88,7 @@ public:
 	void updateLink(const Link & link);
 
 public:
-	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize) const;
+	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
 
 public:
 	// Mutex-protected methods of abstract versions below
@@ -107,6 +107,7 @@ public:
 	int getLastDictionarySize() const; // working memory
 	int getTotalNodesSize() const;
 	int getTotalDictionarySize() const;
+	ParametersMap getLastParameters() const;
 
 	void executeNoResult(const std::string & sql) const;
 
@@ -149,6 +150,7 @@ private:
 	virtual int getLastDictionarySizeQuery() const = 0;
 	virtual int getTotalNodesSizeQuery() const = 0;
 	virtual int getTotalDictionarySizeQuery() const = 0;
+	virtual ParametersMap getLastParametersQuery() const = 0;
 
 	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 
