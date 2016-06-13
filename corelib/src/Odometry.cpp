@@ -29,11 +29,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryF2F.h"
 #include "rtabmap/core/OdometryInfo.h"
+#include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util3d_mapping.h"
+#include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/core/ParticleFilter.h"
 #include "rtabmap/core/util2d.h"
+
+#include <pcl/pcl_base.h>
 
 namespace rtabmap {
 
@@ -77,6 +82,8 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_kalmanProcessNoise(Parameters::defaultOdomKalmanProcessNoise()),
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
 		_imageDecimation(Parameters::defaultOdomImageDecimation()),
+		_alignWithGround(Parameters::defaultOdomAlignWithGround()),
+		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
 		distanceTravelled_(0)
@@ -100,6 +107,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomKalmanProcessNoise(), _kalmanProcessNoise);
 	Parameters::parse(parameters, Parameters::kOdomKalmanMeasurementNoise(), _kalmanMeasurementNoise);
 	Parameters::parse(parameters, Parameters::kOdomImageDecimation(), _imageDecimation);
+	Parameters::parse(parameters, Parameters::kOdomAlignWithGround(), _alignWithGround);
 	UASSERT(_imageDecimation>=1);
 
 	if(_filteringStrategy == 2)
@@ -135,6 +143,7 @@ Odometry::~Odometry()
 
 void Odometry::reset(const Transform & initialPose)
 {
+	UASSERT(!initialPose.isNull());
 	previousVelocityTransform_.setNull();
 	previousGroundTruthPose_.setNull();
 	_resetCurrentCount = 0;
@@ -186,12 +195,63 @@ void Odometry::reset(const Transform & initialPose)
 
 Transform Odometry::process(SensorData & data, OdometryInfo * info)
 {
-	if(_pose.isNull())
-	{
-		_pose.setIdentity(); // initialized
-	}
-
 	UASSERT(!data.imageRaw().empty());
+
+	// Ground alignment
+	if(_pose.isIdentity() && _alignWithGround)
+	{
+		UTimer alignTimer;
+		pcl::IndicesPtr indices(new std::vector<int>);
+		pcl::IndicesPtr ground, obstacles;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, 1, 0, 0, indices.get());
+		cloud = util3d::voxelize(cloud, indices, 0.01);
+		bool success = false;
+		if(cloud->size())
+		{
+			util3d::segmentObstaclesFromGround<pcl::PointXYZ>(cloud, ground, obstacles, 20, M_PI/4.0f, 0.02, 200, true);
+			if(ground->size())
+			{
+				pcl::ModelCoefficients coefficients;
+				util3d::extractPlane(cloud, ground, 0.02, 100, &coefficients);
+				if(coefficients.values.at(3) >= 0)
+				{
+					UWARN("Ground detected! coefficients=(%f, %f, %f, %f) time=%fs",
+							coefficients.values.at(0),
+							coefficients.values.at(1),
+							coefficients.values.at(2),
+							coefficients.values.at(3),
+							alignTimer.ticks());
+				}
+				else
+				{
+					UWARN("Ceiling detected! coefficients=(%f, %f, %f, %f) time=%fs",
+							coefficients.values.at(0),
+							coefficients.values.at(1),
+							coefficients.values.at(2),
+							coefficients.values.at(3),
+							alignTimer.ticks());
+				}
+				Eigen::Vector3f n(coefficients.values.at(0), coefficients.values.at(1), coefficients.values.at(2));
+				Eigen::Vector3f z(0,0,1);
+				//get rotation from z to n;
+				Eigen::Matrix3f R;
+				R = Eigen::Quaternionf().setFromTwoVectors(n,z);
+				Transform rotation(
+						R(0,0), R(0,1), R(0,2), 0,
+						R(1,0), R(1,1), R(1,2), 0,
+						R(2,0), R(2,1), R(2,2), coefficients.values.at(3));
+				_pose *= rotation;
+				success = true;
+			}
+		}
+		if(!success)
+		{
+			UERROR("Odometry failed to detect the ground. You have this "
+					"error because parameter \"Odom/AlignWithGround\" is true. "
+					"Make sure the camera is seeing the ground (e.g., tilt ~30 "
+					"degrees toward the ground).");
+		}
+	}
 
 	if(!data.stereoCameraModel().isValidForProjection() &&
 	   (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValidForProjection()))
@@ -438,7 +498,7 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 			info->distanceTravelled = distanceTravelled_;
 		}
 
-		return _pose *= t; // updated
+		return _pose *= t; // update
 	}
 	else if(_resetCurrentCount > 0)
 	{

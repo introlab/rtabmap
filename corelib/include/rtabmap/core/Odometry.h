@@ -84,6 +84,7 @@ private:
 	float _kalmanProcessNoise;
 	float _kalmanMeasurementNoise;
 	int _imageDecimation;
+	bool _alignWithGround;
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;

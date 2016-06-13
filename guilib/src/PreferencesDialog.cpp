@@ -772,6 +772,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_scanKeyframeThr->setObjectName(Parameters::kOdomScanKeyFrameThr().c_str());
 	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomGuessMotion().c_str());
 	_ui->odom_imageDecimation->setObjectName(Parameters::kOdomImageDecimation().c_str());
+	_ui->odom_alignWithGround->setObjectName(Parameters::kOdomAlignWithGround().c_str());
 
 	//Odometry Frame to Map
 	_ui->odom_localHistory->setObjectName(Parameters::kOdomF2MMaxSize().c_str());

@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/common/common.h>
 
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/segmentation/sac_segmentation.h>
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
@@ -1720,6 +1721,51 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr extractIndices(
 	extract.setKeepOrganized(keepOrganized);
 	extract.filter(*output);
 	return output;
+}
+
+pcl::IndicesPtr extractPlane(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float distanceThreshold,
+		int maxIterations,
+		pcl::ModelCoefficients * coefficientsOut)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return extractPlane(cloud, indices, distanceThreshold, maxIterations, coefficientsOut);
+}
+
+pcl::IndicesPtr extractPlane(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float distanceThreshold,
+		int maxIterations,
+		pcl::ModelCoefficients * coefficientsOut)
+{
+	// Extract plane
+	pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+	pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+	// Create the segmentation object
+	pcl::SACSegmentation<pcl::PointXYZ> seg;
+	// Optional
+	seg.setOptimizeCoefficients (true);
+	seg.setMaxIterations (maxIterations);
+	// Mandatory
+	seg.setModelType (pcl::SACMODEL_PLANE);
+	seg.setMethodType (pcl::SAC_RANSAC);
+	seg.setDistanceThreshold (distanceThreshold);
+
+	seg.setInputCloud (cloud);
+	if(indices->size())
+	{
+		seg.setIndices(indices);
+	}
+	seg.segment (*inliers, *coefficients);
+
+	if(coefficientsOut)
+	{
+		*coefficientsOut = *coefficients;
+	}
+
+	return pcl::IndicesPtr(new std::vector<int>(inliers->indices));
 }
 
 }

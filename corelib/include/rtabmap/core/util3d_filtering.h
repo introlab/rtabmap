@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/pcl_base.h>
+#include <pcl/ModelCoefficients.h>
 
 namespace rtabmap
 {
@@ -484,6 +485,18 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP extractIndices(
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
+
+pcl::IndicesPtr extractPlane(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		float distanceThreshold,
+		int maxIterations = 100,
+		pcl::ModelCoefficients * coefficientsOut = 0);
+pcl::IndicesPtr extractPlane(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float distanceThreshold,
+		int maxIterations = 100,
+		pcl::ModelCoefficients * coefficientsOut = 0);
 
 } // namespace util3d
 } // namespace rtabmap

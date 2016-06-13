@@ -366,6 +366,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,       "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,       "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,           "Decimation of the images before registration.");
+	RTABMAP_PARAM(Odom, AlignWithGround,        bool, false,      "Align odometry with the ground on initialization.");
 
 	// Odometry Bag-of-words
 	RTABMAP_PARAM(OdomF2M, MaxSize,             int, 2000,    "[Visual] Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
