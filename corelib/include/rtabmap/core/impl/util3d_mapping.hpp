@@ -116,14 +116,17 @@ void segmentObstaclesFromGround(
 			}
 
 			//Cluster remaining stuff (obstacles)
-			std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
-					cloud,
-					otherStuffIndices,
-					clusterRadius,
-					minClusterSize);
+			if(otherStuffIndices->size())
+			{
+				std::vector<pcl::IndicesPtr> clusteredObstaclesSurfaces = util3d::extractClusters(
+						cloud,
+						otherStuffIndices,
+						clusterRadius,
+						minClusterSize);
 
-			// merge indices
-			obstacles = util3d::concatenate(clusteredObstaclesSurfaces);
+				// merge indices
+				obstacles = util3d::concatenate(clusteredObstaclesSurfaces);
+			}
 		}
 	}
 }
