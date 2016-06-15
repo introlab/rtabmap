@@ -178,6 +178,7 @@ public:
 
 public:
 	CameraVideo(int usbDevice = 0,
+			bool rectifyImages = false,
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	CameraVideo(const std::string & filePath,

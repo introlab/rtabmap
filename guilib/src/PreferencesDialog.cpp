@@ -4099,6 +4099,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		camera = new CameraStereoVideo(
 			this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
+			!useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}
@@ -4138,6 +4139,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	{
 		camera = new CameraVideo(
 			this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
+			!useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}

@@ -1141,11 +1141,12 @@ CameraStereoVideo::CameraStereoVideo(
 
 CameraStereoVideo::CameraStereoVideo(
 	int device,
+	bool rectifyImages,
 	float imageRate,
 	const Transform & localTransform) :
 	Camera(imageRate, localTransform),
 	path_(""),
-	rectifyImages_(false),
+	rectifyImages_(rectifyImages),
 	src_(CameraVideo::kUsbDevice),
 	usbDevice_(device)
 {

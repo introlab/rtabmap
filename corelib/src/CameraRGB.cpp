@@ -696,10 +696,11 @@ SensorData CameraImages::captureImage()
 /////////////////////////
 CameraVideo::CameraVideo(
 		int usbDevice,
+		bool rectifyImages,
 		float imageRate,
 		const Transform & localTransform) :
 	Camera(imageRate, localTransform),
-	_rectifyImages(false),
+	_rectifyImages(rectifyImages),
 	_src(kUsbDevice),
 	_usbDevice(usbDevice)
 {
@@ -812,7 +813,7 @@ SensorData CameraVideo::captureImage()
 				_model.setImageSize(img.size());
 			}
 
-			if(_model.isValidForRectification() && (_src != kVideoFile || _rectifyImages))
+			if(_model.isValidForRectification() && _rectifyImages)
 			{
 				img = _model.rectifyImage(img);
 			}

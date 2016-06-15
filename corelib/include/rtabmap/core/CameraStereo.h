@@ -203,6 +203,7 @@ public:
 			const Transform & localTransform = Transform::getIdentity());
 	CameraStereoVideo(
 			int device,
+			bool rectifyImages = false,
 			float imageRate = 0.0f,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoVideo();
