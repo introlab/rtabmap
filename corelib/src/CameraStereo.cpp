@@ -1256,7 +1256,7 @@ SensorData CameraStereoVideo::captureImage()
 				rightCvt = true;
 			}
 
-			if((src_ != CameraVideo::kVideoFile || rectifyImages_) && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
+			if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
 			{
 				leftImage = stereoModel_.left().rectifyImage(leftImage);
 				rightImage = stereoModel_.right().rectifyImage(rightImage);
