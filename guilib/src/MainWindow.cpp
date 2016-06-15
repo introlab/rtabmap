@@ -483,7 +483,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(this, SIGNAL(cameraInfoReceived(rtabmap::CameraInfo)), this, SLOT(processCameraInfo(rtabmap::CameraInfo)));
 
 	qRegisterMetaType<rtabmap::OdometryEvent>("rtabmap::OdometryEvent");
-	connect(this, SIGNAL(odometryReceived(rtabmap::OdometryEvent)), this, SLOT(processOdometry(rtabmap::OdometryEvent)));
+	connect(this, SIGNAL(odometryReceived(rtabmap::OdometryEvent, bool)), this, SLOT(processOdometry(rtabmap::OdometryEvent, bool)));
 
 	connect(this, SIGNAL(noMoreImagesReceived()), this, SLOT(notifyNoMoreImages()));
 
@@ -776,7 +776,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		if(!_processingOdometry && !_processingStatistics)
 		{
 			_processingOdometry = true; // if we receive too many odometry events!
-			emit odometryReceived(*odomEvent);
+			emit odometryReceived(*odomEvent, false);
 		}
 		else
 		{
@@ -786,7 +786,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			data.setStereoCameraModel(odomEvent->data().stereoCameraModel());
 			data.setGroundTruth(odomEvent->data().groundTruth());
 			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->covariance(), odomEvent->info().copyWithoutData());
-			emit odometryReceived(tmp);
+			emit odometryReceived(tmp, true);
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -818,7 +818,7 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 	_ui->statsToolBox->updateStat("Camera/Time scan_from_depth/ms", (float)info.id, info.timeScanFromDepth*1000.0f);
 }
 
-void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
+void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataIgnored)
 {
 	UDEBUG("");
 	_processingOdometry = true;
@@ -1039,21 +1039,24 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom)
 				}
 			}
 		}
-		if(!cloudUpdated && _cloudViewer->getAddedClouds().contains("cloudOdom"))
+		if(!dataIgnored)
 		{
-			_cloudViewer->setCloudVisibility("cloudOdom", false);
-		}
-		if(!scanUpdated && _cloudViewer->getAddedClouds().contains("scanOdom"))
-		{
-			_cloudViewer->setCloudVisibility("scanOdom", false);
-		}
-		if(!scanUpdated && _cloudViewer->getAddedClouds().contains("scanMapOdom"))
-		{
-			_cloudViewer->setCloudVisibility("scanMapOdom", false);
-		}
-		if(!featuresUpdated && _cloudViewer->getAddedClouds().contains("featuresOdom"))
-		{
-			_cloudViewer->setCloudVisibility("featuresOdom", false);
+			if(!cloudUpdated && _cloudViewer->getAddedClouds().contains("cloudOdom"))
+			{
+				_cloudViewer->setCloudVisibility("cloudOdom", false);
+			}
+			if(!scanUpdated && _cloudViewer->getAddedClouds().contains("scanOdom"))
+			{
+				_cloudViewer->setCloudVisibility("scanOdom", false);
+			}
+			if(!scanUpdated && _cloudViewer->getAddedClouds().contains("scanMapOdom"))
+			{
+				_cloudViewer->setCloudVisibility("scanMapOdom", false);
+			}
+			if(!featuresUpdated && _cloudViewer->getAddedClouds().contains("featuresOdom"))
+			{
+				_cloudViewer->setCloudVisibility("featuresOdom", false);
+			}
 		}
 	}
 

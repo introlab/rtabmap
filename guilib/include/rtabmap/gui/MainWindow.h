@@ -174,7 +174,7 @@ private slots:
 	void takeScreenshot();
 	void updateElapsedTime();
 	void processCameraInfo(const rtabmap::CameraInfo & info);
-	void processOdometry(const rtabmap::OdometryEvent & odom);
+	void processOdometry(const rtabmap::OdometryEvent & odom, bool dataIgnored);
 	void applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags);
 	void applyPrefSettings(const rtabmap::ParametersMap & parameters);
 	void processRtabmapEventInit(int status, const QString & info);
@@ -211,7 +211,7 @@ private slots:
 signals:
 	void statsReceived(const rtabmap::Statistics &);
 	void cameraInfoReceived(const rtabmap::CameraInfo &);
-	void odometryReceived(const rtabmap::OdometryEvent &);
+	void odometryReceived(const rtabmap::OdometryEvent &, bool);
 	void thresholdsChanged(int, int);
 	void stateChanged(MainWindow::State);
 	void rtabmapEventInitReceived(int status, const QString & info);
