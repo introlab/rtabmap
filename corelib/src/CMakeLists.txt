@@ -188,10 +188,17 @@ IF(G2O_FOUND)
 ENDIF(G2O_FOUND)
 
 IF(GTSAM_FOUND)
-	SET(INCLUDE_DIRS 
-		${INCLUDE_DIRS} 
-		${GTSAM_INCLUDE_DIRS}
-	)
+	IF(GTSAM_INCLUDE_DIR)
+		SET(INCLUDE_DIRS 
+			${GTSAM_INCLUDE_DIR} # place it in front to use Eigen installed by GTSAM
+			${INCLUDE_DIRS} 
+		)
+	ELSE()
+		SET(INCLUDE_DIRS 
+			${GTSAM_INCLUDE_DIRS} # cmake standard
+			${INCLUDE_DIRS} 
+		)
+	ENDIF()
 	SET(LIBRARIES
 		${LIBRARIES}
 		gtsam
