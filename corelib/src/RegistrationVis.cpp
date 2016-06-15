@@ -622,12 +622,12 @@ Transform RegistrationVis::computeTransformationImpl(
 			if(descriptorsFrom.rows > 0 && descriptorsTo.rows > 0)
 			{
 				cv::Size imageSize = imageTo.size();
-				bool isCalibrated = false;
+				bool isCalibrated = false; // multiple cameras not supported.
 				if(imageSize.height == 0 || imageSize.width == 0)
 				{
-					imageSize = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModel().left().imageSize();
+					imageSize = fromSignature.sensorData().cameraModels().size() == 1?fromSignature.sensorData().cameraModels()[0].imageSize():fromSignature.sensorData().stereoCameraModel().left().imageSize();
 				}
-				isCalibrated = imageSize.height != 0 && imageSize.width != 0 && fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].isValidForProjection():fromSignature.sensorData().stereoCameraModel().isValidForProjection();
+				isCalibrated = imageSize.height != 0 && imageSize.width != 0 && fromSignature.sensorData().cameraModels().size()==1?fromSignature.sensorData().cameraModels()[0].isValidForProjection():fromSignature.sensorData().stereoCameraModel().isValidForProjection();
 
 				// If guess is set, limit the search of matches using optical flow window size
 				bool guessSet = !guess.isIdentity() && !guess.isNull();
@@ -641,8 +641,9 @@ Transform RegistrationVis::computeTransformationImpl(
 					// Use guess to project 3D "from" keypoints into "to" image
 					if(fromSignature.sensorData().cameraModels().size() > 1)
 					{
-						UFATAL("Radius feature matching is not supported for multiple cameras.");
+						UFATAL("Guess reprojection feature matching is not supported for multiple cameras.");
 					}
+
 					Transform localTransform = fromSignature.sensorData().cameraModels().size()?fromSignature.sensorData().cameraModels()[0].localTransform():fromSignature.sensorData().stereoCameraModel().left().localTransform();
 					Transform guessCameraRef = (guess * localTransform).inverse();
 					cv::Mat R = (cv::Mat_<double>(3,3) <<
@@ -847,9 +848,19 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					if(guessSet && _guessWinSize > 0 && kptsFrom3D.size() && !isCalibrated)
 					{
-						UWARN("Calibration not found! Finding correspondences "
-							   "with the guess cannot be done, global matching is "
-							   "done instead.");
+						if(fromSignature.sensorData().cameraModels().size() > 1 || toSignature.sensorData().cameraModels().size() > 1)
+						{
+							UWARN("Finding correspondences with the guess cannot "
+								  "be done with multiple cameras, global matching is "
+								   "done instead. Please set \"%s\" to 0 to avoid this warning.",
+								   Parameters::kVisCorGuessWinSize().c_str());
+						}
+						else
+						{
+							UWARN("Calibration not found! Finding correspondences "
+								   "with the guess cannot be done, global matching is "
+								   "done instead.");
+						}
 					}
 
 					UDEBUG("");
