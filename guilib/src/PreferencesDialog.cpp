@@ -1451,9 +1451,7 @@ void PreferencesDialog::loadConfigFrom()
 	QString path = QFileDialog::getOpenFileName(this, tr("Load settings..."), this->getWorkingDirectory(), "*.ini");
 	if(!path.isEmpty())
 	{
-		_ui->checkBox_useOdomFeatures->blockSignals(true);
 		this->readSettings(path);
-		_ui->checkBox_useOdomFeatures->blockSignals(false);
 	}
 }
 
@@ -2998,7 +2996,9 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 		}
 		else if(check)
 		{
+			_ui->checkBox_useOdomFeatures->blockSignals(true);
 			check->setChecked(uStr2Bool(value.c_str()));
+			_ui->checkBox_useOdomFeatures->blockSignals(false);
 		}
 		else if(radio)
 		{

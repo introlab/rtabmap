@@ -94,11 +94,13 @@ std::string Parameters::serialize(const ParametersMap & parameters)
 		// make sure there are no commas instead of dots
 		output << iter->first << ":" << uReplaceChar(iter->second, ',', '.');
 	}
+	UDEBUG("output=%s", output.str().c_str());
 	return output.str();
 }
 
 ParametersMap Parameters::deserialize(const std::string & parameters)
 {
+	UDEBUG("parameters=%s", parameters.c_str());
 	ParametersMap output;
 	std::list<std::string> tuplets = uSplit(parameters, ';');
 	for(std::list<std::string>::iterator iter=tuplets.begin(); iter!=tuplets.end(); ++iter)
