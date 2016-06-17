@@ -371,6 +371,8 @@ CameraModel CameraModel::scaled(double scale) const
 			P.at<double>(1,1) *= scale;
 			P.at<double>(0,2) *= scale;
 			P.at<double>(1,2) *= scale;
+			P.at<double>(0,3) *= scale;
+			P.at<double>(1,3) *= scale;
 		}
 		scaledModel = CameraModel(name_, cv::Size(double(imageSize_.width)*scale, double(imageSize_.height)*scale), K, D_, R_, P, localTransform_);
 	}
