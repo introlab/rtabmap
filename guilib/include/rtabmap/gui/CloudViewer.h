@@ -30,13 +30,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
+#include "rtabmap/core/Transform.h"
+#include "rtabmap/core/StereoCameraModel.h"
+
 #include <QVTKWidget.h>
 #include <pcl/pcl_base.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <pcl/PolygonMesh.h>
 #include <pcl/TextureMesh.h>
-#include "rtabmap/core/Transform.h"
+
 #include <QtCore/QMap>
 #include <QtCore/QSet>
 #include <QtCore/qnamespace.h>
@@ -142,8 +145,19 @@ public:
 	void removeOccupancyGridMap();
 
 	void updateCameraTargetPosition(
-		const Transform & pose,
-		const Transform & localTransform = Transform::getIdentity());
+		const Transform & pose);
+
+	void updateCameraFrustum(
+			const Transform & pose,
+			const StereoCameraModel & model);
+
+	void updateCameraFrustum(
+			const Transform & pose,
+			const CameraModel & model);
+
+	void updateCameraFrustums(
+			const Transform & pose,
+			const std::vector<CameraModel> & models);
 
 	void addOrUpdateCoordinate(
 			const std::string & id,

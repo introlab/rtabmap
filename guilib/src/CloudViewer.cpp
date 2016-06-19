@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/common/transforms.h>
 #include <QMenu>
@@ -178,10 +179,6 @@ void CloudViewer::clear()
 	this->clearTrajectory();
 
 	this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
-	if(_aShowFrustum->isChecked())
-	{
-		this->addOrUpdateFrustum("reference_frustum", Transform::getIdentity(), _frustumScale, _frustumColor);
-	}
 }
 
 void CloudViewer::createMenu()
@@ -1119,8 +1116,22 @@ void CloudViewer::setFrustumShown(bool shown)
 {
 	if(!shown)
 	{
-		this->removeFrustum("reference_frustum");
-		this->removeLine("reference_frustum_line");
+		std::set<std::string> frustumsCopy = _frustums;
+		for(std::set<std::string>::iterator iter=frustumsCopy.begin(); iter!=frustumsCopy.end(); ++iter)
+		{
+			if(uStrContains(*iter, "reference_frustum"))
+			{
+				this->removeFrustum(*iter);
+			}
+		}
+		std::set<std::string> linesCopy = _lines;
+		for(std::set<std::string>::iterator iter=linesCopy.begin(); iter!=linesCopy.end(); ++iter)
+		{
+			if(uStrContains(*iter, "reference_frustum_line"))
+			{
+				this->removeLine(*iter);
+			}
+		}
 		this->update();
 	}
 	_aShowFrustum->setChecked(shown);
@@ -1137,9 +1148,12 @@ void CloudViewer::setFrustumColor(QColor value)
 	{
 		value = Qt::gray;
 	}
-	if(_frustums.find("reference_frustum") != _frustums.end())
+	for(std::set<std::string>::iterator iter=_frustums.begin(); iter!=_frustums.end(); ++iter)
 	{
-		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), "reference_frustum");
+		if(uStrContains(*iter, "reference_frustum"))
+		{
+			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), *iter);
+		}
 	}
 	this->update();
 	_frustumColor = value;
@@ -1255,7 +1269,7 @@ void CloudViewer::setCameraPosition(
 	_visualizer->setCameraPosition(x,y,z, focalX,focalY,focalX, upX,upY,upZ);
 }
 
-void CloudViewer::updateCameraTargetPosition(const Transform & pose, const Transform & localTransform)
+void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 {
 	if(!pose.isNull())
 	{
@@ -1364,26 +1378,6 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose, const Trans
 				this->addOrUpdateCoordinate("reference", pose, 0.2);
 			}
 
-			// commented: update pose is crashing...
-			/*if(_frustums.find("reference_frustum") != _frustums.end())
-			{
-				this->updateFrustumPose("reference_frustum", pose);
-			}
-			else */ if(_aShowFrustum->isChecked())
-			{
-				Transform baseToCamera = Transform::getIdentity();
-				Transform opticalRot(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-				if(!localTransform.isNull() && !localTransform.isIdentity())
-				{
-					baseToCamera = localTransform*opticalRot.inverse();
-				}
-				this->addOrUpdateFrustum("reference_frustum", pose * baseToCamera, _frustumScale, _frustumColor);
-				if(!baseToCamera.isIdentity())
-				{
-					this->addOrUpdateLine("reference_frustum_line", pose, pose * baseToCamera, _frustumColor);
-				}
-			}
-
 			vtkRenderer* renderer = _visualizer->getRendererCollection()->GetFirstRenderer();
 			vtkSmartPointer<vtkCamera> cam = renderer->GetActiveCamera ();
 			cam->SetPosition (cameras.front().pos[0], cameras.front().pos[1], cameras.front().pos[2]);
@@ -1394,6 +1388,51 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose, const Trans
 	}
 
 	_lastPose = pose;
+}
+
+void CloudViewer::updateCameraFrustum(const Transform & pose, const StereoCameraModel & model)
+{
+	std::vector<CameraModel> models;
+	models.push_back(model.left());
+	updateCameraFrustums(pose, models);
+}
+
+void CloudViewer::updateCameraFrustum(const Transform & pose, const CameraModel & model)
+{
+	std::vector<CameraModel> models;
+	models.push_back(model);
+	updateCameraFrustums(pose, models);
+}
+
+void CloudViewer::updateCameraFrustums(const Transform & pose, const std::vector<CameraModel> & models)
+{
+	if(!pose.isNull())
+	{
+		// commented: update pose is crashing...
+		/*if(_frustums.find("reference_frustum") != _frustums.end())
+		{
+			this->updateFrustumPose("reference_frustum", pose);
+		}
+		else */ if(_aShowFrustum->isChecked())
+		{
+			Transform baseToCamera;
+			Transform opticalRot(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+
+			for(unsigned int i=0; i<models.size(); ++i)
+			{
+				baseToCamera = Transform::getIdentity();
+				if(!models[i].localTransform().isNull() && !models[i].localTransform().isIdentity())
+				{
+					baseToCamera = models[i].localTransform()*opticalRot.inverse();
+				}
+				this->addOrUpdateFrustum(uFormat("reference_frustum_%d", i), pose * baseToCamera, _frustumScale, _frustumColor);
+				if(!baseToCamera.isIdentity())
+				{
+					this->addOrUpdateLine(uFormat("reference_frustum_line_%d", i), pose, pose * baseToCamera, _frustumColor);
+				}
+			}
+		}
+	}
 }
 
 const QColor & CloudViewer::getDefaultBackgroundColor() const

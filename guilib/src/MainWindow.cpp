@@ -1063,17 +1063,17 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	if(!odom.pose().isNull())
 	{
 		// update camera position
-		Transform localTransform;
+		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
+
 		if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
 		{
-			localTransform = odom.data().cameraModels()[0].localTransform();
+			_cloudViewer->updateCameraFrustums(_odometryCorrection*odom.pose(), odom.data().cameraModels());
 		}
 		else if(!odom.data().stereoCameraModel().localTransform().isNull())
 		{
-			localTransform = odom.data().stereoCameraModel().localTransform();
+			_cloudViewer->updateCameraFrustum(_odometryCorrection*odom.pose(), odom.data().stereoCameraModel());
 		}
 
-		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose(), localTransform);
 	}
 	_cloudViewer->update();
 
@@ -1579,20 +1579,22 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			if(!_odometryReceived && poses.size())
 			{
+				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second);
+
 				Transform localTransform = Transform::getIdentity();
 				std::map<int, Signature>::const_iterator iter = stat.getSignatures().find(poses.rbegin()->first);
 				if(iter != stat.getSignatures().end())
 				{
 					if(iter->second.sensorData().cameraModels().size() && !iter->second.sensorData().cameraModels()[0].localTransform().isNull())
 					{
-						localTransform = iter->second.sensorData().cameraModels()[0].localTransform();
+						_cloudViewer->updateCameraFrustums(poses.rbegin()->second, iter->second.sensorData().cameraModels());
 					}
 					else if(!iter->second.sensorData().stereoCameraModel().localTransform().isNull())
 					{
-						localTransform = iter->second.sensorData().stereoCameraModel().localTransform();
+						_cloudViewer->updateCameraFrustum(poses.rbegin()->second, iter->second.sensorData().stereoCameraModel());
 					}
 				}
-				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second, localTransform);
+
 				if(_ui->graphicsView_graphView->isVisible())
 				{
 					_ui->graphicsView_graphView->updateReferentialPosition(poses.rbegin()->second);
