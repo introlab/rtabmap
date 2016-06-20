@@ -427,6 +427,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_checkBox_ignoreGoals, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_spinBox_databaseStartPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_checkBox_useDbStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->source_spinBox_database_cameraIndex, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	//openni group
 	_ui->stackedWidget_rgbd->setCurrentIndex(_ui->comboBox_cameraRGBD->currentIndex());
@@ -1248,6 +1249,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->source_checkBox_ignoreGoalDelay->setChecked(true);
 		_ui->source_checkBox_ignoreGoals->setChecked(true);
 		_ui->source_spinBox_databaseStartPos->setValue(0);
+		_ui->source_spinBox_database_cameraIndex->setValue(-1);
 		_ui->source_checkBox_useDbStamps->setChecked(true);
 
 #ifdef _WIN32
@@ -1702,6 +1704,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->source_checkBox_ignoreGoalDelay->setChecked(settings.value("ignoreGoalDelay", _ui->source_checkBox_ignoreGoalDelay->isChecked()).toBool());
 	_ui->source_checkBox_ignoreGoals->setChecked(settings.value("ignoreGoals", _ui->source_checkBox_ignoreGoals->isChecked()).toBool());
 	_ui->source_spinBox_databaseStartPos->setValue(settings.value("startPos", _ui->source_spinBox_databaseStartPos->value()).toInt());
+	_ui->source_spinBox_database_cameraIndex->setValue(settings.value("cameraIndex", _ui->source_spinBox_database_cameraIndex->value()).toInt());
 	_ui->source_checkBox_useDbStamps->setChecked(settings.value("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked()).toBool());
 	settings.endGroup(); // Database
 
@@ -2109,6 +2112,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("ignoreGoalDelay",   _ui->source_checkBox_ignoreGoalDelay->isChecked());
 	settings.setValue("ignoreGoals",       _ui->source_checkBox_ignoreGoals->isChecked());
 	settings.setValue("startPos",          _ui->source_spinBox_databaseStartPos->value());
+	settings.setValue("cameraIndex",       _ui->source_spinBox_database_cameraIndex->value());
 	settings.setValue("useDatabaseStamps", _ui->source_checkBox_useDbStamps->isChecked());
 	settings.endGroup(); // Database
 
@@ -2680,6 +2684,7 @@ void PreferencesDialog::selectSourceDatabase()
 		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
 		_ui->source_database_lineEdit_path->setText(paths.size()==1?paths.front():paths.join(";"));
 		_ui->source_spinBox_databaseStartPos->setValue(0);
+		_ui->source_spinBox_database_cameraIndex->setValue(-1);
 		_ui->source_checkBox_useDbStamps->setChecked(true);
 	}
 }
@@ -3906,6 +3911,10 @@ int PreferencesDialog::getSourceDatabaseStartPos() const
 {
 	return _ui->source_spinBox_databaseStartPos->value();
 }
+int PreferencesDialog::getSourceDatabaseCameraIndex() const
+{
+	return _ui->source_spinBox_database_cameraIndex->value();
+}
 bool PreferencesDialog::getSourceDatabaseStampsUsed() const
 {
 	return _ui->source_checkBox_useDbStamps->isChecked();
@@ -4370,7 +4379,9 @@ void PreferencesDialog::testOdometry()
 	DBReader dbReader(_ui->source_database_lineEdit_path->text().toStdString(),
 					 _ui->source_checkBox_useDbStamps->isChecked()?-1:this->getGeneralInputRate(),
 					 true,
-					 true);
+					 true,
+					 true,
+					 _ui->source_spinBox_database_cameraIndex->value());
 	Camera * camera = 0;
 	if(this->getSourceType() == kSrcDatabase)
 	{
@@ -4464,8 +4475,10 @@ void PreferencesDialog::testCamera()
 		DBReader dbReader(_ui->source_database_lineEdit_path->text().toStdString(),
 						  _ui->source_checkBox_useDbStamps->isChecked()?-1:this->getGeneralInputRate(),
 						 true,
-						 true);
-		if(!dbReader.init())
+						 true,
+						 true,
+						 _ui->source_spinBox_database_cameraIndex->value());
+		if(!dbReader.init(_ui->source_images_spinBox_startPos->value()))
 		{
 			QMessageBox::warning(this, tr("Camera viewer"), tr("Failed to initialize the database reader!"));
 			delete window;

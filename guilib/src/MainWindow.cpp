@@ -3886,7 +3886,8 @@ void MainWindow::startDetection()
 								 _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate(),
 								 _preferencesDialog->getSourceDatabaseOdometryIgnored(),
 								 _preferencesDialog->getSourceDatabaseGoalDelayIgnored(),
-								 _preferencesDialog->getSourceDatabaseGoalsIgnored());
+								 _preferencesDialog->getSourceDatabaseGoalsIgnored(),
+								 _preferencesDialog->getSourceDatabaseCameraIndex());
 
 		//Create odometry thread if rgdb slam
 		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()) &&

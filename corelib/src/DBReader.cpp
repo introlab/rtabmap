@@ -46,12 +46,14 @@ DBReader::DBReader(const std::string & databasePath,
 				   float frameRate,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
-				   bool goalsIgnored) :
+				   bool goalsIgnored,
+				   int cameraIndex) :
 	_paths(uSplit(databasePath, ';')),
 	_frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
+	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousStamp(0),
@@ -63,12 +65,14 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   float frameRate,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
-				   bool goalsIgnored) :
+				   bool goalsIgnored,
+				   int cameraIndex) :
    _paths(databasePaths),
    _frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
+	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousStamp(0),
@@ -368,6 +372,37 @@ OdometryEvent DBReader::getNextData()
 			if(!this->isKilled())
 			{
 				data.uncompressData();
+				if(data.cameraModels().size() > 1 &&
+					_cameraIndex >= 0)
+				{
+					if(_cameraIndex < (int)data.cameraModels().size())
+					{
+						// select one camera
+						int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+						UASSERT(!data.imageRaw().empty() &&
+								data.imageRaw().cols % data.cameraModels().size() == 0 &&
+								_cameraIndex*subImageWidth < data.imageRaw().cols);
+						data.setImageRaw(
+								cv::Mat(data.imageRaw(),
+								cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.imageRaw().rows)).clone());
+
+						if(!data.depthOrRightRaw().empty())
+						{
+							UASSERT(data.depthOrRightRaw().cols % data.cameraModels().size() == 0 &&
+									subImageWidth == data.depthOrRightRaw().cols/(int)data.cameraModels().size() &&
+									_cameraIndex*subImageWidth < data.depthOrRightRaw().cols);
+							data.setDepthOrRightRaw(
+									cv::Mat(data.depthOrRightRaw(),
+									cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows)).clone());
+						}
+						CameraModel model = data.cameraModels().at(_cameraIndex);
+						data.setCameraModel(model);
+					}
+					else
+					{
+						UWARN("DBReader: Camera index %d doesn't exist! Camera models = %d.", _cameraIndex, (int)data.cameraModels().size());
+					}
+				}
 				data.setId(seq);
 				data.setStamp(stamp);
 				data.setGroundTruth(groundTruth);

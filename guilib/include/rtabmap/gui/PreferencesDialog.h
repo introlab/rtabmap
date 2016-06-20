@@ -209,6 +209,7 @@ public:
 	bool getSourceDatabaseGoalsIgnored() const; //Database group
 	int getSourceDatabaseStartPos() const; //Database group
 	bool getSourceDatabaseStampsUsed() const;//Database group
+	int getSourceDatabaseCameraIndex() const; //Database group
 	bool isSourceRGBDColorOnly() const;
 	int getSourceImageDecimation() const;
 	bool isSourceStereoDepthGenerated() const;

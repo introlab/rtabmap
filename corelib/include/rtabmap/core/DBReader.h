@@ -51,12 +51,14 @@ public:
 			 float frameRate = 0.0f,
 			 bool odometryIgnored = false,
 			 bool ignoreGoalDelay = false,
-			 bool goalsIgnored = false);
+			 bool goalsIgnored = false,
+			 int cameraIndex = -1);
 	DBReader(const std::list<std::string> & databasePaths,
 			 float frameRate = 0.0f,
 			 bool odometryIgnored = false,
 			 bool ignoreGoalDelay = false,
-			 bool goalsIgnored = false);
+			 bool goalsIgnored = false,
+			 int cameraIndex = -1);
 	virtual ~DBReader();
 
 	bool init(int startIndex=0);
@@ -73,6 +75,7 @@ private:
 	bool _odometryIgnored;
 	bool _ignoreGoalDelay;
 	bool _goalsIgnored;
+	int _cameraIndex;
 
 	DBDriver * _dbDriver;
 	UTimer _timer;

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>681</width>
-            <height>2044</height>
+            <y>-360</y>
+            <width>686</width>
+            <height>2023</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>14</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2307,7 +2307,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>3</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3813,7 +3813,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                              </property>
                             </widget>
                            </item>
-                           <item row="6" column="1">
+                           <item row="7" column="1">
                             <spacer name="verticalSpacer_35">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
@@ -3859,7 +3859,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               <number>0</number>
                              </property>
                              <property name="maximum">
-                              <number>999999999</number>
+                              <number>99999</number>
                              </property>
                             </widget>
                            </item>
@@ -3913,6 +3913,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             <widget class="QCheckBox" name="source_checkBox_useDbStamps">
                              <property name="text">
                               <string/>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="6" column="0">
+                            <widget class="QSpinBox" name="source_spinBox_database_cameraIndex">
+                             <property name="minimum">
+                              <number>-1</number>
+                             </property>
+                             <property name="maximum">
+                              <number>9999</number>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="6" column="1">
+                            <widget class="QLabel" name="label_315">
+                             <property name="text">
+                              <string>Camera index. If the database contains multi-camera data, you can choose which camera to use. -1 means that all cameras are streamed.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
                            </item>
