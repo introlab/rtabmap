@@ -177,44 +177,50 @@ void CameraThread::mainLoop()
 				pcl::IndicesPtr validIndices(new std::vector<int>);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth, _scanMinDepth, validIndices.get());
 				float maxPoints = (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation);
-				if(_scanVoxelSize>0.0f)
-				{
-					cloud = util3d::voxelize(cloud, validIndices, _scanVoxelSize);
-					float ratio = float(cloud->size()) / float(validIndices->size());
-					maxPoints = ratio * maxPoints;
-				}
-				else if(!cloud->is_dense)
-				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZ>);
-					pcl::copyPointCloud(*cloud, *validIndices, *denseCloud);
-					cloud = denseCloud;
-				}
-
 				cv::Mat scan;
-				if(_scanNormalsK>0)
+				if(validIndices->size())
 				{
-					// view point
-					Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-					if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+					if(_scanVoxelSize>0.0f)
 					{
-						viewPoint[0] = data.cameraModels()[0].localTransform().x();
-						viewPoint[1] = data.cameraModels()[0].localTransform().y();
-						viewPoint[2] = data.cameraModels()[0].localTransform().z();
+						cloud = util3d::voxelize(cloud, validIndices, _scanVoxelSize);
+						float ratio = float(cloud->size()) / float(validIndices->size());
+						maxPoints = ratio * maxPoints;
 					}
-					else if(!data.stereoCameraModel().localTransform().isNull())
+					else if(!cloud->is_dense)
 					{
-						viewPoint[0] = data.stereoCameraModel().localTransform().x();
-						viewPoint[1] = data.stereoCameraModel().localTransform().y();
-						viewPoint[2] = data.stereoCameraModel().localTransform().z();
+						pcl::PointCloud<pcl::PointXYZ>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::copyPointCloud(*cloud, *validIndices, *denseCloud);
+						cloud = denseCloud;
 					}
-					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, viewPoint);
-					pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
-					pcl::concatenateFields(*cloud, *normals, *cloudNormals);
-					scan = util3d::laserScanFromPointCloud(*cloudNormals);
-				}
-				else
-				{
-					scan = util3d::laserScanFromPointCloud(*cloud);
+
+					if(cloud->size())
+					{
+						if(_scanNormalsK>0)
+						{
+							// view point
+							Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+							if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+							{
+								viewPoint[0] = data.cameraModels()[0].localTransform().x();
+								viewPoint[1] = data.cameraModels()[0].localTransform().y();
+								viewPoint[2] = data.cameraModels()[0].localTransform().z();
+							}
+							else if(!data.stereoCameraModel().localTransform().isNull())
+							{
+								viewPoint[0] = data.stereoCameraModel().localTransform().x();
+								viewPoint[1] = data.stereoCameraModel().localTransform().y();
+								viewPoint[2] = data.stereoCameraModel().localTransform().z();
+							}
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, viewPoint);
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+							pcl::concatenateFields(*cloud, *normals, *cloudNormals);
+							scan = util3d::laserScanFromPointCloud(*cloudNormals);
+						}
+						else
+						{
+							scan = util3d::laserScanFromPointCloud(*cloud);
+						}
+					}
 				}
 				data.setLaserScanRaw(scan, (int)maxPoints, _scanMaxDepth);
 				info.timeScanFromDepth = timer.ticks();

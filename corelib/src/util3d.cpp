@@ -682,6 +682,16 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 				UERROR("Camera model %d is invalid", i);
 			}
 		}
+
+		if(cloud->is_dense && validIndices)
+		{
+			//generate indices for all points (they are all valid)
+			validIndices->resize(cloud->size());
+			for(unsigned int i=0; i<cloud->size(); ++i)
+			{
+				validIndices->at(i) = i;
+			}
+		}
 	}
 	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
 	{
