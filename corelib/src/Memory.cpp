@@ -2169,9 +2169,15 @@ Transform Memory::computeTransform(
 			UDEBUG("");
 			// no visual in the pipeline, make visual registration for guess
 			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
+			if(!guess.isNull())
+			{
+				transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+			}
 		}
-
-		transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+		else
+		{
+			transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+		}
 
 		if(!transform.isNull())
 		{
