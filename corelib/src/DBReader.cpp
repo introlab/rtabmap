@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UEventsManager.h>
 
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/RtabmapEvent.h"
@@ -47,17 +48,20 @@ DBReader::DBReader(const std::string & databasePath,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
+				   int startIndex,
 				   int cameraIndex) :
+	Camera(frameRate),
 	_paths(uSplit(databasePath, ';')),
-	_frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
+	_startIndex(startIndex),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousStamp(0),
-	_previousMapID(0)
+	_previousMapID(0),
+	_calibrated(false)
 {
 }
 
@@ -66,17 +70,20 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 				   bool odometryIgnored,
 				   bool ignoreGoalDelay,
 				   bool goalsIgnored,
+				   int startIndex,
 				   int cameraIndex) :
+	Camera(frameRate),
    _paths(databasePaths),
-   _frameRate(frameRate),
 	_odometryIgnored(odometryIgnored),
 	_ignoreGoalDelay(ignoreGoalDelay),
 	_goalsIgnored(goalsIgnored),
+	_startIndex(startIndex),
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
 	_previousStamp(0),
-	_previousMapID(0)
+	_previousMapID(0),
+	_calibrated(false)
 {
 }
 
@@ -89,7 +96,9 @@ DBReader::~DBReader()
 	}
 }
 
-bool DBReader::init(int startIndex)
+bool DBReader::init(
+		const std::string & calibrationFolder,
+		const std::string & cameraName)
 {
 	if(_dbDriver)
 	{
@@ -101,6 +110,7 @@ bool DBReader::init(int startIndex)
 	_currentId=_ids.end();
 	_previousStamp = 0;
 	_previousMapID = 0;
+	_calibrated = false;
 
 	if(_paths.size() == 0)
 	{
@@ -133,12 +143,12 @@ bool DBReader::init(int startIndex)
 
 	_dbDriver->getAllNodeIds(_ids);
 	_currentId = _ids.begin();
-	if(startIndex>0 && _ids.size())
+	if(_startIndex>0 && _ids.size())
 	{
-		std::set<int>::iterator iter = uIteratorAt(_ids, startIndex);
+		std::set<int>::iterator iter = uIteratorAt(_ids, _startIndex);
 		if(iter == _ids.end())
 		{
-			UWARN("Start index is too high (%d), the last in database is %d. Starting from beginning...", startIndex, _ids.size()-1);
+			UWARN("Start index is too high (%d), the last in database is %d. Starting from beginning...", _startIndex, _ids.size()-1);
 		}
 		else
 		{
@@ -146,142 +156,139 @@ bool DBReader::init(int startIndex)
 		}
 	}
 
+	if(_ids.size())
+	{
+		std::vector<CameraModel> models;
+		StereoCameraModel stereoModel;
+		if(_dbDriver->getCalibration(*_ids.begin(), models, stereoModel))
+		{
+			if(models.size() && models.at(0).isValidForProjection())
+			{
+				_calibrated = true;
+			}
+			else if(stereoModel.isValidForProjection())
+			{
+				_calibrated = true;
+			}
+		}
+	}
+
+	_timer.start();
+
 	return true;
 }
 
-void DBReader::setFrameRate(float frameRate)
+bool DBReader::isCalibrated() const
 {
-	_frameRate = frameRate;
+	return _calibrated;
 }
 
-void DBReader::mainLoopBegin()
+std::string DBReader::getSerial() const
 {
-	_timer.start();
+	return "DBReader";
 }
 
-void DBReader::mainLoop()
+SensorData DBReader::captureImage(CameraInfo * info)
 {
-	OdometryEvent odom = this->getNextData();
-	if(odom.data().id())
-	{
-		std::string goalId;
-		double previousStamp = odom.data().stamp();
-		if(previousStamp == 0)
-		{
-			odom.data().setStamp(UTimer::now());
-		}
-
-		if(!_goalsIgnored &&
-		   odom.data().userDataRaw().type() == CV_8SC1 &&
-		   odom.data().userDataRaw().cols >= 7 && // including null str ending
-		   odom.data().userDataRaw().rows == 1 &&
-		   memcmp(odom.data().userDataRaw().data, "GOAL:", 5) == 0)
-		{
-			//GOAL format detected, remove it from the user data and send it as goal event
-			std::string goalStr = (const char *)odom.data().userDataRaw().data;
-			if(!goalStr.empty())
-			{
-				std::list<std::string> strs = uSplit(goalStr, ':');
-				if(strs.size() == 2)
-				{
-					goalId = *strs.rbegin();
-					odom.data().setUserData(cv::Mat());
-				}
-			}
-		}
-		if(!_odometryIgnored)
-		{
-			if(odom.pose().isNull())
-			{
-				UWARN("Reading the database: odometry is null! "
-					  "Please set \"Ignore odometry = true\" if there is "
-					  "no odometry in the database.");
-			}
-			this->post(new OdometryEvent(odom));
-		}
-		else
-		{
-			this->post(new CameraEvent(odom.data()));
-		}
-
-		if(!goalId.empty())
-		{
-			double delay = 0.0;
-			if(!_ignoreGoalDelay && _currentId != _ids.end())
-			{
-				// get stamp for the next signature to compute the delay
-				// that was used originally for planning
-				int weight;
-				std::string label;
-				double stamp;
-				int mapId;
-				Transform localTransform, pose, groundTruth;
-				_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth);
-				if(previousStamp && stamp && stamp > previousStamp)
-				{
-					delay = stamp - previousStamp;
-				}
-			}
-
-			if(delay > 0.0)
-			{
-				UWARN("Goal \"%s\" detected, posting it! Waiting %f seconds before sending next data...",
-					   goalId.c_str(), delay);
-			}
-			else
-			{
-				UWARN("Goal \"%s\" detected, posting it!", goalId.c_str());
-			}
-
-			if(uIsInteger(goalId))
-			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, atoi(goalId.c_str())));
-			}
-			else
-			{
-				this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
-			}
-
-			if(delay > 0.0)
-			{
-				uSleep(delay*1000);
-			}
-		}
-
-	}
-	else if(!this->isKilled())
+	SensorData data = this->getNextData(info);
+	if(data.id() == 0)
 	{
 		UINFO("no more images...");
-		if(_paths.size() > 1)
+		while(_paths.size() > 1 && data.id() == 0)
 		{
 			_paths.pop_front();
 			UWARN("Loading next database \"%s\"...", _paths.front().c_str());
 			if(!this->init())
 			{
 				UERROR("Failed to initialize the next database \"%s\"", _paths.front().c_str());
-				this->kill();
-				this->post(new CameraEvent());
+				return data;
+			}
+			else
+			{
+				data = this->getNextData(info);
 			}
 		}
-		else
+	}
+	if(data.id())
+	{
+		std::string goalId;
+		double previousStamp = data.stamp();
+		if(previousStamp == 0)
 		{
-			this->kill();
-			this->post(new CameraEvent());
+			data.setStamp(UTimer::now());
 		}
 
-	}
+		if(!_goalsIgnored &&
+		   data.userDataRaw().type() == CV_8SC1 &&
+		   data.userDataRaw().cols >= 7 && // including null str ending
+		   data.userDataRaw().rows == 1 &&
+		   memcmp(data.userDataRaw().data, "GOAL:", 5) == 0)
+		{
+			//GOAL format detected, remove it from the user data and send it as goal event
+			std::string goalStr = (const char *)data.userDataRaw().data;
+			if(!goalStr.empty())
+			{
+				std::list<std::string> strs = uSplit(goalStr, ':');
+				if(strs.size() == 2)
+				{
+					goalId = *strs.rbegin();
+					data.setUserData(cv::Mat());
 
+					double delay = 0.0;
+					if(!_ignoreGoalDelay && _currentId != _ids.end())
+					{
+						// get stamp for the next signature to compute the delay
+						// that was used originally for planning
+						int weight;
+						std::string label;
+						double stamp;
+						int mapId;
+						Transform localTransform, pose, groundTruth;
+						_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth);
+						if(previousStamp && stamp && stamp > previousStamp)
+						{
+							delay = stamp - previousStamp;
+						}
+					}
+
+					if(delay > 0.0)
+					{
+						UWARN("Goal \"%s\" detected, posting it! Waiting %f seconds before sending next data...",
+							   goalId.c_str(), delay);
+					}
+					else
+					{
+						UWARN("Goal \"%s\" detected, posting it!", goalId.c_str());
+					}
+
+					if(uIsInteger(goalId))
+					{
+						UEventsManager::post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, atoi(goalId.c_str())));
+					}
+					else
+					{
+						UEventsManager::post(new RtabmapEventCmd(RtabmapEventCmd::kCmdGoal, goalId));
+					}
+
+					if(delay > 0.0)
+					{
+						uSleep(delay*1000);
+					}
+				}
+			}
+		}
+	}
+	return data;
 }
 
-OdometryEvent DBReader::getNextData()
+SensorData DBReader::getNextData(CameraInfo * info)
 {
-	OdometryEvent odom;
+	SensorData data;
 	if(_dbDriver)
 	{
-		if(!this->isKilled() && _currentId != _ids.end())
+		if(_currentId != _ids.end())
 		{
 			int mapId;
-			SensorData data;
 			_dbDriver->getNodeData(*_currentId, data);
 
 			// info
@@ -316,12 +323,12 @@ OdometryEvent DBReader::getNextData()
 			}
 
 			// Frame rate
-			if(_frameRate < 0.0f)
+			if(this->getImageRate() < 0.0f)
 			{
 				if(stamp == 0)
 				{
 					UERROR("The option to use database stamps is set (framerate<0), but there are no stamps saved in the database! Aborting...");
-					this->kill();
+					return data;
 				}
 				else if(_previousMapID == mapId && _previousStamp > 0)
 				{
@@ -350,69 +357,61 @@ OdometryEvent DBReader::getNextData()
 				_previousStamp = stamp;
 				_previousMapID = mapId;
 			}
-			else if(_frameRate>0.0f)
+
+			data.uncompressData();
+			if(data.cameraModels().size() > 1 &&
+				_cameraIndex >= 0)
 			{
-				int sleepTime = (1000.0f/_frameRate - 1000.0f*_timer.getElapsedTime());
-				if(sleepTime > 2)
+				if(_cameraIndex < (int)data.cameraModels().size())
 				{
-					uSleep(sleepTime-2);
-				}
+					// select one camera
+					int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+					UASSERT(!data.imageRaw().empty() &&
+							data.imageRaw().cols % data.cameraModels().size() == 0 &&
+							_cameraIndex*subImageWidth < data.imageRaw().cols);
+					data.setImageRaw(
+							cv::Mat(data.imageRaw(),
+							cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.imageRaw().rows)).clone());
 
-				// Add precision at the cost of a small overhead
-				while(_timer.getElapsedTime() < 1.0/double(_frameRate)-0.000001)
+					if(!data.depthOrRightRaw().empty())
+					{
+						UASSERT(data.depthOrRightRaw().cols % data.cameraModels().size() == 0 &&
+								subImageWidth == data.depthOrRightRaw().cols/(int)data.cameraModels().size() &&
+								_cameraIndex*subImageWidth < data.depthOrRightRaw().cols);
+						data.setDepthOrRightRaw(
+								cv::Mat(data.depthOrRightRaw(),
+								cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows)).clone());
+					}
+					CameraModel model = data.cameraModels().at(_cameraIndex);
+					data.setCameraModel(model);
+				}
+				else
 				{
-					//
+					UWARN("DBReader: Camera index %d doesn't exist! Camera models = %d.", _cameraIndex, (int)data.cameraModels().size());
 				}
-
-				double slept = _timer.getElapsedTime();
-				_timer.start();
-				UDEBUG("slept=%fs vs target=%fs", slept, 1.0/double(_frameRate));
 			}
+			data.setId(seq);
+			data.setStamp(stamp);
+			data.setGroundTruth(groundTruth);
+			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",
+					data.laserScanRaw().empty()?0:1,
+					data.imageRaw().empty()?0:1,
+					data.depthOrRightRaw().empty()?0:1,
+					data.userDataRaw().empty()?0:1);
 
-			if(!this->isKilled())
+			if(!_odometryIgnored)
 			{
-				data.uncompressData();
-				if(data.cameraModels().size() > 1 &&
-					_cameraIndex >= 0)
+				if(pose.isNull())
 				{
-					if(_cameraIndex < (int)data.cameraModels().size())
-					{
-						// select one camera
-						int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
-						UASSERT(!data.imageRaw().empty() &&
-								data.imageRaw().cols % data.cameraModels().size() == 0 &&
-								_cameraIndex*subImageWidth < data.imageRaw().cols);
-						data.setImageRaw(
-								cv::Mat(data.imageRaw(),
-								cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.imageRaw().rows)).clone());
-
-						if(!data.depthOrRightRaw().empty())
-						{
-							UASSERT(data.depthOrRightRaw().cols % data.cameraModels().size() == 0 &&
-									subImageWidth == data.depthOrRightRaw().cols/(int)data.cameraModels().size() &&
-									_cameraIndex*subImageWidth < data.depthOrRightRaw().cols);
-							data.setDepthOrRightRaw(
-									cv::Mat(data.depthOrRightRaw(),
-									cv::Rect(_cameraIndex*subImageWidth, 0, subImageWidth, data.depthOrRightRaw().rows)).clone());
-						}
-						CameraModel model = data.cameraModels().at(_cameraIndex);
-						data.setCameraModel(model);
-					}
-					else
-					{
-						UWARN("DBReader: Camera index %d doesn't exist! Camera models = %d.", _cameraIndex, (int)data.cameraModels().size());
-					}
+					UWARN("Reading the database: odometry is null! "
+						  "Please set \"Ignore odometry = true\" if there is "
+						  "no odometry in the database.");
 				}
-				data.setId(seq);
-				data.setStamp(stamp);
-				data.setGroundTruth(groundTruth);
-				UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",
-						data.laserScanRaw().empty()?0:1,
-						data.imageRaw().empty()?0:1,
-						data.depthOrRightRaw().empty()?0:1,
-						data.userDataRaw().empty()?0:1);
-
-				odom = OdometryEvent(data, pose, infMatrix.inv());
+				if(info)
+				{
+					info->odomPose = pose;
+					info->odomCovariance = infMatrix.inv();
+				}
 			}
 		}
 	}
@@ -420,7 +419,7 @@ OdometryEvent DBReader::getNextData()
 	{
 		UERROR("Not initialized...");
 	}
-	return odom;
+	return data;
 }
 
 } /* namespace rtabmap */

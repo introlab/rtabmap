@@ -30,11 +30,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
-#include <rtabmap/utilite/UThreadNode.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/core/Transform.h>
-#include <rtabmap/core/OdometryEvent.h>
+#include <rtabmap/core/Camera.h>
 
 #include <opencv2/core/core.hpp>
 
@@ -45,36 +43,45 @@ namespace rtabmap {
 
 class DBDriver;
 
-class RTABMAP_EXP DBReader : public UThreadNode, public UEventsSender {
+class RTABMAP_EXP DBReader : public Camera {
 public:
 	DBReader(const std::string & databasePath,
-			 float frameRate = 0.0f,
+			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
 			 bool odometryIgnored = false,
 			 bool ignoreGoalDelay = false,
 			 bool goalsIgnored = false,
+			 int startIndex = 0,
 			 int cameraIndex = -1);
 	DBReader(const std::list<std::string> & databasePaths,
-			 float frameRate = 0.0f,
+			 float frameRate = 0.0f, // -1 = use Database stamps, 0 = inf
 			 bool odometryIgnored = false,
 			 bool ignoreGoalDelay = false,
 			 bool goalsIgnored = false,
+			 int startIndex = 0,
 			 int cameraIndex = -1);
 	virtual ~DBReader();
 
-	bool init(int startIndex=0);
-	void setFrameRate(float frameRate);
-	OdometryEvent getNextData();
+	virtual bool init(
+			const std::string & calibrationFolder = ".",
+			const std::string & cameraName = "");
+
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+	bool isOdometryIgnored() const {return _odometryIgnored;}
 
 protected:
-	virtual void mainLoopBegin();
-	virtual void mainLoop();
+	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
+	SensorData getNextData(CameraInfo * info = 0);
 
 private:
 	std::list<std::string> _paths;
-	float _frameRate; // -1 = use Database stamps, 0 = inf
 	bool _odometryIgnored;
 	bool _ignoreGoalDelay;
 	bool _goalsIgnored;
+	int _startIndex;
 	int _cameraIndex;
 
 	DBDriver * _dbDriver;
@@ -83,6 +90,7 @@ private:
 	std::set<int>::iterator _currentId;
 	double _previousStamp;
 	int _previousMapID;
+	bool _calibrated;
 };
 
 } /* namespace rtabmap */

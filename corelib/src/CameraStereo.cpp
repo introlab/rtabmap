@@ -415,7 +415,7 @@ std::string CameraStereoDC1394::getSerial() const
 	return "";
 }
 
-SensorData CameraStereoDC1394::captureImage()
+SensorData CameraStereoDC1394::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_DC1394
@@ -610,7 +610,7 @@ struct ImageContainer
 } ;
 #endif
 
-SensorData CameraStereoFlyCapture2::captureImage()
+SensorData CameraStereoFlyCapture2::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_FLYCAPTURE2
@@ -887,7 +887,7 @@ std::string CameraStereoZed::getSerial() const
 	return "";
 }
 
-SensorData CameraStereoZed::captureImage()
+SensorData CameraStereoZed::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_ZED
@@ -1072,21 +1072,21 @@ std::string CameraStereoImages::getSerial() const
 	return stereoModel_.name();
 }
 
-SensorData CameraStereoImages::captureImage()
+SensorData CameraStereoImages::captureImage(CameraInfo * info)
 {
 	SensorData data;
 
 	SensorData left, right;
-	left = CameraImages::captureImage();
+	left = CameraImages::captureImage(info);
 	if(!left.imageRaw().empty())
 	{
 		if(camera2_)
 		{
-			right = camera2_->takeImage();
+			right = camera2_->takeImage(info);
 		}
 		else
 		{
-			right = this->takeImage();
+			right = this->takeImage(info);
 		}
 
 		if(!right.imageRaw().empty())
@@ -1235,7 +1235,7 @@ std::string CameraStereoVideo::getSerial() const
 	return cameraName_;
 }
 
-SensorData CameraStereoVideo::captureImage()
+SensorData CameraStereoVideo::captureImage(CameraInfo * info)
 {
 	SensorData data;
 

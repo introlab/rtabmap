@@ -3520,7 +3520,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->groupBox_sourceRGB->setVisible(_ui->comboBox_sourceType->currentIndex() == 2);
 	_ui->groupBox_sourceDatabase->setVisible(_ui->comboBox_sourceType->currentIndex() == 3);
 
-	_ui->groupBox_scanFromDepth->setVisible(_ui->comboBox_sourceType->currentIndex() <= 1);
+	_ui->groupBox_scanFromDepth->setVisible(_ui->comboBox_sourceType->currentIndex() <= 1 || _ui->comboBox_sourceType->currentIndex() == 3);
 
 	_ui->stackedWidget_rgbd->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 &&
 			(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD ||
@@ -3549,7 +3549,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo) ||
 			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB));
 
-	_ui->groupBox_scan->setVisible(_ui->comboBox_sourceType->currentIndex() != 3);
+	//_ui->groupBox_scan->setVisible(_ui->comboBox_sourceType->currentIndex() != 3);
 
 	_ui->groupBox_depthFromScan->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB);
 }
@@ -3891,30 +3891,6 @@ Transform PreferencesDialog::getLaserLocalTransform() const
 	return t;
 }
 
-QString PreferencesDialog::getSourceDatabasePath() const
-{
-	return _ui->source_database_lineEdit_path->text();
-}
-bool PreferencesDialog::getSourceDatabaseOdometryIgnored() const
-{
-	return _ui->source_checkBox_ignoreOdometry->isChecked();
-}
-bool PreferencesDialog::getSourceDatabaseGoalDelayIgnored() const
-{
-	return _ui->source_checkBox_ignoreGoalDelay->isChecked();
-}
-bool PreferencesDialog::getSourceDatabaseGoalsIgnored() const
-{
-	return _ui->source_checkBox_ignoreGoals->isChecked();
-}
-int PreferencesDialog::getSourceDatabaseStartPos() const
-{
-	return _ui->source_spinBox_databaseStartPos->value();
-}
-int PreferencesDialog::getSourceDatabaseCameraIndex() const
-{
-	return _ui->source_spinBox_database_cameraIndex->value();
-}
 bool PreferencesDialog::getSourceDatabaseStampsUsed() const
 {
 	return _ui->source_checkBox_useDbStamps->isChecked();
@@ -4193,8 +4169,13 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	}
 	else if(driver == kSrcDatabase)
 	{
-		UERROR("Call directly DBReader for kSrcDatabase.");
-		return 0;
+		camera = new DBReader(_ui->source_database_lineEdit_path->text().toStdString(),
+				_ui->source_checkBox_useDbStamps->isChecked()?-1:this->getGeneralInputRate(),
+				_ui->source_checkBox_ignoreOdometry->isChecked(),
+				_ui->source_checkBox_ignoreGoalDelay->isChecked(),
+				_ui->source_checkBox_ignoreGoals->isChecked(),
+				_ui->source_spinBox_databaseStartPos->value(),
+				_ui->source_spinBox_database_cameraIndex->value());
 	}
 	else
 	{
@@ -4376,30 +4357,11 @@ void PreferencesDialog::setSLAMMode(bool enabled)
 
 void PreferencesDialog::testOdometry()
 {
-	DBReader dbReader(_ui->source_database_lineEdit_path->text().toStdString(),
-					 _ui->source_checkBox_useDbStamps->isChecked()?-1:this->getGeneralInputRate(),
-					 true,
-					 true,
-					 true,
-					 _ui->source_spinBox_database_cameraIndex->value());
-	Camera * camera = 0;
-	if(this->getSourceType() == kSrcDatabase)
+	Camera * camera = this->createCamera();
+	if(!camera)
 	{
-		if(!dbReader.init())
-		{
-			QMessageBox::warning(this, tr("Camera viewer"), tr("Failed to initialize the database reader!"));
-			return;
-		}
+		return;
 	}
-	else
-	{
-		camera = this->createCamera();
-		if(!camera)
-		{
-			return;
-		}
-	}
-
 
 	ParametersMap parameters = this->getAllParameters();
 	Odometry * odometry = Odometry::create(parameters);
@@ -4420,9 +4382,42 @@ void PreferencesDialog::testOdometry()
 	odomViewer->resize(1280, 480+QPushButton().minimumHeight());
 	odomViewer->registerToEventsManager();
 
+	CameraThread cameraThread(camera, this->getAllParameters()); // take ownership of camera
+	cameraThread.setMirroringEnabled(isSourceMirroring());
+	cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
+	cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
+	cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
+	cameraThread.setScanFromDepth(
+			_ui->groupBox_scanFromDepth->isChecked(),
+			_ui->spinBox_cameraScanFromDepth_decimation->value(),
+			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
+			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
+			_ui->spinBox_cameraImages_scanNormalsK->value());
+	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
+	UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
+	UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
+
+	odomThread.start();
+	cameraThread.start();
+
+	odomViewer->exec();
+	delete odomViewer;
+
+	cameraThread.join(true);
+	odomThread.join(true);
+}
+
+void PreferencesDialog::testCamera()
+{
+	CameraViewer * window = new CameraViewer(this, this->getAllParameters());
+	window->setWindowTitle(tr("Camera viewer"));
+	window->resize(1280, 480+QPushButton().minimumHeight());
+	window->registerToEventsManager();
+
+	Camera * camera = this->createCamera();
 	if(camera)
 	{
-		CameraThread cameraThread(camera, this->getAllParameters()); // take ownership of camera
+		CameraThread cameraThread(camera, this->getAllParameters());
 		cameraThread.setMirroringEnabled(isSourceMirroring());
 		cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 		cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
@@ -4433,95 +4428,17 @@ void PreferencesDialog::testOdometry()
 				_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 				_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 				_ui->spinBox_cameraImages_scanNormalsK->value());
-		UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
-		UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
-		UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
+		UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
 
-		odomThread.start();
 		cameraThread.start();
-
-		odomViewer->exec();
-		delete odomViewer;
-
+		window->exec();
+		delete window;
 		cameraThread.join(true);
-		odomThread.join(true);
 	}
 	else
 	{
-		UEventsManager::createPipe(&dbReader, &odomThread, "CameraEvent");
-		UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
-		UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
-
-		odomThread.start();
-		dbReader.start();
-
-		odomViewer->exec();
-		delete odomViewer;
-
-		dbReader.join(true);
-		odomThread.join(true);
+		delete window;
 	}
-}
-
-void PreferencesDialog::testCamera()
-{
-	CameraViewer * window = new CameraViewer(this, this->getAllParameters());
-	window->setWindowTitle(tr("Camera viewer"));
-	window->resize(1280, 480+QPushButton().minimumHeight());
-	window->registerToEventsManager();
-
-	if(this->getSourceType() == kSrcDatabase)
-	{
-		DBReader dbReader(_ui->source_database_lineEdit_path->text().toStdString(),
-						  _ui->source_checkBox_useDbStamps->isChecked()?-1:this->getGeneralInputRate(),
-						 true,
-						 true,
-						 true,
-						 _ui->source_spinBox_database_cameraIndex->value());
-		if(!dbReader.init(_ui->source_images_spinBox_startPos->value()))
-		{
-			QMessageBox::warning(this, tr("Camera viewer"), tr("Failed to initialize the database reader!"));
-			delete window;
-		}
-		else
-		{
-			UEventsManager::createPipe(&dbReader, window, "CameraEvent");
-
-			dbReader.start();
-			window->exec();
-			delete window;
-			dbReader.join(true);
-		}
-	}
-	else
-	{
-		Camera * camera = this->createCamera();
-		if(camera)
-		{
-			CameraThread cameraThread(camera, this->getAllParameters());
-			cameraThread.setMirroringEnabled(isSourceMirroring());
-			cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
-			cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
-			cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
-			cameraThread.setScanFromDepth(
-					_ui->groupBox_scanFromDepth->isChecked(),
-					_ui->spinBox_cameraScanFromDepth_decimation->value(),
-					_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
-					_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-					_ui->spinBox_cameraImages_scanNormalsK->value());
-			UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
-
-			cameraThread.start();
-			window->exec();
-			delete window;
-			cameraThread.join(true);
-		}
-		else
-		{
-			delete window;
-		}
-	}
-
 }
 
 void PreferencesDialog::calibrate()

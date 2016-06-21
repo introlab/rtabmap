@@ -333,7 +333,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 			CameraEvent * e = (CameraEvent*)event;
 			if(e->getCode() == CameraEvent::kCodeData)
 			{
-				this->addData(OdometryEvent(e->data(), Transform(), 1, 1));
+				this->addData(OdometryEvent(e->data(), e->info().odomPose, e->info().odomCovariance));
 			}
 		}
 		else if(event->getClassName().compare("OdometryEvent") == 0)

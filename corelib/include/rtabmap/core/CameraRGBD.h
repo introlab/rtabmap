@@ -97,7 +97,7 @@ public:
     virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
     pcl::Grabber* interface_;
@@ -131,7 +131,7 @@ public:
 	virtual std::string getSerial() const {return "";} // unknown with OpenCV
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	bool _asus;
@@ -168,7 +168,7 @@ public:
 	void setOpenNI2StampsAndIDsUsed(bool used) {_openNI2StampsAndIDsUsed = used;}
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	openni::Device * _device;
@@ -204,7 +204,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	int deviceId_;
@@ -249,7 +249,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	int deviceId_;
@@ -291,7 +291,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	CameraImages cameraDepth_;

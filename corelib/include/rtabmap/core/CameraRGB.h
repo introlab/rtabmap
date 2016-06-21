@@ -119,7 +119,7 @@ public:
 	}
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	std::string _path;
@@ -194,7 +194,7 @@ public:
 	const std::string & getFilePath() const {return _filePath;}
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	// File type

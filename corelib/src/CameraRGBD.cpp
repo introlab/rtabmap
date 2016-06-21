@@ -203,7 +203,7 @@ std::string CameraOpenni::getSerial() const
 	return "";
 }
 
-SensorData CameraOpenni::captureImage()
+SensorData CameraOpenni::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef HAVE_OPENNI
@@ -317,7 +317,7 @@ bool CameraOpenNICV::isCalibrated() const
 	return true;
 }
 
-SensorData CameraOpenNICV::captureImage()
+SensorData CameraOpenNICV::captureImage(CameraInfo * info)
 {
 	SensorData data;
 	if(_capture.isOpened())
@@ -671,7 +671,7 @@ std::string CameraOpenNI2::getSerial() const
 	return "";
 }
 
-SensorData CameraOpenNI2::captureImage()
+SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_OPENNI2
@@ -1033,7 +1033,7 @@ std::string CameraFreenect::getSerial() const
 	return "";
 }
 
-SensorData CameraFreenect::captureImage()
+SensorData CameraFreenect::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_FREENECT
@@ -1307,7 +1307,7 @@ std::string CameraFreenect2::getSerial() const
 	return "";
 }
 
-SensorData CameraFreenect2::captureImage()
+SensorData CameraFreenect2::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_FREENECT2
@@ -1720,12 +1720,12 @@ std::string CameraRGBDImages::getSerial() const
 	return this->cameraModel().name();
 }
 
-SensorData CameraRGBDImages::captureImage()
+SensorData CameraRGBDImages::captureImage(CameraInfo * info)
 {
 	SensorData data;
 
 	SensorData rgb, depth;
-	rgb = CameraImages::captureImage();
+	rgb = CameraImages::captureImage(info);
 	if(!rgb.imageRaw().empty())
 	{
 		depth = cameraDepth_.takeImage();

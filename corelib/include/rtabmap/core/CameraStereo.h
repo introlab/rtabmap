@@ -70,7 +70,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	DC1394Device *device_;
@@ -95,7 +95,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	FlyCapture2::Camera * camera_;
@@ -134,7 +134,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	sl::zed::Camera * zed_;
@@ -177,7 +177,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	CameraImages * camera2_;
@@ -213,7 +213,7 @@ public:
 	virtual std::string getSerial() const;
 
 protected:
-	virtual SensorData captureImage();
+	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
 	cv::VideoCapture capture_;

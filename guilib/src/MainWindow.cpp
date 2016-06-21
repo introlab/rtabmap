@@ -126,7 +126,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui(0),
 	_state(kIdle),
 	_camera(0),
-	_dbReader(0),
 	_odomThread(0),
 	_preferencesDialog(0),
 	_aboutDialog(0),
@@ -670,12 +669,6 @@ void MainWindow::closeEvent(QCloseEvent* event)
 			UERROR("Camera must be already deleted here!");
 			delete _camera;
 			_camera = 0;
-		}
-		if(_dbReader)
-		{
-			UERROR("DBReader must be already deleted here!");
-			delete _dbReader;
-			_dbReader = 0;
 		}
 		if(_odomThread)
 		{
@@ -3131,12 +3124,16 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 
 		if(_camera)
 		{
-			_camera->setImageRate(_preferencesDialog->getGeneralInputRate());
+			if(dynamic_cast<DBReader*>(_camera->camera()) != 0)
+			{
+				_camera->setImageRate( _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
+			}
+			else
+			{
+				_camera->setImageRate(_preferencesDialog->getGeneralInputRate());
+			}
 		}
-		if(_dbReader)
-		{
-			_dbReader->setFrameRate( _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
-		}
+
 	}//This will update the statistics toolbox
 
 	if(flags & PreferencesDialog::kPanelGeneral)
@@ -3798,15 +3795,6 @@ void MainWindow::startDetection()
 		emit stateChanged(kInitialized);
 		return;
 	}
-	if(_dbReader != 0)
-	{
-		QMessageBox::warning(this,
-							 tr("RTAB-Map"),
-							 tr("A database reader is running, stop it first."));
-		UWARN("_dbReader is not null... it must be stopped first");
-		emit stateChanged(kInitialized);
-		return;
-	}
 
 	// Adjust pre-requirements
 	if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcUndef)
@@ -3820,56 +3808,58 @@ void MainWindow::startDetection()
 	}
 
 
-	if(_preferencesDialog->getSourceDriver() < PreferencesDialog::kSrcDatabase)
+	Camera * camera = _preferencesDialog->createCamera();
+	if(!camera)
 	{
-		Camera * camera = _preferencesDialog->createCamera();
-		if(!camera)
+		emit stateChanged(kInitialized);
+		return;
+	}
+
+	_camera = new CameraThread(camera, parameters);
+	_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
+	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
+	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
+	_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
+	_camera->setScanFromDepth(
+			_preferencesDialog->isSourceScanFromDepth(),
+			_preferencesDialog->getSourceScanFromDepthDecimation(),
+			_preferencesDialog->getSourceScanFromDepthMaxDepth(),
+			_preferencesDialog->getSourceScanVoxelSize(),
+			_preferencesDialog->getSourceScanNormalsK());
+
+	//Create odometry thread if rgbd slam
+	if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
+	{
+		// Require calibrated camera
+		if(!camera->isCalibrated())
 		{
+			UWARN("Camera is not calibrated!");
 			emit stateChanged(kInitialized);
+			delete _camera;
+			_camera = 0;
+
+			int button = QMessageBox::question(this,
+					tr("Camera is not calibrated!"),
+					tr("RTAB-Map cannot run with an uncalibrated camera. Do you want to calibrate the camera now?"),
+					 QMessageBox::Yes | QMessageBox::No);
+			if(button == QMessageBox::Yes)
+			{
+				QTimer::singleShot(0, _preferencesDialog, SLOT(calibrate()));
+			}
 			return;
 		}
-
-		_camera = new CameraThread(camera, parameters);
-		_camera->setMirroringEnabled(_preferencesDialog->isSourceMirroring());
-		_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
-		_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
-		_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
-		_camera->setScanFromDepth(
-				_preferencesDialog->isSourceScanFromDepth(),
-				_preferencesDialog->getSourceScanFromDepthDecimation(),
-				_preferencesDialog->getSourceScanFromDepthMaxDepth(),
-				_preferencesDialog->getSourceScanVoxelSize(),
-				_preferencesDialog->getSourceScanNormalsK());
-
-		//Create odometry thread if rgbd slam
-		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
+		else
 		{
-			// Require calibrated camera
-			if(!camera->isCalibrated())
+			if(_odomThread)
 			{
-				UWARN("Camera is not calibrated!");
-				emit stateChanged(kInitialized);
-				delete _camera;
-				_camera = 0;
-
-				int button = QMessageBox::question(this,
-						tr("Camera is not calibrated!"),
-						tr("RTAB-Map cannot run with an uncalibrated camera. Do you want to calibrate the camera now?"),
-						 QMessageBox::Yes | QMessageBox::No);
-				if(button == QMessageBox::Yes)
-				{
-					QTimer::singleShot(0, _preferencesDialog, SLOT(calibrate()));
-				}
-				return;
+				UERROR("OdomThread must be already deleted here?!");
+				delete _odomThread;
+				_odomThread = 0;
 			}
-			else
+
+			DBReader* dbReader = dynamic_cast<DBReader*>(camera);
+			if(dbReader == 0 || dbReader->isOdometryIgnored())
 			{
-				if(_odomThread)
-				{
-					UERROR("OdomThread must be already deleted here?!");
-					delete _odomThread;
-					_odomThread = 0;
-				}
 				Odometry * odom = Odometry::create(parameters);
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
@@ -3880,65 +3870,10 @@ void MainWindow::startDetection()
 			}
 		}
 	}
-	else if(_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcDatabase)
+
+	if(_dataRecorder && _camera)
 	{
-		_dbReader = new DBReader(_preferencesDialog->getSourceDatabasePath().toStdString(),
-								 _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate(),
-								 _preferencesDialog->getSourceDatabaseOdometryIgnored(),
-								 _preferencesDialog->getSourceDatabaseGoalDelayIgnored(),
-								 _preferencesDialog->getSourceDatabaseGoalsIgnored(),
-								 _preferencesDialog->getSourceDatabaseCameraIndex());
-
-		//Create odometry thread if rgdb slam
-		if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()) &&
-		   _preferencesDialog->getSourceDatabaseOdometryIgnored())
-		{
-			if(_odomThread)
-			{
-				UERROR("OdomThread must be already deleted here?!");
-				delete _odomThread;
-			}
-			Odometry * odom = Odometry::create(parameters);
-			_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
-
-			UEventsManager::addHandler(_odomThread);
-			_odomThread->start();
-		}
-
-		if(!_dbReader->init(_preferencesDialog->getSourceDatabaseStartPos()))
-		{
-			ULOGGER_WARN("init DBReader failed... ");
-			QMessageBox::warning(this,
-								   tr("RTAB-Map"),
-								   tr("Database reader initialization failed..."));
-			emit stateChanged(kInitialized);
-			delete _dbReader;
-			_dbReader = 0;
-			if(_odomThread)
-			{
-				delete _odomThread;
-				_odomThread = 0;
-			}
-			return;
-		}
-
-		if(_odomThread)
-		{
-			UEventsManager::createPipe(_dbReader, _odomThread, "CameraEvent");
-			UEventsManager::createPipe(_dbReader, this, "CameraEvent");
-		}
-	}
-
-	if(_dataRecorder)
-	{
-		if(_camera)
-		{
-			UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
-		}
-		else if(_dbReader)
-		{
-			UEventsManager::createPipe(_dbReader, _dataRecorder, "CameraEvent");
-		}
+		UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
 	}
 
 	_lastOdomPose.setNull();
@@ -3964,7 +3899,7 @@ void MainWindow::startDetection()
 // Could not be in the main thread here! (see handleEvents())
 void MainWindow::pauseDetection()
 {
-	if(_camera || _dbReader)
+	if(_camera)
 	{
 		if(_state == kPaused && (QApplication::keyboardModifiers() & Qt::ShiftModifier))
 		{
@@ -3998,14 +3933,13 @@ void MainWindow::pauseDetection()
 
 void MainWindow::stopDetection()
 {
-	if(!_camera && !_dbReader && !_odomThread)
+	if(!_camera && !_odomThread)
 	{
 		return;
 	}
 
 	if(_state == kDetecting &&
-			( (_camera && _camera->isRunning()) ||
-			  (_dbReader && _dbReader->isRunning()) ) )
+	   (_camera && _camera->isRunning()) )
 	{
 		QMessageBox::StandardButton button = QMessageBox::question(this, tr("Stopping process..."), tr("Are you sure you want to stop the process?"), QMessageBox::Yes|QMessageBox::No, QMessageBox::No);
 
@@ -4022,11 +3956,6 @@ void MainWindow::stopDetection()
 		_camera->join(true);
 	}
 
-	if(_dbReader)
-	{
-		_dbReader->join(true);
-	}
-
 	if(_odomThread)
 	{
 		_ui->actionReset_Odometry->setEnabled(false);
@@ -4038,11 +3967,6 @@ void MainWindow::stopDetection()
 	{
 		delete _camera;
 		_camera = 0;
-	}
-	if(_dbReader)
-	{
-		delete _dbReader;
-		_dbReader = 0;
 	}
 	if(_odomThread)
 	{
@@ -5923,11 +5847,6 @@ void MainWindow::changeState(MainWindow::State newState)
 		{
 			_camera->start();
 		}
-
-		if(_dbReader)
-		{
-			_dbReader->start();
-		}
 		break;
 
 	case kPaused:
@@ -5959,11 +5878,6 @@ void MainWindow::changeState(MainWindow::State newState)
 			{
 				_camera->start();
 			}
-
-			if(_dbReader)
-			{
-				_dbReader->start();
-			}
 		}
 		else if(_state == kDetecting)
 		{
@@ -5992,11 +5906,6 @@ void MainWindow::changeState(MainWindow::State newState)
 			if(_camera)
 			{
 				_camera->join(true);
-			}
-
-			if(_dbReader)
-			{
-				_dbReader->join(true);
 			}
 		}
 		break;

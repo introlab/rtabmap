@@ -132,7 +132,6 @@ int main(int argc, char * argv[])
 	}
 
 	rtabmap::Camera * camera = 0;
-	rtabmap::DBReader * dbReader = 0;
 
 	if(!path.empty())
 	{
@@ -140,7 +139,7 @@ int main(int argc, char * argv[])
 		{
 			if(UFile::getExtension(path).compare("db") == 0)
 			{
-				dbReader = new rtabmap::DBReader(path, rate);
+				camera = new rtabmap::DBReader(path, rate);
 			}
 			else
 			{
@@ -176,18 +175,8 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	if(dbReader)
-	{
-		if(!dbReader->init())
-		{
-			delete dbReader;
-			UERROR("Cannot initialize the camera.");
-			return -1;
-		}
-	}
-
 	cv::Mat rgb;
-	rgb = camera?camera->takeImage().imageRaw():dbReader->getNextData().data().imageRaw();
+	rgb = camera->takeImage().imageRaw();
 	cv::namedWindow("Video", CV_WINDOW_AUTOSIZE); // create window
 	while(!rgb.empty())
 	{
@@ -197,16 +186,12 @@ int main(int argc, char * argv[])
 		if(c == 27)
 			break; // if ESC, break and quit
 
-		rgb = camera?camera->takeImage().imageRaw():dbReader->getNextData().data().imageRaw();
+		rgb = camera->takeImage().imageRaw();
 	}
 	cv::destroyWindow("Video");
 	if(camera)
 	{
 		delete camera;
-	}
-	if(dbReader)
-	{
-		delete dbReader;
 	}
 	return 0;
 }

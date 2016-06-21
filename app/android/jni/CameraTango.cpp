@@ -464,7 +464,7 @@ rtabmap::Transform CameraTango::getPoseAtTimestamp(double timestamp, bool inOpen
 	return pose;
 }
 
-SensorData CameraTango::captureImage()
+SensorData CameraTango::captureImage(CameraInfo * info)
 {
 	LOGI("Capturing image...");
 

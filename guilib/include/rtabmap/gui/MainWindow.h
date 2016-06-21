@@ -47,9 +47,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 class CameraThread;
-class DBReader;
-class CameraOpenni;
-class CameraFreenect;
 class OdometryThread;
 class CloudViewer;
 class LoopClosureViewer;
@@ -254,7 +251,6 @@ private:
 
 	State _state;
 	rtabmap::CameraThread * _camera;
-	rtabmap::DBReader * _dbReader;
 	rtabmap::OdometryThread * _odomThread;
 
 	//Dialogs

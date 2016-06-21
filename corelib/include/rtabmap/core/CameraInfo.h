@@ -43,7 +43,8 @@ public:
 		timeDisparity(0.0f),
 		timeMirroring(0.0f),
 		timeImageDecimation(0.0f),
-		timeScanFromDepth(0.0f)
+		timeScanFromDepth(0.0f),
+		odomCovariance(cv::Mat::eye(6,6,CV_64FC1))
 	{
 	}
 	virtual ~CameraInfo() {}
@@ -55,6 +56,8 @@ public:
 	float timeMirroring;
 	float timeImageDecimation;
 	float timeScanFromDepth;
+	Transform odomPose;
+	cv::Mat odomCovariance;
 };
 
 } // namespace rtabmap

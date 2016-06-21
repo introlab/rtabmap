@@ -203,13 +203,7 @@ public:
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
 
-	QString getSourceDatabasePath() const; //Database group
-	bool getSourceDatabaseOdometryIgnored() const; //Database group
-	bool getSourceDatabaseGoalDelayIgnored() const; //Database group
-	bool getSourceDatabaseGoalsIgnored() const; //Database group
-	int getSourceDatabaseStartPos() const; //Database group
-	bool getSourceDatabaseStampsUsed() const;//Database group
-	int getSourceDatabaseCameraIndex() const; //Database group
+	bool getSourceDatabaseStampsUsed() const;
 	bool isSourceRGBDColorOnly() const;
 	int getSourceImageDecimation() const;
 	bool isSourceStereoDepthGenerated() const;

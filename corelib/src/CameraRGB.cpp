@@ -438,7 +438,7 @@ std::vector<std::string> CameraImages::filenames() const
 	return std::vector<std::string>();
 }
 
-SensorData CameraImages::captureImage()
+SensorData CameraImages::captureImage(CameraInfo * info)
 {
 	if(syncImageRateWithStamps_ && _captureDelay>0.0)
 	{
@@ -801,7 +801,7 @@ std::string CameraVideo::getSerial() const
 	return _guid;
 }
 
-SensorData CameraVideo::captureImage()
+SensorData CameraVideo::captureImage(CameraInfo * info)
 {
 	cv::Mat img;
 	if(_capture.isOpened())

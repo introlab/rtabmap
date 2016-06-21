@@ -223,131 +223,113 @@ int main (int argc, char * argv[])
 	odomViewer.setWindowTitle("Odometry view");
 	odomViewer.resize(1280, 480+QPushButton().minimumHeight());
 
+	rtabmap::Camera * camera = 0;
+	rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+
 	if(inputDatabase.size())
 	{
-		rtabmap::DBReader camera(inputDatabase, rate, true);
-		if(camera.init())
+		camera =  new rtabmap::DBReader(inputDatabase, rate, true);
+	}
+	else if(driver == 0)
+	{
+		camera = new rtabmap::CameraOpenni("", rate, t);
+	}
+	else if(driver == 1)
+	{
+		if(!rtabmap::CameraOpenNI2::available())
 		{
+			UERROR("Not built with OpenNI2 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOpenNI2("", rate, t);
+	}
+	else if(driver == 2)
+	{
+		if(!rtabmap::CameraFreenect::available())
+		{
+			UERROR("Not built with Freenect support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraFreenect(0, rate, t);
+	}
+	else if(driver == 3)
+	{
+		if(!rtabmap::CameraOpenNICV::available())
+		{
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOpenNICV(false, rate, t);
+	}
+	else if(driver == 4)
+	{
+		if(!rtabmap::CameraOpenNICV::available())
+		{
+			UERROR("Not built with OpenNI from OpenCV support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraOpenNICV(true, rate, t);
+	}
+	else if(driver == 5)
+	{
+		if(!rtabmap::CameraFreenect2::available())
+		{
+			UERROR("Not built with Freenect2 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate, t);
+	}
+	else if(driver == 6)
+	{
+		if(!rtabmap::CameraStereoDC1394::available())
+		{
+			UERROR("Not built with dc1394 support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoDC1394(rate, t);
+	}
+	else if(driver == 7)
+	{
+		if(!rtabmap::CameraStereoFlyCapture2::available())
+		{
+			UERROR("Not built with FlyCapture2/Triclops support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraStereoFlyCapture2(rate, t);
+	}
+	else
+	{
+		UFATAL("Camera driver (%d) not found!", driver);
+	}
+
+	//pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
+
+	if(camera->init())
+	{
+		if(camera->isCalibrated())
+		{
+			rtabmap::CameraThread cameraThread(camera, parameters);
+
+			cameraThread.setScanFromDepth(icp, decimation<1?1:decimation, maxDepth, voxelSize, normalsK);
+
 			odomThread.start();
+			cameraThread.start();
 
-			if(sec > 0)
-			{
-				uSleep(sec*1000);
-			}
+			odomViewer.exec();
 
-			camera.start();
-
-			app.exec();
-
-			camera.join(true);
+			cameraThread.join(true);
 			odomThread.join(true);
+		}
+		else
+		{
+			printf("The camera is not calibrated! You should calibrate the camera first.\n");
+			delete camera;
 		}
 	}
 	else
 	{
-		rtabmap::Camera * camera = 0;
-		rtabmap::Transform t=rtabmap::Transform(0,0,1,0, -1,0,0,0, 0,-1,0,0);
-		if(driver == 0)
-		{
-			camera = new rtabmap::CameraOpenni("", rate, t);
-		}
-		else if(driver == 1)
-		{
-			if(!rtabmap::CameraOpenNI2::available())
-			{
-				UERROR("Not built with OpenNI2 support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraOpenNI2("", rate, t);
-		}
-		else if(driver == 2)
-		{
-			if(!rtabmap::CameraFreenect::available())
-			{
-				UERROR("Not built with Freenect support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraFreenect(0, rate, t);
-		}
-		else if(driver == 3)
-		{
-			if(!rtabmap::CameraOpenNICV::available())
-			{
-				UERROR("Not built with OpenNI from OpenCV support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraOpenNICV(false, rate, t);
-		}
-		else if(driver == 4)
-		{
-			if(!rtabmap::CameraOpenNICV::available())
-			{
-				UERROR("Not built with OpenNI from OpenCV support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraOpenNICV(true, rate, t);
-		}
-		else if(driver == 5)
-		{
-			if(!rtabmap::CameraFreenect2::available())
-			{
-				UERROR("Not built with Freenect2 support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraFreenect2(0, rtabmap::CameraFreenect2::kTypeColor2DepthSD, rate, t);
-		}
-		else if(driver == 6)
-		{
-			if(!rtabmap::CameraStereoDC1394::available())
-			{
-				UERROR("Not built with dc1394 support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraStereoDC1394(rate, t);
-		}
-		else if(driver == 7)
-		{
-			if(!rtabmap::CameraStereoFlyCapture2::available())
-			{
-				UERROR("Not built with FlyCapture2/Triclops support...");
-				exit(-1);
-			}
-			camera = new rtabmap::CameraStereoFlyCapture2(rate, t);
-		}
-		else
-		{
-			UFATAL("Camera driver (%d) not found!", driver);
-		}
-
-		//pcl::console::setVerbosityLevel(pcl::console::L_DEBUG);
-
-		if(camera->init())
-		{
-			if(camera->isCalibrated())
-			{
-				rtabmap::CameraThread cameraThread(camera, parameters);
-
-				cameraThread.setScanFromDepth(icp, decimation<1?1:decimation, maxDepth, voxelSize, normalsK);
-
-				odomThread.start();
-				cameraThread.start();
-
-				odomViewer.exec();
-
-				cameraThread.join(true);
-				odomThread.join(true);
-			}
-			else
-			{
-				printf("The camera is not calibrated! You should calibrate the camera first.\n");
-				delete camera;
-			}
-		}
-		else
-		{
-			printf("Failed to initialize the camera! Please select another driver (see \"--help\").\n");
-			delete camera;
-		}
+		printf("Failed to initialize the camera! Please select another driver (see \"--help\").\n");
+		delete camera;
 	}
 
 	return 0;
