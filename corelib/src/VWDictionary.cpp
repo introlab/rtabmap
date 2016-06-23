@@ -542,7 +542,7 @@ void VWDictionary::setNNStrategy(NNStrategy strategy)
 		}
 #endif
 #else
-#if HAVE_OPENCV_CUDAFEATURES2D
+#ifdef HAVE_OPENCV_CUDAFEATURES2D
 		if(strategy == kNNBruteForceGPU && !cv::cuda::getCudaEnabledDeviceCount())
 		{
 			UERROR("Nearest neighobr strategy \"kNNBruteForceGPU\" chosen but no CUDA devices found! Doing \"kNNBruteForce\" instead.");

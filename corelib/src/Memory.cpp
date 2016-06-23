@@ -2125,31 +2125,12 @@ Transform Memory::computeTransform(
 
 	// compute transform fromId -> toId
 	std::vector<int> inliersV;
-	if(_reextractLoopClosureFeatures || (fromS.getWords().size() && toS.getWords().size()))
+	if(_reextractLoopClosureFeatures ||
+		(fromS.getWords().size() && toS.getWords().size()) ||
+		(!guess.isNull() && !_registrationPipeline->isImageRequired()))
 	{
 		Signature tmpFrom = fromS;
 		Signature tmpTo = toS;
-
-		// make a guess fast with known correspondences (if there are)
-		RegistrationVis regVis(parameters_);
-		if(tmpFrom.getWords().size() &&
-			tmpTo.getWords().size() &&
-			tmpFrom.getWords3().size() &&
-			tmpTo.getWords3().size())
-		{
-			UDEBUG("");
-			// Remove descriptors, this will avoid recomputation of the correspondences in regVis
-			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
-			Transform t = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
-			// set back descriptors
-			tmpFrom.setWordsDescriptors(fromS.getWordsDescriptors());
-			tmpTo.setWordsDescriptors(toS.getWordsDescriptors());
-			if(!t.isNull())
-			{
-				guess = t;
-			}
-		}
 
 		if(_reextractLoopClosureFeatures)
 		{
@@ -2168,6 +2149,7 @@ Transform Memory::computeTransform(
 		{
 			UDEBUG("");
 			// no visual in the pipeline, make visual registration for guess
+			RegistrationVis regVis(parameters_);
 			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
 			if(!guess.isNull())
 			{
