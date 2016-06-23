@@ -1834,7 +1834,8 @@ bool Rtabmap::process(
 							 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 						{
 							RegistrationInfo info;
-							Transform transform = _memory->computeTransform(signature->id(), nearestId, Transform(), &info);
+							Transform guess = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(nearestId);
+							Transform transform = _memory->computeTransform(signature->id(), nearestId, guess, &info);
 							if(!transform.isNull())
 							{
 								if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
