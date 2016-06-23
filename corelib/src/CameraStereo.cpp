@@ -766,9 +766,9 @@ CameraStereoZed::CameraStereoZed(
 	confidenceThr_(confidenceThr)
 {
 #ifdef RTABMAP_ZED
-	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <=sl::zed::VGA);
-	UASSERT(quality_ >= sl::zed::NONE && quality_ <=sl::zed::QUALITY);
-	UASSERT(sensingMode_ >= sl::zed::FULL && sensingMode_ <=sl::zed::RAW);
+	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <sl::zed::LAST_RESOLUTION);
+	UASSERT(quality_ >= sl::zed::NONE && quality_ <sl::zed::LAST_MODE);
+	UASSERT(sensingMode_ >= sl::zed::FILL && sensingMode_ <sl::zed::LAST_SENSING_MODE);
 	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
 #endif
 }
@@ -791,9 +791,9 @@ CameraStereoZed::CameraStereoZed(
 	confidenceThr_(confidenceThr)
 {
 #ifdef RTABMAP_ZED
-	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <=sl::zed::VGA);
-	UASSERT(quality_ >= sl::zed::NONE && quality_ <=sl::zed::QUALITY);
-	UASSERT(sensingMode_ >= sl::zed::FULL && sensingMode_ <=sl::zed::RAW);
+	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <sl::zed::LAST_RESOLUTION);
+	UASSERT(quality_ >= sl::zed::NONE && quality_ <sl::zed::LAST_MODE);
+	UASSERT(sensingMode_ >= sl::zed::FILL && sensingMode_ <sl::zed::LAST_SENSING_MODE);
 	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
 #endif
 }
@@ -835,11 +835,17 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		}
 	}
 
-	//init WITH self-calibration (- last parameter to false -)
-	sl::zed::ERRCODE err = zed_->init(
-			(sl::zed::MODE)quality_,
-			-1, // search for any GPU
-			true, false, false);
+	//init WITH self-calibration
+	sl::zed::InitParams parameters(
+		(sl::zed::MODE)quality_, //MODE
+		sl::zed::METER,  //UNIT
+		sl::zed::IMAGE,  //COORDINATE_SYSTEM
+		false,  // verbose
+		-1,     //device
+		-1.,    //minDist
+		false,  //disableSelfCalib
+		false); //vflip
+	sl::zed::ERRCODE err = zed_->init(parameters);
 
 	// Quit if an error occurred
 	if (err != sl::zed::SUCCESS)
@@ -860,7 +866,7 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		stereoParams->LeftCam.fy, 
 		stereoParams->LeftCam.cx, 
 		stereoParams->LeftCam.cy, 
-		stereoParams->baseline/1000.0f,
+		stereoParams->baseline,
 		this->getLocalTransform(),
 		cv::Size(res.width, res.height));
 
@@ -913,7 +919,6 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				// get depth image
 				cv::Mat depth;
 				slMat2cvMat(zed_->retrieveMeasure(sl::zed::MEASURE::DEPTH)).copyTo(depth);
-				depth /= 1000.0; // to meters
 
 				data = SensorData(left, depth, stereoModel_.left(), this->getNextSeqID(), UTimer::now());
 			}
