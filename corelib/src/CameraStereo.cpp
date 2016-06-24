@@ -951,7 +951,7 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				int trackingConfidence = zed_->getTrackingConfidence();
 				if (trackingConfidence)
 				{
-					sl::zed::TRACKING_STATE track_state = zed_->getPosition(path);
+					zed_->getPosition(path);
 					info->odomPose = Transform::fromEigen4f(path);
 					if (!info->odomPose.isNull())
 					{
