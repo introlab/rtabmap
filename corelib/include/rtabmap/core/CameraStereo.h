@@ -118,6 +118,7 @@ public:
 			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
 			int sensingMode = 1,// 0=FULL, 1=RAW
 			int confidenceThr = 100,
+			bool computeOdometry = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
 	CameraStereoZed(
@@ -125,6 +126,7 @@ public:
 			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
 			int sensingMode = 1,// 0=FULL, 1=RAW
 			int confidenceThr = 100,
+			bool computeOdometry = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoZed();
@@ -132,6 +134,7 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+	virtual bool odomProvided() const { return computeOdometry_; }
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -146,6 +149,8 @@ private:
 	int quality_;
 	int sensingMode_;
 	int confidenceThr_;
+	bool computeOdometry_;
+	bool lost_;
 };
 
 /////////////////////////

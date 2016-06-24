@@ -761,6 +761,25 @@ void MainWindow::handleEvent(UEvent* anEvent)
 		else
 		{
 			emit cameraInfoReceived(cameraEvent->info());
+			if (_odomThread == 0 && _camera->camera()->odomProvided() && _preferencesDialog->isRGBDMode())
+			{
+				if (!_processingOdometry && !_processingStatistics)
+				{
+					_processingOdometry = true; // if we receive too many odometry events!
+					OdometryEvent tmp(cameraEvent->data(), cameraEvent->info().odomPose, cameraEvent->info().odomCovariance);
+					emit odometryReceived(tmp, false);
+				}
+				else
+				{
+					// we receive too many odometry events! just send without data
+					SensorData data(cv::Mat(), cameraEvent->data().id(), cameraEvent->data().stamp());
+					data.setCameraModels(cameraEvent->data().cameraModels());
+					data.setStereoCameraModel(cameraEvent->data().stereoCameraModel());
+					data.setGroundTruth(cameraEvent->data().groundTruth());
+					OdometryEvent tmp(data, cameraEvent->info().odomPose, cameraEvent->info().odomCovariance);
+					emit odometryReceived(tmp, true);
+				}
+			}
 		}
 	}
 	else if(anEvent->getClassName().compare("OdometryEvent") == 0)
@@ -3861,8 +3880,7 @@ void MainWindow::startDetection()
 				_odomThread = 0;
 			}
 
-			DBReader* dbReader = dynamic_cast<DBReader*>(camera);
-			if(dbReader == 0 || dbReader->isOdometryIgnored())
+			if(!camera->odomProvided())
 			{
 				Odometry * odom = Odometry::create(parameters);
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());

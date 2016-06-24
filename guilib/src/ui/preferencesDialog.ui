@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-360</y>
-            <width>686</width>
-            <height>2023</height>
+            <y>0</y>
+            <width>685</width>
+            <height>1826</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -2316,7 +2316,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>3</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3104,7 +3104,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </widget>
                              </item>
                              <item row="1" column="2">
-                              <widget class="QLabel" name="label_247">
+                              <widget class="QLabel" name="label_stereo_depthGenerated">
                                <property name="text">
                                 <string>Generate disparity image and convert it to depth. The resulting output is a RGB-D image instead of stereo images. Dense disparity parameters can found under StereoBM tab.</string>
                                </property>
@@ -3340,37 +3340,31 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>Zed sdk</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_37" columnstretch="0,1">
-                                  <item row="2" column="0">
-                                   <widget class="QComboBox" name="comboBox_stereoZed_sensingMode">
-                                    <item>
-                                     <property name="text">
-                                      <string>FILL</string>
-                                     </property>
-                                    </item>
-                                    <item>
-                                     <property name="text">
-                                      <string>STANDARD</string>
-                                     </property>
-                                    </item>
-                                   </widget>
+                                  <item row="6" column="0">
+                                   <spacer name="verticalSpacer_54">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>13</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
                                   </item>
-                                  <item row="4" column="0">
-                                   <layout class="QHBoxLayout" name="horizontalLayout_8">
-                                    <item>
-                                     <widget class="QToolButton" name="toolButton_zedSvoPath">
-                                      <property name="text">
-                                       <string>...</string>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                    <item>
-                                     <widget class="QLineEdit" name="lineEdit_zedSvoPath">
-                                      <property name="text">
-                                       <string/>
-                                      </property>
-                                     </widget>
-                                    </item>
-                                   </layout>
+                                  <item row="5" column="1">
+                                   <widget class="QLabel" name="label_305">
+                                    <property name="text">
+                                     <string>Path to a *.SVO file.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
                                   </item>
                                   <item row="0" column="0">
                                    <widget class="QComboBox" name="comboBox_stereoZed_resolution">
@@ -3396,10 +3390,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </widget>
                                   </item>
-                                  <item row="0" column="1">
-                                   <widget class="QLabel" name="label_274">
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_291">
                                     <property name="text">
-                                     <string>Resolution. Not used when a SVO file is used.</string>
+                                     <string>Sensing mode.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
@@ -3407,6 +3401,20 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     <property name="textInteractionFlags">
                                      <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QComboBox" name="comboBox_stereoZed_sensingMode">
+                                    <item>
+                                     <property name="text">
+                                      <string>FILL</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>STANDARD</string>
+                                     </property>
+                                    </item>
                                    </widget>
                                   </item>
                                   <item row="1" column="0">
@@ -3433,58 +3441,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </item>
                                    </widget>
                                   </item>
-                                  <item row="1" column="1">
-                                   <widget class="QLabel" name="label_290">
-                                    <property name="text">
-                                     <string>Quality. If NONE, the disparity is not computed on the GPU.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="2" column="1">
-                                   <widget class="QLabel" name="label_291">
-                                    <property name="text">
-                                     <string>Sensing mode.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="4" column="1">
-                                   <widget class="QLabel" name="label_305">
-                                    <property name="text">
-                                     <string>Path to a *.SVO file.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="5" column="0">
-                                   <spacer name="verticalSpacer_54">
-                                    <property name="orientation">
-                                     <enum>Qt::Vertical</enum>
-                                    </property>
-                                    <property name="sizeHint" stdset="0">
-                                     <size>
-                                      <width>20</width>
-                                      <height>13</height>
-                                     </size>
-                                    </property>
-                                   </spacer>
-                                  </item>
                                   <item row="3" column="1">
                                    <widget class="QLabel" name="label_306">
                                     <property name="text">
@@ -3498,10 +3454,74 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_274">
+                                    <property name="text">
+                                     <string>Resolution. Not used when a SVO file is used.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="5" column="0">
+                                   <layout class="QHBoxLayout" name="horizontalLayout_8">
+                                    <item>
+                                     <widget class="QToolButton" name="toolButton_zedSvoPath">
+                                      <property name="text">
+                                       <string>...</string>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                    <item>
+                                     <widget class="QLineEdit" name="lineEdit_zedSvoPath">
+                                      <property name="text">
+                                       <string/>
+                                      </property>
+                                     </widget>
+                                    </item>
+                                   </layout>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLabel" name="label_290">
+                                    <property name="text">
+                                     <string>Quality. If NONE, the disparity is not computed on the GPU.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
                                   <item row="3" column="0">
                                    <widget class="QSpinBox" name="spinBox_stereoZed_confidenceThr">
                                     <property name="maximum">
                                      <number>100</number>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="1">
+                                   <widget class="QLabel" name="label_316">
+                                    <property name="text">
+                                     <string>Use ZED visual odometry.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="4" column="0">
+                                   <widget class="QCheckBox" name="checkbox_stereoZed_odom">
+                                    <property name="text">
+                                     <string/>
                                     </property>
                                    </widget>
                                   </item>

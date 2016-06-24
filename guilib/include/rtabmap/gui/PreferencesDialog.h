@@ -224,6 +224,7 @@ public:
 	float getTimeLimit() const;
 	float getDetectionRate() const;
 	bool isSLAMMode() const;
+	bool isRGBDMode() const;
 
 	//specific
 	bool isStatisticsPublished() const;
@@ -270,6 +271,7 @@ private slots:
 	void updatePredictionPlot();
 	void updateKpROI();
 	void updateG2oVisibility();
+	void updateStereoDisparityVisibility();
 	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();

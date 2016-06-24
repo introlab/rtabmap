@@ -56,6 +56,7 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "") = 0;
 	virtual bool isCalibrated() const = 0;
 	virtual std::string getSerial() const = 0;
+	virtual bool odomProvided() const { return false; }
 
 	//getters
 	float getImageRate() const {return _imageRate;}

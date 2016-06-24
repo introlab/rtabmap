@@ -70,6 +70,7 @@ public:
 	void close(bool databaseSaved = true);
 
 	const std::string & getWorkingDir() const {return _wDir;}
+	bool isRGBDMode() const { return _rgbdSlamMode; }
 	int getLoopClosureId() const {return _loopClosureHypothesis.first;}
 	float getLoopClosureValue() const {return _loopClosureHypothesis.second;}
 	int getHighestHypothesisId() const {return _highestHypothesis.first;}

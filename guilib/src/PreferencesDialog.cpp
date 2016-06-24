@@ -485,8 +485,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->comboBox_stereoZed_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_stereoZed_quality, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_stereoZed_quality, SIGNAL(currentIndexChanged(int)), this, SLOT(updateStereoDisparityVisibility()));
+	connect(_ui->comboBox_cameraStereo, SIGNAL(currentIndexChanged(int)), this, SLOT(updateStereoDisparityVisibility()));
 	connect(_ui->comboBox_stereoZed_sensingMode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoZed_confidenceThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_stereoZed_odom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_zedSvoPath, SIGNAL(clicked()), this, SLOT(selectSourceSvoPath()));
 	connect(_ui->lineEdit_zedSvoPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
@@ -1312,6 +1315,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
 		_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(1);
 		_ui->spinBox_stereoZed_confidenceThr->setValue(100);
+		_ui->checkbox_stereoZed_odom->setChecked(false);
 		_ui->lineEdit_zedSvoPath->clear();
 
 		_ui->checkBox_cameraImages_timestamps->setChecked(false);
@@ -1654,6 +1658,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_stereoZed_quality->setCurrentIndex(settings.value("quality", _ui->comboBox_stereoZed_quality->currentIndex()).toInt());
 	_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(settings.value("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex()).toInt());
 	_ui->spinBox_stereoZed_confidenceThr->setValue(settings.value("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value()).toInt());
+	_ui->checkbox_stereoZed_odom->setChecked(settings.value("odom", _ui->checkbox_stereoZed_odom->isChecked()).toBool());
 	_ui->lineEdit_zedSvoPath->setText(settings.value("svo_path", _ui->lineEdit_zedSvoPath->text()).toString());
 	settings.endGroup(); // StereoZed
 	
@@ -2062,6 +2067,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("quality", _ui->comboBox_stereoZed_quality->currentIndex());
 	settings.setValue("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex());
 	settings.setValue("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value());
+	settings.setValue("odom", _ui->checkbox_stereoZed_odom->isChecked());
 	settings.setValue("svo_path", _ui->lineEdit_zedSvoPath->text());
 	settings.endGroup(); // StereoZed
 
@@ -3447,6 +3453,17 @@ void PreferencesDialog::updateG2oVisibility()
 	_ui->groupBox_g2o->setVisible(_ui->graphOptimization_type->currentIndex() == 1);
 }
 
+void PreferencesDialog::updateStereoDisparityVisibility()
+{
+	Src driver = this->getSourceDriver();
+	_ui->checkbox_stereo_depthGenerated->setVisible(
+		driver != PreferencesDialog::kSrcStereoZed ||
+		_ui->comboBox_stereoZed_quality->currentIndex() == 0);
+	_ui->label_stereo_depthGenerated->setVisible(
+		driver != PreferencesDialog::kSrcStereoZed ||
+		_ui->comboBox_stereoZed_quality->currentIndex() == 0);
+}
+
 void PreferencesDialog::useOdomFeatures()
 {
 	if(this->isVisible() && _ui->checkBox_useOdomFeatures->isChecked())
@@ -4105,6 +4122,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 				_ui->comboBox_stereoZed_quality->currentIndex(),
 				_ui->comboBox_stereoZed_sensingMode->currentIndex(),
 				_ui->spinBox_stereoZed_confidenceThr->value(),
+				_ui->checkbox_stereoZed_odom->isChecked(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
@@ -4116,6 +4134,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 				_ui->comboBox_stereoZed_quality->currentIndex(),
 				_ui->comboBox_stereoZed_sensingMode->currentIndex(),
 				_ui->spinBox_stereoZed_confidenceThr->value(),
+				_ui->checkbox_stereoZed_odom->isChecked(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
@@ -4284,6 +4303,10 @@ float PreferencesDialog::getDetectionRate() const
 bool PreferencesDialog::isSLAMMode() const
 {
 	return _ui->general_checkBox_SLAM_mode->isChecked();
+}
+bool PreferencesDialog::isRGBDMode() const
+{
+	return _ui->general_checkBox_activateRGBD->isChecked();
 }
 
 /*** SETTERS ***/

@@ -753,6 +753,7 @@ CameraStereoZed::CameraStereoZed(
 		int quality,
 		int sensingMode,
 		int confidenceThr,
+		bool computeOdometry,
 		float imageRate,
 		const Transform & localTransform) :
 	Camera(imageRate, localTransform),
@@ -763,7 +764,9 @@ CameraStereoZed::CameraStereoZed(
 	resolution_(resolution),
 	quality_(quality),
 	sensingMode_(sensingMode),
-	confidenceThr_(confidenceThr)
+	confidenceThr_(confidenceThr),
+	computeOdometry_(computeOdometry),
+	lost_(true)
 {
 #ifdef RTABMAP_ZED
 	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <sl::zed::LAST_RESOLUTION);
@@ -778,6 +781,7 @@ CameraStereoZed::CameraStereoZed(
 		int quality,
 		int sensingMode,
 		int confidenceThr,
+		bool computeOdometry,
 		float imageRate,
 		const Transform & localTransform) :
 	Camera(imageRate, localTransform),
@@ -788,7 +792,9 @@ CameraStereoZed::CameraStereoZed(
 	resolution_(2),
 	quality_(quality),
 	sensingMode_(sensingMode),
-	confidenceThr_(confidenceThr)
+	confidenceThr_(confidenceThr),
+	computeOdometry_(computeOdometry),
+	lost_(true)
 {
 #ifdef RTABMAP_ZED
 	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <sl::zed::LAST_RESOLUTION);
@@ -817,7 +823,7 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		zed_ = 0;
 	}
 	
-
+	lost_ = true;
 	if(src_ == CameraVideo::kVideoFile)
 	{
 		zed_ = new sl::zed::Camera(svoFilePath_); // Use in SVO playback mode
@@ -857,6 +863,13 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	}
 
 	zed_->setConfidenceThreshold(confidenceThr_);
+
+	if (computeOdometry_)
+	{
+		Eigen::Matrix4f initPose;
+		initPose.setIdentity(4, 4);
+		zed_->enableTracking(initPose, false);
+	}
 
 	sl::zed::StereoParameters * stereoParams = zed_->getParameters();
 	sl::zed::resolution res = zed_->getImageSize();
@@ -930,6 +943,40 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
 			
 				data = SensorData(left, right, stereoModel_, this->getNextSeqID(), UTimer::now());
+			}
+
+			if (computeOdometry_ && info)
+			{
+				Eigen::Matrix4f path;
+				int trackingConfidence = zed_->getTrackingConfidence();
+				if (trackingConfidence)
+				{
+					sl::zed::TRACKING_STATE track_state = zed_->getPosition(path);
+					info->odomPose = Transform::fromEigen4f(path);
+					if (!info->odomPose.isNull())
+					{
+						//transform x->forward, y->left, z->up
+						Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+						info->odomPose = opticalTransform * info->odomPose * opticalTransform.inverse();
+					}
+					if (lost_)
+					{
+						info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
+						lost_ = false;
+						UDEBUG("Init %s (var=%f)", info->odomPose.prettyPrint().c_str(), 9999.0f);
+					}
+					else
+					{
+						info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
+						UDEBUG("Run %s (var=%f)", info->odomPose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
+					}
+				}
+				else
+				{
+					info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
+					lost_ = true;
+					UWARN("ZED lost!");
+				}
 			}
 		}
 		else if(src_ == CameraVideo::kUsbDevice)

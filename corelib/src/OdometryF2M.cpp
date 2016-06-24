@@ -419,50 +419,74 @@ Transform OdometryF2M::computeTransform(
 
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().descriptors());
 
-			if(fixedMapPath_.empty())
+			// a very high variance tells that the new pose is not linked with the previous one
+			regInfo.variance = 9999;
+
+			bool frameValid = false;
+			Transform newFramePose = this->getPose(); // initial pose may be not identity...
+			if(regPipeline_->isImageRequired())
 			{
-				output.setIdentity();
-				// a very high variance tells that the new pose is not linked with the previous one
-				regInfo.variance = 9999;
-
-				Transform newFramePose = this->getPose(); // initial pose may be not identity...
-				if(regPipeline_->isImageRequired() &&
-				   (int)lastFrame_->getWords3().size() >= regPipeline_->getMinVisualCorrespondences())
+				if ((int)lastFrame_->getWords3().size() >= regPipeline_->getMinVisualCorrespondences())
 				{
-					// update local map
-					UASSERT_MSG(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
-					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWords().size());
-
-					std::multimap<int, cv::KeyPoint> words;
-					std::multimap<int, cv::Point3f> transformedPoints;
-					std::multimap<int, cv::Mat> descriptors;
-					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWordsDescriptors().size());
-					std::multimap<int, cv::KeyPoint>::const_iterator wordsIter = lastFrame_->getWords().begin();
-					std::multimap<int, cv::Mat>::const_iterator descIter = lastFrame_->getWordsDescriptors().begin();
-					for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
-							iter!=lastFrame_->getWords3().end();
-							++iter,++descIter,++wordsIter)
+					frameValid = true;
+					if (fixedMapPath_.empty())
 					{
-						if(util3d::isFinite(iter->second))
-						{
-							words.insert(*wordsIter);
-							transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, newFramePose)));
-							descriptors.insert(*descIter);
-						}
-					}
-					map_->setWords(words);
-					map_->setWords3(transformedPoints);
-					map_->setWordsDescriptors(descriptors);
+						// update local map
+						UASSERT_MSG(lastFrame_->getWordsDescriptors().size() == lastFrame_->getWords3().size(), uFormat("%d vs %d", lastFrame_->getWordsDescriptors().size(), lastFrame_->getWords3().size()).c_str());
+						UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWords().size());
 
-					map_->sensorData().setCameraModels(lastFrame_->sensorData().cameraModels());
-					map_->sensorData().setStereoCameraModel(lastFrame_->sensorData().stereoCameraModel());
+						std::multimap<int, cv::KeyPoint> words;
+						std::multimap<int, cv::Point3f> transformedPoints;
+						std::multimap<int, cv::Mat> descriptors;
+						UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWordsDescriptors().size());
+						std::multimap<int, cv::KeyPoint>::const_iterator wordsIter = lastFrame_->getWords().begin();
+						std::multimap<int, cv::Mat>::const_iterator descIter = lastFrame_->getWordsDescriptors().begin();
+						for (std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin();
+							iter != lastFrame_->getWords3().end();
+							++iter, ++descIter, ++wordsIter)
+						{
+							if (util3d::isFinite(iter->second))
+							{
+								words.insert(*wordsIter);
+								transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, newFramePose)));
+								descriptors.insert(*descIter);
+							}
+						}
+						map_->setWords(words);
+						map_->setWords3(transformedPoints);
+						map_->setWordsDescriptors(descriptors);
+
+						map_->sensorData().setCameraModels(lastFrame_->sensorData().cameraModels());
+						map_->sensorData().setStereoCameraModel(lastFrame_->sensorData().stereoCameraModel());
+					}
 				}
-				if(regPipeline_->isScanRequired())
+				else
 				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose);
-					scansBuffer_.insert(std::make_pair(lastFrame_->id(), mapCloudNormals));
-					map_->sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*mapCloudNormals), 0,0);
+					UWARN("%d visual features required to initialize the odometry (only %d extracted).", regPipeline_->getMinVisualCorrespondences(), (int)lastFrame_->getWords3().size());
 				}
+			}
+			if(regPipeline_->isScanRequired())
+			{
+				if (lastFrame_->sensorData().laserScanRaw().cols)
+				{
+					frameValid = true;
+					if (fixedMapPath_.empty())
+					{
+						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose);
+						scansBuffer_.insert(std::make_pair(lastFrame_->id(), mapCloudNormals));
+						map_->sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*mapCloudNormals), 0, 0);
+					}
+				}
+				else
+				{
+					UWARN("Mising scan to initialize odometry.");
+				}
+			}
+
+			if (frameValid)
+			{
+				// We initialized the local map
+				output.setIdentity();
 			}
 
 			if(info)

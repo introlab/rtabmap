@@ -176,6 +176,12 @@ Transform OdometryF2F::computeTransform(
 			}
 			else
 			{
+				if (!refFrame_.sensorData().isValid())
+				{
+					// Don't send odometry if we don't have a keyframe yet
+					output.setNull();
+				}
+
 				if(features < registrationPipeline_->getMinVisualCorrespondences())
 				{
 					UWARN("Too low 2D features (%d), keeping last key frame...", features);
