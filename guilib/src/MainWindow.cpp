@@ -824,7 +824,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->imageView_odometry->setToolTip(
 			"Background Color Code:\n"
 			"  Dark Red = Odometry Lost\n"
-			"  Dark Yellow = Low Inliers");
+			"  Dark Yellow = Low Inliers\n"
+			"Feature Color code:\n"
+			"  Green = Inliers\n"
+			"  Yellow = Not matched features from previous frame(s)\n"
+			"  Red = Outliers");
 	}
 
 	Transform pose = odom.pose();
