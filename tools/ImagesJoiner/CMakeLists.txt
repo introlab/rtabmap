@@ -9,8 +9,10 @@ SET(INCLUDE_DIRS
     ${OpenCV_INCLUDE_DIRS}
 )
 
+MESSAGE(STATUS "OpenCV_INCLUDE_DIRS=${OpenCV_INCLUDE_DIRS}")
+
 SET(LIBRARIES
-	${OpenCV_LIBS} 
+	${OpenCV_LIBRARIES} 
 )
 
 # Make sure the compiler can find include files from our library.
