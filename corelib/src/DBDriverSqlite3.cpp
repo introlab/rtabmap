@@ -373,6 +373,15 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	UASSERT(this->getDatabaseVersionQuery(_version)); // must be true!
 	UINFO("Database version = %s", _version.c_str());
 
+	if(uStrNumCmp(_version, RTABMAP_VERSION) > 0)
+	{
+		UERROR("Opened database version (%s) is more recent than rtabmap "
+			   "installed version (%s). Please update rtabmap to new version!",
+			   _version.c_str(), RTABMAP_VERSION);
+		this->disconnectDatabaseQuery(false);
+		return false;
+	}
+
 	//Set database optimizations
 	this->setCacheSize(_cacheSize); // this will call the SQL
 	this->setJournalMode(_journalMode); // this will call the SQL
