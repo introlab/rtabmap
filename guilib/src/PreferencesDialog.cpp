@@ -782,7 +782,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_localHistory->setObjectName(Parameters::kOdomF2MMaxSize().c_str());
 	_ui->spinBox_odom_f2m_maxNewFeatures->setObjectName(Parameters::kOdomF2MMaxNewFeatures().c_str());
 	_ui->spinBox_odom_f2m_scanMaxSize->setObjectName(Parameters::kOdomF2MScanMaxSize().c_str());
-	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubstractRadius().c_str());
+	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubtractRadius().c_str());
 	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomF2MFixedMapPath().c_str());
 	connect(_ui->toolButton_odomBowFixedLocalMap, SIGNAL(clicked()), this, SLOT(changeOdomBowFixedLocalMapPath()));
 

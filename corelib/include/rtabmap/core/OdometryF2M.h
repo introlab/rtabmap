@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Odometry.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/pcl_base.h>
 
 namespace rtabmap {
 
@@ -57,13 +58,13 @@ private:
 	int maxNewFeatures_;
 	float scanKeyFrameThr_;
 	int scanMaximumMapSize_;
-	float scanSubstractRadius_;
+	float scanSubtractRadius_;
 	std::string fixedMapPath_;
 
 	Registration * regPipeline_;
 	Signature * map_;
 	Signature * lastFrame_;
-	std::map<int, pcl::PointCloud<pcl::PointNormal>::Ptr > scansBuffer_;
+	std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
 };
 
 }

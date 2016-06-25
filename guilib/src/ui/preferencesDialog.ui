@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>14</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8218,7 +8218,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <item row="2" column="2">
                               <widget class="QLabel" name="label_195">
                                <property name="text">
-                                <string>[Geometry] Maximum scan map size is defined by this factor times the maximum size of a single scan. For example, if the laser scans have 1000 values, then the maximum local map size will be 2000 if the factor is 2.</string>
+                                <string>[Geometry] Maximum local scan map size (points).</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
