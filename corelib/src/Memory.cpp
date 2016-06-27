@@ -3215,8 +3215,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			}
 
 			cv::Mat depthMask;
-			if(!decimatedData.depthRaw().empty() &&
-			   _feature2D->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
+			if(!decimatedData.depthRaw().empty())
 			{
 				if(imageMono.rows % decimatedData.depthRaw().rows == 0 &&
 					imageMono.cols % decimatedData.depthRaw().cols == 0 &&
@@ -3247,34 +3246,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 					(!decimatedData.rightRaw().empty() && decimatedData.stereoCameraModel().isValidForProjection()))
 			{
 				keypoints3D = _feature2D->generateKeypoints3D(decimatedData, keypoints);
-				if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
-				{
-					UDEBUG("");
-					//remove all keypoints/descriptors with no valid 3D points
-					UASSERT((int)keypoints.size() == descriptors.rows &&
-							keypoints3D.size() == keypoints.size());
-					std::vector<cv::KeyPoint> validKeypoints(keypoints.size());
-					std::vector<cv::Point3f> validKeypoints3D(keypoints.size());
-					cv::Mat validDescriptors(descriptors.size(), descriptors.type());
-
-					int oi=0;
-					for(unsigned int i=0; i<keypoints3D.size(); ++i)
-					{
-						if(util3d::isFinite(keypoints3D[i]))
-						{
-							validKeypoints[oi] = keypoints[i];
-							validKeypoints3D[oi] = keypoints3D[i];
-							descriptors.row(i).copyTo(validDescriptors.row(oi));
-							++oi;
-						}
-					}
-					UDEBUG("Removed %d invalid 3D points", (int)keypoints3D.size()-oi);
-					validKeypoints.resize(oi);
-					validKeypoints3D.resize(oi);
-					keypoints = validKeypoints;
-					keypoints3D = validKeypoints3D;
-					descriptors = validDescriptors.rowRange(0, oi).clone();
-				}
 				t = timer.ticks();
 				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
 				UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);

@@ -260,8 +260,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 
 					cv::Mat depthMask;
-					if(!fromSignature.sensorData().depthRaw().empty() &&
-					   detector->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
+					if(!fromSignature.sensorData().depthRaw().empty())
 					{
 						if(imageFrom.rows % fromSignature.sensorData().depthRaw().rows == 0 &&
 						   imageFrom.cols % fromSignature.sensorData().depthRaw().cols == 0 &&
@@ -433,8 +432,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 
 					cv::Mat depthMask;
-					if(!toSignature.sensorData().depthRaw().empty() &&
-						detector->getType() != Feature2D::kFeatureOrb) // ORB's mask pyramids don't seem to work well
+					if(!toSignature.sensorData().depthRaw().empty())
 					{
 						if(imageTo.rows % toSignature.sensorData().depthRaw().rows == 0 &&
 						   imageTo.cols % toSignature.sensorData().depthRaw().cols == 0 &&
