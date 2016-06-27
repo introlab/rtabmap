@@ -492,30 +492,42 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 	UASSERT(image.type() == CV_8UC1);
 
 	cv::Mat mask;
-	if(maskIn.type()==CV_16UC1 || maskIn.type() == CV_32FC1)
+	if(!maskIn.empty())
 	{
-		mask = cv::Mat::zeros(maskIn.rows, maskIn.cols, CV_8UC1);
-		for(int i=0; i<(int)mask.total(); ++i)
+		if(maskIn.type()==CV_16UC1 || maskIn.type() == CV_32FC1)
 		{
-			float value = 0.0f;
-			if(maskIn.type()==CV_16UC1)
+			mask = cv::Mat::zeros(maskIn.rows, maskIn.cols, CV_8UC1);
+			for(int i=0; i<(int)mask.total(); ++i)
 			{
-				if(((unsigned short*)maskIn.data)[i] > 0 &&
-				   ((unsigned short*)maskIn.data)[i] < std::numeric_limits<unsigned short>::max())
+				float value = 0.0f;
+				if(maskIn.type()==CV_16UC1)
 				{
-					value = float(((unsigned short*)maskIn.data)[i])*0.001f;
+					if(((unsigned short*)maskIn.data)[i] > 0 &&
+					   ((unsigned short*)maskIn.data)[i] < std::numeric_limits<unsigned short>::max())
+					{
+						value = float(((unsigned short*)maskIn.data)[i])*0.001f;
+					}
+				}
+				else
+				{
+					value = ((float*)maskIn.data)[i];
+				}
+
+				if(value>_minDepth &&
+				   (_maxDepth == 0.0f || value <= _maxDepth))
+				{
+					((unsigned char*)mask.data)[i] = 255; // ORB uses 255 to handle pyramids
 				}
 			}
-			else
-			{
-				value = ((float*)maskIn.data)[i];
-			}
-
-			if(value>_minDepth &&
-			   (_maxDepth == 0.0f || value <= _maxDepth))
-			{
-				((unsigned char*)mask.data)[i] = 1;
-			}
+		}
+		else if(maskIn.type()==CV_8UC1)
+		{
+			// assume a standard mask
+			mask = maskIn;
+		}
+		else
+		{
+			UERROR("Wrong mask type (%d)! Should be 8UC1, 16UC1 or 32FC1.", maskIn.type());
 		}
 	}
 
@@ -527,7 +539,7 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 	// Get keypoints
 	cv::Rect roi = Feature2D::computeRoi(image, _roiRatios);
 	keypoints = this->generateKeypointsImpl(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows), mask);
-	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d", timer.ticks(), keypoints.size());
+	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (mask empty=%d)", timer.ticks(), keypoints.size(), mask.empty()?1:0);
 
 	limitKeypoints(keypoints, maxFeatures_);
 
