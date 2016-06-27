@@ -202,7 +202,7 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 
 	double dt = previousStamp_>0.0f?data.stamp() - previousStamp_:0.0;
 	Transform guess = dt && guessFromMotion_?Transform::getIdentity():Transform();
-	UASSERT(dt>0.0 || (dt == 0.0 && previousVelocityTransform_.isNull()));
+	UASSERT_MSG(dt>0.0 || (dt == 0.0 && previousVelocityTransform_.isNull()), uFormat("dt=%f previous transform=%s", dt, previousVelocityTransform_.c_str()).c_str());
 	if(!previousVelocityTransform_.isNull())
 	{
 		if(guessFromMotion_)
