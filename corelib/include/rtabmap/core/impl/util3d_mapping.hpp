@@ -18,6 +18,19 @@ namespace rtabmap{
 namespace util3d{
 
 template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr projectCloudOnXYPlane(
+		const typename pcl::PointCloud<PointT> & cloud)
+{
+	typename pcl::PointCloud<PointT>::Ptr output(new pcl::PointCloud<PointT>);
+	*output = cloud;
+	for(unsigned int i=0; i<output->size(); ++i)
+	{
+		output->at(i).z = 0;
+	}
+	return output;
+}
+
+template<typename PointT>
 void segmentObstaclesFromGround(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const typename pcl::IndicesPtr & indices,
@@ -160,6 +173,79 @@ void segmentObstaclesFromGround(
 }
 
 template<typename PointT>
+void occupancy2DFromGroundObstacles(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & groundIndices,
+		const pcl::IndicesPtr & obstaclesIndices,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize)
+{
+	typename pcl::PointCloud<PointT>::Ptr groundCloud(new pcl::PointCloud<PointT>);
+	typename pcl::PointCloud<PointT>::Ptr obstaclesCloud(new pcl::PointCloud<PointT>);
+
+	if(groundIndices->size())
+	{
+		pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
+	}
+
+	if(obstaclesIndices->size())
+	{
+		pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
+	}
+
+	occupancy2DFromGroundObstacles<PointT>(
+			groundCloud,
+			obstaclesCloud,
+			ground,
+			obstacles,
+			cellSize);
+}
+
+template<typename PointT>
+void occupancy2DFromGroundObstacles(
+		const typename pcl::PointCloud<PointT>::Ptr & groundCloud,
+		const typename pcl::PointCloud<PointT>::Ptr & obstaclesCloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize)
+{
+	ground = cv::Mat();
+	if(groundCloud->size())
+	{
+		//project on XY plane
+		typename pcl::PointCloud<PointT>::Ptr groundCloudProjected;
+		groundCloudProjected = util3d::projectCloudOnXYPlane(*groundCloud);
+		//voxelize to grid cell size
+		groundCloudProjected = util3d::voxelize(groundCloudProjected, cellSize);
+
+		ground = cv::Mat((int)groundCloudProjected->size(), 1, CV_32FC2);
+		for(unsigned int i=0;i<groundCloudProjected->size(); ++i)
+		{
+			ground.at<cv::Vec2f>(i)[0] = groundCloudProjected->at(i).x;
+			ground.at<cv::Vec2f>(i)[1] = groundCloudProjected->at(i).y;
+		}
+	}
+
+	obstacles = cv::Mat();
+	if(obstaclesCloud->size())
+	{
+		//project on XY plane
+		typename pcl::PointCloud<PointT>::Ptr obstaclesCloudProjected;
+		obstaclesCloudProjected = util3d::projectCloudOnXYPlane(*obstaclesCloud);
+		//voxelize to grid cell size
+		obstaclesCloudProjected = util3d::voxelize(obstaclesCloudProjected, cellSize);
+
+		obstacles = cv::Mat((int)obstaclesCloudProjected->size(), 1, CV_32FC2);
+		for(unsigned int i=0;i<obstaclesCloudProjected->size(); ++i)
+		{
+			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloudProjected->at(i).x;
+			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloudProjected->at(i).y;
+		}
+	}
+}
+
+template<typename PointT>
 void occupancy2DFromCloud3D(
 		const typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -189,48 +275,13 @@ void occupancy2DFromCloud3D(
 			segmentFlatObstacles,
 			maxGroundHeight);
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
-
-	if(groundIndices->size())
-	{
-		pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
-		//project on XY plane
-		util3d::projectCloudOnXYPlane(groundCloud);
-		//voxelize to grid cell size
-		groundCloud = util3d::voxelize(groundCloud, cellSize);
-	}
-
-	if(obstaclesIndices->size())
-	{
-		pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
-		//project on XY plane
-		util3d::projectCloudOnXYPlane(obstaclesCloud);
-		//voxelize to grid cell size
-		obstaclesCloud = util3d::voxelize(obstaclesCloud, cellSize);
-	}
-
-	ground = cv::Mat();
-	if(groundCloud->size())
-	{
-		ground = cv::Mat((int)groundCloud->size(), 1, CV_32FC2);
-		for(unsigned int i=0;i<groundCloud->size(); ++i)
-		{
-			ground.at<cv::Vec2f>(i)[0] = groundCloud->at(i).x;
-			ground.at<cv::Vec2f>(i)[1] = groundCloud->at(i).y;
-		}
-	}
-
-	obstacles = cv::Mat();
-	if(obstaclesCloud->size())
-	{
-		obstacles = cv::Mat((int)obstaclesCloud->size(), 1, CV_32FC2);
-		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
-		{
-			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;
-			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloud->at(i).y;
-		}
-	}
+	occupancy2DFromGroundObstacles<PointT>(
+			cloud,
+			groundIndices,
+			obstaclesIndices,
+			ground,
+			obstacles,
+			cellSize);
 }
 
 template<typename PointT>

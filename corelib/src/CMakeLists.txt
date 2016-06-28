@@ -237,6 +237,21 @@ IF(ZED_FOUND)
 	ENDIF(CUDA_FOUND)
 ENDIF(ZED_FOUND)
 
+IF(WITH_OCTOMAP)
+    SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${OCTOMAP_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${OCTOMAP_LIBRARIES}
+	)
+	SET(SRC_FILES
+    	${SRC_FILES}
+		OctoMap.cpp
+	)
+ENDIF(WITH_OCTOMAP)
+
 ####################################
 # Generate resources files
 ####################################

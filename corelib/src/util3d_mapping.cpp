@@ -659,16 +659,6 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S)
 	return map8U;
 }
 
-void projectCloudOnXYPlane(
-		pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud)
-{
-	for(unsigned int i=0; i<cloud->size(); ++i)
-	{
-		cloud->at(i).z = 0;
-	}
-}
-
-
 }
 
 }

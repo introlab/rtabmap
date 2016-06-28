@@ -76,8 +76,9 @@ void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 
 cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S);
 
-void RTABMAP_EXP projectCloudOnXYPlane(
-		pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud);
+template<typename PointT>
+typename pcl::PointCloud<PointT>::Ptr projectCloudOnXYPlane(
+		const typename pcl::PointCloud<PointT> & cloud);
 
 // templated methods
 template<typename PointT>
@@ -105,6 +106,23 @@ void segmentObstaclesFromGround(
 		bool segmentFlatObstacles = false,
 		float maxGroundHeight = 0.0f,
 		pcl::IndicesPtr * flatObstacles = 0);
+
+template<typename PointT>
+void occupancy2DFromGroundObstacles(
+		const typename pcl::PointCloud<PointT>::Ptr & cloud,
+		const pcl::IndicesPtr & groundIndices,
+		const pcl::IndicesPtr & obstaclesIndices,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize);
+
+template<typename PointT>
+void occupancy2DFromGroundObstacles(
+		const typename pcl::PointCloud<PointT>::Ptr & groundCloud,
+		const typename pcl::PointCloud<PointT>::Ptr & obstaclesCloud,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize);
 
 template<typename PointT>
 void occupancy2DFromCloud3D(
