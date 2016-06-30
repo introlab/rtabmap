@@ -55,12 +55,14 @@ public:
 public:
 	virtual ~Odometry();
 	Transform process(SensorData & data, OdometryInfo * info = 0);
+	Transform process(SensorData & data, const Transform & guess, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
 
 	//getters
 	const Transform & getPose() const {return _pose;}
 	bool isInfoDataFilled() const {return _fillInfoData;}
 	const Transform & previousVelocityTransform() const {return previousVelocityTransform_;}
+	double previousStamp() const {return previousStamp_;}
 
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0) = 0;
