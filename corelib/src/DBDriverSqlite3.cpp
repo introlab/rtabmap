@@ -3243,13 +3243,14 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	std::vector<float> calibration;
 	// multi-cameras [fx,fy,cx,cy,width,height,local_transform, ... ,fx,fy,cx,cy,width,height,local_transform] (6+12)*float * numCameras
 	// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
-	if(sensorData.cameraModels().size())
+	if(sensorData.cameraModels().size() && sensorData.cameraModels()[0].isValidForProjection())
 	{
 		if(uStrNumCmp(_version, "0.11.2") >= 0)
 		{
 			calibration.resize(sensorData.cameraModels().size() * (6+Transform().size()));
 			for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 			{
+				UASSERT(sensorData.cameraModels()[i].isValidForProjection());
 				const Transform & localTransform = sensorData.cameraModels()[i].localTransform();
 				calibration[i*(6+localTransform.size())] = sensorData.cameraModels()[i].fx();
 				calibration[i*(6+localTransform.size())+1] = sensorData.cameraModels()[i].fy();
@@ -3265,6 +3266,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 			calibration.resize(sensorData.cameraModels().size() * (4+Transform().size()));
 			for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 			{
+				UASSERT(sensorData.cameraModels()[i].isValidForProjection());
 				const Transform & localTransform = sensorData.cameraModels()[i].localTransform();
 				calibration[i*(4+localTransform.size())] = sensorData.cameraModels()[i].fx();
 				calibration[i*(4+localTransform.size())+1] = sensorData.cameraModels()[i].fy();
