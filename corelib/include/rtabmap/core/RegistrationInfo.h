@@ -18,7 +18,9 @@ public:
 		variance(0),
 		inliers(0),
 		matches(0),
-		icpInliersRatio(0)
+		icpInliersRatio(0),
+		icpTranslation(0.0f),
+		icpRotation(0.0f)
 	{
 	}
 
@@ -33,6 +35,8 @@ public:
 
 	// RegistrationIcp
 	float icpInliersRatio;
+	float icpTranslation;
+	float icpRotation;
 };
 
 }

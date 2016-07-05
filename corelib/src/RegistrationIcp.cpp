@@ -313,15 +313,17 @@ Transform RegistrationIcp::computeTransformationImpl(
 				float ix,iy,iz, iroll,ipitch,iyaw;
 				Transform icpInTargetReferential = guess.inverse() * icpT.inverse() * guess; // actual local ICP refinement
 				icpInTargetReferential.getTranslationAndEulerAngles(ix,iy,iz,iroll,ipitch,iyaw);
+				info.icpTranslation = uMax3(fabs(ix), fabs(iy), fabs(iz));
+				info.icpRotation = uMax3(fabs(iroll), fabs(ipitch), fabs(iyaw));
 				if((_maxTranslation>0.0f &&
-					uMax3(fabs(ix), fabs(iy), fabs(iz)) > _maxTranslation)
+						info.icpTranslation > _maxTranslation)
 				   ||
 				   (_maxRotation>0.0f &&
-					uMax3(fabs(iroll), fabs(ipitch), fabs(iyaw)) > _maxRotation))
+						info.icpRotation > _maxRotation))
 				{
 					msg = uFormat("Cannot compute transform (ICP correction too large -> %f m %f rad, limits=%f m, %f rad)",
-							uMax3(fabs(ix), fabs(iy), fabs(iz)),
-							uMax3(fabs(iroll), fabs(ipitch), fabs(iyaw)),
+							info.icpTranslation,
+							info.icpRotation,
 							_maxTranslation,
 							_maxRotation);
 					UINFO(msg.c_str());
