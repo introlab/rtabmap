@@ -1002,7 +1002,7 @@ float getDepth(
 						if(depthImage.at<unsigned short>(vv,uu) > 0 &&
 						   depthImage.at<unsigned short>(vv,uu) < std::numeric_limits<unsigned short>::max())
 						{
-							depth = float(depthImage.at<unsigned short>(vv,uu))*0.001f;
+							d = float(depthImage.at<unsigned short>(vv,uu))*0.001f;
 						}
 					}
 					else
@@ -1049,7 +1049,7 @@ float getDepth(
 							if(depthImage.at<unsigned short>(vv,uu) > 0 &&
 							   depthImage.at<unsigned short>(vv,uu) < std::numeric_limits<unsigned short>::max())
 							{
-								depth = float(depthImage.at<unsigned short>(vv,uu))*0.001f;
+								d = float(depthImage.at<unsigned short>(vv,uu))*0.001f;
 							}
 						}
 						else
