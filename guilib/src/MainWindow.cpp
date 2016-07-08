@@ -453,6 +453,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 		connect(dockWidgets[i], SIGNAL(dockLocationChanged(Qt::DockWidgetArea)), this, SLOT(configGUIModified()));
 		connect(dockWidgets[i]->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
 	}
+	connect(_ui->dockWidget_graphViewer->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 	// catch resize events
 	_ui->dockWidget_posterior->installEventFilter(this);
 	_ui->dockWidget_likelihood->installEventFilter(this);
@@ -1912,9 +1913,16 @@ void MainWindow::updateMapCloud(
 			std::string cloudName = uFormat("cloud%d", iter->first);
 
 			// 3d point cloud
-			if((_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)) ||
-				(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible() && _preferencesDialog->isGridMapFrom3DCloud()))
+			bool update3dCloud = _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0);
+			bool updateProjMap =
+					_ui->graphicsView_graphView->isVisible() &&
+					_ui->graphicsView_graphView->isGridMapVisible() &&
+					_preferencesDialog->isGridMapFrom3DCloud() &&
+					_projectionLocalMaps.find(iter->first) == _projectionLocalMaps.end();
+			if(update3dCloud ||	updateProjMap)
 			{
+				// update cloud
+				std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createdCloud;
 				if(viewerClouds.contains(cloudName))
 				{
 					// Update only if the pose has changed
@@ -1933,14 +1941,24 @@ void MainWindow::updateMapCloud(
 				}
 				else if(_cachedClouds.find(iter->first) == _cachedClouds.end() && _cachedSignatures.contains(iter->first))
 				{
-					if((_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)) ||
-					    _projectionLocalMaps.find(iter->first) == _projectionLocalMaps.end())
+					createdCloud = this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
+					if(viewerClouds.contains(cloudName))
 					{
-						this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
-						if(viewerClouds.contains(cloudName))
-						{
-							_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
-						}
+						_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
+					}
+				}
+
+				//Update projection map
+				if(updateProjMap)
+				{
+					std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >::iterator cloudIter = _cachedClouds.find(iter->first);
+					if(cloudIter != _cachedClouds.end())
+					{
+						createAndAddProjectionMap(cloudIter->second.first, cloudIter->second.second, iter->first, iter->second);
+					}
+					else if(createdCloud.first->size() && createdCloud.second->size())
+					{
+						createAndAddProjectionMap(createdCloud.first, createdCloud.second, iter->first, iter->second);
 					}
 				}
 			}
@@ -2247,22 +2265,23 @@ void MainWindow::updateMapCloud(
 	UDEBUG("");
 }
 
-void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId)
+std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId)
 {
 	UDEBUG("");
 	UASSERT(!pose.isNull());
 	std::string cloudName = uFormat("cloud%d", nodeId);
+	std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> outputPair;
 	if(_cloudViewer->getAddedClouds().contains(cloudName))
 	{
 		UERROR("Cloud %d already added to map.", nodeId);
-		return;
+		return outputPair;
 	}
 
 	QMap<int, Signature>::iterator iter = _cachedSignatures.find(nodeId);
 	if(iter == _cachedSignatures.end())
 	{
 		UERROR("Node %d is not in the cache.", nodeId);
-		return;
+		return outputPair;
 	}
 
 	UASSERT(_cachedClouds.find(nodeId) == _cachedClouds.end());
@@ -2286,7 +2305,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					_preferencesDialog->getCloudDecimation(0),
 					image.cols,
 					image.rows);
-			return;
+			return outputPair;
 		}
 
 		// Create organized cloud
@@ -2334,49 +2353,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					indices,
 					_preferencesDialog->getMapNoiseRadius(),
 					_preferencesDialog->getMapNoiseMinNeighbors());
-		}
-
-		if(indices->size() &&
-		  _preferencesDialog->isGridMapFrom3DCloud() &&
-		  _projectionLocalMaps.find(nodeId) == _projectionLocalMaps.end())
-		{
-			UTimer timer;
-			cv::Mat ground, obstacles;
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = cloud;
-
-			// voxelize to grid cell size
-			if(_preferencesDialog->getMapVoxel() < _preferencesDialog->getGridMapResolution())
-			{
-				voxelCloud = util3d::voxelize(voxelCloud, indices, _preferencesDialog->getGridMapResolution());
-			}
-
-			// add pose rotation without yaw
-			if(_preferencesDialog->projMapFrame())
-			{
-				float roll, pitch, yaw;
-				pose.getEulerAngles(roll, pitch, yaw);
-				voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0, pose.z(), roll, pitch, 0));
-			}
-
-			if(_preferencesDialog->projMaxObstaclesHeight())
-			{
-				voxelCloud = util3d::passThrough(voxelCloud, "z", std::numeric_limits<int>::min(), _preferencesDialog->projMaxObstaclesHeight());
-			}
-
-			util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
-					voxelCloud,
-					ground,
-					obstacles,
-					_preferencesDialog->getGridMapResolution(),
-					_preferencesDialog->projMaxGroundAngle(),
-					_preferencesDialog->projMinClusterSize(),
-					_preferencesDialog->projFlatObstaclesDetected(),
-					_preferencesDialog->projMaxGroundHeight());
-			if(!ground.empty() || !obstacles.empty())
-			{
-				_projectionLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
-			}
-			UDEBUG("time gridMapFrom3DCloud = %f s", timer.ticks());
 		}
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -2443,7 +2419,7 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 					}
 
 
-					UWARN("Time subtract filtering %d from %d -> %d (%fs)",
+					UINFO("Time subtract filtering %d from %d -> %d (%fs)",
 							(int)_previousCloud.second.second->size(),
 							(int)beforeFiltering->size(),
 							(int)indices->size(),
@@ -2458,10 +2434,11 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 
 			if(indices->size())
 			{
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
+				bool added = false;
 				if(_preferencesDialog->isCloudMeshing() && cloud->isOrganized())
 				{
 					// Fast organized mesh
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
 					// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
 					output = util3d::extractIndices(cloud, indices, false, true);
 					std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
@@ -2480,10 +2457,9 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 						{
 							UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 						}
-						else if(_preferencesDialog->isCloudsKept())
+						else
 						{
-							_cachedClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
-							_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
+							added = true;
 						}
 					}
 				}
@@ -2508,7 +2484,6 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 						color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 					}
 
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
 					output = util3d::extractIndices(cloud, indices, false, true);
 
 					if(cloudWithNormals->size())
@@ -2520,24 +2495,31 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 						{
 							UERROR("Adding cloud %d to viewer failed!", nodeId);
 						}
-						else if(_preferencesDialog->isCloudsKept())
+						else
 						{
-							_cachedClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
-							_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
+							added = true;
 						}
 					}
 					else
 					{
-
 						if(!_cloudViewer->addCloud(cloudName, output, pose, color))
 						{
 							UERROR("Adding cloud %d to viewer failed!", nodeId);
 						}
-						else if(_preferencesDialog->isCloudsKept())
+						else
 						{
-							_cachedClouds.insert(std::make_pair(nodeId, std::make_pair(output, indices)));
-							_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
+							added = true;
 						}
+					}
+				}
+				if(added)
+				{
+					outputPair.first = output;
+					outputPair.second = indices;
+					if(_preferencesDialog->isCloudsKept())
+					{
+						_cachedClouds.insert(std::make_pair(nodeId, outputPair));
+						_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
 					}
 				}
 			}
@@ -2545,12 +2527,63 @@ void MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int 
 			_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 		}
 	}
-	else
+
+	return outputPair;
+	UDEBUG("");
+}
+
+void MainWindow::createAndAddProjectionMap(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		int nodeId,
+		const Transform & pose)
+{
+	UASSERT(!pose.isNull());
+
+	if(_projectionLocalMaps.find(nodeId) != _projectionLocalMaps.end())
 	{
+		UERROR("Projection map %d already added.", nodeId);
 		return;
 	}
 
-	UDEBUG("");
+	if(indices->size())
+	{
+		UTimer timer;
+		cv::Mat ground, obstacles;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = cloud;
+
+		// voxelize to grid cell size
+		if(_preferencesDialog->getMapVoxel() < _preferencesDialog->getGridMapResolution())
+		{
+			voxelCloud = util3d::voxelize(voxelCloud, indices, _preferencesDialog->getGridMapResolution());
+		}
+
+		// add pose rotation without yaw
+		if(_preferencesDialog->projMapFrame())
+		{
+			float roll, pitch, yaw;
+			pose.getEulerAngles(roll, pitch, yaw);
+			voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0, pose.z(), roll, pitch, 0));
+		}
+
+		if(_preferencesDialog->projMaxObstaclesHeight())
+		{
+			voxelCloud = util3d::passThrough(voxelCloud, "z", std::numeric_limits<int>::min(), _preferencesDialog->projMaxObstaclesHeight());
+		}
+
+		util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
+				voxelCloud,
+				ground,
+				obstacles,
+				_preferencesDialog->getGridMapResolution(),
+				_preferencesDialog->projMaxGroundAngle(),
+				_preferencesDialog->projMinClusterSize(),
+				_preferencesDialog->projFlatObstaclesDetected(),
+				_preferencesDialog->projMaxGroundHeight());
+
+		_projectionLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+		UDEBUG("time gridMapFrom3DCloud = %f s", timer.ticks());
+	}
 }
 
 void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int mapId)
@@ -2836,6 +2869,23 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 		}
 	}
 	_cloudViewer->update();
+}
+
+void MainWindow::updateGraphView()
+{
+	if(_ui->dockWidget_graphViewer->isVisible())
+	{
+		UDEBUG("Graph visible!");
+		if(_currentPosesMap.size())
+		{
+			this->updateMapCloud(
+					std::map<int, Transform>(_currentPosesMap),
+					std::multimap<int, Link>(_currentLinksMap),
+					std::map<int, int>(_currentMapIds),
+					std::map<int, std::string>(_currentLabels),
+					std::map<int, Transform>(_currentGTPosesMap));
+		}
+	}
 }
 
 void MainWindow::processRtabmapEventInit(int status, const QString & info)

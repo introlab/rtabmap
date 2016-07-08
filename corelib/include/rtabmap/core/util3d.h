@@ -74,20 +74,35 @@ pcl::PointXYZ RTABMAP_EXP projectDepthTo3D(
 		bool smoothing,
 		float maxZError = 0.02f);
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
+RTABMAP_DEPRECATED (pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
 		const cv::Mat & imageDepth,
 		float cx, float cy,
 		float fx, float fy,
 		int decimation = 1,
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
+		std::vector<int> * validIndices = 0), "Use cloudFromDepth with CameraModel interface.");
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
+		const cv::Mat & imageDepth,
+		const CameraModel & model,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0);
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
+RTABMAP_DEPRECATED (pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
 		const cv::Mat & imageRgb,
 		const cv::Mat & imageDepth,
 		float cx, float cy,
 		float fx, float fy,
+		int decimation = 1,
+		float maxDepth = 0.0f,
+		float minDepth = 0.0f,
+		std::vector<int> * validIndices = 0), "Use cloudFromDepthRGB with CameraModel interface.");
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromDepthRGB(
+		const cv::Mat & imageRgb,
+		const cv::Mat & imageDepth,
+		const CameraModel & model,
 		int decimation = 1,
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,

@@ -92,18 +92,6 @@ Transform RTABMAP_EXP icpPointToPlane(
 		float epsilon = 0.0f,
 		bool icp2D = false);
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP getICPReadyCloud(
-		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		int decimation,
-		double maxDepth,
-		float voxel,
-		int samples,
-		const Transform & transform = Transform::getIdentity());
-
 } // namespace util3d
 } // namespace rtabmap
 

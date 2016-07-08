@@ -380,60 +380,6 @@ Transform icpPointToPlane(
 	return Transform::fromEigen4f(icp.getFinalTransformation());
 }
 
-// If "voxel" > 0, "samples" is ignored
-pcl::PointCloud<pcl::PointXYZ>::Ptr getICPReadyCloud(
-		const cv::Mat & depth,
-		float fx,
-		float fy,
-		float cx,
-		float cy,
-		int decimation,
-		double maxDepth,
-		float voxel,
-		int samples,
-		const Transform & transform)
-{
-	UASSERT(!depth.empty() && (depth.type() == CV_16UC1 || depth.type() == CV_32FC1));
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-	cloud = cloudFromDepth(
-			depth,
-			cx,
-			cy,
-			fx,
-			fy,
-			decimation);
-
-	if(cloud->size())
-	{
-		if(maxDepth>0.0)
-		{
-			cloud = passThrough(cloud, "z", 0, maxDepth);
-		}
-
-		if(cloud->size())
-		{
-			if(voxel>0)
-			{
-				cloud = voxelize(cloud, voxel);
-			}
-			else if(samples>0 && (int)cloud->size() > samples)
-			{
-				cloud = randomSampling(cloud, samples);
-			}
-
-			if(cloud->size())
-			{
-				if(!transform.isNull() && !transform.isIdentity())
-				{
-					cloud = transformPointCloud(cloud, transform);
-				}
-			}
-		}
-	}
-
-	return cloud;
-}
-
 }
 
 }

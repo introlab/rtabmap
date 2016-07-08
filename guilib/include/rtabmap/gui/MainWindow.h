@@ -204,6 +204,7 @@ private slots:
 	void dataRecorder();
 	void dataRecorderDestroyed();
 	void updateNodeVisibility(int, bool);
+	void updateGraphView();
 
 signals:
 	void statsReceived(const rtabmap::Statistics &);
@@ -233,7 +234,12 @@ private:
 			const std::map<int, std::string> & labels,
 			const std::map<int, Transform> & groundTruths,
 			bool verboseProgress = false);
-	void createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
+	std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
+	void createAndAddProjectionMap(
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const pcl::IndicesPtr & indices,
+			int nodeId,
+			const Transform & pose);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId);
 	Transform alignPosesToGroundTruth(std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth);

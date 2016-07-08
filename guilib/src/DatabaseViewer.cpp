@@ -2328,7 +2328,10 @@ void DatabaseViewer::update(int value,
 								{
 									depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
 								}
-								cloud = util3d::cloudFromDepthRGB(data.imageRaw(), depth, data.cameraModels()[0].cx(), data.cameraModels()[0].cy(), data.cameraModels()[0].fx(), data.cameraModels()[0].fy());
+								cloud = util3d::cloudFromDepthRGB(
+										data.imageRaw(),
+										depth,
+										data.cameraModels()[0]);
 							}
 							else
 							{
@@ -2388,15 +2391,6 @@ void DatabaseViewer::update(int value,
 				}
 			}
 
-			if(!imgDepth.isNull())
-			{
-				view->setImageDepth(imgDepth);
-				rect = imgDepth.rect();
-			}
-			else
-			{
-				ULOGGER_DEBUG("Image depth is empty");
-			}
 			if(!img.isNull())
 			{
 				view->setImage(img);
@@ -2405,6 +2399,19 @@ void DatabaseViewer::update(int value,
 			else
 			{
 				ULOGGER_DEBUG("Image is empty");
+			}
+
+			if(!imgDepth.isNull())
+			{
+				view->setImageDepth(imgDepth);
+				if(!img.isNull())
+				{
+					rect = imgDepth.rect();
+				}
+			}
+			else
+			{
+				ULOGGER_DEBUG("Image depth is empty");
 			}
 
 			// loops

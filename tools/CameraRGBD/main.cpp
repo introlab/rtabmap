@@ -342,10 +342,7 @@ int main(int argc, char * argv[])
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::cloudFromDepthRGB(
 						rgb, depth,
-						data.cameraModels()[0].cx(),
-						data.cameraModels()[0].cy(),
-						data.cameraModels()[0].fx(),
-						data.cameraModels()[0].fy());
+						data.cameraModels()[0]);
 				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				if(viewer)
 					viewer->showCloud(cloud, "cloud");
@@ -356,10 +353,7 @@ int main(int argc, char * argv[])
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromDepth(
 						depth,
-						data.cameraModels()[0].cx(),
-						data.cameraModels()[0].cy(),
-						data.cameraModels()[0].fx(),
-						data.cameraModels()[0].fy());
+						data.cameraModels()[0]);
 				cloud = rtabmap::util3d::transformPointCloud(cloud, t);
 				viewer->showCloud(cloud, "cloud");
 			}
