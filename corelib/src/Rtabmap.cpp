@@ -3527,7 +3527,36 @@ bool Rtabmap::computePath(const Transform & targetPose)
 	}
 	UINFO("Time getting links = %fs", timer.ticks());
 
-	int nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);
+	int currentNode = 0;
+	if(_memory->isIncremental())
+	{
+		if(!_memory->getLastWorkingSignature())
+		{
+			UWARN("Working memory is empty... cannot compute a path");
+			return false;
+		}
+		currentNode = _memory->getLastWorkingSignature()->id();
+	}
+	else
+	{
+		if(_lastLocalizationPose.isNull() || _optimizedPoses.size() == 0)
+		{
+			UWARN("Last localization pose is null... cannot compute a path");
+			return false;
+		}
+		currentNode = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
+	}
+
+	int nearestId;
+	if(!_lastLocalizationPose.isNull() && _lastLocalizationPose.getDistance(targetPose) < _localRadius)
+	{
+		// target can be reached from the current node
+		nearestId = currentNode;
+	}
+	else
+	{
+		nearestId = rtabmap::graph::findNearestNode(nodes, targetPose);
+	}
 	UINFO("Nearest node found=%d ,%fs", nearestId, timer.ticks());
 	if(nearestId > 0)
 	{
@@ -3538,26 +3567,6 @@ bool Rtabmap::computePath(const Transform & targetPose)
 		}
 		else
 		{
-			int currentNode = 0;
-			if(_memory->isIncremental())
-			{
-				if(!_memory->getLastWorkingSignature())
-				{
-					UWARN("Working memory is empty... cannot compute a path");
-					return false;
-				}
-				currentNode = _memory->getLastWorkingSignature()->id();
-			}
-			else
-			{
-				if(_lastLocalizationPose.isNull() || _optimizedPoses.size() == 0)
-				{
-					UWARN("Last localization pose is null... cannot compute a path");
-					return false;
-				}
-				currentNode = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
-			}
-
 			UINFO("Computing path from location %d to %d", currentNode, nearestId);
 			UTimer timer;
 			_path = uListToVector(rtabmap::graph::computePath(nodes, links, currentNode, nearestId));
