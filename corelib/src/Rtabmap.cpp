@@ -3787,7 +3787,7 @@ void Rtabmap::updateGoalIndex()
 				{
 					if(_localRadius > 0.0f)
 					{
-						distanceFromCurrentNode += _path[i-1].second.getDistance(_path[i].second);
+						distanceFromCurrentNode = _path[_pathCurrentIndex].second.getDistance(_path[i].second);
 					}
 
 					if((goalIndex == _pathCurrentIndex && i == _path.size()-1) ||
