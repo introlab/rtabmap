@@ -3889,17 +3889,17 @@ void Rtabmap::updateGoalIndex()
 						distanceToCurrentGoal = currentPose.getDistanceSquared(iter->second);
 					}
 				}
+
 				if(distanceToCurrentGoal > 0.0f)
 				{
-					if(_pathStuckDistance > 0.0f &&
-						distanceToCurrentGoal >= _pathStuckDistance)
+					if(distanceToCurrentGoal >= _pathStuckDistance)
 					{
 						// we are not approaching the goal
 						isStuck = true;
-					}
-					else
-					{
-						_pathStuckDistance = distanceToCurrentGoal;
+						if(_pathStuckDistance == 0.0f)
+						{
+							_pathStuckDistance = distanceToCurrentGoal;
+						}
 					}
 				}
 				else
