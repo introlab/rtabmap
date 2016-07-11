@@ -246,6 +246,7 @@ private:
 	unsigned int _pathGoalIndex;
 	Transform _pathTransformToGoal;
 	int _pathStuckCount;
+	float _pathStuckDistance;
 
 };
 

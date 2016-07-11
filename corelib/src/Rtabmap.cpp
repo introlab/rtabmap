@@ -128,7 +128,8 @@ Rtabmap::Rtabmap() :
 	_pathCurrentIndex(0),
 	_pathGoalIndex(0),
 	_pathTransformToGoal(Transform::getIdentity()),
-	_pathStuckCount(0)
+	_pathStuckCount(0),
+	_pathStuckDistance(0.0f)
 {
 }
 
@@ -1979,6 +1980,10 @@ bool Rtabmap::process(
 													nearestId, transform.getNorm(), _proximityFilteringRadius);
 										}
 									}
+									else
+									{
+										UWARN("Local scan matching rejected: %s", info.rejectedMsg.c_str());
+									}
 								}
 							}
 						}
@@ -3374,6 +3379,7 @@ void Rtabmap::clearPath(int status)
 	_pathTransformToGoal.setIdentity();
 	_pathUnreachableNodes.clear();
 	_pathStuckCount = 0;
+	_pathStuckDistance = 0.0f;
 	if(_memory)
 	{
 		_memory->removeAllVirtualLinks();
@@ -3866,15 +3872,51 @@ void Rtabmap::updateGoalIndex()
 				sameCurrentIndex = true;
 			}
 
-			if(sameGoalIndex && sameCurrentIndex &&
-				_pathStuckIterations > 0 &&
-				++_pathStuckCount > _pathStuckIterations)
+			bool isStuck = false;
+			if(sameGoalIndex && sameCurrentIndex && _pathStuckIterations>0)
+			{
+				float distanceToCurrentGoal = 0.0f;
+				std::map<int, Transform>::iterator iter = _optimizedPoses.find(_path[_pathGoalIndex].first);
+				if(iter != _optimizedPoses.end())
+				{
+					if(_pathGoalIndex == _pathCurrentIndex &&
+						_pathGoalIndex == _path.size()-1)
+					{
+						distanceToCurrentGoal = currentPose.getDistanceSquared(iter->second*_pathTransformToGoal);
+					}
+					else
+					{
+						distanceToCurrentGoal = currentPose.getDistanceSquared(iter->second);
+					}
+				}
+				if(distanceToCurrentGoal > 0.0f)
+				{
+					if(_pathStuckDistance > 0.0f &&
+						distanceToCurrentGoal >= _pathStuckDistance)
+					{
+						// we are not approaching the goal
+						isStuck = true;
+					}
+					else
+					{
+						_pathStuckDistance = distanceToCurrentGoal;
+					}
+				}
+				else
+				{
+					// no nodes available, cannot plan
+					isStuck = true;
+				}
+			}
+
+			if(isStuck && ++_pathStuckCount > _pathStuckIterations)
 			{
 				UWARN("Current goal %d not reached since %d iterations (\"RGBD/PlanStuckIterations\"=%d), mark that node as unreachable.",
 						_path[_pathGoalIndex].first,
 						_pathStuckCount,
 						_pathStuckIterations);
 				_pathStuckCount = 0;
+				_pathStuckDistance = 0.0;
 				_pathUnreachableNodes.insert(_pathGoalIndex);
 				// select previous reachable one
 				while(_pathUnreachableNodes.find(_pathGoalIndex) != _pathUnreachableNodes.end())
@@ -3888,9 +3930,10 @@ void Rtabmap::updateGoalIndex()
 					}
 				}				
 			}
-			else if(!sameGoalIndex || !sameCurrentIndex)
+			else if(!isStuck)
 			{
 				_pathStuckCount = 0;
+				_pathStuckDistance = 0.0;
 			}
 		}
 	}
