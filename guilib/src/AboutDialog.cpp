@@ -54,11 +54,17 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_version->setText(version);
 	_ui->label_opencv_version->setText(cv_version);
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
+#ifdef RTABMAP_OCTOMAP
+	_ui->label_octomap->setText("Yes");
+#else
+	_ui->label_octomap->setText("No");
+#endif
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
 	_ui->label_freenect2->setText(CameraFreenect2::available()?"Yes":"No");
 	_ui->label_dc1394->setText(CameraStereoDC1394::available()?"Yes":"No");
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
+	_ui->label_zed->setText(CameraStereoZed::available()?"Yes":"No");
 
 	_ui->label_g2o->setText(Optimizer::isAvailable(Optimizer::kTypeG2O)?"Yes":"No");
 	_ui->label_gtsam->setText(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?"Yes":"No");

@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 
 #include <map>
+#include <string>
 
 namespace rtabmap {
 
@@ -67,14 +68,17 @@ public:
 	const octomap::ColorOcTree * octree() const {return octree_;}
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr createCloud(
+			unsigned int treeDepth = 0,
 			std::vector<int> * obstacleIndices = 0,
-			std::vector<int> * groundIndices = 0) const;
+			std::vector<int> * emptyIndices = 0) const;
 
 	cv::Mat createProjectionMap(
 			float & xMin,
 			float & yMin,
 			float & gridCellSize,
 			float minGridSize);
+
+	bool writeBinary(const std::string & path);
 
 	virtual ~OctoMap();
 	void clear();

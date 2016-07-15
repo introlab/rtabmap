@@ -109,6 +109,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/filters/filter.h>
 #include <pcl/search/kdtree.h>
 
+#ifdef RTABMAP_OCTOMAP
+#include <rtabmap/core/OctoMap.h>
+#endif
+
 #define LOG_FILE_NAME "LogRtabmap.txt"
 #define SHARE_SHOW_LOG_FILE "share/rtabmap/showlogs.m"
 #define SHARE_GET_PRECISION_RECALL_FILE "share/rtabmap/getPrecisionRecall.m"
@@ -146,6 +150,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_waypointsIndex(0),
 	_cachedMemoryUsage(0),
 	_createdCloudsMemoryUsage(0),
+	_octomap(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
 	_oneSecondTimer(0),
@@ -358,6 +363,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionExport_images_RGB_jpg_Depth_png, SIGNAL(triggered()), this , SLOT(exportImages()));
 	connect(_ui->actionExport_cameras_in_Bundle_format_out, SIGNAL(triggered()), SLOT(exportBundlerFormat()));
 	connect(_ui->actionView_scans, SIGNAL(triggered()), this, SLOT(viewScans()));
+	connect(_ui->actionExport_octomap, SIGNAL(triggered()), this, SLOT(exportOctomap()));
 	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewClouds()));
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
 	connect(_ui->actionTrigger_a_new_map, SIGNAL(triggered()), this, SLOT(triggerNewMap()));
@@ -1919,7 +1925,14 @@ void MainWindow::updateMapCloud(
 					_ui->graphicsView_graphView->isGridMapVisible() &&
 					_preferencesDialog->isGridMapFrom3DCloud() &&
 					_projectionLocalMaps.find(iter->first) == _projectionLocalMaps.end();
-			if(update3dCloud ||	updateProjMap)
+			bool updateOctomap = false;
+#ifdef RTABMAP_OCTOMAP
+			updateOctomap =
+					_cloudViewer->isVisible() &&
+					_preferencesDialog->isOctomapShown() &&
+					_octomap->addedNodes().find(iter->first) == _octomap->addedNodes().end();
+#endif
+			if(update3dCloud ||	updateProjMap || updateOctomap)
 			{
 				// update cloud
 				std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createdCloud;
@@ -1942,23 +1955,23 @@ void MainWindow::updateMapCloud(
 				else if(_cachedClouds.find(iter->first) == _cachedClouds.end() && _cachedSignatures.contains(iter->first))
 				{
 					createdCloud = this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
-					if(viewerClouds.contains(cloudName))
+					if(_cloudViewer->getAddedClouds().contains(cloudName))
 					{
 						_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
 					}
 				}
 
 				//Update projection map
-				if(updateProjMap)
+				if(updateProjMap || updateOctomap)
 				{
 					std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >::iterator cloudIter = _cachedClouds.find(iter->first);
 					if(cloudIter != _cachedClouds.end())
 					{
-						createAndAddProjectionMap(cloudIter->second.first, cloudIter->second.second, iter->first, iter->second);
+						createAndAddProjectionMap(cloudIter->second.first, cloudIter->second.second, iter->first, iter->second, updateOctomap);
 					}
-					else if(createdCloud.first->size() && createdCloud.second->size())
+					else if(createdCloud.first.get() && createdCloud.first->size() && createdCloud.second->size())
 					{
-						createAndAddProjectionMap(createdCloud.first, createdCloud.second, iter->first, iter->second);
+						createAndAddProjectionMap(createdCloud.first, createdCloud.second, iter->first, iter->second, updateOctomap);
 					}
 				}
 			}
@@ -2057,6 +2070,11 @@ void MainWindow::updateMapCloud(
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+#ifdef RTABMAP_OCTOMAP
+		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+#else
+		_ui->actionExport_octomap->setEnabled(false);
+#endif
 	}
 
 	//remove not used clouds
@@ -2199,6 +2217,18 @@ void MainWindow::updateMapCloud(
 		UDEBUG("");
 		_cloudViewer->removeOccupancyGridMap();
 	}
+
+#ifdef RTABMAP_OCTOMAP
+	_cloudViewer->removeOctomap();
+	if(_preferencesDialog->isOctomapShown() && _octomap)
+	{
+		UDEBUG("");
+		UTimer time;
+		_octomap->update(poses);
+		_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
+		UINFO("Octomap update time = %fs", time.ticks());
+	}
+#endif
 
 	if(viewerClouds.contains("cloudOdom"))
 	{
@@ -2356,191 +2386,190 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 		}
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-		if(_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0))
+		if(_preferencesDialog->isSubtractFiltering() &&
+		   _preferencesDialog->getSubtractFilteringRadius() > 0.0)
 		{
-			if(_preferencesDialog->isSubtractFiltering() &&
-			   _preferencesDialog->getSubtractFilteringRadius() > 0.0)
+			pcl::IndicesPtr beforeFiltering = indices;
+			if(	cloud->size() &&
+				_previousCloud.first>0 &&
+				_previousCloud.second.first.first.get() != 0 &&
+				_previousCloud.second.second.get() != 0 &&
+				_previousCloud.second.second->size() &&
+				_currentPosesMap.find(_previousCloud.first) != _currentPosesMap.end())
 			{
-				pcl::IndicesPtr beforeFiltering = indices;
-				if(	cloud->size() &&
-					_previousCloud.first>0 &&
-					_previousCloud.second.first.first.get() != 0 &&
-					_previousCloud.second.second.get() != 0 &&
-					_previousCloud.second.second->size() &&
-					_currentPosesMap.find(_previousCloud.first) != _currentPosesMap.end())
+				UTimer time;
+
+				rtabmap::Transform t = pose.inverse() * _currentPosesMap.at(_previousCloud.first);
+
+				//UWARN("saved new.pcd and old.pcd");
+				//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
+				//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
+
+				if(_preferencesDialog->getSubtractFilteringAngle() > 0.0f)
 				{
-					UTimer time;
-
-					rtabmap::Transform t = pose.inverse() * _currentPosesMap.at(_previousCloud.first);
-
-					//UWARN("saved new.pcd and old.pcd");
-					//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
-					//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
-
-					if(_preferencesDialog->getSubtractFilteringAngle() > 0.0f)
-					{
-						//normals required
-						if(_preferencesDialog->getNormalKSearch() > 0)
-						{
-							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
-							pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
-						}
-						else
-						{
-							UWARN("Cloud subtraction with angle filtering is activated but "
-								  "cloud normal K search is 0. Subtraction is done with angle.");
-						}
-					}
-
-					if(cloudWithNormals->size() &&
-						_previousCloud.second.first.second.get() &&
-						_previousCloud.second.first.second->size())
-					{
-						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.second, t);
-						indices = rtabmap::util3d::subtractFiltering(
-								cloudWithNormals,
-								indices,
-								previousCloud,
-								_previousCloud.second.second,
-								_preferencesDialog->getSubtractFilteringRadius(),
-								_preferencesDialog->getSubtractFilteringAngle(),
-								_preferencesDialog->getSubtractFilteringMinPts());
-					}
-					else
-					{
-						pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.first, t);
-						indices = rtabmap::util3d::subtractFiltering(
-								cloud,
-								indices,
-								previousCloud,
-								_previousCloud.second.second,
-								_preferencesDialog->getSubtractFilteringRadius(),
-								_preferencesDialog->getSubtractFilteringMinPts());
-					}
-
-
-					UINFO("Time subtract filtering %d from %d -> %d (%fs)",
-							(int)_previousCloud.second.second->size(),
-							(int)beforeFiltering->size(),
-							(int)indices->size(),
-							time.ticks());
-				}
-				// keep all indices for next subtraction
-				_previousCloud.first = nodeId;
-				_previousCloud.second.first.first = cloud;
-				_previousCloud.second.first.second = cloudWithNormals;
-				_previousCloud.second.second = beforeFiltering;
-			}
-
-			if(indices->size())
-			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
-				bool added = false;
-				if(_preferencesDialog->isCloudMeshing() && cloud->isOrganized())
-				{
-					// Fast organized mesh
-					// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
-					output = util3d::extractIndices(cloud, indices, false, true);
-					std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-							output,
-							_preferencesDialog->getCloudMeshingAngle(),
-							_preferencesDialog->isCloudMeshingQuad(),
-							_preferencesDialog->getCloudMeshingTriangleSize(),
-							viewPoint);
-					if(polygons.size())
-					{
-						// remove unused vertices to save memory
-						pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
-						std::vector<pcl::Vertices> outputPolygons;
-						util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
-						if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
-						{
-							UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
-						}
-						else
-						{
-							added = true;
-						}
-					}
-				}
-				else
-				{
-					if(_preferencesDialog->isCloudMeshing())
-					{
-						UWARN("Online meshing is activated but the generated cloud is "
-							  "dense (voxel filtering is used or multiple cameras are used). Disable "
-							  "online meshing in Preferences->3D Rendering to hide this warning.");
-					}
-
-					if(_preferencesDialog->getNormalKSearch() > 0 && cloudWithNormals->size() == 0)
+					//normals required
+					if(_preferencesDialog->getNormalKSearch() > 0)
 					{
 						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
 						pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
 					}
-
-					QColor color = Qt::gray;
-					if(mapId >= 0)
+					else
 					{
-						color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+						UWARN("Cloud subtraction with angle filtering is activated but "
+							  "cloud normal K search is 0. Subtraction is done with angle.");
 					}
+				}
 
-					output = util3d::extractIndices(cloud, indices, false, true);
+				if(cloudWithNormals->size() &&
+					_previousCloud.second.first.second.get() &&
+					_previousCloud.second.first.second->size())
+				{
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.second, t);
+					indices = rtabmap::util3d::subtractFiltering(
+							cloudWithNormals,
+							indices,
+							previousCloud,
+							_previousCloud.second.second,
+							_preferencesDialog->getSubtractFilteringRadius(),
+							_preferencesDialog->getSubtractFilteringAngle(),
+							_preferencesDialog->getSubtractFilteringMinPts());
+				}
+				else
+				{
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.first, t);
+					indices = rtabmap::util3d::subtractFiltering(
+							cloud,
+							indices,
+							previousCloud,
+							_previousCloud.second.second,
+							_preferencesDialog->getSubtractFilteringRadius(),
+							_preferencesDialog->getSubtractFilteringMinPts());
+				}
 
-					if(cloudWithNormals->size())
+
+				UINFO("Time subtract filtering %d from %d -> %d (%fs)",
+						(int)_previousCloud.second.second->size(),
+						(int)beforeFiltering->size(),
+						(int)indices->size(),
+						time.ticks());
+			}
+			// keep all indices for next subtraction
+			_previousCloud.first = nodeId;
+			_previousCloud.second.first.first = cloud;
+			_previousCloud.second.first.second = cloudWithNormals;
+			_previousCloud.second.second = beforeFiltering;
+		}
+
+		if(indices->size())
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr output;
+			bool added = false;
+			if(_preferencesDialog->isCloudMeshing() && cloud->isOrganized())
+			{
+				// Fast organized mesh
+				// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
+				output = util3d::extractIndices(cloud, indices, false, true);
+				std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+						output,
+						_preferencesDialog->getCloudMeshingAngle(),
+						_preferencesDialog->isCloudMeshingQuad(),
+						_preferencesDialog->getCloudMeshingTriangleSize(),
+						viewPoint);
+				if(polygons.size())
+				{
+					// remove unused vertices to save memory
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
+					std::vector<pcl::Vertices> outputPolygons;
+					util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
+					if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
 					{
-						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputWithNormals;
-						outputWithNormals = util3d::extractIndices(cloudWithNormals, indices, false, false);
-
-						if(!_cloudViewer->addCloud(cloudName, outputWithNormals, pose, color))
-						{
-							UERROR("Adding cloud %d to viewer failed!", nodeId);
-						}
-						else
-						{
-							added = true;
-						}
+						UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 					}
 					else
 					{
-						if(!_cloudViewer->addCloud(cloudName, output, pose, color))
-						{
-							UERROR("Adding cloud %d to viewer failed!", nodeId);
-						}
-						else
-						{
-							added = true;
-						}
-					}
-				}
-				if(added)
-				{
-					outputPair.first = output;
-					outputPair.second = indices;
-					if(_preferencesDialog->isCloudsKept())
-					{
-						_cachedClouds.insert(std::make_pair(nodeId, outputPair));
-						_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
+						added = true;
 					}
 				}
 			}
-			_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
-			_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+			else
+			{
+				if(_preferencesDialog->isCloudMeshing())
+				{
+					UWARN("Online meshing is activated but the generated cloud is "
+						  "dense (voxel filtering is used or multiple cameras are used). Disable "
+						  "online meshing in Preferences->3D Rendering to hide this warning.");
+				}
+
+				if(_preferencesDialog->getNormalKSearch() > 0 && cloudWithNormals->size() == 0)
+				{
+					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
+					pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+				}
+
+				QColor color = Qt::gray;
+				if(mapId >= 0)
+				{
+					color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+				}
+
+				output = util3d::extractIndices(cloud, indices, false, true);
+
+				if(cloudWithNormals->size())
+				{
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr outputWithNormals;
+					outputWithNormals = util3d::extractIndices(cloudWithNormals, indices, false, false);
+
+					if(!_cloudViewer->addCloud(cloudName, outputWithNormals, pose, color))
+					{
+						UERROR("Adding cloud %d to viewer failed!", nodeId);
+					}
+					else
+					{
+						added = true;
+					}
+				}
+				else
+				{
+					if(!_cloudViewer->addCloud(cloudName, output, pose, color))
+					{
+						UERROR("Adding cloud %d to viewer failed!", nodeId);
+					}
+					else
+					{
+						added = true;
+					}
+				}
+			}
+			if(added)
+			{
+				outputPair.first = output;
+				outputPair.second = indices;
+				if(_preferencesDialog->isCloudsKept())
+				{
+					_cachedClouds.insert(std::make_pair(nodeId, outputPair));
+					_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
+				}
+			}
 		}
+		_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
+		_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 	}
 
-	return outputPair;
 	UDEBUG("");
+	return outputPair;
 }
 
 void MainWindow::createAndAddProjectionMap(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		int nodeId,
-		const Transform & pose)
+		const Transform & pose,
+		bool updateOctomap)
 {
+	UDEBUG("");
 	UASSERT(!pose.isNull());
 
-	if(_projectionLocalMaps.find(nodeId) != _projectionLocalMaps.end())
+	if(_projectionLocalMaps.find(nodeId) != _projectionLocalMaps.end() && !updateOctomap)
 	{
 		UERROR("Projection map %d already added.", nodeId);
 		return;
@@ -2559,9 +2588,9 @@ void MainWindow::createAndAddProjectionMap(
 		}
 
 		// add pose rotation without yaw
+		float roll, pitch, yaw;
 		if(_preferencesDialog->projMapFrame())
 		{
-			float roll, pitch, yaw;
 			pose.getEulerAngles(roll, pitch, yaw);
 			voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0, pose.z(), roll, pitch, 0));
 		}
@@ -2571,19 +2600,61 @@ void MainWindow::createAndAddProjectionMap(
 			voxelCloud = util3d::passThrough(voxelCloud, "z", std::numeric_limits<int>::min(), _preferencesDialog->projMaxObstaclesHeight());
 		}
 
-		util3d::occupancy2DFromCloud3D<pcl::PointXYZRGB>(
+		pcl::IndicesPtr groundIndices, obstaclesIndices;
+		util3d::segmentObstaclesFromGround<pcl::PointXYZRGB>(
 				voxelCloud,
-				ground,
-				obstacles,
-				_preferencesDialog->getGridMapResolution(),
+				groundIndices,
+				obstaclesIndices,
+				20,
 				_preferencesDialog->projMaxGroundAngle(),
+				_preferencesDialog->getGridMapResolution()*2.0f,
 				_preferencesDialog->projMinClusterSize(),
 				_preferencesDialog->projFlatObstaclesDetected(),
 				_preferencesDialog->projMaxGroundHeight());
 
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+		if(groundIndices->size())
+		{
+			pcl::copyPointCloud(*voxelCloud, *groundIndices, *groundCloud);
+		}
+
+		if(obstaclesIndices->size())
+		{
+			pcl::copyPointCloud(*voxelCloud, *obstaclesIndices, *obstaclesCloud);
+		}
+
+		util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(
+				groundCloud,
+				obstaclesCloud,
+				ground,
+				obstacles,
+				_preferencesDialog->getGridMapResolution());
+
+		if(updateOctomap)
+		{
+			// Update octomap
+#ifdef RTABMAP_OCTOMAP
+			if(_octomap &&
+				(_octomap->addedNodes().empty() ||
+				nodeId > _octomap->addedNodes().rbegin()->first))
+			{
+				if(_preferencesDialog->projMapFrame())
+				{
+					Transform tinv = Transform(0,0,0, roll, pitch, 0).inverse();
+					groundCloud = util3d::transformPointCloud(groundCloud, tinv);
+					obstaclesCloud = util3d::transformPointCloud(obstaclesCloud, tinv);
+				}
+				_octomap->addToCache(nodeId, groundCloud, obstaclesCloud);
+			}
+#endif
+		}
+
 		_projectionLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 		UDEBUG("time gridMapFrom3DCloud = %f s", timer.ticks());
 	}
+	UDEBUG("");
 }
 
 void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int mapId)
@@ -3965,6 +4036,15 @@ void MainWindow::startDetection()
 				   "progress will not be shown in the GUI."));
 	}
 
+#ifdef RTABMAP_OCTOMAP
+	if(_octomap)
+	{
+		delete _octomap;
+		_octomap = 0;
+	}
+	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
+#endif
+
 	emit stateChanged(kDetecting);
 }
 
@@ -4948,6 +5028,7 @@ void MainWindow::clearTheCache()
 	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 	_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
+	_ui->actionExport_octomap->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_likelihoodCurve->clear();
 	_rawLikelihoodCurve->clear();
@@ -4968,6 +5049,12 @@ void MainWindow::clearTheCache()
 	_ui->imageView_source->setBackgroundColor(Qt::black);
 	_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
 	_ui->imageView_odometry->setBackgroundColor(Qt::black);
+#ifdef RTABMAP_OCTOMAP
+	if(_octomap)
+	{
+		_octomap->clear();
+	}
+#endif
 }
 
 void MainWindow::updateElapsedTime()
@@ -5350,6 +5437,44 @@ void MainWindow::viewClouds()
 
 }
 
+void MainWindow::exportOctomap()
+{
+#ifdef RTABMAP_OCTOMAP
+	if(_octomap && _octomap->octree()->size())
+	{
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				this->getWorkingDirectory()+"/"+"octomap.bt",
+				tr("Octomap file (*.bt)"));
+
+		if(!path.isEmpty())
+		{
+			if(_octomap->writeBinary(path.toStdString()))
+			{
+				QMessageBox::information(this,
+						tr("Export octomap..."),
+						tr("Octomap successfully saved to \"%1\".")
+						.arg(path));
+			}
+			else
+			{
+				QMessageBox::information(this,
+						tr("Export octomap..."),
+						tr("Failed to save octomap to \"%1\"!")
+						.arg(path));
+			}
+		}
+	}
+	else
+	{
+		UERROR("Empty octomap.");
+	}
+#else
+	UERROR("Cannot export octomap, RTAB-Map is not built with it.");
+#endif
+}
+
 void MainWindow::exportImages()
 {
 	if(_cachedSignatures.empty())
@@ -5727,7 +5852,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		}
 	}
 	actions = _ui->menuFile->actions();
-	if(actions.size()==15)
+	if(actions.size()==16)
 	{
 		if(actions.at(2)->isSeparator())
 		{
@@ -5737,9 +5862,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		{
 			UWARN("Menu File separators have not the same order.");
 		}
-		if(actions.at(11)->isSeparator())
+		if(actions.at(12)->isSeparator())
 		{
-			actions.at(11)->setVisible(!monitoring);
+			actions.at(12)->setVisible(!monitoring);
 		}
 		else
 		{
@@ -5796,6 +5921,11 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+#ifdef RTABMAP_OCTOMAP
+		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+#else
+		_ui->actionExport_octomap->setEnabled(false);
+#endif
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
@@ -5852,6 +5982,11 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+#ifdef RTABMAP_OCTOMAP
+		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+#else
+		_ui->actionExport_octomap->setEnabled(false);
+#endif
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
@@ -5897,6 +6032,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
 		_ui->actionView_scans->setEnabled(false);
+		_ui->actionExport_octomap->setEnabled(false);
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
@@ -5939,6 +6075,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
 			_ui->actionView_scans->setEnabled(false);
+			_ui->actionExport_octomap->setEnabled(false);
 			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
 			_ui->actionDownload_graph->setEnabled(false);
@@ -5968,6 +6105,11 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 			_ui->actionView_scans->setEnabled(!_createdScans.empty());
+#ifdef RTABMAP_OCTOMAP
+			_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+#else
+			_ui->actionExport_octomap->setEnabled(false);
+#endif
 			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 			_ui->actionDownload_all_clouds->setEnabled(true);
 			_ui->actionDownload_graph->setEnabled(true);
@@ -5997,6 +6139,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
 		_ui->actionView_scans->setEnabled(false);
+		_ui->actionExport_octomap->setEnabled(false);
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
@@ -6027,6 +6170,11 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+#ifdef RTABMAP_OCTOMAP
+		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+#else
+		_ui->actionExport_octomap->setEnabled(false);
+#endif
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);

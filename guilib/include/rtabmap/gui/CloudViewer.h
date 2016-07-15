@@ -58,8 +58,11 @@ namespace pcl {
 }
 
 class QMenu;
+class vtkProp;
 
 namespace rtabmap {
+
+class OctoMap;
 
 class RTABMAPGUI_EXP CloudViewer : public QVTKWidget
 {
@@ -135,6 +138,9 @@ public:
 			const std::string & id,
 			const pcl::TextureMesh::Ptr & textureMesh,
 			const Transform & pose = Transform::getIdentity());
+
+	bool addOctomap(const OctoMap * octomap, unsigned int treeDepth = 0, bool showEdges = true, bool lightingOn = false);
+	void removeOctomap();
 
 	bool addOccupancyGridMap(
 			const cv::Mat & map8U,
@@ -326,6 +332,7 @@ private:
     bool _backfaceCulling;
     bool _frontfaceCulling;
     double _renderingRate;
+    vtkProp * _octomapActor;
 };
 
 } /* namespace rtabmap */

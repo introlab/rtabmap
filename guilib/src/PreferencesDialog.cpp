@@ -150,6 +150,16 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_map_shown->setChecked(false);
 	_ui->checkBox_map_shown->setEnabled(false);
 	_ui->label_map_shown->setText(_ui->label_map_shown->text() + " (Disabled, PCL >=1.7.2 required)");
+	_ui->label_map_shown->setEnabled(false);
+#endif
+
+#ifndef RTABMAP_OCTOMAP
+	_ui->checkBox_octomap->setChecked(false);
+	_ui->checkBox_octomap->setEnabled(false);
+	_ui->label_octomap->setEnabled(false);
+	_ui->spinBox_octomap_treeDepth->setEnabled(false);
+	_ui->label_octomap_treeDepth->setEnabled(false);
+
 #endif
 
 #ifndef RTABMAP_NONFREE
@@ -377,6 +387,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_projMinClusterSize, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_projMaxObstaclesHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_projFlatObstaclesDetected, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+
+	connect(_ui->checkBox_octomap, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_octomap_treeDepth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->groupBox_organized, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mesh_angleTolerance, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1213,6 +1226,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_projMaxObstaclesHeight->setValue(0);
 		_ui->checkBox_projFlatObstaclesDetected->setChecked(true);
 
+		_ui->checkBox_octomap->setChecked(false);
+		_ui->spinBox_octomap_treeDepth->setValue(16);
+
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		_ui->groupBox_organized->setChecked(false);
@@ -1570,6 +1586,9 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->spinBox_projMinClusterSize->setValue(settings.value("projMinClusterSize", _ui->spinBox_projMinClusterSize->value()).toInt());
 	_ui->doubleSpinBox_projMaxObstaclesHeight->setValue(settings.value("projMaxObstaclesHeight", _ui->doubleSpinBox_projMaxObstaclesHeight->value()).toDouble());
 	_ui->checkBox_projFlatObstaclesDetected->setChecked(settings.value("projFlatObstaclesDetected", _ui->checkBox_projFlatObstaclesDetected->isChecked()).toBool());
+
+	_ui->checkBox_octomap->setChecked(settings.value("octomap", _ui->checkBox_octomap->isChecked()).toBool());
+	_ui->spinBox_octomap_treeDepth->setValue(settings.value("octomap_depth", _ui->spinBox_octomap_treeDepth->value()).toInt());
 
 	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("meshing_angle", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
@@ -1978,6 +1997,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("projMaxObstaclesHeight",      _ui->doubleSpinBox_projMaxObstaclesHeight->value());
 	settings.setValue("projFlatObstaclesDetected",   _ui->checkBox_projFlatObstaclesDetected->isChecked());
 
+	settings.setValue("octomap",                     _ui->checkBox_octomap->isChecked());
+	settings.setValue("octomap_depth",               _ui->spinBox_octomap_treeDepth->value());
 
 	settings.setValue("meshing",               _ui->groupBox_organized->isChecked());
 	settings.setValue("meshing_angle",         _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -3630,6 +3651,17 @@ bool PreferencesDialog::isCloudsShown(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingShowClouds[index]->isChecked();
+}
+bool PreferencesDialog::isOctomapShown() const
+{
+#ifdef RTABMAP_OCTOMAP
+	return _ui->checkBox_octomap->isChecked();
+#endif
+	return false;
+}
+int PreferencesDialog::getOctomapTreeDepth() const
+{
+	return _ui->spinBox_octomap_treeDepth->value();
 }
 
 double PreferencesDialog::getMapVoxel() const

@@ -59,6 +59,7 @@ void OctoMap::addToCache(int nodeId,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles)
 {
+	UDEBUG("nodeId=%d", nodeId);
 	cache_.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 }
 
@@ -92,7 +93,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	}
 	if(graphChanged)
 	{
-		UWARN("Graph changed!");
+		UINFO("Graph changed!");
 		octomap::ColorOcTree * newOcTree = new octomap::ColorOcTree(octree_->getResolution());
 		std::map<octomap::ColorOcTreeNode*, OcTreeNodeInfo > newOccupiedCells;
 		int copied=0;
@@ -299,32 +300,105 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	cache_.clear();
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
-		std::vector<int> * obstacleIndices,
-		std::vector<int> * groundIndices) const
+void HSVtoRGB( float *r, float *g, float *b, float h, float s, float v )
 {
+	int i;
+	float f, p, q, t;
+	if( s == 0 ) {
+		// achromatic (grey)
+		*r = *g = *b = v;
+		return;
+	}
+	h /= 60;			// sector 0 to 5
+	i = floor( h );
+	f = h - i;			// factorial part of h
+	p = v * ( 1 - s );
+	q = v * ( 1 - s * f );
+	t = v * ( 1 - s * ( 1 - f ) );
+	switch( i ) {
+		case 0:
+			*r = v;
+			*g = t;
+			*b = p;
+			break;
+		case 1:
+			*r = q;
+			*g = v;
+			*b = p;
+			break;
+		case 2:
+			*r = p;
+			*g = v;
+			*b = t;
+			break;
+		case 3:
+			*r = p;
+			*g = q;
+			*b = v;
+			break;
+		case 4:
+			*r = t;
+			*g = p;
+			*b = v;
+			break;
+		default:		// case 5:
+			*r = v;
+			*g = p;
+			*b = q;
+			break;
+	}
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
+		unsigned int treeDepth,
+		std::vector<int> * obstacleIndices,
+		std::vector<int> * emptyIndices) const
+{
+	UASSERT(treeDepth <= octree_->getTreeDepth());
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-	UDEBUG("occupied cells = %d", (int)occupiedCells_.size());
-	cloud->resize(occupiedCells_.size());
+	UDEBUG("depth=%d (maxDepth=%d) octree = %d",
+			(int)treeDepth, (int)octree_->getTreeDepth(), (int)octree_->size());
+	cloud->resize(octree_->size());
 	if(obstacleIndices)
 	{
-		obstacleIndices->resize(occupiedCells_.size());
+		obstacleIndices->resize(octree_->size());
 	}
-	if(groundIndices)
+	if(emptyIndices)
 	{
-		groundIndices->resize(occupiedCells_.size());
+		emptyIndices->resize(octree_->size());
 	}
+
+	if(treeDepth == 0)
+	{
+		treeDepth = octree_->getTreeDepth();
+	}
+
+	double minX, minY, minZ, maxX, maxY, maxZ;
+	octree_->getMetricMin(minX, minY, minZ);
+	octree_->getMetricMax(maxX, maxY, maxZ);
+
 	int oi=0;
 	int si=0;
 	int gi=0;
-	for(std::map<octomap::ColorOcTreeNode*, OcTreeNodeInfo>::const_iterator iter = occupiedCells_.begin();
-		iter!=occupiedCells_.end();
-		++iter)
+	for (octomap::ColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
 	{
-		if(iter->second.isObstacle_ && octree_->isNodeOccupied(iter->first))
+		if(octree_->isNodeOccupied(*it))
 		{
-			octomap::point3d pt = octree_->keyToCoord(iter->second.key_);
-			(*cloud)[oi]  = pcl::PointXYZRGB(iter->first->getColor().r, iter->first->getColor().g, iter->first->getColor().b);
+			octomap::point3d pt = octree_->keyToCoord(it.getKey());
+			if(octree_->getTreeDepth() == it.getDepth())
+			{
+				(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
+			}
+			else
+			{
+				// Gradiant color on z axis
+				float H = (maxZ - pt.z())*299.0f/(maxZ-minZ);
+				float r,g,b;
+				HSVtoRGB(&r, &g, &b, H, 1, 1);
+				(*cloud)[oi].r = r*255.0f;
+				(*cloud)[oi].g = g*255.0f;
+				(*cloud)[oi].b = b*255.0f;
+			}
 			(*cloud)[oi].x = pt.x();
 			(*cloud)[oi].y = pt.y();
 			(*cloud)[oi].z = pt.z();
@@ -334,28 +408,29 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 			}
 			++oi;
 		}
-		else if(!iter->second.isObstacle_)
+		else
 		{
-			octomap::point3d pt = octree_->keyToCoord(iter->second.key_);
-			(*cloud)[oi]  = pcl::PointXYZRGB(iter->first->getColor().r, iter->first->getColor().g, iter->first->getColor().b);
+			octomap::point3d pt = octree_->keyToCoord(it.getKey());
+			(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
 			(*cloud)[oi].x = pt.x();
 			(*cloud)[oi].y = pt.y();
 			(*cloud)[oi].z = pt.z();
-			if(groundIndices)
+			if(emptyIndices)
 			{
-				groundIndices->at(gi++) = oi;
+				emptyIndices->at(gi++) = oi;
 			}
 			++oi;
 		}
 	}
+
 	cloud->resize(oi);
 	if(obstacleIndices)
 	{
 		obstacleIndices->resize(si);
 	}
-	if(groundIndices)
+	if(emptyIndices)
 	{
-		groundIndices->resize(gi);
+		emptyIndices->resize(gi);
 	}
 
 	UDEBUG("");
@@ -426,6 +501,11 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 			xMin, yMin,
 			minGridSize,
 			false);
+}
+
+bool OctoMap::writeBinary(const std::string & path)
+{
+	return octree_->writeBinary(path);
 }
 
 } /* namespace rtabmap */

@@ -69,6 +69,7 @@ class ExportCloudsDialog;
 class ExportScansDialog;
 class PostProcessingDialog;
 class DataRecorder;
+class OctoMap;
 
 class RTABMAPGUI_EXP MainWindow : public QMainWindow, public UEventsHandler
 {
@@ -137,6 +138,7 @@ private slots:
 	void exportPosesTORO();
 	void exportPosesG2O();
 	void exportImages();
+	void exportOctomap();
 	void postProcessing();
 	void deleteMemory();
 	void openWorkingDirectory();
@@ -239,7 +241,8 @@ private:
 			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 			const pcl::IndicesPtr & indices,
 			int nodeId,
-			const Transform & pose);
+			const Transform & pose,
+			bool updateOctomap = false);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId);
 	Transform alignPosesToGroundTruth(std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth);
@@ -296,6 +299,8 @@ private:
 	std::map<int, cv::Mat> _createdScans;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>
+
+	rtabmap::OctoMap * _octomap;
 
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> _createdFeatures;
 
