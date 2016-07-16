@@ -2646,6 +2646,11 @@ void MainWindow::createAndAddProjectionMap(
 					groundCloud = util3d::transformPointCloud(groundCloud, tinv);
 					obstaclesCloud = util3d::transformPointCloud(obstaclesCloud, tinv);
 				}
+				if(_preferencesDialog->isOctomapGroundAnObstacle())
+				{
+					*obstaclesCloud += *groundCloud;
+					groundCloud->clear();
+				}
 				_octomap->addToCache(nodeId, groundCloud, obstaclesCloud);
 			}
 #endif

@@ -159,7 +159,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->label_octomap->setEnabled(false);
 	_ui->spinBox_octomap_treeDepth->setEnabled(false);
 	_ui->label_octomap_treeDepth->setEnabled(false);
-
+	_ui->checkBox_octomap_groundObstacle->setEnabled(false);
+	_ui->label_octomap_groundObstacle->setEnabled(false);
 #endif
 
 #ifndef RTABMAP_NONFREE
@@ -390,6 +391,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->checkBox_octomap, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_octomap_treeDepth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_octomap_groundObstacle, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->groupBox_organized, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mesh_angleTolerance, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1228,6 +1230,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->checkBox_octomap->setChecked(false);
 		_ui->spinBox_octomap_treeDepth->setValue(16);
+		_ui->checkBox_octomap_groundObstacle->setChecked(true);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
@@ -1589,6 +1592,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 
 	_ui->checkBox_octomap->setChecked(settings.value("octomap", _ui->checkBox_octomap->isChecked()).toBool());
 	_ui->spinBox_octomap_treeDepth->setValue(settings.value("octomap_depth", _ui->spinBox_octomap_treeDepth->value()).toInt());
+	_ui->checkBox_octomap_groundObstacle->setChecked(settings.value("octomap_ground_is_obstacle", _ui->checkBox_octomap_groundObstacle->isChecked()).toBool());
 
 	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("meshing_angle", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
@@ -1999,6 +2003,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 
 	settings.setValue("octomap",                     _ui->checkBox_octomap->isChecked());
 	settings.setValue("octomap_depth",               _ui->spinBox_octomap_treeDepth->value());
+	settings.setValue("octomap_ground_is_obstacle", _ui->checkBox_octomap_groundObstacle->isChecked());
 
 	settings.setValue("meshing",               _ui->groupBox_organized->isChecked());
 	settings.setValue("meshing_angle",         _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -3662,6 +3667,10 @@ bool PreferencesDialog::isOctomapShown() const
 int PreferencesDialog::getOctomapTreeDepth() const
 {
 	return _ui->spinBox_octomap_treeDepth->value();
+}
+bool PreferencesDialog::isOctomapGroundAnObstacle() const
+{
+	return _ui->checkBox_octomap_groundObstacle->isChecked();
 }
 
 double PreferencesDialog::getMapVoxel() const

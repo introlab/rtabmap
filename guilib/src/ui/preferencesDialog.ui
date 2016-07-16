@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-464</y>
+            <y>-568</y>
             <width>686</width>
             <height>2023</height>
            </rect>
@@ -785,6 +785,19 @@ Show a yellow background when the number of odometry inliers goes under this thr
                           </item>
                           <item>
                            <layout class="QGridLayout" name="gridLayout_67" columnstretch="0,1">
+                            <item row="5" column="0">
+                             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxObstaclesHeight">
+                              <property name="suffix">
+                               <string> m</string>
+                              </property>
+                              <property name="decimals">
+                               <number>2</number>
+                              </property>
+                              <property name="maximum">
+                               <double>9999.000000000000000</double>
+                              </property>
+                             </widget>
+                            </item>
                             <item row="5" column="1">
                              <widget class="QLabel" name="label_309">
                               <property name="text">
@@ -928,19 +941,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                               </property>
                              </widget>
                             </item>
-                            <item row="5" column="0">
-                             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxObstaclesHeight">
-                              <property name="suffix">
-                               <string> m</string>
-                              </property>
-                              <property name="decimals">
-                               <number>2</number>
-                              </property>
-                              <property name="maximum">
-                               <double>9999.000000000000000</double>
-                              </property>
-                             </widget>
-                            </item>
                             <item row="6" column="0">
                              <widget class="QCheckBox" name="checkBox_octomap">
                               <property name="text">
@@ -987,6 +987,29 @@ Show a yellow background when the number of odometry inliers goes under this thr
                               </property>
                               <property name="value">
                                <number>16</number>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="8" column="1">
+                             <widget class="QLabel" name="label_octomap_groundObstacle">
+                              <property name="text">
+                               <string>Octomap: ground is an obstacle.</string>
+                              </property>
+                              <property name="wordWrap">
+                               <bool>true</bool>
+                              </property>
+                              <property name="textInteractionFlags">
+                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                              </property>
+                             </widget>
+                            </item>
+                            <item row="8" column="0">
+                             <widget class="QCheckBox" name="checkBox_octomap_groundObstacle">
+                              <property name="text">
+                               <string/>
+                              </property>
+                              <property name="checked">
+                               <bool>true</bool>
                               </property>
                              </widget>
                             </item>
