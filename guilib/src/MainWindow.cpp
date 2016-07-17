@@ -233,6 +233,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadWindowGeometry(_aboutDialog);
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
+#ifdef RTABMAP_OCTOMAP
+	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
+#endif
+
 	// Timer
 	_oneSecondTimer = new QTimer(this);
 	_oneSecondTimer->setInterval(1000);
@@ -267,10 +271,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_rawLikelihoodCurve = new PdfPlotCurve("Likelihood", &_cachedSignatures, this);
 	_ui->rawLikelihoodPlot->addCurve(_rawLikelihoodCurve, false);
 	_ui->rawLikelihoodPlot->showLegend(false);
-
-	_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
-	_ui->doubleSpinBox_stats_detectionRate->setValue(_preferencesDialog->getDetectionRate());
-	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
 
 	_initProgressDialog = new ProgressDialog(this);
 	_initProgressDialog->setWindowTitle(tr("Progress dialog"));
@@ -474,6 +474,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->dockWidget_imageView->installEventFilter(this);
 
 	// more connects...
+	_ui->doubleSpinBox_stats_imgRate->setValue(_preferencesDialog->getGeneralInputRate());
+	_ui->doubleSpinBox_stats_detectionRate->setValue(_preferencesDialog->getDetectionRate());
+	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
 	connect(_ui->doubleSpinBox_stats_imgRate, SIGNAL(editingFinished()), this, SLOT(changeImgRateSetting()));
 	connect(_ui->doubleSpinBox_stats_detectionRate, SIGNAL(editingFinished()), this, SLOT(changeDetectionRateSetting()));
 	connect(_ui->doubleSpinBox_stats_timeLimit, SIGNAL(editingFinished()), this, SLOT(changeTimeLimitSetting()));
@@ -569,11 +572,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	// update loop closure viewer parameters
 	_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
 	_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
-
-	//update ui
-	_ui->doubleSpinBox_stats_detectionRate->setValue(_preferencesDialog->getDetectionRate());
-	_ui->doubleSpinBox_stats_timeLimit->setValue(_preferencesDialog->getTimeLimit());
-	_ui->actionSLAM_mode->setChecked(_preferencesDialog->isSLAMMode());
 
 	splash.close();
 
@@ -2071,7 +2069,7 @@ void MainWindow::updateMapCloud(
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
-		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
 		_ui->actionExport_octomap->setEnabled(false);
 #endif
@@ -2220,7 +2218,7 @@ void MainWindow::updateMapCloud(
 
 #ifdef RTABMAP_OCTOMAP
 	_cloudViewer->removeOctomap();
-	if(_preferencesDialog->isOctomapShown() && _octomap)
+	if(_preferencesDialog->isOctomapShown())
 	{
 		UDEBUG("");
 		UTimer time;
@@ -2636,9 +2634,8 @@ void MainWindow::createAndAddProjectionMap(
 		{
 			// Update octomap
 #ifdef RTABMAP_OCTOMAP
-			if(_octomap &&
-				(_octomap->addedNodes().empty() ||
-				nodeId > _octomap->addedNodes().rbegin()->first))
+			if(_octomap->addedNodes().empty() ||
+				nodeId > _octomap->addedNodes().rbegin()->first)
 			{
 				if(_preferencesDialog->projMapFrame())
 				{
@@ -4042,11 +4039,8 @@ void MainWindow::startDetection()
 	}
 
 #ifdef RTABMAP_OCTOMAP
-	if(_octomap)
-	{
-		delete _octomap;
-		_octomap = 0;
-	}
+	UASSERT(_octomap != 0);
+	delete _octomap;
 	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
 #endif
 
@@ -5055,10 +5049,10 @@ void MainWindow::clearTheCache()
 	_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
 	_ui->imageView_odometry->setBackgroundColor(Qt::black);
 #ifdef RTABMAP_OCTOMAP
-	if(_octomap)
-	{
-		_octomap->clear();
-	}
+	// re-create one if the resolution has changed
+	UASSERT(_octomap != 0);
+	delete _octomap;
+	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
 #endif
 }
 
@@ -5445,7 +5439,7 @@ void MainWindow::viewClouds()
 void MainWindow::exportOctomap()
 {
 #ifdef RTABMAP_OCTOMAP
-	if(_octomap && _octomap->octree()->size())
+	if(_octomap->octree()->size())
 	{
 		QString path = QFileDialog::getSaveFileName(
 				this,
@@ -5927,7 +5921,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
-		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
 		_ui->actionExport_octomap->setEnabled(false);
 #endif
@@ -5988,7 +5982,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
-		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
 		_ui->actionExport_octomap->setEnabled(false);
 #endif
@@ -6111,7 +6105,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 			_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
-			_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+			_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
 			_ui->actionExport_octomap->setEnabled(false);
 #endif
@@ -6176,7 +6170,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
-		_ui->actionExport_octomap->setEnabled(_octomap && _octomap->octree()->size());
+		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
 		_ui->actionExport_octomap->setEnabled(false);
 #endif
