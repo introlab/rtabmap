@@ -2639,7 +2639,7 @@ void MainWindow::createAndAddProjectionMap(
 			{
 				if(_preferencesDialog->projMapFrame())
 				{
-					Transform tinv = Transform(0,0,0, roll, pitch, 0).inverse();
+					Transform tinv = Transform(0,0,pose.z(), roll, pitch, 0).inverse();
 					groundCloud = util3d::transformPointCloud(groundCloud, tinv);
 					obstaclesCloud = util3d::transformPointCloud(obstaclesCloud, tinv);
 				}

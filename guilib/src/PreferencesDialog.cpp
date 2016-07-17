@@ -389,7 +389,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_projMaxObstaclesHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_projFlatObstaclesDetected, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
-	connect(_ui->checkBox_octomap, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->groupBox_octomap, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_octomap_treeDepth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_octomap_groundObstacle, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
@@ -919,11 +919,11 @@ void PreferencesDialog::setupTreeView()
 	QList<QGroupBox*> boxes = this->getGroupBoxes();
 	if(_ui->radioButton_basic->isChecked())
 	{
-		boxes = boxes.mid(0,5);
+		boxes = boxes.mid(0,7);
 	}
 	else // Advanced
 	{
-		boxes.removeAt(4);
+		boxes.removeAt(6);
 	}
 
 	QStandardItem * parentItem = _indexModel->invisibleRootItem();
@@ -936,36 +936,20 @@ void PreferencesDialog::setupTreeView()
 	int currentIndex = _ui->stackedWidget->currentIndex();
 	if(_ui->radioButton_basic->isChecked())
 	{
-		if(currentIndex >= 4)
+		if(currentIndex >= 6)
 		{
-			_ui->stackedWidget->setCurrentIndex(4);
-			currentIndex = 4;
+			_ui->stackedWidget->setCurrentIndex(6);
+			currentIndex = 6;
 		}
 	}
 	else // Advanced
 	{
-		if(currentIndex == 4)
+		if(currentIndex == 6)
 		{
-			_ui->stackedWidget->setCurrentIndex(5);
+			_ui->stackedWidget->setCurrentIndex(7);
 		}
 	}
 	_ui->treeView->setModel(_indexModel);
-	if(currentIndex == 0) // GUI
-	{
-		_ui->treeView->setCurrentIndex(_indexModel->index(0, 0));
-	}
-	else if(currentIndex == 1) //3d rendering
-	{
-		_ui->treeView->setCurrentIndex(_indexModel->index(0, 0).child(0,0));
-	}
-	else if(currentIndex == 2) // logging
-	{
-		_ui->treeView->setCurrentIndex(_indexModel->index(0, 0).child(1,0));
-	}
-	else // source, rtabmap
-	{
-		_ui->treeView->setCurrentIndex(_indexModel->index(currentIndex-2, 0));
-	}
 	_ui->treeView->expandToDepth(1);
 
 	// should be after setModel()
@@ -1088,7 +1072,7 @@ void PreferencesDialog::clicked(const QModelIndex & current, const QModelIndex &
 	if(item && item->isEnabled())
 	{
 		int index = item->data().toInt();
-		if(_ui->radioButton_advanced->isChecked() && index >= 4)
+		if(_ui->radioButton_advanced->isChecked() && index >= 6)
 		{
 			++index;
 		}
@@ -1206,6 +1190,20 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showLabels->setChecked(false);
 
+		_ui->spinBox_normalKSearch->setValue(10);
+
+		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+		_ui->groupBox_organized->setChecked(false);
+		_ui->checkBox_mesh_quad->setChecked(true);
+#else
+		_ui->groupBox_organized->setChecked(false);
+		_ui->checkBox_mesh_quad->setChecked(false);
+#endif
+		_ui->spinBox_mesh_triangleSize->setValue(2);
+	}
+	else if(groupBox->objectName() == _ui->groupBox_filtering2->objectName())
+	{
 		_ui->radioButton_noFiltering->setChecked(true);
 		_ui->radioButton_nodeFiltering->setChecked(false);
 		_ui->radioButton_subtractFiltering->setChecked(false);
@@ -1214,8 +1212,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_subtractFilteringMinPts->setValue(5);
 		_ui->doubleSpinBox_subtractFilteringRadius->setValue(0.02);
 		_ui->doubleSpinBox_subtractFilteringAngle->setValue(0);
-		_ui->spinBox_normalKSearch->setValue(10);
-
+	}
+	else if(groupBox->objectName() == _ui->groupBox_gridMap2->objectName())
+	{
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
 		_ui->checkBox_map_erode->setChecked(false);
@@ -1228,19 +1227,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_projMaxObstaclesHeight->setValue(0);
 		_ui->checkBox_projFlatObstaclesDetected->setChecked(true);
 
-		_ui->checkBox_octomap->setChecked(false);
+		_ui->groupBox_octomap->setChecked(false);
 		_ui->spinBox_octomap_treeDepth->setValue(16);
 		_ui->checkBox_octomap_groundObstacle->setChecked(true);
-
-		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
-#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-		_ui->groupBox_organized->setChecked(false);
-		_ui->checkBox_mesh_quad->setChecked(true);
-#else
-		_ui->groupBox_organized->setChecked(false);
-		_ui->checkBox_mesh_quad->setChecked(false);
-#endif
-		_ui->spinBox_mesh_triangleSize->setValue(2);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
 	{
@@ -1590,7 +1579,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_projMaxObstaclesHeight->setValue(settings.value("projMaxObstaclesHeight", _ui->doubleSpinBox_projMaxObstaclesHeight->value()).toDouble());
 	_ui->checkBox_projFlatObstaclesDetected->setChecked(settings.value("projFlatObstaclesDetected", _ui->checkBox_projFlatObstaclesDetected->isChecked()).toBool());
 
-	_ui->checkBox_octomap->setChecked(settings.value("octomap", _ui->checkBox_octomap->isChecked()).toBool());
+	_ui->groupBox_octomap->setChecked(settings.value("octomap", _ui->groupBox_octomap->isChecked()).toBool());
 	_ui->spinBox_octomap_treeDepth->setValue(settings.value("octomap_depth", _ui->spinBox_octomap_treeDepth->value()).toInt());
 	_ui->checkBox_octomap_groundObstacle->setChecked(settings.value("octomap_ground_is_obstacle", _ui->checkBox_octomap_groundObstacle->isChecked()).toBool());
 
@@ -2001,7 +1990,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("projMaxObstaclesHeight",      _ui->doubleSpinBox_projMaxObstaclesHeight->value());
 	settings.setValue("projFlatObstaclesDetected",   _ui->checkBox_projFlatObstaclesDetected->isChecked());
 
-	settings.setValue("octomap",                     _ui->checkBox_octomap->isChecked());
+	settings.setValue("octomap",                     _ui->groupBox_octomap->isChecked());
 	settings.setValue("octomap_depth",               _ui->spinBox_octomap_treeDepth->value());
 	settings.setValue("octomap_ground_is_obstacle", _ui->checkBox_octomap_groundObstacle->isChecked());
 
@@ -3660,7 +3649,7 @@ bool PreferencesDialog::isCloudsShown(int index) const
 bool PreferencesDialog::isOctomapShown() const
 {
 #ifdef RTABMAP_OCTOMAP
-	return _ui->checkBox_octomap->isChecked();
+	return _ui->groupBox_octomap->isChecked();
 #endif
 	return false;
 }
