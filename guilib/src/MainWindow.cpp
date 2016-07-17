@@ -2587,11 +2587,8 @@ void MainWindow::createAndAddProjectionMap(
 
 		// add pose rotation without yaw
 		float roll, pitch, yaw;
-		if(_preferencesDialog->projMapFrame())
-		{
-			pose.getEulerAngles(roll, pitch, yaw);
-			voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0, pose.z(), roll, pitch, 0));
-		}
+		pose.getEulerAngles(roll, pitch, yaw);
+		voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0, _preferencesDialog->projMapFrame()?pose.z():0, roll, pitch, 0));
 
 		if(_preferencesDialog->projMaxObstaclesHeight())
 		{
@@ -2637,12 +2634,10 @@ void MainWindow::createAndAddProjectionMap(
 			if(_octomap->addedNodes().empty() ||
 				nodeId > _octomap->addedNodes().rbegin()->first)
 			{
-				if(_preferencesDialog->projMapFrame())
-				{
-					Transform tinv = Transform(0,0,pose.z(), roll, pitch, 0).inverse();
-					groundCloud = util3d::transformPointCloud(groundCloud, tinv);
-					obstaclesCloud = util3d::transformPointCloud(obstaclesCloud, tinv);
-				}
+				Transform tinv = Transform(0,0,_preferencesDialog->projMapFrame()?pose.z():0, roll, pitch, 0).inverse();
+				groundCloud = util3d::transformPointCloud(groundCloud, tinv);
+				obstaclesCloud = util3d::transformPointCloud(obstaclesCloud, tinv);
+
 				if(_preferencesDialog->isOctomapGroundAnObstacle())
 				{
 					*obstaclesCloud += *groundCloud;
