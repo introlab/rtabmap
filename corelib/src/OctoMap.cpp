@@ -114,7 +114,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				octomap::OcTreeKey key;
 				if(newOcTree->coordToKeyChecked(cvPt.x, cvPt.y, cvPt.z, key))
 				{
-					octomap::ColorOcTreeNode * n = newOcTree->updateNode(key, true);
+					octomap::ColorOcTreeNode * n = newOcTree->updateNode(key, iter->second.isObstacle_);
 					if(n)
 					{
 						++copied;
