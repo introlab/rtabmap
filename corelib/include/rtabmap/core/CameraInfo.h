@@ -39,6 +39,7 @@ public:
 	CameraInfo() :
 		cameraName(""),
 		id(0),
+		stamp(0.0),
 		timeCapture(0.0f),
 		timeDisparity(0.0f),
 		timeMirroring(0.0f),
@@ -51,6 +52,7 @@ public:
 
 	std::string cameraName;
 	int id;
+	double stamp;
 	float timeCapture;
 	float timeDisparity;
 	float timeMirroring;

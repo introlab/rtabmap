@@ -142,6 +142,7 @@ public:
 	bool imageRejectedShown() const;
 	bool imageHighestHypShown() const;
 	bool beepOnPause() const;
+	bool isTimeUsedInFigures() const;
 	bool notifyWhenNewGlobalPathIsReceived() const;
 	int getOdomQualityWarnThr() const;
 	bool isPosteriorGraphView() const;

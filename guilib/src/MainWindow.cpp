@@ -137,6 +137,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_exportScansDialog(0),
 	_dataRecorder(0),
 	_lastId(0),
+	_firstStamp(0.0f),
 	_processingStatistics(false),
 	_processingDownloadedMap(false),
 	_odometryReceived(false),
@@ -828,15 +829,25 @@ void MainWindow::handleEvent(UEvent* anEvent)
 
 void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 {
-	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", (float)info.id, info.timeCapture*1000.0f);
-	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", (float)info.id, info.timeImageDecimation*1000.0f);
-	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", (float)info.id, info.timeDisparity*1000.0f);
-	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", (float)info.id, info.timeMirroring*1000.0f);
-	_ui->statsToolBox->updateStat("Camera/Time scan_from_depth/ms", (float)info.id, info.timeScanFromDepth*1000.0f);
+	if(_firstStamp == 0.0)
+	{
+		_firstStamp = info.stamp;
+	}
+
+	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeCapture*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeImageDecimation*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeDisparity*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeMirroring*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time scan_from_depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f);
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataIgnored)
 {
+	if(_firstStamp == 0.0)
+	{
+		_firstStamp = odom.data().stamp();
+	}
+
 	UDEBUG("");
 	_processingOdometry = true;
 	UTimer time;
@@ -1219,85 +1230,85 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	}
 
 	//Process info
-	_ui->statsToolBox->updateStat("Odometry/Inliers/", (float)odom.data().id(), (float)odom.info().inliers);
-	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", (float)odom.data().id(), (float)odom.info().icpInliersRatio);
-	_ui->statsToolBox->updateStat("Odometry/Matches/", (float)odom.data().id(), (float)odom.info().matches);
-	_ui->statsToolBox->updateStat("Odometry/StdDev/", (float)odom.data().id(), sqrt((float)odom.info().variance));
-	_ui->statsToolBox->updateStat("Odometry/Variance/", (float)odom.data().id(), (float)odom.info().variance);
-	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", (float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
-	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", (float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
-	_ui->statsToolBox->updateStat("Odometry/Features/", (float)odom.data().id(), (float)odom.info().features);
-	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", (float)odom.data().id(), (float)odom.info().localMapSize);
-	_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", (float)odom.data().id(), (float)odom.info().localScanMapSize);
-	_ui->statsToolBox->updateStat("Odometry/ID/", (float)odom.data().id(), (float)odom.data().id());
+	_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().inliers);
+	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().icpInliersRatio);
+	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().matches);
+	_ui->statsToolBox->updateStat("Odometry/StdDev/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().variance));
+	_ui->statsToolBox->updateStat("Odometry/Variance/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().variance);
+	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f);
+	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f);
+	_ui->statsToolBox->updateStat("Odometry/Features/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().features);
+	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localMapSize);
+	_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localScanMapSize);
+	_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.data().id());
 
 	float x=0.0f,y,z, roll,pitch,yaw;
 	if(!odom.info().transform.isNull())
 	{
 		odom.info().transform.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/Tx/m", (float)odom.data().id(), x);
-		_ui->statsToolBox->updateStat("Odometry/Ty/m", (float)odom.data().id(), y);
-		_ui->statsToolBox->updateStat("Odometry/Tz/m", (float)odom.data().id(), z);
-		_ui->statsToolBox->updateStat("Odometry/Troll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/Tpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/Tyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Tx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/Ty/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/Tz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/Troll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Tpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Tyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 
 	if(!odom.info().transformFiltered.isNull())
 	{
 		odom.info().transformFiltered.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/TFx/m", (float)odom.data().id(), x);
-		_ui->statsToolBox->updateStat("Odometry/TFy/m", (float)odom.data().id(), y);
-		_ui->statsToolBox->updateStat("Odometry/TFz/m", (float)odom.data().id(), z);
-		_ui->statsToolBox->updateStat("Odometry/TFroll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/TFpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/TFyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TFx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/TFy/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/TFz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/TFroll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TFpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TFyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 	if(odom.info().interval > 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Interval/ms", (float)odom.data().id(), odom.info().interval*1000.f);
-		_ui->statsToolBox->updateStat("Odometry/Speed/kph", (float)odom.data().id(), x/odom.info().interval*3.6f);
+		_ui->statsToolBox->updateStat("Odometry/Interval/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().interval*1000.f);
+		_ui->statsToolBox->updateStat("Odometry/Speed/kph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x/odom.info().interval*3.6f);
 	}
 
 	if(!odom.info().transformGroundTruth.isNull())
 	{
 		odom.info().transformGroundTruth.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/TGx/m", (float)odom.data().id(), x);
-		_ui->statsToolBox->updateStat("Odometry/TGy/m", (float)odom.data().id(), y);
-		_ui->statsToolBox->updateStat("Odometry/TGz/m", (float)odom.data().id(), z);
-		_ui->statsToolBox->updateStat("Odometry/TGroll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/TGpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/TGyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TGx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/TGy/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/TGz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/TGroll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TGpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/TGyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 
 	//cumulative pose
 	if(!odom.pose().isNull())
 	{
 		odom.pose().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/Px/m", (float)odom.data().id(), x);
-		_ui->statsToolBox->updateStat("Odometry/Py/m", (float)odom.data().id(), y);
-		_ui->statsToolBox->updateStat("Odometry/Pz/m", (float)odom.data().id(), z);
-		_ui->statsToolBox->updateStat("Odometry/Proll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/Ppitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/Pyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Px/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/Py/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/Pz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/Proll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Ppitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/Pyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 	if(!odom.data().groundTruth().isNull())
 	{
 		odom.data().groundTruth().getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-		_ui->statsToolBox->updateStat("Odometry/PGx/m", (float)odom.data().id(), x);
-		_ui->statsToolBox->updateStat("Odometry/PGy/m", (float)odom.data().id(), y);
-		_ui->statsToolBox->updateStat("Odometry/PGz/m", (float)odom.data().id(), z);
-		_ui->statsToolBox->updateStat("Odometry/PGroll/deg", (float)odom.data().id(), roll*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/PGpitch/deg", (float)odom.data().id(), pitch*180.0/CV_PI);
-		_ui->statsToolBox->updateStat("Odometry/PGyaw/deg", (float)odom.data().id(), yaw*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/PGx/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x);
+		_ui->statsToolBox->updateStat("Odometry/PGy/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), y);
+		_ui->statsToolBox->updateStat("Odometry/PGz/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), z);
+		_ui->statsToolBox->updateStat("Odometry/PGroll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/PGpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI);
+		_ui->statsToolBox->updateStat("Odometry/PGyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI);
 	}
 
 	if(odom.info().distanceTravelled > 0)
 	{
-		_ui->statsToolBox->updateStat("Odometry/Distance/m", (float)odom.data().id(), odom.info().distanceTravelled);
+		_ui->statsToolBox->updateStat("Odometry/Distance/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().distanceTravelled);
 	}
 
-	_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", (float)odom.data().id(), time.elapsed()*1000.0);
+	_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), time.elapsed()*1000.0);
 	_processingOdometry = false;
 }
 
@@ -1309,6 +1320,11 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	time.start();
 	totalTime.start();
 	//Affichage des stats et images
+
+	if(_firstStamp == 0.0)
+	{
+		_firstStamp = stat.stamp();
+	}
 
 	int refMapId = -1, loopMapId = -1;
 	if(uContains(stat.getSignatures(), stat.refImageId()))
@@ -1535,8 +1551,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		UDEBUG("time= %d ms", time.restart());
 
-		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", stat.refImageId(), signature.getWords().size());
-		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", stat.refImageId(), loopSignature.getWords().size());
+		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), signature.getWords().size());
+		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), loopSignature.getWords().size());
 
 		// PDF AND LIKELIHOOD
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
@@ -1564,7 +1580,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
 		{
 			//ULOGGER_DEBUG("Updating stat \"%s\"", (*iter).first.c_str());
-			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), stat.refImageId(), (*iter).second);
+			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), (*iter).second);
 		}
 
 		UDEBUG("time= %d ms", time.restart());
@@ -1634,7 +1650,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_odometryCorrection = groundTruthOffset * stat.mapCorrection();
 
 			UDEBUG("time= %d ms", time.restart());
-			_ui->statsToolBox->updateStat("GUI/RGB-D cloud/ms", stat.refImageId(), int(timerVis.elapsed()*1000.0f));
+			_ui->statsToolBox->updateStat("GUI/RGB-D cloud/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(timerVis.elapsed()*1000.0f));
 
 			// loop closure view
 			if((stat.loopClosureId() > 0 || stat.proximityDetectionId() > 0)  &&
@@ -1650,7 +1666,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					UTimer loopTimer;
 					_loopClosureViewer->updateView(Transform(), _preferencesDialog->getAllParameters());
 					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
-					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
+					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(loopTimer.elapsed()*1000.0f));
 				}
 
 				UDEBUG("time= %d ms", time.restart());
@@ -1745,19 +1761,19 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 					UINFO("rotational_min=%f", rotational_min);
 					UINFO("rotational_max=%f", rotational_max);
 
-					_ui->statsToolBox->updateStat("GT/translational_rmse/", stat.refImageId(), translational_rmse);
-					_ui->statsToolBox->updateStat("GT/translational_mean/", stat.refImageId(), translational_mean);
-					_ui->statsToolBox->updateStat("GT/translational_median/", stat.refImageId(), translational_median);
-					_ui->statsToolBox->updateStat("GT/translational_std/", stat.refImageId(), translational_std);
-					_ui->statsToolBox->updateStat("GT/translational_min/", stat.refImageId(), translational_min);
-					_ui->statsToolBox->updateStat("GT/translational_max/", stat.refImageId(), translational_max);
+					_ui->statsToolBox->updateStat("GT/translational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_rmse);
+					_ui->statsToolBox->updateStat("GT/translational_mean/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_mean);
+					_ui->statsToolBox->updateStat("GT/translational_median/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_median);
+					_ui->statsToolBox->updateStat("GT/translational_std/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_std);
+					_ui->statsToolBox->updateStat("GT/translational_min/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_min);
+					_ui->statsToolBox->updateStat("GT/translational_max/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_max);
 
-					_ui->statsToolBox->updateStat("GT/rotational_rmse/", stat.refImageId(), rotational_rmse);
-					_ui->statsToolBox->updateStat("GT/rotational_mean/", stat.refImageId(), rotational_mean);
-					_ui->statsToolBox->updateStat("GT/rotational_median/", stat.refImageId(), rotational_median);
-					_ui->statsToolBox->updateStat("GT/rotational_std/", stat.refImageId(), rotational_std);
-					_ui->statsToolBox->updateStat("GT/rotational_min/", stat.refImageId(), rotational_min);
-					_ui->statsToolBox->updateStat("GT/rotational_max/", stat.refImageId(), rotational_max);
+					_ui->statsToolBox->updateStat("GT/rotational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_rmse);
+					_ui->statsToolBox->updateStat("GT/rotational_mean/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_mean);
+					_ui->statsToolBox->updateStat("GT/rotational_median/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_median);
+					_ui->statsToolBox->updateStat("GT/rotational_std/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_std);
+					_ui->statsToolBox->updateStat("GT/rotational_min/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_min);
+					_ui->statsToolBox->updateStat("GT/rotational_max/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_max);
 				}
 			}
 			UDEBUG("time= %d ms", time.restart());
@@ -1798,7 +1814,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 	float elapsedTime = static_cast<float>(totalTime.elapsed());
 	UINFO("Updating GUI time = %fs", elapsedTime/1000.0f);
-	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", stat.refImageId(), elapsedTime);
+	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), elapsedTime);
 	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
 	{
 		this->captureScreen(_autoScreenCaptureRAM);
@@ -1809,8 +1825,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		_cachedSignatures.clear();
 		_cachedMemoryUsage = 0;
 	}
-	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", stat.refImageId(), _cachedMemoryUsage/(1024*1024));
-	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", stat.refImageId(), _createdCloudsMemoryUsage/(1024*1024));
+	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _cachedMemoryUsage/(1024*1024));
+	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _createdCloudsMemoryUsage/(1024*1024));
 
 	if(_state != kMonitoring && _state != kDetecting)
 	{
@@ -5029,6 +5045,7 @@ void MainWindow::clearTheCache()
 	_posteriorCurve->clear();
 	_lastId = 0;
 	_lastIds.clear();
+	_firstStamp = 0.0f;
 	_ui->label_stats_loopClosuresDetected->setText("0");
 	_ui->label_stats_loopClosuresReactivatedDetected->setText("0");
 	_ui->label_stats_loopClosuresRejected->setText("0");

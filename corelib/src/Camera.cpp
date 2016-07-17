@@ -102,6 +102,7 @@ SensorData Camera::takeImage(CameraInfo * info)
 	if(info)
 	{
 		info->id = data.id();
+		info->stamp = data.stamp();
 		info->timeCapture = captureTime;
 	}
 	return data;

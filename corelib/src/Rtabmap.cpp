@@ -2210,6 +2210,7 @@ bool Rtabmap::process(
 	{
 		ULOGGER_INFO("sending stats...");
 		statistics_.setRefImageId(_memory->getLastSignatureId()); // Use last id from Memory (in case of rehearsal)
+		statistics_.setStamp(data.stamp());
 		if(_loopClosureHypothesis.first != Memory::kIdInvalid)
 		{
 			statistics_.setLoopClosureId(_loopClosureHypothesis.first);

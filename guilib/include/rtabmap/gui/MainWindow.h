@@ -272,6 +272,7 @@ private:
 
 	QSet<int> _lastIds;
 	int _lastId;
+	double _firstStamp;
 	bool _processingStatistics;
 	bool _processingDownloadedMap;
 	bool _odometryReceived;
