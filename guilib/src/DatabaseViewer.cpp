@@ -950,6 +950,16 @@ void DatabaseViewer::extractImages()
 		return;
 	}
 
+	QStringList formats;
+	formats.push_back("jpg");
+	formats.push_back("png");
+	bool ok;
+	QString ext = QInputDialog::getItem(this, tr("Which RGB format?"), tr("Format:"), formats, 0, false, &ok);
+	if(!ok)
+	{
+		return;
+	}
+
 	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), QDir::homePath());
 	if(!path.isNull())
 	{
@@ -1045,20 +1055,20 @@ void DatabaseViewer::extractImages()
 			data.uncompressData();
 			if(!data.imageRaw().empty() && !data.rightRaw().empty())
 			{
-				cv::imwrite(QString("%1/left/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
-				cv::imwrite(QString("%1/right/%2.jpg").arg(path).arg(id).toStdString(), data.rightRaw());
-				UINFO(QString("Saved left/%1.jpg and right/%1.jpg").arg(id).toStdString().c_str());
+				cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
+				cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw());
+				UINFO(QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
 			}
 			else if(!data.imageRaw().empty() && !data.depthRaw().empty())
 			{
-				cv::imwrite(QString("%1/rgb/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
+				cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
 				cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw());
-				UINFO(QString("Saved rgb/%1.jpg and depth/%1.png").arg(id).toStdString().c_str());
+				UINFO(QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
 			}
 			else if(!data.imageRaw().empty())
 			{
-				cv::imwrite(QString("%1/%2.jpg").arg(path).arg(id).toStdString(), data.imageRaw());
-				UINFO(QString("Saved %1.jpg").arg(id).toStdString().c_str());
+				cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
+				UINFO(QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
 			}
 		}
 	}
