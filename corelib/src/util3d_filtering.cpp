@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/passthrough.h>
 
-#include <pcl/features/normal_3d.h>
+#include <pcl/features/normal_3d_omp.h>
 
 #include <pcl/search/kdtree.h>
 
@@ -1308,7 +1308,7 @@ pcl::IndicesPtr normalFiltering(
 		typedef pcl::search::KdTree<pcl::PointXYZ> KdTree;
 		typedef KdTree::Ptr KdTreePtr;
 
-		pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> ne;
+		pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> ne;
 		ne.setInputCloud (cloud);
 		if(indices->size())
 		{
@@ -1368,7 +1368,7 @@ pcl::IndicesPtr normalFiltering(
 		typedef pcl::search::KdTree<pcl::PointXYZRGB> KdTree;
 		typedef KdTree::Ptr KdTreePtr;
 
-		pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
+		pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal> ne;
 		ne.setInputCloud (cloud);
 		if(indices->size())
 		{

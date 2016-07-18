@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/search/kdtree.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>
-#include <pcl/features/normal_3d.h>
 #include <pcl/surface/mls.h>
 #include <pcl/surface/texture_mapping.h>
 #include <pcl/features/integral_image_normal.h>
@@ -619,7 +618,11 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 	}
 
 	// Normal estimation*
+#ifdef PCL_OMP
 	pcl::NormalEstimationOMP<pcl::PointXYZ, pcl::Normal> n;
+#else
+	pcl::NormalEstimation<pcl::PointXYZ, pcl::Normal> n;
+#endif
 	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
 	n.setInputCloud (cloud);
 	// Commented: Keep the output normals size the same as the input cloud
@@ -660,7 +663,11 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 	}
 
 	// Normal estimation*
+#ifdef PCL_OMP
 	pcl::NormalEstimationOMP<pcl::PointXYZRGB, pcl::Normal> n;
+#else
+	pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> n;
+#endif
 	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
 	n.setInputCloud (cloud);
 	// Commented: Keep the output normals size the same as the input cloud
