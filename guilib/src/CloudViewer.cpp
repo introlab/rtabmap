@@ -739,8 +739,8 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 		_octomapActor = octomapActor.GetPointer();
 
 		return true;
-#endif
 	}
+#endif
 	return false;
 }
 

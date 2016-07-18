@@ -154,13 +154,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 
 #ifndef RTABMAP_OCTOMAP
-	_ui->checkBox_octomap->setChecked(false);
-	_ui->checkBox_octomap->setEnabled(false);
-	_ui->label_octomap->setEnabled(false);
-	_ui->spinBox_octomap_treeDepth->setEnabled(false);
-	_ui->label_octomap_treeDepth->setEnabled(false);
-	_ui->checkBox_octomap_groundObstacle->setEnabled(false);
-	_ui->label_octomap_groundObstacle->setEnabled(false);
+	_ui->groupBox_octomap->setChecked(false);
+	_ui->groupBox_octomap->setEnabled(false);
 #endif
 
 #ifndef RTABMAP_NONFREE
