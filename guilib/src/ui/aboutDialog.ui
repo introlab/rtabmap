@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>831</width>
-    <height>681</height>
+    <height>800</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -70,7 +70,7 @@ p, li { white-space: pre-wrap; }
         <item>
          <widget class="QLabel" name="label_9">
           <property name="text">
-           <string>RTAB-Map is an appearance-based loop closure detector for autonomous robot. This interface is used to control or to monitor the core process. </string>
+           <string>RTAB-Map (Real-Time Appearance-Based Mapping) is a RGB-D Graph-Based SLAM approach based on an incremental appearance-based loop closure detector. RTAB-Map can be used alone with a hand-held Kinect or stereo camera for 6DoF RGB-D mapping, or on a ROS compatible robot equipped with a laser rangefinder for 3DoF mapping.</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -392,7 +392,7 @@ p, li { white-space: pre-wrap; }
         <item>
          <widget class="QLabel" name="label_5">
           <property name="text">
-           <string>Copyright (C) 2010-2015 IntRoLab - Université de Sherbrooke</string>
+           <string>Copyright (C) 2010-2016 IntRoLab - Université de Sherbrooke</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>
