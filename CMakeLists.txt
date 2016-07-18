@@ -6,9 +6,10 @@ SET(PROJECT_PREFIX rtabmap)
 
 # Catkin doesn't support multiarch library path, 
 # fix to "lib" if not set by user.
-#IF(NOT DEFINED CMAKE_INSTALL_LIBDIR)
-#   set(CMAKE_INSTALL_LIBDIR "lib")
-#ENDIF(NOT DEFINED CMAKE_INSTALL_LIBDIR)
+OPTION(MULTI_ARCH "Activate multi-arch lib directory (debian)" OFF)
+IF(NOT MULTI_ARCH AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
+   set(CMAKE_INSTALL_LIBDIR "lib")
+ENDIF(NOT MULTI_ARCH AND NOT DEFINED CMAKE_INSTALL_LIBDIR)
 
 INCLUDE(GNUInstallDirs)
 
