@@ -67,7 +67,7 @@ public:
 
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
-	virtual bool odometryProvided() const {return !_odometryIgnored;}
+	virtual bool odomProvided() const {return !_odometryIgnored;}
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
