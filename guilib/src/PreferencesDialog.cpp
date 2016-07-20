@@ -2649,6 +2649,21 @@ rtabmap::ParametersMap PreferencesDialog::getAllParameters() const
 	return parameters;
 }
 
+void PreferencesDialog::updateParameters(const ParametersMap & parameters)
+{
+	if(parameters.size())
+	{
+		for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
+		{
+			this->setParameter(iter->first, iter->second);
+		}
+		if(!this->isVisible())
+		{
+			this->writeSettings(getTmpIniFilePath());
+		}
+	}
+}
+
 void PreferencesDialog::selectSourceDriver(Src src)
 {
 	if(src >= kSrcRGBD && src<kSrcStereo)
@@ -3151,7 +3166,7 @@ void PreferencesDialog::addParameter(const QObject * object, double value)
 {
 	if(object)
 	{
-		UDEBUG("modify param %s=%s", object->objectName().toStdString().c_str(), uBool2Str(value).c_str());
+		UDEBUG("modify param %s=%f", object->objectName().toStdString().c_str(), value);
 		uInsert(_modifiedParameters, rtabmap::ParametersPair(object->objectName().toStdString(), QString::number(value).toStdString()));
 	}
 	else

@@ -3797,10 +3797,7 @@ void MainWindow::openDatabase(const QString & path)
 							QMessageBox::Yes);
 					if(r == QMessageBox::Yes)
 					{
-						for(rtabmap::ParametersMap::const_iterator iter = differentParameters.begin(); iter!=differentParameters.end(); ++iter)
-						{
-							_preferencesDialog->setParameter(iter->first.c_str(), iter->second.c_str());
-						}
+						_preferencesDialog->updateParameters(differentParameters);
 					}
 				}
 			}

@@ -129,7 +129,7 @@ public:
 	QString loadCustomConfig(const QString & section, const QString & key);
 
 	rtabmap::ParametersMap getAllParameters() const;
-	void setParameter(const std::string & key, const std::string & value);
+	void updateParameters(const ParametersMap & parameters);
 
 	//General panel
 	int getGeneralLoggerLevel() const;
@@ -316,6 +316,8 @@ protected:
 	virtual void writeGuiSettings(const QString & filePath = QString()) const;
 	virtual void writeCameraSettings(const QString & filePath = QString()) const;
 	virtual void writeCoreSettings(const QString & filePath = QString()) const;
+
+	void setParameter(const std::string & key, const std::string & value);
 
 private:
 	void readSettings(const QString & filePath = QString());
