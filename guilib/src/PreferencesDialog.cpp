@@ -842,6 +842,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	// reset default settings for the gui
 	resetSettings(_ui->groupBox_generalSettingsGui0);
 	resetSettings(_ui->groupBox_cloudRendering1);
+	resetSettings(_ui->groupBox_filtering2);
+	resetSettings(_ui->groupBox_gridMap2);
 	resetSettings(_ui->groupBox_logging1);
 	resetSettings(_ui->groupBox_source0);
 
