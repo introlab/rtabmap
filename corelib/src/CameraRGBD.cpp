@@ -1272,9 +1272,10 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 				const CameraModel & l = stereoModel_.left();
 				const CameraModel & r = stereoModel_.right();
 				stereoModel_ = StereoCameraModel(stereoModel_.name(),
-						depthSize, l.K(), l.D(), l.R(), depthP,
-						colorSize, r.K(), r.D(), r.R(), colorP,
+						depthSize, l.K_raw(), l.D_raw(), l.R(), depthP,
+						colorSize, r.K_raw(), r.D_raw(), r.R(), colorP,
 						stereoModel_.R(), stereoModel_.T(), stereoModel_.E(), stereoModel_.F());
+				stereoModel_.initRectificationMap();
 			}
 		}
 
