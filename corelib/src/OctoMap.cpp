@@ -293,7 +293,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			}
 			else
 			{
-				UWARN("Did not find %d in cache", iter->first);
+				UDEBUG("Did not find %d in cache", iter->first);
 			}
 		}
 	}
