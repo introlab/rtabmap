@@ -120,38 +120,6 @@ void Link::setVariance(double rotVariance, double transVariance) {
 	infMatrix_.at<double>(5,5) = 1.0/rotVariance;
 }
 
-void Link::setUserDataRaw(const cv::Mat & userDataRaw)
-{
-	if(!_userDataRaw.empty())
-	{
-		UWARN("Writing new user data over existing user data. This may result in data loss.");
-	}
-	_userDataRaw = userDataRaw;
-}
-
-void Link::setUserData(const cv::Mat & userData)
-{
-	if(!userData.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
-	{
-		UWARN("Writing new user data over existing user data. This may result in data loss.");
-	}
-	_userDataRaw = cv::Mat();
-	_userDataCompressed = cv::Mat();
-
-	if(!userData.empty())
-	{
-		if(userData.type() == CV_8UC1) // Bytes
-		{
-			_userDataCompressed = userData; // assume compressed
-		}
-		else
-		{
-			_userDataRaw = userData;
-			_userDataCompressed = compressData2(userData);
-		}
-	}
-}
-
 void Link::uncompressUserData()
 {
 	cv::Mat dataRaw = uncompressUserDataConst();

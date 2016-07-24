@@ -1446,7 +1446,11 @@ void DatabaseViewer::generateTOROGraph()
 				std::multimap<int, rtabmap::Link> links = graphLinks_;
 				for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
-					iter->second.setInfMatrix(cv::Mat::eye(6,6,CV_64FC1));
+					// reset to identity covariance
+					iter->second = Link(iter->second.from(),
+							iter->second.to(),
+							iter->second.type(),
+							iter->second.transform());
 				}
 				graph::exportPoses(path.toStdString(), 3, uValueAt(graphes_, id), links);
 			}
@@ -1490,7 +1494,11 @@ void DatabaseViewer::generateG2OGraph()
 				std::multimap<int, rtabmap::Link> links = graphLinks_;
 				for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
-					iter->second.setInfMatrix(cv::Mat::eye(6,6,CV_64FC1));
+					// reset to identity covariance
+					iter->second = Link(iter->second.from(),
+							iter->second.to(),
+							iter->second.type(),
+							iter->second.transform());
 				}
 				graph::exportPoses(path.toStdString(), 4, uValueAt(graphes_, id), links, std::map<int, double>(), robust);
 			}
@@ -2892,6 +2900,7 @@ void DatabaseViewer::updateConstraintView(
 {
 	std::multimap<int, Link>::iterator iterLink = rtabmap::graph::findLink(linksRefined_, linkIn.from(), linkIn.to());
 	rtabmap::Link link = linkIn;
+
 	if(iterLink != linksRefined_.end())
 	{
 		link = iterLink->second;
@@ -2905,7 +2914,12 @@ void DatabaseViewer::updateConstraintView(
 			Transform poseTo = uValue(poses_, link.to(), Transform());
 			if(!poseFrom.isNull() && !poseTo.isNull())
 			{
-				link.setTransform(poseFrom.inverse() * poseTo); // recompute raw odom transformation
+				// recompute raw odom transformation and
+				// reset to identity covariance
+				link = Link(link.from(),
+						link.to(),
+						link.type(),
+						poseFrom.inverse() * poseTo);
 			}
 		}
 	}
@@ -3612,7 +3626,8 @@ void DatabaseViewer::updateGraphView()
 		if(ui_->checkBox_ignorePoseCorrection->isChecked())
 		{
 			std::multimap<int, Link> tmp = links;
-			for(std::multimap<int, Link>::iterator iter=tmp.begin(); iter!=tmp.end(); ++iter)
+			std::multimap<int, Link>::iterator jter=links.begin();
+			for(std::multimap<int, Link>::iterator iter=tmp.begin(); iter!=tmp.end(); ++iter, ++jter)
 			{
 				if(iter->second.type() == Link::kNeighbor ||
 				   iter->second.type() == Link::kNeighborMerged)
@@ -3621,8 +3636,12 @@ void DatabaseViewer::updateGraphView()
 					Transform poseTo = uValue(poses, iter->second.to(), Transform());
 					if(!poseFrom.isNull() && !poseTo.isNull())
 					{
-						iter->second.setTransform(poseFrom.inverse() * poseTo); // recompute raw odom transformation
-						iter->second.setVariance(1.0f, 1.0f); // reset variance
+						// reset to identity covariance
+						iter->second = Link(
+								iter->second.from(),
+								iter->second.to(),
+								iter->second.type(),
+								poseFrom.inverse() * poseTo);
 					}
 				}
 			}
