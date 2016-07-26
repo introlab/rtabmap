@@ -150,6 +150,7 @@ private slots:
 	void selectOpenniCvAsus();
 	void selectOpenni2();
 	void selectFreenect2();
+	void selectRealSense();
 	void selectStereoDC1394();
 	void selectStereoFlyCapture2();
 	void selectStereoZed();

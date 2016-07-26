@@ -235,6 +235,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraRGBD->setItemData(5, 0, Qt::UserRole - 1);
 	}
+	if (!CameraRealSense::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(6, 0, Qt::UserRole - 1);
+	}
 	if(!CameraStereoDC1394::available())
 	{
 		_ui->comboBox_cameraStereo->setItemData(0, 0, Qt::UserRole - 1);
@@ -459,6 +463,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_freenect2BilateralFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2EdgeAwareFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2NoiseFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceImagesStamps()));
 	connect(_ui->lineEdit_cameraImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1306,6 +1312,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_freenect2BilateralFiltering->setChecked(true);
 		_ui->checkBox_freenect2EdgeAwareFiltering->setChecked(true);
 		_ui->checkBox_freenect2NoiseFiltering->setChecked(true);
+		_ui->comboBox_realsensePresetRGB->setCurrentIndex(0);
+		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
@@ -1647,6 +1655,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->checkBox_freenect2EdgeAwareFiltering->setChecked(settings.value("edgeAwareFiltering", _ui->checkBox_freenect2EdgeAwareFiltering->isChecked()).toBool());
 	_ui->checkBox_freenect2NoiseFiltering->setChecked(settings.value("noiseFiltering", _ui->checkBox_freenect2NoiseFiltering->isChecked()).toBool());
 	settings.endGroup(); // Freenect2
+
+	settings.beginGroup("RealSense");
+	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
+	_ui->comboBox_realsensePresetDepth->setCurrentIndex(settings.value("presetDepth", _ui->comboBox_realsensePresetDepth->currentIndex()).toInt());
+	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
 	_ui->lineEdit_cameraRGBDImages_path_rgb->setText(settings.value("path_rgb", _ui->lineEdit_cameraRGBDImages_path_rgb->text()).toString());
@@ -2060,6 +2073,11 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("edgeAwareFiltering", _ui->checkBox_freenect2EdgeAwareFiltering->isChecked());
 	settings.setValue("noiseFiltering",     _ui->checkBox_freenect2NoiseFiltering->isChecked());
 	settings.endGroup(); // Freenect2
+
+	settings.beginGroup("RealSense");
+	settings.setValue("presetRGB",           _ui->comboBox_realsensePresetRGB->currentIndex());
+	settings.setValue("presetDepth",         _ui->comboBox_realsensePresetDepth->currentIndex());
+	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
 	settings.setValue("path_rgb",            _ui->lineEdit_cameraRGBDImages_path_rgb->text());
@@ -3573,10 +3591,12 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->stackedWidget_rgbd->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 &&
 			(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD));
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
+	_ui->groupBox_realsense->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD);
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
 	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD);
 
@@ -4080,6 +4100,15 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 			_ui->checkBox_freenect2BilateralFiltering->isChecked(),
 			_ui->checkBox_freenect2EdgeAwareFiltering->isChecked(),
 			_ui->checkBox_freenect2NoiseFiltering->isChecked());
+	}
+	else if (driver == kSrcRealSense)
+	{
+		camera = new CameraRealSense(
+			this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
+			_ui->comboBox_realsensePresetRGB->currentIndex(),
+			_ui->comboBox_realsensePresetDepth->currentIndex(),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
 	}
 	else if(driver == kSrcRGBDImages)
 	{

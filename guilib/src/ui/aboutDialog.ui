@@ -82,23 +82,6 @@ p, li { white-space: pre-wrap; }
         </item>
         <item>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
-          <item row="8" column="1">
-           <widget class="QLabel" name="label_opencv_version">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="9" column="0">
-           <widget class="QLabel" name="label_11">
-            <property name="text">
-             <string>PCL version :</string>
-            </property>
-           </widget>
-          </item>
           <item row="9" column="1">
            <widget class="QLabel" name="label_pcl_version">
             <property name="text">
@@ -109,72 +92,10 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="10" column="0">
-           <widget class="QLabel" name="label_12">
-            <property name="text">
-             <string>With Freenect :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="11" column="0">
-           <widget class="QLabel" name="label_13">
-            <property name="text">
-             <string>With OpenNI2 :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="13" column="0">
-           <widget class="QLabel" name="label_16">
-            <property name="text">
-             <string>With stereo dc1394 :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="label_6">
-            <property name="text">
-             <string>Version :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>Links :</string>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="0">
            <widget class="QLabel" name="label_2">
             <property name="text">
              <string>Author :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="1">
-           <widget class="QLabel" name="label_HomePage_2">
-            <property name="text">
-             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
-p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Lucida Grande'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://github.com/introlab/rtabmap&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Source page&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-            </property>
-            <property name="openExternalLinks">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLabel" name="label_8">
-            <property name="text">
-             <string>Mathieu Labbé, matlabbe@gmail.com</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
@@ -205,6 +126,13 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
+          <item row="10" column="0">
+           <widget class="QLabel" name="label_12">
+            <property name="text">
+             <string>With Freenect :</string>
+            </property>
+           </widget>
+          </item>
           <item row="8" column="0">
            <widget class="QLabel" name="label_7">
             <property name="text">
@@ -212,10 +140,24 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="16" column="0">
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_4">
+            <property name="text">
+             <string>Links :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="17" column="0">
            <widget class="QLabel" name="label_14">
             <property name="text">
              <string>With g2o :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="14" column="0">
+           <widget class="QLabel" name="label_16">
+            <property name="text">
+             <string>With stereo dc1394 :</string>
             </property>
            </widget>
           </item>
@@ -239,7 +181,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="16" column="1">
+          <item row="17" column="1">
            <widget class="QLabel" name="label_g2o">
             <property name="text">
              <string/>
@@ -256,10 +198,68 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="14" column="0">
+          <item row="15" column="0">
            <widget class="QLabel" name="label_17">
             <property name="text">
              <string>With stereo FlyCapture2 :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="label_8">
+            <property name="text">
+             <string>Mathieu Labbé, matlabbe@gmail.com</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="9" column="0">
+           <widget class="QLabel" name="label_11">
+            <property name="text">
+             <string>PCL version :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="0">
+           <widget class="QLabel" name="label_13">
+            <property name="text">
+             <string>With OpenNI2 :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLabel" name="label_HomePage_2">
+            <property name="text">
+             <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Lucida Grande'; font-size:13pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;a href=&quot;http://github.com/introlab/rtabmap&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Source page&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+            <property name="openExternalLinks">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Version :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="1">
+           <widget class="QLabel" name="label_opencv_version">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
@@ -273,34 +273,7 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="13" column="1">
-           <widget class="QLabel" name="label_dc1394">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="14" column="1">
-           <widget class="QLabel" name="label_flycapture2">
-            <property name="text">
-             <string/>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="18" column="0">
-           <widget class="QLabel" name="label_18">
-            <property name="text">
-             <string>With cvsba :</string>
-            </property>
-           </widget>
-          </item>
-          <item row="18" column="1">
+          <item row="19" column="1">
            <widget class="QLabel" name="label_cvsba">
             <property name="text">
              <string/>
@@ -310,14 +283,48 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="17" column="0">
+          <item row="16" column="0">
+           <widget class="QLabel" name="label_21">
+            <property name="text">
+             <string>With stereo Zed :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="18" column="0">
            <widget class="QLabel" name="label_19">
             <property name="text">
              <string>With GTSAM :</string>
             </property>
            </widget>
           </item>
-          <item row="17" column="1">
+          <item row="20" column="1">
+           <widget class="QLabel" name="label_octomap">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="16" column="1">
+           <widget class="QLabel" name="label_zed">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="20" column="0">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>With Octomap :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="18" column="1">
            <widget class="QLabel" name="label_gtsam">
             <property name="text">
              <string/>
@@ -328,14 +335,14 @@ p, li { white-space: pre-wrap; }
            </widget>
           </item>
           <item row="19" column="0">
-           <widget class="QLabel" name="label_20">
+           <widget class="QLabel" name="label_18">
             <property name="text">
-             <string>With Octomap :</string>
+             <string>With cvsba :</string>
             </property>
            </widget>
           </item>
-          <item row="19" column="1">
-           <widget class="QLabel" name="label_octomap">
+          <item row="14" column="1">
+           <widget class="QLabel" name="label_dc1394">
             <property name="text">
              <string/>
             </property>
@@ -344,15 +351,25 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="15" column="0">
-           <widget class="QLabel" name="label_21">
+          <item row="15" column="1">
+           <widget class="QLabel" name="label_flycapture2">
             <property name="text">
-             <string>With stereo Zed :</string>
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
             </property>
            </widget>
           </item>
-          <item row="15" column="1">
-           <widget class="QLabel" name="label_zed">
+          <item row="13" column="0">
+           <widget class="QLabel" name="label_22">
+            <property name="text">
+             <string>With RealSense :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="13" column="1">
+           <widget class="QLabel" name="label_realsense">
             <property name="text">
              <string/>
             </property>

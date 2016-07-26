@@ -62,6 +62,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
 	_ui->label_freenect2->setText(CameraFreenect2::available()?"Yes":"No");
+	_ui->label_realsense->setText(CameraRealSense::available() ? "Yes" : "No");
 	_ui->label_dc1394->setText(CameraStereoDC1394::available()?"Yes":"No");
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 	_ui->label_zed->setText(CameraStereoZed::available()?"Yes":"No");

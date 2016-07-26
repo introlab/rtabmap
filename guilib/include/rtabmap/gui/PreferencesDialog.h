@@ -89,7 +89,8 @@ public:
 		kSrcOpenNI_CV_ASUS = 3,
 		kSrcOpenNI2        = 4,
 		kSrcFreenect2      = 5,
-		kSrcRGBDImages     = 6,
+		kSrcRealSense      = 6,
+		kSrcRGBDImages     = 7,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,

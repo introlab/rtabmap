@@ -745,11 +745,10 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 		_image.width() > _imageDepth.width() &&
 		_image.height() > _imageDepth.height() &&
 		_image.width() % _imageDepth.width() == 0 &&
-		_image.height() % _imageDepth.height() == 0 &&
-		_image.width() / _imageDepth.width() == _image.height() / _imageDepth.height())
+		_image.height() % _imageDepth.height() == 0)
 	{
 		// scale depth to rgb
-		_imageDepth = _imageDepth.scaledToWidth(_image.width());
+		_imageDepth = _imageDepth.scaled(_image.size());
 	}
 
 	if(_graphicsView->isVisible())

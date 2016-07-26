@@ -64,6 +64,12 @@ class Registration;
 class PacketPipeline;
 }
 
+namespace rs
+{
+	class context;
+	class device;
+}
+
 typedef struct _freenect_context freenect_context;
 typedef struct _freenect_device freenect_device;
 
@@ -264,6 +270,40 @@ private:
 	bool bilateralFiltering_;
 	bool edgeAwareFiltering_;
 	bool noiseFiltering_;
+};
+
+/////////////////////////
+// CameraOpenNIPCL
+/////////////////////////
+class RTABMAP_EXP CameraRealSense :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	// default local transform z in, x right, y down));
+	CameraRealSense(
+		int deviceId = 0,
+		int presetRGB = 0, // 0=best quality, 1=largest image, 2=highest framerate
+		int presetDepth = 0, // 0=best quality, 1=largest image, 2=highest framerate
+		float imageRate = 0,
+		const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraRealSense();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
+	rs::context * ctx_;
+	rs::device * dev_;
+	int deviceId_;
+	int presetRGB_;
+	int presetDepth_;
 };
 
 

@@ -54,6 +54,7 @@ void showUsage()
 			"                                     6=DC1394     (Bumblebee2)\n"
 			"                                     7=FlyCapture2 (Bumblebee2)\n"
 			"                                     8=ZED stereo\n"
+			"                                     9=RealSense\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
 			"      -save_stereo \"path\"            Save stereo images in a folder or a video file (side by side *.avi).\n"
@@ -150,9 +151,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 8)
+			if(driver < 0 || driver > 9)
 			{
-				UERROR("driver should be between 0 and 8.");
+				UERROR("driver should be between 0 and 9.");
 				showUsage();
 			}
 		}
@@ -245,6 +246,15 @@ int main(int argc, char * argv[])
 		}
 		camera = new rtabmap::CameraStereoZed(0);
 	}
+	else if (driver == 9)
+	{
+		if (!rtabmap::CameraRealSense::available())
+		{
+			UERROR("Not built with RealSense support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense(0);
+	}
 	else
 	{
 		UFATAL("");
@@ -258,7 +268,7 @@ int main(int argc, char * argv[])
 	}
 
 	rtabmap::SensorData data = camera->takeImage();
-	if(data.imageRaw().cols != data.depthOrRightRaw().cols || data.imageRaw().rows != data.depthOrRightRaw().rows)
+	if(data.imageRaw().cols % data.depthOrRightRaw().cols != 0 || data.imageRaw().rows % data.depthOrRightRaw().rows != 0)
 	{
 		UWARN("RGB (%d/%d) and depth (%d/%d) frames are not the same size! The registered cloud cannot be shown.",
 				data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows);
@@ -336,7 +346,7 @@ int main(int argc, char * argv[])
 				depth = rtabmap::util2d::cvtDepthFromFloat(depth);
 			}
 
-			if(rgb.cols == depth.cols && rgb.rows == depth.rows &&
+			if(!rgb.empty() && rgb.cols % depth.cols == 0 && rgb.rows % depth.rows == 0 &&
 					data.cameraModels().size() &&
 					data.cameraModels()[0].isValidForProjection())
 			{

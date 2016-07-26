@@ -64,6 +64,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <libfreenect2/config.h>
 #endif
 
+#ifdef RTABMAP_REALSENSE
+#include <librealsense/rs.hpp>
+#endif
+
 #ifdef RTABMAP_OPENNI2
 #include <OniVersion.h>
 #include <OpenNI.h>
@@ -1663,6 +1667,213 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 	}
 #else
 	UERROR("CameraFreenect2: RTAB-Map is not built with Freenect2 support!");
+#endif
+	return data;
+}
+
+/////////////////////////
+// CameraRealSense
+/////////////////////////
+bool CameraRealSense::available()
+{
+#ifdef RTABMAP_REALSENSE
+	return true;
+#else
+	return false;
+#endif
+}
+
+CameraRealSense::CameraRealSense(int device, int presetRGB, int presetDepth, float imageRate, const rtabmap::Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	ctx_(0),
+	dev_(0),
+	deviceId_(device),
+	presetRGB_(presetRGB),
+	presetDepth_(presetDepth)
+{
+}
+
+CameraRealSense::~CameraRealSense()
+{
+#ifdef RTABMAP_REALSENSE
+	if (ctx_)
+	{
+		delete ctx_;
+	}
+#endif
+}
+
+bool CameraRealSense::init(const std::string & calibrationFolder, const std::string & cameraName)
+{
+#ifdef RTABMAP_REALSENSE
+	if (ctx_ == 0)
+	{
+		ctx_ = new rs::context();
+	}
+	if (ctx_->get_device_count() == 0)
+	{
+		UERROR("No RealSense device detected!");
+		return false;
+	}
+
+	dev_ = ctx_->get_device(deviceId_);
+	if (dev_ == 0)
+	{
+		UERROR("Cannot connect to device %d", deviceId_);
+		return false;
+	}
+	UINFO("Using device %d, an %s", deviceId_, dev_->get_name());
+	UINFO("    Serial number: %s", dev_->get_serial());
+	UINFO("    Firmware version: %s", dev_->get_firmware_version());
+	UINFO("    Preset RGB: %d", presetRGB_);
+	UINFO("    Preset Depth: %d", presetDepth_);
+
+	// Configure depth and color to run with the device's preferred settings
+	UINFO("Enabling streams...");
+	// R200: 
+	//    0=640x480   vs 480x360
+	//    1=1920x1080 vs 640x480
+	//    2=640x480   vs 320x240
+	dev_->enable_stream(rs::stream::depth, (rs::preset)presetDepth_);
+	dev_->enable_stream(rs::stream::color, (rs::preset)presetRGB_);
+
+	rs::intrinsics depth_intrin = dev_->get_stream_intrinsics(rs::stream::depth);
+	rs::intrinsics color_intrin = dev_->get_stream_intrinsics(rs::stream::color);
+	UINFO("    RGB:   %dx%d", color_intrin.width, color_intrin.height);
+	UINFO("    Depth: %dx%d", depth_intrin.width, depth_intrin.height);
+	dev_->start();
+
+	dev_->wait_for_frames();
+	uSleep(1000); // ignore the first frames
+	UINFO("Enabling streams...done!");
+	
+	return true;
+
+#else
+	UERROR("CameraRealSense: RTAB-Map is not built with RealSense support!");
+	return false;
+#endif
+}
+
+bool CameraRealSense::isCalibrated() const
+{
+	return true;
+}
+
+std::string CameraRealSense::getSerial() const
+{
+#ifdef RTABMAP_REALSENSE
+	if (dev_)
+	{
+		return dev_->get_serial();
+	}
+	else
+	{
+		UERROR("Cannot get a serial before initialization. Call init() before.");
+	}
+#endif
+	return "NA";
+}
+
+SensorData CameraRealSense::captureImage(CameraInfo * info)
+{
+	SensorData data;
+#ifdef RTABMAP_REALSENSE
+	if (dev_)
+	{
+		dev_->wait_for_frames();
+
+		// Retrieve our images
+		const uint16_t * depth_image = (const uint16_t *)dev_->get_frame_data(rs::stream::depth);
+		const uint8_t * color_image = (const uint8_t *)dev_->get_frame_data(rs::stream::color);
+
+		// Retrieve camera parameters for mapping between depth and color
+		rs::intrinsics depth_intrin = dev_->get_stream_intrinsics(rs::stream::depth);
+		rs::extrinsics depth_to_color = dev_->get_extrinsics(rs::stream::depth, rs::stream::color);
+		rs::intrinsics color_intrin = dev_->get_stream_intrinsics(rs::stream::color);
+		float scale = dev_->get_depth_scale();
+
+		// factory registration...
+		cv::Mat rgb = cv::Mat(cv::Size(color_intrin.width, color_intrin.height), CV_8UC3, (void*)color_image);
+		cv::Mat bgr;
+		cv::cvtColor(rgb, bgr, CV_RGB2BGR);
+
+		CameraModel model(
+			color_intrin.fx, //fx
+			color_intrin.fy, //fy
+			color_intrin.ppx,  //cx
+			color_intrin.ppy,  //cy
+			this->getLocalTransform(),
+			0,
+			bgr.size());
+
+		cv::Mat depth;
+		if (color_intrin.width % depth_intrin.width == 0 && color_intrin.height % depth_intrin.height == 0 &&
+			depth_intrin.width < color_intrin.width &&
+			depth_intrin.height < color_intrin.height)
+		{
+			//we can keep the depth image size as is
+			depth = cv::Mat::zeros(cv::Size(depth_intrin.width, depth_intrin.height), CV_16UC1);
+			float scaleX = float(depth_intrin.width) / float(color_intrin.width);
+			float scaleY = float(depth_intrin.height) / float(color_intrin.height);
+			color_intrin.fx *= scaleX;
+			color_intrin.fy *= scaleY;
+			color_intrin.ppx *= scaleX;
+			color_intrin.ppy *= scaleY;
+			color_intrin.height = depth_intrin.height;
+			color_intrin.width = depth_intrin.width;
+		}
+		else
+		{
+			//depth to color
+			depth = cv::Mat::zeros(bgr.size(), CV_16UC1);
+		}
+		for (int dy = 0; dy < depth_intrin.height; ++dy)
+		{
+			for (int dx = 0; dx < depth_intrin.width; ++dx)
+			{
+				// Retrieve the 16-bit depth value and map it into a depth in meters
+				uint16_t depth_value = depth_image[dy * depth_intrin.width + dx];
+				float depth_in_meters = depth_value * scale;
+
+				// Skip over pixels with a depth value of zero, which is used to indicate no data
+				if (depth_value == 0 || depth_in_meters>10.0f) continue;
+
+				// Map from pixel coordinates in the depth image to pixel coordinates in the color image
+				rs::float2 depth_pixel = { (float)dx, (float)dy };
+				rs::float3 depth_point = depth_intrin.deproject(depth_pixel, depth_in_meters);
+				rs::float3 color_point = depth_to_color.transform(depth_point);
+				rs::float2 color_pixel = color_intrin.project(color_point);
+
+				int pdx = color_pixel.x;
+				int pdy = color_pixel.y;
+				if (uIsInBounds(pdx, 0, depth.cols) && uIsInBounds(pdy, 0, depth.rows))
+				{
+					depth.at<unsigned short>(pdy, pdx) = (unsigned short)(depth_in_meters*1000.0f); // convert to mm
+				}
+			}
+		}
+
+		if (color_intrin.width > depth_intrin.width)
+		{
+			// Fill holes
+			UTimer time;
+			util2d::fillRegisteredDepthHoles(depth, true, true, color_intrin.width > depth_intrin.width * 2);
+			util2d::fillRegisteredDepthHoles(depth, true, true, color_intrin.width > depth_intrin.width * 2);//second pass
+			UDEBUG("Filling depth holes: %fs", time.ticks());
+		}
+		
+		if (!bgr.empty() && !depth.empty())
+		{
+			data = SensorData(bgr, depth, model, this->getNextSeqID(), UTimer::now());
+		}
+	}
+	else
+	{
+		ULOGGER_WARN("The camera must be initialized before requesting an image.");
+	}
+#else
+	UERROR("CameraRealSense: RTAB-Map is not built with RealSense support!");
 #endif
 	return data;
 }
