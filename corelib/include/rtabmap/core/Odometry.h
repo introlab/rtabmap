@@ -57,6 +57,8 @@ public:
 	Transform process(SensorData & data, OdometryInfo * info = 0);
 	Transform process(SensorData & data, const Transform & guess, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
+	virtual bool isF2F(){return false;}
+	virtual bool isF2M(){return false;}
 
 	//getters
 	const Transform & getPose() const {return _pose;}
