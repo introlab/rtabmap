@@ -1,390 +1,321 @@
-<!DOCTYPE html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
-
-  <head>
-    <meta charset='utf-8'>
-    <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <meta name="description" content="RTAB-Map : Real-Time Appearance-Based Mapping">
-
-    <link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css">
-
-    <title>RTAB-Map</title>
-  </head>
-
-  <body>
-
-    <!-- HEADER -->
-    <div id="header_wrap" class="outer">
-        <header class="inner">
-          <a id="forkme_banner" href="https://github.com/introlab/rtabmap">View on GitHub</a>
-
-          <h1 id="project_title">RTAB-Map</h1>
-          <h2 id="project_tagline">Real-Time Appearance-Based Mapping</h2>
-
-            <section id="downloads">
-              <a class="zip_download_link" href="https://github.com/introlab/rtabmap/zipball/master">Download this project as a .zip file</a>
-              <a class="tar_download_link" href="https://github.com/introlab/rtabmap/tarball/master">Download this project as a tar.gz file</a>
-            </section>
-        </header>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <div id="main_content_wrap" class="outer">
-      <section id="main_content" class="inner">
-        <p><a href="http://www.youtube.com/watch?v=AMLwjo80WzI"><img src="http://img.youtube.com/vi/AMLwjo80WzI/0.jpg" alt="video"></a></p>
-
-<h1>
-<a id="overview" class="anchor" href="#overview" aria-hidden="true"><span class="octicon octicon-link"></span></a>Overview</h1>
-
-<p><strong>RTAB-Map</strong> (Real-Time Appearance-Based Mapping) is a RGB-D Graph SLAM approach based on a global Bayesian loop closure detector. The loop closure detector uses a bag-of-words approach to determinate how likely a new image comes from a previous location or a new location. When a loop closure hypothesis is accepted, a new constraint is added to the map's graph, then a graph optimizer minimizes the errors in the map. A memory management approach is used to limit the number of locations used for loop closure detection and graph optimization, so that real-time constraints on large-scale environnements are always respected. RTAB-Map can be used alone with a hand-held Kinect or stereo camera for 6DoF RGB-D mapping, or on a robot equipped with a laser rangefinder for 3DoF mapping.</p>
-
-<ul>
-<li>
-<strong>RGB-D mapping</strong>
-
-<ul>
-<li>M. Labbé and F. Michaud, “<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf">Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM</a>,” in <em>Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems</em>, 2014.</li>
-<li>Results shown in this paper can be reproduced by the [MultiSessionDemo Multi-session mapping] tutorial.</li>
-</ul>
-</li>
-<li>
-<strong>Loop closure detection</strong>:
-
-<ul>
-<li>M. Labbé and F. Michaud, “<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/b/bc/TRO2013.pdf">Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation</a>,” in <em>IEEE Transactions on Robotics</em>, vol. 29, no. 3, pp. 734-745, 2013. (<a href="http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6459608">IEEE Xplore</a>)</li>
-<li>M. Labbé and F. Michaud, “<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/f/f0/Labbe11memory.pdf">Memory management for real-time appearance-based loop closure detection</a>,” in <em>Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems</em>, 2011, pp. 1271–1276. (<a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6094602">IEEE Xplore</a>)</li>
-</ul>
-</li>
-</ul>
-
-<p>Under the hood :</p>
-
-<ul>
-<li>Loop closure hypotheses are evaluated using a Bayes filter.</li>
-<li>Image matching is done using a "bag-of-words" approach (with SURF features - OpenCV).</li>
-<li>Graph optimization is done with <a href="https://www.openslam.org/toro.html">TORO</a>.</li>
-<li>Memory is divided into short-term, working and long-term memories.</li>
-<li>Sqlite3 database is used for the long-term memory.</li>
-</ul>
-
-<h1>
-<a id="install" class="anchor" href="#install" aria-hidden="true"><span class="octicon octicon-link"></span></a>Install</h1>
-
-<p>| <a href="https://code.google.com/p/rtabmap/wiki/Installation#ROS_version"><img src="https://rtabmap.googlecode.com/svn/trunk/doc/logos/ros.png" alt="ROS" width="50"></a> | <a href="https://code.google.com/p/rtabmap/wiki/Installation#Ubuntu"><img src="https://rtabmap.googlecode.com/svn/trunk/doc/logos/ubuntu.png" alt="Ubuntu" width="50"></a> | <a href="https://code.google.com/p/rtabmap/wiki/Installation#Mac_OS_X"><img src="https://rtabmap.googlecode.com/svn/trunk/doc/logos/apple.jpg" alt="Mac OS X" width="50"></a> | <a href="https://code.google.com/p/rtabmap/wiki/Installation#Windows"><img src="https://rtabmap.googlecode.com/svn/trunk/doc/logos/windows.png" alt="Windows" width="50"></a> | </p>
-
-<ul>
-<li>
-<a href="https://code.google.com/p/rtabmap/wiki/Installation">Installation</a> instructions. </li>
-<li>
-<a href="https://code.google.com/p/rtabmap/wiki/Tutorials">Tutorials</a>.</li>
-<li>
-<a href="https://code.google.com/p/rtabmap/wiki/Tools">Tools</a>.</li>
-<li>For <strong>ROS</strong> users, take a look to <a href="https://code.google.com/p/rtabmap/wiki/ROS">ROS page</a> for a package overview. See also <a href="https://code.google.com/p/rtabmap/wiki/SetupOnYourRobot">SetupOnYourRobot</a> to know how to integrate RTAB-Map on your robot.</li>
-</ul>
-
-<h2>
-<a id="troubleshooting" class="anchor" href="#troubleshooting" aria-hidden="true"><span class="octicon octicon-link"></span></a>Troubleshooting</h2>
-
-<p>Visit the <a href="https://code.google.com/p/rtabmap/wiki/Tutorials">Tutorials</a>, post an <a href="https://code.google.com/p/rtabmap/issues/list">issue</a> or ask a question on the <a href="http://official-rtab-map-forum.67519.x6.nabble.com/"> RTAB-Map Forum</a>.</p>
-
-<h2>
-<a id="license" class="anchor" href="#license" aria-hidden="true"><span class="octicon octicon-link"></span></a>License</h2>
-
-<ul>
-<li>Note that RTAB-Map is free for research only because it depends on <em>SURF</em> and <em>SIFT</em> features. <strong>SIFT</strong> and <strong>SURF</strong> are <strong>not free</strong> for commercial use.
-
-<ul>
-<li>SURF noncommercial notice: <a href="http://www.vision.ee.ethz.ch/%7Esurf/download.html">http://www.vision.ee.ethz.ch/~surf/download.html</a>
-</li>
-<li>SIFT patent: <a href="http://www.cs.ubc.ca/%7Elowe/keypoints/">http://www.cs.ubc.ca/~lowe/keypoints/</a>
-</li>
-</ul>
-</li>
-</ul>
-
-<h1>
-<a id="author" class="anchor" href="#author" aria-hidden="true"><span class="octicon octicon-link"></span></a>Author</h1>
-
-<ul>
-<li>
-<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php?title=Mathieu_Labb%C3%A9&amp;setlang=en">Mathieu Labbé</a>
-
-<ul>
-<li><a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">RTAB-Map's page at IntRoLab</a></li>
-<li><a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map#Publications">Papers</a></li>
-<li>Similar projects: <a href="http://find-object.googlecode.com">Find-Object</a>
-</li>
-</ul>
-</li>
-</ul>
-
-<h1>
-<a id="whats-new" class="anchor" href="#whats-new" aria-hidden="true"><span class="octicon octicon-link"></span></a>What's new</h1>
-
-<p>October 2014</p>
-
-<ul>
-<li>I added a <a href="http://official-rtab-map-forum.67519.x6.nabble.com/">RTAB-Map Forum</a> to ask questions, so it will easier to share answers with the community.</li>
-<li>New version 0.7.0:
-
-<ul>
-<li>Calibration tool in the Source panel in Preferences.</li>
-<li>Binary features can be used for loop closure detection.</li>
-<li>
-<a href="https://code.google.com/p/rtabmap/wiki/Tools#Database_viewer">DatabaseViewer</a> can remove/add manually loop closures.</li>
-<li>Added exportation dialog (<code>*</code>.ply <code>*</code>.pcd).</li>
-<li>ROS: <a href="https://code.google.com/p/rtabmap/wiki/ROS#RVIZ_plugins">rviz plugins</a>: MapCloudDisplay, InfoDisplay, MapGraphDisplay.</li>
-<li>Downloads:</li>
-<li>Source: <a href="http://bit.ly/1powfmG">RTABMap-0.7.0-Source.zip</a>
-</li>
-<li>Windows binary: <a href="http://bit.ly/1mM3pRs">RTABMap-0.7.0-win64.zip</a>
-</li>
-<li>Windows installer: <a href="http://bit.ly/1qSgELI">RTABMap-0.7.0-win64.exe</a>
-</li>
-<li>New example to speed up RTAB-Map, see the page <a href="https://code.google.com/p/rtabmap/wiki/FastRGBDMapping">FastRGBDMapping</a>:
-<a href="http://www.youtube.com/watch?v=Bh8WZsU4YC8"><img src="http://img.youtube.com/vi/Bh8WZsU4YC8/0.jpg" alt="video"></a>
-</li>
-</ul>
-</li>
-</ul>
-
-<p>September 2014</p>
-
-<ul>
-<li>At <strong>IROS 2014</strong> in Chicago, a team using RTAB-Map for SLAM <strong>won</strong> the Kinect navigation contest held during the conference. See their press release for more details: <a href="http://www.meetup.com/SV-ROS-users/pages/Winning_the_IROS2014_Microsoft_Connect_Challenge/">Winning the IROS2014 Microsoft Kinect Challenge</a>. I also added the Wiki page <a href="https://code.google.com/p/rtabmap/wiki/IROS2014KinectChallenge">IROS2014KinectChallenge</a> showing in details the RTAB-Map part used in their solution.
-<a href="http://www.youtube.com/watch?v=_qiLAWp7AqQ"><img src="http://img.youtube.com/vi/_qiLAWp7AqQ/0.jpg" alt="video"></a> </li>
-</ul>
-
-<p>August 2014</p>
-
-<ul>
-<li>I did a fork of the source code for GitHub and I will keep it synchronised with the svn here. It will be easier for you to customize the code with a fork on GitHub.
-
-<ul>
-<li><a href="https://github.com/introlab/rtabmap">GitHub for RTAB-Map</a></li>
-<li><a href="https://github.com/introlab/rtabmap-ros-pkg">GitHub for RTAB-Map's ROS package</a></li>
-</ul>
-</li>
-<li>Here a comparison between reality and what can be shown in RVIZ (you can <a href="https://code.google.com/p/rtabmap/wiki/ROS?ts=1408024477&amp;updated=ROS#Robot_mapping_with_Find-Object">reproduce this demo here</a>):
-<a href="http://www.youtube.com/watch?v=o1GSQanY-Do"><img src="http://img.youtube.com/vi/o1GSQanY-Do/0.jpg" alt="video"></a> </li>
-</ul>
-
-<p>July 2014</p>
-
-<ul>
-<li>Added <a href="https://code.google.com/p/rtabmap/wiki/SetupOnYourRobot">Setup on your robot</a> wiki page to know how to integrate RTAB-Map on your ROS robot. Multiple sensor configurations are shown but the optimal configuration is to have a 2D laser, a Kinect-like sensor and odometry.
-<img src="http://rtabmap.googlecode.com/svn/trunk/doc/Tutorials/MultiSession/4.png" alt="AZIMUT3">
-</li>
-</ul>
-
-<table>
-<thead>
-<tr>
-<th>Onboard mapping</th>
-<th>Remote mapping</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><a href="https://code.google.com/p/rtabmap/wiki/SetupOnYourRobot#Bring-up_your_robot"><img src="http://rtabmap.googlecode.com/svn/trunk/doc/rgbd/setupA.png" alt="" width="400"></a></td>
-<td><a href="https://code.google.com/p/rtabmap/wiki/SetupOnYourRobot#Remote_mapping"><img src="http://rtabmap.googlecode.com/svn/trunk/doc/rgbd/remoteMapping.png" alt="" width="400"></a></td>
-</tr>
-</tbody>
-</table>
-
-<p>June 2014</p>
-
-<ul>
-<li><p>I'm glad to announce that my paper submitted to <a href="http://www.iros2014.org/">IROS 2014</a> was accepted! <a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf">This paper</a> explains in details how RGB-D mapping with RTAB-Map is done. Results shown in this paper can be reproduced by the <a href="https://code.google.com/p/rtabmap/wiki/MultiSessionDemo">Multi-session mapping</a> tutorial:
-<a href="https://code.google.com/p/rtabmap/wiki/MultiSessionDemo"><img src="http://rtabmap.googlecode.com/svn/trunk/doc/Tutorials/MultiSession/3.png" alt="Multi-session mapping" width="800"></a></p></li>
-<li>
-<p>Release 0.6.4</p>
-
-<ul>
-<li>
-<strong>Binaries!</strong> <a href="https://code.google.com/p/rtabmap/wiki/Installation#Mac_OS_X"><img src="https://rtabmap.googlecode.com/svn/trunk/doc/logos/apple.jpg" alt="Mac OS X" height="15"></a><a href="https://code.google.com/p/rtabmap/wiki/Installation#Windows"><img src="https://rtabmap.googlecode.com/svn/trunk/doc/logos/windows.png" alt="Windows" height="15"></a> See [Installation] page for more information.</li>
-</ul>
-</li>
-<li>Release 0.6.3
-
-<ul>
-<li>(r1330) New icon!</li>
-<li>(r1310) Freenect support.</li>
-<li>(r1335) Added cloud smoothing (Moving Least Squares) option when saving clouds.</li>
-<li>(r1334) Added a quality odometry threshold, turning the background yellow when the mapping area has too low features.</li>
-<li>(r1328) Fixed some building issues with OpenCV version: nonFree module explicitly required. This simplified installation for ROS Indigo (r1329).</li>
-<li>(r1342) rtabmap-databaseViewer: Added total path length under the Graph view.</li>
-<li>Some bug fixes.</li>
-</ul>
-</li>
-</ul>
-
-<p><a href="http://code.google.com/p/rtabmap/#Older_news">Older news</a></p>
-
-<h1>
-<a id="videos" class="anchor" href="#videos" aria-hidden="true"><span class="octicon octicon-link"></span></a>Videos</h1>
-
-<p><em>RGBD-SLAM</em>: 
- <a href="http://www.youtube.com/watch?v=Nm2ggyAW4rw"><img src="http://img.youtube.com/vi/Nm2ggyAW4rw/0.jpg" alt="video"></a>
- <a href="http://www.youtube.com/watch?v=joV7VCvGrKM"><img src="http://img.youtube.com/vi/joV7VCvGrKM/0.jpg" alt="video"></a></p>
-
-<p><em>Appearance-based loop closure detection</em>:
- <a href="http://www.youtube.com/watch?v=CAk-QGMlQmI"><img src="http://img.youtube.com/vi/CAk-QGMlQmI/0.jpg" alt="video"></a>
- <a href="http://www.youtube.com/watch?v=1dImRinTJSE"><img src="http://img.youtube.com/vi/1dImRinTJSE/0.jpg" alt="video"></a></p>
-
-<p><strong>More videos <a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">here</a></strong>.</p>
-
-<h1>
-<a id="older-news" class="anchor" href="#older-news" aria-hidden="true"><span class="octicon octicon-link"></span></a>Older news</h1>
-
-<p>February 2014</p>
-
-<ul>
-<li>Release 0.6.2</li>
-<li>New <a href="https://code.google.com/p/rtabmap/wiki/Tools">Tools</a> page.</li>
-<li>Updated <a href="https://code.google.com/p/rtabmap/wiki/Tutorials">Tutorials</a> page (RGB-D mapping, multi-session mapping demos...).</li>
-<li>Updated <a href="https://code.google.com/p/rtabmap/wiki/ROS">ROS</a> usage and demos.</li>
-</ul>
-
-<p>December 2013</p>
-
-<ul>
-<li>Updated trunk to version 0.6.</li>
-<li>Ubuntu/ROS updated!
-
-<ul>
-<li>
-<em>ROS version</em>: Because RTAB-Map 0.6 requires PCL 1.7, ROS Hydro is required. The installation is now using Catkin. See the <a href="https://code.google.com/p/rtabmap/wiki/ROS">ROS</a> page for new RTAB-Map packages installation and usage. The "visual_slam" package doesn't exist anymore, all RGB-D features are handled directly in "rtabmap" package. The mapping demo (ROS bag) from "visual_slam" is updated to new package (see bottom of <a href="https://code.google.com/p/rtabmap/wiki/ROS#Demos">ROS</a> for launch files).</li>
-<li>Example of mapping with a hand-held Kinect (or OpenNI-compliant sensors): <a href="https://rtabmap.googlecode.com/svn/trunk/ros-pkg/launch/rgbd_mapping.launch">rgbd_mapping.launch</a>
-</li>
-</ul>
-
-<pre><code>$ roslaunch openni_launch openni.launch depth_registration:=true
-$ roslaunch rtabmap rgbd_mapping.launch
-</code></pre>
-
-<ul>
-<li>Ubuntu <strong>standalone version</strong>:</li>
-</ul>
-
-<pre><code>$ svn checkout http://rtabmap.googlecode.com/svn/trunk/rtabmap rtabmap
-$ cd rtabmap/build
-$ cmake ..
-$ make -j4
-$ make install
-$ rtabmap
-</code></pre>
-</li>
-</ul>
-
-<p>November 2013</p>
-
-<ul>
-<li>
-<em>(EDIT)</em> I re-uploaded the zip file with installers for OpenNI.</li>
-<li>Added a standalone demo version for RGB-D mapping on Windows 7.</li>
-<li>
-<a href="https://rtabmap.googlecode.com/files/RTAB-Map-0.6.0-win32-DEMO.zip">RTAB-Map-0.6.0-win32-DEMO.zip</a>.</li>
-<li>Install:
-
-<ul>
-<li>Unzip</li>
-<li>Install OpenNI-Win32-1.5.4-Dev.msi</li>
-<li>Install Sensor-Win-OpenSource32-5.1.0.msi</li>
-<li>Plug the Kinect</li>
-<li>Run bin/RTAB-Map.exe</li>
-</ul>
-</li>
-<li>What's included in the demo:
-
-<ul>
-<li>Hand-held Kinect RGBD mapping,</li>
-<li>Modes "Mapping" and "Localization" (that can be switched on-the-fly),</li>
-<li>Multiple maps management,</li>
-<li>Added a 3D map viewer directly in the RTAB-Map GUI,</li>
-<li>Three odometry approaches: </li>
-<li>SURF/SIFT (best quality), </li>
-<li>FAST/BRIEF (fast),</li>
-<li>ICP (slow but invariant to light),</li>
-<li>Save the resulting cloud to .pcd file.</li>
-</ul>
-</li>
-<li>(<em>Ubuntu/ROS users</em>) In the next weeks, the ROS package will be updated with the new features, and with an easier interface to use than the visual_slam package (all the RGBD stuff will be included directly in the rtabmap package).</li>
-</ul>
-
-<p>June 2013</p>
-
-<ul>
-<li>Added new demos (mapping 2d/3d, localization) with a robot (ROS bags included!). See <a href="https://code.google.com/p/rtabmap/wiki/SLAMDemo">SLAMDemo</a>. Example:</li>
-</ul>
-
-<p>February 2013</p>
-
-<ul>
-<li>Long paper accepted in <em>IEEE Transactions on Robotics</em>  (all papers <a href="https://code.google.com/p/rtabmap/#Papers">below</a>). See RTAB-Map tested on 12 data sets!</li>
-</ul>
-
-<p>January 2013</p>
-
-<ul>
-<li>Added a <a href="https://code.google.com/p/rtabmap/wiki/Example">C++ usage example</a>.</li>
-<li>Integrated RTAB-Map with <a href="http://www.openslam.org/toro.html">TORO</a> to make a <strong>6D SLAM demo</strong>. See the page [SLAMDemo] if you want to try the demo. In this example, we use a hand-held Kinect sensor: we assemble incrementally the map depending on the 6D visual odometry (SIFT features are used), then when a loop closure is detected using RTAB-Map, TORO is used to optimize the map with the new constraint. </li>
-</ul>
-
-<p>December 2012</p>
-
-<ul>
-<li>Version 0.5.0.</li>
-<li>Moved all sensorimotor stuff to the new project <a href="http://semolearning.googlecode.com">SeMoLearning</a>. Now RTAB-Map contains only things about loop closure detection using a Bayesian bag-of-words approach, as in the RTAB-Map related <a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map#Publications">papers</a>. This also simplified the interface.</li>
-<li>I added a new option from the menu to print the detected loop closure IDs in the application console (in MATLAB matrix format, for fast copy/paste in MATLAB).</li>
-<li>Also, when generating the map using the menu action, a tip is printed in the application console to know how print a pdf from the ".dot" file with Graphiz: </li>
-</ul>
-
-<pre><code>neato -Tpdf Graph.dot -o out.pdf
-</code></pre>
-
-<p>May 2012</p>
-
-<ul>
-<li>Five new videos (720p) from other community data sets can be found on  <a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">RTAB-Map's page at IntRoLab</a>. </li>
-</ul>
-
-<p>March 2012</p>
-
-<ul>
-<li>Release 0.3.2: 
-
-<ul>
-<li>Simplified RTAB-Map's main parameters by adding a basic panel in Preferences.
-November 2011</li>
-</ul>
-</li>
-<li>I've made a simple interface to play with feature detectors and descriptors of OpenCV. See it at <a href="http://find-object.googlecode.com">Find-Object</a>.
-July 2011</li>
-<li>New videos with different data sets are added to the <a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">home page</a>.</li>
-</ul>
-      </section>
-    </div>
-
-    <!-- FOOTER  -->
-    <div id="footer_wrap" class="outer">
-      <footer class="inner">
-        <p class="copyright">RTAB-Map maintained by <a href="https://github.com/introlab">introlab</a></p>
-        <p>Published with <a href="http://pages.github.com">GitHub Pages</a></p>
-      </footer>
-    </div>
-
-              <script type="text/javascript">
-            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
-            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
-          </script>
-          <script type="text/javascript">
-            try {
-              var pageTracker = _gat._getTracker("UA-56986679-1");
-            pageTracker._trackPageview();
-            } catch(err) {}
-          </script>
-
-
-  </body>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title>RTAB-Map</title>
+  <meta name="Description" content="RTAB-Map : Real-Time Appearance-Based Mapping">
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="1265.21">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #0000ee}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Times; color: #0000ee; min-height: 14.0px}
+    span.s1 {text-decoration: underline}
+  </style>
+</head>
+<body>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;!DOCTYPE html&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;html&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">  </span>&lt;head&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;meta charset='utf-8'&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;meta http-equiv="X-UA-Compatible" content="chrome=1"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;meta name="description" content="RTAB-Map : Real-Time Appearance-Based Mapping"&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;link rel="stylesheet" type="text/css" media="screen" href="stylesheets/stylesheet.css"&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;title&gt;RTAB-Map&lt;/title&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">  </span>&lt;/head&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">  </span>&lt;body&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;!-- HEADER --&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;div id="header_wrap" class="outer"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">        </span>&lt;header class="inner"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">          </span>&lt;a id="forkme_banner" href="https://github.com/introlab/rtabmap"&gt;View on GitHub&lt;/a&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">          </span>&lt;h1 id="project_title"&gt;RTAB-Map&lt;/h1&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">          </span>&lt;h2 id="project_tagline"&gt;Real-Time Appearance-Based Mapping&lt;/h2&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">            </span>&lt;section id="downloads"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">              </span>&lt;a class="zip_download_link" href="https://github.com/introlab/rtabmap/zipball/master"&gt;Download this project as a .zip file&lt;/a&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">              </span>&lt;a class="tar_download_link" href="https://github.com/introlab/rtabmap/tarball/master"&gt;Download this project as a tar.gz file&lt;/a&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">            </span>&lt;/section&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">        </span>&lt;/header&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;/div&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;!-- MAIN CONTENT --&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;div id="main_content_wrap" class="outer"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">      </span>&lt;section id="main_content" class="inner"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">        </span>&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=AMLwjo80WzI"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/onlinergbdslam.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h2&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="overview" class="anchor" href="#overview" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;Overview&lt;/h2&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" alt="RTAB-Map logo" title="RTAB-Map" align="left" width="120"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;strong&gt;RTAB-Map&lt;/strong&gt; (Real-Time Appearance-Based Mapping) is a RGB-D Graph-Based SLAM approach based on an incremental appearance-based loop closure detector. The loop closure detector uses a bag-of-words approach to determinate how likely a new image comes from a previous location or a new location. When a loop closure hypothesis is accepted, a new constraint is added to the map's graph, then a graph optimizer minimizes the errors in the map. A memory management approach is used to limit the number of locations used for loop closure detection and graph optimization, so that real-time constraints on large-scale environnements are always respected. RTAB-Map can be used alone with a hand-held Kinect or stereo camera for 6DoF RGB-D mapping, or on a robot equipped with a laser rangefinder for 3DoF mapping.</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a name="papers"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;strong&gt;RGB-D mapping&lt;/strong&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;M. Labbé and F. Michaud, “&lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf"&gt;Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM&lt;/a&gt;,” in &lt;em&gt;Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems&lt;/em&gt;, 2014. (&lt;a href="http://ieeexplore.ieee.org/xpl/login.jsp?tp=&amp;amp;arnumber=6942926"&gt;IEEE Xplore&lt;/a&gt;)&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Results shown in this paper can be reproduced by the &lt;a href="https://github.com/introlab/rtabmap/wiki/Multi-session"&gt;Multi-session mapping&lt;/a&gt; tutorial.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;strong&gt;Loop closure detection&lt;/strong&gt;:</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;M. Labbé and F. Michaud, “&lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/b/bc/TRO2013.pdf"&gt;Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation&lt;/a&gt;,” in &lt;em&gt;IEEE Transactions on Robotics&lt;/em&gt;, vol. 29, no. 3, pp. 734-745, 2013. (&lt;a href="http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6459608"&gt;IEEE Xplore&lt;/a&gt;)&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;M. Labbé and F. Michaud, “&lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/f/f0/Labbe11memory.pdf"&gt;Memory management for real-time appearance-based loop closure detection&lt;/a&gt;,” in &lt;em&gt;Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems&lt;/em&gt;, 2011, pp. 1271–1276. (&lt;a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6094602"&gt;IEEE Xplore&lt;/a&gt;)&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Visit &lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map"&gt;RTAB-Map's page on IntRoLab&lt;/a&gt; for detailed information on the loop closure detection approach and related datasets. &lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h2&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="install" class="anchor" href="#install" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;Install&lt;/h2&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="https://github.com/introlab/rtabmap_ros#rtabmap_ros"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ros.png" alt="ROS" width="50"&gt;&lt;/a&gt;  &lt;a href="https://github.com/introlab/rtabmap/wiki/Installation#ubuntu"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ubuntu.png" alt="Ubuntu" width="50"&gt;&lt;/a&gt;  &lt;a href="https://github.com/introlab/rtabmap/wiki/Installation#macosx"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/apple.png" alt="Mac OS X" width="50"&gt;&lt;/a&gt;  &lt;a href="https://github.com/introlab/rtabmap/wiki/Installation#windows"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/windows.png" alt="Windows" width="50"&gt;&lt;/a&gt; &lt;a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/tango.png" alt="Google Tango" width="50"&gt;&lt;/a&gt; &lt;a href="https://github.com/introlab/rtabmap/wiki/Installation#raspberrypi"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/raspberrypi.png" alt="Raspberry Pi" width="40"&gt;&lt;/a&gt; &lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a href="https://github.com/introlab/rtabmap/wiki/Installation"&gt;Installation&lt;/a&gt; instructions. &lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a href="https://github.com/introlab/rtabmap/wiki/Tutorials"&gt;Tutorials&lt;/a&gt;.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a href="https://github.com/introlab/rtabmap/wiki/Tools"&gt;Tools&lt;/a&gt;.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;For &lt;strong&gt;ROS&lt;/strong&gt; users, take a look to &lt;a href="http://wiki.ros.org/rtabmap"&gt;rtabmap&lt;/a&gt; page on the ROS wiki for a package overview. See also &lt;a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot"&gt;SetupOnYourRobot&lt;/a&gt; to know how to integrate RTAB-Map on your robot.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="troubleshooting" class="anchor" href="#troubleshooting" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;Troubleshooting&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;strong&gt;Standalone&lt;/strong&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Visit the &lt;a href="https://github.com/introlab/rtabmap/wiki"&gt;wiki&lt;/a&gt;.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Ask a question on the &lt;a href="http://official-rtab-map-forum.67519.x6.nabble.com/"&gt;RTAB-Map Forum&lt;/a&gt;.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Post an &lt;a href="https://github.com/introlab/rtabmap/issues"&gt;issue on GitHub&lt;/a&gt; (see old issues on &lt;a href="https://code.google.com/p/rtabmap/issues/list"&gt;Google code&lt;/a&gt;).&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;For the loop closure detection approach, visit &lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map"&gt;RTAB-Map on IntRoLab website&lt;/a&gt;.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;strong&gt;ROS&lt;/strong&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Visit &lt;a href="http://wiki.ros.org/rtabmap_ros"&gt;rtabmap_ros&lt;/a&gt; wiki page for nodes documentation, demos and tutorials on ROS. &lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Ask a question on &lt;a href="http://answers.ros.org/questions/scope:all/sort:activity-desc/tags:rtabmap_ros/page:1/"&gt;answers.ros.org&lt;/a&gt; with &lt;strong&gt;rtabmap&lt;/strong&gt; or &lt;strong&gt;rtabmap_ros&lt;/strong&gt; tag.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h2&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="license" class="anchor" href="#license" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;License&lt;/h2&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;If OpenCV is built &lt;strong&gt;without the nonfree&lt;/strong&gt; module, RTAB-Map can be used under the permissive BSD License. &lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;If OpenCV is built &lt;strong&gt;with the nonfree&lt;/strong&gt; module, RTAB-Map is free for research only because it depends on &lt;strong&gt;SURF&lt;/strong&gt; and &lt;strong&gt;SIFT&lt;/strong&gt; features. &lt;strong&gt;SIFT&lt;/strong&gt; and &lt;strong&gt;SURF&lt;/strong&gt; are &lt;strong&gt;not free&lt;/strong&gt; for commercial use.</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;SURF noncommercial notice: &lt;a href="http://www.vision.ee.ethz.ch/%7Esurf/download.html"&gt;http://www.vision.ee.ethz.ch/~surf/download.html&lt;/a&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;SIFT patent: &lt;a href="http://www.cs.ubc.ca/%7Elowe/keypoints/"&gt;http://www.cs.ubc.ca/~lowe/keypoints/&lt;/a&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h2&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="author" class="anchor" href="#author" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;Author&lt;/h2&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php?title=Mathieu_Labb%C3%A9&amp;amp;setlang=en"&gt;Mathieu Labbé&lt;/a&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;&lt;a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map"&gt;RTAB-Map's page at IntRoLab&lt;/a&gt;&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;&lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map#Publications"&gt;Papers&lt;/a&gt;&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Similar projects: &lt;a href="http://find-object.googlecode.com"&gt;Find-Object&lt;/a&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h2&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="whats-new" class="anchor" href="#whats-new" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;What's new&lt;/h2&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="february-2016" class="anchor" href="#february-2016" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;February 2016&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;I'm pleased to announce that RTAB-Map is now on &lt;strong&gt;Project Tango&lt;/strong&gt;. The app is &lt;a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap"&gt;available&lt;/a&gt; on Google Play Store. &lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="https://youtu.be/BE8kMkrCeuA"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;Screenshots:&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango.png" alt="rtabmap tango 1" width="600"&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango2.png" alt="rtabmap tango 2" width="600"&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="october-2015" class="anchor" href="#october-2015" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;October 2015&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;strong&gt;Version 0.10.10&lt;/strong&gt;: Visit the &lt;a href="https://github.com/introlab/rtabmap/releases"&gt;release page&lt;/a&gt; for more info!&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="september-2015" class="anchor" href="#september-2015" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;September 2015&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;strong&gt;Version 0.10.6&lt;/strong&gt;: Integration of a robust graph optimization approach called &lt;a href="https://openslam.org/vertigo.html"&gt;Vertigo&lt;/a&gt; (which uses &lt;a href="https://openslam.org/g2o.html"&gt;g2o&lt;/a&gt; or &lt;a href="https://collab.cc.gatech.edu/borg/gtsam"&gt;GTSAM&lt;/a&gt;), see &lt;a href="https://github.com/introlab/rtabmap/wiki/Robust-Graph-Optimization"&gt;this page&lt;/a&gt;:&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=A8v70DZxLF8"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/robust_graph_optimization.jpg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="august-2015" class="anchor" href="#august-2015" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;August 2015&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;strong&gt;Version 0.10.5&lt;/strong&gt;: New example to export data to &lt;a href="http://meshlab.sourceforge.net/"&gt;MeshLab&lt;/a&gt; in order to add textures on a created mesh with low polygons, see &lt;a href="https://github.com/introlab/rtabmap/wiki/Export-Raster-Layers-to-MeshLab"&gt;this page&lt;/a&gt;:&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="https://github.com/introlab/rtabmap/wiki/Export-Raster-Layers-to-MeshLab"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/Texture/texture_tutorial.jpeg" alt="Texture tutorial" width="400"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="october-2014" class="anchor" href="#october-2014" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;October 2014&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;New example to speed up RTAB-Map's odometry, see &lt;a href="https://github.com/introlab/rtabmap/wiki/Change-parameters"&gt;this page&lt;/a&gt;:&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=Bh8WZsU4YC8"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/speedup.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="september-2014" class="anchor" href="#september-2014" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;September 2014&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;At &lt;strong&gt;IROS 2014&lt;/strong&gt; in Chicago, a team using RTAB-Map for SLAM &lt;strong&gt;won&lt;/strong&gt; the Kinect navigation contest held during the conference. See their press release for more details: &lt;a href="http://www.meetup.com/SV-ROS-users/pages/Winning_the_IROS2014_Microsoft_Connect_Challenge/"&gt;Winning the IROS2014 Microsoft Kinect Challenge&lt;/a&gt;. I also added the Wiki page &lt;a href="https://github.com/introlab/rtabmap/wiki/IROS2014KinectChallenge"&gt;IROS2014KinectChallenge&lt;/a&gt; showing in details the RTAB-Map part used in their solution.&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=_qiLAWp7AqQ"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/iros2014.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="august-2014" class="anchor" href="#august-2014" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;August 2014&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;Here a comparison between reality and what can be shown in RVIZ (you can &lt;a href="http://wiki.ros.org/rtabmap_ros#Robot_mapping_with_Find-Object"&gt;reproduce this demo here&lt;/a&gt;):&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=o1GSQanY-Do"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/findobject.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="july-2014" class="anchor" href="#july-2014" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;July 2014&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;Added &lt;a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot"&gt;Setup on your robot&lt;/a&gt; wiki page to know how to integrate RTAB-Map on your ROS robot. Multiple sensor configurations are shown but the optimal configuration is to have a 2D laser, a Kinect-like sensor and odometry.&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSession/4.png" alt="AZIMUT3" align="left" width="300"&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;table&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;thead&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;tr&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;th&gt;Onboard mapping&lt;/th&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;th&gt;Remote mapping&lt;/th&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/tr&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/thead&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;tbody&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;tr&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;td&gt;&lt;a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot#Bring-up_your_robot"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/setupA.png" alt="" width="300"&gt;&lt;/a&gt;&lt;/td&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;td&gt;&lt;a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot#Remote_mapping"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/rgbd/remoteMapping.png" alt="" width="300"&gt;&lt;/a&gt;&lt;/td&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/tr&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/tbody&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/table&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h3&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="june-2014" class="anchor" href="#june-2014" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;June 2014&lt;/h3&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;I'm glad to announce that my paper submitted to &lt;a href="http://www.iros2014.org/"&gt;IROS 2014&lt;/a&gt; was accepted! &lt;a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf"&gt;This paper&lt;/a&gt; explains in details how RGB-D mapping with RTAB-Map is done. Results shown in this paper can be reproduced by the &lt;a href="https://github.com/introlab/rtabmap/wiki/Multi-session"&gt;Multi-session mapping&lt;/a&gt; tutorial:&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="https://github.com/introlab/rtabmap/wiki/Multi-session"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSession/3.png" alt="Multi-session mapping" width="600"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;h2&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;a id="videos" class="anchor" href="#videos" aria-hidden="true"&gt;&lt;span aria-hidden="true" class="octicon octicon-link"&gt;&lt;/span&gt;&lt;/a&gt;Videos&lt;/h2&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;strong&gt;RGBD-SLAM&lt;/strong&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=Nm2ggyAW4rw"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/desktop.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=joV7VCvGrKM"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/globalonly.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;strong&gt;Appearance-based loop closure detection&lt;/strong&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=CAk-QGMlQmI"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;p&gt;&lt;a href="http://www.youtube.com/watch?v=1dImRinTJSE"&gt;&lt;img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/newcollegeomni.jpeg" alt="video" title="video"&gt;&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;li&gt;More loop closure detection videos &lt;a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map"&gt;here&lt;/a&gt;.&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/li&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/ul&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">      </span>&lt;/section&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;/div&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;!-- FOOTER<span class="Apple-converted-space">  </span>--&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;div id="footer_wrap" class="outer"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">      </span>&lt;footer class="inner"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">        </span>&lt;p class="copyright"&gt;RTAB-Map maintained by &lt;a href="https://github.com/introlab"&gt;introlab&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">        </span>&lt;p&gt;Published with &lt;a href="https://pages.github.com"&gt;GitHub Pages&lt;/a&gt;&lt;/p&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">      </span>&lt;/footer&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">    </span>&lt;/div&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">              </span>&lt;script type="text/javascript"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">            </span>var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">            </span>document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">          </span>&lt;/script&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">          </span>&lt;script type="text/javascript"&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">            </span>try {</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">              </span>var pageTracker = _gat._getTracker("UA-56986679-1");</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">            </span>pageTracker._trackPageview();</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">            </span>} catch(err) {}</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">          </span>&lt;/script&gt;</a></span></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p2"><span class="s1"><a href="https://github.com/introlab/rtabmap"></a></span><br></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap"><span class="Apple-converted-space">  </span>&lt;/body&gt;</a></span></p>
+<p class="p1"><span class="s1"><a href="https://github.com/introlab/rtabmap">&lt;/html&gt;</a></span></p>
+</body>
 </html>
