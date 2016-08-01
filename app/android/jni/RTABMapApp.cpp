@@ -754,8 +754,10 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 					iter->second.polygons.size())
 				{
 					// OBJ format requires normals
+					pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(iter->second.cloud, 20);
+
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
-					cloudWithNormals = rtabmap::util3d::computeNormals(iter->second.cloud, 20);
+					pcl::concatenateFields(*iter->second.cloud, *normals, *cloudWithNormals);
 
 					// create dense cloud
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
