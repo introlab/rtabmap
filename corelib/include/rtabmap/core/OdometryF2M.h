@@ -48,6 +48,8 @@ public:
 	const Signature & getMap() const {return *map_;}
 	const Signature & getLastFrame() const {return *lastFrame_;}
 
+	bool isF2M(){return true;}
+
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
