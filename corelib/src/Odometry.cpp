@@ -61,7 +61,7 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 		break;
 	default:
 		odometry = new OdometryF2M(parameters);
-		type = Odometry::kTypeLocalMap;
+		type = Odometry::kTypeF2M;
 		break;
 	}
 	return odometry;

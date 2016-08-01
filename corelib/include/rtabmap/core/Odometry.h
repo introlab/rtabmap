@@ -44,7 +44,7 @@ class RTABMAP_EXP Odometry
 public:
 	enum Type {
 		kTypeUndef = -1,
-		kTypeLocalMap = 0,
+		kTypeF2M = 0,
 		kTypeF2F = 1
 	};
 
@@ -57,8 +57,7 @@ public:
 	Transform process(SensorData & data, OdometryInfo * info = 0);
 	Transform process(SensorData & data, const Transform & guess, OdometryInfo * info = 0);
 	virtual void reset(const Transform & initialPose = Transform::getIdentity());
-	virtual bool isF2F(){return false;}
-	virtual bool isF2M(){return false;}
+	virtual Odometry::Type getType() = 0;
 
 	//getters
 	const Transform & getPose() const {return _pose;}

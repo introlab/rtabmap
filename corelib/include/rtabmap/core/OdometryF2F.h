@@ -45,7 +45,7 @@ public:
 
 	const Signature & getRefFrame() const {return refFrame_;}
 
-	bool isF2F(){return true;};
+	virtual Odometry::Type getType() {return Odometry::kTypeF2F;}
 
 private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
