@@ -2334,6 +2334,7 @@ void DatabaseViewer::update(int value,
 						(!data.depthOrRightRaw().empty() ||
 						!data.laserScanRaw().empty()))
 				{
+					view3D->removeAllFrustums();
 					if(!data.depthOrRightRaw().empty())
 					{
 						if(!data.imageRaw().empty())
@@ -2350,6 +2351,11 @@ void DatabaseViewer::update(int value,
 										data.imageRaw(),
 										depth,
 										data.cameraModels()[0]);
+								if(cloud->size())
+								{
+									cloud = util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform());
+								}
+
 							}
 							else
 							{
@@ -2386,6 +2392,7 @@ void DatabaseViewer::update(int value,
 									view3D->addCloud("0", cloud);
 								}
 							}
+							view3D->updateCameraFrustums(Transform::getIdentity(), data.cameraModels());
 						}
 						else
 						{
@@ -2394,6 +2401,7 @@ void DatabaseViewer::update(int value,
 							if(cloud->size())
 							{
 								view3D->addCloud("0", cloud);
+								view3D->updateCameraFrustum(Transform::getIdentity(), data.stereoCameraModel());
 							}
 						}
 					}
