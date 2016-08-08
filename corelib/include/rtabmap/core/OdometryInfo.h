@@ -72,6 +72,7 @@ public:
 		output.transformFiltered = transformFiltered;
 		output.transformGroundTruth = transformGroundTruth;
 		output.distanceTravelled = distanceTravelled;
+		output.type = type;
 		return output;
 	}
 

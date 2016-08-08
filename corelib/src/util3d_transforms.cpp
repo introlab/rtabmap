@@ -28,12 +28,65 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_transforms.h"
 
 #include <pcl/common/transforms.h>
+#include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap
 {
 
 namespace util3d
 {
+
+cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transform)
+{
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6));
+
+	cv::Mat output = laserScan.clone();
+
+	if(!transform.isNull() && !transform.isIdentity())
+	{
+		for(int i=0; i<laserScan.cols; ++i)
+		{
+			if(laserScan.type() == CV_32FC2)
+			{
+				pcl::PointXYZ pt(
+						laserScan.at<cv::Vec2f>(i)[0],
+						laserScan.at<cv::Vec2f>(i)[1], 0);
+				pt = util3d::transformPoint(pt, transform);
+				output.at<cv::Vec2f>(i)[0] = pt.x;
+				output.at<cv::Vec2f>(i)[1] = pt.y;
+			}
+			else if(laserScan.type() == CV_32FC3)
+			{
+				pcl::PointXYZ pt(
+						laserScan.at<cv::Vec3f>(i)[0],
+						laserScan.at<cv::Vec3f>(i)[1],
+						laserScan.at<cv::Vec3f>(i)[2]);
+				pt = util3d::transformPoint(pt, transform);
+				output.at<cv::Vec3f>(i)[0] = pt.x;
+				output.at<cv::Vec3f>(i)[1] = pt.y;
+				output.at<cv::Vec3f>(i)[2] = pt.z;
+			}
+			else
+			{
+				pcl::PointNormal pt;
+				pt.x=laserScan.at<cv::Vec6f>(i)[0];
+				pt.y=laserScan.at<cv::Vec6f>(i)[1];
+				pt.z=laserScan.at<cv::Vec6f>(i)[2];
+				pt.normal_x=laserScan.at<cv::Vec6f>(i)[3];
+				pt.normal_y=laserScan.at<cv::Vec6f>(i)[4];
+				pt.normal_z=laserScan.at<cv::Vec6f>(i)[5];
+				pt = util3d::transformPoint(pt, transform);
+				output.at<cv::Vec6f>(i)[0] = pt.x;
+				output.at<cv::Vec6f>(i)[1] = pt.y;
+				output.at<cv::Vec6f>(i)[2] = pt.z;
+				output.at<cv::Vec6f>(i)[3] = pt.normal_x;
+				output.at<cv::Vec6f>(i)[4] = pt.normal_y;
+				output.at<cv::Vec6f>(i)[5] = pt.normal_z;
+			}
+		}
+	}
+	return output;
+}
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

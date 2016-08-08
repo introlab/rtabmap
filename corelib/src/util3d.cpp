@@ -948,12 +948,11 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud,
 {
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(6));
 	bool nullTransform = transform.isNull() || transform.isIdentity();
-	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
 		if(!nullTransform)
 		{
-			pcl::PointNormal pt = pcl::transformPoint(cloud.at(i), transform3f);
+			pcl::PointNormal pt = util3d::transformPoint(cloud.at(i), transform);
 			laserScan.at<cv::Vec6f>(i)[0] = pt.x;
 			laserScan.at<cv::Vec6f>(i)[1] = pt.y;
 			laserScan.at<cv::Vec6f>(i)[2] = pt.z;

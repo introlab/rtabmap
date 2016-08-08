@@ -996,7 +996,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 			if(_preferencesDialog->isScansShown(1))
 			{
-				// scan local map
+				// F2M: scan local map
 				if(!odom.info().localScanMap.empty())
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;

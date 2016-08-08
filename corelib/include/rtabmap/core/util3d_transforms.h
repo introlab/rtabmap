@@ -40,6 +40,10 @@ namespace rtabmap
 namespace util3d
 {
 
+cv::Mat RTABMAP_EXP transformLaserScan(
+		const cv::Mat & laserScan,
+		const Transform & transform);
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & transform);

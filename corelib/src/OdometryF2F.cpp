@@ -129,7 +129,11 @@ Transform OdometryF2F::computeTransform(
 			{
 				info->localMap.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, t)));
 			}
+			info->localMapSize = tmpRefFrame.getWords3().size();
 			info->words = newFrame.getWords();
+
+			info->localScanMapSize = tmpRefFrame.sensorData().laserScanRaw().cols;
+			info->localScanMap = util3d::transformLaserScan(tmpRefFrame.sensorData().laserScanRaw(), t);
 		}
 	}
 	else

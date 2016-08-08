@@ -1209,6 +1209,22 @@ void DatabaseViewer::updateIds()
 	ui_->textEdit_info->append("");
 	ui_->textEdit_info->append(tr("%1 bad signatures in LTM").arg(badcountInLTM));
 	ui_->textEdit_info->append(tr("%1 bad signatures in the global graph").arg(badCountInGraph));
+	ui_->textEdit_info->append("");
+	ParametersMap parameters = dbDriver_->getLastParameters();
+	QFontMetrics metrics(ui_->textEdit_info->font());
+	int tabW = ui_->textEdit_info->tabStopWidth();
+	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
+	{
+		int strW = metrics.width(QString(iter->first.c_str()) + "=");
+		ui_->textEdit_info->append(tr("%1=%2%3")
+				.arg(iter->first.c_str())
+				.arg(strW < tabW?"\t\t\t\t":strW < tabW*2?"\t\t\t":strW < tabW*3?"\t\t":"\t")
+				.arg(iter->second.c_str()));
+	}
+
+	// move back the cursor at the beginning
+	ui_->textEdit_info->moveCursor(QTextCursor::Start) ;
+	ui_->textEdit_info->ensureCursorVisible() ;
 
 	if(ids.size())
 	{
