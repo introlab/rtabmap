@@ -96,7 +96,8 @@ Transform OdometryF2F::computeTransform(
 		output = registrationPipeline_->computeTransformationMod(
 				tmpRefFrame,
 				newFrame,
-				!guess.isNull()?motionSinceLastKeyFrame*guess:Transform(),
+				// special case for ICP-only odom, set guess to identity if we just started
+				!guess.isNull()?motionSinceLastKeyFrame*guess:!registrationPipeline_->isImageRequired()&&this->getPose().isIdentity()?Transform::getIdentity():Transform(),
 				&regInfo);
 
 		if(info && this->isInfoDataFilled())

@@ -499,7 +499,7 @@ public:
 	static ParametersMap deserialize(const std::string & parameters);
 
 	static bool isFeatureParameter(const std::string & param);
-	static ParametersMap getDefaultOdometryParameters(bool stereo = false);
+	static ParametersMap getDefaultOdometryParameters(bool stereo = false, bool vis = true, bool icp = false);
 	static ParametersMap getDefaultParameters(const std::string & group);
 	static ParametersMap filterParameters(const ParametersMap & parameters, const std::string & group);
 

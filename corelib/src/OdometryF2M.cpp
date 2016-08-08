@@ -213,7 +213,8 @@ Transform OdometryF2M::computeTransform(
 			Transform transform = regPipeline_->computeTransformationMod(
 					tmpMap,
 					*lastFrame_,
-					guess.isNull()?Transform():this->getPose()*guess,
+					// special case for ICP-only odom, set guess to identity if we just started
+					!guess.isNull()?this->getPose()*guess:!regPipeline_->isImageRequired()&&this->getPose().isIdentity()?Transform::getIdentity():Transform(),
 					&regInfo);
 
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().descriptors());

@@ -159,7 +159,7 @@ bool Parameters::isFeatureParameter(const std::string & parameter)
 			group.compare("BRISK") == 0;
 }
 
-rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo)
+rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, bool vis, bool icp)
 {
 	rtabmap::ParametersMap odomParameters;
 	rtabmap::ParametersMap defaultParameters = rtabmap::Parameters::getDefaultParameters();
@@ -168,9 +168,10 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo)
 		std::string group = uSplit(iter->first, '/').front();
 		if(uStrContains(group, "Odom") ||
 			(stereo && group.compare("Stereo") == 0) ||
-			Parameters::isFeatureParameter(iter->first) ||
+			(icp && group.compare("Icp") == 0) ||
+			(vis && Parameters::isFeatureParameter(iter->first)) ||
 			group.compare("Reg") == 0 ||
-			group.compare("Vis") == 0)
+			(vis && group.compare("Vis") == 0))
 		{
 			if(stereo)
 			{

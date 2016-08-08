@@ -200,8 +200,6 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 
 Transform Odometry::process(SensorData & data, const Transform & guessIn, OdometryInfo * info)
 {
-	UASSERT(!data.imageRaw().empty());
-
 	// Ground alignment
 	if(_pose.isIdentity() && _alignWithGround)
 	{
@@ -256,13 +254,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 					"Make sure the camera is seeing the ground (e.g., tilt ~30 "
 					"degrees toward the ground).");
 		}
-	}
-
-	if(!data.stereoCameraModel().isValidForProjection() &&
-	   (data.cameraModels().size() == 0 || !data.cameraModels()[0].isValidForProjection()))
-	{
-		UERROR("Rectified images required! Calibrate your camera.");
-		return Transform();
 	}
 
 	double dt = previousStamp_>0.0f?data.stamp() - previousStamp_:0.0;
