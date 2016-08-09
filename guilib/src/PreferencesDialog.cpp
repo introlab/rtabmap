@@ -246,7 +246,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	}
 	if (!CameraStereoZed::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(7, 0, Qt::UserRole - 1);
 		_ui->comboBox_cameraStereo->setItemData(4, 0, Qt::UserRole - 1);
 	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
