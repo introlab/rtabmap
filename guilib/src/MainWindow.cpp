@@ -4546,7 +4546,7 @@ void MainWindow::postProcessing()
 
 						if(!transform.isNull())
 						{
-							Link newLink(from, to, iter->second.type(), transform*iter->second.transform(), info.variance, info.variance);
+							Link newLink(from, to, iter->second.type(), transform, info.variance, info.variance);
 							iter->second = newLink;
 						}
 						else
