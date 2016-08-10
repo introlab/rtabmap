@@ -620,37 +620,33 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			else
 			{
 				UERROR("Did not find node %d in cache", iter->first);
+				return optimizedPoses;
 			}
 
-			if(model.isValidForProjection())
+			UASSERT(model.isValidForProjection());
+
+			models.insert(std::make_pair(iter->first, model));
+			Transform camPose = iter->second * model.localTransform();
+			//iter->second = (iter->second * model.localTransform()).inverse();
+			UDEBUG("%d t=%s", iter->first, camPose.prettyPrint().c_str());
+
+			// Add node's pose
+			UASSERT(!camPose.isNull());
+			g2o::VertexCam * vCam = new g2o::VertexCam();
+
+			Eigen::Affine3d a = camPose.toEigen3d();
+			g2o::SBACam cam(Eigen::Quaterniond(a.rotation()), a.translation());
+			cam.setKcam(model.fx(), model.fy(), model.cx(), model.cy(), 0);
+			vCam->setEstimate(cam);
+			if(iter->first == rootId)
 			{
-				models.insert(std::make_pair(iter->first, model));
-				Transform camPose = iter->second * model.localTransform();
-				//iter->second = (iter->second * model.localTransform()).inverse();
-				UDEBUG("%d t=%s", iter->first, camPose.prettyPrint().c_str());
-
-				// Add node's pose
-				UASSERT(!camPose.isNull());
-				g2o::VertexCam * vCam = new g2o::VertexCam();
-
-				Eigen::Affine3d a = camPose.toEigen3d();
-				g2o::SBACam cam(Eigen::Quaterniond(a.rotation()), a.translation());
-				cam.setKcam(model.fx(), model.fy(), model.cx(), model.cy(), 0);
-				vCam->setEstimate(cam);
-				if(iter->first == rootId)
-				{
-					vCam->setFixed(true);
-				}
-				vCam->setId(iter->first);
-				std::cout << cam << std::endl;
-				UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert vertex %d!?", iter->first).c_str());
-
-				++iter;
+				vCam->setFixed(true);
 			}
-			else
-			{
-				frames.erase(iter++);
-			}
+			vCam->setId(iter->first);
+			//std::cout << cam << std::endl;
+			UASSERT_MSG(optimizer.addVertex(vCam), uFormat("cannot insert vertex %d!?", iter->first).c_str());
+
+			++iter;
 		}
 
 		UDEBUG("fill edges to g2o and associate each 3D point to all frames observing it...");
