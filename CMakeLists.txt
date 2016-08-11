@@ -53,6 +53,13 @@ ELSE ()
 	ADD_DEFINITIONS("-Wno-unknown-pragmas")
 ENDIF()
 
+if(POLICY CMP0020)
+	cmake_policy(SET CMP0020 OLD)
+endif()
+if(POLICY CMP0043)
+	cmake_policy(SET CMP0043 OLD)
+endif()
+
 IF(MINGW)
     # Hide the --enable-auto-import warning
 	SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-auto-import")  

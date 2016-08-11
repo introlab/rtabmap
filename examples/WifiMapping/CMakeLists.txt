@@ -31,6 +31,10 @@ else()
     	ENDIF(NOT Qt5_FOUND)
 endif()
 
+if(POLICY CMP0020)
+	cmake_policy(SET CMP0020 OLD)
+endif()
+
 SET(INCLUDE_DIRS
 	${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
