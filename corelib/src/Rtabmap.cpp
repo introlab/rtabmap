@@ -98,6 +98,7 @@ Rtabmap::Rtabmap() :
 	_localRadius(Parameters::defaultRGBDLocalRadius()),
 	_localImmunizationRatio(Parameters::defaultRGBDLocalImmunizationRatio()),
 	_proximityMaxGraphDepth(Parameters::defaultRGBDProximityMaxGraphDepth()),
+	_proximityMaxPaths(Parameters::defaultRGBDProximityMaxPaths()),
 	_proximityFilteringRadius(Parameters::defaultRGBDProximityPathFilteringRadius()),
 	_proximityRawPosesUsed(Parameters::defaultRGBDProximityPathRawPosesUsed()),
 	_proximityAngle(Parameters::defaultRGBDProximityAngle()*M_PI/180.0f),
@@ -409,6 +410,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDLocalRadius(), _localRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLocalImmunizationRatio(), _localImmunizationRatio);
 	Parameters::parse(parameters, Parameters::kRGBDProximityMaxGraphDepth(), _proximityMaxGraphDepth);
+	Parameters::parse(parameters, Parameters::kRGBDProximityMaxPaths(), _proximityMaxPaths);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathFilteringRadius(), _proximityFilteringRadius);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathRawPosesUsed(), _proximityRawPosesUsed);
 	Parameters::parse(parameters, Parameters::kRGBDProximityAngle(), _proximityAngle);
@@ -1766,6 +1768,8 @@ bool Rtabmap::process(
 	int proximityDetectionsAddedByICPOnly = 0;
 	int lastProximitySpaceClosureId = 0;
 	int proximitySpacePaths = 0;
+	int localVisualPathsChecked = 0;
+	int localScanPathsChecked = 0;
 	if(_proximityBySpace &&
 	   _localRadius > 0 &&
 	   _rgbdSlamMode &&
@@ -1813,14 +1817,16 @@ bool Rtabmap::process(
 				UDEBUG("nearestPoses=%d", (int)nearestPoses.size());
 
 				// segment poses by paths, only one detection per path
-				std::list<std::map<int, Transform> > nearestPaths = getPaths(nearestPoses);
-				UDEBUG("nearestPaths=%d", (int)nearestPaths.size());
+				std::map<int, std::map<int, Transform> > nearestPaths = getPaths(nearestPoses, _optimizedPoses.at(signature->id()), _proximityMaxGraphDepth);
+				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
 
-				for(std::list<std::map<int, Transform> >::const_iterator iter=nearestPaths.begin();
-					iter!=nearestPaths.end() && (_memory->isIncremental() || lastProximitySpaceClosureId == 0);
+				for(std::map<int, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
+					iter!=nearestPaths.rend() &&
+					(_memory->isIncremental() || lastProximitySpaceClosureId == 0) &&
+					(_proximityMaxPaths <= 0 || localVisualPathsChecked < _proximityMaxPaths);
 					++iter)
 				{
-					std::map<int, Transform> path = *iter;
+					std::map<int, Transform> path = iter->second;
 					UASSERT(path.size());
 
 					//find the nearest pose on the path looking in the same direction
@@ -1829,11 +1835,12 @@ bool Rtabmap::process(
 					int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
 					if(nearestId > 0)
 					{
-						// nearest pose must not be linked to current location and enough
+						// nearest pose must not be linked to current location and enough close
 						if(!signature->hasLink(nearestId) &&
 							(_proximityFilteringRadius <= 0.0f ||
 							 _optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
 						{
+							++localVisualPathsChecked;
 							RegistrationInfo info;
 							Transform guess = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(nearestId);
 							Transform transform = _memory->computeTransform(signature->id(), nearestId, guess, &info);
@@ -1883,18 +1890,19 @@ bool Rtabmap::process(
 					// local visual closure above.
 
 					proximitySpacePaths = (int)nearestPaths.size();
-
-					for(std::list<std::map<int, Transform> >::iterator iter=nearestPaths.begin();
-							iter!=nearestPaths.end() && (_memory->isIncremental() || lastProximitySpaceClosureId == 0);
+					for(std::map<int, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
+							iter!=nearestPaths.rend() &&
+							(_memory->isIncremental() || lastProximitySpaceClosureId == 0) &&
+							(_proximityMaxPaths <= 0 || localScanPathsChecked < _proximityMaxPaths);
 							++iter)
 					{
-						std::map<int, Transform> & path = *iter;
+						std::map<int, Transform> path = iter->second;
 						UASSERT(path.size());
 
 						//find the nearest pose on the path
 						int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
 						UASSERT(nearestId > 0);
-						UDEBUG("Path %d distance=%fm", nearestId, _optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)));
+						UDEBUG("Path %d (size=%d) distance=%fm", nearestId, (int)path.size(), _optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)));
 
 						// nearest pose must be close and not linked to current location
 						if(!signature->hasLink(nearestId) &&
@@ -1930,6 +1938,7 @@ bool Rtabmap::process(
 								//The nearest will be the reference for a loop closure transform
 								if(signature->getLinks().find(nearestId) == signature->getLinks().end())
 								{
+									++localScanPathsChecked;
 									RegistrationInfo info;
 									Transform transform = _memory->computeIcpTransformMulti(signature->id(), nearestId, filteredPath, &info);
 									if(!transform.isNull())
@@ -2238,6 +2247,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kProximitySpace_detections_added_visually(), proximityDetectionsAddedVisually);
 			statistics_.addStatistic(Statistics::kProximitySpace_detections_added_icp_only(), proximityDetectionsAddedByICPOnly);
 			statistics_.addStatistic(Statistics::kProximitySpace_paths(), proximitySpacePaths);
+			statistics_.addStatistic(Statistics::kProximitySpace_visual_paths_checked(), localVisualPathsChecked);
+			statistics_.addStatistic(Statistics::kProximitySpace_scan_paths_checked(), localScanPathsChecked);
 			statistics_.addStatistic(Statistics::kProximitySpace_last_detection_id(), lastProximitySpaceClosureId);
 			statistics_.setProximityDetectionId(lastProximitySpaceClosureId);
 			if(_loopClosureHypothesis.first || lastProximitySpaceClosureId)
@@ -2818,29 +2829,51 @@ std::map<int, Transform> Rtabmap::getForwardWMPoses(
 	return poses;
 }
 
-std::list<std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transform> poses) const
+std::map<int, std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transform> poses, const Transform & target, int maxGraphDepth) const
 {
-	std::list<std::map<int, Transform> > paths;
-	if(_memory && poses.size())
+	std::map<int, std::map<int, Transform> > paths;
+	if(_memory && poses.size() && !target.isNull())
 	{
 		// Segment poses connected only by neighbor links
 		while(poses.size())
 		{
 			std::map<int, Transform> path;
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+			// select nearest pose and iterate neighbors from there
+			int nearestId = rtabmap::graph::findNearestNode(poses, target);
+			std::map<int, int> ids = _memory->getNeighborsId(nearestId, maxGraphDepth, 0, true, true, true);
+
+			for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 			{
-				if(path.size() == 0 || uContains(_memory->getNeighborLinks(path.rbegin()->first), iter->first))
+				std::map<int, Transform>::iterator jter = poses.find(iter->first);
+				if(jter != poses.end())
 				{
-					path.insert(*iter);
-					poses.erase(iter++);
-				}
-				else
-				{
-					break;
+					bool valid = path.empty();
+					if(!valid)
+					{
+						// make sure it has a neighbor added to path
+						std::map<int, Link> links = _memory->getNeighborLinks(iter->first);
+						for(std::map<int, Link>::iterator kter=links.begin(); kter!=links.end() && !valid; ++kter)
+						{
+							valid = path.find(kter->first) != path.end();
+						}
+					}
+
+					if(valid)
+					{
+						UDEBUG("%d <- %d", nearestId, jter->first);
+						path.insert(*jter);
+						poses.erase(jter);
+					}
 				}
 			}
-			UASSERT(path.size());
-			paths.push_back(path);
+			UASSERT_MSG(path.size(), uFormat("nearestId=%d ids=%d", nearestId, (int)ids.size()).c_str());
+			if(maxGraphDepth > 0)
+			{
+				UASSERT_MSG((int)path.size() <= maxGraphDepth*2+1,
+						uFormat("nearestId=%d path=%d ids=%d maxGraphDepth=%d",
+								nearestId, (int)path.size(), (int)ids.size(), maxGraphDepth).c_str());
+			}
+			paths.insert(std::make_pair(nearestId, path));
 		}
 
 	}

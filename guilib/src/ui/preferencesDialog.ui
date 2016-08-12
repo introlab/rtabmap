@@ -64,24 +64,15 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>685</width>
-            <height>1896</height>
+            <width>686</width>
+            <height>2023</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -95,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>13</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -4187,16 +4178,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -7457,20 +7439,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_50" columnstretch="0,1">
-                         <item row="3" column="1">
-                          <widget class="QLabel" name="label_scanMatching_4">
-                           <property name="text">
-                            <string>When comparing to a local path, merge the laser scans using the odometry poses instead of the ones in the optimized local graph.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
+                         <item row="3" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_pathFilteringRadius">
                            <property name="suffix">
                             <string> m</string>
@@ -7486,10 +7455,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_space3_3">
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_scanMatching_4">
                            <property name="text">
-                            <string>Path filtering radius to avoid merging laser scans which are close. 0 to ignore.</string>
+                            <string>When comparing to a local path, merge the laser scans using the odometry poses instead of the ones in the optimized local graph.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -7499,7 +7468,20 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="0">
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_space3_3">
+                           <property name="text">
+                            <string>Path filtering radius to avoid merging laser scans which are close. 0 to ignore. A path should also be inside that radius to be considered for proximity detection.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpacePathOdomPosesUsed">
                            <property name="text">
                             <string/>
@@ -7529,7 +7511,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="1">
+                         <item row="6" column="1">
                           <widget class="QLabel" name="label_scanMatching_6">
                            <property name="text">
                             <string>Save scan matching IDs in link's user data.</string>
@@ -7542,14 +7524,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="0">
+                         <item row="6" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceScanMatchingIDsSaved">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
+                         <item row="2" column="1">
                           <widget class="QLabel" name="label_scanMatching_8">
                            <property name="text">
                             <string>Maximum angle for visual proximity detection.</string>
@@ -7562,7 +7544,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="0">
+                         <item row="2" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_angle">
                            <property name="suffix">
                             <string> degrees</string>
@@ -7575,6 +7557,29 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                            <property name="singleStep">
                             <double>10.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_space3_4">
+                           <property name="text">
+                            <string>Maximum paths compared (from the most recent). 0 means no limit.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="localDetection_maxPaths">
+                           <property name="maximum">
+                            <number>999</number>
+                           </property>
+                           <property name="value">
+                            <number>0</number>
                            </property>
                           </widget>
                          </item>
@@ -9373,16 +9378,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -9522,16 +9518,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -9689,16 +9676,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -9778,16 +9756,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -9899,16 +9868,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>

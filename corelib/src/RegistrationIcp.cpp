@@ -348,13 +348,15 @@ Transform RegistrationIcp::computeTransformationImpl(
 						correspondencesRatio = float(correspondences)/float(toScan.cols>fromScan.cols?toScan.cols:fromScan.cols);
 					}
 
-					UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%)",
+					UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%), from guess: trans=%f rot=%f",
 							dataTo.id(), dataFrom.id(),
 							hasConverged?"true":"false",
 							variance,
 							correspondences,
 							maxLaserScans>0?maxLaserScans:(int)(toScan.cols>fromScan.cols?toScan.cols:fromScan.cols),
-							correspondencesRatio*100.0f);
+							correspondencesRatio*100.0f,
+							info.icpTranslation,
+							info.icpRotation);
 
 					info.variance = variance>0.0f?variance:0.0001; // epsilon if exact transform
 					info.icpInliersRatio = correspondencesRatio;

@@ -69,6 +69,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Proximity, Time_detections,);
 	RTABMAP_STATS(Proximity, Space_last_detection_id,);
 	RTABMAP_STATS(Proximity, Space_paths,);
+	RTABMAP_STATS(Proximity, Space_visual_paths_checked,);
+	RTABMAP_STATS(Proximity, Space_scan_paths_checked,);
 	RTABMAP_STATS(Proximity, Space_detections_added_visually,);
 	RTABMAP_STATS(Proximity, Space_detections_added_icp_only,);
 

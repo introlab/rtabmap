@@ -1479,20 +1479,16 @@ int findNearestNode(
 			ids[oi++] = iter->first;
 		}
 
-		std::map<int, float> foundNodes;
-		if(cloud->size())
+		pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
+		kdTree->setInputCloud(cloud);
+		std::vector<int> ind;
+		std::vector<float> dist;
+		pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
+		kdTree->nearestKSearch(pt, 1, ind, dist);
+		if(ind.size() && dist.size() && ind[0] >= 0)
 		{
-			pcl::search::KdTree<pcl::PointXYZ>::Ptr kdTree(new pcl::search::KdTree<pcl::PointXYZ>);
-			kdTree->setInputCloud(cloud);
-			std::vector<int> ind;
-			std::vector<float> dist;
-			pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
-			kdTree->nearestKSearch(pt, 1, ind, dist);
-			if(ind.size() && dist.size() && ind[0] >= 0)
-			{
-				UDEBUG("Nearest node = %d: %f", ids[ind[0]], dist[0]);
-				id = ids[ind[0]];
-			}
+			UDEBUG("Nearest node = %d: %f", ids[ind[0]], dist[0]);
+			id = ids[ind[0]];
 		}
 	}
 	return id;
