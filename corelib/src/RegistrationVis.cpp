@@ -608,7 +608,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				kptsTo3D = uValues(toSignature.getWords3());
 			}
 
-			UASSERT(kptsFrom.empty() || int(kptsFrom.size()) == descriptorsFrom.rows);
+			UASSERT(kptsFrom.empty() || descriptorsFrom.rows == 0 || int(kptsFrom.size()) == descriptorsFrom.rows);
 
 			fromSignature.sensorData().setFeatures(kptsFrom, descriptorsFrom);
 			toSignature.sensorData().setFeatures(kptsTo, descriptorsTo);
