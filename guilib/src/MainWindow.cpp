@@ -2207,7 +2207,8 @@ void MainWindow::updateMapCloud(
 					resolution,
 					xMin, yMin,
 					0,
-					_preferencesDialog->isGridMapEroded());
+					_preferencesDialog->isGridMapEroded(),
+					_preferencesDialog->getGridMapFootprintRadius());
 		if(!map8S.empty())
 		{
 			//convert to gray scaled map

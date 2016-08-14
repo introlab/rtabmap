@@ -129,7 +129,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		float & xMin,
 		float & yMin,
 		float minMapSize,
-		bool erode)
+		bool erode,
+		float footprintRadius)
 {
 	UASSERT(minMapSize >= 0.0f);
 	UDEBUG("cellSize=%f m, minMapSize=%f m, erode=%d", cellSize, minMapSize, erode?1:0);
@@ -269,15 +270,45 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 					for(int i=0; i<iter->second.rows; ++i)
 					{
 						cv::Point2i pt((iter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (iter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
-						map.at<char>(pt.y, pt.x) = 0; // free space
+						if(map.at<char>(pt.y, pt.x) != -2)
+						{
+							map.at<char>(pt.y, pt.x) = 0; // free space
+						}
 					}
 				}
+
+				if(footprintRadius >= cellSize*1.5f)
+				{
+					// place free space under the footprint of the robot
+					cv::Point2i ptBegin((kter->second.x()-footprintRadius-xMin)/cellSize + 0.5f, (kter->second.y()-footprintRadius-yMin)/cellSize + 0.5f);
+					cv::Point2i ptEnd((kter->second.x()+footprintRadius-xMin)/cellSize + 0.5f, (kter->second.y()+footprintRadius-yMin)/cellSize + 0.5f);
+					if(ptBegin.x < 0)
+						ptBegin.x = 0;
+					if(ptEnd.x >= map.cols)
+						ptEnd.x = map.cols-1;
+
+					if(ptBegin.y < 0)
+						ptBegin.y = 0;
+					if(ptEnd.y >= map.rows)
+						ptEnd.y = map.rows-1;
+					for(int i=ptBegin.x; i<ptEnd.x; ++i)
+					{
+						for(int j=ptBegin.y; j<ptEnd.y; ++j)
+						{
+							map.at<char>(j, i) = -2; // free space (footprint)
+						}
+					}
+				}
+
 				if(jter!=occupiedLocalMaps.end())
 				{
 					for(int i=0; i<jter->second.rows; ++i)
 					{
 						cv::Point2i pt((jter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (jter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
-						map.at<char>(pt.y, pt.x) = 100; // obstacles
+						if(map.at<char>(pt.y, pt.x) != -2)
+						{
+							map.at<char>(pt.y, pt.x) = 100; // obstacles
+						}
 					}
 				}
 
@@ -287,63 +318,70 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			// fill holes and remove empty from obstacle borders
 			cv::Mat updatedMap = map.clone();
 			std::list<std::pair<int, int> > obstacleIndices;
-			for(int i=2; i<map.rows-2; ++i)
+			for(int i=0; i<map.rows; ++i)
 			{
-				for(int j=2; j<map.cols-2; ++j)
+				for(int j=0; j<map.cols; ++j)
 				{
-					if(map.at<char>(i, j) == -1 &&
-						map.at<char>(i+1, j) != -1 &&
-						map.at<char>(i-1, j) != -1 &&
-						map.at<char>(i, j+1) != -1 &&
-						map.at<char>(i, j-1) != -1)
+					if(map.at<char>(i, j) == -2)
 					{
 						updatedMap.at<char>(i, j) = 0;
 					}
-					else if(map.at<char>(i, j) == 100)
-					{
-						// obstacle/empty/unknown -> remove empty
-						// unknown/empty/obstacle -> remove empty
-						if(map.at<char>(i-1, j) == 0 &&
-							map.at<char>(i-2, j) == -1)
-						{
-							updatedMap.at<char>(i-1, j) = -1;
-						}
-						else if(map.at<char>(i+1, j) == 0 &&
-								map.at<char>(i+2, j) == -1)
-						{
-							updatedMap.at<char>(i+1, j) = -1;
-						}
-						if(map.at<char>(i, j-1) == 0 &&
-							map.at<char>(i, j-2) == -1)
-						{
-							updatedMap.at<char>(i, j-1) = -1;
-						}
-						else if(map.at<char>(i, j+1) == 0 &&
-								map.at<char>(i, j+2) == -1)
-						{
-							updatedMap.at<char>(i, j+1) = -1;
-						}
 
-						if(erode)
+					if(i >=2 && i<map.rows-2 && j>=2 && j<map.cols-2)
+					{
+						if(map.at<char>(i, j) == -1 &&
+							map.at<char>(i+1, j) != -1 &&
+							map.at<char>(i-1, j) != -1 &&
+							map.at<char>(i, j+1) != -1 &&
+							map.at<char>(i, j-1) != -1)
 						{
-							obstacleIndices.push_back(std::make_pair(i, j));
+							updatedMap.at<char>(i, j) = 0;
+						}
+						else if(map.at<char>(i, j) == 100)
+						{
+							// obstacle/empty/unknown -> remove empty
+							// unknown/empty/obstacle -> remove empty
+							if((map.at<char>(i-1, j) == 0 || map.at<char>(i-1, j) == -2) &&
+								map.at<char>(i-2, j) == -1)
+							{
+								updatedMap.at<char>(i-1, j) = -1;
+							}
+							else if((map.at<char>(i+1, j) == 0 || map.at<char>(i+1, j) == -2) &&
+									map.at<char>(i+2, j) == -1)
+							{
+								updatedMap.at<char>(i+1, j) = -1;
+							}
+							if((map.at<char>(i, j-1) == 0 || map.at<char>(i, j-1) == -2) &&
+								map.at<char>(i, j-2) == -1)
+							{
+								updatedMap.at<char>(i, j-1) = -1;
+							}
+							else if((map.at<char>(i, j+1) == 0 || map.at<char>(i, j+1) == -2) &&
+									map.at<char>(i, j+2) == -1)
+							{
+								updatedMap.at<char>(i, j+1) = -1;
+							}
+
+							if(erode)
+							{
+								obstacleIndices.push_back(std::make_pair(i, j));
+							}
+						}
+						else if(map.at<char>(i, j) == 0)
+						{
+							// obstacle/empty/obstacle -> remove empty
+							if(map.at<char>(i-1, j) == 100 &&
+								map.at<char>(i+1, j) == 100)
+							{
+								updatedMap.at<char>(i, j) = -1;
+							}
+							else if(map.at<char>(i, j-1) == 100 &&
+								map.at<char>(i, j+1) == 100)
+							{
+								updatedMap.at<char>(i, j) = -1;
+							}
 						}
 					}
-					else if(map.at<char>(i, j) == 0)
-					{
-						// obstacle/empty/obstacle -> remove empty
-						if(map.at<char>(i-1, j) == 100 &&
-							map.at<char>(i+1, j) == 100)
-						{
-							updatedMap.at<char>(i, j) = -1;
-						}
-						else if(map.at<char>(i, j-1) == 100 &&
-							map.at<char>(i, j+1) == 100)
-						{
-							updatedMap.at<char>(i, j) = -1;
-						}
-					}
-
 				}
 			}
 			map = updatedMap;
@@ -648,6 +686,10 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S)
 			else if(v == 100)
 			{
 				gray = 0;
+			}
+			else if(v == -2)
+			{
+				gray = 200;
 			}
 			else // -1
 			{

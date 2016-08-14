@@ -58,7 +58,8 @@ cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		float & xMin,
 		float & yMin,
 		float minMapSize = 0.0f,
-		bool erode = false);
+		bool erode = false,
+		float footprintRadius = 0.0f);
 
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
 		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,

@@ -377,6 +377,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_opacity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_map_erode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_map_footprintRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->groupBox_map_occupancyFrom3DCloud, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_projMapFrame, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_projMaxGroundAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1220,6 +1221,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_map_shown->setChecked(false);
 		_ui->doubleSpinBox_map_resolution->setValue(0.05);
 		_ui->checkBox_map_erode->setChecked(false);
+		_ui->doubleSpinBox_map_footprintRadius->setValue(0);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 		_ui->groupBox_map_occupancyFrom3DCloud->setChecked(false);
 		_ui->checkBox_projMapFrame->setChecked(true);
@@ -1575,6 +1577,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
 	_ui->checkBox_map_erode->setChecked(settings.value("gridMapEroded", _ui->checkBox_map_erode->isChecked()).toBool());
+	_ui->doubleSpinBox_map_footprintRadius->setValue(settings.value("gridMapFootprintRadius", _ui->doubleSpinBox_map_footprintRadius->value()).toDouble());
 	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
 	_ui->groupBox_map_occupancyFrom3DCloud->setChecked(settings.value("gridMapOccupancyFrom3DCloud", _ui->groupBox_map_occupancyFrom3DCloud->isChecked()).toBool());
 	_ui->checkBox_projMapFrame->setChecked(settings.value("projMapFrame", _ui->checkBox_projMapFrame->isChecked()).toBool());
@@ -1991,6 +1994,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapResolution",           _ui->doubleSpinBox_map_resolution->value());
 	settings.setValue("gridMapEroded",               _ui->checkBox_map_erode->isChecked());
+	settings.setValue("gridMapFootprintRadius",      _ui->doubleSpinBox_map_footprintRadius->value());
 	settings.setValue("gridMapOpacity",              _ui->doubleSpinBox_map_opacity->value());
 
 	settings.setValue("gridMapOccupancyFrom3DCloud", _ui->groupBox_map_occupancyFrom3DCloud->isChecked());
@@ -3842,6 +3846,10 @@ double PreferencesDialog::getGridMapResolution() const
 bool PreferencesDialog::isGridMapEroded() const
 {
 	return _ui->checkBox_map_erode->isChecked();
+}
+double PreferencesDialog::getGridMapFootprintRadius() const
+{
+	return _ui->doubleSpinBox_map_footprintRadius->value();
 }
 bool PreferencesDialog::isGridMapFrom3DCloud() const
 {
