@@ -44,7 +44,8 @@ Signature::Signature() :
 	_saved(false),
 	_modified(true),
 	_linksModified(true),
-	_enabled(false)
+	_enabled(false),
+	_cellSize(0.0f)
 {
 }
 
@@ -68,6 +69,7 @@ Signature::Signature(
 	_enabled(false),
 	_pose(pose),
 	_groundTruthPose(groundTruthPose),
+	_cellSize(0.0f),
 	_sensorData(sensorData)
 {
 	if(_sensorData.id() == 0)
@@ -89,6 +91,7 @@ Signature::Signature(const SensorData & data) :
 	_enabled(false),
 	_pose(Transform::getIdentity()),
 	_groundTruthPose(data.groundTruth()),
+	_cellSize(0.0f),
 	_sensorData(data)
 {
 

@@ -115,10 +115,21 @@ public:
 	void setPose(const Transform & pose) {_pose = pose;}
 	void setGroundTruthPose(const Transform & pose) {_groundTruthPose = pose;}
 
+	void setOccupancyGrid(const cv::Mat & ground, const cv::Mat & obstacles, float cellSize)
+	{
+		_groundCells = ground.clone();
+		_obstacleCells = obstacles.clone();
+		_cellSize = cellSize;
+	}
+
 	const std::multimap<int, cv::Point3f> & getWords3() const {return _words3;}
 	const Transform & getPose() const {return _pose;}
 	cv::Mat getPoseCovariance() const;
 	const Transform & getGroundTruthPose() const {return _groundTruthPose;}
+
+	const cv::Mat & getGroundCells() const {return _groundCells;}
+	const cv::Mat & getObstacleCells() const {return _obstacleCells;}
+	const float getCellSize() const {return _cellSize;}
 
 	SensorData & sensorData() {return _sensorData;}
 	const SensorData & sensorData() const {return _sensorData;}
@@ -145,6 +156,10 @@ private:
 
 	Transform _pose;
 	Transform _groundTruthPose;
+
+	cv::Mat _groundCells;
+	cv::Mat _obstacleCells;
+	float _cellSize;
 
 	SensorData _sensorData;
 };

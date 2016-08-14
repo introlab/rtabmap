@@ -21,6 +21,9 @@ CREATE TABLE Node (
 	pose BLOB,
 	ground_truth_pose BLOB,
 	label TEXT,
+	obstacle_cells BLOB,
+	ground_cells BLOB,
+	cell_size FLOAT,
 	time_enter DATE,
 	PRIMARY KEY (id)
 );

@@ -55,6 +55,7 @@ class Registration;
 class RegistrationInfo;
 class RegistrationIcp;
 class Stereo;
+class Occupancy;
 
 class RTABMAP_EXP Memory
 {
@@ -252,6 +253,7 @@ private:
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useOdometryFeatures;
+	bool _createOccupancyGrid;
 
 	int _idCount;
 	int _idMapCount;
@@ -274,6 +276,8 @@ private:
 
 	Registration * _registrationPipeline;
 	RegistrationIcp * _registrationIcp;
+
+	Occupancy * _occupancy;
 };
 
 } // namespace rtabmap

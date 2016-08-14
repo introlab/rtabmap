@@ -209,7 +209,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, ImagePreDecimation,      int, 1,          "Image decimation (>=1) before features extraction.");
 	RTABMAP_PARAM(Mem, ImagePostDecimation,     int, 1,          "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image.");
 	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,      "If > 1, downsample the laser scans when creating a signature.");
-	RTABMAP_PARAM(Mem, UseOdomFeatures,             bool, false, "Use odometry features.");
+	RTABMAP_PARAM(Mem, UseOdomFeatures,         bool, false, "Use odometry features.");
+	RTABMAP_PARAM(Mem, CreateOccupancyGrid,     bool, true,  "Create local occupancy grid maps. See \"Grid\" group for parameters.");
 
 	// KeypointMemory (Keypoint-based)
 	RTABMAP_PARAM(Kp, NNStrategy,            int, 1,            "kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4");
@@ -457,6 +458,24 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(StereoBM, TextureThreshold,    int, 10,       "See cv::StereoBM");
 	RTABMAP_PARAM(StereoBM, SpeckleWindowSize,   int, 100,      "See cv::StereoBM");
 	RTABMAP_PARAM(StereoBM, SpeckleRange,        int, 4,        "See cv::StereoBM");
+
+	// Occupancy Grid
+	RTABMAP_PARAM(Grid, FromDepth,               bool,   false,   "Create occupancy grid from depth image(s), otherwise it is created from laser scan.");
+	RTABMAP_PARAM(Grid, DepthDecimation,         int,    1,       "[Grid/FromDepth=true]");
+	RTABMAP_PARAM(Grid, DepthMin,                float,  0.0,     "[Grid/FromDepth=true]");
+	RTABMAP_PARAM(Grid, DepthMax,                float,  0.0,     "[Grid/FromDepth=true]");
+	RTABMAP_PARAM_STR(Grid, DepthRoiRatios,      "0.0 0.0 0.0 0.0", "Region of interest ratios [left, right, top, bottom].");
+	RTABMAP_PARAM(Grid, CellSize,                float,  0.05,    "");
+	RTABMAP_PARAM(Grid, MapFrameProjection,      bool,   false,   "");
+	RTABMAP_PARAM(Grid, MaxObstacleHeight,       float,  0.0,     "");
+	RTABMAP_PARAM(Grid, MaxGroundHeight,         float,  0.0,     "");
+	RTABMAP_PARAM(Grid, MaxGroundAngle,          float,  0.78,    "");
+	RTABMAP_PARAM(Grid, MinClusterSize,          int,    10,      "");
+	RTABMAP_PARAM(Grid, FlatObstacleDetected,    bool,   false,   "");
+	RTABMAP_PARAM(Grid, 3D,                      bool,   false,   "Ignored if laser scan is 2D.");
+	RTABMAP_PARAM(Grid, 3DGroundIsObstacle,      bool,   false,   "[Grid/3D=true] The ground is considered as an obstacle.");
+	RTABMAP_PARAM(Grid, NoiseFilteringRadius,         float,   0.0, "0 means disabled.");
+	RTABMAP_PARAM(Grid, NoiseFilteringMinNeighbors,   int,     5,   "");
 
 public:
 	virtual ~Parameters();

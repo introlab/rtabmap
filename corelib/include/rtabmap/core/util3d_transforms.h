@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/pcl_base.h>
 #include <rtabmap/core/Transform.h>
 
 namespace rtabmap
@@ -47,6 +48,9 @@ cv::Mat RTABMAP_EXP transformLaserScan(
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & transform);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const Transform & transform);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const Transform & transform);
@@ -55,6 +59,27 @@ pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP transformPointCloud(
 		const Transform & transform);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Transform & transform);
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform);
+pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform);
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
 		const Transform & transform);
 
 cv::Point3f RTABMAP_EXP transformPoint(

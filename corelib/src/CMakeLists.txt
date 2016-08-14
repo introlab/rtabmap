@@ -64,6 +64,8 @@ SET(SRC_FILES
 	Stereo.cpp
 	StereoDense.cpp
 	StereoCameraModel.cpp
+	
+	Occupancy.cpp
 		
 	rtflann/ext/lz4.c
 	rtflann/ext/lz4hc.c

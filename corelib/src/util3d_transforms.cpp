@@ -121,6 +121,43 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
 	return output;
 }
 
+pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::transformPointCloud(*cloud, *indices, *output, transform.toEigen4f());
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::transformPointCloud(*cloud, *indices, *output, transform.toEigen4f());
+	return output;
+}
+pcl::PointCloud<pcl::PointNormal>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
+	pcl::transformPointCloudWithNormals(*cloud, *indices, *output, transform.toEigen4f());
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::transformPointCloudWithNormals(*cloud, *indices, *output, transform.toEigen4f());
+	return output;
+}
+
 cv::Point3f transformPoint(
 		const cv::Point3f & point,
 		const Transform & transform)

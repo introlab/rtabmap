@@ -57,6 +57,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/Stereo.h"
+#include "rtabmap/core/Occupancy.h"
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
@@ -91,6 +92,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
+	_createOccupancyGrid(Parameters::defaultMemCreateOccupancyGrid()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -107,6 +109,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_vwd = new VWDictionary(parameters);
 	_registrationPipeline = Registration::create(parameters);
 	_registrationIcp = new RegistrationIcp(parameters);
+	_occupancy = new Occupancy(parameters);
 	this->parseParameters(parameters);
 }
 
@@ -376,6 +379,10 @@ Memory::~Memory()
 	{
 		delete _registrationIcp;
 	}
+	if(_occupancy)
+	{
+		delete _occupancy;
+	}
 }
 
 void Memory::parseParameters(const ParametersMap & parameters)
@@ -406,6 +413,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
 	Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
+	Parameters::parse(parameters, Parameters::kMemCreateOccupancyGrid(), _createOccupancyGrid);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -477,6 +485,11 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	if(_registrationIcp)
 	{
 		_registrationIcp->parseParameters(parameters);
+	}
+
+	if(_occupancy)
+	{
+		_occupancy->parseParameters(parameters);
 	}
 
 	// do this after all parameters are parsed
@@ -3481,6 +3494,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		{
 			stereoCameraModel.scale(1.0/double(_imagePostDecimation));
 		}
+
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemPost_decimation(), t*1000.0f);
+		UDEBUG("time post-decimation = %fs", t);
 	}
 
 	// downsampling the laser scan?
@@ -3490,6 +3507,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	{
 		laserScan = util3d::downsample(laserScan, _laserScanDownsampleStepSize);
 		maxLaserScanMaxPts /= _laserScanDownsampleStepSize;
+
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemDownsampling_scan(), t*1000.0f);
+		UDEBUG("time downsampling scan = %fs", t);
 	}
 
 	Signature * s;
@@ -3611,6 +3632,21 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	{
 		s->setEnabled(true); // All references are already activated in the dictionary at this point (see _vwd->addNewWords())
 	}
+
+	// Occupancy grid map stuff
+	/*cv::Mat ground, obstacles;
+	float cellSize = 0.0f;
+	if(_createOccupancyGrid)
+	{
+		_occupancy->segment(s->sensorData(), ground, obstacles);
+		cellSize = _occupancy->getCellSize();
+
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemOccupancy_grid(), t*1000.0f);
+		UDEBUG("time grid map (%d) = %fs", t);
+	}
+	s->setOccupancyGrid(ground, obstacles, cellSize);
+	*/
 	return s;
 }
 
