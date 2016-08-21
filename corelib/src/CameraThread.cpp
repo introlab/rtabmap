@@ -175,9 +175,15 @@ void CameraThread::mainLoop()
 				UASSERT(_scanDecimation >= 1);
 				UTimer timer;
 				pcl::IndicesPtr validIndices(new std::vector<int>);
-				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, _scanDecimation, _scanMaxDepth, _scanMinDepth, validIndices.get());
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(
+						data,
+						_scanDecimation,
+						_scanMaxDepth,
+						_scanMinDepth,
+						validIndices.get());
 				float maxPoints = (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation);
 				cv::Mat scan;
+				const Transform & baseToScan = data.cameraModels()[0].localTransform();
 				if(validIndices->size())
 				{
 					if(_scanVoxelSize>0.0f)
@@ -197,32 +203,19 @@ void CameraThread::mainLoop()
 					{
 						if(_scanNormalsK>0)
 						{
-							// view point
-							Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-							if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
-							{
-								viewPoint[0] = data.cameraModels()[0].localTransform().x();
-								viewPoint[1] = data.cameraModels()[0].localTransform().y();
-								viewPoint[2] = data.cameraModels()[0].localTransform().z();
-							}
-							else if(!data.stereoCameraModel().localTransform().isNull())
-							{
-								viewPoint[0] = data.stereoCameraModel().localTransform().x();
-								viewPoint[1] = data.stereoCameraModel().localTransform().y();
-								viewPoint[2] = data.stereoCameraModel().localTransform().z();
-							}
+							Eigen::Vector3f viewPoint(baseToScan.x(), baseToScan.y(), baseToScan.z());
 							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, viewPoint);
 							pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 							pcl::concatenateFields(*cloud, *normals, *cloudNormals);
-							scan = util3d::laserScanFromPointCloud(*cloudNormals);
+							scan = util3d::laserScanFromPointCloud(*cloudNormals, baseToScan.inverse());
 						}
 						else
 						{
-							scan = util3d::laserScanFromPointCloud(*cloud);
+							scan = util3d::laserScanFromPointCloud(*cloud, baseToScan.inverse());
 						}
 					}
 				}
-				data.setLaserScanRaw(scan, (int)maxPoints, _scanMaxDepth);
+				data.setLaserScanRaw(scan, LaserScanInfo((int)maxPoints, _scanMaxDepth, baseToScan));
 				info.timeScanFromDepth = timer.ticks();
 				UDEBUG("Computing scan from depth = %f s", info.timeScanFromDepth);
 			}

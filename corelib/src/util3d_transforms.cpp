@@ -38,7 +38,7 @@ namespace util3d
 
 cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transform)
 {
-	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6));
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
 
 	cv::Mat output = laserScan.clone();
 
@@ -65,6 +65,17 @@ cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transfor
 				output.at<cv::Vec3f>(i)[0] = pt.x;
 				output.at<cv::Vec3f>(i)[1] = pt.y;
 				output.at<cv::Vec3f>(i)[2] = pt.z;
+			}
+			else if(laserScan.type() == CV_32FC(4))
+			{
+				pcl::PointXYZ pt(
+						laserScan.at<cv::Vec4f>(i)[0],
+						laserScan.at<cv::Vec4f>(i)[1],
+						laserScan.at<cv::Vec4f>(i)[2]);
+				pt = util3d::transformPoint(pt, transform);
+				output.at<cv::Vec4f>(i)[0] = pt.x;
+				output.at<cv::Vec4f>(i)[1] = pt.y;
+				output.at<cv::Vec4f>(i)[2] = pt.z;
 			}
 			else
 			{

@@ -334,7 +334,7 @@ Transform OdometryF2M::computeTransform(
 						if(lastFrame_->sensorData().laserScanRaw().cols)
 						{
 							pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(mapScan);
-							pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose);
+							pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), lastFrame_->sensorData().laserScanInfo().localTransform() * newFramePose);
 
 							pcl::IndicesPtr frameCloudNormalsIndices(new std::vector<int>);
 							int newPoints;
@@ -444,7 +444,7 @@ Transform OdometryF2M::computeTransform(
 					{
 						*map_ = tmpMap;
 
-						map_->sensorData().setLaserScanRaw(mapScan, 0, 0);
+						map_->sensorData().setLaserScanRaw(mapScan, LaserScanInfo(0, 0));
 						map_->setWords(mapWords);
 						map_->setWords3(mapPoints);
 						map_->setWordsDescriptors(mapDescriptors);
@@ -534,9 +534,9 @@ Transform OdometryF2M::computeTransform(
 					frameValid = true;
 					if (fixedMapPath_.empty())
 					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose);
+						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), lastFrame_->sensorData().laserScanInfo().localTransform() * newFramePose);
 						scansBuffer_.push_back(std::make_pair(mapCloudNormals, pcl::IndicesPtr(new std::vector<int>)));
-						map_->sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*mapCloudNormals), 0,0);
+						map_->sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*mapCloudNormals), LaserScanInfo(0,0));
 					}
 				}
 				else

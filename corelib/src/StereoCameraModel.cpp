@@ -344,6 +344,12 @@ void StereoCameraModel::scale(double scale)
 	right_ = right_.scaled(scale);
 }
 
+void StereoCameraModel::roi(const cv::Rect & roi)
+{
+	left_ = left_.roi(roi);
+	right_ = right_.roi(roi);
+}
+
 float StereoCameraModel::computeDepth(float disparity) const
 {
 	//depth = baseline * f / (disparity + cx1-cx0);

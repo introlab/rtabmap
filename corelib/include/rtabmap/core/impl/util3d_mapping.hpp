@@ -242,7 +242,7 @@ void occupancy2DFromGroundObstacles(
 		//voxelize to grid cell size
 		groundCloudProjected = util3d::voxelize(groundCloudProjected, cellSize);
 
-		ground = cv::Mat((int)groundCloudProjected->size(), 1, CV_32FC2);
+		ground = cv::Mat(1, (int)groundCloudProjected->size(), CV_32FC2);
 		for(unsigned int i=0;i<groundCloudProjected->size(); ++i)
 		{
 			ground.at<cv::Vec2f>(i)[0] = groundCloudProjected->at(i).x;
@@ -259,7 +259,7 @@ void occupancy2DFromGroundObstacles(
 		//voxelize to grid cell size
 		obstaclesCloudProjected = util3d::voxelize(obstaclesCloudProjected, cellSize);
 
-		obstacles = cv::Mat((int)obstaclesCloudProjected->size(), 1, CV_32FC2);
+		obstacles = cv::Mat(1, (int)obstaclesCloudProjected->size(), CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloudProjected->size(); ++i)
 		{
 			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloudProjected->at(i).x;

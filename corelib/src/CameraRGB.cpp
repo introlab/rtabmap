@@ -65,6 +65,7 @@ CameraImages::CameraImages() :
 		_dir(0),
 		_countScan(0),
 		_scanDir(0),
+		_scanLocalTransform(Transform::getIdentity()),
 		_scanMaxPts(0),
 		_scanDownsampleStep(1),
 		_scanVoxelSize(0.0f),
@@ -666,11 +667,11 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK);
 				pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 				pcl::concatenateFields(*cloud, *normals, *cloudNormals);
-				scan = util3d::laserScanFromPointCloud(*cloudNormals);
+				scan = util3d::laserScanFromPointCloud(*cloudNormals, _scanLocalTransform.inverse());
 			}
 			else
 			{
-				scan = util3d::laserScanFromPointCloud(*cloud);
+				scan = util3d::laserScanFromPointCloud(*cloud, _scanLocalTransform.inverse());
 			}
 		}
 	}
@@ -684,7 +685,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		_model.setImageSize(img.size());
 	}
 
-	SensorData data(scan, scan.empty()?0:_scanMaxPts, 0, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
+	SensorData data(scan, LaserScanInfo(scan.empty()?0:_scanMaxPts, 0, _scanLocalTransform), _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
 	data.setGroundTruth(groundTruthPose);
 	return data;
 }

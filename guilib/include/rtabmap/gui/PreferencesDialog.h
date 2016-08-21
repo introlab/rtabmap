@@ -154,7 +154,9 @@ public:
 	double getMapNoiseRadius() const;
 	int getMapNoiseMinNeighbors() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
+	bool isOctomapUpdated() const;
 	bool isOctomapShown() const;
+	bool isOctomap2dGrid() const;
 	int getOctomapTreeDepth() const;
 	bool isOctomapGroundAnObstacle() const;
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
@@ -184,6 +186,7 @@ public:
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;;
 	bool isGridMapEroded() const;
+	bool isGridMapIncremental() const;
 	double getGridMapFootprintRadius() const;
 	bool isGridMapFrom3DCloud() const;
 	bool projMapFrame() const;

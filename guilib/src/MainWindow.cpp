@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/RegistrationVis.h"
+#include "rtabmap/core/OccupancyGrid.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -151,6 +152,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_waypointsIndex(0),
 	_cachedMemoryUsage(0),
 	_createdCloudsMemoryUsage(0),
+	_cachedGridsMemoryUsage(0),
+	_occupancyGrid(0),
 	_octomap(0),
 	_odometryCorrection(Transform::getIdentity()),
 	_processingOdometry(false),
@@ -234,6 +237,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadWindowGeometry(_aboutDialog);
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
+	_occupancyGrid = new OccupancyGrid(_preferencesDialog->getAllParameters());
 #ifdef RTABMAP_OCTOMAP
 	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
 #endif
@@ -568,6 +572,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", 0.0f);
 	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", 0.0f);
 	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", 0.0f);
+	_ui->statsToolBox->updateStat("GUI/Cache Grids Size/MB", 0.0f);
+#ifdef RTABMAP_OCTOMAP
+	_ui->statsToolBox->updateStat("GUI/Octomap Size/MB", 0.0f);
+#endif
 
 	this->loadFigures();
 	connect(_ui->statsToolBox, SIGNAL(figuresSetupChanged()), this, SLOT(configGUIModified()));
@@ -589,6 +597,10 @@ MainWindow::~MainWindow()
 	this->stopDetection();
 	delete _ui;
 	delete _elapsedTime;
+#ifdef RTABMAP_OCTOMAP
+	delete _octomap;
+#endif
+	delete _occupancyGrid;
 	UDEBUG("");
 }
 
@@ -1024,7 +1036,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					}
 
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-					cloud = util3d::laserScanToPointCloudNormal(scan, pose);
+					cloud = util3d::laserScanToPointCloudNormal(scan, odom.data().laserScanInfo().localTransform()*pose);
 					if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
 					{
 						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
@@ -1364,14 +1376,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			if(!smallMovement)
 			{
-				// keep in cache only compressed data
-				Signature signatureWithoutRawData = signature;
-				signatureWithoutRawData.sensorData().setImageRaw(cv::Mat());
-				signatureWithoutRawData.sensorData().setDepthOrRightRaw(cv::Mat());
-				signatureWithoutRawData.sensorData().setUserDataRaw(cv::Mat());
-				signatureWithoutRawData.sensorData().setLaserScanRaw(cv::Mat(), 0, 0);
-				_cachedSignatures.insert(signature.id(), signatureWithoutRawData);
-				_cachedMemoryUsage += signatureWithoutRawData.sensorData().getMemoryUsed();
+				_cachedSignatures.insert(signature.id(), signature);
+				_cachedMemoryUsage += signature.sensorData().getMemoryUsed();
 			}
 		}
 
@@ -1802,6 +1808,21 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_ui->graphicsView_graphView->setCurrentGoalID(stat.currentGoalId(), uValue(stat.poses(), stat.currentGoalId(), Transform()));
 			}
 		}
+		UDEBUG("");
+
+		// keep only compressed data in cache
+		if(_cachedSignatures.contains(stat.refImageId()))
+		{
+			Signature & s = *_cachedSignatures.find(stat.refImageId());
+			_cachedMemoryUsage -= s.sensorData().getMemoryUsed();
+			s.sensorData().setImageRaw(cv::Mat());
+			s.sensorData().setDepthOrRightRaw(cv::Mat());
+			s.sensorData().setUserDataRaw(cv::Mat());
+			s.sensorData().setLaserScanRaw(cv::Mat(), signature.sensorData().laserScanInfo());
+			s.sensorData().clearOccupancyGridRaw();
+			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
+		}
+
 
 		UDEBUG("");
 	}
@@ -1829,7 +1850,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _cachedMemoryUsage/(1024*1024));
 	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _createdCloudsMemoryUsage/(1024*1024));
-
+	_ui->statsToolBox->updateStat("GUI/Cache Grids Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _cachedGridsMemoryUsage/(1024*1024));
+#ifdef RTABMAP_OCTOMAP
+	_ui->statsToolBox->updateStat("GUI/Octomap Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _octomap->octree()->memoryUsage()/(1024*1024));
+#endif
 	if(_state != kMonitoring && _state != kDetecting)
 	{
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
@@ -1936,19 +1960,7 @@ void MainWindow::updateMapCloud(
 
 			// 3d point cloud
 			bool update3dCloud = _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0);
-			bool updateProjMap =
-					_ui->graphicsView_graphView->isVisible() &&
-					_ui->graphicsView_graphView->isGridMapVisible() &&
-					_preferencesDialog->isGridMapFrom3DCloud() &&
-					_projectionLocalMaps.find(iter->first) == _projectionLocalMaps.end();
-			bool updateOctomap = false;
-#ifdef RTABMAP_OCTOMAP
-			updateOctomap =
-					_cloudViewer->isVisible() &&
-					_preferencesDialog->isOctomapShown() &&
-					_octomap->addedNodes().find(iter->first) == _octomap->addedNodes().end();
-#endif
-			if(update3dCloud ||	updateProjMap || updateOctomap)
+			if(update3dCloud)
 			{
 				// update cloud
 				std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createdCloud;
@@ -1976,20 +1988,6 @@ void MainWindow::updateMapCloud(
 						_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
 					}
 				}
-
-				//Update projection map
-				if(updateProjMap || updateOctomap)
-				{
-					std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >::iterator cloudIter = _cachedClouds.find(iter->first);
-					if(cloudIter != _cachedClouds.end())
-					{
-						createAndAddProjectionMap(cloudIter->second.first, cloudIter->second.second, iter->first, iter->second, updateOctomap);
-					}
-					else if(createdCloud.first.get() && createdCloud.first->size() && createdCloud.second->size())
-					{
-						createAndAddProjectionMap(createdCloud.first, createdCloud.second, iter->first, iter->second, updateOctomap);
-					}
-				}
 			}
 			else if(viewerClouds.contains(cloudName))
 			{
@@ -1998,8 +1996,7 @@ void MainWindow::updateMapCloud(
 
 			// 2d point cloud
 			std::string scanName = uFormat("scan%d", iter->first);
-			if((_cloudViewer->isVisible() && (_preferencesDialog->isScansShown(0) || _preferencesDialog->getGridMapShown())) ||
-				(_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible()))
+			if(_cloudViewer->isVisible() && _preferencesDialog->isScansShown(0))
 			{
 				if(viewerClouds.contains(scanName))
 				{
@@ -2029,6 +2026,59 @@ void MainWindow::updateMapCloud(
 			else if(viewerClouds.contains(scanName))
 			{
 				_cloudViewer->setCloudVisibility(scanName.c_str(), false);
+			}
+
+			// occupancy grids
+			bool updateGridMap =
+					((_ui->graphicsView_graphView->isVisible() && _ui->graphicsView_graphView->isGridMapVisible()) ||
+					 (_cloudViewer->isVisible() && _preferencesDialog->getGridMapShown())) &&
+					_gridLocalMaps.find(iter->first) == _gridLocalMaps.end();
+			bool updateOctomap = false;
+#ifdef RTABMAP_OCTOMAP
+			updateOctomap =
+					_cloudViewer->isVisible() &&
+					_preferencesDialog->isOctomapUpdated() &&
+					_octomap->addedNodes().find(iter->first) == _octomap->addedNodes().end();
+#endif
+			if(updateGridMap || updateOctomap)
+			{
+				QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
+				if(jter!=_cachedSignatures.end())
+				{
+					if(_gridLocalMaps.find(iter->first) == _gridLocalMaps.end())
+					{
+						cv::Mat ground;
+						cv::Mat obstacles;
+						jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles);
+						_gridLocalMaps.insert(std::make_pair(iter->first, std::make_pair(ground, obstacles)));
+						_gridViewPoints.insert(std::make_pair(iter->first, jter->sensorData().gridViewPoint()));
+						_cachedGridsMemoryUsage += ground.total()*ground.elemSize() + obstacles.total()*obstacles.elemSize();
+
+						if(ground.cols || obstacles.cols)
+						{
+							_occupancyGrid->addToCache(iter->first, ground, obstacles);
+						}
+					}
+#ifdef RTABMAP_OCTOMAP
+					if(updateOctomap)
+					{
+						std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator mter = _gridLocalMaps.find(iter->first);
+						std::map<int, cv::Point3f>::iterator pter = _gridViewPoints.find(iter->first);
+						if(mter != _gridLocalMaps.end() && pter!=_gridViewPoints.end())
+						{
+							if((mter->second.first.empty() || mter->second.first.channels() > 2) &&
+							   (mter->second.second.empty() || mter->second.second.channels() > 2))
+							{
+								_octomap->addToCache(iter->first, mter->second.first, mter->second.second, pter->second);
+							}
+							else if(!mter->second.first.empty() && !mter->second.second.empty())
+							{
+								UWARN("Node %d: Cannot update octomap with 2D occupancy grids.", iter->first);
+							}
+						}
+					}
+#endif
+				}
 			}
 
 			// 3d features
@@ -2084,7 +2134,7 @@ void MainWindow::updateMapCloud(
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
-		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
@@ -2196,19 +2246,37 @@ void MainWindow::updateMapCloud(
 	}
 	cv::Mat map8U;
 	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()) &&
-			((_gridLocalMaps.size() && !_preferencesDialog->isGridMapFrom3DCloud()) ||
-			 (_projectionLocalMaps.size() && _preferencesDialog->isGridMapFrom3DCloud())))
+		_gridLocalMaps.size())
 	{
 		float xMin, yMin;
 		float resolution = _preferencesDialog->getGridMapResolution();
-		cv::Mat map8S = util3d::create2DMapFromOccupancyLocalMaps(
-					poses,
-					_preferencesDialog->isGridMapFrom3DCloud()?_projectionLocalMaps:_gridLocalMaps,
-					resolution,
-					xMin, yMin,
-					0,
-					_preferencesDialog->isGridMapEroded(),
-					_preferencesDialog->getGridMapFootprintRadius());
+		cv::Mat map8S;
+#ifdef RTABMAP_OCTOMAP
+		if(_preferencesDialog->isOctomap2dGrid())
+		{
+			map8S = _octomap->createProjectionMap(xMin, yMin, resolution, 0);
+
+		}
+		else
+#endif
+		{
+			if(_preferencesDialog->isGridMapIncremental())
+			{
+				_occupancyGrid->update(poses, 0, _preferencesDialog->getGridMapFootprintRadius());
+				map8S = _occupancyGrid->getMap(xMin, yMin);
+			}
+			else
+			{
+				map8S = util3d::create2DMapFromOccupancyLocalMaps(
+							poses,
+							_gridLocalMaps,
+							resolution,
+							xMin, yMin,
+							0,
+							_preferencesDialog->isGridMapEroded(),
+							_preferencesDialog->getGridMapFootprintRadius());
+			}
+		}
 		if(!map8S.empty())
 		{
 			//convert to gray scaled map
@@ -2237,13 +2305,19 @@ void MainWindow::updateMapCloud(
 
 #ifdef RTABMAP_OCTOMAP
 	_cloudViewer->removeOctomap();
-	if(_preferencesDialog->isOctomapShown())
+	if(_preferencesDialog->isOctomapUpdated())
 	{
 		UDEBUG("");
 		UTimer time;
 		_octomap->update(poses);
-		_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
 		UINFO("Octomap update time = %fs", time.ticks());
+	}
+	if(_preferencesDialog->isOctomapShown())
+	{
+		UDEBUG("");
+		UTimer time;
+		_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
+		UINFO("Octomap show 3d map time = %fs", time.ticks());
 	}
 #endif
 
@@ -2576,103 +2650,6 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 	return outputPair;
 }
 
-void MainWindow::createAndAddProjectionMap(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		int nodeId,
-		const Transform & pose,
-		bool updateOctomap)
-{
-	UDEBUG("");
-	UASSERT(!pose.isNull());
-
-	if(_projectionLocalMaps.find(nodeId) != _projectionLocalMaps.end() && !updateOctomap)
-	{
-		UERROR("Projection map %d already added.", nodeId);
-		return;
-	}
-
-	if(indices->size())
-	{
-		UTimer timer;
-		cv::Mat ground, obstacles;
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelCloud = cloud;
-
-		// voxelize to grid cell size
-		if(_preferencesDialog->getMapVoxel() < _preferencesDialog->getGridMapResolution())
-		{
-			voxelCloud = util3d::voxelize(voxelCloud, indices, _preferencesDialog->getGridMapResolution());
-		}
-
-		// add pose rotation without yaw
-		float roll, pitch, yaw;
-		pose.getEulerAngles(roll, pitch, yaw);
-		voxelCloud = util3d::transformPointCloud(voxelCloud, Transform(0,0, _preferencesDialog->projMapFrame()?pose.z():0, roll, pitch, 0));
-
-		if(_preferencesDialog->projMaxObstaclesHeight())
-		{
-			voxelCloud = util3d::passThrough(voxelCloud, "z", std::numeric_limits<int>::min(), _preferencesDialog->projMaxObstaclesHeight());
-		}
-
-		pcl::IndicesPtr groundIndices, obstaclesIndices;
-		util3d::segmentObstaclesFromGround<pcl::PointXYZRGB>(
-				voxelCloud,
-				groundIndices,
-				obstaclesIndices,
-				20,
-				_preferencesDialog->projMaxGroundAngle(),
-				_preferencesDialog->getGridMapResolution()*2.0f,
-				_preferencesDialog->projMinClusterSize(),
-				_preferencesDialog->projFlatObstaclesDetected(),
-				_preferencesDialog->projMaxGroundHeight());
-
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-		if(groundIndices->size())
-		{
-			pcl::copyPointCloud(*voxelCloud, *groundIndices, *groundCloud);
-		}
-
-		if(obstaclesIndices->size())
-		{
-			pcl::copyPointCloud(*voxelCloud, *obstaclesIndices, *obstaclesCloud);
-		}
-
-		util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(
-				groundCloud,
-				obstaclesCloud,
-				ground,
-				obstacles,
-				_preferencesDialog->getGridMapResolution());
-
-		if(updateOctomap)
-		{
-			// Update octomap
-#ifdef RTABMAP_OCTOMAP
-			if(_octomap->addedNodes().empty() ||
-				nodeId > _octomap->addedNodes().rbegin()->first)
-			{
-				Transform tinv = Transform(0,0,_preferencesDialog->projMapFrame()?pose.z():0, roll, pitch, 0).inverse();
-				groundCloud = util3d::transformPointCloud(groundCloud, tinv);
-				obstaclesCloud = util3d::transformPointCloud(obstaclesCloud, tinv);
-
-				if(_preferencesDialog->isOctomapGroundAnObstacle())
-				{
-					*obstaclesCloud += *groundCloud;
-					groundCloud->clear();
-				}
-				_octomap->addToCache(nodeId, groundCloud, obstaclesCloud);
-			}
-#endif
-		}
-
-		_projectionLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
-		UDEBUG("time gridMapFrom3DCloud = %f s", timer.ticks());
-	}
-	UDEBUG("");
-}
-
 void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int mapId)
 {
 	std::string scanName = uFormat("scan%d", nodeId);
@@ -2702,7 +2679,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		if(scan.channels() == 6)
 		{
 			pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-			cloud = util3d::laserScanToPointCloudNormal(scan);
+			cloud = util3d::laserScanToPointCloudNormal(scan, iter->sensorData().laserScanInfo().localTransform());
 			if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
 			{
 				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
@@ -2729,7 +2706,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		else
 		{
 			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-			cloud = util3d::laserScanToPointCloud(scan);
+			cloud = util3d::laserScanToPointCloud(scan, iter->sensorData().laserScanInfo().localTransform());
 			if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
 			{
 				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
@@ -2758,13 +2735,6 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 					}
 				}
 				_createdScans.insert(std::make_pair(nodeId, scan));
-
-				if(scan.channels() == 2)
-				{
-					cv::Mat ground, obstacles;
-					util3d::occupancy2DFromLaserScan(scan, ground, obstacles, _preferencesDialog->getGridMapResolution());
-					_gridLocalMaps.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
-				}
 			}
 		}
 		_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
@@ -3340,6 +3310,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters)
 void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bool postParamEvent)
 {
 	ULOGGER_DEBUG("");
+	_occupancyGrid->parseParameters(parameters);
 	if(parameters.size())
 	{
 		for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
@@ -4055,6 +4026,9 @@ void MainWindow::startDetection()
 	delete _octomap;
 	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
 #endif
+
+	_occupancyGrid->clear();
+	_occupancyGrid->parseParameters(parameters);
 
 	emit stateChanged(kDetecting);
 }
@@ -5023,7 +4997,7 @@ void MainWindow::clearTheCache()
 	_previousCloud.second.second.reset();
 	_createdScans.clear();
 	_gridLocalMaps.clear();
-	_projectionLocalMaps.clear();
+	_cachedGridsMemoryUsage = 0;
 	_createdFeatures.clear();
 	_cloudViewer->clear();
 	_cloudViewer->setBackgroundColor(_cloudViewer->getDefaultBackgroundColor());
@@ -5072,6 +5046,7 @@ void MainWindow::clearTheCache()
 	delete _octomap;
 	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
 #endif
+	_occupancyGrid->clear();
 }
 
 void MainWindow::updateElapsedTime()
@@ -5325,9 +5300,9 @@ void MainWindow::setAspectRatioCustom()
 
 void MainWindow::exportGridMap()
 {
-	double gridCellSize = 0.05;
+	float gridCellSize = 0.05f;
 	bool ok;
-	gridCellSize = QInputDialog::getDouble(this, tr("Grid cell size"), tr("Size (m):"), gridCellSize, 0.01, 1, 2, &ok);
+	gridCellSize = (float)QInputDialog::getDouble(this, tr("Grid cell size"), tr("Size (m):"), (double)gridCellSize, 0.01, 1, 2, &ok);
 	if(!ok)
 	{
 		return;
@@ -5337,13 +5312,24 @@ void MainWindow::exportGridMap()
 
 	// create the map
 	float xMin=0.0f, yMin=0.0f;
-	cv::Mat pixels = util3d::create2DMapFromOccupancyLocalMaps(
+	cv::Mat pixels;
+#ifdef RTABMAP_OCTOMAP
+		if(_preferencesDialog->isOctomap2dGrid())
+		{
+			pixels = _octomap->createProjectionMap(xMin, yMin, gridCellSize, 0);
+
+		}
+		else
+#endif
+		{
+			pixels = util3d::create2DMapFromOccupancyLocalMaps(
 				poses,
-				_preferencesDialog->isGridMapFrom3DCloud()?_projectionLocalMaps:_gridLocalMaps,
+				_gridLocalMaps,
 				gridCellSize,
 				xMin, yMin,
 				0,
 				_preferencesDialog->isGridMapEroded());
+		}
 
 	if(!pixels.empty())
 	{
@@ -5946,7 +5932,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
-		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
@@ -6007,7 +5993,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
-		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
@@ -6130,7 +6116,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 			_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 			_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
-			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty());
 			_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 			_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
@@ -6195,7 +6181,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
-		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty() || !_projectionLocalMaps.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty());
 		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());

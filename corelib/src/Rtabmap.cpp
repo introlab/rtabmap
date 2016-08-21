@@ -413,8 +413,10 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDProximityMaxPaths(), _proximityMaxPaths);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathFilteringRadius(), _proximityFilteringRadius);
 	Parameters::parse(parameters, Parameters::kRGBDProximityPathRawPosesUsed(), _proximityRawPosesUsed);
-	Parameters::parse(parameters, Parameters::kRGBDProximityAngle(), _proximityAngle);
-	_proximityAngle *= M_PI/180.0f;
+	if(Parameters::parse(parameters, Parameters::kRGBDProximityAngle(), _proximityAngle))
+	{
+		_proximityAngle *= M_PI/180.0f;
+	}
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), _optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), _optimizationMaxLinearError);
 	Parameters::parse(parameters, Parameters::kRtabmapStartNewMapOnLoopClosure(), _startNewMapOnLoopClosure);
@@ -2386,7 +2388,7 @@ bool Rtabmap::process(
 		signaturesRemoved.insert(signaturesRemoved.end(), transferred.begin(), transferred.end());
 		if(!_someNodesHaveBeenTransferred && transferred.size())
 		{
-			_someNodesHaveBeenTransferred = true; // only used to hide a warning on close ndoes immunization
+			_someNodesHaveBeenTransferred = true; // only used to hide a warning on close nodes immunization
 		}
 	}
 	_lastProcessTime = totalTime;
@@ -2502,6 +2504,7 @@ bool Rtabmap::process(
 			UINFO("Adding data %d (rgb/left=%d depth/right=%d)", lastSignatureData.id(), lastSignatureData.sensorData().imageRaw().empty()?0:1, lastSignatureData.sensorData().depthOrRightRaw().empty()?0:1);
 			signatures.insert(std::make_pair(lastSignatureData.id(), lastSignatureData));
 		}
+		UDEBUG("");
 		// Set local graph
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> constraints;
@@ -2516,6 +2519,7 @@ bool Rtabmap::process(
 			poses = _optimizedPoses;
 			constraints = _constraints;
 		}
+		UDEBUG("Get all node infos...");
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
 			Transform odomPose;
@@ -2540,15 +2544,18 @@ bool Rtabmap::process(
 		statistics_.setSignatures(signatures);
 		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), poses.size());
 		localGraphSize = (int)poses.size();
+		UDEBUG("");
 	}
 
 	//Start trashing
+	UDEBUG("Empty trash...");
 	_memory->emptyTrash();
 
 	// Log info...
 	// TODO : use a specific class which will handle the RtabmapEvent
 	if(_foutFloat && _foutInt)
 	{
+		UDEBUG("Logging...");
 		std::string logF = uFormat("%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 									totalTime,
 									timeMemoryUpdate,

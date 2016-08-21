@@ -109,6 +109,11 @@ float RTABMAP_EXP getDepth(
 		float maxZError = 0.02f,
 		bool estWithNeighborsIfNull = false);
 
+cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::string & roiRatios);
+cv::Rect RTABMAP_EXP computeRoi(const cv::Size & imageSize, const std::string & roiRatios);
+cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios);
+cv::Rect RTABMAP_EXP computeRoi(const cv::Size & imageSize, const std::vector<float> & roiRatios);
+
 cv::Mat RTABMAP_EXP decimate(const cv::Mat & image, int d);
 cv::Mat RTABMAP_EXP interpolate(const cv::Mat & image, int factor, float depthErrorRatio = 0.02f);
 

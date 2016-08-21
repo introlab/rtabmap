@@ -55,7 +55,7 @@ class Registration;
 class RegistrationInfo;
 class RegistrationIcp;
 class Stereo;
-class Occupancy;
+class OccupancyGrid;
 
 class RTABMAP_EXP Memory
 {
@@ -156,7 +156,7 @@ public:
 	void getNodeCalibration(int nodeId,
 			std::vector<CameraModel> & models,
 			StereoCameraModel & stereoModel);
-	SensorData getSignatureDataConst(int locationId) const;
+	SensorData getSignatureDataConst(int locationId, bool images = true, bool scan = true, bool userData = true, bool occupancyGrid = true) const;
 	std::set<int> getAllSignatureIds() const;
 	bool memoryChanged() const {return _memoryChanged;}
 	bool isIncremental() const {return _incrementalMemory;}
@@ -277,7 +277,7 @@ private:
 	Registration * _registrationPipeline;
 	RegistrationIcp * _registrationIcp;
 
-	Occupancy * _occupancy;
+	OccupancyGrid * _occupancy;
 };
 
 } // namespace rtabmap

@@ -294,7 +294,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->spinBox_icp_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_icp_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_icp_minDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->checkBox_icp_laserScan, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_icp_from_depth, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	
 	connect(ui_->doubleSpinBox_detectMore_radius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_detectMore_angle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -431,7 +431,7 @@ void DatabaseViewer::readSettings()
 	ui_->spinBox_icp_decimation->setValue(settings.value("decimation", ui_->spinBox_icp_decimation->value()).toInt());
 	ui_->doubleSpinBox_icp_maxDepth->setValue(settings.value("maxDepth", ui_->doubleSpinBox_icp_maxDepth->value()).toDouble());
 	ui_->doubleSpinBox_icp_minDepth->setValue(settings.value("minDepth", ui_->doubleSpinBox_icp_minDepth->value()).toDouble());
-	ui_->checkBox_icp_laserScan->setChecked(settings.value("icpLaserScan", ui_->checkBox_icp_laserScan->isChecked()).toBool());
+	ui_->checkBox_icp_from_depth->setChecked(settings.value("icpFromDepth", ui_->checkBox_icp_from_depth->isChecked()).toBool());
 	settings.endGroup();
 	// Visual parameters
 	settings.beginGroup("visual");
@@ -519,7 +519,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("decimation", ui_->spinBox_icp_decimation->value());
 	settings.setValue("maxDepth", ui_->doubleSpinBox_icp_maxDepth->value());
 	settings.setValue("minDepth", ui_->doubleSpinBox_icp_minDepth->value());
-	settings.setValue("icpLaserScan", ui_->checkBox_icp_laserScan->isChecked());
+	settings.setValue("icpFromDepth", ui_->checkBox_icp_from_depth->isChecked());
 	settings.endGroup();
 	
 	// save Visual parameters
@@ -893,8 +893,9 @@ void DatabaseViewer::exportDatabase()
 					{
 						sensorData = rtabmap::SensorData(
 							scan,
-							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
-							dialog.isDepth2dExported()?data.laserScanMaxRange():0,
+							LaserScanInfo(dialog.isDepth2dExported()?data.laserScanInfo().maxPoints():0,
+										  dialog.isDepth2dExported()?data.laserScanInfo().maxRange():0,
+										  dialog.isDepth2dExported()?data.laserScanInfo().localTransform():Transform::getIdentity()),
 							rgb,
 							depth,
 							data.cameraModels(),
@@ -906,8 +907,9 @@ void DatabaseViewer::exportDatabase()
 					{
 						sensorData = rtabmap::SensorData(
 							scan,
-							dialog.isDepth2dExported()?data.laserScanMaxPts():0,
-							dialog.isDepth2dExported()?data.laserScanMaxRange():0,
+							LaserScanInfo(dialog.isDepth2dExported()?data.laserScanInfo().maxPoints():0,
+										  dialog.isDepth2dExported()?data.laserScanInfo().maxRange():0,
+										  dialog.isDepth2dExported()?data.laserScanInfo().localTransform():Transform::getIdentity()),
 							rgb,
 							depth,
 							data.stereoCameraModel(),
@@ -2423,7 +2425,7 @@ void DatabaseViewer::update(int value,
 					}
 
 					//add scan
-					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw());
+					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
 					if(scan->size())
 					{
 						view3D->addCloud("1", scan);
@@ -3306,8 +3308,8 @@ void DatabaseViewer::updateConstraintView(
 
 				// Added loop closure scans
 				pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-				scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw());
-				scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw());
+				scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
+				scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), dataTo.laserScanInfo().localTransform());
 				scanB = rtabmap::util3d::transformPointCloud(scanB, t);
 				if(scanA->size())
 				{
@@ -3509,7 +3511,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 										obstacles,
 										ui_->doubleSpinBox_gridCellSize->value(),
 										ui_->checkBox_gridFillUnkownSpace->isChecked(),
-										data.laserScanMaxRange());
+										data.laserScanInfo().maxRange());
 								added = true;
 							}
 							localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
@@ -3904,7 +3906,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 
 	UTimer timer;
-	if(ui_->checkBox_icp_laserScan->isChecked())
+	if(ui_->checkBox_icp_from_depth->isChecked())
 	{
 		// generate laser scans from depth image
 		cv::Mat tmpA, tmpB, tmpC, tmpD;
@@ -3925,8 +3927,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 				0,
 				ui_->parameters_toolbox->getParameters());
 		int maxLaserScans = cloudFrom->size();
-		dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0);
-		dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0);
+		dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), LaserScanInfo(maxLaserScans, 0));
+		dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), LaserScanInfo(maxLaserScans, 0));
 
 		if(!dataFrom.laserScanCompressed().empty() || !dataTo.laserScanCompressed().empty())
 		{

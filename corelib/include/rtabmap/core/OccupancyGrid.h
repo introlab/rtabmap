@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_SRC_OCCUPANCY_H_
-#define CORELIB_SRC_OCCUPANCY_H_
+#ifndef CORELIB_SRC_OCCUPANCYGRID_H_
+#define CORELIB_SRC_OCCUPANCYGRID_H_
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
@@ -35,34 +35,62 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-class RTABMAP_EXP Occupancy
+class RTABMAP_EXP OccupancyGrid
 {
 public:
-	Occupancy(const ParametersMap & parameters = ParametersMap());
+	OccupancyGrid(const ParametersMap & parameters = ParametersMap());
 	void parseParameters(const ParametersMap & parameters);
+	void setCellSize(float cellSize);
 	float getCellSize() const {return cellSize_;}
-	void segment(const Signature & node, cv::Mat & obstacles, cv::Mat & ground);
+	void createLocalMap(const Signature & node, cv::Mat & ground, cv::Mat & obstacles, cv::Point3f & viewPoint) const;
+
+	void clear();
+	void addToCache(
+			int nodeId,
+			const cv::Mat & ground,
+			const cv::Mat & obstacles);
+	void update(const std::map<int, Transform> & poses, float minMapSize = 0.0f, float footprintRadius = 0.0f);
+	const cv::Mat & getMap(float & xMin, float & yMin) const
+	{
+		xMin = xMin_;
+		yMin = yMin_;
+		return map_;
+	}
 
 private:
 	ParametersMap parameters_;
 	int cloudDecimation_;
 	float cloudMaxDepth_;
 	float cloudMinDepth_;
+	std::vector<float> roiRatios_;
+	int scanDecimation_;
 	float cellSize_;
 	bool occupancyFromCloud_;
 	bool projMapFrame_;
 	float maxObstacleHeight_;
+	int normalKSearch_;
 	float maxGroundAngle_;
 	int minClusterSize_;
 	bool flatObstaclesDetected_;
+	float minGroundHeight_;
 	float maxGroundHeight_;
+	bool normalsSegmentation_;
 	bool grid3D_;
 	bool groundIsObstacle_;
 	float noiseFilteringRadius_;
 	int noiseFilteringMinNeighbors_;
+	bool scan2dUnknownSpaceFilled_;
+	double scan2dMaxUnknownSpaceFilledRange_;
 
+	std::map<int, std::pair<cv::Mat, cv::Mat> > cache_;
+	cv::Mat map_;
+	cv::Mat mapInfo_;
+	std::map<int, std::pair<int, int> > cellCount_; //<node Id, cells>
+	float xMin_;
+	float yMin_;
+	std::map<int, Transform> addedNodes_;
 };
 
 }
 
-#endif /* CORELIB_SRC_OCCUPANCY_H_ */
+#endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */

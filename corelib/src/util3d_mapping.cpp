@@ -84,7 +84,7 @@ void occupancy2DFromLaserScan(
 	ground = cv::Mat();
 	if(groundIndices.size())
 	{
-		ground = cv::Mat((int)groundIndices.size(), 1, CV_32FC2);
+		ground = cv::Mat(1, (int)groundIndices.size(), CV_32FC2);
 		int i=0;
 		for(std::list<int>::iterator iter=groundIndices.begin();iter!=groundIndices.end(); ++iter)
 		{
@@ -100,7 +100,7 @@ void occupancy2DFromLaserScan(
 	obstacles = cv::Mat();
 	if(obstaclesCloud->size())
 	{
-		obstacles = cv::Mat((int)obstaclesCloud->size(), 1, CV_32FC2);
+		obstacles = cv::Mat(1, (int)obstaclesCloud->size(), CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
 		{
 			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;
@@ -155,14 +155,12 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 
 	float minX=-minMapSize/2.0, minY=-minMapSize/2.0, maxX=minMapSize/2.0, maxY=minMapSize/2.0;
 	bool undefinedSize = minMapSize == 0.0f;
-	float x=0.0f,y=0.0f,z=0.0f,roll=0.0f,pitch=0.0f,yaw=0.0f,cosT=0.0f,sinT=0.0f;
-	cv::Mat affineTransform(2,3,CV_32FC1);
 	for(std::list<std::pair<int, Transform> >::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
 		UASSERT(!iter->second.isNull());
 
-		iter->second.getTranslationAndEulerAngles(x,y,z,roll,pitch,yaw);
-
+		float x = iter->second.x();
+		float y  =iter->second.y();
 		if(undefinedSize)
 		{
 			minX = maxX = x;
@@ -185,53 +183,75 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		if(uContains(occupancy, iter->first))
 		{
 			const std::pair<cv::Mat, cv::Mat> & pair = occupancy.at(iter->first);
-			cosT = cos(yaw);
-			sinT = sin(yaw);
-			affineTransform.at<float>(0,0) = cosT;
-			affineTransform.at<float>(0,1) = -sinT;
-			affineTransform.at<float>(1,0) = sinT;
-			affineTransform.at<float>(1,1) = cosT;
-			affineTransform.at<float>(0,2) = x;
-			affineTransform.at<float>(1,2) = y;
 
 			//ground
-			if(pair.first.rows)
+			if(pair.first.cols)
 			{
-				UASSERT(pair.first.type() == CV_32FC2);
-				cv::Mat ground(pair.first.rows, pair.first.cols, pair.first.type());
-				cv::transform(pair.first, ground, affineTransform);
-				for(int i=0; i<ground.rows; ++i)
+				if(pair.first.rows > 1 && pair.first.cols == 1)
 				{
-					if(minX > ground.at<float>(i,0))
-						minX = ground.at<float>(i,0);
-					else if(maxX < ground.at<float>(i,0))
-						maxX = ground.at<float>(i,0);
+					UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.first.rows, pair.first.cols);
+				}
+				cv::Mat ground(1, pair.first.cols, CV_32FC2);
+				for(int i=0; i<ground.cols; ++i)
+				{
+					const float * vi = pair.first.ptr<float>(0,i);
+					float * vo = ground.ptr<float>(0,i);
+					cv::Point3f vt;
+					if(pair.first.channels() > 2)
+					{
+						vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
+					}
+					else
+					{
+						vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], 0), iter->second);
+					}
+					vo[0] = vt.x;
+					vo[1] = vt.y;
+					if(minX > vo[0])
+						minX = vo[0];
+					else if(maxX < vo[0])
+						maxX = vo[0];
 
-					if(minY > ground.at<float>(i,1))
-						minY = ground.at<float>(i,1);
-					else if(maxY < ground.at<float>(i,1))
-						maxY = ground.at<float>(i,1);
+					if(minY > vo[1])
+						minY = vo[1];
+					else if(maxY < vo[1])
+						maxY = vo[1];
 				}
 				emptyLocalMaps.insert(std::make_pair(iter->first, ground));
 			}
 
 			//obstacles
-			if(pair.second.rows)
+			if(pair.second.cols)
 			{
-				UASSERT(pair.second.type() == CV_32FC2);
-				cv::Mat obstacles(pair.second.rows, pair.second.cols, pair.second.type());
-				cv::transform(pair.second, obstacles, affineTransform);
-				for(int i=0; i<obstacles.rows; ++i)
+				if(pair.second.rows > 1 && pair.second.cols == 1)
 				{
-					if(minX > obstacles.at<float>(i,0))
-						minX = obstacles.at<float>(i,0);
-					else if(maxX < obstacles.at<float>(i,0))
-						maxX = obstacles.at<float>(i,0);
+					UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.second.rows, pair.second.cols);
+				}
+				cv::Mat obstacles(1, pair.second.cols, CV_32FC2);
+				for(int i=0; i<obstacles.cols; ++i)
+				{
+					const float * vi = pair.second.ptr<float>(0,i);
+					float * vo = obstacles.ptr<float>(0,i);
+					cv::Point3f vt;
+					if(pair.second.channels() > 2)
+					{
+						vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
+					}
+					else
+					{
+						vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], 0), iter->second);
+					}
+					vo[0] = vt.x;
+					vo[1] = vt.y;
+					if(minX > vo[0])
+						minX = vo[0];
+					else if(maxX < vo[0])
+						maxX = vo[0];
 
-					if(minY > obstacles.at<float>(i,1))
-						minY = obstacles.at<float>(i,1);
-					else if(maxY < obstacles.at<float>(i,1))
-						maxY = obstacles.at<float>(i,1);
+					if(minY > vo[1])
+						minY = vo[1];
+					else if(maxY < vo[1])
+						maxY = vo[1];
 				}
 				occupiedLocalMaps.insert(std::make_pair(iter->first, obstacles));
 			}
@@ -267,12 +287,14 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 				std::map<int, cv::Mat >::iterator jter = occupiedLocalMaps.find(kter->first);
 				if(iter!=emptyLocalMaps.end())
 				{
-					for(int i=0; i<iter->second.rows; ++i)
+					for(int i=0; i<iter->second.cols; ++i)
 					{
-						cv::Point2i pt((iter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (iter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
-						if(map.at<char>(pt.y, pt.x) != -2)
+						float * ptf = iter->second.ptr<float>(0, i);
+						cv::Point2i pt((ptf[0]-xMin)/cellSize + 0.5f, (ptf[1]-yMin)/cellSize + 0.5f);
+						char & value = map.at<char>(pt.y, pt.x);
+						if(value != -2)
 						{
-							map.at<char>(pt.y, pt.x) = 0; // free space
+							value = 0; // free space
 						}
 					}
 				}
@@ -302,12 +324,14 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 
 				if(jter!=occupiedLocalMaps.end())
 				{
-					for(int i=0; i<jter->second.rows; ++i)
+					for(int i=0; i<jter->second.cols; ++i)
 					{
-						cv::Point2i pt((jter->second.at<float>(i,0)-xMin)/cellSize + 0.5f, (jter->second.at<float>(i,1)-yMin)/cellSize + 0.5f);
-						if(map.at<char>(pt.y, pt.x) != -2)
+						float * ptf = jter->second.ptr<float>(0, i);
+						cv::Point2i pt((ptf[0]-xMin)/cellSize + 0.5f, (ptf[1]-yMin)/cellSize + 0.5f);
+						char & value = map.at<char>(pt.y, pt.x);
+						if(value != -2)
 						{
-							map.at<char>(pt.y, pt.x) = 100; // obstacles
+							value = 100; // obstacles
 						}
 					}
 				}
@@ -412,6 +436,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			}
 		}
 	}
+
 	UDEBUG("timer=%fs", timer.ticks());
 	return map;
 }

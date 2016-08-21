@@ -220,6 +220,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.11.10 typos
+		removedParameters_.insert(std::make_pair("Grid/FlatObstaclesDetected",    std::make_pair(true,  Parameters::kGridFlatObstacleDetected())));
+
 		// 0.11.8
 		removedParameters_.insert(std::make_pair("Reg/Force2D",                   std::make_pair(true,  Parameters::kRegForce3DoF())));
 		removedParameters_.insert(std::make_pair("OdomF2M/ScanSubstractRadius",   std::make_pair(true,  Parameters::kOdomF2MScanSubtractRadius())));
@@ -402,53 +405,65 @@ std::string Parameters::getDescription(const std::string & paramKey)
 	return description;
 }
 
-void Parameters::parse(const ParametersMap & parameters, const std::string & key, bool & value)
+bool Parameters::parse(const ParametersMap & parameters, const std::string & key, bool & value)
 {
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
 		value = uStr2Bool(iter->second.c_str());
+		return true;
 	}
+	return false;
 }
-void Parameters::parse(const ParametersMap & parameters, const std::string & key, int & value)
+bool Parameters::parse(const ParametersMap & parameters, const std::string & key, int & value)
 {
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
 		value = uStr2Int(iter->second.c_str());
+		return true;
 	}
+	return false;
 }
-void Parameters::parse(const ParametersMap & parameters, const std::string & key, unsigned int & value)
+bool Parameters::parse(const ParametersMap & parameters, const std::string & key, unsigned int & value)
 {
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
 		value = uStr2Int(iter->second.c_str());
+		return true;
 	}
+	return false;
 }
-void Parameters::parse(const ParametersMap & parameters, const std::string & key, float & value)
+bool Parameters::parse(const ParametersMap & parameters, const std::string & key, float & value)
 {
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
 		value = uStr2Float(iter->second);
+		return true;
 	}
+	return false;
 }
-void Parameters::parse(const ParametersMap & parameters, const std::string & key, double & value)
+bool Parameters::parse(const ParametersMap & parameters, const std::string & key, double & value)
 {
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
 		value = uStr2Double(iter->second);
+		return true;
 	}
+	return false;
 }
-void Parameters::parse(const ParametersMap & parameters, const std::string & key, std::string & value)
+bool Parameters::parse(const ParametersMap & parameters, const std::string & key, std::string & value)
 {
 	ParametersMap::const_iterator iter = parameters.find(key);
 	if(iter != parameters.end())
 	{
 		value = iter->second;
+		return true;
 	}
+	return false;
 }
 void Parameters::parse(const ParametersMap & parameters, ParametersMap & parametersOut)
 {

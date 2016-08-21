@@ -57,10 +57,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/Stereo.h"
-#include "rtabmap/core/Occupancy.h"
-
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
+#include <rtabmap/core/OccupancyGrid.h>
 
 namespace rtabmap {
 
@@ -92,7 +91,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
-	_createOccupancyGrid(Parameters::defaultMemCreateOccupancyGrid()),
+	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -109,7 +108,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_vwd = new VWDictionary(parameters);
 	_registrationPipeline = Registration::create(parameters);
 	_registrationIcp = new RegistrationIcp(parameters);
-	_occupancy = new Occupancy(parameters);
+	_occupancy = new OccupancyGrid(parameters);
 	this->parseParameters(parameters);
 }
 
@@ -413,7 +412,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
 	Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
-	Parameters::parse(parameters, Parameters::kMemCreateOccupancyGrid(), _createOccupancyGrid);
+	Parameters::parse(parameters, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -2062,7 +2061,7 @@ void Memory::removeRawData(int id, bool image, bool scan, bool userData)
 		}
 		if(scan && !_registrationPipeline->isScanRequired())
 		{
-			s->sensorData().setLaserScanRaw(cv::Mat(), s->sensorData().laserScanMaxPts(), s->sensorData().laserScanMaxRange());
+			s->sensorData().setLaserScanRaw(cv::Mat(), s->sensorData().laserScanInfo());
 		}
 		if(userData && !_registrationPipeline->isUserDataRequired())
 		{
@@ -2305,7 +2304,9 @@ Transform Memory::computeIcpTransformMulti(
 				{
 					cv::Mat scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, toPose.inverse() * iter->second);
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
+							scan,
+							s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
 					if(scan.cols > maxPoints)
 					{
 						maxPoints = scan.cols;
@@ -2320,7 +2321,12 @@ Transform Memory::computeIcpTransformMulti(
 		}
 		if(assembledToClouds->size())
 		{
-			assembledData.setLaserScanRaw(util3d::laserScanFromPointCloud(*assembledToClouds, Transform()), fromS->sensorData().laserScanMaxPts()?fromS->sensorData().laserScanMaxPts():maxPoints, fromS->sensorData().laserScanMaxRange());
+			assembledData.setLaserScanRaw(
+					util3d::laserScanFromPointCloud(*assembledToClouds),
+					LaserScanInfo(
+							fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
+							fromS->sensorData().laserScanInfo().maxRange(),
+							Transform::getIdentity())); // scans are in base frame
 		}
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
@@ -2985,52 +2991,23 @@ void Memory::getNodeCalibration(int nodeId,
 	}
 }
 
-SensorData Memory::getSignatureDataConst(int locationId) const
+SensorData Memory::getSignatureDataConst(int locationId,
+		bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	UDEBUG("");
 	SensorData r;
 	const Signature * s = this->getSignature(locationId);
-	if(s && !s->sensorData().imageCompressed().empty())
+	if(s && (!s->sensorData().imageCompressed().empty() ||
+			!s->sensorData().laserScanCompressed().empty() ||
+			!s->sensorData().userDataCompressed().empty() ||
+			s->sensorData().gridCellSize() != 0.0f))
 	{
 		r = s->sensorData();
 	}
 	else if(_dbDriver)
 	{
 		// load from database
-		if(s)
-		{
-			std::list<Signature*> signatures;
-			Signature tmp = *s;
-			signatures.push_back(&tmp);
-			_dbDriver->loadNodeData(signatures);
-			r = tmp.sensorData();
-		}
-		else
-		{
-			std::list<int> ids;
-			ids.push_back(locationId);
-			std::list<Signature*> signatures;
-			std::set<int> loadedFromTrash;
-			_dbDriver->loadSignatures(ids, signatures, &loadedFromTrash);
-			if(signatures.size())
-			{
-				Signature * sTmp = signatures.front();
-				if(sTmp->sensorData().imageCompressed().empty())
-				{
-					_dbDriver->loadNodeData(signatures);
-				}
-				r = sTmp->sensorData();
-				if(loadedFromTrash.size())
-				{
-					//put it back to trash
-					_dbDriver->asyncSave(sTmp);
-				}
-				else
-				{
-					delete sTmp;
-				}
-			}
-		}
+		_dbDriver->getNodeData(locationId, r, images, scan, userData, occupancyGrid);
 	}
 
 	return r;
@@ -3502,7 +3479,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	// downsampling the laser scan?
 	cv::Mat laserScan = data.laserScanRaw();
-	int maxLaserScanMaxPts = data.laserScanMaxPts();
+	int maxLaserScanMaxPts = data.laserScanInfo().maxPoints();
 	if(!laserScan.empty() && _laserScanDownsampleStepSize > 1)
 	{
 		laserScan = util3d::downsample(laserScan, _laserScanDownsampleStepSize);
@@ -3554,8 +3531,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
 						ctLaserScan.getCompressedData(),
-						maxLaserScanMaxPts,
-						data.laserScanMaxRange(),
+						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						stereoCameraModel,
@@ -3564,8 +3540,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						ctUserData.getCompressedData()):
 				SensorData(
 						ctLaserScan.getCompressedData(),
-						maxLaserScanMaxPts,
-						data.laserScanMaxRange(),
+						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
 						ctImage.getCompressedData(),
 						ctDepth.getCompressedData(),
 						cameraModels,
@@ -3575,12 +3550,9 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 	else
 	{
-		// just compress laser and user data
-		rtabmap::CompressionThread ctLaserScan(laserScan);
+		// just compress user data
 		rtabmap::CompressionThread ctUserData(data.userDataRaw());
-		ctLaserScan.start();
 		ctUserData.start();
-		ctLaserScan.join();
 		ctUserData.join();
 
 		s = new Signature(id,
@@ -3592,9 +3564,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						ctLaserScan.getCompressedData(),
-						maxLaserScanMaxPts,
-						data.laserScanMaxRange(),
+						cv::Mat(),
+						LaserScanInfo(),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -3602,9 +3573,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						0,
 						ctUserData.getCompressedData()):
 				SensorData(
-						ctLaserScan.getCompressedData(),
-						maxLaserScanMaxPts,
-						data.laserScanMaxRange(),
+						cv::Mat(),
+						LaserScanInfo(),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
@@ -3620,7 +3590,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	// set raw data
 	s->sensorData().setImageRaw(image);
 	s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-	s->sensorData().setLaserScanRaw(laserScan, maxLaserScanMaxPts, data.laserScanMaxRange());
+	s->sensorData().setLaserScanRaw(laserScan, LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()));
 	s->sensorData().setUserDataRaw(data.userDataRaw());
 
 	s->sensorData().setGroundTruth(data.groundTruth());
@@ -3634,19 +3604,20 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 
 	// Occupancy grid map stuff
-	/*cv::Mat ground, obstacles;
+	cv::Mat ground, obstacles;
 	float cellSize = 0.0f;
+	cv::Point3f viewPoint(0,0,0);
 	if(_createOccupancyGrid)
 	{
-		_occupancy->segment(s->sensorData(), ground, obstacles);
+		_occupancy->createLocalMap(*s, ground, obstacles, viewPoint);
 		cellSize = _occupancy->getCellSize();
 
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemOccupancy_grid(), t*1000.0f);
-		UDEBUG("time grid map (%d) = %fs", t);
+		UDEBUG("time grid map = %fs", t);
 	}
-	s->setOccupancyGrid(ground, obstacles, cellSize);
-	*/
+	s->sensorData().setOccupancyGrid(ground, obstacles, cellSize, viewPoint);
+
 	return s;
 }
 

@@ -108,6 +108,7 @@ public:
 	const cv::Mat & F() const {return F_;} //extrinsic fundamental matrix
 
 	void scale(double scale);
+	void roi(const cv::Rect & roi);
 
 	void setLocalTransform(const Transform & transform) {left_.setLocalTransform(transform);}
 	const Transform & localTransform() const {return left_.localTransform();}

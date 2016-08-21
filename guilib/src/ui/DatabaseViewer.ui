@@ -52,7 +52,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>198</width>
+           <width>202</width>
            <height>196</height>
           </rect>
          </property>
@@ -210,7 +210,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>197</width>
+           <width>201</width>
            <height>196</height>
           </rect>
          </property>
@@ -980,7 +980,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1122,8 +1122,8 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>-245</y>
-          <width>284</width>
+          <y>0</y>
+          <width>278</width>
           <height>611</height>
          </rect>
         </property>
@@ -1634,8 +1634,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>175</width>
-          <height>191</height>
+          <width>289</width>
+          <height>182</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1673,7 +1673,7 @@
           </widget>
          </item>
          <item row="0" column="0">
-          <widget class="QCheckBox" name="checkBox_icp_laserScan">
+          <widget class="QCheckBox" name="checkBox_icp_from_depth">
            <property name="text">
             <string/>
            </property>

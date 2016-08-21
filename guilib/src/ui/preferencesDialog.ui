@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>984</width>
-    <height>713</height>
+    <height>727</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -65,7 +65,7 @@
             <x>0</x>
             <y>0</y>
             <width>686</width>
-            <height>2053</height>
+            <height>2278</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -1502,7 +1502,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                  <item>
                   <widget class="QGroupBox" name="groupBox_gridMap2">
                    <property name="title">
-                    <string>Occupancy Grid Map</string>
+                    <string>Grid Map Assembling</string>
                    </property>
                    <property name="checkable">
                     <bool>false</bool>
@@ -1514,7 +1514,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                     <item>
                      <widget class="QLabel" name="label_167">
                       <property name="text">
-                       <string>When the Graph View is visible or if the &quot;Show in 3D map view&quot; below is checked, the grid map is generated using the laser scans or from 3D projection of the clouds (when activated below).</string>
+                       <string>When the Graph View is visible or if the &quot;Show in 3D map view&quot; below is checked, the grid map is assembled using occupancy grids saved in each node. If nodes don't have local occupancy grid created, use the Database Viewer tool to generate them.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -1601,7 +1601,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <item row="4" column="1">
                        <widget class="QLabel" name="label_224">
                         <property name="text">
-                         <string>Erode.</string>
+                         <string>Erode. Not used if incremental.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -1653,203 +1653,41 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_332">
+                        <property name="text">
+                         <string>Incremental.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="checkBox_map_incremental">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
                      </layout>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_map_occupancyFrom3DCloud">
-                      <property name="title">
-                       <string>Occupancy from 3D cloud projection on the ground</string>
-                      </property>
-                      <property name="checkable">
-                       <bool>true</bool>
-                      </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_102">
-                       <item>
-                        <widget class="QLabel" name="label_312">
-                         <property name="text">
-                          <string>Note that 3D cloud filtering stuff under Map columns in 3D Rendering panel are applied before the projection (except for floor and ceiling filterings).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <layout class="QGridLayout" name="gridLayout_67" columnstretch="0,1">
-                         <item row="2" column="1">
-                          <widget class="QLabel" name="label_308">
-                           <property name="text">
-                            <string>Mininum cluster size.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="2" column="0">
-                          <widget class="QSpinBox" name="spinBox_projMinClusterSize">
-                           <property name="minimum">
-                            <number>1</number>
-                           </property>
-                           <property name="maximum">
-                            <number>10000</number>
-                           </property>
-                           <property name="value">
-                            <number>20</number>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="0">
-                          <widget class="QCheckBox" name="checkBox_projMapFrame">
-                           <property name="text">
-                            <string/>
-                           </property>
-                           <property name="checked">
-                            <bool>false</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_311">
-                           <property name="text">
-                            <string>Projection in map frame. On a 3D terrain and a fixed local camera transform (the cloud is created relative to ground), you may want to disable this to do the projection in robot frame instead.</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxObstaclesHeight">
-                           <property name="suffix">
-                            <string> m</string>
-                           </property>
-                           <property name="decimals">
-                            <number>2</number>
-                           </property>
-                           <property name="maximum">
-                            <double>9999.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="5" column="1">
-                          <widget class="QLabel" name="label_309">
-                           <property name="text">
-                            <string>Maximum obstacles height (0=disabled).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="1">
-                          <widget class="QLabel" name="label_307">
-                           <property name="text">
-                            <string>Maximum ground normal angle</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="1" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxGroundAngle">
-                           <property name="suffix">
-                            <string> deg</string>
-                           </property>
-                           <property name="decimals">
-                            <number>0</number>
-                           </property>
-                           <property name="minimum">
-                            <double>0.000000000000000</double>
-                           </property>
-                           <property name="maximum">
-                            <double>180.000000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>30.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="1">
-                          <widget class="QLabel" name="label_272">
-                           <property name="text">
-                            <string>Flat obstacles detected</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="0">
-                          <widget class="QCheckBox" name="checkBox_projFlatObstaclesDetected">
-                           <property name="text">
-                            <string/>
-                           </property>
-                           <property name="checked">
-                            <bool>false</bool>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="4" column="1">
-                          <widget class="QLabel" name="label_310">
-                           <property name="text">
-                            <string>Maximum ground height (0=disabled).</string>
-                           </property>
-                           <property name="wordWrap">
-                            <bool>true</bool>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="4" column="0">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxGroundHeight">
-                           <property name="suffix">
-                            <string> m</string>
-                           </property>
-                           <property name="decimals">
-                            <number>2</number>
-                           </property>
-                           <property name="maximum">
-                            <double>99999.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                      </layout>
-                     </widget>
                     </item>
                     <item>
                      <widget class="QGroupBox" name="groupBox_octomap">
                       <property name="title">
-                       <string>OctoMap (3D occupancy grid map)</string>
+                       <string>OctoMap (3D Occupancy Grid Map)</string>
                       </property>
                       <property name="checkable">
                        <bool>true</bool>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_72" columnstretch="0,1">
-                       <item row="0" column="0">
+                       <item row="1" column="0">
                         <widget class="QSpinBox" name="spinBox_octomap_treeDepth">
                          <property name="minimum">
                           <number>1</number>
@@ -1862,7 +1700,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="0" column="1">
+                       <item row="1" column="1">
                         <widget class="QLabel" name="label_octomap_treeDepth">
                          <property name="text">
                           <string>Octomap maximum tree depth (max 16). The highest depth means the smallest resolution of the map (cell size). At smallest resolution the octomap shows RGB colors. Other resolutions produce z-axis gradient colored octomap.</string>
@@ -1875,26 +1713,49 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QCheckBox" name="checkBox_octomap_groundObstacle">
+                       <item row="2" column="0">
+                        <widget class="QCheckBox" name="checkBox_octomap_2dgrid">
                          <property name="text">
                           <string/>
                          </property>
                          <property name="checked">
-                          <bool>true</bool>
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_octomap_groundObstacle">
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_octomap_treeDepth_2">
                          <property name="text">
-                          <string>Octomap: ground is an obstacle. If not checked, parameters above from 3D cloud projection are used to segment the ground.</string>
+                          <string>Show 2D occupancy grid map from OctoMap projection.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_octomap_treeDepth_3">
+                         <property name="text">
+                          <string>Show in 3D map view.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QCheckBox" name="checkBox_octomap_show3dMap">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>false</bool>
                          </property>
                         </widget>
                        </item>
@@ -7208,7 +7069,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="1">
+                       <item row="8" column="1">
                         <widget class="QLabel" name="label_space2">
                          <property name="text">
                           <string>Local radius for nodes selection in the local map. This parameter is used in some approaches of the sub-panels.</string>
@@ -7221,7 +7082,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="0">
+                       <item row="7" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_localImmunizationRatio">
                          <property name="suffix">
                           <string/>
@@ -7334,7 +7195,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="1">
+                       <item row="6" column="1">
                         <widget class="QLabel" name="label_scanMatching_3">
                          <property name="text">
                           <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
@@ -7347,10 +7208,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="0">
+                       <item row="6" column="0">
                         <widget class="QSpinBox" name="spinBox_maxLocalLocationsRetrieved"/>
                        </item>
-                       <item row="7" column="0">
+                       <item row="8" column="0">
                         <widget class="QDoubleSpinBox" name="localDetection_radius">
                          <property name="suffix">
                           <string> m</string>
@@ -7360,7 +7221,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="6" column="1">
+                       <item row="7" column="1">
                         <widget class="QLabel" name="label_scanMatching_5">
                          <property name="text">
                           <string>Ratio of working memory for which local nodes are immunized from transfer.</string>
@@ -7388,6 +7249,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item row="4" column="0">
                         <widget class="QCheckBox" name="loopClosure_reextract">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_scanMatching_10">
+                         <property name="text">
+                          <string>Create local occupancy grid maps. See &quot;Occupancy Grid&quot; panel for parameters.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="0">
+                        <widget class="QCheckBox" name="checkbox_rgbd_createOccupancyGRid">
                          <property name="text">
                           <string/>
                          </property>
@@ -7579,7 +7460,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="2" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_angle">
                            <property name="suffix">
-                            <string> degrees</string>
+                            <string> deg</string>
                            </property>
                            <property name="decimals">
                             <number>0</number>
@@ -7972,6 +7853,677 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <size>
                      <width>20</width>
                      <height>1338</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_64">
+                <layout class="QVBoxLayout" name="verticalLayout_109">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_occupancy2">
+                   <property name="title">
+                    <string>Occupancy Grid</string>
+                   </property>
+                   <property name="checkable">
+                    <bool>false</bool>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_110">
+                    <item>
+                     <widget class="QLabel" name="label_octomap_groundObstacle_4">
+                      <property name="text">
+                       <string>A cloud will be created from the depth image (see option below) or 3D laser scan. This cloud will be segmented into ground and obstacle cells. For 2D laser scan, the occupancy grid is created using 2D ray casting (only Resolution and 2D scan related parameters are used).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_75" columnstretch="0,1">
+                      <item row="5" column="0">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_noiseRadius">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>3</number>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.050000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="0">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_maxObstacleHeight">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="maximum">
+                         <double>9999.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_maxGroundHeight">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="maximum">
+                         <double>99999.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_321">
+                        <property name="text">
+                         <string>Noise filtering min neighbors.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_325">
+                        <property name="text">
+                         <string>Noise filtering radius (0=disabled). Done after segmentation.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QCheckBox" name="checkBox_grid_projMapFrame">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_311">
+                        <property name="text">
+                         <string>Projection in map frame. On a 3D terrain and a fixed local camera transform (the cloud is created relative to ground), you may want to disable this to do the projection in robot frame instead.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_327">
+                        <property name="text">
+                         <string>Minimum ground height (0=disabled).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_310">
+                        <property name="text">
+                         <string>Maximum ground height (0=disabled). Should be set if Normals Segmentation Approach is checked below.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_309">
+                        <property name="text">
+                         <string>Maximum obstacles height (0=disabled).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_minGroundHeight">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="decimals">
+                         <number>2</number>
+                        </property>
+                        <property name="minimum">
+                         <double>-99999.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>-0.050000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QSpinBox" name="spinBox_grid_noiseMinNeighbors">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1000</number>
+                        </property>
+                        <property name="value">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_326">
+                        <property name="text">
+                         <string>Resolution (cell size).</string>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_resolution">
+                        <property name="suffix">
+                         <string> m</string>
+                        </property>
+                        <property name="minimum">
+                         <double>0.010000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.050000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_331">
+                        <property name="text">
+                         <string>Laser scan decimation.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QSpinBox" name="spinBox_grid_scanDecimation">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>100</number>
+                        </property>
+                        <property name="value">
+                         <number>1</number>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_grid_fromDepthImage">
+                      <property name="title">
+                       <string>From Depth Image</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_108">
+                       <item>
+                        <widget class="QLabel" name="label_octomap_groundObstacle_2">
+                         <property name="text">
+                          <string>Use depth image for cloud projection instead of laser scan.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_76" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QSpinBox" name="spinBox_grid_decimation">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>32</number>
+                           </property>
+                           <property name="value">
+                            <number>4</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_322">
+                           <property name="text">
+                            <string>Image Decimation (1-2-4-8-...).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_minDepth">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="decimals">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <double>100.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_323">
+                           <property name="text">
+                            <string>Minimum depth.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_maxDepth">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="decimals">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <double>100.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>4.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_320">
+                           <property name="text">
+                            <string>Maximum depth (0 means no limit).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QLineEdit" name="lineEdit_grid_roi">
+                           <property name="readOnly">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_324">
+                           <property name="text">
+                            <string>ROI ratios [left, right, top, bottom] between 0 and 1.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_grid_normalsSegmentation">
+                      <property name="title">
+                       <string>Normals Segmentation Approach</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_107">
+                       <item>
+                        <widget class="QLabel" name="label_312">
+                         <property name="text">
+                          <string>In this approach, the ground of the 3D cloud is segmented using the point normals instead of a passthrough filter.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_74" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_maxGroundAngle">
+                           <property name="suffix">
+                            <string> deg</string>
+                           </property>
+                           <property name="decimals">
+                            <number>0</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.000000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>180.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>30.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="spinBox_grid_minClusterSize">
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>10000</number>
+                           </property>
+                           <property name="value">
+                            <number>20</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_307">
+                           <property name="text">
+                            <string>Maximum angle between point's normal to ground's normal to label it as ground. Points with higher angle difference are considered as obstacles.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_308">
+                           <property name="text">
+                            <string>Minimum cluster size to project the points. The distance between clusters is defined by 2*Resolution.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_272">
+                           <property name="text">
+                            <string>Flat obstacles detected.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QCheckBox" name="checkBox_grid_flatObstaclesDetected">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="spinBox_grid_normalK">
+                           <property name="minimum">
+                            <number>3</number>
+                           </property>
+                           <property name="maximum">
+                            <number>1000</number>
+                           </property>
+                           <property name="value">
+                            <number>20</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_330">
+                           <property name="text">
+                            <string> K neighbors to compute normals.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_grid_3d">
+                      <property name="title">
+                       <string>3D</string>
+                      </property>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_102">
+                       <item>
+                        <widget class="QLabel" name="label_octomap_groundObstacle_3">
+                         <property name="text">
+                          <string>A 3D occupancy grid is required if you want an Octomap. Set to false if you want only a 2D map, the cloud will be projected on xy plane. A 2D map can be still generated if checked, but it requires more memory and time to generate it.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_67" columnstretch="0,1">
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_octomap_groundObstacle">
+                           <property name="text">
+                            <string>Ground is an obstacle. Use this only if you want an Octomap with ground identified as an obstacle (e.g., with an UAV).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="0">
+                          <widget class="QCheckBox" name="checkBox_grid_groundObstacle">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_9">
+                      <property name="title">
+                       <string>2D Laser Scan Ray Tracing</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_111">
+                       <item>
+                        <widget class="QLabel" name="label_octomap_groundObstacle_5">
+                         <property name="text">
+                          <string>These parameters only affect 2D occupancy grid created from 2D laser scan (when &quot;From Depth image&quot; is not checked and laser scan is 2D).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_77" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QCheckBox" name="checkBox_grid_unknownSpaceFilled">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_328">
+                           <property name="text">
+                            <string>Unknown space filled.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_unknownSpaceFilledMaxRange">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="decimals">
+                            <number>1</number>
+                           </property>
+                           <property name="singleStep">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>6.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_329">
+                           <property name="text">
+                            <string>Unknown space filled maximum range. If 0, the laser scan maximum range is used.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_57">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>1177</height>
                     </size>
                    </property>
                   </spacer>

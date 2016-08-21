@@ -1089,6 +1089,92 @@ float getDepth(
 	return depth;
 }
 
+cv::Rect computeRoi(const cv::Mat & image, const std::string & roiRatios)
+{
+	return computeRoi(image.size(), roiRatios);
+}
+
+cv::Rect computeRoi(const cv::Size & imageSize, const std::string & roiRatios)
+{
+	std::list<std::string> strValues = uSplit(roiRatios, ' ');
+	if(strValues.size() != 4)
+	{
+		UERROR("The number of values must be 4 (roi=\"%s\")", roiRatios.c_str());
+	}
+	else
+	{
+		std::vector<float> values(4);
+		unsigned int i=0;
+		for(std::list<std::string>::iterator iter = strValues.begin(); iter!=strValues.end(); ++iter)
+		{
+			values[i] = uStr2Float(*iter);
+			++i;
+		}
+
+		if(values[0] >= 0 && values[0] < 1 && values[0] < 1.0f-values[1] &&
+			values[1] >= 0 && values[1] < 1 && values[1] < 1.0f-values[0] &&
+			values[2] >= 0 && values[2] < 1 && values[2] < 1.0f-values[3] &&
+			values[3] >= 0 && values[3] < 1 && values[3] < 1.0f-values[2])
+		{
+			return computeRoi(imageSize, values);
+		}
+		else
+		{
+			UERROR("The roi ratios are not valid (roi=\"%s\")", roiRatios.c_str());
+		}
+	}
+	return cv::Rect();
+}
+
+cv::Rect computeRoi(const cv::Mat & image, const std::vector<float> & roiRatios)
+{
+	return computeRoi(image.size(), roiRatios);
+}
+
+cv::Rect computeRoi(const cv::Size & imageSize, const std::vector<float> & roiRatios)
+{
+	if(imageSize.height!=0 && imageSize.width!= 0 && roiRatios.size() == 4)
+	{
+		float width = imageSize.width;
+		float height = imageSize.height;
+		cv::Rect roi(0, 0, width, height);
+		UDEBUG("roi ratios = %f, %f, %f, %f", roiRatios[0],roiRatios[1],roiRatios[2],roiRatios[3]);
+		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
+
+		//left roi
+		if(roiRatios[0] > 0 && roiRatios[0] < 1 - roiRatios[1])
+		{
+			roi.x = width * roiRatios[0];
+		}
+
+		//right roi
+		if(roiRatios[1] > 0 && roiRatios[1] < 1 - roiRatios[0])
+		{
+			roi.width -= width * roiRatios[1] + width * roiRatios[0];
+		}
+
+		//top roi
+		if(roiRatios[2] > 0 && roiRatios[2] < 1 - roiRatios[3])
+		{
+			roi.y = height * roiRatios[2];
+		}
+
+		//bottom roi
+		if(roiRatios[3] > 0 && roiRatios[3] < 1 - roiRatios[2])
+		{
+			roi.height -= height * roiRatios[3] + height * roiRatios[2];
+		}
+		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
+
+		return roi;
+	}
+	else
+	{
+		UERROR("Image is null or _roiRatios(=%d) != 4", roiRatios.size());
+		return cv::Rect();
+	}
+}
+
 cv::Mat decimate(const cv::Mat & image, int decimation)
 {
 	UASSERT(decimation >= 1);

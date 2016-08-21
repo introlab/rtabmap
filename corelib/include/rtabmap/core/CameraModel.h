@@ -115,6 +115,7 @@ public:
 	bool save(const std::string & directory) const;
 
 	CameraModel scaled(double scale) const;
+	CameraModel roi(const cv::Rect & roi) const;
 
 	double horizontalFOV() const; // in degrees
 	double verticalFOV() const;   // in degrees

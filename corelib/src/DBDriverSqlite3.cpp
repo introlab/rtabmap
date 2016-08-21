@@ -744,9 +744,16 @@ ParametersMap DBDriverSqlite3::getLastParametersQuery() const
 	return parameters;
 }
 
-void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) const
+void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	UDEBUG("load data for %d signatures", (int)signatures.size());
+
+	if(!images && !scan && !userData && !occupancyGrid)
+	{
+		UWARN("All requested data fields are false! Nothing loaded...");
+		return;
+	}
+
 	if(_ppDb)
 	{
 		UTimer timer;
@@ -755,7 +762,44 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.10.7") >= 0)
+		if(uStrNumCmp(_version, "0.11.10") >= 0)
+		{
+			std::stringstream fields;
+			if(images)
+			{
+				fields << "image, depth, calibration";
+				if(scan || userData || occupancyGrid)
+				{
+					fields << ", ";
+				}
+			}
+			if(scan)
+			{
+				fields << "scan_info, scan";
+				if(userData || occupancyGrid)
+				{
+					fields << ", ";
+				}
+			}
+			if(userData)
+			{
+				fields << "user_data";
+				if(occupancyGrid)
+				{
+					fields << ", ";
+				}
+			}
+			if(occupancyGrid)
+			{
+				fields << "ground_cells, obstacle_cells, cell_size, view_point_x, view_point_y, view_point_z";
+			}
+
+			query << "SELECT " << fields.str().c_str() << " "
+				  << "FROM Data "
+				  << "WHERE id = ?"
+				  <<";";
+		}
+		else if(uStrNumCmp(_version, "0.10.7") >= 0)
 		{
 			query << "SELECT image, depth, calibration, scan_max_pts, scan_max_range, scan, user_data "
 				  << "FROM Data "
@@ -853,197 +897,259 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures) con
 				cv::Mat scanCompressed;
 				cv::Mat userDataCompressed;
 
-				data = sqlite3_column_blob(ppStmt, index);
-				dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-				//Create the image
-				if(dataSize>4 && data)
+				if(uStrNumCmp(_version, "0.11.10") < 0 || images)
 				{
-					imageCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
-				}
-
-				data = sqlite3_column_blob(ppStmt, index);
-				dataSize = sqlite3_column_bytes(ppStmt, index++);
-
-				//Create the depth image
-				if(dataSize>4 && data)
-				{
-					depthOrRightCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
-				}
-
-				if(uStrNumCmp(_version, "0.10.0") < 0)
-				{
-					data = sqlite3_column_blob(ppStmt, index); // local transform
-					dataSize = sqlite3_column_bytes(ppStmt, index++);
-					if((unsigned int)dataSize == localTransform.size()*sizeof(float) && data)
-					{
-						memcpy(localTransform.data(), data, dataSize);
-					}
-				}
-
-				// calibration
-				if(uStrNumCmp(_version, "0.10.0") >= 0)
-				{
+					//Create the image
 					data = sqlite3_column_blob(ppStmt, index);
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
-					// multi-cameras [fx,fy,cx,cy,[width,height],local_transform, ... ,fx,fy,cx,cy,[width,height],local_transform] (4or6+12)*float * numCameras
-					// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
-					if(dataSize > 0 && data)
+					if(dataSize>4 && data)
 					{
-						float * dataFloat = (float*)data;
-						if(uStrNumCmp(_version, "0.11.2") >= 0 &&
-						   (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
+						imageCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
+					}
+
+					//Create the depth image
+					data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize>4 && data)
+					{
+						depthOrRightCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone();
+					}
+
+					if(uStrNumCmp(_version, "0.10.0") < 0)
+					{
+						data = sqlite3_column_blob(ppStmt, index); // local transform
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						if((unsigned int)dataSize == localTransform.size()*sizeof(float) && data)
 						{
-							int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
-							UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-							int max = cameraCount*(6+localTransform.size());
-							for(int i=0; i<max; i+=6+localTransform.size())
+							memcpy(localTransform.data(), data, dataSize);
+						}
+					}
+
+					// calibration
+					if(uStrNumCmp(_version, "0.10.0") >= 0)
+					{
+						data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						// multi-cameras [fx,fy,cx,cy,[width,height],local_transform, ... ,fx,fy,cx,cy,[width,height],local_transform] (4or6+12)*float * numCameras
+						// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
+						if(dataSize > 0 && data)
+						{
+							float * dataFloat = (float*)data;
+							if(uStrNumCmp(_version, "0.11.2") >= 0 &&
+							   (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
 							{
-								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-								localTransform = Transform::getIdentity();
-								memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
-								models.push_back(CameraModel(
-										(double)dataFloat[i],
-										(double)dataFloat[i+1],
-										(double)dataFloat[i+2],
-										(double)dataFloat[i+3],
-										localTransform));
-								models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
-								UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
-										dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
-										localTransform.prettyPrint().c_str());
+								int cameraCount = dataSize / ((6+localTransform.size())*sizeof(float));
+								UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+								int max = cameraCount*(6+localTransform.size());
+								for(int i=0; i<max; i+=6+localTransform.size())
+								{
+									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+									localTransform = Transform::getIdentity();
+									memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+									models.push_back(CameraModel(
+											(double)dataFloat[i],
+											(double)dataFloat[i+1],
+											(double)dataFloat[i+2],
+											(double)dataFloat[i+3],
+											localTransform));
+									models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
+									UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
+											dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
+											localTransform.prettyPrint().c_str());
+								}
+							}
+							else if(uStrNumCmp(_version, "0.11.2") < 0 &&
+									(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
+							{
+								int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
+								UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
+								int max = cameraCount*(4+localTransform.size());
+								for(int i=0; i<max; i+=4+localTransform.size())
+								{
+									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
+									localTransform = Transform::getIdentity();
+									memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+									models.push_back(CameraModel(
+											(double)dataFloat[i],
+											(double)dataFloat[i+1],
+											(double)dataFloat[i+2],
+											(double)dataFloat[i+3],
+											localTransform));
+								}
+							}
+							else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
+							{
+								UDEBUG("Loading calibration of a stereo camera");
+								memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+								stereoModel = StereoCameraModel(
+										dataFloat[0],  // fx
+										dataFloat[1],  // fy
+										dataFloat[2],  // cx
+										dataFloat[3],  // cy
+										dataFloat[4], // baseline
+										localTransform);
+							}
+							else
+							{
+								UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
 							}
 						}
-						else if(uStrNumCmp(_version, "0.11.2") < 0 &&
-								(unsigned int)dataSize % (4+localTransform.size())*sizeof(float) == 0)
+
+					}
+					else if(uStrNumCmp(_version, "0.7.0") >= 0)
+					{
+						double fx = sqlite3_column_double(ppStmt, index++);
+						double fyOrBaseline = sqlite3_column_double(ppStmt, index++);
+						double cx = sqlite3_column_double(ppStmt, index++);
+						double cy = sqlite3_column_double(ppStmt, index++);
+						if(fyOrBaseline < 1.0)
 						{
-							int cameraCount = dataSize / ((4+localTransform.size())*sizeof(float));
-							UDEBUG("Loading calibration for %d cameras (%d bytes)", cameraCount, dataSize);
-							int max = cameraCount*(4+localTransform.size());
-							for(int i=0; i<max; i+=4+localTransform.size())
-							{
-								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
-								localTransform = Transform::getIdentity();
-								memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
-								models.push_back(CameraModel(
-										(double)dataFloat[i],
-										(double)dataFloat[i+1],
-										(double)dataFloat[i+2],
-										(double)dataFloat[i+3],
-										localTransform));
-							}
-						}
-						else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
-						{
-							UDEBUG("Loading calibration of a stereo camera");
-							memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
-							stereoModel = StereoCameraModel(
-									dataFloat[0],  // fx
-									dataFloat[1],  // fy
-									dataFloat[2],  // cx
-									dataFloat[3],  // cy
-									dataFloat[4], // baseline
-									localTransform);
+							//it is a baseline
+							stereoModel = StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform);
 						}
 						else
 						{
-							UFATAL("Wrong format of the Data.calibration field (size=%d bytes)", dataSize);
+							models.push_back(CameraModel(fx, fyOrBaseline, cx, cy, localTransform));
 						}
-					}
-
-				}
-				else if(uStrNumCmp(_version, "0.7.0") >= 0)
-				{
-					double fx = sqlite3_column_double(ppStmt, index++);
-					double fyOrBaseline = sqlite3_column_double(ppStmt, index++);
-					double cx = sqlite3_column_double(ppStmt, index++);
-					double cy = sqlite3_column_double(ppStmt, index++);
-					if(fyOrBaseline < 1.0)
-					{
-						//it is a baseline
-						stereoModel = StereoCameraModel(fx,fx,cx,cy,fyOrBaseline, localTransform);
 					}
 					else
 					{
-						models.push_back(CameraModel(fx, fyOrBaseline, cx, cy, localTransform));
+						float depthConstant = sqlite3_column_double(ppStmt, index++);
+						float fx = 1.0f/depthConstant;
+						float fy = 1.0f/depthConstant;
+						float cx = 0.0f;
+						float cy = 0.0f;
+						models.push_back(CameraModel(fx, fy, cx, cy, localTransform));
 					}
-				}
-				else
-				{
-					float depthConstant = sqlite3_column_double(ppStmt, index++);
-					float fx = 1.0f/depthConstant;
-					float fy = 1.0f/depthConstant;
-					float cx = 0.0f;
-					float cy = 0.0f;
-					models.push_back(CameraModel(fx, fy, cx, cy, localTransform));
 				}
 
 				int laserScanMaxPts = 0;
-				if(uStrNumCmp(_version, "0.8.11") >= 0)
-				{
-					laserScanMaxPts = sqlite3_column_int(ppStmt, index++);
-				}
-
 				float laserScanMaxRange = 0.0f;
-				if(uStrNumCmp(_version, "0.10.7") >= 0)
+				Transform scanLocalTransform = Transform::getIdentity();
+				if(uStrNumCmp(_version, "0.11.10") < 0 || scan)
 				{
-					laserScanMaxRange = sqlite3_column_int(ppStmt, index++);
-				}
+					// scan_info
+					if(uStrNumCmp(_version, "0.11.10") >= 0)
+					{
+						data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
 
-				data = sqlite3_column_blob(ppStmt, index);
-				dataSize = sqlite3_column_bytes(ppStmt, index++);
-				//Create the laserScan
-				if(dataSize>4 && data)
-				{
-					scanCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // depth2d
-				}
+						if(dataSize > 0 && data)
+						{
+							float * dataFloat = (float*)data;
+							memcpy(scanLocalTransform.data(), dataFloat+2, scanLocalTransform.size()*sizeof(float));
+							laserScanMaxPts = (int)dataFloat[0];
+							laserScanMaxRange = dataFloat[1];
+						}
+					}
+					else
+					{
+						if(uStrNumCmp(_version, "0.8.11") >= 0)
+						{
+							laserScanMaxPts = sqlite3_column_int(ppStmt, index++);
+						}
 
-				if(uStrNumCmp(_version, "0.8.8") >= 0)
-				{
+						if(uStrNumCmp(_version, "0.10.7") >= 0)
+						{
+							laserScanMaxRange = sqlite3_column_int(ppStmt, index++);
+						}
+					}
+
 					data = sqlite3_column_blob(ppStmt, index);
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
-					//Create the userData
+					//Create the laserScan
 					if(dataSize>4 && data)
 					{
-						if(uStrNumCmp(_version, "0.10.1") >= 0)
+						scanCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // depth2d
+					}
+				}
+
+				if(uStrNumCmp(_version, "0.11.10") < 0 || userData)
+				{
+					if(uStrNumCmp(_version, "0.8.8") >= 0)
+					{
+						data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						//Create the userData
+						if(dataSize>4 && data)
 						{
-							userDataCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // userData
-						}
-						else
-						{
-							// compress data (set uncompressed data to signed to make difference with compressed type)
-							userDataCompressed = compressData2(cv::Mat(1, dataSize, CV_8SC1, (void *)data));
+							if(uStrNumCmp(_version, "0.10.1") >= 0)
+							{
+								userDataCompressed = cv::Mat(1, dataSize, CV_8UC1, (void *)data).clone(); // userData
+							}
+							else
+							{
+								// compress data (set uncompressed data to signed to make difference with compressed type)
+								userDataCompressed = compressData2(cv::Mat(1, dataSize, CV_8SC1, (void *)data));
+							}
 						}
 					}
 				}
 
+				// Occupancy grid
+				cv::Mat groundCellsCompressed;
+				cv::Mat obstacleCellsCompressed;
+				float cellSize = 0.0f;
+				cv::Point3f viewPoint;
+				if(uStrNumCmp(_version, "0.11.10") >= 0 && occupancyGrid)
+				{
+					// ground
+					data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize > 0 && data)
+					{
+						groundCellsCompressed = cv::Mat(1, dataSize, CV_8UC1);
+						memcpy((void*)groundCellsCompressed.data, data, dataSize);
+					}
+
+					// obstacle
+					data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize > 0 && data)
+					{
+						obstacleCellsCompressed = cv::Mat(1, dataSize, CV_8UC1);
+						memcpy((void*)obstacleCellsCompressed.data, data, dataSize);
+					}
+
+					cellSize = sqlite3_column_double(ppStmt, index++);
+					viewPoint.x = sqlite3_column_double(ppStmt, index++);
+					viewPoint.y = sqlite3_column_double(ppStmt, index++);
+					viewPoint.z = sqlite3_column_double(ppStmt, index++);
+				}
+
+				SensorData tmp = (*iter)->sensorData();
 				if(models.size())
 				{
 					(*iter)->sensorData() = SensorData(
-							scanCompressed,
-							laserScanMaxPts,
-							laserScanMaxRange,
-							imageCompressed,
-							depthOrRightCompressed,
-							models,
+							scan?scanCompressed:tmp.laserScanCompressed(),
+						    scan?LaserScanInfo(laserScanMaxPts, laserScanMaxRange, scanLocalTransform):tmp.laserScanInfo(),
+							images?imageCompressed:tmp.imageCompressed(),
+							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
+							images?models:tmp.cameraModels(),
 							(*iter)->id(),
-							0,
-							userDataCompressed);
+							(*iter)->getStamp(),
+							userData?userDataCompressed:tmp.userDataCompressed());
 				}
 				else
 				{
 					(*iter)->sensorData() = SensorData(
-							scanCompressed,
-							laserScanMaxPts,
-							laserScanMaxRange,
-							imageCompressed,
-							depthOrRightCompressed,
-							stereoModel,
+							scan?scanCompressed:tmp.laserScanCompressed(),
+							scan?LaserScanInfo(laserScanMaxPts, laserScanMaxRange, scanLocalTransform):tmp.laserScanInfo(),
+							images?imageCompressed:tmp.imageCompressed(),
+							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
+							images?stereoModel:tmp.stereoCameraModel(),
 							(*iter)->id(),
-							0,
-							userDataCompressed);
+							(*iter)->getStamp(),
+							userData?userDataCompressed:tmp.userDataCompressed());
 				}
-
+				if(occupancyGrid)
+				{
+					(*iter)->sensorData().setOccupancyGrid(groundCellsCompressed, obstacleCellsCompressed, cellSize, viewPoint);
+				}
+				else
+				{
+					(*iter)->sensorData().setOccupancyGrid(tmp.gridGroundCellsCompressed(), tmp.gridObstacleCellsCompressed(), tmp.gridCellSize(), tmp.gridViewPoint());
+				}
 				rc = sqlite3_step(ppStmt); // next result...
 			}
 			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -1726,7 +1832,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 				if(uStrNumCmp(_version, "0.11.1") >= 0)
 				{
-					data = sqlite3_column_blob(ppStmt, index); // pose
+					data = sqlite3_column_blob(ppStmt, index); // ground_truth_pose
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
 					if((unsigned int)dataSize == groundTruthPose.size()*sizeof(float) && data)
 					{
@@ -1901,7 +2007,6 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			rc = sqlite3_prepare_v2(_ppDb, query3.str().c_str(), -1, &ppStmt, 0);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-			int calibrationsLoaded = 0;
 			for(std::list<Signature*>::const_iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
 			{
 				// bind id
@@ -1925,7 +2030,6 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
 					if(dataSize > 0 && data)
 					{
-						++calibrationsLoaded;
 						float * dataFloat = (float*)data;
 						if(uStrNumCmp(_version, "0.11.2") >= 0 &&
 						   (unsigned int)dataSize % (6+localTransform.size())*sizeof(float) == 0)
@@ -2003,8 +2107,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 			ULOGGER_DEBUG("Time load %d calibrations=%fs", (int)nodes.size(), timer.ticks());
 		}
-
-		if(ids.size() != loaded)
+	if(ids.size() != loaded)
 		{
 			UERROR("Some signatures not found in database");
 		}
@@ -3017,6 +3120,7 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
 
+
 	//step
 	rc=sqlite3_step(ppStmt);
 	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -3163,7 +3267,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 
 	if(uStrNumCmp(_version, "0.8.11") >= 0)
 	{
-		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanMaxPts());
+		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanInfo().maxPoints());
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
 
@@ -3178,7 +3282,11 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 std::string DBDriverSqlite3::queryStepSensorData() const
 {
 	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
-	if(uStrNumCmp(_version, "0.10.7") >= 0)
+	if(uStrNumCmp(_version, "0.11.10") >= 0)
+	{
+		return "INSERT INTO Data(id, image, depth, calibration, scan_info, scan, user_data, ground_cells, obstacle_cells, cell_size, view_point_x, view_point_y, view_point_z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.10.7") >= 0)
 	{
 		return "INSERT INTO Data(id, image, depth, calibration, scan_max_pts, scan_max_range, scan, user_data) VALUES(?,?,?,?,?,?,?,?);";
 	}
@@ -3293,15 +3401,43 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	}
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-	// scan_max_pts
-	rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanMaxPts());
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-
-	// scan_max_range
-	if(uStrNumCmp(_version, "0.10.7") >= 0)
+	std::vector<float> scanInfo;
+	if(uStrNumCmp(_version, "0.11.10") >= 0)
 	{
-		rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanMaxRange());
+		if(sensorData.laserScanInfo().maxPoints() > 0 ||
+			sensorData.laserScanInfo().maxRange() > 0 ||
+			(!sensorData.laserScanInfo().localTransform().isNull() && !sensorData.laserScanInfo().localTransform().isIdentity()))
+		{
+			scanInfo.resize(2 + Transform().size());
+			scanInfo[0] = sensorData.laserScanInfo().maxPoints();
+			scanInfo[1] = sensorData.laserScanInfo().maxRange();
+			const Transform & localTransform = sensorData.laserScanInfo().localTransform();
+			memcpy(scanInfo.data()+2, localTransform.data(), localTransform.size()*sizeof(float));
+		}
+
+		if(scanInfo.size())
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, scanInfo.data(), scanInfo.size()*sizeof(float), SQLITE_STATIC);
+		}
+		else
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+		}
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	}
+	else
+	{
+		// scan_max_pts
+		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanInfo().maxPoints());
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// scan_max_range
+		if(uStrNumCmp(_version, "0.10.7") >= 0)
+		{
+			rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanInfo().maxRange());
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
 	}
 
 	// scan
@@ -3328,6 +3464,46 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 		}
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
+
+	if(uStrNumCmp(_version, "0.11.10") >= 0)
+	{
+		//ground_cells
+		if(sensorData.gridGroundCellsCompressed().empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			// compress
+			rc = sqlite3_bind_blob(ppStmt, index++, sensorData.gridGroundCellsCompressed().data, (int)sensorData.gridGroundCellsCompressed().cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		//obstacle_cells
+		if(sensorData.gridObstacleCellsCompressed().empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, sensorData.gridObstacleCellsCompressed().data, (int)sensorData.gridObstacleCellsCompressed().cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		//cell_size
+		rc = sqlite3_bind_double(ppStmt, index++, sensorData.gridCellSize());
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		//view_point
+		rc = sqlite3_bind_double(ppStmt, index++, sensorData.gridViewPoint().x);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, sensorData.gridViewPoint().y);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, sensorData.gridViewPoint().z);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+}
 
 	//step
 	rc=sqlite3_step(ppStmt);

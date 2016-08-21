@@ -383,6 +383,36 @@ CameraModel CameraModel::scaled(double scale) const
 	return scaledModel;
 }
 
+CameraModel CameraModel::roi(const cv::Rect & roi) const
+{
+	CameraModel roiModel = *this;
+	if(this->isValidForProjection())
+	{
+		// has only effect on cx and cy
+		cv::Mat K;
+		if(!K_.empty())
+		{
+			K = K_.clone();
+			K.at<double>(0,2) -= roi.x;
+			K.at<double>(1,2) -= roi.y;
+		}
+
+		cv::Mat P;
+		if(!P_.empty())
+		{
+			P = P_.clone();
+			P.at<double>(0,2) -= roi.x;
+			P.at<double>(1,2) -= roi.y;
+		}
+		roiModel = CameraModel(name_, roi.size(), K, D_, R_, P, localTransform_);
+	}
+	else
+	{
+		UWARN("Trying to extract roi from a camera model not valid! Ignoring roi...");
+	}
+	return roiModel;
+}
+
 double CameraModel::horizontalFOV() const
 {
 	if(imageWidth() > 0 && fx() > 0.0)

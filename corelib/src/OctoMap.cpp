@@ -31,11 +31,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_filtering.h>
 #include <rtabmap/core/util3d_mapping.h>
+#include <pcl/common/transforms.h>
 
 namespace rtabmap {
 
 OctoMap::OctoMap(float voxelSize) :
-		octree_(new octomap::ColorOcTree(voxelSize))
+		octree_(new octomap::ColorOcTree(voxelSize)),
+		hasColor_(false)
 {
 	UASSERT(voxelSize>0.0f);
 }
@@ -51,16 +53,32 @@ void OctoMap::clear()
 	octree_->clear();
 	occupiedCells_.clear();
 	cache_.clear();
+	cacheClouds_.clear();
+	cacheViewPoints_.clear();
 	addedNodes_.clear();
 	keyRay_ = octomap::KeyRay();
+	hasColor_ = false;
 }
 
 void OctoMap::addToCache(int nodeId,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles)
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
+		const pcl::PointXYZ & viewPoint)
 {
 	UDEBUG("nodeId=%d", nodeId);
+	cacheClouds_.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+	cacheViewPoints_.insert(std::make_pair(nodeId, cv::Point3f(viewPoint.x, viewPoint.y, viewPoint.z)));
+}
+void OctoMap::addToCache(int nodeId,
+		const cv::Mat & ground,
+		const cv::Mat & obstacles,
+		const cv::Point3f & viewPoint)
+{
+	UASSERT(ground.empty() || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(6));
+	UASSERT(obstacles.empty() || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(6));
+	UDEBUG("nodeId=%d", nodeId);
 	cache_.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+	cacheViewPoints_.insert(std::make_pair(nodeId, viewPoint));
 }
 
 void OctoMap::update(const std::map<int, Transform> & poses)
@@ -174,12 +192,19 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 		for(std::list<std::pair<int, Transform> >::const_iterator iter=orderedPoses.begin(); iter!=orderedPoses.end(); ++iter)
 		{
 			std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::iterator cloudIter;
-			cloudIter = cache_.find(iter->first);
-			if(cloudIter != cache_.end())
+			std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator occupancyIter;
+			std::map<int, cv::Point3f>::iterator viewPointIter;
+			cloudIter = cacheClouds_.find(iter->first);
+			occupancyIter = cache_.find(iter->first);
+			viewPointIter = cacheViewPoints_.find(iter->first);
+			if(occupancyIter != cache_.end() || cloudIter != cacheClouds_.end())
 			{
 				UDEBUG("Adding %d to octomap (resolution=%f)", iter->first, octree_->getResolution());
 
+				UASSERT(viewPointIter != cacheViewPoints_.end());
 				octomap::point3d sensorOrigin(iter->second.x(), iter->second.y(), iter->second.z());
+				sensorOrigin += octomap::point3d(viewPointIter->second.x, viewPointIter->second.y, viewPointIter->second.z);
+
 				octomap::OcTreeKey tmpKey;
 				if (!octree_->coordToKeyChecked(sensorOrigin, tmpKey)
 						|| !octree_->coordToKeyChecked(sensorOrigin, tmpKey))
@@ -190,10 +215,21 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				// instead of direct scan insertion, compute update to filter ground:
 				octomap::KeySet free_cells, occupied_cells, ground_cells;
 				// insert ground points only as free:
-				UDEBUG("%d: compute free cells (from %d ground points)", iter->first, (int)cloudIter->second.first->size());
-				for (unsigned int i=0; i<cloudIter->second.first->size(); ++i)
+				unsigned int maxGroundPts = occupancyIter != cache_.end()?occupancyIter->second.first.cols:cloudIter->second.first->size();
+				UDEBUG("%d: compute free cells (from %d ground points)", iter->first, (int)maxGroundPts);
+				Eigen::Affine3f t = iter->second.toEigen3f();
+				for (unsigned int i=0; i<maxGroundPts; ++i)
 				{
-					pcl::PointXYZRGB pt = util3d::transformPoint(cloudIter->second.first->at(i), iter->second);
+					pcl::PointXYZRGB pt;
+					if(occupancyIter != cache_.end())
+					{
+						pt = util3d::laserScanToPointRGB(occupancyIter->second.first, i);
+						pt = pcl::transformPoint(pt, t);
+					}
+					else
+					{
+						pt = pcl::transformPoint(cloudIter->second.first->at(i), t);
+					}
 
 					octomap::point3d point(pt.x, pt.y, pt.z);
 
@@ -211,6 +247,10 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 						octomap::ColorOcTreeNode * n = octree_->updateNode(key, false);
 						if(n)
 						{
+							if(!hasColor_ && (pt.r !=0 || pt.g != 0 || pt.b != 0))
+							{
+								hasColor_ = true;
+							}
 							octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
 							if(iter->first > 0)
 							{
@@ -226,10 +266,20 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				UDEBUG("%d: free cells = %d", iter->first, (int)free_cells.size());
 
 				// all other points: free on ray, occupied on endpoint:
-				UDEBUG("%d: compute occupied cells (from %d obstacle points)", iter->first, (int) cloudIter->second.second->size());
-				for (unsigned int i=0; i<cloudIter->second.second->size(); ++i)
+				unsigned int maxObstaclePts = occupancyIter != cache_.end()?occupancyIter->second.second.cols:cloudIter->second.second->size();
+				UDEBUG("%d: compute occupied cells (from %d obstacle points)", iter->first, (int)maxObstaclePts);
+				for (unsigned int i=0; i<maxObstaclePts; ++i)
 				{
-					pcl::PointXYZRGB pt = util3d::transformPoint(cloudIter->second.second->at(i), iter->second);
+					pcl::PointXYZRGB pt;
+					if(occupancyIter != cache_.end())
+					{
+						pt = util3d::laserScanToPointRGB(occupancyIter->second.second, i);
+						pt = pcl::transformPoint(pt, t);
+					}
+					else
+					{
+						pt = pcl::transformPoint(cloudIter->second.second->at(i), t);
+					}
 
 					octomap::point3d point(pt.x, pt.y, pt.z);
 
@@ -247,6 +297,10 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 						octomap::ColorOcTreeNode * n = octree_->updateNode(key, true);
 						if(n)
 						{
+							if(!hasColor_ && (pt.r !=0 || pt.g != 0 || pt.b != 0))
+							{
+								hasColor_ = true;
+							}
 							octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
 							if(iter->first > 0)
 							{
@@ -298,6 +352,8 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 		}
 	}
 	cache_.clear();
+	cacheClouds_.clear();
+	cacheViewPoints_.clear();
 }
 
 void HSVtoRGB( float *r, float *g, float *b, float h, float s, float v )
@@ -385,7 +441,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		if(octree_->isNodeOccupied(*it))
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
-			if(octree_->getTreeDepth() == it.getDepth())
+			if(octree_->getTreeDepth() == it.getDepth() && hasColor_)
 			{
 				(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
 			}
@@ -475,14 +531,14 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 		ground = util3d::voxelize(ground, gridCellSize);
 	}
 
-	cv::Mat obstaclesMat = cv::Mat((int)obstacles->size(), 1, CV_32FC2);
+	cv::Mat obstaclesMat = cv::Mat(1, (int)obstacles->size(), CV_32FC2);
 	for(unsigned int i=0;i<obstacles->size(); ++i)
 	{
 		obstaclesMat.at<cv::Vec2f>(i)[0] = obstacles->at(i).x;
 		obstaclesMat.at<cv::Vec2f>(i)[1] = obstacles->at(i).y;
 	}
 
-	cv::Mat groundMat = cv::Mat((int)ground->size(), 1, CV_32FC2);
+	cv::Mat groundMat = cv::Mat(1, (int)ground->size(), CV_32FC2);
 	for(unsigned int i=0;i<ground->size(); ++i)
 	{
 		groundMat.at<cv::Vec2f>(i)[0] = ground->at(i).x;

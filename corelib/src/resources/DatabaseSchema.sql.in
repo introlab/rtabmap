@@ -21,9 +21,7 @@ CREATE TABLE Node (
 	pose BLOB,
 	ground_truth_pose BLOB,
 	label TEXT,
-	obstacle_cells BLOB,
-	ground_cells BLOB,
-	cell_size FLOAT,
+	
 	time_enter DATE,
 	PRIMARY KEY (id)
 );
@@ -33,9 +31,17 @@ CREATE TABLE Data (
 	image BLOB,               -- compressed image (Grayscale or RGB)
 	depth BLOB,               -- compressed image (Depth or Right image)
 	calibration BLOB,         -- fx, fy, cx, cy, [baseline,] width, height, local_transform
+	
 	scan BLOB,                -- compressed data (Laser scan)
-	scan_max_pts INTEGER,     -- Laser scan max points
-	scan_max_range FLOAT,     -- Laser max range
+	scan_info BLOB,           -- scan_max_pts, scan_max_range, local_transform
+	
+	ground_cells BLOB,        -- compressed data (occupancy grid)
+	obstacle_cells BLOB,      -- compressed data (occupancy grid)
+	cell_size FLOAT,
+	view_point_x FLOAT,
+	view_point_y FLOAT,
+	view_point_z FLOAT,
+	
 	user_data BLOB,           -- compressed data (User data)
 	time_enter DATE,
 	PRIMARY KEY (id)

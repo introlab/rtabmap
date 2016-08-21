@@ -50,6 +50,7 @@ class CameraThread;
 class OdometryThread;
 class CloudViewer;
 class LoopClosureViewer;
+class OccupancyGrid;
 }
 
 class QGraphicsScene;
@@ -238,12 +239,6 @@ private:
 			const std::map<int, Transform> & groundTruths,
 			bool verboseProgress = false);
 	std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
-	void createAndAddProjectionMap(
-			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-			const pcl::IndicesPtr & indices,
-			int nodeId,
-			const Transform & pose,
-			bool updateOctomap = false);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId);
 	Transform alignPosesToGroundTruth(std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth);
@@ -299,9 +294,11 @@ private:
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 
 	std::map<int, cv::Mat> _createdScans;
-	std::map<int, std::pair<cv::Mat, cv::Mat> > _projectionLocalMaps; // <ground, obstacles>
 	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>
+	std::map<int, cv::Point3f> _gridViewPoints;
+	long _cachedGridsMemoryUsage;
 
+	rtabmap::OccupancyGrid * _occupancyGrid;
 	rtabmap::OctoMap * _octomap;
 
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> _createdFeatures;

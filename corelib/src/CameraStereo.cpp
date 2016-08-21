@@ -1164,7 +1164,7 @@ SensorData CameraStereoImages::captureImage(CameraInfo * info)
 				stereoModel_.setImageSize(leftImage.size());
 			}
 
-			data = SensorData(left.laserScanRaw(), left.laserScanMaxPts(), 0, leftImage, rightImage, stereoModel_, left.id()/(camera2_?1:2), left.stamp());
+			data = SensorData(left.laserScanRaw(), left.laserScanInfo(), leftImage, rightImage, stereoModel_, left.id()/(camera2_?1:2), left.stamp());
 			data.setGroundTruth(left.groundTruth());
 		}
 	}

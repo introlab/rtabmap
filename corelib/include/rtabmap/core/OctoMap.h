@@ -62,7 +62,12 @@ public:
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	void addToCache(int nodeId,
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
+			const pcl::PointXYZ & viewPoint);
+	void addToCache(int nodeId,
+			const cv::Mat & ground,
+			const cv::Mat & obstacles,
+			const cv::Point3f & viewPoint);
 	void update(const std::map<int, Transform> & poses);
 
 	const octomap::ColorOcTree * octree() const {return octree_;}
@@ -84,11 +89,14 @@ public:
 	void clear();
 
 private:
-	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > cache_;
+	std::map<int, std::pair<cv::Mat, cv::Mat> > cache_;
+	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > cacheClouds_;
+	std::map<int, cv::Point3f> cacheViewPoints_;
 	octomap::ColorOcTree * octree_;
 	std::map<octomap::ColorOcTreeNode*, OcTreeNodeInfo> occupiedCells_;
 	std::map<int, Transform> addedNodes_;
 	octomap::KeyRay keyRay_;
+	bool hasColor_;
 };
 
 } /* namespace rtabmap */

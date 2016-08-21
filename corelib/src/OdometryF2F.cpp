@@ -133,7 +133,7 @@ Transform OdometryF2F::computeTransform(
 			info->words = newFrame.getWords();
 
 			info->localScanMapSize = tmpRefFrame.sensorData().laserScanRaw().cols;
-			info->localScanMap = util3d::transformLaserScan(tmpRefFrame.sensorData().laserScanRaw(), t);
+			info->localScanMap = util3d::transformLaserScan(tmpRefFrame.sensorData().laserScanRaw(), tmpRefFrame.sensorData().laserScanInfo().localTransform()*t);
 		}
 	}
 	else
@@ -168,7 +168,7 @@ Transform OdometryF2F::computeTransform(
 			if((features >= registrationPipeline_->getMinVisualCorrespondences()) &&
 			   (registrationPipeline_->getMinGeometryCorrespondencesRatio()==0.0f ||
 					   (newFrame.sensorData().laserScanRaw().cols &&
-					   (newFrame.sensorData().laserScanMaxPts() == 0 || float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanMaxPts())>=registrationPipeline_->getMinGeometryCorrespondencesRatio()))))
+					   (newFrame.sensorData().laserScanInfo().maxPoints() == 0 || float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanInfo().maxPoints())>=registrationPipeline_->getMinGeometryCorrespondencesRatio()))))
 			{
 				refFrame_ = newFrame;
 
@@ -196,9 +196,9 @@ Transform OdometryF2F::computeTransform(
 				{
 					UWARN("Too low scan points (%d), keeping last key frame...", newFrame.sensorData().laserScanRaw().cols);
 				}
-				else if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newFrame.sensorData().laserScanMaxPts() != 0 && float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanMaxPts())<registrationPipeline_->getMinGeometryCorrespondencesRatio())
+				else if(registrationPipeline_->getMinGeometryCorrespondencesRatio()>0.0f && newFrame.sensorData().laserScanInfo().maxPoints() != 0 && float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanInfo().maxPoints())<registrationPipeline_->getMinGeometryCorrespondencesRatio())
 				{
-					UWARN("Too low scan points ratio (%d < %d), keeping last key frame...", float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanMaxPts()), registrationPipeline_->getMinGeometryCorrespondencesRatio());
+					UWARN("Too low scan points ratio (%d < %d), keeping last key frame...", float(newFrame.sensorData().laserScanRaw().cols)/float(newFrame.sensorData().laserScanInfo().maxPoints()), registrationPipeline_->getMinGeometryCorrespondencesRatio());
 				}
 			}
 		}

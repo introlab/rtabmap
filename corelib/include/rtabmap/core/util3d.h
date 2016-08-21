@@ -141,7 +141,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
-		const ParametersMap & parameters = ParametersMap());
+		const ParametersMap & parameters = ParametersMap(),
+		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
 
 /**
  * Create an RGB cloud from the images contained in SensorData. If there is only one camera,
@@ -154,6 +155,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
  * @param maxDepth, maximum depth of the projected points (farther points are set to null in case of an organized cloud).
  * @param minDepth, minimum depth of the projected points (closer points are set to null in case of an organized cloud).
  * @param validIndices, the indices of valid points in the cloud
+ * @param roiRatios, [left, right, top, bottom] region of interest (in ratios) of the image projected.
  * @return a RGB cloud.
  */
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
@@ -162,7 +164,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
-		const ParametersMap & parameters = ParametersMap());
+		const ParametersMap & parameters = ParametersMap(),
+		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
 
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					const cv::Mat & depthImage,
@@ -178,12 +181,24 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
 // return CV_32FC6
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform = Transform());
+// return CV_32FC4
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const Transform & transform = Transform());
 // return CV_32FC2
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
 // For laserScan of type CV_32FC2, z is set to null.
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform = Transform());
-// For laserScan of type CV_32FC2 or CV_32FC3, normals are set to null.
+// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP laserScanToPointCloudNormal(const cv::Mat & laserScan, const Transform & transform = Transform());
+// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to null.
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP laserScanToPointCloudRGB(const cv::Mat & laserScan, const Transform & transform = Transform());
+
+// For laserScan of type CV_32FC2, z is set to null.
+pcl::PointXYZ RTABMAP_EXP laserScanToPoint(const cv::Mat & laserScan, int index);
+// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
+pcl::PointNormal RTABMAP_EXP laserScanToPointNormal(const cv::Mat & laserScan, int index);
+// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to null.
+pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const cv::Mat & laserScan, int index);
+
 
 cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,
