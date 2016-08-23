@@ -307,22 +307,21 @@ unsigned int FlannIndex::addPoints(const cv::Mat & features)
 	}
 	UASSERT(features.type() == featuresType_);
 	UASSERT(features.cols == featuresDim_);
+	bool indexRebuilt = false;
+	size_t removedPts = 0;
 	if(featuresType_ == CV_8UC1)
 	{
 		rtflann::Matrix<unsigned char> points(features.data, features.rows, features.cols);
 		rtflann::Index<rtflann::Hamming<unsigned char> > * index = (rtflann::Index<rtflann::Hamming<unsigned char> >*)index_;
+		removedPts = index->removedCount();
 		index->addPoints(points, 0);
 		// Rebuild index if it doubles in size
 		if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 		{
-			// clean not used features
-			for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
-			{
-				addedDescriptors_.erase(*iter);
-			}
-			removedIndexes_.clear();
 			index->buildIndex();
 		}
+		// if no more removed points, the index has been rebuilt
+		indexRebuilt = index->removedCount() == 0 && removedPts>0;
 	}
 	else
 	{
@@ -330,51 +329,53 @@ unsigned int FlannIndex::addPoints(const cv::Mat & features)
 		if(useDistanceL1_)
 		{
 			rtflann::Index<rtflann::L1<float> > * index = (rtflann::Index<rtflann::L1<float> >*)index_;
+			removedPts = index->removedCount();
 			index->addPoints(points, 0);
 			// Rebuild index if it doubles in size
 			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 			{
-				// clean not used features
-				for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
-				{
-					addedDescriptors_.erase(*iter);
-				}
-				removedIndexes_.clear();
 				index->buildIndex();
 			}
+			// if no more removed points, the index has been rebuilt
+			indexRebuilt = index->removedCount() == 0 && removedPts>0;
 		}
 		else if(featuresDim_ <= 3)
 		{
 			rtflann::Index<rtflann::L2_Simple<float> > * index = (rtflann::Index<rtflann::L2_Simple<float> >*)index_;
+			removedPts = index->removedCount();
 			index->addPoints(points, 0);
 			// Rebuild index if it doubles in size
 			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 			{
-				// clean not used features
-				for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
-				{
-					addedDescriptors_.erase(*iter);
-				}
-				removedIndexes_.clear();
 				index->buildIndex();
 			}
+			// if no more removed points, the index has been rebuilt
+			indexRebuilt = index->removedCount() == 0 && removedPts>0;
 		}
 		else
 		{
 			rtflann::Index<rtflann::L2<float> > * index = (rtflann::Index<rtflann::L2<float> >*)index_;
+			removedPts = index->removedCount();
 			index->addPoints(points, 0);
 			// Rebuild index if it doubles in size
 			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 			{
-				// clean not used features
-				for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
-				{
-					addedDescriptors_.erase(*iter);
-				}
-				removedIndexes_.clear();
 				index->buildIndex();
 			}
+			// if no more removed points, the index has been rebuilt
+			indexRebuilt = index->removedCount() == 0 && removedPts>0;
 		}
+	}
+
+	if(indexRebuilt)
+	{
+		UASSERT(removedPts == removedIndexes_.size());
+		// clean not used features
+		for(std::list<int>::iterator iter=removedIndexes_.begin(); iter!=removedIndexes_.end(); ++iter)
+		{
+			addedDescriptors_.erase(*iter);
+		}
+		removedIndexes_.clear();
 	}
 
 	addedDescriptors_.insert(std::make_pair(nextIndex_, features));
