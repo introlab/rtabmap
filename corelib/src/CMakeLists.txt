@@ -69,6 +69,7 @@ SET(SRC_FILES
 		
 	rtflann/ext/lz4.c
 	rtflann/ext/lz4hc.c
+	FlannIndex.cpp
 	
 	sqlite3/sqlite3.c	
 )
