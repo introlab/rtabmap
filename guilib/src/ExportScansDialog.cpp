@@ -402,6 +402,7 @@ std::map<int, pcl::PointCloud<pcl::PointNormal>::Ptr> ExportScansDialog::getScan
 							scan = util3d::downsample(scan, _ui->spinBox_decimation->value());
 						}
 					}
+					scan = util3d::transformLaserScan(scan, s.sensorData().laserScanInfo().localTransform());
 				}
 				else
 				{

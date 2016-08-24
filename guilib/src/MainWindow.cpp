@@ -1036,7 +1036,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					}
 
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-					cloud = util3d::laserScanToPointCloudNormal(scan, odom.data().laserScanInfo().localTransform()*pose);
+					cloud = util3d::laserScanToPointCloudNormal(scan, pose*odom.data().laserScanInfo().localTransform());
 					if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
 					{
 						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
@@ -2700,7 +2700,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 					//reconvert the voxelized cloud
 					scan = util3d::laserScanFromPointCloud(*cloud);
 				}
-				_createdScans.insert(std::make_pair(nodeId, scan));
+				else
+				{
+					scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
+				}
+				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
 			}
 		}
 		else
@@ -2725,16 +2729,13 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 				if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
 				{
 					//reconvert the voxelized cloud
-					if(scan.channels() == 2)
-					{
-						scan = util3d::laserScan2dFromPointCloud(*cloud);
-					}
-					else
-					{
-						scan = util3d::laserScanFromPointCloud(*cloud);
-					}
+					scan = util3d::laserScanFromPointCloud(*cloud);
 				}
-				_createdScans.insert(std::make_pair(nodeId, scan));
+				else
+				{
+					scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
+				}
+				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
 			}
 		}
 		_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));

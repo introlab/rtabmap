@@ -1705,7 +1705,7 @@ void DatabaseViewer::view3DLaserScans()
 					{
 						scan = util3d::downsample(scan, downsamplingStepSize);
 					}
-					cloud = util3d::laserScanToPointCloud(scan);
+					cloud = util3d::laserScanToPointCloud(scan, data.laserScanInfo().localTransform());
 
 					if(cloud->size())
 					{
@@ -1947,7 +1947,7 @@ void DatabaseViewer::generate3DLaserScans()
 						{
 							scan = util3d::downsample(scan, downsamplingStepSize);
 						}
-						cloud = util3d::laserScanToPointCloud(scan);
+						cloud = util3d::laserScanToPointCloud(scan, data.laserScanInfo().localTransform());
 
 						if(cloud->size())
 						{
@@ -3280,7 +3280,7 @@ void DatabaseViewer::updateConstraintView(
 									data.uncompressDataConst(0, 0, &scan, 0);
 									if(!scan.empty())
 									{
-										pcl::PointCloud<pcl::PointXYZ>::Ptr scanCloud = util3d::laserScanToPointCloud(scan);
+										pcl::PointCloud<pcl::PointXYZ>::Ptr scanCloud = util3d::laserScanToPointCloud(scan, data.laserScanInfo().localTransform());
 										if(assembledScans->size() == 0)
 										{
 											assembledScans = util3d::transformPointCloud(scanCloud, iter->second);

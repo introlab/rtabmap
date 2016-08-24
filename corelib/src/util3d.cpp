@@ -959,14 +959,14 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 }
 
 pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
-					const cv::Mat & depthImage,
-					float fx,
-					float fy,
-					float cx,
-					float cy,
-					float maxDepth,
-					float minDepth,
-					const Transform & localTransform)
+		const cv::Mat & depthImage,
+		float fx,
+		float fy,
+		float cx,
+		float cy,
+		float maxDepth,
+		float minDepth,
+		const Transform & localTransform)
 {
 	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
 	UASSERT(!localTransform.isNull());
@@ -990,6 +990,39 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
 			}
 		}
 		scan.resize(oi);
+	}
+	return scan;
+}
+
+pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImages(
+		const cv::Mat & depthImages,
+		const std::vector<CameraModel> & cameraModels,
+		float maxDepth,
+		float minDepth)
+{
+	pcl::PointCloud<pcl::PointXYZ> scan;
+	UASSERT(int((depthImages.cols/cameraModels.size())*cameraModels.size()) == depthImages.cols);
+	int subImageWidth = depthImages.cols/cameraModels.size();
+	for(unsigned int i=0; i<cameraModels.size(); ++i)
+	{
+		if(cameraModels[i].isValidForProjection())
+		{
+			cv::Mat depth = cv::Mat(depthImages, cv::Rect(subImageWidth*i, 0, subImageWidth, depthImages.rows));
+
+			scan += laserScanFromDepthImage(
+					depth,
+					cameraModels[i].fx(),
+					cameraModels[i].fy(),
+					cameraModels[i].cx(),
+					cameraModels[i].cy(),
+					maxDepth,
+					minDepth,
+					cameraModels[i].localTransform());
+		}
+		else
+		{
+			UERROR("Camera model %d is invalid", i);
+		}
 	}
 	return scan;
 }
