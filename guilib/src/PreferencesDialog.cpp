@@ -99,7 +99,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_indexModel(0),
 	_initialized(false),
 	_progressDialog(new QProgressDialog(this)),
-	_calibrationDialog(new CalibrationDialog(false, ".", this)),
+	_calibrationDialog(new CalibrationDialog(false, ".", false, this)),
 	_createCalibrationDialog(new CreateSimpleCalibrationDialog(".", "", this))
 {
 	ULOGGER_DEBUG("");
