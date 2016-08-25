@@ -196,6 +196,7 @@ private:
 	float _localImmunizationRatio;
 	int _proximityMaxGraphDepth;
 	int _proximityMaxPaths;
+	int _proximityMaxNeighbors;
 	float _proximityFilteringRadius;
 	bool _proximityRawPosesUsed;
 	float _proximityAngle;

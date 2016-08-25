@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>13</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -7185,7 +7185,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_scanMatching">
                          <property name="text">
-                          <string>Neighbor link refining. When a new node is added to the graph, the transformation of its neighbor link with the previous node is refined using ICP (laser scans required!).</string>
+                          <string>Neighbor link refining. When a new node is added to the graph, the transformation of its neighbor link with the previous node is refined using the registration approach selected.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -7352,7 +7352,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_50" columnstretch="0,1">
-                         <item row="3" column="0">
+                         <item row="4" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_pathFilteringRadius">
                            <property name="suffix">
                             <string> m</string>
@@ -7368,7 +7368,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="1">
+                         <item row="5" column="1">
                           <widget class="QLabel" name="label_scanMatching_4">
                            <property name="text">
                             <string>When comparing to a local path, merge the laser scans using the odometry poses instead of the ones in the optimized local graph.</string>
@@ -7381,7 +7381,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="3" column="1">
+                         <item row="4" column="1">
                           <widget class="QLabel" name="label_space3_3">
                            <property name="text">
                             <string>Path filtering radius to avoid merging laser scans which are close. 0 to ignore. A path should also be inside that radius to be considered for proximity detection.</string>
@@ -7394,7 +7394,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="4" column="0">
+                         <item row="5" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpacePathOdomPosesUsed">
                            <property name="text">
                             <string/>
@@ -7424,7 +7424,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="1">
+                         <item row="7" column="1">
                           <widget class="QLabel" name="label_scanMatching_6">
                            <property name="text">
                             <string>Save scan matching IDs in link's user data.</string>
@@ -7437,14 +7437,14 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="0">
+                         <item row="7" column="0">
                           <widget class="QCheckBox" name="checkBox_localSpaceScanMatchingIDsSaved">
                            <property name="text">
                             <string/>
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
+                         <item row="3" column="1">
                           <widget class="QLabel" name="label_scanMatching_8">
                            <property name="text">
                             <string>Maximum angle for visual proximity detection.</string>
@@ -7457,7 +7457,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="0">
+                         <item row="3" column="0">
                           <widget class="QDoubleSpinBox" name="localDetection_angle">
                            <property name="suffix">
                             <string> deg</string>
@@ -7488,6 +7488,29 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </item>
                          <item row="1" column="0">
                           <widget class="QSpinBox" name="localDetection_maxPaths">
+                           <property name="maximum">
+                            <number>999</number>
+                           </property>
+                           <property name="value">
+                            <number>0</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_space3_8">
+                           <property name="text">
+                            <string>Maximum neighbor nodes compared on each path.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QSpinBox" name="localDetection_maxNeighbors">
                            <property name="maximum">
                             <number>999</number>
                            </property>

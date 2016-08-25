@@ -318,7 +318,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, LocalRadius,              float, 10,   "Local radius (m) for nodes selection in the local map. This parameter is used in some approaches about the local map management.");
 	RTABMAP_PARAM(RGBD, LocalImmunizationRatio,   float, 0.25, "Ratio of working memory for which local nodes are immunized from transfer.");
 	RTABMAP_PARAM(RGBD, ScanMatchingIdsSavedInLinks, bool, true,      "Save scan matching IDs in link's user data.");
-	RTABMAP_PARAM(RGBD, NeighborLinkRefining,          bool, false,  "When a new node is added to the graph, the transformation of its neighbor link to the previous node is refined using ICP (laser scans required!).");
+	RTABMAP_PARAM(RGBD, NeighborLinkRefining,          bool, false,  uFormat("When a new node is added to the graph, the transformation of its neighbor link to the previous node is refined using registration approach selected (%s).", kRegStrategy().c_str()));
 	RTABMAP_PARAM(RGBD, LoopClosureReextractFeatures,  bool, false,  "Extract features even if there are some already in the nodes.");
 	RTABMAP_PARAM(RGBD, CreateOccupancyGrid,          bool, false,  "Create local occupancy grid maps. See \"Grid\" group for parameters.");
 
@@ -328,6 +328,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(RGBD, ProximityMaxGraphDepth,       int, 50,      "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
 	RTABMAP_PARAM(RGBD, ProximityMaxPaths,            int, 3,       "Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit.");
 	RTABMAP_PARAM(RGBD, ProximityPathFilteringRadius, float, 0.5,   "Path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection.");
+	RTABMAP_PARAM(RGBD, ProximityPathMaxNeighbors,    int, 10,      "Maximum neighbor nodes compared on each path.");
 	RTABMAP_PARAM(RGBD, ProximityPathRawPosesUsed,    bool, true,   "When comparing to a local path, merge the scan using the odometry poses (with neighbor link optimizations) instead of the ones in the optimized local graph.");
 	RTABMAP_PARAM(RGBD, ProximityAngle,               float, 45,    "Maximum angle (degrees) for visual proximity detection.");
 
@@ -430,7 +431,7 @@ class RTABMAP_EXP Parameters
 	// ICP registration parameters
 	RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");
 	RTABMAP_PARAM(Icp, MaxRotation,               float, 0.78,  "Maximum ICP rotation correction accepted (rad).");
-	RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.025, "Uniform sampling voxel size (0=disabled).");
+	RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.0,   "Uniform sampling voxel size (0=disabled).");
 	RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1, 	    "Downsampling step size (1=no sampling). This is done before uniform sampling.");
 	RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");
 	RTABMAP_PARAM(Icp, Iterations,                int, 30, 		"Max iterations.");
