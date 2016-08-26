@@ -595,12 +595,24 @@ bool DatabaseViewer::openDatabase(const QString & path)
 					   iter->second.compare(jter->second) != 0 &&
 					   iter->first.compare(Parameters::kRtabmapWorkingDirectory()) != 0)
 					{
-						differentParameters.insert(*iter);
-						QString msg = tr("Parameter \"%1\": database=\"%2\" Preferences=\"%3\"")
-								.arg(iter->first.c_str())
-								.arg(iter->second.c_str())
-								.arg(jter->second.c_str());
-						UWARN(msg.toStdString().c_str());
+						bool different = true;
+						if(Parameters::getType(iter->first).compare("double") ==0 ||
+						   Parameters::getType(iter->first).compare("float") == 0)
+						{
+							if(uStr2Double(iter->second) == uStr2Double(jter->second))
+							{
+								different = false;
+							}
+						}
+						if(different)
+						{
+							differentParameters.insert(*iter);
+							QString msg = tr("Parameter \"%1\": database=\"%2\" Preferences=\"%3\"")
+									.arg(iter->first.c_str())
+									.arg(iter->second.c_str())
+									.arg(jter->second.c_str());
+							UWARN(msg.toStdString().c_str());
+						}
 					}
 				}
 
@@ -615,10 +627,13 @@ bool DatabaseViewer::openDatabase(const QString & path)
 							QMessageBox::Yes);
 					if(r == QMessageBox::Yes)
 					{
+						QStringList str;
 						for(rtabmap::ParametersMap::const_iterator iter = differentParameters.begin(); iter!=differentParameters.end(); ++iter)
 						{
 							ui_->parameters_toolbox->updateParameter(iter->first, iter->second);
+							str.push_back(iter->first.c_str());
 						}
+						notifyParametersChanged(str);
 					}
 				}
 			}

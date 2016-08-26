@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>13</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1514,7 +1514,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                     <item>
                      <widget class="QLabel" name="label_167">
                       <property name="text">
-                       <string>When the Graph View is visible or if the &quot;Show in 3D map view&quot; below is checked, the grid map is assembled using occupancy grids saved in each node. If nodes don't have local occupancy grid created, use the Database Viewer tool to generate them.</string>
+                       <string>When the Graph View is visible or if the &quot;Show in 3D map view&quot; below is checked, the grid map is assembled using occupancy grids saved in each node. See Occupancy Grid (advanced) panel for parameters used to create the local occupancy grids. If nodes don't have local occupancy grid created, use the Database Viewer tool to generate them.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>

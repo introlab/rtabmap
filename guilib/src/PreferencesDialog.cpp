@@ -146,13 +146,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->reextract_nn->removeItem(4);
 	}
 
-#if PCL_VERSION_COMPARE(<, 1, 7, 2)
-	_ui->checkBox_map_shown->setChecked(false);
-	_ui->checkBox_map_shown->setEnabled(false);
-	_ui->label_map_shown->setText(_ui->label_map_shown->text() + " (Disabled, PCL >=1.7.2 required)");
-	_ui->label_map_shown->setEnabled(false);
-#endif
-
 #ifndef RTABMAP_OCTOMAP
 	_ui->groupBox_octomap->setChecked(false);
 	_ui->groupBox_octomap->setEnabled(false);
@@ -1242,7 +1235,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_map_erode->setChecked(false);
 		_ui->checkBox_map_incremental->setChecked(false);
 		_ui->doubleSpinBox_map_footprintRadius->setValue(0);
-		_ui->doubleSpinBox_map_opacity->setValue(0.75);
+		_ui->doubleSpinBox_map_opacity->setValue(1);
 
 		_ui->groupBox_octomap->setChecked(false);
 		_ui->spinBox_octomap_treeDepth->setValue(16);

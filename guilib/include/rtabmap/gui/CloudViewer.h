@@ -142,6 +142,10 @@ public:
 	bool addOctomap(const OctoMap * octomap, unsigned int treeDepth = 0, bool showEdges = true, bool lightingOn = false);
 	void removeOctomap();
 
+	bool addTextureMesh (
+		   const pcl::TextureMesh &mesh,
+		   const std::string &id = "texture",
+		   int viewport = 0);
 	bool addOccupancyGridMap(
 			const cv::Mat & map8U,
 			float resolution, // cell size

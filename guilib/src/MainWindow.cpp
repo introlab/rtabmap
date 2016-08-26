@@ -3752,13 +3752,25 @@ void MainWindow::openDatabase(const QString & path)
 					   iter->second.compare(jter->second) != 0 &&
 					   iter->first.compare(Parameters::kRtabmapWorkingDirectory()) != 0)
 					{
-						differentParameters.insert(*iter);
-						QString msg = tr("Parameter \"%1\": database=\"%2\" Preferences=\"%3\"")
-										.arg(iter->first.c_str())
-										.arg(iter->second.c_str())
-										.arg(jter->second.c_str());
-						_ui->widget_console->appendMsg(msg);
-						UWARN(msg.toStdString().c_str());
+						bool different = true;
+						if(Parameters::getType(iter->first).compare("double") ==0 ||
+						   Parameters::getType(iter->first).compare("float") == 0)
+						{
+							if(uStr2Double(iter->second) == uStr2Double(jter->second))
+							{
+								different = false;
+							}
+						}
+						if(different)
+						{
+							differentParameters.insert(*iter);
+							QString msg = tr("Parameter \"%1\": database=\"%2\" Preferences=\"%3\"")
+											.arg(iter->first.c_str())
+											.arg(iter->second.c_str())
+											.arg(jter->second.c_str());
+							_ui->widget_console->appendMsg(msg);
+							UWARN(msg.toStdString().c_str());
+						}
 					}
 				}
 
