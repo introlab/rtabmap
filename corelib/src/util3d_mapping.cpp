@@ -88,10 +88,10 @@ void occupancy2DFromLaserScan(
 		int i=0;
 		for(std::list<int>::iterator iter=groundIndices.begin();iter!=groundIndices.end(); ++iter)
 		{
-			int x = *iter / map8S.cols;
-			int y = *iter - x*map8S.cols;
-			ground.at<cv::Vec2f>(i)[0] = (float(y)+0.5)*cellSize + xMin;
-			ground.at<cv::Vec2f>(i)[1] = (float(x)+0.5)*cellSize + yMin;
+			int y = *iter / map8S.cols;
+			int x = *iter - y*map8S.cols;
+			ground.at<cv::Vec2f>(i)[0] = (float(x))*cellSize + xMin;
+			ground.at<cv::Vec2f>(i)[1] = (float(y))*cellSize + yMin;
 			++i;
 		}
 	}

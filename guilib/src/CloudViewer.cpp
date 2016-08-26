@@ -1148,9 +1148,9 @@ bool CloudViewer::addOccupancyGridMap(
 	float ySize = float(map8U.rows) * resolution;
 
 	UDEBUG("resolution=%f, xSize=%f, ySize=%f, xMin=%f, yMin=%f", resolution, xSize, ySize, xMin, yMin);
-	if(_visualizer->getCloudActorMap()->find("map") == _visualizer->getCloudActorMap()->end())
+	if(_visualizer->getCloudActorMap()->find("map") != _visualizer->getCloudActorMap()->end())
 	{
-		_visualizer->removeShape("map");
+		_visualizer->removePointCloud("map");
 	}
 
 	if(xSize > 0.0f && ySize > 0.0f)
