@@ -276,101 +276,104 @@ void OccupancyGrid::createLocalMap(const Signature & node, cv::Mat & ground, cv:
 
 			pcl::IndicesPtr groundIndices, obstaclesIndices;
 
-			if(normalsSegmentation_)
+			if(indices->size())
 			{
-				UDEBUG("normalKSearch=%d", normalKSearch_);
-				UDEBUG("maxGroundAngle=%f", maxGroundAngle_);
-				UDEBUG("Cluster radius=%f", cellSize_*2.0f);
-				UDEBUG("flatObstaclesDetected=%d", flatObstaclesDetected_?1:0);
-				UDEBUG("maxGroundHeight=%f", maxGroundHeight_?1:0);
-				util3d::segmentObstaclesFromGround<pcl::PointXYZRGB>(
-						cloud,
-						indices,
-						groundIndices,
-						obstaclesIndices,
-						normalKSearch_,
-						maxGroundAngle_,
-						cellSize_*2.0f,
-						minClusterSize_,
-						flatObstaclesDetected_,
-						maxGroundHeight_,
-						0,
-						Eigen::Vector4f(viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?node.getPose().z():0), 1));
-				UDEBUG("viewPoint=%f,%f,%f", viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?node.getPose().z():0));
-				//UWARN("Saving ground.pcd and obstacles.pcd");
-				//pcl::io::savePCDFile("ground.pcd", *cloud, *groundIndices);
-				//pcl::io::savePCDFile("obstacles.pcd", *cloud, *obstaclesIndices);
-			}
-			else
-			{
-				UDEBUG("");
-				// passthrough filter
-				groundIndices = rtabmap::util3d::passThrough(cloud, indices, "z", minGroundHeight_<0.0f?minGroundHeight_:std::numeric_limits<int>::min(), maxGroundHeight_);
-				obstaclesIndices = rtabmap::util3d::extractIndices(cloud, groundIndices, true);
+				if(normalsSegmentation_)
+				{
+					UDEBUG("normalKSearch=%d", normalKSearch_);
+					UDEBUG("maxGroundAngle=%f", maxGroundAngle_);
+					UDEBUG("Cluster radius=%f", cellSize_*2.0f);
+					UDEBUG("flatObstaclesDetected=%d", flatObstaclesDetected_?1:0);
+					UDEBUG("maxGroundHeight=%f", maxGroundHeight_?1:0);
+					util3d::segmentObstaclesFromGround<pcl::PointXYZRGB>(
+							cloud,
+							indices,
+							groundIndices,
+							obstaclesIndices,
+							normalKSearch_,
+							maxGroundAngle_,
+							cellSize_*2.0f,
+							minClusterSize_,
+							flatObstaclesDetected_,
+							maxGroundHeight_,
+							0,
+							Eigen::Vector4f(viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?node.getPose().z():0), 1));
+					UDEBUG("viewPoint=%f,%f,%f", viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?node.getPose().z():0));
+					//UWARN("Saving ground.pcd and obstacles.pcd");
+					//pcl::io::savePCDFile("ground.pcd", *cloud, *groundIndices);
+					//pcl::io::savePCDFile("obstacles.pcd", *cloud, *obstaclesIndices);
+				}
+				else
+				{
+					UDEBUG("");
+					// passthrough filter
+					groundIndices = rtabmap::util3d::passThrough(cloud, indices, "z", minGroundHeight_<0.0f?minGroundHeight_:std::numeric_limits<int>::min(), maxGroundHeight_);
+					obstaclesIndices = rtabmap::util3d::extractIndices(cloud, groundIndices, true);
+				}
 
-			}
-			UDEBUG("groundIndices=%d obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
+				UDEBUG("groundIndices=%d obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
 
-			// Do radius filtering after voxel filtering ( a lot faster)
-			if(noiseFilteringRadius_ > 0.0 && noiseFilteringMinNeighbors_ > 0)
-			{
-				UDEBUG("");
+				// Do radius filtering after voxel filtering ( a lot faster)
+				if(noiseFilteringRadius_ > 0.0 && noiseFilteringMinNeighbors_ > 0)
+				{
+					UDEBUG("");
+					if(groundIndices->size())
+					{
+						groundIndices = rtabmap::util3d::radiusFiltering(cloud, groundIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
+					}
+					if(obstaclesIndices->size())
+					{
+						obstaclesIndices = rtabmap::util3d::radiusFiltering(cloud, obstaclesIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
+					}
+
+					if(groundIndices->empty() && obstaclesIndices->empty())
+					{
+						UWARN("Cloud (with %d points) is empty after noise "
+								"filtering. Occupancy grid of node %d cannot be "
+								"created.",
+								(int)cloud->size(), node.id());
+						return;
+					}
+				}
+
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
 				if(groundIndices->size())
 				{
-					groundIndices = rtabmap::util3d::radiusFiltering(cloud, groundIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
+					pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
 				}
+
 				if(obstaclesIndices->size())
 				{
-					obstaclesIndices = rtabmap::util3d::radiusFiltering(cloud, obstaclesIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
+					pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
 				}
 
-				if(groundIndices->empty() && obstaclesIndices->empty())
+				if(grid3D_)
 				{
-					UWARN("Cloud (with %d points) is empty after noise "
-							"filtering. Occupancy grid of node %d cannot be "
-							"created.",
-							(int)cloud->size(), node.id());
-					return;
+					UDEBUG("");
+					if(groundIsObstacle_)
+					{
+						*obstaclesCloud += *groundCloud;
+						groundCloud->clear();
+					}
+
+					// transform back in base frame
+					Transform tinv = Transform(0,0, projMapFrame_?node.getPose().z():0, roll, pitch, 0).inverse();
+					ground = util3d::laserScanFromPointCloud(*groundCloud, tinv);
+					obstacles = util3d::laserScanFromPointCloud(*obstaclesCloud, tinv);
 				}
-			}
-
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-
-			if(groundIndices->size())
-			{
-				pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
-			}
-
-			if(obstaclesIndices->size())
-			{
-				pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
-			}
-
-			if(grid3D_)
-			{
-				UDEBUG("");
-				if(groundIsObstacle_)
+				else
 				{
-					*obstaclesCloud += *groundCloud;
-					groundCloud->clear();
+					UDEBUG("groundCloud=%d, obstaclesCloud=%d", (int)groundCloud->size(), (int)obstaclesCloud->size());
+					// projection on the xy plane
+					util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(
+							groundCloud,
+							obstaclesCloud,
+							ground,
+							obstacles,
+							cellSize_);
 				}
-
-				// transform back in base frame
-				Transform tinv = Transform(0,0, projMapFrame_?node.getPose().z():0, roll, pitch, 0).inverse();
-				ground = util3d::laserScanFromPointCloud(*groundCloud, tinv);
-				obstacles = util3d::laserScanFromPointCloud(*obstaclesCloud, tinv);
-			}
-			else
-			{
-				UDEBUG("groundCloud=%d, obstaclesCloud=%d", (int)groundCloud->size(), (int)obstaclesCloud->size());
-				// projection on the xy plane
-				util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(
-						groundCloud,
-						obstaclesCloud,
-						ground,
-						obstacles,
-						cellSize_);
 			}
 		}
 	}

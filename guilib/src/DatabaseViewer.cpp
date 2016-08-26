@@ -1546,6 +1546,9 @@ void DatabaseViewer::regenerateLocalMaps()
 	UTimer time;
 	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
 
+	generatedLocalMaps_.clear();
+	generatedLocalMapsInfo_.clear();
+
 	rtabmap::ProgressDialog progressDialog(this);
 	progressDialog.setMaximumSteps(ids_.size());
 	progressDialog.show();
@@ -1571,12 +1574,6 @@ void DatabaseViewer::regenerateLocalMaps()
 			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(ground, obstacles)));
 			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
 			msg = QString("Generated local occupancy grid map %1/%2 (%3s)").arg(i+1).arg((int)ids_.size()).arg(time.ticks());
-			if(i==37)
-			{
-				pcl::io::savePCDFileBinary("ground.pcd", *util3d::laserScanToPointCloud(ground));
-				pcl::io::savePCDFileBinary("obstacles.pcd", *util3d::laserScanToPointCloud(obstacles));
-				UWARN("Saved ground.pcd and obstacles.pcd");
-			}
 		}
 
 		progressDialog.appendText(msg);

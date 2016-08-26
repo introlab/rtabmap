@@ -477,7 +477,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Grid, MaxGroundAngle,          float,  45,      uFormat("[%s=true] Maximum angle (degrees) between point's normal to ground's normal to label it as ground. Points with higher angle difference are considered as obstacles.", kGridNormalsSegmentation().c_str()));
 	RTABMAP_PARAM(Grid, NormalK,                 int,    10,      uFormat("[%s=true] K neighbors to compute normals.", kGridNormalsSegmentation().c_str()))
 	RTABMAP_PARAM(Grid, MinClusterSize,          int,    10,      uFormat("[%s=true] Minimum cluster size to project the points. The distance between clusters is defined by 2*\"%s\".", kGridNormalsSegmentation().c_str(), kGridCellSize().c_str()));
-	RTABMAP_PARAM(Grid, FlatObstacleDetected,    bool,   false,   uFormat("[%s=true] Flat obstacles detected.", kGridNormalsSegmentation().c_str()));
+	RTABMAP_PARAM(Grid, FlatObstacleDetected,    bool,   true,    uFormat("[%s=true] Flat obstacles detected.", kGridNormalsSegmentation().c_str()));
 #ifdef RTABMAP_OCTOMAP
 	RTABMAP_PARAM(Grid, 3D,                      bool,   true,    uFormat("A 3D occupancy grid is required if you want an Octomap. Set to false if you want only a 2D map, the cloud will be projected on xy plane. A 2D map can be still generated if checked, but it requires more memory and time to generate it. Ignored if laser scan is 2D and \"%s\" is false.", kGridFromDepth().c_str()));
 #else

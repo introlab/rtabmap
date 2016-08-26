@@ -141,7 +141,13 @@ void segmentObstaclesFromGround(
 		if(ground->size() != cloud->size())
 		{
 			// Remove ground
-			pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, ground, true);
+			pcl::IndicesPtr notObstacles = ground;
+			if(indices->size())
+			{
+				notObstacles = util3d::extractIndices(cloud, indices, true);
+				notObstacles = util3d::concatenate(notObstacles, ground);
+			}
+			pcl::IndicesPtr otherStuffIndices = util3d::extractIndices(cloud, notObstacles, true);
 
 			// If ground height is set, remove obstacles under it
 			if(maxGroundHeight > 0.0f)
