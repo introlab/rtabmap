@@ -488,10 +488,6 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout, const QString & key, 
 	QHBoxLayout * hLayout = new QHBoxLayout();
 	layout->insertLayout(layout->count()-1, hLayout);
 	QString tmp = key.split('/').last();
-	if(tmp.at(0).isDigit())
-	{
-		tmp.remove(0,1);
-	}
 	QLabel * label = new QLabel(tmp, this);
 	label->setObjectName(key+"/label");
 	label->setToolTip(QString("<FONT>%1</FONT>").arg(Parameters::getDescription(key.toStdString()).c_str()));

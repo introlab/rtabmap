@@ -83,6 +83,7 @@ private slots:
 	void generateLocalGraph();
 	void generateTOROGraph();
 	void generateG2OGraph();
+	void regenerateLocalMaps();
 	void view3DMap();
 	void view3DLaserScans();
 	void generate3DMap();
@@ -178,6 +179,8 @@ private:
 	std::multimap<int, rtabmap::Link> linksAdded_;
 	std::multimap<int, rtabmap::Link> linksRemoved_;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps_; // <ground, obstacles>
+	std::map<int, std::pair<cv::Mat, cv::Mat> > generatedLocalMaps_; // <ground, obstacles>
+	std::map<int, std::pair<float, cv::Point3f> > generatedLocalMapsInfo_; // <cell size, viewpoint>
 
 	bool savedMaximized_;
 	bool firstCall_;

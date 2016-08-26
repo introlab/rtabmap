@@ -86,6 +86,12 @@ public:
 	void addLink(const Link & link);
 	void removeLink(int from, int to);
 	void updateLink(const Link & link);
+	void updateOccupancyGrid(
+				int nodeId,
+				const cv::Mat & ground,
+				const cv::Mat & obstacles,
+				float cellSize,
+				const cv::Point3f & viewpoint);
 
 public:
 	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
@@ -163,6 +169,13 @@ private:
 
 	virtual void addLinkQuery(const Link & link) const = 0;
 	virtual void updateLinkQuery(const Link & link) const = 0;
+
+	virtual void updateOccupancyGridQuery(
+				int nodeId,
+				const cv::Mat & ground,
+				const cv::Mat & obstacles,
+				float cellSize,
+				const cv::Point3f & viewpoint) const = 0;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const = 0;

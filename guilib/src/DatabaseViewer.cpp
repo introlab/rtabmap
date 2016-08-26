@@ -65,6 +65,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
+#include "rtabmap/core/OccupancyGrid.h"
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/core/SensorData.h"
 #include "ExportDialog.h"
@@ -183,6 +184,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
 	connect(ui_->actionVisual_Refine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllNeighborLinks()));
 	connect(ui_->actionVisual_Refine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllLoopClosureLinks()));
+	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
 	connect(ui_->actionReset_all_changes, SIGNAL(triggered()), this, SLOT(resetAllChanges()));
 
 	//ICP buttons
@@ -250,13 +252,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 
-	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
-	connect(ui_->spinBox_projDecimation, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
-	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
-	connect(ui_->doubleSpinBox_projMinDepth, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
-	connect(ui_->doubleSpinBox_projMaxAngle, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
-	connect(ui_->spinBox_projClusterSize, SIGNAL(editingFinished()), this, SLOT(updateGrid()));
 
 	ui_->label_stereo_inliers_name->setStyleSheet("QLabel {color : blue; }");
 	ui_->label_stereo_flowOutliers_name->setStyleSheet("QLabel {color : red; }");
@@ -280,13 +276,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_gridFillUnkownSpace, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->groupBox_gridFromProjection, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->spinBox_projDecimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_projMaxDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_projMinDepth, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->doubleSpinBox_projMaxAngle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
-	connect(ui_->spinBox_projClusterSize, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -402,13 +392,7 @@ void DatabaseViewer::readSettings()
 	settings.endGroup();
 
 	settings.beginGroup("grid");
-	ui_->groupBox_gridFromProjection->setChecked(settings.value("gridFromProj", ui_->groupBox_gridFromProjection->isChecked()).toBool());
 	ui_->doubleSpinBox_gridCellSize->setValue(settings.value("gridCellSize", ui_->doubleSpinBox_gridCellSize->value()).toDouble());
-	ui_->spinBox_projDecimation->setValue(settings.value("projDecimation", ui_->spinBox_projDecimation->value()).toInt());
-	ui_->doubleSpinBox_projMaxDepth->setValue(settings.value("projMaxDepth", ui_->doubleSpinBox_projMaxDepth->value()).toDouble());
-	ui_->doubleSpinBox_projMinDepth->setValue(settings.value("projMinDepth", ui_->doubleSpinBox_projMinDepth->value()).toDouble());
-	ui_->doubleSpinBox_projMaxAngle->setValue(settings.value("projMaxAngle", ui_->doubleSpinBox_projMaxAngle->value()).toDouble());
-	ui_->spinBox_projClusterSize->setValue(settings.value("projClusterSize", ui_->spinBox_projClusterSize->value()).toInt());
 	ui_->groupBox_posefiltering->setChecked(settings.value("poseFiltering", ui_->groupBox_posefiltering->isChecked()).toBool());
 	ui_->doubleSpinBox_posefilteringRadius->setValue(settings.value("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value()).toDouble());
 	ui_->doubleSpinBox_posefilteringAngle->setValue(settings.value("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value()).toDouble());
@@ -490,13 +474,7 @@ void DatabaseViewer::writeSettings()
 
 	// save Grid settings
 	settings.beginGroup("grid");
-	settings.setValue("gridFromProj", ui_->groupBox_gridFromProjection->isChecked());
 	settings.setValue("gridCellSize", ui_->doubleSpinBox_gridCellSize->value());
-	settings.setValue("projDecimation", ui_->spinBox_projDecimation->value());
-	settings.setValue("projMaxDepth", ui_->doubleSpinBox_projMaxDepth->value());
-	settings.setValue("projMinDepth", ui_->doubleSpinBox_projMinDepth->value());
-	settings.setValue("projMaxAngle", ui_->doubleSpinBox_projMaxAngle->value());
-	settings.setValue("projClusterSize", ui_->spinBox_projClusterSize->value());
 	settings.setValue("poseFiltering", ui_->groupBox_posefiltering->isChecked());
 	settings.setValue("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value());
 	settings.setValue("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value());
@@ -580,6 +558,8 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			linksRefined_.clear();
 			linksRemoved_.clear();
 			localMaps_.clear();
+			generatedLocalMaps_.clear();
+			generatedLocalMapsInfo_.clear();
 			ui_->graphViewer->clearAll();
 			ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 			ui_->actionGenerate_g2o_graph_g2o->setEnabled(false);
@@ -680,6 +660,7 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 		writeSettings();
 	}
 
+	event->accept();
 	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
 	{
 		QMessageBox::StandardButton button = QMessageBox::question(this,
@@ -723,20 +704,52 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 				dbDriver_->removeLink(iter->second.to(), iter->second.from());
 				dbDriver_->removeLink(iter->second.from(), iter->second.to());
 			}
+			linksAdded_.clear();
+			linksRefined_.clear();
+			linksRemoved_.clear();
 		}
 
-		if(button == QMessageBox::Yes || button == QMessageBox::No)
-		{
-			event->accept();
-		}
-		else
+		if(button != QMessageBox::Yes && button != QMessageBox::No)
 		{
 			event->ignore();
 		}
 	}
-	else
+
+	if(event->isAccepted() && generatedLocalMaps_.size())
 	{
-		event->accept();
+		QMessageBox::StandardButton button = QMessageBox::question(this,
+				tr("Local occupancy grid maps modified"),
+				tr("%1 occupancy grid maps are modified, do you want to "
+					"save them? This will overwrite occupancy grids saved in the database.")
+				.arg(generatedLocalMaps_.size()),
+				QMessageBox::Cancel | QMessageBox::Yes | QMessageBox::No,
+				QMessageBox::Cancel);
+
+		if(button == QMessageBox::Yes)
+		{
+			// Rejected links
+			UASSERT(generatedLocalMaps_.size() == generatedLocalMapsInfo_.size());
+			std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator mapIter = generatedLocalMaps_.begin();
+			std::map<int, std::pair<float, cv::Point3f> >::iterator infoIter = generatedLocalMapsInfo_.begin();
+			for(; mapIter!=generatedLocalMaps_.end(); ++mapIter, ++infoIter)
+			{
+				UASSERT(mapIter->first == infoIter->first);
+				dbDriver_->updateOccupancyGrid(
+						mapIter->first,
+						mapIter->second.first,
+						mapIter->second.second,
+						infoIter->second.first,
+						infoIter->second.second);
+			}
+			generatedLocalMaps_.clear();
+			generatedLocalMapsInfo_.clear();
+			localMaps_.clear();
+		}
+
+		if(button != QMessageBox::Yes && button != QMessageBox::No)
+		{
+			event->ignore();
+		}
 	}
 
 	if(event->isAccepted())
@@ -1528,6 +1541,52 @@ void DatabaseViewer::generateG2OGraph()
 	}
 }
 
+void DatabaseViewer::regenerateLocalMaps()
+{
+	UTimer time;
+	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+
+	rtabmap::ProgressDialog progressDialog(this);
+	progressDialog.setMaximumSteps(ids_.size());
+	progressDialog.show();
+
+	for(int i =0; i<ids_.size(); ++i)
+	{
+		SensorData data;
+		dbDriver_->getNodeData(ids_.at(i), data);
+		data.uncompressData();
+
+		int mapId, weight;
+		Transform odomPose, groundTruth;
+		std::string label;
+		double stamp;
+		QString msg;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth))
+		{
+			Signature s = data;
+			s.setPose(odomPose);
+			cv::Mat ground, obstacles;
+			cv::Point3f viewpoint;
+			grid.createLocalMap(s, ground, obstacles, viewpoint);
+			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(ground, obstacles)));
+			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
+			msg = QString("Generated local occupancy grid map %1/%2 (%3s)").arg(i+1).arg((int)ids_.size()).arg(time.ticks());
+			if(i==37)
+			{
+				pcl::io::savePCDFileBinary("ground.pcd", *util3d::laserScanToPointCloud(ground));
+				pcl::io::savePCDFileBinary("obstacles.pcd", *util3d::laserScanToPointCloud(obstacles));
+				UWARN("Saved ground.pcd and obstacles.pcd");
+			}
+		}
+
+		progressDialog.appendText(msg);
+		progressDialog.incrementStep();
+		QApplication::processEvents();
+	}
+	progressDialog.setValue(progressDialog.maximumSteps());
+	updateGrid();
+}
+
 void DatabaseViewer::view3DMap()
 {
 	if(!ids_.size() || !dbDriver_)
@@ -2162,6 +2221,8 @@ void DatabaseViewer::resetAllChanges()
 	linksAdded_.clear();
 	linksRefined_.clear();
 	linksRemoved_.clear();
+	generatedLocalMaps_.clear();
+	generatedLocalMapsInfo_.clear();
 	updateLoopClosuresSlider();
 	this->updateGraphView();
 }
@@ -3436,6 +3497,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					ui_->doubleSpinBox_posefilteringRadius->value(),
 					ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
 		}
+		std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps;
 		if(ui_->dockWidget_graphView->isVisible())
 		{
 			//update scans
@@ -3443,84 +3505,21 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			std::vector<int> ids = uKeys(graphFiltered);
 			for(unsigned int i=0; i<ids.size(); ++i)
 			{
-				if(localMaps_.find(ids[i]) == localMaps_.end())
+				if(generatedLocalMaps_.find(ids[i]) != generatedLocalMaps_.end())
 				{
-					UTimer time;
-					bool added = false;
-					if(ui_->groupBox_gridFromProjection->isChecked())
-					{
-						SensorData data;
-						dbDriver_->getNodeData(ids.at(i), data);
-						data.uncompressData();
-						if(!data.depthOrRightRaw().empty())
-						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-							pcl::IndicesPtr validIndices(new std::vector<int>);
-							cloud = util3d::cloudFromSensorData(data,
-									ui_->spinBox_projDecimation->value(),
-									ui_->doubleSpinBox_projMaxDepth->value(),
-									ui_->doubleSpinBox_projMinDepth->value(),
-									validIndices.get(),
-									ui_->parameters_toolbox->getParameters());
-							UASSERT(ui_->doubleSpinBox_gridCellSize->value() > 0);
-							cloud = util3d::voxelize(cloud, validIndices, ui_->doubleSpinBox_gridCellSize->value());
-
-							// add pose rotation without yaw
-							float roll, pitch, yaw;
-							graphFiltered.at(ids[i]).getEulerAngles(roll, pitch, yaw);
-							cloud = util3d::transformPointCloud(cloud, Transform(0,0,0, roll, pitch, 0));
-
-							if(cloud->size())
-							{
-								UTimer timer;
-								float cellSize = ui_->doubleSpinBox_gridCellSize->value();
-								float groundNormalMaxAngle = ui_->doubleSpinBox_projMaxAngle->value();
-								int minClusterSize = ui_->spinBox_projClusterSize->value();
-								cv::Mat ground, obstacles;
-
-								util3d::occupancy2DFromCloud3D<pcl::PointXYZ>(
-										cloud,
-										ground, obstacles,
-										cellSize,
-										groundNormalMaxAngle,
-										minClusterSize);
-
-								if(!ground.empty() || !obstacles.empty())
-								{
-									localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
-									added = true;
-								}
-							}
-						}
-					}
-					else
-					{
-						SensorData data;
-						dbDriver_->getNodeData(ids.at(i), data);
-						if(!data.laserScanCompressed().empty())
-						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-							cv::Mat laserScan;
-							data.uncompressDataConst(0, 0, &laserScan);
-							cv::Mat ground, obstacles;
-							if(laserScan.type() == CV_32FC2)
-							{
-								util3d::occupancy2DFromLaserScan(
-										laserScan,
-										ground,
-										obstacles,
-										ui_->doubleSpinBox_gridCellSize->value(),
-										ui_->checkBox_gridFillUnkownSpace->isChecked(),
-										data.laserScanInfo().maxRange());
-								added = true;
-							}
-							localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
-						}
-					}
-					if(added)
-					{
-						UINFO("Processed grid map %d/%d (%fs)", i+1, (int)ids.size(), time.ticks());
-					}
+					localMaps.insert(*generatedLocalMaps_.find(ids[i]));
+				}
+				else if(localMaps_.find(ids[i]) != localMaps_.end())
+				{
+					localMaps.insert(*localMaps_.find(ids.at(i)));
+				}
+				else
+				{
+					SensorData data;
+					dbDriver_->getNodeData(ids.at(i), data);
+					cv::Mat ground, obstacles;
+					data.uncompressData(0, 0, 0, 0, &ground, &obstacles);
+					localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
 				}
 			}
 			//cleanup
@@ -3540,14 +3539,14 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_);
-		if(graph.size() && localMaps_.size() && ui_->graphViewer->isGridMapVisible())
+		if(graph.size() && localMaps.size() && ui_->graphViewer->isGridMapVisible())
 		{
 			float xMin, yMin;
 			float cell = ui_->doubleSpinBox_gridCellSize->value();
 			cv::Mat map;
 			QTime time;
 			time.start();
-			map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graphFiltered, localMaps_, cell, xMin, yMin, 0, ui_->checkBox_gridErode->isChecked());
+			map = rtabmap::util3d::create2DMapFromOccupancyLocalMaps(graphFiltered, localMaps, cell, xMin, yMin, 0, ui_->checkBox_gridErode->isChecked());
 			if(!map.empty())
 			{
 				ui_->graphViewer->updateMap(rtabmap::util3d::convertMap2Image8U(map), cell, xMin, yMin);
@@ -3798,16 +3797,7 @@ void DatabaseViewer::updateGraphView()
 
 void DatabaseViewer::updateGrid()
 {
-	if((sender() != ui_->spinBox_projDecimation && sender() != ui_->doubleSpinBox_projMaxDepth && sender() != ui_->doubleSpinBox_projMinDepth && sender()!=ui_->doubleSpinBox_projMaxAngle && sender()!=ui_->spinBox_projClusterSize) ||
-	   (sender() == ui_->spinBox_projDecimation && ui_->groupBox_gridFromProjection->isChecked()) ||
-	   (sender() == ui_->doubleSpinBox_projMaxDepth && ui_->groupBox_gridFromProjection->isChecked()) ||
-	   (sender() == ui_->doubleSpinBox_projMinDepth && ui_->groupBox_gridFromProjection->isChecked()) ||
-	   (sender() == ui_->doubleSpinBox_projMaxAngle && ui_->groupBox_gridFromProjection->isChecked()) ||
-	   (sender() == ui_->spinBox_projClusterSize && ui_->groupBox_gridFromProjection->isChecked()))
-	{
-		localMaps_.clear();
-		updateGraphView();
-	}
+	updateGraphView();
 }
 
 Link DatabaseViewer::findActiveLink(int from, int to)

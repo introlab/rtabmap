@@ -405,6 +405,25 @@ void DBDriver::updateLink(const Link & link)
 	this->updateLinkQuery(link);
 	_dbSafeAccessMutex.unlock();
 }
+void DBDriver::updateOccupancyGrid(
+		int nodeId,
+		const cv::Mat & ground,
+		const cv::Mat & obstacles,
+		float cellSize,
+		const cv::Point3f & viewpoint)
+{
+	_dbSafeAccessMutex.lock();
+	//just to make sure the occupancy grids are compressed for convenience
+	SensorData data;
+	data.setOccupancyGrid(ground, obstacles, cellSize, viewpoint);
+	this->updateOccupancyGridQuery(
+			nodeId,
+			data.gridGroundCellsCompressed(),
+			data.gridObstacleCellsCompressed(),
+			cellSize,
+			viewpoint);
+	_dbSafeAccessMutex.unlock();
+}
 
 void DBDriver::load(VWDictionary * dictionary) const
 {

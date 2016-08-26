@@ -517,6 +517,8 @@
     <addaction name="actionVisual_Refine_all_loop_closure_links"/>
     <addaction name="actionRefine_all_loop_closure_links"/>
     <addaction name="separator"/>
+    <addaction name="actionRegenerate_local_grid_maps"/>
+    <addaction name="separator"/>
     <addaction name="actionReset_all_changes"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
@@ -980,7 +982,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>3</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1124,7 +1126,7 @@
           <x>0</x>
           <y>0</y>
           <width>278</width>
-          <height>611</height>
+          <height>410</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1133,32 +1135,6 @@
         <layout class="QVBoxLayout" name="verticalLayout_16">
          <item>
           <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,1">
-           <item row="0" column="0">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_gridCellSize">
-             <property name="suffix">
-              <string> m</string>
-             </property>
-             <property name="minimum">
-              <double>0.010000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>5.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.010000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.050000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLabel" name="label_36">
-             <property name="text">
-              <string>Grid cell size</string>
-             </property>
-            </widget>
-           </item>
            <item row="1" column="1">
             <widget class="QLabel" name="label_44">
              <property name="text">
@@ -1187,149 +1163,27 @@
              </property>
             </widget>
            </item>
+           <item row="0" column="1">
+            <widget class="QLabel" name="label_46">
+             <property name="text">
+              <string>Grid cell size</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_gridCellSize">
+             <property name="decimals">
+              <number>3</number>
+             </property>
+             <property name="minimum">
+              <double>0.010000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.010000000000000</double>
+             </property>
+            </widget>
+           </item>
           </layout>
-         </item>
-         <item>
-          <widget class="QGroupBox" name="groupBox_gridFromProjection">
-           <property name="title">
-            <string>Grid from 3D projection</string>
-           </property>
-           <property name="checkable">
-            <bool>true</bool>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-           <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,1">
-            <item row="0" column="0">
-             <widget class="QSpinBox" name="spinBox_projDecimation">
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>8</number>
-              </property>
-              <property name="value">
-               <number>4</number>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="label_37">
-              <property name="text">
-               <string>Cloud decimation</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxDepth">
-              <property name="suffix">
-               <string> m</string>
-              </property>
-              <property name="decimals">
-               <number>1</number>
-              </property>
-              <property name="minimum">
-               <double>0.400000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>999.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>4.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLabel" name="label_38">
-              <property name="text">
-               <string>Cloud max depth</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLabel" name="label_66">
-              <property name="text">
-               <string>Cluster size</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QLabel" name="label_67">
-              <property name="text">
-               <string>Max ground angle</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMaxAngle">
-              <property name="suffix">
-               <string> rad</string>
-              </property>
-              <property name="decimals">
-               <number>2</number>
-              </property>
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>3.140000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.790000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QSpinBox" name="spinBox_projClusterSize">
-              <property name="minimum">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <number>10000</number>
-              </property>
-              <property name="value">
-               <number>20</number>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QLabel" name="label_40">
-              <property name="text">
-               <string>Cloud min depth</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_projMinDepth">
-              <property name="suffix">
-               <string> m</string>
-              </property>
-              <property name="decimals">
-               <number>1</number>
-              </property>
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>999.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>1.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
          </item>
          <item>
           <widget class="QGroupBox" name="groupBox_posefiltering">
@@ -1634,8 +1488,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>289</width>
-          <height>182</height>
+          <width>175</width>
+          <height>191</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2023,6 +1877,11 @@
   <action name="actionExport_3D_laser_scans_ply_pcd">
    <property name="text">
     <string>Export 3D laser scans (*.ply *.pcd) ...</string>
+   </property>
+  </action>
+  <action name="actionRegenerate_local_grid_maps">
+   <property name="text">
+    <string>Regenerate local grid maps...</string>
    </property>
   </action>
  </widget>

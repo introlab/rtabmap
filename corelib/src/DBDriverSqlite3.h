@@ -76,6 +76,13 @@ private:
 	virtual void addLinkQuery(const Link & link) const;
 	virtual void updateLinkQuery(const Link & link) const;
 
+	virtual void updateOccupancyGridQuery(
+			int nodeId,
+			const cv::Mat & ground,
+			const cv::Mat & obstacles,
+			float cellSize,
+			const cv::Point3f & viewpoint) const;
+
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
@@ -102,6 +109,7 @@ private:
 	std::string queryStepLink() const;
 	std::string queryStepWordsChanged() const;
 	std::string queryStepKeypoint() const;
+	std::string queryStepOccupancyGridUpdate() const;
 	void stepNode(sqlite3_stmt * ppStmt, const Signature * s) const;
 	void stepImage(
 			sqlite3_stmt * ppStmt,
@@ -112,6 +120,12 @@ private:
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
 	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt, const cv::Mat & descriptor) const;
+	void stepOccupancyGrid(sqlite3_stmt * ppStmt,
+			int nodeId,
+			const cv::Mat & ground,
+			const cv::Mat & obstacles,
+			float cellSize,
+			const cv::Point3f & viewpoint) const;
 
 private:
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
