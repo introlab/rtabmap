@@ -1179,6 +1179,9 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 	}
 
 	libfreenect2::PacketPipeline * pipeline;
+#ifdef LIBFREENECT2_WITH_CUDA_SUPPORT
+	pipeline = new libfreenect2::CudaPacketPipeline();
+#else
 #ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
 	pipeline = new libfreenect2::OpenGLPacketPipeline();
 #else
@@ -1186,6 +1189,7 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 	pipeline = new libfreenect2::OpenCLPacketPipeline();
 #else
 	pipeline = new libfreenect2::CpuPacketPipeline();
+#endif
 #endif
 #endif
 
@@ -1406,7 +1410,15 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 				{
 					cv::Mat rgbMatC4((int)rgbFrame->height, (int)rgbFrame->width, CV_8UC4, rgbFrame->data);
 					cv::Mat rgbMat; // rtabmap uses 3 channels RGB
-					cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR);
+					#ifdef LIBFREENECT2_WITH_TEGRAJPEG_SUPPORT 
+
+					 cv::cvtColor(rgbMatC4, rgbMat, CV_RGBA2BGR); 
+
+					#else 
+
+					cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR); 
+
+					#endif 
 					cv::flip(rgbMat, rgb, 1);
 
 					//rectify color
@@ -1455,7 +1467,15 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 					{
 						cv::Mat rgbMatC4((int)rgbFrame->height, (int)rgbFrame->width, CV_8UC4, rgbFrame->data);
 						cv::Mat rgbMat; // rtabmap uses 3 channels RGB
-						cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR);
+						#ifdef LIBFREENECT2_WITH_TEGRAJPEG_SUPPORT 
+
+						 cv::cvtColor(rgbMatC4, rgbMat, CV_RGB2BGR); 
+
+						#else 
+
+						cv::cvtColor(rgbMatC4, rgbMat, CV_BGRA2BGR); 
+
+						#endif 
 						cv::flip(rgbMat, rgb, 1);
 
 						cv::Mat((int)irFrame->height, (int)irFrame->width, CV_32FC1, irFrame->data).convertTo(depth, CV_16U, 1);
@@ -1564,7 +1584,15 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 							}
 	
 							// rtabmap uses 3 channels RGB
-							cv::cvtColor(rgbMatBGRA, rgb, CV_BGRA2BGR);
+							#ifdef LIBFREENECT2_WITH_TEGRAJPEG_SUPPORT 
+
+							 cv::cvtColor(rgbMatBGRA, rgb, CV_RGBA2BGR); 
+
+							#else 
+
+							cv::cvtColor(rgbMatBGRA, rgb, CV_BGRA2BGR); 
+
+							#endif 
 							cv::flip(rgb, rgb, 1);
 						}
 						else //register depth to color (OLD WAY)
@@ -1578,7 +1606,15 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 								rgbMatBGRA = tmp;
 							}
 							// rtabmap uses 3 channels RGB
-							cv::cvtColor(rgbMatBGRA, rgb, CV_BGRA2BGR);
+							#ifdef LIBFREENECT2_WITH_TEGRAJPEG_SUPPORT 
+
+							 cv::cvtColor(rgbMatBGRA, rgb, CV_RGBA2BGR); 
+
+							#else 
+
+							cv::cvtColor(rgbMatC4, rgb, CV_BGRA2BGR); 
+
+							#endif 
 							cv::flip(rgb, rgb, 1);	
 
 							cv::Mat depthFrameMat = cv::Mat((int)depthFrame->height, (int)depthFrame->width, CV_32FC1, depthFrame->data);
