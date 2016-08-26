@@ -2426,6 +2426,9 @@ void DatabaseViewer::update(int value,
 						!data.laserScanRaw().empty()))
 				{
 					view3D->removeAllFrustums();
+					view3D->removeCloud("0");
+					view3D->removeCloud("1");
+					view3D->removeCloud("map");
 					if(!data.depthOrRightRaw().empty())
 					{
 						if(!data.imageRaw().empty())
@@ -2475,7 +2478,6 @@ void DatabaseViewer::update(int value,
 											ui_->checkBox_mesh_quad->isChecked(),
 											ui_->spinBox_mesh_triangleSize->value(),
 											viewpoint);
-									view3D->removeCloud("0");
 									view3D->addCloudMesh("0", cloud, polygons);
 								}
 								else
@@ -2502,6 +2504,35 @@ void DatabaseViewer::update(int value,
 					if(scan->size())
 					{
 						view3D->addCloud("1", scan);
+					}
+
+					//add occupancy grid
+					std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps;
+					if(generatedLocalMaps_.find(data.id()) != generatedLocalMaps_.end())
+					{
+						localMaps.insert(*generatedLocalMaps_.find(data.id()));
+					}
+					else if(!data.gridGroundCellsRaw().empty() && !data.gridObstacleCellsRaw().empty())
+					{
+						localMaps.insert(std::make_pair(data.id(), std::make_pair(data.gridGroundCellsRaw(), data.gridObstacleCellsRaw())));
+					}
+					if(!localMaps.empty())
+					{
+						std::map<int, Transform> poses;
+						poses.insert(std::make_pair(data.id(), Transform::getIdentity()));
+
+						float xMin=0.0f, yMin=0.0f;
+						cv::Mat map8S = util3d::create2DMapFromOccupancyLocalMaps(
+													poses,
+													localMaps,
+													ui_->doubleSpinBox_gridCellSize->value(),
+													xMin, yMin);
+						if(!map8S.empty())
+						{
+							//convert to gray scaled map
+							cv::Mat map8U = util3d::convertMap2Image8U(map8S);
+							view3D->addOccupancyGridMap(map8U, ui_->doubleSpinBox_gridCellSize->value(), xMin, yMin, 1);
+						}
 					}
 
 					view3D->update();
@@ -3809,6 +3840,7 @@ void DatabaseViewer::updateGraphView()
 
 void DatabaseViewer::updateGrid()
 {
+	update3dView();
 	updateGraphView();
 }
 
