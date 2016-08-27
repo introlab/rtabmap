@@ -1016,9 +1016,9 @@ float getDepth(
 							tmp = d;
 							++count;
 						}
-						else if(fabs(d - tmp) < maxZError)
+						else if(fabs(d - tmp/float(count)) < maxZError)
 						{
-							tmp+=d;
+							tmp += d;
 							++count;
 						}
 					}
