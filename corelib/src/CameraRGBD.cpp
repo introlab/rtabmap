@@ -1612,7 +1612,7 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 
 							#else 
 
-							cv::cvtColor(rgbMatC4, rgb, CV_BGRA2BGR); 
+							cv::cvtColor(rgbMatBGRA, rgb, CV_BGRA2BGR); 
 
 							#endif 
 							cv::flip(rgb, rgb, 1);	
