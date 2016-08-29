@@ -1126,7 +1126,7 @@
           <x>0</x>
           <y>0</y>
           <width>278</width>
-          <height>410</height>
+          <height>383</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1144,20 +1144,6 @@
            </item>
            <item row="1" column="0">
             <widget class="QCheckBox" name="checkBox_gridErode">
-             <property name="text">
-              <string/>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QLabel" name="label_64">
-             <property name="text">
-              <string>Fill unknown space</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QCheckBox" name="checkBox_gridFillUnkownSpace">
              <property name="text">
               <string/>
              </property>
