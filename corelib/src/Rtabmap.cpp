@@ -3487,6 +3487,10 @@ bool Rtabmap::computePath(int targetNode, bool global)
 				_path[oi++].second = t * iter->second;
 			}
 		}
+		else if(currentNode == 0)
+		{
+			UWARN("We should be localized before planning.");
+		}
 	}
 	UINFO("Total planning time = %fs (%d nodes, %f m long)", totalTimer.ticks(), (int)_path.size(), graph::computePathLength(_path));
 
