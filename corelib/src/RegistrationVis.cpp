@@ -460,8 +460,9 @@ Transform RegistrationVis::computeTransformationImpl(
 			UDEBUG("kptsFrom=%d", (int)kptsFrom.size());
 			UDEBUG("kptsTo=%d", (int)kptsTo.size());
 			cv::Mat descriptorsFrom;
-			if((kptsFrom.empty() && fromSignature.getWordsDescriptors().size()) ||
-				fromSignature.getWordsDescriptors().size() == kptsFrom.size())
+			if(fromSignature.getWordsDescriptors().size() &&
+					((kptsFrom.empty() && fromSignature.getWordsDescriptors().size()) ||
+					 fromSignature.getWordsDescriptors().size() == kptsFrom.size()))
 			{
 				descriptorsFrom = cv::Mat(fromSignature.getWordsDescriptors().size(),
 						fromSignature.getWordsDescriptors().begin()->second.cols,
