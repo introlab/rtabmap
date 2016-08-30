@@ -775,6 +775,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_maxDepth->setObjectName(Parameters::kGridDepthMax().c_str());
 	_ui->doubleSpinBox_grid_minDepth->setObjectName(Parameters::kGridDepthMin().c_str());
 	_ui->lineEdit_grid_roi->setObjectName(Parameters::kGridDepthRoiRatios().c_str());
+	_ui->doubleSpinBox_grid_footprintLength->setObjectName(Parameters::kGridFootprintLength().c_str());
+	_ui->doubleSpinBox_grid_footprintWidth->setObjectName(Parameters::kGridFootprintWidth().c_str());
+	_ui->doubleSpinBox_grid_footprintHeight->setObjectName(Parameters::kGridFootprintHeight().c_str());
 	_ui->checkBox_grid_flatObstaclesDetected->setObjectName(Parameters::kGridFlatObstacleDetected().c_str());
 	_ui->groupBox_grid_fromDepthImage->setObjectName(Parameters::kGridFromDepth().c_str());
 	_ui->checkBox_grid_projMapFrame->setObjectName(Parameters::kGridMapFrameProjection().c_str());
@@ -782,6 +785,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_grid_normalK->setObjectName(Parameters::kGridNormalK().c_str());
 	_ui->doubleSpinBox_grid_maxGroundHeight->setObjectName(Parameters::kGridMaxGroundHeight().c_str());
 	_ui->doubleSpinBox_grid_maxObstacleHeight->setObjectName(Parameters::kGridMaxObstacleHeight().c_str());
+	_ui->doubleSpinBox_grid_clusterRadius->setObjectName(Parameters::kGridClusterRadius().c_str());
 	_ui->spinBox_grid_minClusterSize->setObjectName(Parameters::kGridMinClusterSize().c_str());
 	_ui->doubleSpinBox_grid_minGroundHeight->setObjectName(Parameters::kGridMinGroundHeight().c_str());
 	_ui->spinBox_grid_noiseMinNeighbors->setObjectName(Parameters::kGridNoiseFilteringMinNeighbors().c_str());

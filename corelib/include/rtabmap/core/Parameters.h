@@ -467,6 +467,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Grid, DepthMin,                float,  0.0,     uFormat("[%s=true] Minimum cloud's depth from sensor.", kGridDepthDecimation().c_str()));
 	RTABMAP_PARAM(Grid, DepthMax,                float,  4.0,     uFormat("[%s=true] Maximum cloud's depth from sensor. 0=inf.", kGridDepthDecimation().c_str()));
 	RTABMAP_PARAM_STR(Grid, DepthRoiRatios,      "0.0 0.0 0.0 0.0", uFormat("[%s=true] Region of interest ratios [left, right, top, bottom].", kGridDepthDecimation().c_str()));
+	RTABMAP_PARAM(Grid, FootprintLength,         float,  0.0,     "Footprint length used to filter points over the footprint of the robot.");
+	RTABMAP_PARAM(Grid, FootprintWidth,          float,  0.0,     "Footprint width used to filter points over the footprint of the robot. Footprint length should be set.");
+	RTABMAP_PARAM(Grid, FootprintHeight,         float,  0.0,     "Footprint height used to filter points over the footprint of the robot. Footprint length and width should be set.");
 	RTABMAP_PARAM(Grid, ScanDecimation,          int,    1,       uFormat("[%s=false] Decimation of the laser scan before creating cloud.", kGridDepthDecimation().c_str()));
 	RTABMAP_PARAM(Grid, CellSize,                float,  0.05,    "Resolution of the occupancy grid.");
 	RTABMAP_PARAM(Grid, MapFrameProjection,      bool,   false,   "Projection in map frame. On a 3D terrain and a fixed local camera transform (the cloud is created relative to ground), you may want to disable this to do the projection in robot frame instead.");
@@ -475,8 +478,9 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Grid, MinGroundHeight,         float,  0.0,     "Minimum ground height (0=disabled).");
 	RTABMAP_PARAM(Grid, MaxGroundHeight,         float,  0.0,     uFormat("Maximum ground height (0=disabled). Should be set if \"%s\" is true.", kGridNormalsSegmentation().c_str()));
 	RTABMAP_PARAM(Grid, MaxGroundAngle,          float,  45,      uFormat("[%s=true] Maximum angle (degrees) between point's normal to ground's normal to label it as ground. Points with higher angle difference are considered as obstacles.", kGridNormalsSegmentation().c_str()));
-	RTABMAP_PARAM(Grid, NormalK,                 int,    10,      uFormat("[%s=true] K neighbors to compute normals.", kGridNormalsSegmentation().c_str()))
-	RTABMAP_PARAM(Grid, MinClusterSize,          int,    10,      uFormat("[%s=true] Minimum cluster size to project the points. The distance between clusters is defined by 2*\"%s\".", kGridNormalsSegmentation().c_str(), kGridCellSize().c_str()));
+	RTABMAP_PARAM(Grid, NormalK,                 int,    10,      uFormat("[%s=true] K neighbors to compute normals.", kGridNormalsSegmentation().c_str()));
+	RTABMAP_PARAM(Grid, ClusterRadius,           float,  0.1,     uFormat("[%s=true] Cluster maximum radius.", kGridNormalsSegmentation().c_str()));
+	RTABMAP_PARAM(Grid, MinClusterSize,          int,    10,      uFormat("[%s=true] Minimum cluster size to project the points.", kGridNormalsSegmentation().c_str()));
 	RTABMAP_PARAM(Grid, FlatObstacleDetected,    bool,   true,    uFormat("[%s=true] Flat obstacles detected.", kGridNormalsSegmentation().c_str()));
 #ifdef RTABMAP_OCTOMAP
 	RTABMAP_PARAM(Grid, 3D,                      bool,   true,    uFormat("A 3D occupancy grid is required if you want an Octomap. Set to false if you want only a 2D map, the cloud will be projected on xy plane. A 2D map can be still generated if checked, but it requires more memory and time to generate it. Ignored if laser scan is 2D and \"%s\" is false.", kGridFromDepth().c_str()));

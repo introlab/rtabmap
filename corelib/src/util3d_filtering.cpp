@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/filters/frustum_culling.h>
 #include <pcl/filters/random_sample.h>
 #include <pcl/filters/passthrough.h>
+#include <pcl/filters/crop_box.h>
 
 #include <pcl/features/normal_3d_omp.h>
 
@@ -335,6 +336,101 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr passThrough(
 	filter.setNegative(negative);
 	filter.setFilterFieldName(axis);
 	filter.setFilterLimits(min, max);
+	filter.setInputCloud(cloud);
+	filter.filter(*output);
+	return output;
+}
+
+pcl::IndicesPtr cropBox(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform,
+		bool negative)
+{
+	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+
+	pcl::IndicesPtr output(new std::vector<int>);
+	pcl::CropBox<pcl::PointXYZ> filter;
+	filter.setNegative(negative);
+	filter.setMin(min);
+	filter.setMax(max);
+	if(!transform.isNull() && !transform.isIdentity())
+	{
+		filter.setTransform(transform.toEigen3f());
+	}
+	filter.setInputCloud(cloud);
+	filter.setIndices(indices);
+	filter.filter(*output);
+	return output;
+}
+pcl::IndicesPtr cropBox(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform,
+		bool negative)
+{
+	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+
+	pcl::IndicesPtr output(new std::vector<int>);
+	pcl::CropBox<pcl::PointXYZRGB> filter;
+	filter.setNegative(negative);
+	filter.setMin(min);
+	filter.setMax(max);
+	if(!transform.isNull() && !transform.isIdentity())
+	{
+		filter.setTransform(transform.toEigen3f());
+	}
+	filter.setInputCloud(cloud);
+	filter.setIndices(indices);
+	filter.filter(*output);
+	return output;
+}
+
+pcl::PointCloud<pcl::PointXYZ>::Ptr cropBox(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform,
+		bool negative)
+{
+	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::CropBox<pcl::PointXYZ> filter;
+	filter.setNegative(negative);
+	filter.setMin(min);
+	filter.setMax(max);
+	if(!transform.isNull() && !transform.isIdentity())
+	{
+		filter.setTransform(transform.toEigen3f());
+	}
+	filter.setInputCloud(cloud);
+	filter.filter(*output);
+	return output;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr cropBox(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform,
+		bool negative)
+{
+	UASSERT(min[0] < max[0] && min[1] < max[1] && min[2] < max[2]);
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::CropBox<pcl::PointXYZRGB> filter;
+	filter.setNegative(negative);
+	filter.setMin(min);
+	filter.setMax(max);
+	if(!transform.isNull() && !transform.isIdentity())
+	{
+		filter.setTransform(transform.toEigen3f());
+	}
 	filter.setInputCloud(cloud);
 	filter.filter(*output);
 	return output;

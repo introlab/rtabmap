@@ -136,6 +136,33 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP passThrough(
 		float max,
 		bool negative = false);
 
+pcl::IndicesPtr RTABMAP_EXP cropBox(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform = Transform::getIdentity(),
+		bool negative = false);
+pcl::IndicesPtr RTABMAP_EXP cropBox(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform = Transform::getIdentity(),
+		bool negative = false);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cropBox(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform = Transform::getIdentity(),
+		bool negative = false);
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cropBox(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const Eigen::Vector4f & min,
+		const Eigen::Vector4f & max,
+		const Transform & transform = Transform::getIdentity(),
+		bool negative = false);
+
 //Note: This assumes a coordinate system where X is forward, * Y is up, and Z is right.
 pcl::IndicesPtr RTABMAP_EXP frustumFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

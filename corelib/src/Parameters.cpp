@@ -186,27 +186,31 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 	return odomParameters;
 }
 
-ParametersMap Parameters::getDefaultParameters(const std::string & group)
+ParametersMap Parameters::getDefaultParameters(const std::string & groupIn)
 {
 	rtabmap::ParametersMap parameters;
 	const rtabmap::ParametersMap & defaultParameters = rtabmap::Parameters::getDefaultParameters();
 	for(rtabmap::ParametersMap::const_iterator iter=defaultParameters.begin(); iter!=defaultParameters.end(); ++iter)
 	{
-		if(iter->first.compare(group) == 0)
+		UASSERT(uSplit(iter->first, '/').size()  == 2);
+		std::string group = uSplit(iter->first, '/').front();
+		if(group.compare(groupIn) == 0)
 		{
 			parameters.insert(*iter);
 		}
 	}
-	UASSERT_MSG(parameters.size(), uFormat("No parameters found for group %s!", group.c_str()).c_str());
+	UASSERT_MSG(parameters.size(), uFormat("No parameters found for group %s!", groupIn.c_str()).c_str());
 	return parameters;
 }
 
-ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & group)
+ParametersMap Parameters::filterParameters(const ParametersMap & parameters, const std::string & groupIn)
 {
 	ParametersMap output;
 	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		if(iter->first.compare(group) == 0)
+		UASSERT(uSplit(iter->first, '/').size()  == 2);
+		std::string group = uSplit(iter->first, '/').front();
+		if(group.compare(groupIn) == 0)
 		{
 			output.insert(*iter);
 		}

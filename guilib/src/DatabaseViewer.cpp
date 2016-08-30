@@ -2338,8 +2338,6 @@ void DatabaseViewer::update(int value,
 				if(signatures.size() && signatures.front()!=0 && signatures.front()->getWords().size())
 				{
 					view->setFeatures(signatures.front()->getWords(), data.depthOrRightRaw().type() == CV_8UC1?cv::Mat():data.depthOrRightRaw(), Qt::yellow);
-					delete signatures.front();
-					signatures.clear();
 				}
 
 				Transform odomPose, g;
@@ -2421,6 +2419,14 @@ void DatabaseViewer::update(int value,
 						(!data.depthOrRightRaw().empty() ||
 						!data.laserScanRaw().empty()))
 				{
+					Transform pose = Transform::getIdentity();
+					if(signatures.size())
+					{
+						float x, y, z, roll, pitch, yaw;
+						(*signatures.begin())->getPose().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+						pose = Transform(0,0,z,roll,pitch,0);
+					}
+
 					view3D->removeAllFrustums();
 					view3D->removeCloud("0");
 					view3D->removeCloud("1");
@@ -2474,14 +2480,14 @@ void DatabaseViewer::update(int value,
 											ui_->checkBox_mesh_quad->isChecked(),
 											ui_->spinBox_mesh_triangleSize->value(),
 											viewpoint);
-									view3D->addCloudMesh("0", cloud, polygons);
+									view3D->addCloudMesh("0", cloud, polygons, pose);
 								}
 								else
 								{
-									view3D->addCloud("0", cloud);
+									view3D->addCloud("0", cloud, pose);
 								}
 							}
-							view3D->updateCameraFrustums(Transform::getIdentity(), data.cameraModels());
+							view3D->updateCameraFrustums(pose, data.cameraModels());
 						}
 						else
 						{
@@ -2489,8 +2495,8 @@ void DatabaseViewer::update(int value,
 							cloud = util3d::cloudFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
 							if(cloud->size())
 							{
-								view3D->addCloud("0", cloud);
-								view3D->updateCameraFrustum(Transform::getIdentity(), data.stereoCameraModel());
+								view3D->addCloud("0", cloud, pose);
+								view3D->updateCameraFrustum(pose, data.stereoCameraModel());
 							}
 						}
 					}
@@ -2499,7 +2505,7 @@ void DatabaseViewer::update(int value,
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
 					if(scan->size())
 					{
-						view3D->addCloud("1", scan);
+						view3D->addCloud("1", scan, pose);
 					}
 
 					//add occupancy grid
@@ -2532,6 +2538,12 @@ void DatabaseViewer::update(int value,
 					}
 
 					view3D->update();
+				}
+				if(signatures.size())
+				{
+					UASSERT(signatures.front() != 0 && signatures.size() == 1);
+					delete signatures.front();
+					signatures.clear();
 				}
 			}
 

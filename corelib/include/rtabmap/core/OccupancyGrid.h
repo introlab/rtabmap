@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
+#include <pcl/point_cloud.h>
+#include <pcl/pcl_base.h>
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Signature.h>
 
@@ -42,7 +44,22 @@ public:
 	void parseParameters(const ParametersMap & parameters);
 	void setCellSize(float cellSize);
 	float getCellSize() const {return cellSize_;}
-	void createLocalMap(const Signature & node, cv::Mat & ground, cv::Mat & obstacles, cv::Point3f & viewPoint) const;
+
+	template<typename PointT>
+	typename pcl::PointCloud<PointT>::Ptr segmentCloud(
+			const typename pcl::PointCloud<PointT>::Ptr & cloud,
+			const pcl::IndicesPtr & indices,
+			const Transform & pose,
+			const cv::Point3f & viewPoint,
+			pcl::IndicesPtr & groundIndices,        // output cloud indices
+			pcl::IndicesPtr & obstaclesIndices,     // output cloud indices
+			pcl::IndicesPtr * flatObstacles = 0) const; // output cloud indices
+
+	void createLocalMap(
+			const Signature & node,
+			cv::Mat & ground,
+			cv::Mat & obstacles,
+			cv::Point3f & viewPoint) const;
 
 	void clear();
 	void addToCache(
@@ -63,6 +80,9 @@ private:
 	float cloudMaxDepth_;
 	float cloudMinDepth_;
 	std::vector<float> roiRatios_;
+	float footprintLength_;
+	float footprintWidth_;
+	float footprintHeight_;
 	int scanDecimation_;
 	float cellSize_;
 	bool occupancyFromCloud_;
@@ -70,6 +90,7 @@ private:
 	float maxObstacleHeight_;
 	int normalKSearch_;
 	float maxGroundAngle_;
+	float clusterRadius_;
 	int minClusterSize_;
 	bool flatObstaclesDetected_;
 	float minGroundHeight_;
@@ -92,5 +113,7 @@ private:
 };
 
 }
+
+#include <rtabmap/core/impl/OccupancyGrid.hpp>
 
 #endif /* CORELIB_SRC_OCCUPANCYGRID_H_ */

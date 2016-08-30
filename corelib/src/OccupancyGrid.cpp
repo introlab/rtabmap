@@ -27,8 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/OccupancyGrid.h>
 #include <rtabmap/core/util3d.h>
-#include <rtabmap/core/util3d_mapping.h>
-#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UStl.h>
@@ -44,6 +42,9 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	cloudMaxDepth_(Parameters::defaultGridDepthMax()),
 	cloudMinDepth_(Parameters::defaultGridDepthMin()),
 	//roiRatios_(Parameters::defaultGridDepthRoiRatios()), // initialized in parseParameters()
+	footprintLength_(Parameters::defaultGridFootprintLength()),
+	footprintWidth_(Parameters::defaultGridFootprintWidth()),
+	footprintHeight_(Parameters::defaultGridFootprintHeight()),
 	scanDecimation_(Parameters::defaultGridScanDecimation()),
 	cellSize_(Parameters::defaultGridCellSize()),
 	occupancyFromCloud_(Parameters::defaultGridFromDepth()),
@@ -51,6 +52,7 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	maxObstacleHeight_(Parameters::defaultGridMaxObstacleHeight()),
 	normalKSearch_(Parameters::defaultGridNormalK()),
 	maxGroundAngle_(Parameters::defaultGridMaxGroundAngle()*M_PI/180.0f),
+	clusterRadius_(Parameters::defaultGridClusterRadius()),
 	minClusterSize_(Parameters::defaultGridMinClusterSize()),
 	flatObstaclesDetected_(Parameters::defaultGridFlatObstacleDetected()),
 	minGroundHeight_(Parameters::defaultGridMinGroundHeight()),
@@ -74,6 +76,9 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridDepthDecimation(), cloudDecimation_);
 	Parameters::parse(parameters, Parameters::kGridDepthMin(), cloudMinDepth_);
 	Parameters::parse(parameters, Parameters::kGridDepthMax(), cloudMaxDepth_);
+	Parameters::parse(parameters, Parameters::kGridFootprintLength(), footprintLength_);
+	Parameters::parse(parameters, Parameters::kGridFootprintWidth(), footprintWidth_);
+	Parameters::parse(parameters, Parameters::kGridFootprintHeight(), footprintHeight_);
 	Parameters::parse(parameters, Parameters::kGridScanDecimation(), scanDecimation_);
 	float cellSize = cellSize_;
 	if(Parameters::parse(parameters, Parameters::kGridCellSize(), cellSize))
@@ -109,6 +114,8 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	{
 		maxGroundAngle_ *= M_PI/180.0f;
 	}
+	Parameters::parse(parameters, Parameters::kGridClusterRadius(), clusterRadius_);
+	UASSERT_MSG(clusterRadius_ > 0.0f, uFormat("Param name is \"%s\"", Parameters::kGridClusterRadius().c_str()).c_str());
 	Parameters::parse(parameters, Parameters::kGridMinClusterSize(), minClusterSize_);
 	Parameters::parse(parameters, Parameters::kGridFlatObstacleDetected(), flatObstaclesDetected_);
 	Parameters::parse(parameters, Parameters::kGridNormalsSegmentation(), normalsSegmentation_);
@@ -175,7 +182,11 @@ void OccupancyGrid::setCellSize(float cellSize)
 	}
 }
 
-void OccupancyGrid::createLocalMap(const Signature & node, cv::Mat & ground, cv::Mat & obstacles, cv::Point3f & viewPoint) const
+void OccupancyGrid::createLocalMap(
+		const Signature & node,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		cv::Point3f & viewPoint) const
 {
 	UDEBUG("scan channels=%d, occupancyFromCloud_=%d normalsSegmentation_=%d grid3D_=%d",
 			node.sensorData().laserScanRaw().empty()?0:node.sensorData().laserScanRaw().channels(), occupancyFromCloud_?1:0, normalsSegmentation_?1:0, grid3D_?1:0);
@@ -211,7 +222,10 @@ void OccupancyGrid::createLocalMap(const Signature & node, cv::Mat & ground, cv:
 		}
 		else
 		{
-			UDEBUG("Depth image");
+			UDEBUG("Depth image : decimation=%d max=%f min=%f",
+					cloudDecimation_,
+					cloudMaxDepth_,
+					cloudMinDepth_);
 			cloud = util3d::cloudRGBFromSensorData(
 					node.sensorData(),
 					cloudDecimation_,
@@ -253,89 +267,18 @@ void OccupancyGrid::createLocalMap(const Signature & node, cv::Mat & ground, cv:
 
 		if(cloud->size())
 		{
-			// voxelize to grid cell size
-			cloud = util3d::voxelize(cloud, indices, cellSize_);
-			indices->resize(cloud->size());
-			for(unsigned int i=0; i<indices->size(); ++i)
+			pcl::IndicesPtr groundIndices(new std::vector<int>);
+			pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
+			cloud = this->segmentCloud<pcl::PointXYZRGB>(
+					cloud,
+					indices,
+					node.getPose(),
+					viewPoint,
+					groundIndices,
+					obstaclesIndices);
+
+			if(!groundIndices->empty() || !obstaclesIndices->empty())
 			{
-				indices->at(i) = i;
-			}
-
-			// add pose rotation without yaw
-			float roll, pitch, yaw;
-			node.getPose().getEulerAngles(roll, pitch, yaw);
-			UDEBUG("node.getPose()=%s projMapFrame_=%d", node.getPose().prettyPrint().c_str(), projMapFrame_?1:0);
-			cloud = util3d::transformPointCloud(cloud, Transform(0,0, projMapFrame_?node.getPose().z():0, roll, pitch, 0));
-
-			if(minGroundHeight_ != 0.0f || maxObstacleHeight_ > 0.0f)
-			{
-				indices = util3d::passThrough(cloud, indices, "z",
-						minGroundHeight_!=0.0f?minGroundHeight_:std::numeric_limits<int>::min(),
-						maxObstacleHeight_>0.0f?maxObstacleHeight_:std::numeric_limits<int>::max());
-			}
-
-			pcl::IndicesPtr groundIndices, obstaclesIndices;
-
-			if(indices->size())
-			{
-				if(normalsSegmentation_)
-				{
-					UDEBUG("normalKSearch=%d", normalKSearch_);
-					UDEBUG("maxGroundAngle=%f", maxGroundAngle_);
-					UDEBUG("Cluster radius=%f", cellSize_*2.0f);
-					UDEBUG("flatObstaclesDetected=%d", flatObstaclesDetected_?1:0);
-					UDEBUG("maxGroundHeight=%f", maxGroundHeight_?1:0);
-					util3d::segmentObstaclesFromGround<pcl::PointXYZRGB>(
-							cloud,
-							indices,
-							groundIndices,
-							obstaclesIndices,
-							normalKSearch_,
-							maxGroundAngle_,
-							cellSize_*2.0f,
-							minClusterSize_,
-							flatObstaclesDetected_,
-							maxGroundHeight_,
-							0,
-							Eigen::Vector4f(viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?node.getPose().z():0), 1));
-					UDEBUG("viewPoint=%f,%f,%f", viewPoint.x, viewPoint.y, viewPoint.z+(projMapFrame_?node.getPose().z():0));
-					//UWARN("Saving ground.pcd and obstacles.pcd");
-					//pcl::io::savePCDFile("ground.pcd", *cloud, *groundIndices);
-					//pcl::io::savePCDFile("obstacles.pcd", *cloud, *obstaclesIndices);
-				}
-				else
-				{
-					UDEBUG("");
-					// passthrough filter
-					groundIndices = rtabmap::util3d::passThrough(cloud, indices, "z", minGroundHeight_<0.0f?minGroundHeight_:std::numeric_limits<int>::min(), maxGroundHeight_);
-					obstaclesIndices = rtabmap::util3d::extractIndices(cloud, groundIndices, true);
-				}
-
-				UDEBUG("groundIndices=%d obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
-
-				// Do radius filtering after voxel filtering ( a lot faster)
-				if(noiseFilteringRadius_ > 0.0 && noiseFilteringMinNeighbors_ > 0)
-				{
-					UDEBUG("");
-					if(groundIndices->size())
-					{
-						groundIndices = rtabmap::util3d::radiusFiltering(cloud, groundIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
-					}
-					if(obstaclesIndices->size())
-					{
-						obstaclesIndices = rtabmap::util3d::radiusFiltering(cloud, obstaclesIndices, noiseFilteringRadius_, noiseFilteringMinNeighbors_);
-					}
-
-					if(groundIndices->empty() && obstaclesIndices->empty())
-					{
-						UWARN("Cloud (with %d points) is empty after noise "
-								"filtering. Occupancy grid of node %d cannot be "
-								"created.",
-								(int)cloud->size(), node.id());
-						return;
-					}
-				}
-
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -359,6 +302,8 @@ void OccupancyGrid::createLocalMap(const Signature & node, cv::Mat & ground, cv:
 					}
 
 					// transform back in base frame
+					float roll, pitch, yaw;
+					node.getPose().getEulerAngles(roll, pitch, yaw);
 					Transform tinv = Transform(0,0, projMapFrame_?node.getPose().z():0, roll, pitch, 0).inverse();
 					ground = util3d::laserScanFromPointCloud(*groundCloud, tinv);
 					obstacles = util3d::laserScanFromPointCloud(*obstaclesCloud, tinv);
