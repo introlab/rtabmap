@@ -746,9 +746,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 					}
 					else
 					{
-						UWARN("Cannot apply ROI ratios because resulting "
+						UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
 							  "dimension (depth=%dx%d rgb=%dx%d) cannot be divided exactly "
 							  "by decimation parameter (%d). Ignoring ROI ratios...",
+							  roiRatios[0],
+							  roiRatios[1],
+							  roiRatios[2],
+							  roiRatios[3],
 							  roiDepth.width,
 							  roiDepth.height,
 							  roiRgb.width,
@@ -891,9 +895,13 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 					}
 					else
 					{
-						UWARN("Cannot apply ROI ratios because resulting "
+						UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
 							  "dimension (depth=%dx%d rgb=%dx%d) cannot be divided exactly "
 							  "by decimation parameter (%d). Ignoring ROI ratios...",
+							  roiRatios[0],
+							  roiRatios[1],
+							  roiRatios[2],
+							  roiRatios[3],
 							  roiDepth.width,
 							  roiDepth.height,
 							  roiRgb.width,
