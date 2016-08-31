@@ -923,7 +923,8 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 		if(!res)
 		{
 			// get left image
-			cv::Mat rgbaLeft = slMat2cvMat(zed_->retrieveImage(static_cast<sl::zed::SIDE> (sl::zed::STEREO_LEFT)));
+			cv::Mat rgbaLeft = sl::zed::slMat2cvMat(zed_->retrieveImage(static_cast<sl::zed::SIDE> (sl::zed::LEFT)));
+
 			cv::Mat left;
 			cv::cvtColor(rgbaLeft, left, cv::COLOR_BGRA2BGR);
 
@@ -938,7 +939,7 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 			else
 			{
 				// get right image
-				cv::Mat rgbaRight = slMat2cvMat(zed_->retrieveImage(static_cast<sl::zed::SIDE> (sl::zed::STEREO_RIGHT)));
+				cv::Mat rgbaRight = sl::zed::slMat2cvMat(zed_->retrieveImage(static_cast<sl::zed::SIDE> (sl::zed::RIGHT)));
 				cv::Mat right;
 				cv::cvtColor(rgbaRight, right, cv::COLOR_BGRA2GRAY);
 			
