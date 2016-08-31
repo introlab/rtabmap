@@ -185,6 +185,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionVisual_Refine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllNeighborLinks()));
 	connect(ui_->actionVisual_Refine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllLoopClosureLinks()));
 	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
+	connect(ui_->actionRegenerate_local_grid_maps_selected, SIGNAL(triggered()), this, SLOT(regenerateCurrentLocalMaps()));
 	connect(ui_->actionReset_all_changes, SIGNAL(triggered()), this, SLOT(resetAllChanges()));
 
 	//ICP buttons
@@ -1595,6 +1596,60 @@ void DatabaseViewer::regenerateLocalMaps()
 	updateGrid();
 }
 
+void DatabaseViewer::regenerateCurrentLocalMaps()
+{
+	UTimer time;
+	OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+
+	if(ids_.size() == 0)
+	{
+		UWARN("ids_ is empty!");
+		return;
+	}
+
+	QSet<int> idsSet;
+	idsSet.insert(ids_.at(ui_->horizontalSlider_A->value()));
+	idsSet.insert(ids_.at(ui_->horizontalSlider_B->value()));
+	QList<int> ids = idsSet.toList();
+
+	rtabmap::ProgressDialog progressDialog(this);
+	progressDialog.setMaximumSteps(ids.size());
+	progressDialog.show();
+
+	for(int i =0; i<ids.size(); ++i)
+	{
+		generatedLocalMaps_.erase(ids.at(i));
+		generatedLocalMapsInfo_.erase(ids.at(i));
+
+		SensorData data;
+		dbDriver_->getNodeData(ids.at(i), data);
+		data.uncompressData();
+
+		int mapId, weight;
+		Transform odomPose, groundTruth;
+		std::string label;
+		double stamp;
+		QString msg;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth))
+		{
+			Signature s = data;
+			s.setPose(odomPose);
+			cv::Mat ground, obstacles;
+			cv::Point3f viewpoint;
+			grid.createLocalMap(s, ground, obstacles, viewpoint);
+			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(ground, obstacles)));
+			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
+			msg = QString("Generated local occupancy grid map %1/%2 (%3s)").arg(i+1).arg((int)ids.size()).arg(time.ticks());
+		}
+
+		progressDialog.appendText(msg);
+		progressDialog.incrementStep();
+		QApplication::processEvents();
+	}
+	progressDialog.setValue(progressDialog.maximumSteps());
+	updateGrid();
+}
+
 void DatabaseViewer::view3DMap()
 {
 	if(!ids_.size() || !dbDriver_)
@@ -2431,6 +2486,8 @@ void DatabaseViewer::update(int value,
 					view3D->removeCloud("0");
 					view3D->removeCloud("1");
 					view3D->removeCloud("map");
+					view3D->removeCloud("ground");
+					view3D->removeCloud("obstacles");
 					if(!data.depthOrRightRaw().empty())
 					{
 						if(!data.imageRaw().empty())
@@ -2505,7 +2562,7 @@ void DatabaseViewer::update(int value,
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
 					if(scan->size())
 					{
-						view3D->addCloud("1", scan, pose);
+						view3D->addCloud("1", scan, pose, Qt::yellow);
 					}
 
 					//add occupancy grid
@@ -2535,6 +2592,18 @@ void DatabaseViewer::update(int value,
 							cv::Mat map8U = util3d::convertMap2Image8U(map8S);
 							view3D->addOccupancyGridMap(map8U, ui_->doubleSpinBox_gridCellSize->value(), xMin, yMin, 1);
 						}
+
+						// occupancy cloud
+						view3D->addCloud("ground",
+								util3d::laserScanToPointCloud(localMaps.begin()->second.first),
+								Transform::getIdentity(),
+								Qt::green);
+						view3D->addCloud("obstacles",
+								util3d::laserScanToPointCloud(localMaps.begin()->second.second),
+								Transform::getIdentity(),
+								Qt::red);
+						view3D->setCloudPointSize("ground", 5);
+						view3D->setCloudPointSize("obstacles", 5);
 					}
 
 					view3D->update();

@@ -717,19 +717,23 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 				cv::Mat depth = cv::Mat(sensorData.depthRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, sensorData.depthRaw().rows));
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
-					roiRatios[0] != 0.0f &&
-					roiRatios[1] != 0.0f &&
-					roiRatios[2] != 0.0f &&
-					roiRatios[3] != 0.0f)
+					(roiRatios[0] > 0.0f ||
+					roiRatios[1] > 0.0f ||
+					roiRatios[2] > 0.0f ||
+					roiRatios[3] > 0.0f))
 				{
-					if(	int((roiRatios[0]+roiRatios[1])*double(depth.cols))%decimation==0 &&
-						int((roiRatios[2]+roiRatios[3])*double(depth.rows))%decimation==0 &&
-						(model.imageWidth() == 0 ||
-						 model.imageHeight() == 0 ||
-						 (int((roiRatios[0]+roiRatios[1])*double(model.imageWidth()))%decimation==0 &&
-						  int((roiRatios[2]+roiRatios[3])*double(model.imageHeight()))%decimation==0)))
+					cv::Rect roiDepth = util2d::computeRoi(depth, roiRatios);
+					cv::Rect roiRgb;
+					if(model.imageWidth() && model.imageHeight())
 					{
-						cv::Rect roiDepth = util2d::computeRoi(depth, roiRatios);
+						roiRgb = util2d::computeRoi(model.imageSize(), roiRatios);
+					}
+					if(	roiDepth.width%decimation==0 &&
+						roiDepth.height%decimation==0 &&
+						(roiRgb.width != 0 ||
+						   (roiRgb.width%decimation==0 &&
+							roiRgb.height%decimation==0)))
+					{
 						depth = cv::Mat(depth, roiDepth);
 						if(model.imageWidth() != 0 && model.imageHeight() != 0)
 						{
@@ -743,10 +747,12 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 					else
 					{
 						UWARN("Cannot apply ROI ratios because resulting "
-							  "dimension (%dx%d) cannot be divided exactly "
+							  "dimension (depth=%dx%d rgb=%dx%d) cannot be divided exactly "
 							  "by decimation parameter (%d). Ignoring ROI ratios...",
-							  int((roiRatios[0]+roiRatios[1])*double(depth.cols)),
-							  int((roiRatios[2]+roiRatios[3])*double(depth.rows)),
+							  roiDepth.width,
+							  roiDepth.height,
+							  roiRgb.width,
+							  roiRgb.height,
 							  decimation);
 					}
 				}
@@ -867,18 +873,18 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 				cv::Mat rgb(sensorData.depthRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthRaw().rows));
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
-					roiRatios[0] != 0.0f &&
-					roiRatios[1] != 0.0f &&
-					roiRatios[2] != 0.0f &&
-					roiRatios[3] != 0.0f)
+					(roiRatios[0] > 0.0f ||
+					roiRatios[1] > 0.0f ||
+					roiRatios[2] > 0.0f ||
+					roiRatios[3] > 0.0f))
 				{
-					if(	int((roiRatios[0]+roiRatios[1])*double(depth.cols))%decimation==0 &&
-						int((roiRatios[2]+roiRatios[3])*double(depth.rows))%decimation==0 &&
-						int((roiRatios[0]+roiRatios[1])*double(rgb.cols))%decimation==0 &&
-						int((roiRatios[2]+roiRatios[3])*double(rgb.rows))%decimation==0)
+					cv::Rect roiDepth = util2d::computeRoi(depth, roiRatios);
+					cv::Rect roiRgb = util2d::computeRoi(rgb, roiRatios);
+					if(	roiDepth.width%decimation==0 &&
+						roiDepth.height%decimation==0 &&
+						roiRgb.width%decimation==0 &&
+						roiRgb.height%decimation==0)
 					{
-						cv::Rect roiDepth = util2d::computeRoi(depth, roiRatios);
-						cv::Rect roiRgb = util2d::computeRoi(rgb, roiRatios);
 						depth = cv::Mat(depth, roiDepth);
 						rgb = cv::Mat(rgb, roiRgb);
 						model = model.roi(roiRgb);
@@ -888,10 +894,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 						UWARN("Cannot apply ROI ratios because resulting "
 							  "dimension (depth=%dx%d rgb=%dx%d) cannot be divided exactly "
 							  "by decimation parameter (%d). Ignoring ROI ratios...",
-							  int((roiRatios[0]+roiRatios[1])*double(depth.cols)),
-							  int((roiRatios[2]+roiRatios[3])*double(depth.rows)),
-							  int((roiRatios[0]+roiRatios[1])*double(rgb.cols)),
-							  int((roiRatios[2]+roiRatios[3])*double(rgb.rows)),
+							  roiDepth.width,
+							  roiDepth.height,
+							  roiRgb.width,
+							  roiRgb.height,
 							  decimation);
 					}
 				}

@@ -518,6 +518,7 @@
     <addaction name="actionRefine_all_loop_closure_links"/>
     <addaction name="separator"/>
     <addaction name="actionRegenerate_local_grid_maps"/>
+    <addaction name="actionRegenerate_local_grid_maps_selected"/>
     <addaction name="separator"/>
     <addaction name="actionReset_all_changes"/>
     <addaction name="separator"/>
@@ -1374,8 +1375,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
-          <height>117</height>
+          <width>289</width>
+          <height>182</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1474,8 +1475,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>175</width>
-          <height>191</height>
+          <width>289</width>
+          <height>182</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1868,6 +1869,11 @@
   <action name="actionRegenerate_local_grid_maps">
    <property name="text">
     <string>Regenerate local grid maps...</string>
+   </property>
+  </action>
+  <action name="actionRegenerate_local_grid_maps_selected">
+   <property name="text">
+    <string>Regenerate local grid maps (selected)...</string>
    </property>
   </action>
  </widget>

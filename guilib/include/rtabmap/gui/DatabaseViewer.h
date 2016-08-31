@@ -84,6 +84,7 @@ private slots:
 	void generateTOROGraph();
 	void generateG2OGraph();
 	void regenerateLocalMaps();
+	void regenerateCurrentLocalMaps();
 	void view3DMap();
 	void view3DLaserScans();
 	void generate3DMap();
