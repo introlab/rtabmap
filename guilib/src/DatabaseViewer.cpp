@@ -2629,7 +2629,7 @@ void DatabaseViewer::update(int value,
 			if(!imgDepth.isNull())
 			{
 				view->setImageDepth(imgDepth);
-				if(!img.isNull())
+				if(img.isNull())
 				{
 					rect = imgDepth.rect();
 				}

@@ -267,9 +267,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 	UASSERT(model.isValidForProjection());
 	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
 
-	int imageRows = imageDepth.rows;
-	int imageCols = imageDepth.cols;
-
 	if(model.imageHeight()>0 && model.imageWidth()>0)
 	{
 		UASSERT(model.imageHeight() % imageDepth.rows == 0 && model.imageWidth() % imageDepth.cols == 0);
@@ -277,8 +274,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		UASSERT_MSG(model.imageWidth() % decimation == 0, uFormat("model.imageWidth()=%d decimation=%d", model.imageWidth(), decimation).c_str());
 		rgbToDepthFactorX = 1.0f/float((model.imageWidth() / imageDepth.cols));
 		rgbToDepthFactorY = 1.0f/float((model.imageHeight() / imageDepth.rows));
-		imageRows = model.imageHeight();
-		imageCols = model.imageWidth();
 	}
 	else
 	{
@@ -293,8 +288,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 	}
 
 	//cloud.header = cameraInfo.header;
-	cloud->height = imageRows/decimation;
-	cloud->width  = imageCols/decimation;
+	cloud->height = imageDepth.rows/decimation;
+	cloud->width  = imageDepth.cols/decimation;
 	cloud->is_dense = false;
 	cloud->resize(cloud->height * cloud->width);
 	if(validIndices)
@@ -307,8 +302,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 	float depthCx = model.cx() * rgbToDepthFactorX;
 	float depthCy = model.cy() * rgbToDepthFactorY;
 
-	UDEBUG("rgb=%dx%d depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
-			imageCols, imageRows,
+	UDEBUG("depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
 			imageDepth.cols, imageDepth.rows,
 			model.fx(), model.fy(), model.cx(), model.cy(),
 			rgbToDepthFactorX,
@@ -316,13 +310,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 			decimation);
 
 	int oi = 0;
-	for(int h = 0; h < imageRows && h/decimation < (int)cloud->height; h+=decimation)
+	for(int h = 0; h < imageDepth.rows && h/decimation < (int)cloud->height; h+=decimation)
 	{
-		for(int w = 0; w < imageCols && w/decimation < (int)cloud->width; w+=decimation)
+		for(int w = 0; w < imageDepth.cols && w/decimation < (int)cloud->width; w+=decimation)
 		{
 			pcl::PointXYZ & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
 
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w*rgbToDepthFactorX, h*rgbToDepthFactorY, depthCx, depthCy, depthFx, depthFy, false);
+			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
 			if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
 			{
 				pt.x = ptXYZ.x;
@@ -400,8 +394,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	}
 
 	//cloud.header = cameraInfo.header;
-	cloud->height = imageRgb.rows/decimation;
-	cloud->width  = imageRgb.cols/decimation;
+	cloud->height = imageDepth.rows/decimation;
+	cloud->width  = imageDepth.cols/decimation;
 	cloud->is_dense = false;
 	cloud->resize(cloud->height * cloud->width);
 	if(validIndices)
@@ -409,12 +403,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		validIndices->resize(cloud->size());
 	}
 
-	float rgbToDepthFactorX = 1.0f/float((imageRgb.cols / imageDepth.cols));
-	float rgbToDepthFactorY = 1.0f/float((imageRgb.rows / imageDepth.rows));
-	float depthFx = model.fx() * rgbToDepthFactorX;
-	float depthFy = model.fy() * rgbToDepthFactorY;
-	float depthCx = model.cx() * rgbToDepthFactorX;
-	float depthCy = model.cy() * rgbToDepthFactorY;
+	float rgbToDepthFactorX = float(imageRgb.cols) / float(imageDepth.cols);
+	float rgbToDepthFactorY = float(imageRgb.rows) / float(imageDepth.rows);
+	float depthFx = model.fx() / rgbToDepthFactorX;
+	float depthFy = model.fy() / rgbToDepthFactorY;
+	float depthCx = model.cx() / rgbToDepthFactorX;
+	float depthCy = model.cy() / rgbToDepthFactorY;
 
 	UDEBUG("rgb=%dx%d depth=%dx%d fx=%f fy=%f cx=%f cy=%f (depth factors=%f %f) decimation=%d",
 			imageRgb.cols, imageRgb.rows,
@@ -425,26 +419,31 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 			decimation);
 
 	int oi = 0;
-	for(int h = 0; h < imageRgb.rows && h/decimation < (int)cloud->height; h+=decimation)
+	for(int h = 0; h < imageDepth.rows && h/decimation < (int)cloud->height; h+=decimation)
 	{
-		for(int w = 0; w < imageRgb.cols && w/decimation < (int)cloud->width; w+=decimation)
+		for(int w = 0; w < imageDepth.cols && w/decimation < (int)cloud->width; w+=decimation)
 		{
 			pcl::PointXYZRGB & pt = cloud->at((h/decimation)*cloud->width + (w/decimation));
+
+			int x = int(w*rgbToDepthFactorX);
+			int y = int(h*rgbToDepthFactorY);
+			UASSERT(x >=0 && x<imageRgb.cols && y >=0 && y<imageRgb.rows);
 			if(!mono)
 			{
-				pt.b = imageRgb.at<cv::Vec3b>(h,w)[0];
-				pt.g = imageRgb.at<cv::Vec3b>(h,w)[1];
-				pt.r = imageRgb.at<cv::Vec3b>(h,w)[2];
+				const unsigned char * bgr = imageRgb.ptr<unsigned char>(y,x);
+				pt.b = bgr[0];
+				pt.g = bgr[1];
+				pt.r = bgr[2];
 			}
 			else
 			{
-				unsigned char v = imageRgb.at<unsigned char>(h,w);
+				unsigned char v = imageRgb.at<unsigned char>(y,x);
 				pt.b = v;
 				pt.g = v;
 				pt.r = v;
 			}
 
-			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w*rgbToDepthFactorX, h*rgbToDepthFactorY, depthCx, depthCy, depthFx, depthFy, false);
+			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
 			if(pcl::isFinite(ptXYZ) && ptXYZ.z>=minDepth && (maxDepth<=0.0f || ptXYZ.z <= maxDepth))
 			{
 				pt.x = ptXYZ.x;
