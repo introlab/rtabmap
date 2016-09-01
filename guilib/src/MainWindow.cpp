@@ -4526,6 +4526,10 @@ void MainWindow::postProcessing()
 					Signature & signatureFrom = _cachedSignatures[from];
 					Signature & signatureTo = _cachedSignatures[to];
 
+					cv::Mat tmp;
+					signatureFrom.sensorData().uncompressData(0,0,&tmp);
+					signatureTo.sensorData().uncompressData(0,0,&tmp);
+
 					if(!signatureFrom.sensorData().laserScanRaw().empty() &&
 					   !signatureTo.sensorData().laserScanRaw().empty())
 					{
@@ -4554,7 +4558,7 @@ void MainWindow::postProcessing()
 						}
 						else
 						{
-							str = tr("Cannot refine link %1->%2 (clouds empty!)").arg(from).arg(to);
+							str = tr("Cannot refine link %1->%2 (scans empty!)").arg(from).arg(to);
 						}
 
 						_initProgressDialog->appendText(str, Qt::darkYellow);
