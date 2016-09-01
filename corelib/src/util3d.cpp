@@ -872,8 +872,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		{
 			if(sensorData.cameraModels()[i].isValidForProjection())
 			{
-				cv::Mat depth(sensorData.imageRaw(), cv::Rect(subRGBWidth*i, 0, subRGBWidth, sensorData.imageRaw().rows));
-				cv::Mat rgb(sensorData.depthRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthRaw().rows));
+				cv::Mat rgb(sensorData.imageRaw(), cv::Rect(subRGBWidth*i, 0, subRGBWidth, sensorData.imageRaw().rows));
+				cv::Mat depth(sensorData.depthRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthRaw().rows));
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
 					(roiRatios[0] > 0.0f ||
@@ -910,8 +910,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 				}
 
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp = util3d::cloudFromDepthRGB(
-						depth,
 						rgb,
+						depth,
 						model,
 						decimation,
 						maxDepth,
