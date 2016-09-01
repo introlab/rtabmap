@@ -132,8 +132,11 @@ OPTION(BUILD_TOOLS "Build tools" ON)
 OPTION(BUILD_EXAMPLES "Build examples" ON)
 
 ####### DEPENDENCIES #######
-
+IF(ANDROID)
+option(WITH_QT            "Include Qt support"                   OFF)
+ELSE()
 option(WITH_QT            "Include Qt support"                   ON)
+ENDIF()
 option(WITH_FREENECT      "Include Freenect support"             ON)
 option(WITH_FREENECT2     "Include Freenect2 support"            ON)
 option(WITH_OPENNI2       "Include OpenNI2 support"              ON)
