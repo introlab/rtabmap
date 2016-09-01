@@ -29,7 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CORELIB_SRC_FLANNINDEX_H_
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
-
+#include <list>
 #include <opencv2/opencv.hpp>
 
 namespace rtabmap {
