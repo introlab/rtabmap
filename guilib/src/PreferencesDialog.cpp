@@ -1245,6 +1245,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_octomap_treeDepth->setValue(16);
 		_ui->checkBox_octomap_2dgrid->setChecked(true);
 		_ui->checkBox_octomap_show3dMap->setChecked(true);
+		_ui->doubleSpinBox_octomap_occupancyThr->setValue(0.5);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
 	{
@@ -1596,6 +1597,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->spinBox_octomap_treeDepth->setValue(settings.value("octomap_depth", _ui->spinBox_octomap_treeDepth->value()).toInt());
 	_ui->checkBox_octomap_2dgrid->setChecked(settings.value("octomap_2dgrid", _ui->checkBox_octomap_2dgrid->isChecked()).toBool());
 	_ui->checkBox_octomap_show3dMap->setChecked(settings.value("octomap_3dmap", _ui->checkBox_octomap_show3dMap->isChecked()).toBool());
+	_ui->doubleSpinBox_octomap_occupancyThr->setValue(settings.value("octomap_occupancy_thr", _ui->doubleSpinBox_octomap_occupancyThr->value()).toDouble());
 
 	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("meshing_angle", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
@@ -2008,6 +2010,8 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("octomap_depth",               _ui->spinBox_octomap_treeDepth->value());
 	settings.setValue("octomap_2dgrid",              _ui->checkBox_octomap_2dgrid->isChecked());
 	settings.setValue("octomap_3dmap",               _ui->checkBox_octomap_show3dMap->isChecked());
+	settings.setValue("octomap_occupancy_thr",       _ui->doubleSpinBox_octomap_occupancyThr->value());
+
 
 	settings.setValue("meshing",               _ui->groupBox_organized->isChecked());
 	settings.setValue("meshing_angle",         _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -3716,6 +3720,10 @@ int PreferencesDialog::getOctomapTreeDepth() const
 bool PreferencesDialog::isOctomapGroundAnObstacle() const
 {
 	return _ui->checkBox_grid_groundObstacle->isChecked();
+}
+double PreferencesDialog::getOctomapOccupancyThr() const
+{
+	return _ui->doubleSpinBox_octomap_occupancyThr->value();
 }
 
 double PreferencesDialog::getMapVoxel() const

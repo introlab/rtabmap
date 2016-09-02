@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-500</y>
+            <y>0</y>
             <width>678</width>
             <height>2417</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>15</number>
+                <number>3</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1756,6 +1756,29 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="checked">
                           <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_octomap_treeDepth_4">
+                         <property name="text">
+                          <string>Occupancy threshold.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_octomap_occupancyThr">
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.500000000000000</double>
                          </property>
                         </widget>
                        </item>

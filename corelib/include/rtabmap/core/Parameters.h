@@ -491,7 +491,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Grid, NoiseFilteringRadius,         float,   0.0,     "Noise filtering radius (0=disabled). Done after segmentation.");
 	RTABMAP_PARAM(Grid, NoiseFilteringMinNeighbors,   int,     5,       "Noise filtering minimum neighbors.");
 	RTABMAP_PARAM(Grid, Scan2dUnknownSpaceFilled,     bool,    false,   "Unknown space filled. Only used with 2D laser scans.");
-	RTABMAP_PARAM(Grid, Scan2dMaxFilledRange,         float,   6.0,     "Unknown space filled maximum range. If 0, the laser scan maximum range is used.");
+	RTABMAP_PARAM(Grid, Scan2dMaxFilledRange,         float,   4.0,     "Unknown space filled maximum range. If 0, the laser scan maximum range is used.");
 
 public:
 	virtual ~Parameters();

@@ -35,10 +35,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OctoMap::OctoMap(float voxelSize) :
+OctoMap::OctoMap(float voxelSize, float occupancyThr) :
 		octree_(new octomap::ColorOcTree(voxelSize)),
 		hasColor_(false)
 {
+	octree_->setOccupancyThres(occupancyThr);
 	UASSERT(voxelSize>0.0f);
 }
 

@@ -239,7 +239,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	_occupancyGrid = new OccupancyGrid(_preferencesDialog->getAllParameters());
 #ifdef RTABMAP_OCTOMAP
-	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
+	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution(), _preferencesDialog->getOctomapOccupancyThr());
 #endif
 
 	// Timer
@@ -4037,7 +4037,9 @@ void MainWindow::startDetection()
 #ifdef RTABMAP_OCTOMAP
 	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
+	_octomap = new OctoMap(
+			_preferencesDialog->getGridMapResolution(),
+			_preferencesDialog->getOctomapOccupancyThr());
 #endif
 
 	_occupancyGrid->clear();
@@ -5061,7 +5063,7 @@ void MainWindow::clearTheCache()
 	// re-create one if the resolution has changed
 	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution());
+	_octomap = new OctoMap(_preferencesDialog->getGridMapResolution(), _preferencesDialog->getOctomapOccupancyThr());
 #endif
 	_occupancyGrid->clear();
 }

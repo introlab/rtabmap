@@ -57,7 +57,7 @@ public:
 
 class RTABMAP_EXP OctoMap {
 public:
-	OctoMap(float voxelSize = 0.1f);
+	OctoMap(float voxelSize = 0.1f, float occupancyThr = 0.5f);
 
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	void addToCache(int nodeId,
