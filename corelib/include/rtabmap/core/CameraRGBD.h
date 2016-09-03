@@ -273,7 +273,7 @@ private:
 };
 
 /////////////////////////
-// CameraOpenNIPCL
+// CameraRealSense
 /////////////////////////
 class RTABMAP_EXP CameraRealSense :
 	public Camera

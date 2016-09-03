@@ -100,6 +100,43 @@ void createPolygonIndexes(
 	}
 }
 
+std::list<std::list<int> > clusterPolygons(
+		const std::vector<std::set<int> > & neighborPolygons,
+		int minClusterSize)
+{
+	std::set<int> polygonsChecked;
+
+	std::list<std::list<int> > clusters;
+
+	for(unsigned int i=0; i<neighborPolygons.size(); ++i)
+	{
+		if(polygonsChecked.find(i) == polygonsChecked.end())
+		{
+			std::list<int> currentCluster;
+			currentCluster.push_back(i);
+			polygonsChecked.insert(i);
+
+			for(std::list<int>::iterator iter=currentCluster.begin(); iter!=currentCluster.end(); ++iter)
+			{
+				// get neighbor polygons
+				std::set<int> neighbors = neighborPolygons[*iter];
+				for(std::set<int>::iterator jter=neighbors.begin(); jter!=neighbors.end(); ++jter)
+				{
+					if(polygonsChecked.insert(*jter).second)
+					{
+						currentCluster.push_back(*jter);
+					}
+				}
+			}
+			if(currentCluster.size() > minClusterSize)
+			{
+				clusters.push_back(currentCluster);
+			}
+		}
+	}
+	return clusters;
+}
+
 std::vector<pcl::Vertices> organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance,

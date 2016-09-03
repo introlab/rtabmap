@@ -411,7 +411,6 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
  * @param viewpoint from which viewpoint the normals should be estimated (see pcl::NormalEstimation).
  * @return the indices of the points which respect the normal constraint.
  */
-
 pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -433,6 +432,13 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		const Eigen::Vector4f & normal,
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint);
+
+void RTABMAP_EXP colorMeanFiltering(
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloudRef,
+		const pcl::IndicesPtr & indicesRef,
+		float radiusSearch);
 
 /**
  * For convenience.

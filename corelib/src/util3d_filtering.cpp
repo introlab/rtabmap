@@ -1555,6 +1555,45 @@ pcl::IndicesPtr normalFiltering(
 	return output;
 }
 
+void colorMeanFiltering(
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloudRef,
+		const pcl::IndicesPtr & indicesRef,
+		float radiusSearch)
+{
+	UASSERT(radiusSearch>0.0f);
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>(false));
+	if(indicesRef->size())
+	{
+		tree->setInputCloud(cloudRef, indicesRef);
+	}
+	else
+	{
+		tree->setInputCloud(cloudRef);
+	}
+	for(unsigned int i=0; i<indices->size(); ++i)
+	{
+		std::vector<int> kIndices;
+		std::vector<float> kDistances;
+		pcl::PointXYZRGB & pt = cloud->at(indices->at(i));
+		if(tree->radiusSearch(pt, radiusSearch, kIndices, kDistances))
+		{
+			UASSERT(kIndices.size());
+			int r=0,g=0,b=0;
+			for(unsigned int j=0; j<kIndices.size(); ++j)
+			{
+				r+=cloudRef->at(kIndices.at(j)).r;
+				g+=cloudRef->at(kIndices.at(j)).g;
+				b+=cloudRef->at(kIndices.at(j)).b;
+			}
+			pt.r = (unsigned char)(r/kIndices.size());
+			pt.g = (unsigned char)(g/kIndices.size());
+			pt.b = (unsigned char)(b/kIndices.size());
+		}
+	}
+}
+
 std::vector<pcl::IndicesPtr> extractClusters(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float clusterTolerance,

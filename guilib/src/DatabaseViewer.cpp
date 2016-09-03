@@ -213,11 +213,16 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_B, SIGNAL(sliderMoved(int)), this, SLOT(sliderBMoved(int)));
 
 	connect(ui_->spinBox_mesh_angleTolerance, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->spinBox_mesh_minClusterSize, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->spinBox_mesh_fillDepthHoles, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->spinBox_mesh_depthError, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_mesh_quad, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->spinBox_mesh_triangleSize, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showCloud, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showMesh, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showScan, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showMap, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showGrid, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 
 	ui_->horizontalSlider_neighbors->setTracking(false);
 	ui_->horizontalSlider_loops->setTracking(false);
@@ -399,6 +404,7 @@ void DatabaseViewer::readSettings()
 	settings.beginGroup("mesh");
 	ui_->checkBox_mesh_quad->setChecked(settings.value("quad", ui_->checkBox_mesh_quad->isChecked()).toBool());
 	ui_->spinBox_mesh_angleTolerance->setValue(settings.value("angleTolerance", ui_->spinBox_mesh_angleTolerance->value()).toInt());
+	ui_->spinBox_mesh_minClusterSize->setValue(settings.value("minClusterSize", ui_->spinBox_mesh_minClusterSize->value()).toInt());
 	ui_->spinBox_mesh_fillDepthHoles->setValue(settings.value("fillDepthHolesSize", ui_->spinBox_mesh_fillDepthHoles->value()).toInt());
 	ui_->spinBox_mesh_depthError->setValue(settings.value("fillDepthHolesError", ui_->spinBox_mesh_depthError->value()).toInt());
 	ui_->spinBox_mesh_triangleSize->setValue(settings.value("triangleSize", ui_->spinBox_mesh_triangleSize->value()).toInt());
@@ -480,6 +486,7 @@ void DatabaseViewer::writeSettings()
 	settings.beginGroup("mesh");
 	settings.setValue("quad", ui_->checkBox_mesh_quad->isChecked());
 	settings.setValue("angleTolerance", ui_->spinBox_mesh_angleTolerance->value());
+	settings.setValue("minClusterSize", ui_->spinBox_mesh_minClusterSize->value());
 	settings.setValue("fillDepthHolesSize", ui_->spinBox_mesh_fillDepthHoles->value());
 	settings.setValue("fillDepthHolesError", ui_->spinBox_mesh_depthError->value());
 	settings.setValue("triangleSize", ui_->spinBox_mesh_triangleSize->value());
@@ -2470,9 +2477,7 @@ void DatabaseViewer::update(int value,
 				}
 
 				// 3d view
-				if(view3D->isVisible() &&
-						(!data.depthOrRightRaw().empty() ||
-						!data.laserScanRaw().empty()))
+				if(view3D->isVisible())
 				{
 					Transform pose = Transform::getIdentity();
 					if(signatures.size())
@@ -2483,131 +2488,173 @@ void DatabaseViewer::update(int value,
 					}
 
 					view3D->removeAllFrustums();
-					view3D->removeCloud("0");
-					view3D->removeCloud("1");
+					view3D->removeCloud("mesh");
+					view3D->removeCloud("cloud");
+					view3D->removeCloud("scan");
 					view3D->removeCloud("map");
 					view3D->removeCloud("ground");
 					view3D->removeCloud("obstacles");
-					if(!data.depthOrRightRaw().empty())
+					if(ui_->checkBox_showCloud->isChecked() || ui_->checkBox_showMesh->isChecked())
 					{
-						if(!data.imageRaw().empty())
+						if(!data.depthOrRightRaw().empty())
 						{
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-							if(!data.depthRaw().empty() && data.cameraModels().size()==1)
+							if(!data.imageRaw().empty())
 							{
-								cv::Mat depth = data.depthRaw();
-								if(ui_->spinBox_mesh_fillDepthHoles->value() > 0)
+								pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+								if(!data.depthRaw().empty() && data.cameraModels().size()==1)
 								{
-									depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
-								}
-								cloud = util3d::cloudFromDepthRGB(
-										data.imageRaw(),
-										depth,
-										data.cameraModels()[0]);
-								if(cloud->size())
-								{
-									cloud = util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform());
-								}
+									cv::Mat depth = data.depthRaw();
+									if(ui_->spinBox_mesh_fillDepthHoles->value() > 0)
+									{
+										depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
+									}
+									cloud = util3d::cloudFromDepthRGB(
+											data.imageRaw(),
+											depth,
+											data.cameraModels()[0]);
+									if(cloud->size())
+									{
+										cloud = util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform());
+									}
 
-							}
-							else
-							{
-								cloud = util3d::cloudRGBFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
-							}
-							if(cloud->size())
-							{
-								if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
-								{
-									Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-									if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
-									{
-										viewpoint[0] = data.cameraModels()[0].localTransform().x();
-										viewpoint[1] = data.cameraModels()[0].localTransform().y();
-										viewpoint[2] = data.cameraModels()[0].localTransform().z();
-									}
-									else if(!data.stereoCameraModel().localTransform().isNull())
-									{
-										viewpoint[0] = data.stereoCameraModel().localTransform().x();
-										viewpoint[1] = data.stereoCameraModel().localTransform().y();
-										viewpoint[2] = data.stereoCameraModel().localTransform().z();
-									}
-									std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-											cloud,
-											float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
-											ui_->checkBox_mesh_quad->isChecked(),
-											ui_->spinBox_mesh_triangleSize->value(),
-											viewpoint);
-									view3D->addCloudMesh("0", cloud, polygons, pose);
 								}
 								else
 								{
-									view3D->addCloud("0", cloud, pose);
+									cloud = util3d::cloudRGBFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
 								}
+								if(cloud->size())
+								{
+									if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
+									{
+										Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+										if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+										{
+											viewpoint[0] = data.cameraModels()[0].localTransform().x();
+											viewpoint[1] = data.cameraModels()[0].localTransform().y();
+											viewpoint[2] = data.cameraModels()[0].localTransform().z();
+										}
+										else if(!data.stereoCameraModel().localTransform().isNull())
+										{
+											viewpoint[0] = data.stereoCameraModel().localTransform().x();
+											viewpoint[1] = data.stereoCameraModel().localTransform().y();
+											viewpoint[2] = data.stereoCameraModel().localTransform().z();
+										}
+										std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+												cloud,
+												float(ui_->spinBox_mesh_angleTolerance->value())*M_PI/180.0f,
+												ui_->checkBox_mesh_quad->isChecked(),
+												ui_->spinBox_mesh_triangleSize->value(),
+												viewpoint);
+
+										if(ui_->spinBox_mesh_minClusterSize->value())
+										{
+											// filter polygons
+											std::vector<std::set<int> > neighbors;
+											std::vector<std::set<int> > vertexToPolygons;
+											util3d::createPolygonIndexes(polygons,
+													cloud->size(),
+													neighbors,
+													vertexToPolygons);
+											std::list<std::list<int> > clusters = util3d::clusterPolygons(
+													neighbors,
+													ui_->spinBox_mesh_minClusterSize->value());
+											std::vector<pcl::Vertices> filteredPolygons(polygons.size());
+											int oi=0;
+											for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+											{
+												for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+												{
+													filteredPolygons[oi++] = polygons.at(*jter);
+												}
+											}
+											filteredPolygons.resize(oi);
+											polygons = filteredPolygons;
+										}
+
+										view3D->addCloudMesh("mesh", cloud, polygons, pose);
+									}
+									if(ui_->checkBox_showCloud->isChecked())
+									{
+										view3D->addCloud("cloud", cloud, pose);
+									}
+								}
+								view3D->updateCameraFrustums(pose, data.cameraModels());
 							}
-							view3D->updateCameraFrustums(pose, data.cameraModels());
-						}
-						else
-						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-							cloud = util3d::cloudFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
-							if(cloud->size())
+							else if(ui_->checkBox_showCloud->isChecked())
 							{
-								view3D->addCloud("0", cloud, pose);
-								view3D->updateCameraFrustum(pose, data.stereoCameraModel());
+								pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+								cloud = util3d::cloudFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
+								if(cloud->size())
+								{
+									view3D->addCloud("cloud", cloud, pose);
+									view3D->updateCameraFrustum(pose, data.stereoCameraModel());
+								}
 							}
 						}
 					}
 
 					//add scan
-					pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
-					if(scan->size())
+					if(ui_->checkBox_showScan->isChecked())
 					{
-						view3D->addCloud("1", scan, pose, Qt::yellow);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
+						if(scan->size())
+						{
+							view3D->addCloud("scan", scan, pose, Qt::yellow);
+						}
 					}
 
 					//add occupancy grid
-					std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps;
-					if(generatedLocalMaps_.find(data.id()) != generatedLocalMaps_.end())
+					if(ui_->checkBox_showMap->isChecked() || ui_->checkBox_showGrid->isChecked())
 					{
-						localMaps.insert(*generatedLocalMaps_.find(data.id()));
-					}
-					else if(!data.gridGroundCellsRaw().empty() && !data.gridObstacleCellsRaw().empty())
-					{
-						localMaps.insert(std::make_pair(data.id(), std::make_pair(data.gridGroundCellsRaw(), data.gridObstacleCellsRaw())));
-					}
-					if(!localMaps.empty())
-					{
-						std::map<int, Transform> poses;
-						poses.insert(std::make_pair(data.id(), Transform::getIdentity()));
-
-						float xMin=0.0f, yMin=0.0f;
-						cv::Mat map8S = util3d::create2DMapFromOccupancyLocalMaps(
-													poses,
-													localMaps,
-													ui_->doubleSpinBox_gridCellSize->value(),
-													xMin, yMin);
-						if(!map8S.empty())
+						std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps;
+						if(generatedLocalMaps_.find(data.id()) != generatedLocalMaps_.end())
 						{
-							//convert to gray scaled map
-							cv::Mat map8U = util3d::convertMap2Image8U(map8S);
-							view3D->addOccupancyGridMap(map8U, ui_->doubleSpinBox_gridCellSize->value(), xMin, yMin, 1);
+							localMaps.insert(*generatedLocalMaps_.find(data.id()));
 						}
+						else if(!data.gridGroundCellsRaw().empty() && !data.gridObstacleCellsRaw().empty())
+						{
+							localMaps.insert(std::make_pair(data.id(), std::make_pair(data.gridGroundCellsRaw(), data.gridObstacleCellsRaw())));
+						}
+						if(!localMaps.empty())
+						{
+							std::map<int, Transform> poses;
+							poses.insert(std::make_pair(data.id(), Transform::getIdentity()));
 
-						// occupancy cloud
-						view3D->addCloud("ground",
-								util3d::laserScanToPointCloud(localMaps.begin()->second.first),
-								Transform::getIdentity(),
-								Qt::green);
-						view3D->addCloud("obstacles",
-								util3d::laserScanToPointCloud(localMaps.begin()->second.second),
-								Transform::getIdentity(),
-								Qt::red);
-						view3D->setCloudPointSize("ground", 5);
-						view3D->setCloudPointSize("obstacles", 5);
+							if(ui_->checkBox_showMap->isChecked())
+							{
+								float xMin=0.0f, yMin=0.0f;
+								cv::Mat map8S = util3d::create2DMapFromOccupancyLocalMaps(
+															poses,
+															localMaps,
+															ui_->doubleSpinBox_gridCellSize->value(),
+															xMin, yMin);
+								if(!map8S.empty())
+								{
+									//convert to gray scaled map
+									cv::Mat map8U = util3d::convertMap2Image8U(map8S);
+									view3D->addOccupancyGridMap(map8U, ui_->doubleSpinBox_gridCellSize->value(), xMin, yMin, 1);
+								}
+							}
+
+							if(ui_->checkBox_showGrid->isChecked())
+							{
+								// occupancy cloud
+								view3D->addCloud("ground",
+										util3d::laserScanToPointCloud(localMaps.begin()->second.first),
+										Transform::getIdentity(),
+										Qt::green);
+								view3D->addCloud("obstacles",
+										util3d::laserScanToPointCloud(localMaps.begin()->second.second),
+										Transform::getIdentity(),
+										Qt::red);
+								view3D->setCloudPointSize("ground", 5);
+								view3D->setCloudPointSize("obstacles", 5);
+							}
+						}
 					}
-
 					view3D->update();
 				}
+
 				if(signatures.size())
 				{
 					UASSERT(signatures.front() != 0 && signatures.size() == 1);

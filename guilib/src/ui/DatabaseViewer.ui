@@ -52,8 +52,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>202</width>
-           <height>196</height>
+           <width>205</width>
+           <height>208</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -210,8 +210,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>201</width>
-           <height>196</height>
+           <width>203</width>
+           <height>208</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -484,7 +484,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -990,8 +990,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>333</width>
-          <height>186</height>
+          <width>324</width>
+          <height>188</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1125,9 +1125,9 @@
         <property name="geometry">
          <rect>
           <x>0</x>
-          <y>0</y>
-          <width>278</width>
-          <height>383</height>
+          <y>-225</y>
+          <width>280</width>
+          <height>465</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1249,7 +1249,7 @@
             <string>Organized Fast Mesh</string>
            </property>
            <layout class="QGridLayout" name="gridLayout_13">
-            <item row="2" column="1">
+            <item row="3" column="1">
              <widget class="QLabel" name="label_14">
               <property name="text">
                <string>Triangle size</string>
@@ -1260,39 +1260,6 @@
              <widget class="QLabel" name="label_12">
               <property name="text">
                <string>Angle tolerance</string>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="0">
-             <widget class="QCheckBox" name="checkBox_mesh_quad">
-              <property name="text">
-               <string/>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QLabel" name="label_15">
-              <property name="text">
-               <string>Fill depth holes: size</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QSpinBox" name="spinBox_mesh_fillDepthHoles">
-              <property name="suffix">
-               <string> pix</string>
-              </property>
-              <property name="minimum">
-               <number>0</number>
-              </property>
-              <property name="maximum">
-               <number>99</number>
-              </property>
-              <property name="value">
-               <number>0</number>
               </property>
              </widget>
             </item>
@@ -1312,7 +1279,7 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
+            <item row="3" column="0">
              <widget class="QSpinBox" name="spinBox_mesh_triangleSize">
               <property name="suffix">
                <string> pix</string>
@@ -1325,21 +1292,21 @@
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
+            <item row="2" column="1">
              <widget class="QLabel" name="label_13">
               <property name="text">
                <string>Quad</string>
               </property>
              </widget>
             </item>
-            <item row="4" column="1">
+            <item row="5" column="1">
              <widget class="QLabel" name="label_17">
               <property name="text">
                <string>Fill depth holes: error</string>
               </property>
              </widget>
             </item>
-            <item row="4" column="0">
+            <item row="5" column="0">
              <widget class="QSpinBox" name="spinBox_mesh_depthError">
               <property name="suffix">
                <string> %</string>
@@ -1352,8 +1319,77 @@
               </property>
              </widget>
             </item>
+            <item row="2" column="0">
+             <widget class="QCheckBox" name="checkBox_mesh_quad">
+              <property name="text">
+               <string/>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QLabel" name="label_15">
+              <property name="text">
+               <string>Fill depth holes: size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QSpinBox" name="spinBox_mesh_fillDepthHoles">
+              <property name="suffix">
+               <string> pix</string>
+              </property>
+              <property name="minimum">
+               <number>0</number>
+              </property>
+              <property name="maximum">
+               <number>99</number>
+              </property>
+              <property name="value">
+               <number>0</number>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QLabel" name="label_20">
+              <property name="text">
+               <string>Min cluster size</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QSpinBox" name="spinBox_mesh_minClusterSize">
+              <property name="suffix">
+               <string/>
+              </property>
+              <property name="minimum">
+               <number>0</number>
+              </property>
+              <property name="maximum">
+               <number>999</number>
+              </property>
+              <property name="value">
+               <number>0</number>
+              </property>
+             </widget>
+            </item>
            </layout>
           </widget>
+         </item>
+         <item>
+          <spacer name="verticalSpacer_6">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
          </item>
          <item>
           <spacer name="verticalSpacer_2">
@@ -1375,8 +1411,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>289</width>
-          <height>182</height>
+          <width>265</width>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1475,8 +1511,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>289</width>
-          <height>182</height>
+          <width>265</width>
+          <height>168</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1699,14 +1735,71 @@
       </layout>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBox_showMesh">
-       <property name="text">
-        <string>Mesh</string>
-       </property>
-       <property name="checked">
-        <bool>false</bool>
-       </property>
-      </widget>
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QCheckBox" name="checkBox_showCloud">
+         <property name="text">
+          <string>Cloud</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_showMesh">
+         <property name="text">
+          <string>Mesh</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_showScan">
+         <property name="text">
+          <string>Scan</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_showMap">
+         <property name="text">
+          <string>Map</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_showGrid">
+         <property name="text">
+          <string>Grid</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="horizontalSpacer_4">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
      </item>
     </layout>
    </widget>

@@ -174,6 +174,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_radius", _ui->doubleSpinBox_gp3Radius->value());
 	settings.setValue("mesh_mu", _ui->doubleSpinBox_gp3Mu->value());
 	settings.setValue("mesh_decimation_factor", _ui->doubleSpinBox_meshDecimationFactor->value());
+	settings.setValue("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value());
 
 	settings.setValue("mesh_texture", _ui->checkBox_textureMapping->isChecked());
 
@@ -229,6 +230,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(settings.value("mesh_decimation_factor",_ui->doubleSpinBox_meshDecimationFactor->value()).toDouble());
+	_ui->spinBox_mesh_minClusterSize->setValue(settings.value("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value()).toInt());
 
 	_ui->checkBox_textureMapping->setChecked(settings.value("mesh_texture", _ui->checkBox_textureMapping->isChecked()).toBool());
 
@@ -752,6 +754,32 @@ bool ExportCloudsDialog::getExportedClouds(
 									_ui->checkBox_mesh_quad->isEnabled() && _ui->checkBox_mesh_quad->isChecked(),
 									_ui->spinBox_mesh_triangleSize->value(),
 									viewpoint);
+
+							if(_ui->spinBox_mesh_minClusterSize->value())
+							{
+								// filter polygons
+								std::vector<std::set<int> > neighbors;
+								std::vector<std::set<int> > vertexToPolygons;
+								util3d::createPolygonIndexes(polygons,
+										iter->second->size(),
+										neighbors,
+										vertexToPolygons);
+								std::list<std::list<int> > clusters = util3d::clusterPolygons(
+										neighbors,
+										_ui->spinBox_mesh_minClusterSize->value());
+								std::vector<pcl::Vertices> filteredPolygons(polygons.size());
+								int oi=0;
+								for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+								{
+									for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+									{
+										filteredPolygons[oi++] = polygons.at(*jter);
+									}
+								}
+								filteredPolygons.resize(oi);
+								polygons = filteredPolygons;
+							}
+
 							_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(polygons.size()).arg(++i).arg(clouds.size()));
 
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -874,6 +902,32 @@ bool ExportCloudsDialog::getExportedClouds(
 							iter->second,
 							_ui->doubleSpinBox_gp3Radius->value(),
 							_ui->doubleSpinBox_gp3Mu->value());
+
+					if(_ui->spinBox_mesh_minClusterSize->value())
+					{
+						// filter polygons
+						std::vector<std::set<int> > neighbors;
+						std::vector<std::set<int> > vertexToPolygons;
+						util3d::createPolygonIndexes(mesh->polygons,
+								mesh->cloud.height*mesh->cloud.width,
+								neighbors,
+								vertexToPolygons);
+						std::list<std::list<int> > clusters = util3d::clusterPolygons(
+								neighbors,
+								_ui->spinBox_mesh_minClusterSize->value());
+						std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
+						int oi=0;
+						for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+						{
+							for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+							{
+								filteredPolygons[oi++] = mesh->polygons.at(*jter);
+							}
+						}
+						filteredPolygons.resize(oi);
+						mesh->polygons = filteredPolygons;
+					}
+
 					_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
 					QApplication::processEvents();
 
