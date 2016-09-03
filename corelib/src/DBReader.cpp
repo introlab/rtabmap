@@ -172,6 +172,10 @@ bool DBReader::init(
 			}
 		}
 	}
+	else
+	{
+		_calibrated = true; // database is empty, make sure calibration warning is not shown.
+	}
 
 	_timer.start();
 
