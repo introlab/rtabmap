@@ -2422,54 +2422,63 @@ bool Memory::addLink(const Link & link, bool addInDatabase)
 	return true;
 }
 
-void Memory::updateLink(int fromId, int toId, const Transform & transform, float rotVariance, float transVariance)
+void Memory::updateLink(const Link & link, bool updateInDatabase)
 {
-	Signature * fromS = this->_getSignature(fromId);
-	Signature * toS = this->_getSignature(toId);
+	Signature * fromS = this->_getSignature(link.from());
+	Signature * toS = this->_getSignature(link.to());
 
-	if(fromS->hasLink(toId) && toS->hasLink(fromId))
+	if(fromS && toS)
 	{
-		Link::Type type = fromS->getLinks().at(toId).type();
-		fromS->removeLink(toId);
-		toS->removeLink(fromId);
-
-		fromS->addLink(Link(fromId, toId, type, transform, rotVariance, transVariance));
-		toS->addLink(Link(toId, fromId, type, transform.inverse(), rotVariance, transVariance));
-
-		if(type!=Link::kVirtualClosure)
+		if(fromS->hasLink(link.to()) && toS->hasLink(link.from()))
 		{
-			_linksChanged = true;
+			Link::Type oldType = fromS->getLinks().at(link.to()).type();
+
+			fromS->removeLink(link.to());
+			toS->removeLink(link.from());
+
+			fromS->addLink(link);
+			toS->addLink(link.inverse());
+
+			if(oldType!=Link::kVirtualClosure || link.type()!=Link::kVirtualClosure)
+			{
+				_linksChanged = true;
+			}
 		}
+		else
+		{
+			UERROR("fromId=%d and toId=%d are not linked!", link.from(), link.to());
+		}
+	}
+	else if(!updateInDatabase)
+	{
+		if(!fromS)
+		{
+			UERROR("from=%d, to=%d, Signature %d not found in working/st memories", link.from(), link.to(), link.from());
+		}
+		if(!toS)
+		{
+			UERROR("from=%d, to=%d, Signature %d not found in working/st memories", link.from(), link.to(), link.to());
+		}
+	}
+	else if(fromS)
+	{
+		UDEBUG("Update link between %d and %d (db)", link.from(), link.to());
+		fromS->removeLink(link.to());
+		fromS->addLink(link);
+		_dbDriver->updateLink(link.inverse());
+	}
+	else if(toS)
+	{
+		UDEBUG("Update link between %d (db) and %d", link.from(), link.to());
+		toS->removeLink(link.from());
+		toS->addLink(link.inverse());
+		_dbDriver->updateLink(link);
 	}
 	else
 	{
-		UERROR("fromId=%d and toId=%d are not linked!", fromId, toId);
-	}
-}
-
-void Memory::updateLink(int fromId, int toId, const Transform & transform, const cv::Mat & covariance)
-{
-	Signature * fromS = this->_getSignature(fromId);
-	Signature * toS = this->_getSignature(toId);
-
-	if(fromS->hasLink(toId) && toS->hasLink(fromId))
-	{
-		Link::Type type = fromS->getLinks().at(toId).type();
-		fromS->removeLink(toId);
-		toS->removeLink(fromId);
-
-		cv::Mat infMatrix  = covariance.inv();
-		fromS->addLink(Link(fromId, toId, type, transform, infMatrix));
-		toS->addLink(Link(toId, fromId, type, transform.inverse(), infMatrix));
-
-		if(type!=Link::kVirtualClosure)
-		{
-			_linksChanged = true;
-		}
-	}
-	else
-	{
-		UERROR("fromId=%d and toId=%d are not linked!", fromId, toId);
+		UDEBUG("Update link between %d (db) and %d (db)", link.from(), link.to());
+		_dbDriver->updateLink(link);
+		_dbDriver->updateLink(link.inverse());
 	}
 }
 

@@ -109,6 +109,7 @@ Scene::Scene() :
 		trace_(0),
 		graph_(0),
 		graphVisible_(true),
+		gridVisible_(true),
 		traceVisible_(true),
 		currentPose_(0),
 		cloud_shader_program_(0),
@@ -116,6 +117,7 @@ Scene::Scene() :
 		graph_shader_program_(0),
 		mapRendering_(true),
 		meshRendering_(true),
+		meshRenderingTexture_(true),
 		pointSize_(3.0f) {}
 
 Scene::~Scene() {DeleteResources();}
@@ -275,9 +277,11 @@ int Scene::Render() {
 	  }
   }
 
-
-	grid_->Render(gesture_camera_->GetProjectionMatrix(),
-				  gesture_camera_->GetViewMatrix());
+  	if(gridVisible_)
+  	{
+  		grid_->Render(gesture_camera_->GetProjectionMatrix(),
+  					  gesture_camera_->GetViewMatrix());
+  	}
 
 	bool frustumCulling = true;
 	int cloudDrawn=0;
@@ -327,7 +331,7 @@ int Scene::Render() {
 			for(unsigned int i=0; i<indices->size(); ++i)
 			{
 				++cloudDrawn;
-				pointClouds_.find(ids[indices->at(i)])->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_);
+				pointClouds_.find(ids[indices->at(i)])->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_);
 			}
 		}
 	}
@@ -338,7 +342,7 @@ int Scene::Render() {
 			if((mapRendering_ || iter->first < 0) && iter->second->isVisible())
 			{
 				++cloudDrawn;
-				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_);
+				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_);
 			}
 		}
 	}
@@ -398,6 +402,11 @@ void Scene::updateGraph(
 void Scene::setGraphVisible(bool visible)
 {
 	graphVisible_ = visible;
+}
+
+void Scene::setGridVisible(bool visible)
+{
+	gridVisible_ = visible;
 }
 
 void Scene::setTraceVisible(bool visible)

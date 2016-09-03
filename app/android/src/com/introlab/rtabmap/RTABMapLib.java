@@ -58,12 +58,14 @@ public class RTABMapLib
     public static native void setPausedMapping(boolean paused);
     public static native void setMapCloudShown(boolean shown);
     public static native void setOdomCloudShown(boolean shown);
-    public static native void setMeshRendering(boolean enabled);
+    public static native void setMeshRendering(boolean enabled, boolean withTexture);
     public static native void setLocalizationMode(boolean enabled);
     public static native void setTrajectoryMode(boolean enabled);
     public static native void setGraphOptimization(boolean enabled);
     public static native void setNodesFiltering(boolean enabled);
+    public static native void setDriftCorrection(boolean enabled);
     public static native void setGraphVisible(boolean visible);
+    public static native void setGridVisible(boolean visible);
     public static native void setAutoExposure(boolean enabled);
     public static native void setFullResolution(boolean enabled);
     public static native void setMaxCloudDepth(float value);

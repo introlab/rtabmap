@@ -128,6 +128,7 @@ public:
 			bool global,
 			std::map<int, Signature> * signatures = 0);
 	int detectMoreLoopClosures(float clusterRadius = 0.5f, float clusterAngle = M_PI/6.0f, int iterations = 1);
+	int refineLinks();
 
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
 	void clearPath(int status); // -1=failed 0=idle/executing 1=success

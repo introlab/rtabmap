@@ -37,7 +37,7 @@ namespace rtabmap {
 
 #define nullptr 0
 const int kVersionStringLength = 128;
-const int holeSize = 10;
+const int holeSize = 1;
 const float maxDepthError = 0.10;
 
 // Callbacks
@@ -558,6 +558,8 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			poseDepth.setNull();
 		}
 
+		int scanDownsampling = 10;
+		cv::Mat scan;
 		if(!poseDepth.isNull() && !poseColor.isNull())
 		{
 			// The Color Camera frame at timestamp t0 with respect to Depth
@@ -568,10 +570,17 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			int pixelsSet = 0;
 			depth = cv::Mat::zeros(model_.imageHeight()/8, model_.imageWidth()/8, CV_16UC1); // mm
 			CameraModel depthModel = model_.scaled(1.0f/8.0f);
+			std::vector<cv::Point3f> scanData(cloud.total());
+			int oi=0;
 			for(unsigned int i=0; i<cloud.total(); ++i)
 			{
-				cv::Vec3f & p = cloud.at<cv::Vec3f>(i);
+				float * p = cloud.ptr<float>(0,i);
 				cv::Point3f pt = util3d::transformPoint(cv::Point3f(p[0], p[1], p[2]), colorToDepth);
+
+				if(pt.z > 0.0f && i%scanDownsampling == 0)
+				{
+					scanData.at(oi++) = pt;
+				}
 
 				int pixel_x, pixel_y;
 				// get the coordinate on image plane.
@@ -591,6 +600,10 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 					}
 				}
 			}
+			if(oi)
+			{
+				scan = cv::Mat(1, oi, CV_32FC3, scanData.data()).clone();
+			}
 			LOGI("pixels depth set= %d", pixelsSet);
 		}
 		else
@@ -607,7 +620,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			//Rotate in RTAB-Map's coordinate
 			Transform odom = rtabmap_world_T_opengl_world * poseColorOpenGL * depth_camera_T_opengl_camera * model.localTransform().inverse();
 
-			data = SensorData(rgb, depth, model, this->getNextSeqID(), rgbStamp);
+			data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, model.localTransform()), rgb, depth, model, this->getNextSeqID(), rgbStamp);
 			data.setGroundTruth(odom);
 		}
 		else

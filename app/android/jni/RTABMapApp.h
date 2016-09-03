@@ -112,12 +112,14 @@ class RTABMapApp : public UEventsHandler {
   void setPausedMapping(bool paused);
   void setMapCloudShown(bool shown);
   void setOdomCloudShown(bool shown);
-  void setMeshRendering(bool enabled);
+  void setMeshRendering(bool enabled, bool withTexture);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
   void setNodesFiltering(bool enabled);
+  void setDriftCorrection(bool enabled);
   void setGraphVisible(bool visible);
+  void setGridVisible(bool visible);
   void setAutoExposure(bool enabled);
   void setFullResolution(bool enabled);
   void setMaxCloudDepth(float value);
@@ -145,6 +147,7 @@ class RTABMapApp : public UEventsHandler {
   bool odomCloudShown_;
   bool graphOptimization_;
   bool nodesFiltering_;
+  bool driftCorrection_;
   bool localizationMode_;
   bool trajectoryMode_;
   bool autoExposure_;

@@ -94,6 +94,7 @@ class Scene {
   		const std::multimap<int, rtabmap::Link> & links);
 
   void setGraphVisible(bool visible);
+  void setGridVisible(bool visible);
   void setTraceVisible(bool visible);
 
   void addCloud(
@@ -109,7 +110,7 @@ class Scene {
   std::set<int> getAddedClouds() const;
 
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
-  void setMeshRendering(bool enabled) {meshRendering_ = enabled;}
+  void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}
   void setPointSize(float size) {pointSize_ = size;}
 
  private:
@@ -129,6 +130,7 @@ class Scene {
   tango_gl::Trace* trace_;
   GraphDrawable * graph_;
   bool graphVisible_;
+  bool gridVisible_;
   bool traceVisible_;
 
   std::map<int, PointCloudDrawable*> pointClouds_;
@@ -142,6 +144,7 @@ class Scene {
 
   bool mapRendering_;
   bool meshRendering_;
+  bool meshRenderingTexture_;
   float pointSize_;
 };
 

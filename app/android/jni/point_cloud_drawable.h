@@ -60,7 +60,7 @@ class PointCloudDrawable {
   // @param view_mat: view matrix from current render camera.
   // @param model_mat: model matrix for this point cloud frame.
   // @param vertices: all vertices in this point cloud frame.
-  void Render(const glm::mat4 & projectionMatrix, const glm::mat4 & viewMatrix, bool meshRendering = true, float pointSize = 3.0f);
+  void Render(const glm::mat4 & projectionMatrix, const glm::mat4 & viewMatrix, bool meshRendering = true, float pointSize = 3.0f, bool textureRendering = false);
 
  private:
   // Vertex buffer of the point cloud geometry.

@@ -180,11 +180,11 @@ void PointCloudDrawable::setPose(const rtabmap::Transform & pose)
 	pose_ = glmFromTransform(pose);
 }
 
-void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix, const glm::mat4 & viewMatrix, bool meshRendering, float pointSize) {
+void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix, const glm::mat4 & viewMatrix, bool meshRendering, float pointSize, bool textureRendering) {
 
 	if(vertex_buffers_ && nPoints_ && visible_)
 	{
-		if(meshRendering && textures_)
+		if(meshRendering && textureRendering && textures_)
 		{
 			glUseProgram(texture_shader_program_);
 

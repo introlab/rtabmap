@@ -76,13 +76,23 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("false")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), uBool2Str(!localizationMode_)));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), uBool2Str(!localizationMode_)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), "1"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxDepth(), std::string("10"))); // to avoid extracting features in invalid depth (as we compute transformation directly from the words)
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeFromGraphEnd(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), std::string("15")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), std::string("0"))); // 0=3D-3D 1=PnP
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("0.05")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityPathMaxNeighbors(), std::string("0"))); // disable scan matching to merged nodes
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), std::string("false"))); // just keep loop closure detection
+
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDNeighborLinkRefining(), uBool2Str(driftCorrection_)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRegStrategy(), std::string(driftCorrection_?"1":"0")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpPointToPlane(), std::string("false")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpPointToPlaneNormalNeighbors(), std::string("6")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpIterations(), std::string("10")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpEpsilon(), std::string("0.001")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpMaxCorrespondenceDistance(), std::string("0.05")));
 
 	return parameters;
 }
@@ -95,13 +105,14 @@ RTABMapApp::RTABMapApp() :
 		odomCloudShown_(true),
 		graphOptimization_(true),
 		nodesFiltering_(false),
+		driftCorrection_(false),
 		localizationMode_(false),
 		trajectoryMode_(false),
 		autoExposure_(false),
 		fullResolution_(false),
 		maxCloudDepth_(0.0),
 		meshTrianglePix_(1),
-		meshAngleToleranceDeg_(10.0),
+		meshAngleToleranceDeg_(15.0),
 		clearSceneOnNextRender_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
@@ -109,7 +120,6 @@ RTABMapApp::RTABMapApp() :
 		renderingFPS_(0.0f)
 
 {
-
 }
 
 RTABMapApp::~RTABMapApp() {
@@ -422,7 +432,7 @@ int RTABMapApp::Render()
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
 							LOGI("Creating node cloud %d (image size=%dx%d)", id, data.imageRaw().cols, data.imageRaw().rows);
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, data.imageRaw().rows/data.depthRaw().rows, maxCloudDepth_, 0, indices.get());
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, 0, indices.get());
 
 							if(cloud->size() && indices->size())
 							{
@@ -525,7 +535,7 @@ int RTABMapApp::Render()
 				if(!event.data().imageRaw().empty() && !event.data().depthRaw().empty())
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					cloud = rtabmap::util3d::cloudRGBFromSensorData(event.data(), event.data().imageRaw().rows/event.data().depthRaw().rows, maxCloudDepth_);
+					cloud = rtabmap::util3d::cloudRGBFromSensorData(event.data(), 1, maxCloudDepth_);
 					if(cloud->size())
 					{
 						LOGI("Created odom cloud (rgb=%dx%d depth=%dx%d cloud=%dx%d)",
@@ -599,9 +609,9 @@ void RTABMapApp::setOdomCloudShown(bool shown)
 	odomCloudShown_ = shown;
 	main_scene_.setTraceVisible(shown);
 }
-void RTABMapApp::setMeshRendering(bool enabled)
+void RTABMapApp::setMeshRendering(bool enabled, bool withTexture)
 {
-	main_scene_.setMeshRendering(enabled);
+	main_scene_.setMeshRendering(enabled, withTexture);
 }
 void RTABMapApp::setLocalizationMode(bool enabled)
 {
@@ -643,9 +653,22 @@ void RTABMapApp::setNodesFiltering(bool enabled)
 	nodesFiltering_ = enabled;
 	setGraphOptimization(graphOptimization_); // this will resend the graph if paused
 }
+void RTABMapApp::setDriftCorrection(bool enabled)
+{
+	driftCorrection_ = enabled;
+	rtabmap::ParametersMap parameters;
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDNeighborLinkRefining(), uBool2Str(driftCorrection_)));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRegStrategy(), std::string(driftCorrection_?"1":"0")));
+	this->post(new rtabmap::ParamEvent(parameters));
+}
 void RTABMapApp::setGraphVisible(bool visible)
 {
 	main_scene_.setGraphVisible(visible);
+	main_scene_.setTraceVisible(visible);
+}
+void RTABMapApp::setGridVisible(bool visible)
+{
+	main_scene_.setGridVisible(visible);
 }
 
 void RTABMapApp::setAutoExposure(bool enabled)
@@ -907,48 +930,63 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 
 int RTABMapApp::postProcessing(int approach)
 {
+	LOGI("postProcessing(%d)", approach);
 	int returnedValue = 0;
 	if(rtabmap_)
 	{
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;
-		if(approach == 2 || approach == 0)
-		{
-			if(approach == 2)
-			{
-				// detect more loop closures
-				returnedValue = rtabmap_->detectMoreLoopClosures();
-			}
 
-			if(returnedValue >= 0)
+		// detect more loop closures
+		if(approach == -1 || approach == 2)
+		{
+			// detect more loop closures
+			returnedValue = rtabmap_->detectMoreLoopClosures(0.5f, M_PI/6.0f, approach == -1?3:1);
+		}
+
+		// ICP refining
+		if(returnedValue >=0 && ((approach == -1 && !driftCorrection_) || approach == 3))
+		{
+			rtabmap::ParametersMap parameters;
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRegStrategy(), std::string("1"))); // ICP
+			rtabmap_->parseParameters(parameters);
+			int r = rtabmap_->refineLinks();
+			if(approach == 3 )
+			{
+				returnedValue = r;
+			}
+			// reset back default registration (visual)
+			uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kRegStrategy(), std::string(driftCorrection_?"1":"0"))); // Visual
+			rtabmap_->parseParameters(parameters);
+		}
+
+		// graph optimization
+		if(returnedValue >=0)
+		{
+			if (approach == 1)
+			{
+				if(rtabmap::Optimizer::isAvailable(rtabmap::Optimizer::kTypeG2O))
+				{
+					std::map<int, rtabmap::Signature> signatures;
+					rtabmap_->getGraph(poses, links, false, true, &signatures);
+
+					rtabmap::ParametersMap param;
+					param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "30"));
+					param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0"));
+					rtabmap::Optimizer * sba = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeG2O, param);
+					poses = sba->optimizeBA(poses.rbegin()->first, poses, links, signatures);
+					delete sba;
+				}
+				else
+				{
+					LOGE("g2o not available!");
+				}
+			}
+			else
 			{
 				// simple graph optmimization
 				rtabmap_->getGraph(poses, links, true, true);
 			}
-		}
-		else if (approach == 1)
-		{
-			if(rtabmap::Optimizer::isAvailable(rtabmap::Optimizer::kTypeG2O))
-			{
-				std::map<int, rtabmap::Signature> signatures;
-				rtabmap_->getGraph(poses, links, false, true, &signatures);
-
-				rtabmap::ParametersMap param;
-				param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), "30"));
-                param.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0"));
-				rtabmap::Optimizer * sba = rtabmap::Optimizer::create(rtabmap::Optimizer::kTypeG2O, param);
-				poses = sba->optimizeBA(poses.rbegin()->first, poses, links, signatures);
-				delete sba;
-			}
-			else
-			{
-				LOGE("g2o not available!");
-			}
-		}
-		else
-		{
-			LOGE("Invalid approach %d (should be 0 (graph optimization), 1 (sba) or 2 (detect more loop closures))", approach);
-			returnedValue = -1;
 		}
 
 		if(poses.size())

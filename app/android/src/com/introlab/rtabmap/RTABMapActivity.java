@@ -74,6 +74,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private MenuItem mItemExport;
   private MenuItem mItemLocalizationMode;
   private MenuItem mItemTrajectoryMode;
+  private MenuItem mItemRenderingPointCloud;
+  private MenuItem mItemRenderingMesh;
+  private MenuItem mItemRenderingTextureMesh;
+  
   
   private String mOpenedDatabasePath = "";
   private String mTempDatabasePath = "";
@@ -81,7 +85,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private String mWorkingDirectory = "";
   
   private int mMaxDepthIndex = 5;
-  private int mMeshAngleToleranceIndex = 1;
+  private int mMeshAngleToleranceIndex = 2;
   private int mMeshTriangleSizeIndex = 0;
   
   private int mParamUpdateRateHzIndex = 1;
@@ -316,6 +320,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  mItemExport = menu.findItem(R.id.export);
 	  mItemLocalizationMode = menu.findItem(R.id.localization_mode);
 	  mItemTrajectoryMode = menu.findItem(R.id.trajectory_mode);
+	  mItemRenderingPointCloud = menu.findItem(R.id.point_cloud);
+	  mItemRenderingMesh = menu.findItem(R.id.mesh);
+	  mItemRenderingTextureMesh = menu.findItem(R.id.texture_mesh);
 	  mItemSave.setEnabled(false);
 	  mItemExport.setEnabled(false);
 	  mItemOpen.setEnabled(false);
@@ -652,6 +659,33 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     		  ((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?"Localization":"Mapping");
     	  }
       } 
+      else if (itemId == R.id.post_processing_standard)
+      {
+			mProgressDialog.setTitle("Post-Processing");
+			mProgressDialog.setMessage(String.format("Please wait while optimizing..."));
+			mProgressDialog.show();
+			
+			Thread workingThread = new Thread(new Runnable() {
+				    public void run() {
+				    	final int loopDetected = RTABMapLib.postProcessing(-1);
+				    	runOnUiThread(new Runnable() {
+				    		public void run() {
+								mProgressDialog.dismiss();
+								if(loopDetected >= 0)
+								{
+									mTotalLoopClosures+=loopDetected;
+									mToast.makeText(getActivity(), String.format("Optimization done!"), mToast.LENGTH_SHORT).show();
+								}
+								else if(loopDetected < 0)
+								{
+									mToast.makeText(getActivity(), String.format("Optimization failed!"), mToast.LENGTH_SHORT).show();
+								}
+					    	}
+				    	});
+				    } 
+			});
+			workingThread.start();
+      }
       else if (itemId == R.id.detect_more_loop_closures)
       {
 			mProgressDialog.setTitle("Post-Processing");
@@ -672,6 +706,32 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								else if(loopDetected < 0)
 								{
 									mToast.makeText(getActivity(), String.format("Detection failed!"), mToast.LENGTH_SHORT).show();
+								}
+				    		}
+				    	});
+				    } 
+			});
+			workingThread.start();
+      }
+      else if (itemId == R.id.icp_refining)
+      {
+			mProgressDialog.setTitle("Post-Processing");
+			mProgressDialog.setMessage(String.format("Please wait while refining links..."));
+			mProgressDialog.show();
+			
+			Thread workingThread = new Thread(new Runnable() {
+				    public void run() {
+				    	final int linksRefined = RTABMapLib.postProcessing(3);
+				    	runOnUiThread(new Runnable() {
+				    		public void run() {
+								mProgressDialog.dismiss();
+								if(linksRefined >= 0)
+								{
+									mToast.makeText(getActivity(), String.format("Refining done! %d link(s) refined.", linksRefined), mToast.LENGTH_SHORT).show();
+								}
+								else if(linksRefined < 0)
+								{
+									mToast.makeText(getActivity(), String.format("Refining failed!"), mToast.LENGTH_SHORT).show();
 								}
 				    		}
 				    	});
@@ -743,10 +803,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     		  mLayoutDebug.setVisibility(LinearLayout.VISIBLE);
     	  }
       }
-      else if(itemId == R.id.mesh_rendering)
+      else if(itemId == R.id.mesh || itemId == R.id.texture_mesh || itemId == R.id.point_cloud)
       {
-    	  item.setChecked(!item.isChecked());
-    	  RTABMapLib.setMeshRendering(item.isChecked());
+    	  item.setChecked(true);
+    	  RTABMapLib.setMeshRendering(
+    			  mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
+    			  mItemRenderingTextureMesh.isChecked());
       }
       else if(itemId == R.id.map_shown)
       {
@@ -778,10 +840,20 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  item.setChecked(!item.isChecked());
     	  RTABMapLib.setNodesFiltering(item.isChecked());
       }
+      else if(itemId == R.id.drift_correction)
+      {
+    	  item.setChecked(!item.isChecked());
+    	  RTABMapLib.setDriftCorrection(item.isChecked());
+      }
       else if(itemId == R.id.graph_visible)
       {
     	  item.setChecked(!item.isChecked());
     	  RTABMapLib.setGraphVisible(item.isChecked());
+      }
+      else if(itemId == R.id.grid_visible)
+      {
+    	  item.setChecked(!item.isChecked());
+    	  RTABMapLib.setGridVisible(item.isChecked());
       }
       else if(itemId == R.id.auto_exposure)
       {

@@ -699,7 +699,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		float maxDepth,
 		float minDepth,
 		std::vector<int> * validIndices,
-		const ParametersMap & parameters,
+		const ParametersMap & stereoParameters,
 		const std::vector<float> & roiRatios)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -815,7 +815,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		}
 
 		cloud = cloudFromDisparity(
-				util2d::disparityFromStereoImages(leftMono, sensorData.rightRaw(), parameters),
+				util2d::disparityFromStereoImages(leftMono, sensorData.rightRaw(), stereoParameters),
 				sensorData.stereoCameraModel(),
 				decimation,
 				maxDepth,
@@ -839,7 +839,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		float maxDepth,
 		float minDepth,
 		std::vector<int> * validIndices,
-		const ParametersMap & parameters,
+		const ParametersMap & stereoParameters,
 		const std::vector<float> & roiRatios)
 {
 	UASSERT(!sensorData.imageRaw().empty());
@@ -961,7 +961,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 				maxDepth,
 				minDepth,
 				validIndices,
-				parameters);
+				stereoParameters);
 
 		if(cloud->size())
 		{

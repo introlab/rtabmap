@@ -141,7 +141,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
-		const ParametersMap & parameters = ParametersMap(),
+		const ParametersMap & stereoParameters = ParametersMap(),
 		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
 
 /**
@@ -164,7 +164,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,
-		const ParametersMap & parameters = ParametersMap(),
+		const ParametersMap & stereoParameters = ParametersMap(),
 		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
 
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(

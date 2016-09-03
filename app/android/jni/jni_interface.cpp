@@ -133,9 +133,9 @@ Java_com_introlab_rtabmap_RTABMapLib_setOdomCloudShown(
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMeshRendering(
-		JNIEnv*, jobject, bool enabled)
+		JNIEnv*, jobject, bool enabled, bool withTexture)
 {
-	return app.setMeshRendering(enabled);
+	return app.setMeshRendering(enabled, withTexture);
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setLocalizationMode(
@@ -162,10 +162,22 @@ Java_com_introlab_rtabmap_RTABMapLib_setNodesFiltering(
 	return app.setNodesFiltering(enabled);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setDriftCorrection(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setDriftCorrection(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGraphVisible(
 		JNIEnv*, jobject, bool visible)
 {
 	return app.setGraphVisible(visible);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setGridVisible(
+		JNIEnv*, jobject, bool visible)
+{
+	return app.setGridVisible(visible);
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setAutoExposure(

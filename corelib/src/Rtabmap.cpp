@@ -1012,7 +1012,7 @@ bool Rtabmap::process(
 				{
 					// set small variance
 					UDEBUG("Set small variance. The robot is not moving.");
-					_memory->updateLink(oldId, signature->id(), guess, 0.0001, 0.0001);
+					_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, 0.0001, 0.0001));
 				}
 			}
 			else
@@ -1034,7 +1034,7 @@ bool Rtabmap::process(
 								guess.prettyPrint().c_str(),
 								t.prettyPrint().c_str());
 						UASSERT(info.variance > 0.0);
-						_memory->updateLink(oldId, signature->id(), t, info.variance, info.variance);
+						_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), t, info.variance, info.variance));
 
 						if(_optimizeFromGraphEnd)
 						{
@@ -1058,7 +1058,7 @@ bool Rtabmap::process(
 						if(info.variance > 0)
 						{
 							double sqrtVar = sqrt(info.variance);
-							_memory->updateLink(oldId, signature->id(), guess, sqrtVar, sqrtVar);
+							_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, sqrtVar, sqrtVar));
 						}
 					}
 					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
@@ -1821,7 +1821,7 @@ bool Rtabmap::process(
 				UDEBUG("nearestPoses=%d", (int)nearestPoses.size());
 
 				// segment poses by paths, only one detection per path
-				std::map<int, std::map<int, Transform> > nearestPaths = getPaths(nearestPoses, _optimizedPoses.at(signature->id()), _proximityMaxNeighbors);
+				std::map<int, std::map<int, Transform> > nearestPaths = getPaths(nearestPoses, _optimizedPoses.at(signature->id()), _proximityMaxGraphDepth);
 				UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
 
 				for(std::map<int, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
@@ -1886,12 +1886,20 @@ bool Rtabmap::process(
 				// 2) compare locally with nearest locations by scan matching
 				//
 				UDEBUG("Proximity detection (local loop closure in SPACE with scan matching)");
-				if( !signature->sensorData().laserScanCompressed().empty() &&
+				if( _proximityMaxNeighbors > 0 &&
+					!signature->sensorData().laserScanCompressed().empty() &&
 					(_memory->isIncremental() || lastProximitySpaceClosureId == 0))
 				{
 					// In localization mode, no need to check local loop
 					// closures if we are already localized by at least one
 					// local visual closure above.
+
+					// Parse again with if different (normally, maxNeighbors would be smaller than MaxGraphDepth)
+					if(_proximityMaxNeighbors != _proximityMaxGraphDepth)
+					{
+						nearestPaths = getPaths(nearestPoses, _optimizedPoses.at(signature->id()), _proximityMaxNeighbors);
+						UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
+					}
 
 					proximitySpacePaths = (int)nearestPaths.size();
 					for(std::map<int, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
@@ -3410,6 +3418,52 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 		}
 	}
 	return (int)loopClosuresAdded.size();
+}
+
+int Rtabmap::refineLinks()
+{
+	if(!_rgbdSlamMode)
+	{
+		UERROR("Refining links can be done only in RGBD-SLAM mode.");
+		return -1;
+	}
+
+	std::list<Link> linksRefined;
+
+	std::map<int, Transform> poses;
+	std::multimap<int, Link> links;
+	std::map<int, Signature> signatures;
+	this->getGraph(poses, links, false, true, &signatures);
+
+	int i=0;
+	for(std::multimap<int, Link>::iterator iter=links.begin(); iter!= links.end(); ++iter)
+	{
+		int from = iter->second.from();
+		int to = iter->second.to();
+
+		UASSERT(signatures.find(from) != signatures.end());
+		UASSERT(signatures.find(to) != signatures.end());
+
+		RegistrationInfo info;
+		// use signatures instead of IDs because some signatures may not be in WM
+		Transform t = _memory->computeTransform(signatures.at(from), signatures.at(to), iter->second.transform(), &info);
+
+		if(!t.isNull())
+		{
+			linksRefined.push_back(Link(from, to, iter->second.type(), t, info.variance, info.variance));
+			UINFO("Refined link %d->%d! (%d/%d)", from, to, ++i, (int)links.size());
+		}
+	}
+	UINFO("Total refined %d links.", (int)linksRefined.size());
+
+	if(linksRefined.size())
+	{
+		for(std::list<Link>::iterator iter=linksRefined.begin(); iter!=linksRefined.end(); ++iter)
+		{
+			_memory->updateLink(*iter, true);
+		}
+	}
+	return (int)linksRefined.size();
 }
 
 void Rtabmap::clearPath(int status)
