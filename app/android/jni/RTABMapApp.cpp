@@ -52,6 +52,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/obj_io.h>
 
 const int kVersionStringLength = 128;
+const int minPolygonClusterSize = 100;
 
 static JavaVM *jvm;
 static jobject RTABMapActivity = 0;
@@ -77,6 +78,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemIncrementalMemory(), uBool2Str(!localizationMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapMaxRetrieved(), "1"));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDMaxLocalRetrieved(), "0"));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxDepth(), std::string("10"))); // to avoid extracting features in invalid depth (as we compute transformation directly from the words)
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeFromGraphEnd(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), std::string("true")));
@@ -114,6 +116,7 @@ RTABMapApp::RTABMapApp() :
 		meshTrianglePix_(1),
 		meshAngleToleranceDeg_(15.0),
 		clearSceneOnNextRender_(false),
+		filterPolygonsOnNextRender_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
 		lastDrawnCloudsCount_(0),
@@ -557,6 +560,42 @@ int RTABMapApp::Render()
 				}
 			}
 		}
+	}
+
+	if(filterPolygonsOnNextRender_)
+	{
+		filterPolygonsOnNextRender_ = false;
+		boost::mutex::scoped_lock  lock(meshesMutex_);
+		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+		{
+			if(iter->second.polygons.size())
+			{
+				// filter polygons
+				std::vector<std::set<int> > neighbors;
+				std::vector<std::set<int> > vertexToPolygons;
+				rtabmap::util3d::createPolygonIndexes(
+						iter->second.polygons,
+						iter->second.cloud->size(),
+						neighbors,
+						vertexToPolygons);
+				std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
+						neighbors,
+						minPolygonClusterSize);
+				std::vector<pcl::Vertices> filteredPolygons(iter->second.polygons.size());
+				int oi=0;
+				for(std::list<std::list<int> >::iterator jter=clusters.begin(); jter!=clusters.end(); ++jter)
+				{
+					for(std::list<int>::iterator kter=jter->begin(); kter!=jter->end(); ++kter)
+					{
+						filteredPolygons[oi++] = iter->second.polygons.at(*kter);
+					}
+				}
+				filteredPolygons.resize(oi);
+				iter->second.polygons = filteredPolygons;
+				main_scene_.updateCloudPolygons(iter->first, iter->second.polygons);
+			}
+		}
+		notifyDataLoaded = true;
 	}
 
 	UTimer fpsTime;
@@ -1004,6 +1043,13 @@ int RTABMapApp::postProcessing(int approach)
 			returnedValue = -1;
 		}
 	}
+
+	// filter polygons
+	if(approach == 4)
+	{
+		filterPolygonsOnNextRender_ = true;
+	}
+
 	return returnedValue;
 }
 

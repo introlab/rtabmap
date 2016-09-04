@@ -15,6 +15,7 @@
 	              <item android:id="@+id/detect_more_loop_closures" android:title="Detect More Loop Closures" />
 	              <item android:id="@+id/icp_refining" android:title="ICP Refining" />
 	              <item android:id="@+id/sba" android:title="Bundle Adjustement" />
+	              <item android:id="@+id/polygons_filtering" android:title="Noise Filtering" />
 	            </menu>  
 	         </item>
           </menu>

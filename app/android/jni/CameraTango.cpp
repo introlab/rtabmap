@@ -37,8 +37,9 @@ namespace rtabmap {
 
 #define nullptr 0
 const int kVersionStringLength = 128;
-const int holeSize = 1;
+const int holeSize = 5;
 const float maxDepthError = 0.10;
+const int scanDownsampling = 10;
 
 // Callbacks
 void onPointCloudAvailableRouter(void* context, const TangoXYZij* xyz_ij)
@@ -558,7 +559,6 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			poseDepth.setNull();
 		}
 
-		int scanDownsampling = 10;
 		cv::Mat scan;
 		if(!poseDepth.isNull() && !poseColor.isNull())
 		{

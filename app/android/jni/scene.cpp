@@ -471,3 +471,12 @@ std::set<int> Scene::getAddedClouds() const
 {
 	return uKeysSet(pointClouds_);
 }
+
+void Scene::updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons)
+{
+	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
+	if(iter != pointClouds_.end())
+	{
+		iter->second->updatePolygons(polygons);
+	}
+}

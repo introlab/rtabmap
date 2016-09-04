@@ -765,6 +765,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			});
 			workingThread.start();
       }
+      else if (itemId == R.id.polygons_filtering)
+      {		
+    	  mProgressDialog.setTitle("Post-Processing");
+		  mProgressDialog.setMessage(String.format("Noise filtering..."));
+		  mProgressDialog.show();
+    	  RTABMapLib.postProcessing(4);
+      }
       else if (itemId == R.id.sba)
       {
 			mProgressDialog.setTitle("Post-Processing");

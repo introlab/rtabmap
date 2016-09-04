@@ -160,6 +160,7 @@ class RTABMapApp : public UEventsHandler {
 
 
   bool clearSceneOnNextRender_;
+  bool filterPolygonsOnNextRender_;
   int totalPoints_;
   int totalPolygons_;
   int lastDrawnCloudsCount_;

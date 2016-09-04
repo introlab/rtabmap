@@ -138,21 +138,7 @@ PointCloudDrawable::PointCloudDrawable(
 
 	nPoints_ = cloud->size();
 
-	if(polygons.size())
-	{
-		int polygonSize = polygons[0].vertices.size();
-		UASSERT(polygonSize == 3);
-		polygons_.resize(polygons.size() * polygonSize);
-		int oi = 0;
-		for(unsigned int i=0; i<polygons.size(); ++i)
-		{
-			UASSERT((int)polygons[i].vertices.size() == polygonSize);
-			for(int j=0; j<polygonSize; ++j)
-			{
-				polygons_[oi++] = (unsigned short)polygons[i].vertices[j];
-			}
-		}
-	}
+	updatePolygons(polygons);
 }
 
 PointCloudDrawable::~PointCloudDrawable()
@@ -170,6 +156,26 @@ PointCloudDrawable::~PointCloudDrawable()
 		glDeleteTextures(1, &textures_);
 		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
 		textures_ = 0;
+	}
+}
+
+void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons)
+{
+	polygons_.clear();
+	if(polygons.size())
+	{
+		int polygonSize = polygons[0].vertices.size();
+		UASSERT(polygonSize == 3);
+		polygons_.resize(polygons.size() * polygonSize);
+		int oi = 0;
+		for(unsigned int i=0; i<polygons.size(); ++i)
+		{
+			UASSERT((int)polygons[i].vertices.size() == polygonSize);
+			for(int j=0; j<polygonSize; ++j)
+			{
+				polygons_[oi++] = (unsigned short)polygons[i].vertices[j];
+			}
+		}
 	}
 }
 

@@ -108,6 +108,7 @@ class Scene {
   void setCloudVisible(int id, bool visible);
   bool hasCloud(int id) const;
   std::set<int> getAddedClouds() const;
+  void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
 
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}
