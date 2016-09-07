@@ -141,7 +141,7 @@ void PostProcessingDialog::restoreDefaults()
 	setDetectMoreLoopClosures(true);
 	setClusterRadius(0.5);
 	setClusterAngle(30);
-	setIterations(1);
+	setIterations(3);
 	setRefineNeighborLinks(false);
 	setRefineLoopClosureLinks(false);
 	setSBA(false);

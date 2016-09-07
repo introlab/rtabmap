@@ -14,7 +14,7 @@ namespace util3d {
 
 template<typename pointT>
 std::vector<pcl::Vertices> normalizePolygonsSide(
-		const pcl::PointCloud<pointT> & cloud,
+		const typename pcl::PointCloud<pointT> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		const pcl::PointXYZ & viewPoint)
 {

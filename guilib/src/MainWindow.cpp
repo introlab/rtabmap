@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/DBDriver.h"
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/GainCompensator.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -984,7 +985,55 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 									Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
 							if(polygons.size())
 							{
-								if(!_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
+								if(_preferencesDialog->isCloudMeshingTexture() && !odom.data().imageRaw().empty())
+								{
+									pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
+									pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
+									textureMesh->tex_polygons.push_back(polygons);
+									int w = cloud->width;
+									int h = cloud->height;
+									UASSERT(w > 1 && h > 1);
+									textureMesh->tex_coordinates.resize(1);
+									int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+									textureMesh->tex_coordinates[0].resize(nPoints);
+									for(int i=0; i<nPoints; ++i)
+									{
+										//uv
+										textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
+												float(i % w) / float(w),      // u
+												float(h - i / w) / float(h)); // v
+									}
+
+									pcl::TexMaterial mesh_material;
+									mesh_material.tex_d = 1.0f;
+									mesh_material.tex_Ns = 75.0f;
+									mesh_material.tex_illum = 1;
+
+									mesh_material.tex_name = "material_odom";
+
+									QDir dir(_preferencesDialog->getWorkingDirectory());
+									ExportCloudsDialog::removeDirRecursively(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
+									dir.mkdir("tmp_textures");
+
+									std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
+									mesh_material.tex_file = uFormat("%s/%s.png", tmpDirectory.c_str(), "texture_odom");
+									if(!cv::imwrite(mesh_material.tex_file, odom.data().imageRaw()))
+									{
+										UERROR("Cannot save texture of image odom");
+									}
+									else
+									{
+										UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
+									}
+
+									textureMesh->tex_materials.push_back(mesh_material);
+
+									if(!_cloudViewer->addCloudTextureMesh("cloudOdom", textureMesh, _odometryCorrection))
+									{
+										UERROR("Adding cloudOdom to viewer failed!");
+									}
+								}
+								else if(!_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
 								{
 									UERROR("Adding cloudOdom to viewer failed!");
 								}
@@ -2477,8 +2526,10 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 		}
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-		if(_preferencesDialog->isSubtractFiltering() &&
-		   _preferencesDialog->getSubtractFilteringRadius() > 0.0)
+		GainCompensator compensator;
+		if((_preferencesDialog->isSubtractFiltering() &&
+		   _preferencesDialog->getSubtractFilteringRadius() > 0.0) ||
+		   _preferencesDialog->gainCompensation())
 		{
 			pcl::IndicesPtr beforeFiltering = indices;
 			if(	cloud->size() &&
@@ -2496,53 +2547,63 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
 				//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
 
-				if(_preferencesDialog->getSubtractFilteringAngle() > 0.0f)
+				if(_preferencesDialog->gainCompensation())
 				{
-					//normals required
-					if(_preferencesDialog->getNormalKSearch() > 0)
+					compensator.feed(cloud, indices, _previousCloud.second.first.first, _previousCloud.second.second, t);
+					compensator.apply(0, cloud, indices);
+					UINFO("Time gain compensation = %fs", time.ticks());
+				}
+
+				if(_preferencesDialog->isSubtractFiltering())
+				{
+					if(_preferencesDialog->getSubtractFilteringAngle() > 0.0f)
 					{
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
-						pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+						//normals required
+						if(_preferencesDialog->getNormalKSearch() > 0)
+						{
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
+							pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+						}
+						else
+						{
+							UWARN("Cloud subtraction with angle filtering is activated but "
+								  "cloud normal K search is 0. Subtraction is done with angle.");
+						}
+					}
+
+					if(cloudWithNormals->size() &&
+						_previousCloud.second.first.second.get() &&
+						_previousCloud.second.first.second->size())
+					{
+						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.second, t);
+						indices = rtabmap::util3d::subtractFiltering(
+								cloudWithNormals,
+								indices,
+								previousCloud,
+								_previousCloud.second.second,
+								_preferencesDialog->getSubtractFilteringRadius(),
+								_preferencesDialog->getSubtractFilteringAngle(),
+								_preferencesDialog->getSubtractFilteringMinPts());
 					}
 					else
 					{
-						UWARN("Cloud subtraction with angle filtering is activated but "
-							  "cloud normal K search is 0. Subtraction is done with angle.");
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.first, t);
+						indices = rtabmap::util3d::subtractFiltering(
+								cloud,
+								indices,
+								previousCloud,
+								_previousCloud.second.second,
+								_preferencesDialog->getSubtractFilteringRadius(),
+								_preferencesDialog->getSubtractFilteringMinPts());
 					}
-				}
-
-				if(cloudWithNormals->size() &&
-					_previousCloud.second.first.second.get() &&
-					_previousCloud.second.first.second->size())
-				{
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.second, t);
-					indices = rtabmap::util3d::subtractFiltering(
-							cloudWithNormals,
-							indices,
-							previousCloud,
-							_previousCloud.second.second,
-							_preferencesDialog->getSubtractFilteringRadius(),
-							_preferencesDialog->getSubtractFilteringAngle(),
-							_preferencesDialog->getSubtractFilteringMinPts());
-				}
-				else
-				{
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr previousCloud = rtabmap::util3d::transformPointCloud(_previousCloud.second.first.first, t);
-					indices = rtabmap::util3d::subtractFiltering(
-							cloud,
-							indices,
-							previousCloud,
-							_previousCloud.second.second,
-							_preferencesDialog->getSubtractFilteringRadius(),
-							_preferencesDialog->getSubtractFilteringMinPts());
-				}
 
 
-				UINFO("Time subtract filtering %d from %d -> %d (%fs)",
-						(int)_previousCloud.second.second->size(),
-						(int)beforeFiltering->size(),
-						(int)indices->size(),
-						time.ticks());
+					UINFO("Time subtract filtering %d from %d -> %d (%fs)",
+							(int)_previousCloud.second.second->size(),
+							(int)beforeFiltering->size(),
+							(int)indices->size(),
+							time.ticks());
+				}
 			}
 			// keep all indices for next subtraction
 			_previousCloud.first = nodeId;
@@ -2571,8 +2632,70 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 					// remove unused vertices to save memory
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
 					std::vector<pcl::Vertices> outputPolygons;
-					util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
-					if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
+					std::map<int, int> newToOldIndices = util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
+
+					if(_preferencesDialog->isCloudMeshingTexture() && !image.empty())
+					{
+						pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
+						pcl::toPCLPointCloud2(*outputFiltered, textureMesh->cloud);
+						textureMesh->tex_polygons.push_back(outputPolygons);
+						int w = cloud->width;
+						int h = cloud->height;
+						UASSERT(w > 1 && h > 1);
+						textureMesh->tex_coordinates.resize(1);
+						int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+						textureMesh->tex_coordinates[0].resize(nPoints);
+						for(int i=0; i<nPoints; ++i)
+						{
+							//uv
+							std::map<int, int>::iterator vter = newToOldIndices.find(i);
+							UASSERT(vter != newToOldIndices.end());
+							int originalVertex = vter->second;
+							textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
+									float(originalVertex % w) / float(w),      // u
+									float(h - originalVertex / w) / float(h)); // v
+						}
+
+						pcl::TexMaterial mesh_material;
+						mesh_material.tex_d = 1.0f;
+						mesh_material.tex_Ns = 75.0f;
+						mesh_material.tex_illum = 1;
+
+						std::stringstream tex_name;
+						tex_name << "material_" << nodeId;
+						tex_name >> mesh_material.tex_name;
+
+						QDir dir(_preferencesDialog->getWorkingDirectory());
+						ExportCloudsDialog::removeDirRecursively(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
+						dir.mkdir("tmp_textures");
+
+						std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
+						mesh_material.tex_file = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", nodeId);
+						if(_preferencesDialog->gainCompensation() && compensator.getIndex(0) >= 0)
+						{
+							compensator.apply(0, image);
+						}
+						if(!cv::imwrite(mesh_material.tex_file, image))
+						{
+							UERROR("Cannot save texture of image %d", nodeId);
+						}
+						else
+						{
+							UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
+						}
+
+						textureMesh->tex_materials.push_back(mesh_material);
+
+						if(!_cloudViewer->addCloudTextureMesh(cloudName, textureMesh, pose))
+						{
+							UERROR("Adding texture mesh %d to viewer failed!", nodeId);
+						}
+						else
+						{
+							added = true;
+						}
+					}
+					else if(!_cloudViewer->addCloudMesh(cloudName, outputFiltered, outputPolygons, pose))
 					{
 						UERROR("Adding mesh cloud %d to viewer failed!", nodeId);
 					}
@@ -3036,7 +3159,7 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 			{
 				UINFO("Deleted temporary database \"%s\".", _newDatabasePath.toStdString().c_str());
 			}
-			else
+			else if(!uStr2Bool(_preferencesDialog->getAllParameters().at(Parameters::kDbSqlite3InMemory())))
 			{
 				UERROR("Temporary database \"%s\" could not be deleted.", _newDatabasePath.toStdString().c_str());
 			}
@@ -5435,6 +5558,7 @@ void MainWindow::exportClouds()
 
 	_exportCloudsDialog->exportClouds(
 			_ui->widget_mapVisibility->getVisiblePoses(),
+			_currentLinksMap,
 			_currentMapIds,
 			_cachedSignatures,
 			_cachedClouds,
@@ -5450,7 +5574,8 @@ void MainWindow::viewClouds()
 	}
 
 	_exportCloudsDialog->viewClouds(
-			_currentPosesMap,
+			_ui->widget_mapVisibility->getVisiblePoses(),
+			_currentLinksMap,
 			_currentMapIds,
 			_cachedSignatures,
 			_cachedClouds,

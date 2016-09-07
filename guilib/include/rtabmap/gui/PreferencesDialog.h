@@ -183,6 +183,7 @@ public:
 	double getSubtractFilteringRadius() const;
 	double getSubtractFilteringAngle() const;
 	int getNormalKSearch() const;
+	bool gainCompensation() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;;
@@ -201,6 +202,7 @@ public:
 	bool isCloudMeshing() const;
 	double getCloudMeshingAngle() const;
 	bool isCloudMeshingQuad() const;
+	bool isCloudMeshingTexture() const;
 	int getCloudMeshingTriangleSize();
 
 	QString getWorkingDirectory() const;

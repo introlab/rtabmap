@@ -66,6 +66,8 @@ SET(SRC_FILES
 	StereoCameraModel.cpp
 	
 	OccupancyGrid.cpp
+	
+	GainCompensator.cpp
 		
 	rtflann/ext/lz4.c
 	rtflann/ext/lz4hc.c

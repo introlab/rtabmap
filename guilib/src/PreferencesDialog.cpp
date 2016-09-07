@@ -365,6 +365,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_subtractFilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_subtractFilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_gainCompensation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -380,6 +381,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->groupBox_organized, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mesh_angleTolerance, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_mesh_quad, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_mesh_texture, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_mesh_triangleSize, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	//Logging panel
@@ -1210,15 +1212,16 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_showLabels->setChecked(false);
 
 		_ui->spinBox_normalKSearch->setValue(10);
+		_ui->checkBox_gainCompensation->setChecked(false);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
-#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		_ui->groupBox_organized->setChecked(false);
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		_ui->checkBox_mesh_quad->setChecked(true);
 #else
-		_ui->groupBox_organized->setChecked(false);
 		_ui->checkBox_mesh_quad->setChecked(false);
 #endif
+		_ui->checkBox_mesh_texture->setChecked(false);
 		_ui->spinBox_mesh_triangleSize->setValue(2);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_filtering2->objectName())
@@ -1585,6 +1588,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_subtractFilteringRadius->setValue(settings.value("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value()).toDouble());
 	_ui->doubleSpinBox_subtractFilteringAngle->setValue(settings.value("subtractFilteringAngle", _ui->doubleSpinBox_subtractFilteringAngle->value()).toDouble());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
+	_ui->checkBox_gainCompensation->setChecked(settings.value("gainCompensation", _ui->checkBox_gainCompensation->isChecked()).toBool());
 
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
@@ -1602,6 +1606,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("meshing_angle", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("meshing_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
+	_ui->checkBox_mesh_texture->setChecked(settings.value("meshing_texture", _ui->checkBox_mesh_texture->isChecked()).toBool());
 	_ui->spinBox_mesh_triangleSize->setValue(settings.value("meshing_triangle_size", _ui->spinBox_mesh_triangleSize->value()).toInt());
 
 	settings.endGroup(); // General
@@ -1925,7 +1930,16 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 
 	for(ParametersMap::iterator iter = _modifiedParameters.begin(); iter!=_modifiedParameters.end(); ++iter)
 	{
-		if( _parameters.at(iter->first).compare(iter->second) != 0)
+		bool different = true;
+		if(Parameters::getType(iter->first).compare("double") ==0 ||
+		   Parameters::getType(iter->first).compare("float") == 0)
+		{
+			if(uStr2Double(_parameters.at(iter->first)) == uStr2Double(iter->second))
+			{
+				different = false;
+			}
+		}
+		if(different)
 		{
 			UINFO("modified %s = %s->%s", iter->first.c_str(),  _parameters.at(iter->first).c_str(), iter->second.c_str());
 		}
@@ -1998,6 +2012,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value());
 	settings.setValue("subtractFilteringAngle",  _ui->doubleSpinBox_subtractFilteringAngle->value());
 	settings.setValue("normalKSearch",           _ui->spinBox_normalKSearch->value());
+	settings.setValue("gainCompensation",        _ui->checkBox_gainCompensation->isChecked());
 
 	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapResolution",           _ui->doubleSpinBox_map_resolution->value());
@@ -2016,6 +2031,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("meshing",               _ui->groupBox_organized->isChecked());
 	settings.setValue("meshing_angle",         _ui->doubleSpinBox_mesh_angleTolerance->value());
 	settings.setValue("meshing_quad",          _ui->checkBox_mesh_quad->isChecked());
+	settings.setValue("meshing_texture",       _ui->checkBox_mesh_texture->isChecked());
 	settings.setValue("meshing_triangle_size", _ui->spinBox_mesh_triangleSize->value());
 
 	settings.endGroup(); // General
@@ -3759,6 +3775,10 @@ bool PreferencesDialog::isCloudMeshingQuad() const
 {
 	return _ui->checkBox_mesh_quad->isChecked();
 }
+bool PreferencesDialog::isCloudMeshingTexture() const
+{
+	return _ui->checkBox_mesh_texture->isChecked();
+}
 int PreferencesDialog::getCloudMeshingTriangleSize()
 {
 	return _ui->spinBox_mesh_triangleSize->value();
@@ -3857,6 +3877,10 @@ double PreferencesDialog::getSubtractFilteringAngle() const
 int PreferencesDialog::getNormalKSearch() const
 {
 	return _ui->spinBox_normalKSearch->value();
+}
+bool PreferencesDialog::gainCompensation() const
+{
+	return _ui->checkBox_gainCompensation->isChecked();
 }
 bool PreferencesDialog::getGridMapShown() const
 {

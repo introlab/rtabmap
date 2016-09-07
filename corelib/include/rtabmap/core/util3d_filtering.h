@@ -433,13 +433,6 @@ pcl::IndicesPtr RTABMAP_EXP normalFiltering(
 		int normalKSearch,
 		const Eigen::Vector4f & viewpoint);
 
-void RTABMAP_EXP colorMeanFiltering(
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloudRef,
-		const pcl::IndicesPtr & indicesRef,
-		float radiusSearch);
-
 /**
  * For convenience.
  */

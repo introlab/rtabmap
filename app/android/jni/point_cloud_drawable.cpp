@@ -66,7 +66,7 @@ PointCloudDrawable::PointCloudDrawable(
 		if(!textures_)
 		{
 			vertex_buffers_ = 0;
-			LOGE("OpenGL: could not generate vertex buffers\n");
+			LOGE("OpenGL: could not generate texture buffers\n");
 			return;
 		}
 	}

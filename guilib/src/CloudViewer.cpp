@@ -642,22 +642,29 @@ bool CloudViewer::addCloudTextureMesh(
 	const pcl::TextureMesh::Ptr & textureMesh,
 	const Transform & pose)
 {
-#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 	if(_addedClouds.contains(id))
 	{
 		this->removeCloud(id);
 	}
 
 	UDEBUG("Adding %s", id.c_str());
-	if(_visualizer->addTextureMesh(*textureMesh, id))
+	if(this->addTextureMesh(*textureMesh, id))
 	{
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->LightingOff();
+		if(_backfaceCulling)
+		{
+			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->BackfaceCullingOn();
+		}
+		if(_frontfaceCulling)
+		{
+			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->FrontfaceCullingOn();
+		}
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetTexture()->SetInterpolate(1);
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetTexture()->SetBlendingMode(vtkTexture::VTK_TEXTURE_BLENDING_MODE_REPLACE);
 		_visualizer->updatePointCloudPose(id, pose.toEigen3f());
 		_addedClouds.insert(id, pose);
 		return true;
 	}
-
-#endif
-	// not implemented on lower version of PCL
 	return false;
 }
 
@@ -895,7 +902,7 @@ bool CloudViewer::addTextureMesh (
 	   int viewport)
 {
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-	return addTextureMesh(mesh, id, viewport);
+	return _visualizer->addTextureMesh(mesh, id, viewport);
 #else
 	// Copied from PCL 1.8
 

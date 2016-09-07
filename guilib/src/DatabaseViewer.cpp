@@ -68,6 +68,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OccupancyGrid.h"
 #include "rtabmap/gui/DataRecorder.h"
 #include "rtabmap/core/SensorData.h"
+#include "rtabmap/core/GainCompensator.h"
 #include "ExportDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
 #include "ParametersToolBox.h"
@@ -253,6 +254,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
+	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
@@ -280,6 +282,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -392,6 +395,7 @@ void DatabaseViewer::readSettings()
 	ui_->checkBox_ignoreUserLoop->setChecked(settings.value("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked()).toBool());
 	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
 	ui_->checkBox_gridErode->setChecked(settings.value("erode", ui_->checkBox_gridErode->isChecked()).toBool());
+	ui_->doubleSpinBox_gainCompensationRadius->setValue(settings.value("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value()).toDouble());
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -473,6 +477,7 @@ void DatabaseViewer::writeSettings()
 	//settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
 	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
 	settings.setValue("erode", ui_->checkBox_gridErode->isChecked());
+	settings.setValue("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value());
 	settings.endGroup();
 
 	// save Grid settings
@@ -3285,13 +3290,33 @@ void DatabaseViewer::updateConstraintView(
 			if(ui_->checkBox_show3Dclouds->isChecked())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFrom, cloudTo;
+				pcl::IndicesPtr indicesFrom(new std::vector<int>);
+				pcl::IndicesPtr indicesTo(new std::vector<int>);
 				if(!dataFrom.imageRaw().empty() && !dataFrom.depthOrRightRaw().empty())
 				{
-					cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
+					cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1, 0, 0, indicesFrom.get(), ui_->parameters_toolbox->getParameters());
 				}
 				if(!dataTo.imageRaw().empty() && !dataTo.depthOrRightRaw().empty())
 				{
-					cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
+					cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1, 0, 0, indicesTo.get(), ui_->parameters_toolbox->getParameters());
+				}
+
+				if(cloudTo.get() && cloudTo->size())
+				{
+					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
+				}
+
+				// Gain compensation
+				if(ui_->doubleSpinBox_gainCompensationRadius->value()>0.0 &&
+					cloudFrom.get() && cloudFrom->size() &&
+					cloudTo.get() && cloudTo->size())
+				{
+					UTimer t;
+					GainCompensator compensator(ui_->doubleSpinBox_gainCompensationRadius->value());
+					compensator.feed(cloudFrom, indicesFrom, cloudTo, indicesTo, Transform::getIdentity());
+					compensator.apply(0, cloudFrom, indicesFrom);
+					compensator.apply(1, cloudTo, indicesTo);
+					UINFO("Gain compensation time = %fs", t.ticks());
 				}
 
 				if(cloudFrom.get() && cloudFrom->size())
@@ -3300,7 +3325,6 @@ void DatabaseViewer::updateConstraintView(
 				}
 				if(cloudTo.get() && cloudTo->size())
 				{
-					cloudTo = rtabmap::util3d::transformPointCloud(cloudTo, t);
 					constraintsViewer_->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
 				}
 			}
