@@ -44,13 +44,16 @@ class PointCloudDrawable {
   PointCloudDrawable(
 		  GLuint cloudShaderProgram,
 		  GLuint textureShaderProgram,
-  		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-  		  const std::vector<pcl::Vertices> & polygons = std::vector<pcl::Vertices>(),
-		  const cv::Mat & image = cv::Mat());
+  		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
+  PointCloudDrawable(
+  		  GLuint cloudShaderProgram,
+  		  GLuint textureShaderProgram,
+    	  const Mesh & mesh);
   virtual ~PointCloudDrawable();
 
   void updatePolygons(const std::vector<pcl::Vertices> & polygons);
-  void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const cv::Mat & image = cv::Mat());
+  void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
+  void updateMesh(const Mesh & mesh);
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
   rtabmap::Transform getPose() const {return glmToTransform(pose_);}

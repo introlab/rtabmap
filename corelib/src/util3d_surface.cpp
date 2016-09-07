@@ -266,7 +266,7 @@ void appendMesh(
 	}
 }
 
-std::map<int, int> filterNotUsedVerticesFromMesh(
+std::vector<int> filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGBNormal> & outputCloud,
@@ -274,7 +274,8 @@ std::map<int, int> filterNotUsedVerticesFromMesh(
 {
 	UDEBUG("size=%d polygons=%d", (int)cloud.size(), (int)polygons.size());
 	std::map<int, int> addedVertices; //<oldIndex, newIndex>
-	std::map<int, int> output; //<newIndex, oldIndex>
+	std::vector<int> output; //<oldIndex>
+	output.resize(cloud.size());
 	outputCloud.resize(cloud.size());
 	outputCloud.is_dense = true;
 	outputPolygons.resize(polygons.size());
@@ -290,7 +291,7 @@ std::map<int, int> filterNotUsedVerticesFromMesh(
 			{
 				outputCloud[oi] = cloud.at(polygons[i].vertices[j]);
 				addedVertices.insert(std::make_pair(polygons[i].vertices[j], oi));
-				output.insert(std::make_pair(oi, polygons[i].vertices[j]));
+				output[oi] = polygons[i].vertices[j];
 				v.vertices[j] = oi++;
 			}
 			else
@@ -300,11 +301,12 @@ std::map<int, int> filterNotUsedVerticesFromMesh(
 		}
 	}
 	outputCloud.resize(oi);
+	output.resize(oi);
 
 	return output;
 }
 
-std::map<int, int> filterNotUsedVerticesFromMesh(
+std::vector<int> filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,
@@ -312,7 +314,8 @@ std::map<int, int> filterNotUsedVerticesFromMesh(
 {
 	UDEBUG("size=%d polygons=%d", (int)cloud.size(), (int)polygons.size());
 	std::map<int, int> addedVertices; //<oldIndex, newIndex>
-	std::map<int, int> output; //<newIndex, oldIndex>
+	std::vector<int> output; //<oldIndex>
+	output.resize(cloud.size());
 	outputCloud.resize(cloud.size());
 	outputCloud.is_dense = true;
 	outputPolygons.resize(polygons.size());
@@ -328,7 +331,7 @@ std::map<int, int> filterNotUsedVerticesFromMesh(
 			{
 				outputCloud[oi] = cloud.at(polygons[i].vertices[j]);
 				addedVertices.insert(std::make_pair(polygons[i].vertices[j], oi));
-				output.insert(std::make_pair(oi, polygons[i].vertices[j]));
+				output[oi] = polygons[i].vertices[j];
 				v.vertices[j] = oi++;
 			}
 			else
@@ -338,6 +341,7 @@ std::map<int, int> filterNotUsedVerticesFromMesh(
 		}
 	}
 	outputCloud.resize(oi);
+	output.resize(oi);
 
 	return output;
 }

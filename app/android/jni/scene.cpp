@@ -418,11 +418,9 @@ void Scene::setTraceVisible(bool visible)
 void Scene::addCloud(
 		int id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const std::vector<pcl::Vertices> & polygons,
-		const rtabmap::Transform & pose,
-		const cv::Mat & image)
+		const rtabmap::Transform & pose)
 {
-	LOGI("addOrUpdateCloud cloud %d", id);
+	LOGI("add cloud %d", id);
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
 	if(iter != pointClouds_.end())
 	{
@@ -435,9 +433,30 @@ void Scene::addCloud(
 	PointCloudDrawable * drawable = new PointCloudDrawable(
 			cloud_shader_program_,
 			texture_mesh_shader_program_,
-			cloud,
-			polygons,
-			image);
+			cloud);
+	drawable->setPose(pose);
+	pointClouds_.insert(std::make_pair(id, drawable));
+}
+
+void Scene::addMesh(
+		int id,
+		const Mesh & mesh,
+		const rtabmap::Transform & pose)
+{
+	LOGI("add mesh %d", id);
+	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
+	if(iter != pointClouds_.end())
+	{
+		delete iter->second;
+		pointClouds_.erase(iter);
+	}
+
+	//create
+	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
+	PointCloudDrawable * drawable = new PointCloudDrawable(
+			cloud_shader_program_,
+			texture_mesh_shader_program_,
+			mesh);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }
@@ -481,11 +500,11 @@ void Scene::updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polyg
 	}
 }
 
-void Scene::updateCloudColors(int id, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const cv::Mat & image)
+void Scene::updateMesh(int id, const Mesh & mesh)
 {
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
 	if(iter != pointClouds_.end())
 	{
-		iter->second->updateCloud(cloud, image);
+		iter->second->updateMesh(mesh);
 	}
 }

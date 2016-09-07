@@ -33,6 +33,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <tango-gl/util.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/Vertices.h>
 
 class LogHandler : public UEventsHandler
 {
@@ -131,5 +134,16 @@ inline rtabmap::Transform glmToTransform(const glm::mat4 & mat)
 
 	return transform;
 }
+
+struct Mesh
+{
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // dense or organized cloud
+	std::vector<pcl::Vertices> polygons;
+	std::vector<int> denseToOrganizedIndices; // should be set if cloud is dense, used for texturing
+	int width;  // width of the organized cloud
+	int height; // height of the organized cloud
+	rtabmap::Transform pose;
+	cv::Mat texture;
+};
 
 #endif /* UTIL_H_ */

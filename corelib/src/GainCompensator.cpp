@@ -268,8 +268,7 @@ void GainCompensator::apply(
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
-	apply(idToIndex_.at(id), cloud, indices);
+	apply(id, cloud, indices);
 }
 void GainCompensator::apply(
 		int id,

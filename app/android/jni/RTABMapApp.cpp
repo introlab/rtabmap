@@ -439,7 +439,7 @@ int RTABMapApp::Render()
 							// Voxelize and filter depending on the previous cloud?
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
-							LOGI("Creating node cloud %d (image size=%dx%d)", id, data.imageRaw().cols, data.imageRaw().rows);
+							LOGI("Creating node cloud %d (depth=%dx%d rgb=%dx%d)", id, data.depthRaw().cols, data.depthRaw().rows, data.imageRaw().cols, data.imageRaw().rows);
 							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, 0, indices.get());
 
 							if(cloud->size() && indices->size())
@@ -458,8 +458,7 @@ int RTABMapApp::Render()
 								pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 								std::vector<pcl::Vertices> outputPolygons;
 
-								outputCloud = output;
-								outputPolygons = polygons;
+								std::vector<int> denseToOrganizedIndices = rtabmap::util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputCloud, outputPolygons);
 
 								LOGI("Creating mesh, %d polygons (%fs)", (int)outputPolygons.size(), time.ticks());
 
@@ -467,16 +466,19 @@ int RTABMapApp::Render()
 								{
 									totalPolygons_ += outputPolygons.size();
 
-									main_scene_.addCloud(id, outputCloud, outputPolygons, iter->second, data.imageRaw());
-
-									// protect createdMeshes_ used also by exportMesh() method
 									std::pair<std::map<int, Mesh>::iterator, bool> inserted = createdMeshes_.insert(std::make_pair(id, Mesh()));
 									UASSERT(inserted.second);
 									inserted.first->second.cloud = outputCloud;
-									inserted.first->second.indices = indices;
+									inserted.first->second.denseToOrganizedIndices = denseToOrganizedIndices;
+									inserted.first->second.width = cloud->width;
+									inserted.first->second.height = cloud->height;
 									inserted.first->second.polygons = outputPolygons;
 									inserted.first->second.pose = iter->second;
-									inserted.first->second.texture = data.imageCompressed();
+									inserted.first->second.texture = data.imageRaw();
+
+									main_scene_.addMesh(id, inserted.first->second, iter->second);
+
+									inserted.first->second.texture = data.imageCompressed(); // keep comrpessed
 								}
 								else
 								{
@@ -550,7 +552,7 @@ int RTABMapApp::Render()
 													event.data().imageRaw().cols, event.data().imageRaw().rows,
 													event.data().depthRaw().cols, event.data().depthRaw().rows,
 													(int)cloud->width, (int)cloud->height);
-						main_scene_.addCloud(-1, cloud, std::vector<pcl::Vertices>(), opengl_world_T_rtabmap_world*event.pose());
+						main_scene_.addCloud(-1, cloud, opengl_world_T_rtabmap_world*event.pose());
 						main_scene_.setCloudVisible(-1, true);
 					}
 					else
@@ -566,41 +568,45 @@ int RTABMapApp::Render()
 		}
 	}
 
-	if(gainCompensationOnNextRender_)
+	if(notifyDataLoaded || gainCompensationOnNextRender_)
 	{
+		LOGI("Gain compensation...");
 		gainCompensationOnNextRender_ = false;
-		rtabmap::GainCompensator compensator;
-		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > clouds;
-		std::map<int, pcl::IndicesPtr> indices;
-		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+		boost::mutex::scoped_lock  lock(meshesMutex_);
+		if(createdMeshes_.size() > 1)
 		{
-			clouds.insert(std::make_pair(iter->first, iter->second.cloud));
-			indices.insert(std::make_pair(iter->first, iter->second.indices));
-		}
-		std::map<int, rtabmap::Transform> poses;
-		std::multimap<int, rtabmap::Link> links;
-		rtabmap_->getGraph(poses, links, false, true);
-		compensator.feed(clouds, indices, links);
-		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
-		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCpy(new pcl::PointCloud<pcl::PointXYZRGB>);
-			*cloudCpy = *iter->second.cloud;
-			cv::Mat imageCpy = rtabmap::uncompressImage(iter->second.texture);
-			if(!cloudCpy->empty())
+			rtabmap::GainCompensator compensator;
+			std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > clouds;
+			for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 			{
-				compensator.apply(iter->first, cloudCpy, iter->second.indices);
-				if(!imageCpy.empty())
-				{
-					compensator.apply(iter->first, imageCpy);
-				}
+				clouds.insert(std::make_pair(iter->first, iter->second.cloud));
 			}
-			main_scene_.updateCloudColors(iter->first, cloudCpy, imageCpy);
+			std::map<int, rtabmap::Transform> poses;
+			std::multimap<int, rtabmap::Link> links;
+			rtabmap_->getGraph(poses, links, false, true);
+			compensator.feed(clouds, links);
+			for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+			{
+				cv::Mat compressedImage = iter->second.texture;
+				iter->second.texture = rtabmap::uncompressImage(compressedImage);
+				if(!iter->second.cloud->empty())
+				{
+					compensator.apply(iter->first, iter->second.cloud);
+					if(!iter->second.texture.empty())
+					{
+						compensator.apply(iter->first, iter->second.texture);
+					}
+				}
+				main_scene_.updateMesh(iter->first, iter->second);
+				iter->second.texture = rtabmap::compressImage2(iter->second.texture, ".jpg");
+			}
 		}
 		notifyDataLoaded = true;
 	}
 
 	if(filterPolygonsOnNextRender_)
 	{
+		LOGI("Polygon filtering...");
 		filterPolygonsOnNextRender_ = false;
 		boost::mutex::scoped_lock  lock(meshesMutex_);
 		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
@@ -846,54 +852,44 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 				iter!= createdMeshes_.end();
 				++iter)
 			{
-				UASSERT(!iter->second.cloud->is_dense);
-
 				if(!iter->second.texture.empty() &&
 					iter->second.cloud->size() &&
-					iter->second.polygons.size())
+					iter->second.polygons.size() &&
+					(!iter->second.cloud->is_dense || (iter->second.cloud->is_dense && iter->second.denseToOrganizedIndices.size() == iter->second.cloud->size())))
 				{
 					// OBJ format requires normals
-					pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(iter->second.cloud, 20);
+					pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(iter->second.cloud, 6);
 
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals;
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 					pcl::concatenateFields(*iter->second.cloud, *normals, *cloudWithNormals);
 
-					// create dense cloud
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-					std::vector<pcl::Vertices> densePolygons;
-					std::map<int, int> newToOldIndices;
-					newToOldIndices = rtabmap::util3d::filterNotUsedVerticesFromMesh(
-							*cloudWithNormals,
-							iter->second.polygons,
-							*denseCloud,
-							densePolygons);
-
 					// polygons
-					UASSERT(densePolygons.size());
-					unsigned int polygonSize = densePolygons.front().vertices.size();
-					textureMesh.tex_polygons[oi].resize(densePolygons.size());
-					textureMesh.tex_coordinates[oi].resize(densePolygons.size() * polygonSize);
-					for(unsigned int j=0; j<densePolygons.size(); ++j)
+					UASSERT(iter->second.polygons.size());
+					unsigned int polygonSize = iter->second.polygons.front().vertices.size();
+					textureMesh.tex_polygons[oi].resize(iter->second.polygons.size());
+					textureMesh.tex_coordinates[oi].resize(iter->second.polygons.size() * polygonSize);
+					for(unsigned int j=0; j<iter->second.polygons.size(); ++j)
 					{
-						pcl::Vertices vertices = densePolygons[j];
+						pcl::Vertices vertices = iter->second.polygons[j];
 						UASSERT(polygonSize == vertices.vertices.size());
 						for(unsigned int k=0; k<vertices.vertices.size(); ++k)
 						{
 							//uv
-							std::map<int, int>::iterator jter = newToOldIndices.find(vertices.vertices[k]);
+							UASSERT(vertices.vertices[k] < iter->second.denseToOrganizedIndices.size());
+							int originalVertex = iter->second.denseToOrganizedIndices[vertices.vertices[k]];
 							textureMesh.tex_coordinates[oi][j*vertices.vertices.size()+k] = Eigen::Vector2f(
-									float(jter->second % iter->second.cloud->width) / float(iter->second.cloud->width),   // u
-									float(iter->second.cloud->height - jter->second / iter->second.cloud->width) / float(iter->second.cloud->height)); // v
+									float(originalVertex % iter->second.width) / float(iter->second.width),   // u
+									float(iter->second.height - originalVertex / iter->second.width) / float(iter->second.height)); // v
 
 							vertices.vertices[k] += polygonsStep;
 						}
 						textureMesh.tex_polygons[oi][j] = vertices;
 
 					}
-					totalPolygons += densePolygons.size();
-					polygonsStep += denseCloud->size();
+					totalPolygons += iter->second.polygons.size();
+					polygonsStep += iter->second.cloud->size();
 
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(denseCloud, iter->second.pose);
+					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(cloudWithNormals, iter->second.pose);
 					if(mergedClouds->size() == 0)
 					{
 						*mergedClouds = *transformedCloud;
@@ -961,24 +957,15 @@ bool RTABMapApp::exportMesh(const std::string & filePath)
 				iter!= createdMeshes_.end();
 				++iter)
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-				std::vector<pcl::Vertices> densePolygons;
-
-				rtabmap::util3d::filterNotUsedVerticesFromMesh(
-						*iter->second.cloud,
-						iter->second.polygons,
-						*denseCloud,
-						densePolygons);
-
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(denseCloud, iter->second.pose);
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(iter->second.cloud, iter->second.pose);
 				if(mergedClouds->size() == 0)
 				{
 					*mergedClouds = *transformedCloud;
-					mergedPolygons = densePolygons;
+					mergedPolygons = iter->second.polygons;
 				}
 				else
 				{
-					rtabmap::util3d::appendMesh(*mergedClouds, mergedPolygons, *transformedCloud, densePolygons);
+					rtabmap::util3d::appendMesh(*mergedClouds, mergedPolygons, *transformedCloud, iter->second.polygons);
 				}
 			}
 		}

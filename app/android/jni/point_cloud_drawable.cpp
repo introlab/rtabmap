@@ -38,9 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 PointCloudDrawable::PointCloudDrawable(
 		GLuint cloudShaderProgram,
 		GLuint textureShaderProgram,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const std::vector<pcl::Vertices> & polygons,
-		const cv::Mat & image) :
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) :
 		vertex_buffers_(0),
 		textures_(0),
 		nPoints_(0),
@@ -49,8 +47,22 @@ PointCloudDrawable::PointCloudDrawable(
 		cloud_shader_program_(cloudShaderProgram),
 		texture_shader_program_(textureShaderProgram)
 {
-	updateCloud(cloud, image);
-	updatePolygons(polygons);
+	updateCloud(cloud);
+}
+
+PointCloudDrawable::PointCloudDrawable(
+		GLuint cloudShaderProgram,
+		GLuint textureShaderProgram,
+		const Mesh & mesh) :
+		vertex_buffers_(0),
+		textures_(0),
+		nPoints_(0),
+		pose_(1.0f),
+		visible_(true),
+		cloud_shader_program_(cloudShaderProgram),
+		texture_shader_program_(textureShaderProgram)
+{
+	updateMesh(mesh);
 }
 
 PointCloudDrawable::~PointCloudDrawable()
@@ -91,12 +103,68 @@ void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polyg
 	}
 }
 
-void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const cv::Mat & image)
+void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud)
 {
 	UASSERT(!cloud->empty());
 	if(nPoints_)
 	{
 		UASSERT((int)cloud->size() == nPoints_);
+	}
+	nPoints_ = 0;
+	polygons_.clear();
+
+	if (vertex_buffers_)
+	{
+		glDeleteBuffers(1, &vertex_buffers_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
+		vertex_buffers_ = 0;
+	}
+
+	if (textures_)
+	{
+		glDeleteTextures(1, &textures_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
+		textures_ = 0;
+	}
+
+	glGenBuffers(1, &vertex_buffers_);
+	if(!vertex_buffers_)
+	{
+		LOGE("OpenGL: could not generate vertex buffers\n");
+		return;
+	}
+
+	LOGI("Creating cloud buffer %d", vertex_buffers_);
+	std::vector<float> vertices(cloud->size()*4);
+	for(unsigned int i=0; i<cloud->size(); ++i)
+	{
+		vertices[i*4] = cloud->at(i).x;
+		vertices[i*4+1] = cloud->at(i).y;
+		vertices[i*4+2] = cloud->at(i).z;
+		vertices[i*4+3] = cloud->at(i).rgb;
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * (int)vertices.size(), (const void *)vertices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	GLint error = glGetError();
+	if(error != GL_NO_ERROR)
+	{
+		LOGE("OpenGL: Could not allocate point cloud (0x%x)\n", error);
+		vertex_buffers_ = 0;
+		return;
+	}
+
+	nPoints_ = cloud->size();
+}
+
+void PointCloudDrawable::updateMesh(const Mesh & mesh)
+{
+	UASSERT(!mesh.cloud->empty());
+	if(nPoints_)
+	{
+		UASSERT((int)mesh.cloud->size() == nPoints_);
 	}
 	nPoints_ = 0;
 
@@ -107,7 +175,8 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 		vertex_buffers_ = 0;
 	}
 
-	if(!image.empty())
+	bool textureUpdate = false;
+	if(!mesh.texture.empty() && mesh.texture.type() == CV_32FC3)
 	{
 		if (textures_)
 		{
@@ -115,6 +184,7 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 			tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
 			textures_ = 0;
 		}
+		textureUpdate = true;
 	}
 
 	glGenBuffers(1, &vertex_buffers_);
@@ -124,10 +194,10 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 		return;
 	}
 
-	if(!cloud->is_dense && !image.empty())
+	if(textureUpdate)
 	{
-		LOGI("cloud=%dx%d image=%dx%d\n", (int)cloud->width, (int)cloud->height, image.cols, image.rows);
-		UASSERT(!cloud->is_dense && !image.empty() && image.type() == CV_8UC3);
+		UASSERT((!mesh.cloud->is_dense && mesh.cloud->width==mesh.width && mesh.cloud->height==mesh.height) ||
+				(mesh.cloud->is_dense && mesh.width>1 && mesh.height>1 && mesh.denseToOrganizedIndices.size() == mesh.cloud->size()));
 		glGenTextures(1, &textures_);
 		if(!textures_)
 		{
@@ -141,30 +211,35 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 	std::vector<float> vertices;
 	if(textures_)
 	{
-		vertices = std::vector<float>(cloud->size()*6);
-		for(unsigned int i=0; i<cloud->size(); ++i)
+		vertices = std::vector<float>(mesh.cloud->size()*6);
+		for(unsigned int i=0; i<mesh.cloud->size(); ++i)
 		{
-			vertices[i*6] = cloud->at(i).x;
-			vertices[i*6+1] = cloud->at(i).y;
-			vertices[i*6+2] = cloud->at(i).z;
+			vertices[i*6] = mesh.cloud->at(i).x;
+			vertices[i*6+1] = mesh.cloud->at(i).y;
+			vertices[i*6+2] = mesh.cloud->at(i).z;
 
 			// rgb
-			vertices[i*6+3] = cloud->at(i).rgb;
+			vertices[i*6+3] = mesh.cloud->at(i).rgb;
 
 			// texture uv
-			vertices[i*6+4] = float(i % cloud->width)/float(cloud->width); //u
-			vertices[i*6+5] = float(i/cloud->width)/float(cloud->height);  //v
+			int index = i;
+			if(mesh.cloud->is_dense)
+			{
+				index = mesh.denseToOrganizedIndices[i];
+			}
+			vertices[i*6+4] = float(index % mesh.width)/float(mesh.width); //u
+			vertices[i*6+5] = float(index / mesh.width)/float(mesh.height);  //v
 		}
 	}
 	else
 	{
-		vertices = std::vector<float>(cloud->size()*4);
-		for(unsigned int i=0; i<cloud->size(); ++i)
+		vertices = std::vector<float>(mesh.cloud->size()*4);
+		for(unsigned int i=0; i<mesh.cloud->size(); ++i)
 		{
-			vertices[i*4] = cloud->at(i).x;
-			vertices[i*4+1] = cloud->at(i).y;
-			vertices[i*4+2] = cloud->at(i).z;
-			vertices[i*4+3] = cloud->at(i).rgb;
+			vertices[i*4] = mesh.cloud->at(i).x;
+			vertices[i*4+1] = mesh.cloud->at(i).y;
+			vertices[i*4+2] = mesh.cloud->at(i).z;
+			vertices[i*4+3] = mesh.cloud->at(i).rgb;
 		}
 	}
 
@@ -180,14 +255,14 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 		return;
 	}
 
-	if(textures_ && !image.empty())
+	if(textures_ && textureUpdate)
 	{
 		// gen texture from image
 		glBindTexture(GL_TEXTURE_2D, textures_);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cv::Mat rgbImage;
-		cv::cvtColor(image, rgbImage, CV_BGR2RGB);
+		cv::cvtColor(mesh.texture, rgbImage, CV_BGR2RGB);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, rgbImage.cols, rgbImage.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbImage.data);
 
 		GLint error = glGetError();
@@ -202,7 +277,12 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 		}
 	}
 
-	nPoints_ = cloud->size();
+	nPoints_ = mesh.cloud->size();
+
+	if(polygons_.size() != mesh.polygons.size())
+	{
+		updatePolygons(mesh.polygons);
+	}
 }
 
 void PointCloudDrawable::setPose(const rtabmap::Transform & pose)

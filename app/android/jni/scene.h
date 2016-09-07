@@ -100,16 +100,18 @@ class Scene {
   void addCloud(
   		  int id,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-  		  const std::vector<pcl::Vertices> & polygons,
-  		  const rtabmap::Transform & pose,
-		  const cv::Mat & image = cv::Mat());
+  		  const rtabmap::Transform & pose);
+  void addMesh(
+  		int id,
+  		const Mesh & mesh,
+  		const rtabmap::Transform & pose);
 
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
   bool hasCloud(int id) const;
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
-  void updateCloudColors(int id, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const cv::Mat & image = cv::Mat());
+  void updateMesh(int id, const Mesh & mesh);
 
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}

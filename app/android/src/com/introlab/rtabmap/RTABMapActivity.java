@@ -66,7 +66,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
   // Screen size for normalizing the touch input for orbiting the render camera.
   private Point mScreenSize = new Point();
-
+  private boolean mPauseFirstTime = true;
+  
   private MenuItem mItemPause;
   private MenuItem mItemSave;
   private MenuItem mItemOpen;
@@ -652,6 +653,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  {
     		  RTABMapLib.setPausedMapping(true);
     		  ((TextView)findViewById(R.id.status)).setText("Paused");
+    		  if(mPauseFirstTime)
+    		  {
+    			  mPauseFirstTime = false;
+    			  mToast.makeText(getActivity(), String.format("Try \"Post-Processing...\" to optimize even more the map!"), mToast.LENGTH_LONG).show();
+    		  }
     	  }
     	  else
     	  {
@@ -673,7 +679,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								if(loopDetected >= 0)
 								{
 									mTotalLoopClosures+=loopDetected;
-									mToast.makeText(getActivity(), String.format("Optimization done! Adjusting colors..."), mToast.LENGTH_SHORT).show();
+									mProgressDialog.setMessage(String.format("Optimization done! Adjusting colors..."));
 								}
 								else if(loopDetected < 0)
 								{

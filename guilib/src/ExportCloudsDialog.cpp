@@ -835,7 +835,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 
 		//used for organized texturing below
-		std::map<int, std::map<int, int> > organizedIndices;
+		std::map<int, std::vector<int> > organizedIndices;
 		std::map<int, cv::Size> organizedCloudSizes;
 
 		//mesh
@@ -913,7 +913,7 @@ bool ExportCloudsDialog::getExportedClouds(
 
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 							std::vector<pcl::Vertices> densePolygons;
-							std::map<int, int> newToOldIndices = util3d::filterNotUsedVerticesFromMesh(*iter->second, polygons, *denseCloud, densePolygons);
+							std::vector<int> denseToOrganizedIndices = util3d::filterNotUsedVerticesFromMesh(*iter->second, polygons, *denseCloud, densePolygons);
 
 							if(!_ui->checkBox_assemble->isChecked() ||
 								 (_ui->checkBox_textureMapping->isEnabled() &&
@@ -937,7 +937,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								}
 								else
 								{
-									organizedIndices.insert(std::make_pair(iter->first, newToOldIndices));
+									organizedIndices.insert(std::make_pair(iter->first, denseToOrganizedIndices));
 									organizedCloudSizes.insert(std::make_pair(iter->first, cv::Size(iter->second->width, iter->second->height)));
 								}
 								meshes.insert(std::make_pair(iter->first, mesh));
@@ -1136,7 +1136,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				if(cameraPoses.size())
 				{
 					pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
-					std::map<int, std::map<int, int> >::iterator oter = organizedIndices.find(iter->first);
+					std::map<int, std::vector<int> >::iterator oter = organizedIndices.find(iter->first);
 					std::map<int, cv::Size>::iterator ster = organizedCloudSizes.find(iter->first);
 					if(iter->first != 0 && oter != organizedIndices.end())
 					{
@@ -1162,9 +1162,8 @@ bool ExportCloudsDialog::getExportedClouds(
 								for(int k=0; k<polygonSize; ++k)
 								{
 									//uv
-									std::map<int, int>::iterator vter = oter->second.find(vertices.vertices[k]);
-									UASSERT(vter != oter->second.end());
-									int originalVertex = vter->second;
+									UASSERT(vertices.vertices[k] < oter->second.size());
+									int originalVertex = oter->second[vertices.vertices[k]];
 									textureMesh->tex_coordinates[0][i*polygonSize+k] = Eigen::Vector2f(
 											float(originalVertex % w) / float(w),      // u
 											float(h - originalVertex / w) / float(h)); // v
@@ -1178,9 +1177,8 @@ bool ExportCloudsDialog::getExportedClouds(
 							for(int i=0; i<nPoints; ++i)
 							{
 								//uv
-								std::map<int, int>::iterator vter = oter->second.find(i);
-								UASSERT(vter != oter->second.end());
-								int originalVertex = vter->second;
+								UASSERT(i < oter->second.size());
+								int originalVertex = oter->second[i];
 								textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
 										float(originalVertex % w) / float(w),      // u
 										float(h - originalVertex / w) / float(h)); // v

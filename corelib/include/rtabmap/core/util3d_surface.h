@@ -89,12 +89,12 @@ void RTABMAP_EXP appendMesh(
 		const std::vector<pcl::Vertices> & polygonsB);
 
 // return map from new to old polygon indices
-std::map<int, int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
+std::vector<int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGBNormal> & outputCloud,
 		std::vector<pcl::Vertices> & outputPolygons);
-std::map<int, int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
+std::vector<int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,

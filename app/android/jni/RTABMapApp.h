@@ -181,15 +181,6 @@ class RTABMapApp : public UEventsHandler {
 	boost::mutex poseMutex_;
 	boost::mutex renderingMutex_;
 
-	struct Mesh
-	{
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-		pcl::IndicesPtr indices;
-		std::vector<pcl::Vertices> polygons;
-		rtabmap::Transform pose;
-		cv::Mat texture;
-	};
-
 	std::map<int, Mesh> createdMeshes_;
 	std::map<int, rtabmap::Transform> rawPoses_;
 

@@ -2632,7 +2632,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 					// remove unused vertices to save memory
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputFiltered(new pcl::PointCloud<pcl::PointXYZRGB>);
 					std::vector<pcl::Vertices> outputPolygons;
-					std::map<int, int> newToOldIndices = util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
+					std::vector<int> denseToOrganizedIndices = util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputFiltered, outputPolygons);
 
 					if(_preferencesDialog->isCloudMeshingTexture() && !image.empty())
 					{
@@ -2643,14 +2643,13 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 						int h = cloud->height;
 						UASSERT(w > 1 && h > 1);
 						textureMesh->tex_coordinates.resize(1);
-						int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+						unsigned int nPoints = outputFiltered->size();
 						textureMesh->tex_coordinates[0].resize(nPoints);
-						for(int i=0; i<nPoints; ++i)
+						for(unsigned int i=0; i<nPoints; ++i)
 						{
 							//uv
-							std::map<int, int>::iterator vter = newToOldIndices.find(i);
-							UASSERT(vter != newToOldIndices.end());
-							int originalVertex = vter->second;
+							UASSERT(i < denseToOrganizedIndices.size());
+							int originalVertex = denseToOrganizedIndices[i];
 							textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
 									float(originalVertex % w) / float(w),      // u
 									float(h - originalVertex / w) / float(h)); // v
