@@ -247,6 +247,7 @@ private:
 	int _imagePreDecimation;
 	int _imagePostDecimation;
 	float _laserScanDownsampleStepSize;
+	int _laserScanNormalK;
 	bool _reextractLoopClosureFeatures;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;

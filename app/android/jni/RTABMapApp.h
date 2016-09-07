@@ -161,6 +161,7 @@ class RTABMapApp : public UEventsHandler {
 
   bool clearSceneOnNextRender_;
   bool filterPolygonsOnNextRender_;
+  bool gainCompensationOnNextRender_;
   int totalPoints_;
   int totalPolygons_;
   int lastDrawnCloudsCount_;
@@ -178,10 +179,12 @@ class RTABMapApp : public UEventsHandler {
 	boost::mutex meshesMutex_;
 	boost::mutex odomMutex_;
 	boost::mutex poseMutex_;
+	boost::mutex renderingMutex_;
 
 	struct Mesh
 	{
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+		pcl::IndicesPtr indices;
 		std::vector<pcl::Vertices> polygons;
 		rtabmap::Transform pose;
 		cv::Mat texture;

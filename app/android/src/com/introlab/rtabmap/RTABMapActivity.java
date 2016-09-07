@@ -670,11 +670,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				    	final int loopDetected = RTABMapLib.postProcessing(-1);
 				    	runOnUiThread(new Runnable() {
 				    		public void run() {
-								mProgressDialog.dismiss();
 								if(loopDetected >= 0)
 								{
 									mTotalLoopClosures+=loopDetected;
-									mToast.makeText(getActivity(), String.format("Optimization done!"), mToast.LENGTH_SHORT).show();
+									mToast.makeText(getActivity(), String.format("Optimization done! Adjusting colors..."), mToast.LENGTH_SHORT).show();
 								}
 								else if(loopDetected < 0)
 								{
@@ -771,6 +770,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  mProgressDialog.setMessage(String.format("Noise filtering..."));
 		  mProgressDialog.show();
     	  RTABMapLib.postProcessing(4);
+      }
+      else if (itemId == R.id.gain_compensation)
+      {		
+    	  mProgressDialog.setTitle("Post-Processing");
+		  mProgressDialog.setMessage(String.format("Gain compensation..."));
+		  mProgressDialog.show();
+    	  RTABMapLib.postProcessing(5);
       }
       else if (itemId == R.id.sba)
       {

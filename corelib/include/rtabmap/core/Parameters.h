@@ -210,6 +210,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, ImagePreDecimation,      int, 1,          "Image decimation (>=1) before features extraction.");
 	RTABMAP_PARAM(Mem, ImagePostDecimation,     int, 1,          "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image.");
 	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,      "If > 1, downsample the laser scans when creating a signature.");
+	RTABMAP_PARAM(Mem, LaserScanNormalK,        int, 0,          "If > 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.");
 	RTABMAP_PARAM(Mem, UseOdomFeatures,         bool, false, "Use odometry features.");
 
 	// KeypointMemory (Keypoint-based)

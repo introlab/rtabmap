@@ -49,7 +49,73 @@ PointCloudDrawable::PointCloudDrawable(
 		cloud_shader_program_(cloudShaderProgram),
 		texture_shader_program_(textureShaderProgram)
 {
+	updateCloud(cloud, image);
+	updatePolygons(polygons);
+}
+
+PointCloudDrawable::~PointCloudDrawable()
+{
+	LOGI("Freeing cloud buffer %d", vertex_buffers_);
+	if (vertex_buffers_)
+	{
+		glDeleteBuffers(1, &vertex_buffers_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
+		vertex_buffers_ = 0;
+	}
+
+	if (textures_)
+	{
+		glDeleteTextures(1, &textures_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
+		textures_ = 0;
+	}
+}
+
+void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons)
+{
+	polygons_.clear();
+	if(polygons.size())
+	{
+		int polygonSize = polygons[0].vertices.size();
+		UASSERT(polygonSize == 3);
+		polygons_.resize(polygons.size() * polygonSize);
+		int oi = 0;
+		for(unsigned int i=0; i<polygons.size(); ++i)
+		{
+			UASSERT((int)polygons[i].vertices.size() == polygonSize);
+			for(int j=0; j<polygonSize; ++j)
+			{
+				polygons_[oi++] = (unsigned short)polygons[i].vertices[j];
+			}
+		}
+	}
+}
+
+void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const cv::Mat & image)
+{
 	UASSERT(!cloud->empty());
+	if(nPoints_)
+	{
+		UASSERT((int)cloud->size() == nPoints_);
+	}
+	nPoints_ = 0;
+
+	if (vertex_buffers_)
+	{
+		glDeleteBuffers(1, &vertex_buffers_);
+		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
+		vertex_buffers_ = 0;
+	}
+
+	if(!image.empty())
+	{
+		if (textures_)
+		{
+			glDeleteTextures(1, &textures_);
+			tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
+			textures_ = 0;
+		}
+	}
 
 	glGenBuffers(1, &vertex_buffers_);
 	if(!vertex_buffers_)
@@ -61,7 +127,7 @@ PointCloudDrawable::PointCloudDrawable(
 	if(!cloud->is_dense && !image.empty())
 	{
 		LOGI("cloud=%dx%d image=%dx%d\n", (int)cloud->width, (int)cloud->height, image.cols, image.rows);
-		UASSERT(polygons.size() && !cloud->is_dense && !image.empty() && image.type() == CV_8UC3);
+		UASSERT(!cloud->is_dense && !image.empty() && image.type() == CV_8UC3);
 		glGenTextures(1, &textures_);
 		if(!textures_)
 		{
@@ -114,12 +180,12 @@ PointCloudDrawable::PointCloudDrawable(
 		return;
 	}
 
-	if(textures_)
+	if(textures_ && !image.empty())
 	{
 		// gen texture from image
 		glBindTexture(GL_TEXTURE_2D, textures_);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cv::Mat rgbImage;
 		cv::cvtColor(image, rgbImage, CV_BGR2RGB);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, rgbImage.cols, rgbImage.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbImage.data);
@@ -137,46 +203,6 @@ PointCloudDrawable::PointCloudDrawable(
 	}
 
 	nPoints_ = cloud->size();
-
-	updatePolygons(polygons);
-}
-
-PointCloudDrawable::~PointCloudDrawable()
-{
-	LOGI("Freeing cloud buffer %d", vertex_buffers_);
-	if (vertex_buffers_)
-	{
-		glDeleteBuffers(1, &vertex_buffers_);
-		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-		vertex_buffers_ = 0;
-	}
-
-	if (textures_)
-	{
-		glDeleteTextures(1, &textures_);
-		tango_gl::util::CheckGlError("PointCloudDrawable::~PointCloudDrawable()");
-		textures_ = 0;
-	}
-}
-
-void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons)
-{
-	polygons_.clear();
-	if(polygons.size())
-	{
-		int polygonSize = polygons[0].vertices.size();
-		UASSERT(polygonSize == 3);
-		polygons_.resize(polygons.size() * polygonSize);
-		int oi = 0;
-		for(unsigned int i=0; i<polygons.size(); ++i)
-		{
-			UASSERT((int)polygons[i].vertices.size() == polygonSize);
-			for(int j=0; j<polygonSize; ++j)
-			{
-				polygons_[oi++] = (unsigned short)polygons[i].vertices[j];
-			}
-		}
-	}
 }
 
 void PointCloudDrawable::setPose(const rtabmap::Transform & pose)

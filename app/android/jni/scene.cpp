@@ -480,3 +480,12 @@ void Scene::updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polyg
 		iter->second->updatePolygons(polygons);
 	}
 }
+
+void Scene::updateCloudColors(int id, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const cv::Mat & image)
+{
+	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
+	if(iter != pointClouds_.end())
+	{
+		iter->second->updateCloud(cloud, image);
+	}
+}

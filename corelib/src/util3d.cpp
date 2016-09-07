@@ -1047,18 +1047,19 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, co
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
+		float * ptr = laserScan.ptr<float>(0, i);
 		if(!nullTransform)
 		{
 			pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
-			laserScan.at<cv::Vec3f>(i)[0] = pt.x;
-			laserScan.at<cv::Vec3f>(i)[1] = pt.y;
-			laserScan.at<cv::Vec3f>(i)[2] = pt.z;
+			ptr[0] = pt.x;
+			ptr[1] = pt.y;
+			ptr[2] = pt.z;
 		}
 		else
 		{
-			laserScan.at<cv::Vec3f>(i)[0] = cloud.at(i).x;
-			laserScan.at<cv::Vec3f>(i)[1] = cloud.at(i).y;
-			laserScan.at<cv::Vec3f>(i)[2] = cloud.at(i).z;
+			ptr[0] = cloud.at(i).x;
+			ptr[1] = cloud.at(i).y;
+			ptr[2] = cloud.at(i).z;
 		}
 
 	}
@@ -1071,24 +1072,63 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud,
 	bool nullTransform = transform.isNull() || transform.isIdentity();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
+		float * ptr = laserScan.ptr<float>(0, i);
 		if(!nullTransform)
 		{
 			pcl::PointNormal pt = util3d::transformPoint(cloud.at(i), transform);
-			laserScan.at<cv::Vec6f>(i)[0] = pt.x;
-			laserScan.at<cv::Vec6f>(i)[1] = pt.y;
-			laserScan.at<cv::Vec6f>(i)[2] = pt.z;
-			laserScan.at<cv::Vec6f>(i)[3] = pt.normal_x;
-			laserScan.at<cv::Vec6f>(i)[4] = pt.normal_y;
-			laserScan.at<cv::Vec6f>(i)[5] = pt.normal_z;
+			ptr[0] = pt.x;
+			ptr[1] = pt.y;
+			ptr[2] = pt.z;
+			ptr[3] = pt.normal_x;
+			ptr[4] = pt.normal_y;
+			ptr[5] = pt.normal_z;
 		}
 		else
 		{
-			laserScan.at<cv::Vec6f>(i)[0] = cloud.at(i).x;
-			laserScan.at<cv::Vec6f>(i)[1] = cloud.at(i).y;
-			laserScan.at<cv::Vec6f>(i)[2] = cloud.at(i).z;
-			laserScan.at<cv::Vec6f>(i)[3] = cloud.at(i).normal_x;
-			laserScan.at<cv::Vec6f>(i)[4] = cloud.at(i).normal_y;
-			laserScan.at<cv::Vec6f>(i)[5] = cloud.at(i).normal_z;
+			ptr[0] = cloud.at(i).x;
+			ptr[1] = cloud.at(i).y;
+			ptr[2] = cloud.at(i).z;
+			ptr[3] = cloud.at(i).normal_x;
+			ptr[4] = cloud.at(i).normal_y;
+			ptr[5] = cloud.at(i).normal_z;
+		}
+	}
+	return laserScan;
+}
+
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
+{
+	UASSERT(cloud.size() == normals.size());
+	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(6));
+	bool nullTransform = transform.isNull() || transform.isIdentity();
+	for(unsigned int i=0; i<cloud.size(); ++i)
+	{
+		float * ptr = laserScan.ptr<float>(0, i);
+		if(!nullTransform)
+		{
+			pcl::PointNormal pt;
+			pt.x = cloud.at(i).x;
+			pt.y = cloud.at(i).y;
+			pt.z = cloud.at(i).z;
+			pt.normal_x = normals.at(i).normal_x;
+			pt.normal_y = normals.at(i).normal_y;
+			pt.normal_z = normals.at(i).normal_z;
+			pt = util3d::transformPoint(pt, transform);
+			ptr[0] = pt.x;
+			ptr[1] = pt.y;
+			ptr[2] = pt.z;
+			ptr[3] = pt.normal_x;
+			ptr[4] = pt.normal_y;
+			ptr[5] = pt.normal_z;
+		}
+		else
+		{
+			ptr[0] = cloud.at(i).x;
+			ptr[1] = cloud.at(i).y;
+			ptr[2] = cloud.at(i).z;
+			ptr[3] = normals.at(i).normal_x;
+			ptr[4] = normals.at(i).normal_y;
+			ptr[5] = normals.at(i).normal_z;
 		}
 	}
 	return laserScan;
@@ -1101,20 +1141,22 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
+		float * ptr = laserScan.ptr<float>(0, i);
 		if(!nullTransform)
 		{
 			pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(i), transform3f);
-			laserScan.at<cv::Vec4f>(i)[0] = pt.x;
-			laserScan.at<cv::Vec4f>(i)[1] = pt.y;
-			laserScan.at<cv::Vec4f>(i)[2] = pt.z;
+			ptr[0] = pt.x;
+			ptr[1] = pt.y;
+			ptr[2] = pt.z;
 		}
 		else
 		{
-			laserScan.at<cv::Vec4f>(i)[0] = cloud.at(i).x;
-			laserScan.at<cv::Vec4f>(i)[1] = cloud.at(i).y;
-			laserScan.at<cv::Vec4f>(i)[2] = cloud.at(i).z;
+			ptr[0] = cloud.at(i).x;
+			ptr[1] = cloud.at(i).y;
+			ptr[2] = cloud.at(i).z;
 		}
-		laserScan.at<cv::Vec4i>(i)[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
+		int * ptrInt = (int*)ptr;
+		ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
 	}
 	return laserScan;
 }
@@ -1126,16 +1168,17 @@ cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, 
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
+		float * ptr = laserScan.ptr<float>(0, i);
 		if(!nullTransform)
 		{
 			pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
-			laserScan.at<cv::Vec2f>(i)[0] = pt.x;
-			laserScan.at<cv::Vec2f>(i)[1] = pt.y;
+			ptr[0] = pt.x;
+			ptr[1] = pt.y;
 		}
 		else
 		{
-			laserScan.at<cv::Vec2f>(i)[0] = cloud.at(i).x;
-			laserScan.at<cv::Vec2f>(i)[1] = cloud.at(i).y;
+			ptr[0] = cloud.at(i).x;
+			ptr[1] = cloud.at(i).y;
 		}
 
 	}
@@ -1203,28 +1246,12 @@ pcl::PointXYZ laserScanToPoint(const cv::Mat & laserScan, int index)
 	UASSERT(!laserScan.empty() && index < laserScan.cols);
 	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
 	pcl::PointXYZ output;
-	if(laserScan.type() == CV_32FC2)
+	const float * ptr = laserScan.ptr<float>(0, index);
+	output.x = ptr[0];
+	output.y = ptr[1];
+	if(laserScan.channels() >= 3)
 	{
-		output.x = laserScan.at<cv::Vec2f>(index)[0];
-		output.y = laserScan.at<cv::Vec2f>(index)[1];
-	}
-	else if(laserScan.type() == CV_32FC3)
-	{
-		output.x = laserScan.at<cv::Vec3f>(index)[0];
-		output.y = laserScan.at<cv::Vec3f>(index)[1];
-		output.z = laserScan.at<cv::Vec3f>(index)[2];
-	}
-	else if(laserScan.type() == CV_32FC(4))
-	{
-		output.x = laserScan.at<cv::Vec4f>(index)[0];
-		output.y = laserScan.at<cv::Vec4f>(index)[1];
-		output.z = laserScan.at<cv::Vec4f>(index)[2];
-	}
-	else
-	{
-		output.x = laserScan.at<cv::Vec6f>(index)[0];
-		output.y = laserScan.at<cv::Vec6f>(index)[1];
-		output.z = laserScan.at<cv::Vec6f>(index)[2];
+		output.z = ptr[2];
 	}
 	return output;
 }
@@ -1234,31 +1261,18 @@ pcl::PointNormal laserScanToPointNormal(const cv::Mat & laserScan, int index)
 	UASSERT(!laserScan.empty() && index < laserScan.cols);
 	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
 	pcl::PointNormal output;
-	if(laserScan.type() == CV_32FC2)
+	const float * ptr = laserScan.ptr<float>(0, index);
+	output.x = ptr[0];
+	output.y = ptr[1];
+	if(laserScan.channels() >= 3)
 	{
-		output.x = laserScan.at<cv::Vec2f>(index)[0];
-		output.y = laserScan.at<cv::Vec2f>(index)[1];
+		output.z = ptr[2];
 	}
-	else if(laserScan.type() == CV_32FC3)
+	if(laserScan.channels() == 6)
 	{
-		output.x = laserScan.at<cv::Vec3f>(index)[0];
-		output.y = laserScan.at<cv::Vec3f>(index)[1];
-		output.z = laserScan.at<cv::Vec3f>(index)[2];
-	}
-	else if(laserScan.type() == CV_32FC(4))
-	{
-		output.x = laserScan.at<cv::Vec4f>(index)[0];
-		output.y = laserScan.at<cv::Vec4f>(index)[1];
-		output.z = laserScan.at<cv::Vec4f>(index)[2];
-	}
-	else
-	{
-		output.x = laserScan.at<cv::Vec6f>(index)[0];
-		output.y = laserScan.at<cv::Vec6f>(index)[1];
-		output.z = laserScan.at<cv::Vec6f>(index)[2];
-		output.normal_x = laserScan.at<cv::Vec6f>(index)[3];
-		output.normal_y = laserScan.at<cv::Vec6f>(index)[4];
-		output.normal_z = laserScan.at<cv::Vec6f>(index)[5];
+		output.normal_x = ptr[3];
+		output.normal_y = ptr[4];
+		output.normal_z = ptr[5];
 	}
 	return output;
 }
@@ -1268,31 +1282,19 @@ pcl::PointXYZRGB laserScanToPointRGB(const cv::Mat & laserScan, int index)
 	UASSERT(!laserScan.empty() && index < laserScan.cols);
 	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
 	pcl::PointXYZRGB output;
-	if(laserScan.type() == CV_32FC2)
+	const float * ptr = laserScan.ptr<float>(0, index);
+	output.x = ptr[0];
+	output.y = ptr[1];
+	if(laserScan.type() >= 3)
 	{
-		output.x = laserScan.at<cv::Vec2f>(index)[0];
-		output.y = laserScan.at<cv::Vec2f>(index)[1];
+		output.z = ptr[2];
 	}
-	else if(laserScan.type() == CV_32FC3)
+	if(laserScan.channels() == 4)
 	{
-		output.x = laserScan.at<cv::Vec3f>(index)[0];
-		output.y = laserScan.at<cv::Vec3f>(index)[1];
-		output.z = laserScan.at<cv::Vec3f>(index)[2];
-	}
-	else if(laserScan.type() == CV_32FC(4))
-	{
-		output.x = laserScan.at<cv::Vec4f>(index)[0];
-		output.y = laserScan.at<cv::Vec4f>(index)[1];
-		output.z = laserScan.at<cv::Vec4f>(index)[2];
-		output.b = (unsigned char)(laserScan.at<cv::Vec4i>(index)[3] & 0xFF);
-		output.g = (unsigned char)((laserScan.at<cv::Vec4i>(index)[3] >> 8) & 0xFF);
-		output.r = (unsigned char)((laserScan.at<cv::Vec4i>(index)[3] >> 16) & 0xFF);
-	}
-	else
-	{
-		output.x = laserScan.at<cv::Vec6f>(index)[0];
-		output.y = laserScan.at<cv::Vec6f>(index)[1];
-		output.z = laserScan.at<cv::Vec6f>(index)[2];
+		int * ptrInt = (int*)ptr;
+		output.b = (unsigned char)(ptrInt[3] & 0xFF);
+		output.g = (unsigned char)((ptrInt[3] >> 8) & 0xFF);
+		output.r = (unsigned char)((ptrInt[3] >> 16) & 0xFF);
 	}
 	return output;
 }

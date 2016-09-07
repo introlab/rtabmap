@@ -50,6 +50,7 @@ class PointCloudDrawable {
   virtual ~PointCloudDrawable();
 
   void updatePolygons(const std::vector<pcl::Vertices> & polygons);
+  void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const cv::Mat & image = cv::Mat());
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
   rtabmap::Transform getPose() const {return glmToTransform(pose_);}

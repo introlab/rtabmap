@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Optimizer.h>
 #include <rtabmap/core/VWDictionary.h>
 #include <rtabmap/core/Memory.h>
+#include <rtabmap/core/GainCompensator.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
@@ -90,10 +91,13 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDNeighborLinkRefining(), uBool2Str(driftCorrection_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRegStrategy(), std::string(driftCorrection_?"1":"0")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpPointToPlane(), std::string("false")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpPointToPlaneNormalNeighbors(), std::string("6")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpPointToPlane(), std::string("true")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemLaserScanNormalK(), std::string("6")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpIterations(), std::string("10")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpEpsilon(), std::string("0.001")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpMaxRotation(), std::string("0.17"))); // 10 degrees
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpMaxTranslation(), std::string("0.05")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpCorrespondenceRatio(), std::string("0.3")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpMaxCorrespondenceDistance(), std::string("0.05")));
 
 	return parameters;
@@ -117,6 +121,7 @@ RTABMapApp::RTABMapApp() :
 		meshAngleToleranceDeg_(15.0),
 		clearSceneOnNextRender_(false),
 		filterPolygonsOnNextRender_(false),
+		gainCompensationOnNextRender_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
 		lastDrawnCloudsCount_(0),
@@ -171,8 +176,6 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 	{
 		logHandler_ = new LogHandler();
 	}
-	ULogger::setEventLevel(ULogger::kInfo);
-	ULogger::setPrintThreadId(true);
 
 	this->registerToEventsManager();
 
@@ -300,6 +303,8 @@ private:
 // OpenGL thread
 int RTABMapApp::Render()
 {
+	boost::mutex::scoped_lock  lock(renderingMutex_);
+
 	// should be before clearSceneOnNextRender_ in case openDatabase is called
 	std::list<rtabmap::Statistics> rtabmapEvents;
 	{
@@ -464,11 +469,11 @@ int RTABMapApp::Render()
 
 									main_scene_.addCloud(id, outputCloud, outputPolygons, iter->second, data.imageRaw());
 
-
 									// protect createdMeshes_ used also by exportMesh() method
 									std::pair<std::map<int, Mesh>::iterator, bool> inserted = createdMeshes_.insert(std::make_pair(id, Mesh()));
 									UASSERT(inserted.second);
 									inserted.first->second.cloud = outputCloud;
+									inserted.first->second.indices = indices;
 									inserted.first->second.polygons = outputPolygons;
 									inserted.first->second.pose = iter->second;
 									inserted.first->second.texture = data.imageCompressed();
@@ -545,8 +550,7 @@ int RTABMapApp::Render()
 													event.data().imageRaw().cols, event.data().imageRaw().rows,
 													event.data().depthRaw().cols, event.data().depthRaw().rows,
 													(int)cloud->width, (int)cloud->height);
-						std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
-						main_scene_.addCloud(-1, cloud, polygons, opengl_world_T_rtabmap_world*event.pose(), event.data().imageRaw());
+						main_scene_.addCloud(-1, cloud, std::vector<pcl::Vertices>(), opengl_world_T_rtabmap_world*event.pose());
 						main_scene_.setCloudVisible(-1, true);
 					}
 					else
@@ -560,6 +564,39 @@ int RTABMapApp::Render()
 				}
 			}
 		}
+	}
+
+	if(gainCompensationOnNextRender_)
+	{
+		gainCompensationOnNextRender_ = false;
+		rtabmap::GainCompensator compensator;
+		std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr > clouds;
+		std::map<int, pcl::IndicesPtr> indices;
+		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+		{
+			clouds.insert(std::make_pair(iter->first, iter->second.cloud));
+			indices.insert(std::make_pair(iter->first, iter->second.indices));
+		}
+		std::map<int, rtabmap::Transform> poses;
+		std::multimap<int, rtabmap::Link> links;
+		rtabmap_->getGraph(poses, links, false, true);
+		compensator.feed(clouds, indices, links);
+		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudCpy(new pcl::PointCloud<pcl::PointXYZRGB>);
+			*cloudCpy = *iter->second.cloud;
+			cv::Mat imageCpy = rtabmap::uncompressImage(iter->second.texture);
+			if(!cloudCpy->empty())
+			{
+				compensator.apply(iter->first, cloudCpy, iter->second.indices);
+				if(!imageCpy.empty())
+				{
+					compensator.apply(iter->first, imageCpy);
+				}
+			}
+			main_scene_.updateCloudColors(iter->first, cloudCpy, imageCpy);
+		}
+		notifyDataLoaded = true;
 	}
 
 	if(filterPolygonsOnNextRender_)
@@ -1021,7 +1058,7 @@ int RTABMapApp::postProcessing(int approach)
 					LOGE("g2o not available!");
 				}
 			}
-			else
+			else if(approach!=4 || approach!=5)
 			{
 				// simple graph optmimization
 				rtabmap_->getGraph(poses, links, true, true);
@@ -1038,16 +1075,27 @@ int RTABMapApp::postProcessing(int approach)
 
 			rtabmap_->setOptimizedPoses(poses);
 		}
-		else
+		else if(approach!=4 || approach!=5)
 		{
 			returnedValue = -1;
 		}
-	}
 
-	// filter polygons
-	if(approach == 4)
-	{
-		filterPolygonsOnNextRender_ = true;
+		if(returnedValue >=0)
+		{
+			// filter polygons
+			if(approach == 4)
+			{
+				boost::mutex::scoped_lock  lock(renderingMutex_);
+				filterPolygonsOnNextRender_ = true;
+			}
+
+			// gain compensation
+			if(approach == -1 || approach == 5)
+			{
+				boost::mutex::scoped_lock  lock(renderingMutex_);
+				gainCompensationOnNextRender_ = true;
+			}
+		}
 	}
 
 	return returnedValue;

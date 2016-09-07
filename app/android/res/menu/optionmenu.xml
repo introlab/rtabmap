@@ -14,6 +14,7 @@
 	              <item android:id="@+id/global_graph_optimization" android:title="Global Graph Optimization" />
 	              <item android:id="@+id/detect_more_loop_closures" android:title="Detect More Loop Closures" />
 	              <item android:id="@+id/icp_refining" android:title="ICP Refining" />
+	              <item android:id="@+id/gain_compensation" android:title="Adjust Colors" />
 	              <item android:id="@+id/sba" android:title="Bundle Adjustement" />
 	              <item android:id="@+id/polygons_filtering" android:title="Noise Filtering" />
 	            </menu>  
