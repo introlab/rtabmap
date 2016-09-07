@@ -1832,17 +1832,14 @@ void DatabaseViewer::view3DLaserScans()
 					dbDriver_->getNodeData(iter->first, data);
 					cv::Mat scan;
 					data.uncompressDataConst(0, 0, &scan);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-					UASSERT(scan.empty() || scan.type()==CV_32FC2 || scan.type() == CV_32FC3);
 
-					if(downsamplingStepSize>1)
+					if(!scan.empty())
 					{
-						scan = util3d::downsample(scan, downsamplingStepSize);
-					}
-					cloud = util3d::laserScanToPointCloud(scan, data.laserScanInfo().localTransform());
+						if(downsamplingStepSize>1)
+						{
+							scan = util3d::downsample(scan, downsamplingStepSize);
+						}
 
-					if(cloud->size())
-					{
 						QColor color = Qt::red;
 						int mapId, weight;
 						Transform odomPose, groundTruth;
@@ -1853,20 +1850,25 @@ void DatabaseViewer::view3DLaserScans()
 							color = (Qt::GlobalColor)(mapId % 12 + 7 );
 						}
 
-						int normalK = uStr2Int(ui_->parameters_toolbox->getParameters().at(Parameters::kIcpPointToPlaneNormalNeighbors()));
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, normalK);
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
-						pcl::concatenateFields(*cloud, *normals, *cloudNormals);
-
-						viewer->addCloud(uFormat("cloud%d", iter->first), cloudNormals, pose, color);
-
-						UINFO("Generated %d (%d points)", iter->first, cloud->size());
-						progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
+						if(scan.channels() == 6)
+						{
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+							cloud = util3d::laserScanToPointCloudNormal(scan, data.laserScanInfo().localTransform());
+							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
+						}
+						else
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+							cloud = util3d::laserScanToPointCloud(scan, data.laserScanInfo().localTransform());
+							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
+						}
+						UINFO("Generated %d (%d points)", iter->first, scan.cols);
+						progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(scan.cols));
 					}
 					else
 					{
-						UINFO("Empty cloud %d", iter->first);
-						progressDialog.appendText(QString("Empty cloud %1").arg(iter->first));
+						UINFO("Empty scan %d", iter->first);
+						progressDialog.appendText(QString("Empty scan %1").arg(iter->first));
 					}
 					progressDialog.incrementStep();
 					QApplication::processEvents();
@@ -2599,11 +2601,16 @@ void DatabaseViewer::update(int value,
 					}
 
 					//add scan
-					if(ui_->checkBox_showScan->isChecked())
+					if(ui_->checkBox_showScan->isChecked() && data.laserScanRaw().cols)
 					{
-						pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
-						if(scan->size())
+						if(data.laserScanRaw().channels() == 6)
 						{
+							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							view3D->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
 							view3D->addCloud("scan", scan, pose, Qt::yellow);
 						}
 					}
@@ -3559,25 +3566,31 @@ void DatabaseViewer::updateConstraintView(
 				}
 
 				// Added loop closure scans
-				pcl::PointCloud<pcl::PointXYZ>::Ptr scanA, scanB;
-				scanA = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
-				scanB = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), dataTo.laserScanInfo().localTransform());
-				scanB = rtabmap::util3d::transformPointCloud(scanB, t);
-				if(scanA->size())
+				constraintsViewer_->removeCloud("scan0");
+				constraintsViewer_->removeCloud("scan1");
+				if(dataFrom.laserScanRaw().channels() == 6)
 				{
-					constraintsViewer_->addCloud("scan0", scanA, Transform::getIdentity(), Qt::yellow);
+					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
+					constraintsViewer_->addCloud("scan0", scan, Transform::getIdentity(), Qt::yellow);
 				}
 				else
 				{
-					constraintsViewer_->removeCloud("scan0");
+					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
+					constraintsViewer_->addCloud("scan0", scan, Transform::getIdentity(), Qt::yellow);
 				}
-				if(scanB->size())
+				if(dataTo.laserScanRaw().channels() == 6)
 				{
-					constraintsViewer_->addCloud("scan1", scanB, Transform::getIdentity(), Qt::magenta);
+					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
+					constraintsViewer_->addCloud("scan1", scan, Transform::getIdentity(), Qt::magenta);
 				}
 				else
 				{
-					constraintsViewer_->removeCloud("scan1");
+					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
+					scan = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
+					constraintsViewer_->addCloud("scan1", scan, Transform::getIdentity(), Qt::magenta);
 				}
 			}
 			else
