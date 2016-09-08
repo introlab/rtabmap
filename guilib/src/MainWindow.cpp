@@ -3138,7 +3138,7 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 				{
 					UINFO("Deleted temporary database \"%s\".", _newDatabasePath.toStdString().c_str());
 				}
-				else
+				else if(!uStr2Bool(_preferencesDialog->getAllParameters().at(Parameters::kDbSqlite3InMemory())))
 				{
 					UERROR("Temporary database \"%s\" could not be deleted.", _newDatabasePath.toStdString().c_str());
 				}
