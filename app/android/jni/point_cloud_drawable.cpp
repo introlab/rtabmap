@@ -176,7 +176,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 	}
 
 	bool textureUpdate = false;
-	if(!mesh.texture.empty() && mesh.texture.type() == CV_32FC3)
+	if(!mesh.texture.empty() && mesh.texture.type() == CV_8UC3)
 	{
 		if (textures_)
 		{
