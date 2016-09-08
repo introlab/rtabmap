@@ -158,14 +158,15 @@ class RTABMapApp : public UEventsHandler {
 
   rtabmap::ParametersMap mappingParameters_;
 
-
+  bool paused_;
   bool clearSceneOnNextRender_;
   bool filterPolygonsOnNextRender_;
   bool gainCompensationOnNextRender_;
+  bool cameraJustInitialized_;
   int totalPoints_;
   int totalPolygons_;
   int lastDrawnCloudsCount_;
-  float renderingFPS_;
+  float renderingTime_;
 
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.

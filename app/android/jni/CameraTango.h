@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsSender.h>
 #include <rtabmap/utilite/UThread.h>
 #include <rtabmap/utilite/UEvent.h>
+#include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
 
 class TangoPoseData;
@@ -97,6 +98,7 @@ private:
 private:
 	void * tango_config_;
 	bool firstFrame_;
+	UTimer cameraStartedTime_;
 	int decimation_;
 	bool autoExposure_;
 	cv::Mat cloud_;

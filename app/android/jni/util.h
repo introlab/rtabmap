@@ -140,9 +140,10 @@ struct Mesh
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // dense or organized cloud
 	std::vector<pcl::Vertices> polygons;
 	std::vector<int> denseToOrganizedIndices; // should be set if cloud is dense, used for texturing
-	int width;  // width of the organized cloud
-	int height; // height of the organized cloud
+	unsigned int width;  // width of the organized cloud
+	unsigned int height; // height of the organized cloud
 	rtabmap::Transform pose;
+	bool visible;
 	cv::Mat texture;
 };
 

@@ -114,18 +114,20 @@ RTABMapApp::RTABMapApp() :
 		driftCorrection_(false),
 		localizationMode_(false),
 		trajectoryMode_(false),
-		autoExposure_(false),
+		autoExposure_(true),
 		fullResolution_(false),
 		maxCloudDepth_(0.0),
 		meshTrianglePix_(1),
 		meshAngleToleranceDeg_(15.0),
+		paused_(false),
 		clearSceneOnNextRender_(false),
 		filterPolygonsOnNextRender_(false),
 		gainCompensationOnNextRender_(false),
+		cameraJustInitialized_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
 		lastDrawnCloudsCount_(0),
-		renderingFPS_(0.0f)
+		renderingTime_(0.0f)
 
 {
 }
@@ -158,7 +160,7 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 	totalPoints_ = 0;
 	totalPolygons_ = 0;
 	lastDrawnCloudsCount_ = 0;
-	renderingFPS_ = 0.0f;
+	renderingTime_ = 0.0f;
 
 	if(camera_)
 	{
@@ -249,7 +251,11 @@ bool RTABMapApp::onTangoServiceConnected(JNIEnv* env, jobject iBinder)
 		if(camera_->init())
 		{
 			LOGI("Start camera thread");
-			camera_->start();
+			if(!paused_)
+			{
+				camera_->start();
+			}
+			cameraJustInitialized_ = true;
 			return true;
 		}
 		LOGE("Failed camera initialization!");
@@ -303,6 +309,8 @@ private:
 // OpenGL thread
 int RTABMapApp::Render()
 {
+	UTimer fpsTime;
+	bool notifyDataLoaded = false;
 	boost::mutex::scoped_lock  lock(renderingMutex_);
 
 	// should be before clearSceneOnNextRender_ in case openDatabase is called
@@ -330,7 +338,23 @@ int RTABMapApp::Render()
 		totalPoints_ = 0;
 		totalPolygons_ = 0;
 		lastDrawnCloudsCount_ = 0;
-		renderingFPS_ = 0.0f;
+		renderingTime_ = 0.0f;
+	}
+
+	// Did we lose OpenGL context? If so, recreate the context;
+	if(main_scene_.getAddedClouds().size() != createdMeshes_.size())
+	{
+		for(std::map<int, Mesh>::iterator iter=createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+		{
+			if(!main_scene_.hasCloud(iter->first))
+			{
+				cv::Mat compressed = iter->second.texture;
+				iter->second.texture = rtabmap::uncompressImage(iter->second.texture);
+				main_scene_.addMesh(iter->first, iter->second, iter->second.pose);
+				main_scene_.setCloudVisible(iter->first, iter->second.visible);
+				iter->second.texture = compressed;
+			}
+		}
 	}
 
 	// Process events
@@ -347,9 +371,28 @@ int RTABMapApp::Render()
 	{
 		// update camera pose?
 		main_scene_.SetCameraPose(pose);
+		if(!camera_->isRunning() && cameraJustInitialized_)
+		{
+			notifyDataLoaded = true;
+			cameraJustInitialized_ = false;
+		}
+	}
+	rtabmap::OdometryEvent odomEvent;
+	{
+		boost::mutex::scoped_lock  lock(odomMutex_);
+		if(odomEvents_.size())
+		{
+			LOGI("Process odom events");
+			odomEvent = odomEvents_.back();
+			odomEvents_.clear();
+			if(cameraJustInitialized_)
+			{
+				notifyDataLoaded = true;
+				cameraJustInitialized_ = false;
+			}
+		}
 	}
 
-	bool notifyDataLoaded = false;
 	if(rtabmapEvents.size())
 	{
 		LOGI("Process rtabmap events");
@@ -422,14 +465,9 @@ int RTABMapApp::Render()
 						main_scene_.setCloudPose(id, iter->second);
 						main_scene_.setCloudVisible(id, true);
 						std::map<int, Mesh>::iterator meshIter = createdMeshes_.find(id);
-						if(meshIter!=createdMeshes_.end())
-						{
-							meshIter->second.pose = iter->second;
-						}
-						else
-						{
-							UERROR("Not found mesh %d !?!?", id);
-						}
+						UASSERT(meshIter!=createdMeshes_.end());
+						meshIter->second.pose = iter->second;
+						meshIter->second.visible = true;
 					}
 					else if(uContains(bufferedSensorData, id))
 					{
@@ -474,11 +512,12 @@ int RTABMapApp::Render()
 									inserted.first->second.height = cloud->height;
 									inserted.first->second.polygons = outputPolygons;
 									inserted.first->second.pose = iter->second;
+									inserted.first->second.visible = true;
 									inserted.first->second.texture = data.imageRaw();
 
 									main_scene_.addMesh(id, inserted.first->second, iter->second);
 
-									inserted.first->second.texture = data.imageCompressed(); // keep comrpessed
+									inserted.first->second.texture = data.imageCompressed(); // keep compressed
 								}
 								else
 								{
@@ -517,42 +556,32 @@ int RTABMapApp::Render()
 			if(*iter > 0 && poses.find(*iter) == poses.end())
 			{
 				main_scene_.setCloudVisible(*iter, false);
+				std::map<int, Mesh>::iterator meshIter = createdMeshes_.find(*iter);
+				UASSERT(meshIter!=createdMeshes_.end());
+				meshIter->second.visible = true;
 			}
 		}
 	}
 	else
 	{
-		rtabmap::OdometryEvent event;
-		bool set = false;
-		{
-			boost::mutex::scoped_lock  lock(odomMutex_);
-			if(odomEvents_.size())
-			{
-				LOGI("Process odom events");
-				event = odomEvents_.back();
-				odomEvents_.clear();
-				set = true;
-			}
-		}
-
 		main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_);
 
 		//just process the last one
-		if(set && !event.pose().isNull())
+		if(!odomEvent.pose().isNull())
 		{
 			if(odomCloudShown_ && !trajectoryMode_)
 			{
-				if(!event.data().imageRaw().empty() && !event.data().depthRaw().empty())
+				if(!odomEvent.data().imageRaw().empty() && !odomEvent.data().depthRaw().empty())
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					cloud = rtabmap::util3d::cloudRGBFromSensorData(event.data(), 1, maxCloudDepth_);
+					cloud = rtabmap::util3d::cloudRGBFromSensorData(odomEvent.data(), 1, maxCloudDepth_);
 					if(cloud->size())
 					{
 						LOGI("Created odom cloud (rgb=%dx%d depth=%dx%d cloud=%dx%d)",
-													event.data().imageRaw().cols, event.data().imageRaw().rows,
-													event.data().depthRaw().cols, event.data().depthRaw().rows,
-													(int)cloud->width, (int)cloud->height);
-						main_scene_.addCloud(-1, cloud, opengl_world_T_rtabmap_world*event.pose());
+								odomEvent.data().imageRaw().cols, odomEvent.data().imageRaw().rows,
+								odomEvent.data().depthRaw().cols, odomEvent.data().depthRaw().rows,
+							   (int)cloud->width, (int)cloud->height);
+						main_scene_.addCloud(-1, cloud, opengl_world_T_rtabmap_world*odomEvent.pose());
 						main_scene_.setCloudVisible(-1, true);
 					}
 					else
@@ -641,9 +670,11 @@ int RTABMapApp::Render()
 		notifyDataLoaded = true;
 	}
 
-	UTimer fpsTime;
     lastDrawnCloudsCount_ = main_scene_.Render();
-    renderingFPS_ = 1.0/fpsTime.elapsed();
+    if(renderingTime_ < fpsTime.elapsed())
+    {
+    	renderingTime_ = fpsTime.elapsed();
+    }
 
     if(rtabmapEvents.size())
     {
@@ -668,16 +699,19 @@ void RTABMapApp::OnTouchEvent(int touch_count,
 
 void RTABMapApp::setPausedMapping(bool paused)
 {
+	paused_ = paused;
 	if(camera_)
 	{
-		if(paused)
+		if(paused_)
 		{
 			LOGW("Pause!");
 			camera_->kill();
+
 		}
 		else
 		{
 			LOGW("Resume!");
+			UEventsManager::post(new rtabmap::RtabmapEventCmd(rtabmap::RtabmapEventCmd::kCmdTriggerNewMap));
 			camera_->start();
 		}
 	}
@@ -1246,7 +1280,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 								featuresExtracted,
 								hypothesis,
 								lastDrawnCloudsCount_,
-								renderingFPS_,
+								renderingTime_>0.0f?1.0f/renderingTime_:0.0f,
 								rejected);
 						success = true;
 					}
@@ -1258,6 +1292,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 		{
 			UERROR("Failed to call RTABMapActivity::updateStatsCallback");
 		}
+		renderingTime_ = 0.0f;
 	}
 }
 

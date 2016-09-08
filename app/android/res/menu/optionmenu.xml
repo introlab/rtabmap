@@ -22,7 +22,6 @@
           </menu>
        </item>
        <item android:id="@+id/open" android:title="Open"/>
-       <item android:id="@+id/save" android:title="Save"/>
        <item android:id="@+id/export" android:title="Export...">
           <menu>
 	         <group android:id="@+id/group_export">
@@ -31,6 +30,7 @@
 	         </group>   
           </menu>
        </item>
+       <item android:id="@+id/save" android:title="Save"/>
        <item android:id="@+id/reset" android:title="Reset"/>
        
        <item android:id="@+id/menu_rendering_settings" android:title="Rendering Options...">
@@ -53,7 +53,7 @@
             <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
             <item android:id="@+id/graph_visible" android:checked="true" android:title="Graph Visible" />
             <item android:id="@+id/grid_visible" android:checked="true" android:title="Grid Visible" />
-            <item android:id="@+id/auto_exposure" android:checked="false" android:title="Auto Exposure" />
+            <item android:id="@+id/auto_exposure" android:checked="true" android:title="Auto Exposure" />
         </group>   
         </menu>
 	    </item>

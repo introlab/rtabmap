@@ -77,8 +77,11 @@ void onFrameAvailableRouter(void* context, TangoCameraId id, const TangoImageBuf
 
 void onPoseAvailableRouter(void* context, const TangoPoseData* pose)
 {
-	CameraTango* app = static_cast<CameraTango*>(context);
-	app->poseReceived(app->tangoPoseToTransform(pose, true));
+	if(pose->status_code == TANGO_POSE_VALID)
+	{
+		CameraTango* app = static_cast<CameraTango*>(context);
+		app->poseReceived(app->tangoPoseToTransform(pose, true));
+	}
 }
 
 void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
@@ -317,6 +320,8 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 			0.0f, 0.0f, 1.0f, 0.0f,
 			-1.0f, 0.0f, 0.0f, 0.0f,
 			0.0f, -1.0f, 0.0f, 0.0f));
+
+	cameraStartedTime_.restart();
 
 	return true;
 }
@@ -634,7 +639,11 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 void CameraTango::mainLoopBegin()
 {
-	uSleep(2000); // just to make sure that the camera is started
+	double t = cameraStartedTime_.elapsed();
+	if(t < 5.0)
+	{
+		uSleep((5.0-t)*1000); // just to make sure that the camera is started
+	}
 }
 
 void CameraTango::mainLoop()

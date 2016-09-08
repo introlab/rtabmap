@@ -67,6 +67,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   // Screen size for normalizing the touch input for orbiting the render camera.
   private Point mScreenSize = new Point();
   private boolean mPauseFirstTime = true;
+  private boolean mOnPause = false;
   
   private MenuItem mItemPause;
   private MenuItem mItemSave;
@@ -161,6 +162,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     mLayoutDebug.setVisibility(LinearLayout.GONE);
     
     mProgressDialog = new ProgressDialog(this);
+    mProgressDialog.setCanceledOnTouchOutside(false);
     mRenderer.setProgressDialog(mProgressDialog);
 
     // Check if the Tango Core is out dated.
@@ -218,6 +220,21 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   @Override
   protected void onResume() {
     super.onResume();
+
+    mProgressDialog.setTitle("");
+	mProgressDialog.setMessage(String.format("Hold Tight! Initializing Tango Service..."));
+	mProgressDialog.show();
+    
+	if(mOnPause)
+	{
+		mToast.makeText(this, "Mapping is paused!", mToast.LENGTH_LONG).show();
+	}
+	else
+	{
+		mToast.makeText(this, "Tip: If the camera is still drifting just after the mapping has started, do \"Reset\".", mToast.LENGTH_LONG).show();
+	}
+	
+	mOnPause = false;
     
     TangoInitializationHelper.bindTangoService(this, mTangoServiceConnection);
     
@@ -226,16 +243,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     if (Tango.hasPermission(this, Tango.PERMISSIONTYPE_MOTION_TRACKING)) {
 
     	mGLView.onResume();
-        
-        mTotalLoopClosures = 0;
-        if(mItemOpen != null)
-        {
-    	    mItemOpen.setEnabled(false);
-    	    mItemPause.setChecked(false);
-    	    mItemSave.setEnabled(false);
-    		mItemExport.setEnabled(false);
-    		mItemPostProcessing.setEnabled(false);
-        }
 
     } else {
     	Log.i(TAG, String.format("Asking for motion tracking permission"));
@@ -248,14 +255,20 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   @Override
   protected void onPause() {
     super.onPause();
+    
+    // This deletes OpenGL context!
     mGLView.onPause();
     
-    // Delete all the non-OpenGl resources.
+    mOnPause = true;
+    
     RTABMapLib.onPause();
-    mOpenedDatabasePath = "";
-    RTABMapLib.openDatabase(mTempDatabasePath);
     
     unbindService(mTangoServiceConnection);
+    
+    if(!mItemPause.isChecked())
+    {
+    	onOptionsItemSelected(mItemPause);
+    }
   }
 
   @Override
@@ -440,7 +453,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					File tempFile = new File(mTempDatabasePath);
 					if(tempFile.renameTo(outputFile))
 					{
-						msg = String.format("Database saved to \"%s\".", mNewDatabasePath);
+						msg = String.format("Database saved to \"%s\". Tip: You can open a saved database with \"Open\".", mNewDatabasePath);
 						
 						Intent intent = new Intent(this, RTABMapActivity.class);
 						// use System.currentTimeMillis() to have a unique ID for the pending intent
@@ -653,16 +666,17 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  {
     		  RTABMapLib.setPausedMapping(true);
     		  ((TextView)findViewById(R.id.status)).setText("Paused");
-    		  if(mPauseFirstTime)
+    		  if(mPauseFirstTime && !mOnPause)
     		  {
     			  mPauseFirstTime = false;
-    			  mToast.makeText(getActivity(), String.format("Try \"Post-Processing...\" to optimize even more the map!"), mToast.LENGTH_LONG).show();
+    			  mToast.makeText(getActivity(), String.format("Tip: Try \"Post-Processing...\" to optimize even more the map!"), mToast.LENGTH_LONG).show();
     		  }
     	  }
     	  else
     	  {
     		  RTABMapLib.setPausedMapping(false);
     		  ((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?"Localization":"Mapping");
+    		  mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
     	  }
       } 
       else if (itemId == R.id.post_processing_standard)
@@ -863,6 +877,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       {
     	  item.setChecked(!item.isChecked());
     	  RTABMapLib.setDriftCorrection(item.isChecked());
+    	  if(item.isChecked())
+    	  {
+    		  mToast.makeText(getActivity(), String.format("Tip: With drift correction is enabled, move slowly to get better results."), mToast.LENGTH_LONG).show();
+    	  }
       }
       else if(itemId == R.id.graph_visible)
       {
