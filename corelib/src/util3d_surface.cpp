@@ -128,7 +128,7 @@ std::list<std::list<int> > clusterPolygons(
 					}
 				}
 			}
-			if(currentCluster.size() > minClusterSize)
+			if((int)currentCluster.size() > minClusterSize)
 			{
 				clusters.push_back(currentCluster);
 			}

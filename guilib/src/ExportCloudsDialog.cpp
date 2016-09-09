@@ -1177,7 +1177,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							for(int i=0; i<nPoints; ++i)
 							{
 								//uv
-								UASSERT(i < oter->second.size());
+								UASSERT(i < (int)oter->second.size());
 								int originalVertex = oter->second[i];
 								textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
 										float(originalVertex % w) / float(w),      // u
