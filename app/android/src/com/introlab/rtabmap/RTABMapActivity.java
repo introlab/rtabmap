@@ -92,7 +92,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   
   private int mParamUpdateRateHzIndex = 1;
   private int mParamTimeThrMsIndex = 4;
-  private int mParamMaxFeaturesIndex = 4;
+  private int mParamMaxFeaturesIndex = 2;
   private int mParamLoopThrMsIndex = 1;
   private int mParamOptimizeErrorIndex = 3;
   

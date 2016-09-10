@@ -53,7 +53,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/obj_io.h>
 
 const int kVersionStringLength = 128;
-const int minPolygonClusterSize = 100;
+const int minPolygonClusterSize = 200;
 
 static JavaVM *jvm;
 static jobject RTABMapActivity = 0;
@@ -69,11 +69,14 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(mappingParameters_.begin(), mappingParameters_.end());
 
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), std::string("6"))); // GFTT/BRIEF
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), std::string("200")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGFTTQualityLevel(), std::string("0.0001")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImagePreDecimation(), std::string(fullResolution_?"2":"1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), std::string("1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), std::string("64")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), std::string("800")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishLikelihood(), std::string("false")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishPdf(), std::string("false")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemBinDataKept(), uBool2Str(!trajectoryMode_)));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemNotLinkedNodesKept(), std::string("false")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
