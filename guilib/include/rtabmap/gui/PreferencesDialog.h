@@ -304,6 +304,7 @@ private slots:
 	void selectSourceImagesPath();
 	void selectSourceVideoPath();
 	void selectSourceStereoVideoPath();
+	void selectSourceStereoVideoPath2();
 	void selectSourceOniPath();
 	void selectSourceOni2Path();
 	void selectSourceSvoPath();

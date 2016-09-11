@@ -483,7 +483,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_stereoImages_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraStereoVideo_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoVideoPath()));
+	connect(_ui->toolButton_cameraStereoVideo_path_2, SIGNAL(clicked()), this, SLOT(selectSourceStereoVideoPath2()));
 	connect(_ui->lineEdit_cameraStereoVideo_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_cameraStereoVideo_path_2, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereoVideo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->comboBox_stereoZed_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1340,6 +1342,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraStereoImages_path_right->setText("");
 		_ui->checkBox_stereoImages_rectify->setChecked(false);
 		_ui->lineEdit_cameraStereoVideo_path->setText("");
+		_ui->lineEdit_cameraStereoVideo_path_2->setText("");
 		_ui->checkBox_stereoVideo_rectify->setChecked(false);
 		_ui->comboBox_stereoZed_resolution->setCurrentIndex(2);
 		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
@@ -1689,6 +1692,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("StereoVideo");
 	_ui->lineEdit_cameraStereoVideo_path->setText(settings.value("path", _ui->lineEdit_cameraStereoVideo_path->text()).toString());
+	_ui->lineEdit_cameraStereoVideo_path_2->setText(settings.value("path2", _ui->lineEdit_cameraStereoVideo_path_2->text()).toString());
 	_ui->checkBox_stereoVideo_rectify->setChecked(settings.value("rectify",_ui->checkBox_stereoVideo_rectify->isChecked()).toBool());
 	settings.endGroup(); // StereoVideo
 
@@ -2115,6 +2119,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("StereoVideo");
 	settings.setValue("path", 			_ui->lineEdit_cameraStereoVideo_path->text());
+	settings.setValue("path2", 			_ui->lineEdit_cameraStereoVideo_path_2->text());
 	settings.setValue("rectify", 	    _ui->checkBox_stereoVideo_rectify->isChecked());
 	settings.endGroup(); // StereoVideo
 
@@ -2932,7 +2937,7 @@ void PreferencesDialog::selectSourceVideoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_video_lineEdit_path->text(), tr("Videos (*.avi *.mpg *.mp4)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->source_video_lineEdit_path->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->source_video_lineEdit_path->setText(path);
@@ -2946,10 +2951,24 @@ void PreferencesDialog::selectSourceStereoVideoPath()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path->text(), tr("Videos (*.avi *.mpg *.mp4)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_cameraStereoVideo_path->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceStereoVideoPath2()
+{
+	QString dir = _ui->lineEdit_cameraStereoVideo_path_2->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_cameraStereoVideo_path_2->text(), tr("Videos (*.avi *.mpg *.mp4 *.mov *.mkv)"));
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_cameraStereoVideo_path_2->setText(path);
 	}
 }
 
@@ -4243,11 +4262,25 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	}
 	else if(driver == kSrcStereoVideo)
 	{
-		camera = new CameraStereoVideo(
-			_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
-			_ui->checkBox_stereoVideo_rectify->isChecked() && !useRawImages,
-			this->getGeneralInputRate(),
-			this->getSourceLocalTransform());
+		if(!_ui->lineEdit_cameraStereoVideo_path_2->text().isEmpty())
+		{
+			// left and right videos
+			camera = new CameraStereoVideo(
+					_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
+					_ui->lineEdit_cameraStereoVideo_path_2->text().toStdString(),
+					_ui->checkBox_stereoVideo_rectify->isChecked() && !useRawImages,
+					this->getGeneralInputRate(),
+					this->getSourceLocalTransform());
+		}
+		else
+		{
+			// side-by-side video
+			camera = new CameraStereoVideo(
+					_ui->lineEdit_cameraStereoVideo_path->text().toStdString(),
+					_ui->checkBox_stereoVideo_rectify->isChecked() && !useRawImages,
+					this->getGeneralInputRate(),
+					this->getSourceLocalTransform());
+		}
 	}
 	else if (driver == kSrcStereoZed)
 	{

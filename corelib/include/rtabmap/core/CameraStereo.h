@@ -202,7 +202,13 @@ public:
 
 public:
 	CameraStereoVideo(
-			const std::string & path,
+			const std::string & pathSideBySide,
+			bool rectifyImages = false,
+			float imageRate=0.0f,
+			const Transform & localTransform = Transform::getIdentity());
+	CameraStereoVideo(
+			const std::string & pathLeft,
+			const std::string & pathRight,
 			bool rectifyImages = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity());
@@ -222,7 +228,9 @@ protected:
 
 private:
 	cv::VideoCapture capture_;
+	cv::VideoCapture capture2_;
 	std::string path_;
+	std::string path2_;
 	bool rectifyImages_;
 	StereoCameraModel stereoModel_;
 	std::string cameraName_;

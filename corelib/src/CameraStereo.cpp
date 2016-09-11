@@ -1193,12 +1193,26 @@ CameraStereoVideo::CameraStereoVideo(
 }
 
 CameraStereoVideo::CameraStereoVideo(
+		const std::string & pathLeft,
+		const std::string & pathRight,
+		bool rectifyImages,
+		float imageRate,
+		const Transform & localTransform) :
+		Camera(imageRate, localTransform),
+		path_(pathLeft),
+		path2_(pathRight),
+		rectifyImages_(rectifyImages),
+		src_(CameraVideo::kVideoFile),
+		usbDevice_(0)
+{
+}
+
+CameraStereoVideo::CameraStereoVideo(
 	int device,
 	bool rectifyImages,
 	float imageRate,
 	const Transform & localTransform) :
 	Camera(imageRate, localTransform),
-	path_(""),
 	rectifyImages_(rectifyImages),
 	src_(CameraVideo::kUsbDevice),
 	usbDevice_(device)
@@ -1208,6 +1222,7 @@ CameraStereoVideo::CameraStereoVideo(
 CameraStereoVideo::~CameraStereoVideo()
 {
 	capture_.release();
+	capture2_.release();
 }
 
 bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::string & cameraName)
@@ -1217,6 +1232,10 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 	{
 		capture_.release();
 	}
+	if(capture2_.isOpened())
+	{
+		capture2_.release();
+	}
 
 	if (src_ == CameraVideo::kUsbDevice)
 	{
@@ -1225,55 +1244,63 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 	}
 	else if (src_ == CameraVideo::kVideoFile)
 	{
-		ULOGGER_DEBUG("CameraStereoVideo: filename=\"%s\"", path_.c_str());
-		capture_.open(path_.c_str());
+		if(path2_.empty())
+		{
+			ULOGGER_DEBUG("CameraStereoVideo: filename=\"%s\"", path_.c_str());
+			capture_.open(path_.c_str());
+		}
+		else
+		{
+			ULOGGER_DEBUG("CameraStereoVideo: filenames=\"%s\" and \"%s\"", path_.c_str(), path2_.c_str());
+			capture_.open(path_.c_str());
+			capture2_.open(path2_.c_str());
+		}
 	}
 	else
 	{
 		ULOGGER_ERROR("CameraStereoVideo: Unknown source...");
 	}
 
-	if(!capture_.isOpened())
+	if(!capture_.isOpened() || (!path2_.empty() && !capture2_.isOpened()))
 	{
 		ULOGGER_ERROR("CameraStereoVideo: Failed to create a capture object!");
 		capture_.release();
+		capture2_.release();
 		return false;
 	}
-	else
+
+	if (cameraName_.empty())
 	{
-		if (cameraName_.empty())
+		unsigned int guid = (unsigned int)capture_.get(CV_CAP_PROP_GUID);
+		if (guid != 0 && guid != 0xffffffff)
 		{
-			unsigned int guid = (unsigned int)capture_.get(CV_CAP_PROP_GUID);
-			if (guid != 0 && guid != 0xffffffff)
-			{
-				cameraName_ = uFormat("%08x", guid);
-			}
+			cameraName_ = uFormat("%08x", guid);
 		}
+	}
 
-		// look for calibration files
-		if(!calibrationFolder.empty() && !cameraName_.empty())
+	// look for calibration files
+	if(!calibrationFolder.empty() && !cameraName_.empty())
+	{
+		if(!stereoModel_.load(calibrationFolder, cameraName_))
 		{
-			if(!stereoModel_.load(calibrationFolder, cameraName_))
-			{
-				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
-					cameraName_.c_str(), calibrationFolder.c_str());
-			}
-			else
-			{
-				UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
-						stereoModel_.left().fx(),
-						stereoModel_.left().cx(),
-						stereoModel_.left().cy(),
-						stereoModel_.baseline());
-			}
+			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
+				cameraName_.c_str(), calibrationFolder.c_str());
 		}
+		else
+		{
+			UINFO("Stereo parameters: fx=%f cx=%f cy=%f baseline=%f",
+					stereoModel_.left().fx(),
+					stereoModel_.left().cx(),
+					stereoModel_.left().cy(),
+					stereoModel_.baseline());
+		}
+	}
 
-		stereoModel_.setLocalTransform(this->getLocalTransform());
-		if(rectifyImages_ && !stereoModel_.isValidForRectification())
-		{
-			UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
-			return false;
-		}
+	stereoModel_.setLocalTransform(this->getLocalTransform());
+	if(rectifyImages_ && !stereoModel_.isValidForRectification())
+	{
+		UERROR("Parameter \"rectifyImages\" is set, but no stereo model is loaded or valid.");
+		return false;
 	}
 	return true;
 }
@@ -1293,43 +1320,61 @@ SensorData CameraStereoVideo::captureImage(CameraInfo * info)
 	SensorData data;
 
 	cv::Mat img;
-	if(capture_.isOpened())
+	if(capture_.isOpened() && (path2_.empty() || capture2_.isOpened()))
 	{
-		if(capture_.read(img))
+		cv::Mat leftImage;
+		cv::Mat rightImage;
+		if(path2_.empty())
 		{
-			// Rectification
-			cv::Mat leftImage(img, cv::Rect( 0, 0, img.size().width/2, img.size().height ));
-			cv::Mat rightImage(img, cv::Rect( img.size().width/2, 0, img.size().width/2, img.size().height ));
-			bool rightCvt = false;
-			if(rightImage.type() != CV_8UC1)
+			if(!capture_.read(img))
 			{
-				cv::Mat tmp;
-				cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
-				rightImage = tmp;
-				rightCvt = true;
+				return data;
 			}
-
-			if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
-			{
-				leftImage = stereoModel_.left().rectifyImage(leftImage);
-				rightImage = stereoModel_.right().rectifyImage(rightImage);
-			}
-			else
-			{
-				leftImage = leftImage.clone();
-				if(!rightCvt)
-				{
-					rightImage = rightImage.clone();
-				}
-			}
-
-			if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
-			{
-				stereoModel_.setImageSize(leftImage.size());
-			}
-
-			data = SensorData(leftImage, rightImage, stereoModel_, this->getNextSeqID(), UTimer::now());
+			// Side by side stream
+			leftImage = cv::Mat(img, cv::Rect( 0, 0, img.size().width/2, img.size().height ));
+			rightImage = cv::Mat(img, cv::Rect( img.size().width/2, 0, img.size().width/2, img.size().height ));
 		}
+		else if(!capture_.read(leftImage) || !capture2_.read(rightImage))
+		{
+			return data;
+		}
+		else if(leftImage.cols != rightImage.cols || leftImage.rows != rightImage.rows)
+		{
+			UERROR("Left and right streams don't have image of the same size: left=%dx%d right=%dx%d",
+					leftImage.cols, leftImage.rows, rightImage.cols, rightImage.rows);
+			return data;
+		}
+
+		// Rectification
+		bool rightCvt = false;
+		if(rightImage.type() != CV_8UC1)
+		{
+			cv::Mat tmp;
+			cv::cvtColor(rightImage, tmp, CV_BGR2GRAY);
+			rightImage = tmp;
+			rightCvt = true;
+		}
+
+		if(rectifyImages_ && stereoModel_.left().isValidForRectification() && stereoModel_.right().isValidForRectification())
+		{
+			leftImage = stereoModel_.left().rectifyImage(leftImage);
+			rightImage = stereoModel_.right().rectifyImage(rightImage);
+		}
+		else
+		{
+			leftImage = leftImage.clone();
+			if(!rightCvt)
+			{
+				rightImage = rightImage.clone();
+			}
+		}
+
+		if(stereoModel_.left().imageHeight() == 0 || stereoModel_.left().imageWidth() == 0)
+		{
+			stereoModel_.setImageSize(leftImage.size());
+		}
+
+		data = SensorData(leftImage, rightImage, stereoModel_, this->getNextSeqID(), UTimer::now());
 	}
 	else
 	{

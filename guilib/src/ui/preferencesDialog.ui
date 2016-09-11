@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-279</y>
+            <y>-490</y>
             <width>673</width>
             <height>2496</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>8</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2357,7 +2357,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -2467,7 +2467,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>6</number>
+                              <number>2</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -3219,7 +3219,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </item>
                                <item>
                                 <property name="text">
-                                 <string>Video (Side-by-Side)</string>
+                                 <string>Video</string>
                                 </property>
                                </item>
                                <item>
@@ -3266,7 +3266,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>4</number>
+                              <number>3</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -3419,22 +3419,9 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   </sizepolicy>
                                  </property>
                                  <property name="title">
-                                  <string>Stereo Side-By-Side Video (*.avi)</string>
+                                  <string>Stereo Video (*.avi, *.mp4)</string>
                                  </property>
-                                 <layout class="QGridLayout" name="gridLayout_66" columnstretch="0,0">
-                                  <item row="2" column="0">
-                                   <spacer name="verticalSpacer_39">
-                                    <property name="orientation">
-                                     <enum>Qt::Vertical</enum>
-                                    </property>
-                                    <property name="sizeHint" stdset="0">
-                                     <size>
-                                      <width>20</width>
-                                      <height>0</height>
-                                     </size>
-                                    </property>
-                                   </spacer>
-                                  </item>
+                                 <layout class="QGridLayout" name="gridLayout_66" columnstretch="0,0,1">
                                   <item row="0" column="0">
                                    <widget class="QToolButton" name="toolButton_cameraStereoVideo_path">
                                     <property name="text">
@@ -3449,14 +3436,33 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="1" column="0">
-                                   <widget class="QCheckBox" name="checkBox_stereoVideo_rectify">
+                                  <item row="0" column="2">
+                                   <widget class="QLabel" name="label_339">
                                     <property name="text">
-                                     <string/>
+                                     <string>Side-by-Side (SBS) video or left video.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="1" column="1">
+                                  <item row="3" column="0">
+                                   <spacer name="verticalSpacer_39">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                  <item row="2" column="2">
                                    <widget class="QLabel" name="label_234">
                                     <property name="text">
                                      <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
@@ -3466,6 +3472,40 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                     <property name="textInteractionFlags">
                                      <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QCheckBox" name="checkBox_stereoVideo_rectify">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="2">
+                                   <widget class="QLabel" name="label_340">
+                                    <property name="text">
+                                     <string>Right video. Should be empty if a SBS video is set above.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="1">
+                                   <widget class="QLineEdit" name="lineEdit_cameraStereoVideo_path_2">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <widget class="QToolButton" name="toolButton_cameraStereoVideo_path_2">
+                                    <property name="text">
+                                     <string>...</string>
                                     </property>
                                    </widget>
                                   </item>
