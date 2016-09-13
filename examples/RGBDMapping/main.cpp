@@ -84,7 +84,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new CameraOpenNI2("", 0, opticalRotation);
+		camera = new CameraOpenNI2("", CameraOpenNI2::kTypeColorDepth, 0, opticalRotation);
 	}
 	else if(driver == 2)
 	{
@@ -93,7 +93,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new CameraFreenect(0, 0, opticalRotation);
+		camera = new CameraFreenect(0, CameraFreenect::kTypeColorDepth, 0, opticalRotation);
 	}
 	else if(driver == 3)
 	{

@@ -519,7 +519,7 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 		else
 		{
 #ifdef _WIN32
-			UERROR("CameraOpenNI2: Cannot open device \"%s\" with uri=\"%s\" (error=%d).", devices[0].getName(), devices[0].uri, error);
+			UERROR("CameraOpenNI2: Cannot open device \"%s\" (error=%d).", devices[0].getName(), error);
 #else
 			UERROR("CameraOpenNI2: Cannot open device \"%s\" (error=%d). Verify if \"%s\" is in udev rules: \"/lib/udev/rules.d/40-libopenni2-0.rules\". If not, add it and reboot.", devices[0].getName(), error, devices[0].getUri());
 #endif
