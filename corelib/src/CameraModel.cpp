@@ -485,8 +485,8 @@ cv::Mat CameraModel::rectifyDepth(const cv::Mat & raw) const
 
 							//http://stackoverflow.com/questions/13299409/how-to-get-the-image-pixel-at-real-locations-in-opencv
 							rectified.at<unsigned short>(y,x) =
-									(raw.at<unsigned short>(yL, xL) * (1.f - a) + raw.at<unsigned short>(yL, xH) * a) * (1.f - c) +
-									(raw.at<unsigned short>(yH, xL) * (1.f - a) + raw.at<unsigned short>(yH, xH) * a) * c;
+									(pLT * (1.f - a) + pRT * a) * (1.f - c) +
+									(pLB * (1.f - a) + pRB * a) * c;
 						}
 					}
 				}

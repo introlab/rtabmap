@@ -1435,7 +1435,9 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 						//rectify depth
 						cv::Mat((int)depthFrame->height, (int)depthFrame->width, CV_32FC1, depthFrame->data).convertTo(depth, CV_16U, 1);
 						cv::flip(depth, depth, 1);
-						depth = stereoModel_.left().rectifyDepth(depth);
+
+						//depth = stereoModel_.left().rectifyImage(depth, 0); // ~0.5/4 ms but is more noisy
+						depth = stereoModel_.left().rectifyDepth(depth);      // ~16/25 ms
 
 						bool registered = true;
 						if(registered)
