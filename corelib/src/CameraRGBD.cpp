@@ -1468,6 +1468,7 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 		reg_ = new libfreenect2::Registration(depthParams, colorParams);
 
 		// look for calibration files
+		stereoModel_ = StereoCameraModel();
 		if(!calibrationFolder.empty())
 		{
 			std::string calibrationName = dev_->getSerialNumber();
@@ -1475,9 +1476,13 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 			{
 				calibrationName = cameraName;
 			}
+			stereoModel_.setName(calibrationName, "depth", "rgb");
 			if(!stereoModel_.load(calibrationFolder, calibrationName, false))
 			{
-				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, default calibration used.",
+				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, default calibration "
+					"is used. Note that from version 0.11.10, calibration suffixes for Freenect2 driver have "
+					"changed from \"_left\"->\"_depth\" and \"_right\"->\"_rgb\". You can safely rename "
+					"the calibration files to avoid recalibrating.",
 						calibrationName.c_str(), calibrationFolder.c_str());
 			}
 			else
