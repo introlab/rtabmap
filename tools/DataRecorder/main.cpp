@@ -188,7 +188,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with OpenNI2 support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraOpenNI2(deviceId, rate, t);
+		camera = new rtabmap::CameraOpenNI2(deviceId, CameraOpenNI2::kTypeColorDepth, rate, t);
 	}
 	else if(driver == 2)
 	{
@@ -197,7 +197,7 @@ int main (int argc, char * argv[])
 			UERROR("Not built with Freenect support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraFreenect(deviceId.size()?atoi(deviceId.c_str()):0, rate, t);
+		camera = new rtabmap::CameraFreenect(deviceId.size()?atoi(deviceId.c_str()):0, CameraFreenect::kTypeColorDepth, rate, t);
 	}
 	else if(driver == 3)
 	{

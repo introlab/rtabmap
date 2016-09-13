@@ -121,6 +121,7 @@ cv::Mat RTABMAP_EXP interpolate(const cv::Mat & image, int factor, float depthEr
 cv::Mat RTABMAP_EXP registerDepth(
 		const cv::Mat & depth,
 		const cv::Mat & depthK,
+		const cv::Size & colorSize,
 		const cv::Mat & colorK,
 		const rtabmap::Transform & transform);
 

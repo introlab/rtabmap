@@ -226,7 +226,7 @@ public:
 	int getSourceScanNormalsK() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
-	Camera * createCamera(bool useRawImages = false); // return camera should be deleted if not null
+	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
 

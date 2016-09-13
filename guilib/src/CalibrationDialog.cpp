@@ -49,6 +49,8 @@ namespace rtabmap {
 CalibrationDialog::CalibrationDialog(bool stereo, const QString & savingDirectory, bool switchImages, QWidget * parent) :
 	QDialog(parent),
 	stereo_(stereo),
+	leftSuffix_("left"),
+	rightSuffix_("right"),
 	savingDirectory_(savingDirectory),
 	processingData_(false),
 	savedCalibration_(false)
@@ -149,15 +151,28 @@ void CalibrationDialog::resetSettings()
 	this->setSquareSize(0.033);
 }
 
+void CalibrationDialog::setCameraName(const QString & name)
+{
+	cameraName_ = name;
+}
+
+void CalibrationDialog::setProgressVisibility(bool visible)
+{
+	ui_->groupBox_progress->setVisible(visible);
+}
+
 void CalibrationDialog::setSwitchedImages(bool switched)
 {
 	ui_->checkBox_switchImages->setChecked(switched);
 }
 
-void CalibrationDialog::setStereoMode(bool stereo)
+void CalibrationDialog::setStereoMode(bool stereo, const QString & leftSuffix, const QString & rightSuffix)
 {
+	leftSuffix_ = leftSuffix;
+	rightSuffix_ = rightSuffix;
 	this->restart();
 
+	ui_->groupBox_progress->setVisible(true);
 	stereo_ = stereo;
 	ui_->progressBar_x_2->setVisible(stereo_);
 	ui_->progressBar_y_2->setVisible(stereo_);
@@ -601,7 +616,6 @@ void CalibrationDialog::restart()
 	models_[0] = CameraModel();
 	models_[1] = CameraModel();
 	stereoModel_ = StereoCameraModel();
-	cameraName_.clear();
 	minIrs_[0] = 0x0000;
 	maxIrs_[0] = 0x7fff;
 	minIrs_[1] = 0x0000;
@@ -769,101 +783,7 @@ void CalibrationDialog::calibrate()
 
 	if(stereo_ && models_[0].isValidForRectification() && models_[1].isValidForRectification())
 	{
-		UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
-		cv::Size imageSize = imageSize_[0].width > imageSize_[1].width?imageSize_[0]:imageSize_[1];
-		cv::Mat R, T, E, F;
-
-		std::vector<std::vector<cv::Point3f> > objectPoints(1);
-		cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
-		float squareSize = ui_->doubleSpinBox_squareSize->value();
-		// compute board corner positions
-		for( int i = 0; i < boardSize.height; ++i )
-			for( int j = 0; j < boardSize.width; ++j )
-				objectPoints[0].push_back(cv::Point3f(float( j*squareSize ), float( i*squareSize ), 0));
-		objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
-
-		// calibrate extrinsic
-#if CV_MAJOR_VERSION < 3
-		double rms = cv::stereoCalibrate(
-				objectPoints,
-				stereoImagePoints_[0],
-				stereoImagePoints_[1],
-				models_[0].K_raw(), models_[0].D_raw(),
-				models_[1].K_raw(), models_[1].D_raw(),
-				imageSize, R, T, E, F,
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
-				cv::CALIB_FIX_INTRINSIC);
-#else
-		double rms = cv::stereoCalibrate(
-				objectPoints,
-				stereoImagePoints_[0],
-				stereoImagePoints_[1],
-				models_[0].K_raw(), models_[0].D_raw(),
-				models_[1].K_raw(), models_[1].D_raw(),
-				imageSize, R, T, E, F,
-				cv::CALIB_FIX_INTRINSIC,
-				cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
-#endif
-		UINFO("stereo calibration... done with RMS error=%f", rms);
-
-		std::cout << "R = " << R << std::endl;
-		std::cout << "T = " << T << std::endl;
-		std::cout << "E = " << E << std::endl;
-		std::cout << "F = " << F << std::endl;
-
-		if(imageSize_[0] == imageSize_[1])
-		{
-			//Stereo, compute stereo rectification
-
-			cv::Mat R1, R2, P1, P2, Q;
-			cv::stereoRectify(models_[0].K_raw(), models_[0].D_raw(),
-							models_[1].K_raw(), models_[1].D_raw(),
-							imageSize, R, T, R1, R2, P1, P2, Q,
-							cv::CALIB_ZERO_DISPARITY, 0, imageSize);
-
-			double err = 0;
-			int npoints = 0;
-			std::vector<cv::Vec3f> lines[2];
-			UINFO("Computing avg re-projection error...");
-			for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
-			{
-				int npt = (int)stereoImagePoints_[0][i].size();
-
-					cv::Mat imgpt0 = cv::Mat(stereoImagePoints_[0][i]);
-					cv::Mat imgpt1 = cv::Mat(stereoImagePoints_[1][i]);
-					cv::undistortPoints(imgpt0, imgpt0, models_[0].K_raw(), models_[0].D_raw(), R1, P1);
-					cv::undistortPoints(imgpt1, imgpt1, models_[1].K_raw(), models_[1].D_raw(), R2, P2);
-					computeCorrespondEpilines(imgpt0, 1, F, lines[0]);
-					computeCorrespondEpilines(imgpt1, 2, F, lines[1]);
-
-				for(int j = 0; j < npt; j++ )
-				{
-					double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
-										stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
-								   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
-										stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
-					err += errij;
-				}
-				npoints += npt;
-			}
-			double totalAvgErr = err/(double)npoints;
-			UINFO("stereo avg re projection error = %f", totalAvgErr);
-
-			stereoModel_ = StereoCameraModel(
-							cameraName_.toStdString(),
-							imageSize_[0], models_[0].K_raw(), models_[0].D_raw(), R1, P1,
-							imageSize_[1], models_[1].K_raw(), models_[1].D_raw(), R2, P2,
-							R, T, E, F);
-		}
-		else
-		{
-			//Kinect, ignore the stereo rectification
-			stereoModel_ = StereoCameraModel(
-							cameraName_.toStdString(),
-							imageSize_[0], models_[0].K_raw(), models_[0].D_raw(), models_[0].R(), models_[0].P(),
-							imageSize_[1], models_[1].K_raw(), models_[1].D_raw(), models_[1].R(), models_[1].P(),
-							R, T, E, F);
-		}
+		stereoModel_ = stereoCalibration(models_[0], models_[1], false);
 
 		std::stringstream strR1, strP1, strR2, strP2;
 		strR1 << stereoModel_.left().R();
@@ -900,6 +820,127 @@ void CalibrationDialog::calibrate()
 
 	UINFO("End calibration");
 	processingData_ = false;
+}
+
+StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left, const CameraModel & right, bool ignoreStereoRectification) const
+{
+	StereoCameraModel output;
+	if(stereoImagePoints_[0].empty())
+	{
+		UERROR("No stereo correspondences!");
+		return output;
+	}
+	UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
+
+	if(left.imageSize()!=imageSize_[0])
+	{
+		UERROR("left model (%dx%d) has not the same size as the processed images (%dx%d)",
+				left.imageSize().width, left.imageSize().height,
+				imageSize_[0].width, imageSize_[0].height);
+	}
+	if(right.imageSize()!=imageSize_[1])
+	{
+		UERROR("right model (%dx%d) has not the same size as the processed images (%dx%d)",
+				right.imageSize().width, right.imageSize().height,
+				imageSize_[1].width, imageSize_[1].height);
+	}
+
+	cv::Size imageSize = imageSize_[0].width > imageSize_[1].width?imageSize_[0]:imageSize_[1];
+	cv::Mat R, T, E, F;
+
+	std::vector<std::vector<cv::Point3f> > objectPoints(1);
+	cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
+	float squareSize = ui_->doubleSpinBox_squareSize->value();
+	// compute board corner positions
+	for( int i = 0; i < boardSize.height; ++i )
+		for( int j = 0; j < boardSize.width; ++j )
+			objectPoints[0].push_back(cv::Point3f(float( j*squareSize ), float( i*squareSize ), 0));
+	objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
+
+	// calibrate extrinsic
+#if CV_MAJOR_VERSION < 3
+	double rms = cv::stereoCalibrate(
+			objectPoints,
+			stereoImagePoints_[0],
+			stereoImagePoints_[1],
+			left.K_raw(), left.D_raw(),
+			right.K_raw(), right.D_raw(),
+			imageSize, R, T, E, F,
+			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5),
+			cv::CALIB_FIX_INTRINSIC);
+#else
+	double rms = cv::stereoCalibrate(
+			objectPoints,
+			stereoImagePoints_[0],
+			stereoImagePoints_[1],
+			left.K_raw(), left.D_raw(),
+			right.K_raw(), right.D_raw(),
+			imageSize, R, T, E, F,
+			cv::CALIB_FIX_INTRINSIC,
+			cv::TermCriteria(cv::TermCriteria::COUNT+cv::TermCriteria::EPS, 100, 1e-5));
+#endif
+	UINFO("stereo calibration... done with RMS error=%f", rms);
+
+	std::cout << "R = " << R << std::endl;
+	std::cout << "T = " << T << std::endl;
+	std::cout << "E = " << E << std::endl;
+	std::cout << "F = " << F << std::endl;
+
+	if(imageSize_[0] == imageSize_[1] && !ignoreStereoRectification)
+	{
+		UINFO("Compute stereo rectification");
+
+		cv::Mat R1, R2, P1, P2, Q;
+		cv::stereoRectify(left.K_raw(), left.D_raw(),
+						right.K_raw(), right.D_raw(),
+						imageSize, R, T, R1, R2, P1, P2, Q,
+						cv::CALIB_ZERO_DISPARITY, 0, imageSize);
+
+		double err = 0;
+		int npoints = 0;
+		std::vector<cv::Vec3f> lines[2];
+		UINFO("Computing avg re-projection error...");
+		for(unsigned int i = 0; i < stereoImagePoints_[0].size(); i++ )
+		{
+			int npt = (int)stereoImagePoints_[0][i].size();
+
+				cv::Mat imgpt0 = cv::Mat(stereoImagePoints_[0][i]);
+				cv::Mat imgpt1 = cv::Mat(stereoImagePoints_[1][i]);
+				cv::undistortPoints(imgpt0, imgpt0, left.K_raw(), left.D_raw(), R1, P1);
+				cv::undistortPoints(imgpt1, imgpt1, right.K_raw(), right.D_raw(), R2, P2);
+				computeCorrespondEpilines(imgpt0, 1, F, lines[0]);
+				computeCorrespondEpilines(imgpt1, 2, F, lines[1]);
+
+			for(int j = 0; j < npt; j++ )
+			{
+				double errij = fabs(stereoImagePoints_[0][i][j].x*lines[1][j][0] +
+									stereoImagePoints_[0][i][j].y*lines[1][j][1] + lines[1][j][2]) +
+							   fabs(stereoImagePoints_[1][i][j].x*lines[0][j][0] +
+									stereoImagePoints_[1][i][j].y*lines[0][j][1] + lines[0][j][2]);
+				err += errij;
+			}
+			npoints += npt;
+		}
+		double totalAvgErr = err/(double)npoints;
+		UINFO("stereo avg re projection error = %f", totalAvgErr);
+
+		output = StereoCameraModel(
+						cameraName_.toStdString(),
+						imageSize_[0], left.K_raw(), left.D_raw(), R1, P1,
+						imageSize_[1], right.K_raw(), right.D_raw(), R2, P2,
+						R, T, E, F);
+	}
+	else
+	{
+		UDEBUG("%s", cameraName_.toStdString().c_str());
+		//Kinect, ignore the stereo rectification
+		output = StereoCameraModel(
+						cameraName_.toStdString(),
+						imageSize_[0], left.K_raw(), left.D_raw(), left.R(), left.P(),
+						imageSize_[1], right.K_raw(), right.D_raw(), right.R(), right.P(),
+						R, T, E, F);
+	}
+	return output;
 }
 
 bool CalibrationDialog::save()
@@ -941,10 +982,11 @@ bool CalibrationDialog::save()
 		QString dir = QFileInfo(filePath).absoluteDir().absolutePath();
 		if(!name.isEmpty())
 		{
-			stereoModel_.setName(name.toStdString());
+			bool switched = ui_->checkBox_switchImages->isChecked();
+			stereoModel_.setName(name.toStdString(), switched?rightSuffix_.toStdString():leftSuffix_.toStdString(), switched?leftSuffix_.toStdString():rightSuffix_.toStdString());
 			std::string base = (dir+QDir::separator()+name).toStdString();
-			std::string leftPath = base+"_left.yaml";
-			std::string rightPath = base+"_right.yaml";
+			std::string leftPath = base+"_"+stereoModel_.getLeftSuffix()+".yaml";
+			std::string rightPath = base+"_"+stereoModel_.getRightSuffix()+".yaml";
 			std::string posePath = base+"_pose.yaml";
 			if(stereoModel_.save(dir.toStdString(), false))
 			{

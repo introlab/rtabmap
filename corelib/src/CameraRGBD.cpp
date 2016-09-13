@@ -213,9 +213,9 @@ SensorData CameraOpenni::captureImage(CameraInfo * info)
 #ifdef HAVE_OPENNI
 	if(interface_ && interface_->isRunning())
 	{
-		if(!dataReady_.acquire(1, 2000))
+		if(!dataReady_.acquire(1, 5000))
 		{
-			UWARN("Not received new frames since 2 seconds, end of stream reached!");
+			UWARN("Not received new frames since 5 seconds, end of stream reached!");
 		}
 		else
 		{
@@ -379,9 +379,11 @@ bool CameraOpenNI2::exposureGainAvailable()
 
 CameraOpenNI2::CameraOpenNI2(
 		const std::string & deviceId,
+		Type type,
 		float imageRate,
 		const rtabmap::Transform & localTransform) :
 	Camera(imageRate, localTransform),
+	_type(type),
 #ifdef RTABMAP_OPENNI2
 	_device(new openni::Device()),
 	_color(new openni::VideoStream()),
@@ -491,19 +493,79 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 #ifdef RTABMAP_OPENNI2
 	openni::OpenNI::initialize();
 
-	if(_device->open(_deviceId.empty()?openni::ANY_DEVICE:_deviceId.c_str()) != openni::STATUS_OK)
+	openni::Array<openni::DeviceInfo> devices;
+	openni::OpenNI::enumerateDevices(&devices);
+	for(int i=0; i<devices.getSize(); ++i)
+	{
+		UINFO("Device %d: Name=%s URI=%s Vendor=%s",
+				i,
+				devices[i].getName(),
+				devices[i].getUri(),
+				devices[i].getVendor());
+	}
+	if(_deviceId.empty() && devices.getSize() == 0)
+	{
+		UERROR("CameraOpenNI2: No device detected!");
+		return false;
+	}
+
+	openni::Status error = _device->open(_deviceId.empty()?openni::ANY_DEVICE:_deviceId.c_str());
+	if(error != openni::STATUS_OK)
 	{
 		if(!_deviceId.empty())
 		{
-			UERROR("CameraOpenNI2: Cannot open device \"%s\".", _deviceId.c_str());
+			UERROR("CameraOpenNI2: Cannot open device \"%s\" (error=%d).", _deviceId.c_str(), error);
 		}
 		else
 		{
-			UERROR("CameraOpenNI2: Cannot open device.");
+#ifdef _WIN32
+			UERROR("CameraOpenNI2: Cannot open device \"%s\" with uri=\"%s\" (error=%d).", devices[0].getName(), devices[0].uri, error);
+#else
+			UERROR("CameraOpenNI2: Cannot open device \"%s\" (error=%d). Verify if \"%s\" is in udev rules: \"/lib/udev/rules.d/40-libopenni2-0.rules\". If not, add it and reboot.", devices[0].getName(), error, devices[0].getUri());
+#endif
 		}
+
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
+	}
+
+	// look for calibration files
+	_stereoModel = StereoCameraModel();
+	bool hardwareRegistration = true;
+	if(!calibrationFolder.empty())
+	{
+		// we need the serial
+		std::string calibrationName = _device->getDeviceInfo().getName();
+		if(!cameraName.empty())
+		{
+			calibrationName = cameraName;
+		}
+		_stereoModel.setName(calibrationName, "depth", "rgb");
+		hardwareRegistration = !_stereoModel.load(calibrationFolder, calibrationName, false);
+
+		if(_type != kTypeColorDepth)
+		{
+			hardwareRegistration = false;
+		}
+
+
+		if((_type != kTypeColorDepth && !_stereoModel.left().isValidForRectification()) ||
+		   (_type == kTypeColorDepth && !_stereoModel.right().isValidForRectification()))
+		{
+			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, default calibration used.",
+					calibrationName.c_str(), calibrationFolder.c_str());
+		}
+		else if(_type == kTypeColorDepth && _stereoModel.right().isValidForRectification() && hardwareRegistration)
+		{
+			UWARN("Missing extrinsic calibration file for camera \"%s\" in \"%s\" folder, default registration is used even if rgb is rectified!",
+					calibrationName.c_str(), calibrationFolder.c_str());
+		}
+		else if(_type == kTypeColorDepth && _stereoModel.right().isValidForRectification() && !hardwareRegistration)
+		{
+			UINFO("Custom calibration files for \"%s\" were found in \"%s\" folder. To use "
+				  "factory calibration, remove the corresponding files from that directory.", calibrationName.c_str(), calibrationFolder.c_str());
+		}
 	}
 
 	if(UFile::getExtension(_deviceId).compare("oni")==0)
@@ -517,7 +579,8 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 			return false;
 		}
 	}
-	else if(!_device->isImageRegistrationModeSupported(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR))
+	else if(_type==kTypeColorDepth && hardwareRegistration &&
+			!_device->isImageRegistrationModeSupported(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR))
 	{
 		UERROR("CameraOpenNI2: Device doesn't support depth/color registration.");
 		_device->close();
@@ -526,9 +589,9 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 	}
 
 	if(_device->getSensorInfo(openni::SENSOR_DEPTH) == NULL ||
-	  _device->getSensorInfo(openni::SENSOR_COLOR) == NULL)
+	  _device->getSensorInfo(_type==kTypeColorDepth?openni::SENSOR_COLOR:openni::SENSOR_IR) == NULL)
 	{
-		UERROR("CameraOpenNI2: Cannot get sensor info for depth and color.");
+		UERROR("CameraOpenNI2: Cannot get sensor info for depth and %s.", _type==kTypeColorDepth?"color":"ir");
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
@@ -542,16 +605,17 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 		return false;
 	}
 
-	if(_color->create(*_device, openni::SENSOR_COLOR) != openni::STATUS_OK)
+	if(_color->create(*_device, _type==kTypeColorDepth?openni::SENSOR_COLOR:openni::SENSOR_IR) != openni::STATUS_OK)
 	{
-		UERROR("CameraOpenNI2: Cannot create color stream.");
+		UERROR("CameraOpenNI2: Cannot create %s stream.", _type==kTypeColorDepth?"color":"ir");
 		_depth->destroy();
 		_device->close();
 		openni::OpenNI::shutdown();
 		return false;
 	}
 
-	if(_device->setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR ) != openni::STATUS_OK)
+	if(_type==kTypeColorDepth && hardwareRegistration &&
+	   _device->setImageRegistrationMode(openni::IMAGE_REGISTRATION_DEPTH_TO_COLOR ) != openni::STATUS_OK)
 	{
 		UERROR("CameraOpenNI2: Failed to set depth/color registration.");
 	}
@@ -578,7 +642,8 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 	const openni::Array<openni::VideoMode>& colorVideoModes = _color->getSensorInfo().getSupportedVideoModes();
 	for(int i=0; i<colorVideoModes.getSize(); ++i)
 	{
-		UINFO("CameraOpenNI2: Color video mode %d: fps=%d, pixel=%d, w=%d, h=%d",
+		UINFO("CameraOpenNI2: %s video mode %d: fps=%d, pixel=%d, w=%d, h=%d",
+				_type==kTypeColorDepth?"color":"ir",
 				i,
 				colorVideoModes[i].getFps(),
 				colorVideoModes[i].getPixelFormat(),
@@ -605,6 +670,40 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 			_depth->getVideoMode().getResolutionY(),
 			_depth->getHorizontalFieldOfView(),
 			_depth->getVerticalFieldOfView());
+	UINFO("CameraOpenNI2: Using %s video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",
+			_type==kTypeColorDepth?"color":"ir",
+			_color->getVideoMode().getFps(),
+			_color->getVideoMode().getPixelFormat(),
+			_color->getVideoMode().getResolutionX(),
+			_color->getVideoMode().getResolutionY(),
+			_color->getHorizontalFieldOfView(),
+			_color->getVerticalFieldOfView());
+
+	if(_depth->getVideoMode().getResolutionX() != 640 ||
+		_depth->getVideoMode().getResolutionY() != 480 ||
+		_depth->getVideoMode().getPixelFormat() != openni::PIXEL_FORMAT_DEPTH_1_MM)
+	{
+		UERROR("Could not set depth format to 640x480 pixel=%d(mm)!",
+				openni::PIXEL_FORMAT_DEPTH_1_MM);
+		_depth->destroy();
+		_color->destroy();
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
+	if(_color->getVideoMode().getResolutionX() != 640 ||
+		_color->getVideoMode().getResolutionY() != 480 ||
+		_color->getVideoMode().getPixelFormat() != openni::PIXEL_FORMAT_RGB888)
+	{
+		UERROR("Could not set %s format to 640x480 pixel=%d!",
+				_type==kTypeColorDepth?"color":"ir",
+				openni::PIXEL_FORMAT_RGB888);
+		_depth->destroy();
+		_color->destroy();
+		_device->close();
+		openni::OpenNI::shutdown();
+		return false;
+	}
 
 	if(_color->getCameraSettings())
 	{
@@ -616,8 +715,7 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 #endif
 	}
 
-	bool registered = true;
-	if(registered)
+	if(_type==kTypeColorDepth && hardwareRegistration)
 	{
 		_depthFx = float(_color->getVideoMode().getResolutionX()/2) / std::tan(_color->getHorizontalFieldOfView()/2.0f);
 		_depthFy = float(_color->getVideoMode().getResolutionY()/2) / std::tan(_color->getVerticalFieldOfView()/2.0f);
@@ -629,16 +727,13 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 	}
 	UINFO("depth fx=%f fy=%f", _depthFx, _depthFy);
 
-	UINFO("CameraOpenNI2: Using color video mode: fps=%d, pixel=%d, w=%d, h=%d, H-FOV=%f rad, V-FOV=%f rad",
-			_color->getVideoMode().getFps(),
-			_color->getVideoMode().getPixelFormat(),
-			_color->getVideoMode().getResolutionX(),
-			_color->getVideoMode().getResolutionY(),
-			_color->getHorizontalFieldOfView(),
-			_color->getVerticalFieldOfView());
+	if(_type == kTypeIR)
+	{
+		UWARN("With type IR-only, depth stream will not be started");
+	}
 
-	if(_depth->start() != openni::STATUS_OK ||
-	   _color->start() != openni::STATUS_OK)
+	if((_type != kTypeIR && _depth->start() != openni::STATUS_OK) ||
+		_color->start() != openni::STATUS_OK)
 	{
 		UERROR("CameraOpenNI2: Cannot start depth and/or color streams.");
 		_depth->stop();
@@ -650,7 +745,7 @@ bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::strin
 		return false;
 	}
 
-	uSleep(1000); // just to make sure the sensor is correctly initialized
+	uSleep(3000); // just to make sure the sensor is correctly initialized and exposure is set
 
 	return true;
 #else
@@ -684,35 +779,49 @@ SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 		_depth->isValid() &&
 		_color->isValid() &&
 		_device->getSensorInfo(openni::SENSOR_DEPTH) != NULL &&
-		_device->getSensorInfo(openni::SENSOR_COLOR) != NULL)
+		_device->getSensorInfo(_type==kTypeColorDepth?openni::SENSOR_COLOR:openni::SENSOR_IR) != NULL)
 	{
 		openni::VideoStream* depthStream[] = {_depth};
 		openni::VideoStream* colorStream[] = {_color};
-		if(openni::OpenNI::waitForAnyStream(depthStream, 1, &readyStream, 2000) != openni::STATUS_OK ||
-		   openni::OpenNI::waitForAnyStream(colorStream, 1, &readyStream, 2000) != openni::STATUS_OK)
+		if((_type != kTypeIR && openni::OpenNI::waitForAnyStream(depthStream, 1, &readyStream, 5000) != openni::STATUS_OK) ||
+		   openni::OpenNI::waitForAnyStream(colorStream, 1, &readyStream, 5000) != openni::STATUS_OK)
 		{
-			UWARN("No frames received since the last 2 seconds, end of stream is reached!");
+			UWARN("No frames received since the last 5 seconds, end of stream is reached!");
 		}
 		else
 		{
 			openni::VideoFrameRef depthFrame, colorFrame;
-			_depth->readFrame(&depthFrame);
+			if(_type != kTypeIR)
+			{
+				_depth->readFrame(&depthFrame);
+			}
 			_color->readFrame(&colorFrame);
 			cv::Mat depth, rgb;
-			if(depthFrame.isValid() && colorFrame.isValid())
+			if((_type == kTypeIR || depthFrame.isValid()) && colorFrame.isValid())
 			{
-				int h=depthFrame.getHeight();
-				int w=depthFrame.getWidth();
-				depth = cv::Mat(h, w, CV_16U, (void*)depthFrame.getData()).clone();
-
+				int h,w;
+				if(_type != kTypeIR)
+				{
+					h=depthFrame.getHeight();
+					w=depthFrame.getWidth();
+					depth = cv::Mat(h, w, CV_16U, (void*)depthFrame.getData()).clone();
+				}
 				h=colorFrame.getHeight();
 				w=colorFrame.getWidth();
 				cv::Mat tmp(h, w, CV_8UC3, (void *)colorFrame.getData());
-				cv::cvtColor(tmp, rgb, CV_RGB2BGR);
+				if(_type==kTypeColorDepth)
+				{
+					cv::cvtColor(tmp, rgb, CV_RGB2BGR);
+				}
+				else // IR
+				{
+					rgb = tmp.clone();
+				}
 			}
 			UASSERT(_depthFx != 0.0f && _depthFy != 0.0f);
-			if(!rgb.empty() && !depth.empty())
+			if(!rgb.empty() && (_type == kTypeIR || !depth.empty()))
 			{
+				// default calibration
 				CameraModel model(
 						_depthFx, //fx
 						_depthFy, //fy
@@ -721,6 +830,35 @@ SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 						this->getLocalTransform(),
 						0,
 						rgb.size());
+
+				if(_type==kTypeColorDepth)
+				{
+					if(_stereoModel.right().isValidForRectification())
+					{
+						rgb = _stereoModel.right().rectifyImage(rgb);
+						model = _stereoModel.right();
+
+						if(_stereoModel.left().isValidForRectification() && !_stereoModel.stereoTransform().isNull())
+						{
+							depth = _stereoModel.left().rectifyImage(depth, 0);
+							depth = util2d::registerDepth(depth, _stereoModel.left().K(), rgb.size(), _stereoModel.right().K(), _stereoModel.stereoTransform());
+						}
+					}
+				}
+				else // IR
+				{
+					if(_stereoModel.left().isValidForRectification())
+					{
+						rgb = _stereoModel.left().rectifyImage(rgb);
+						if(_type!=kTypeIR)
+						{
+							depth = _stereoModel.left().rectifyImage(depth, 0);
+						}
+						model = _stereoModel.left();
+					}
+				}
+				model.setLocalTransform(this->getLocalTransform());
+
 				if(_openNI2StampsAndIDsUsed)
 				{
 					data = SensorData(rgb, depth, model, depthFrame.getFrameIndex(), double(depthFrame.getTimestamp()) / 1000000.0);
@@ -748,8 +886,10 @@ SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 //
 class FreenectDevice : public UThread {
   public:
-	FreenectDevice(freenect_context * ctx, int index) :
+	FreenectDevice(freenect_context * ctx, int index, bool color = true, bool registered = true) :
 		index_(index),
+		color_(color),
+		registered_(registered),
 		ctx_(ctx),
 		device_(0),
 		depthFocal_(0.0f)
@@ -798,22 +938,37 @@ class FreenectDevice : public UThread {
 			UERROR("Could not get serial for index %d", index_);
 		}
 
+		UINFO("color=%d registered=%d", color_?1:0, registered_?1:0);
+
 		freenect_set_user(device_, this);
-		freenect_set_video_mode(device_, freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_VIDEO_RGB));
-		freenect_set_depth_mode(device_, freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, FREENECT_DEPTH_REGISTERED));
-		depthBuffer_ = cv::Mat(cv::Size(640,480),CV_16UC1);
-		rgbBuffer_ = cv::Mat(cv::Size(640,480), CV_8UC3);
+		freenect_frame_mode videoMode = freenect_find_video_mode(FREENECT_RESOLUTION_MEDIUM, color_?FREENECT_VIDEO_RGB:FREENECT_VIDEO_IR_8BIT);
+		freenect_frame_mode depthMode = freenect_find_depth_mode(FREENECT_RESOLUTION_MEDIUM, color_ && registered_?FREENECT_DEPTH_REGISTERED:FREENECT_DEPTH_MM);
+		if(!videoMode.is_valid)
+		{
+			UERROR("Freenect: video mode selected not valid!");
+			return false;
+		}
+		if(!depthMode.is_valid)
+		{
+			UERROR("Freenect: depth mode selected not valid!");
+			return false;
+		}
+		UASSERT(videoMode.data_bits_per_pixel == 8 || videoMode.data_bits_per_pixel == 24);
+		UASSERT(depthMode.data_bits_per_pixel == 16);
+		freenect_set_video_mode(device_, videoMode);
+		freenect_set_depth_mode(device_, depthMode);
+		rgbIrBuffer_ = cv::Mat(cv::Size(videoMode.width,videoMode.height), color_?CV_8UC3:CV_8UC1);
+		depthBuffer_ = cv::Mat(cv::Size(depthMode.width,depthMode.height), CV_16UC1);
 		freenect_set_depth_buffer(device_, depthBuffer_.data);
-		freenect_set_video_buffer(device_, rgbBuffer_.data);
+		freenect_set_video_buffer(device_, rgbIrBuffer_.data);
 		freenect_set_depth_callback(device_, freenect_depth_callback);
 		freenect_set_video_callback(device_, freenect_video_callback);
 
-		bool registered = true;
 		float rgb_focal_length_sxga = 1050.0f;
 		float width_sxga = 1280.0f;
 		float width = freenect_get_current_depth_mode(device_).width;
 		float scale = width / width_sxga;
-		if(registered)
+		if(color_ && registered_)
 		{
 			depthFocal_ =  rgb_focal_length_sxga * scale;
 		}
@@ -836,16 +991,16 @@ class FreenectDevice : public UThread {
 	{
 		if(this->isRunning())
 		{
-			if(!dataReady_.acquire(1, 2000))
+			if(!dataReady_.acquire(1, 5000))
 			{
-				UERROR("Not received any frames since 2 seconds, try to restart the camera again.");
+				UERROR("Not received any frames since 5 seconds, try to restart the camera again.");
 			}
 			else
 			{
 				UScopeMutex s(dataMutex_);
-				rgb = rgbLastFrame_;
+				rgb = rgbIrLastFrame_;
 				depth = depthLastFrame_;
-				rgbLastFrame_ = cv::Mat();
+				rgbIrLastFrame_ = cv::Mat();
 				depthLastFrame_= cv::Mat();
 			}
 		}
@@ -855,10 +1010,18 @@ private:
 	// Do not call directly even in child
 	void VideoCallback(void* rgb)
 	{
-		UASSERT(rgbBuffer_.data == rgb);
+		UASSERT(rgbIrBuffer_.data == rgb);
 		UScopeMutex s(dataMutex_);
-		bool notify = rgbLastFrame_.empty();
-		cv::cvtColor(rgbBuffer_, rgbLastFrame_, CV_RGB2BGR);
+		bool notify = rgbIrLastFrame_.empty();
+
+		if(color_)
+		{
+			cv::cvtColor(rgbIrBuffer_, rgbIrLastFrame_, CV_RGB2BGR);
+		}
+		else // IrDepth
+		{
+			rgbIrLastFrame_ = rgbIrBuffer_.clone();
+		}
 		if(!depthLastFrame_.empty() && notify)
 		{
 			dataReady_.release();
@@ -872,7 +1035,7 @@ private:
 		UScopeMutex s(dataMutex_);
 		bool notify = depthLastFrame_.empty();
 		depthLastFrame_ = depthBuffer_.clone();
-		if(!rgbLastFrame_.empty() && notify)
+		if(!rgbIrLastFrame_.empty() && notify)
 		{
 			dataReady_.release();
 		}
@@ -931,14 +1094,16 @@ private:
 
   private:
 	int index_;
+	bool color_;
+	bool registered_;
 	std::string serial_;
 	freenect_context * ctx_;
 	freenect_device * device_;
 	cv::Mat depthBuffer_;
-	cv::Mat rgbBuffer_;
+	cv::Mat rgbIrBuffer_;
 	UMutex dataMutex_;
 	cv::Mat depthLastFrame_;
-	cv::Mat rgbLastFrame_;
+	cv::Mat rgbIrLastFrame_;
 	float depthFocal_;
 	USemaphore dataReady_;
 };
@@ -956,9 +1121,10 @@ bool CameraFreenect::available()
 #endif
 }
 
-CameraFreenect::CameraFreenect(int deviceId, float imageRate, const Transform & localTransform) :
+CameraFreenect::CameraFreenect(int deviceId, Type type, float imageRate, const Transform & localTransform) :
 		Camera(imageRate, localTransform),
 		deviceId_(deviceId),
+		type_(type),
 		ctx_(0),
 		freenectDevice_(0)
 {
@@ -997,7 +1163,50 @@ bool CameraFreenect::init(const std::string & calibrationFolder, const std::stri
 
 	if(ctx_ && freenect_num_devices(ctx_) > 0)
 	{
-		freenectDevice_ = new FreenectDevice(ctx_, deviceId_);
+		// look for calibration files
+		bool hardwareRegistration = true;
+		stereoModel_ = StereoCameraModel();
+		if(!calibrationFolder.empty())
+		{
+			// we need the serial, HACK: init a temp device to get it
+			FreenectDevice dev(ctx_, deviceId_);
+			if(!dev.init())
+			{
+				UERROR("CameraFreenect: Init failed!");
+			}
+			std::string calibrationName = dev.getSerial();
+			if(!cameraName.empty())
+			{
+				calibrationName = cameraName;
+			}
+			stereoModel_.setName(calibrationName, "depth", "rgb");
+			hardwareRegistration = !stereoModel_.load(calibrationFolder, calibrationName, false);
+
+			if(type_ == kTypeIRDepth)
+			{
+				hardwareRegistration = false;
+			}
+
+
+			if((type_ == kTypeIRDepth && !stereoModel_.left().isValidForRectification()) ||
+			   (type_ == kTypeColorDepth && !stereoModel_.right().isValidForRectification()))
+			{
+				UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, default calibration used.",
+						calibrationName.c_str(), calibrationFolder.c_str());
+			}
+			else if(type_ == kTypeColorDepth && stereoModel_.right().isValidForRectification() && hardwareRegistration)
+			{
+				UWARN("Missing extrinsic calibration file for camera \"%s\" in \"%s\" folder, default registration is used even if rgb is rectified!",
+						calibrationName.c_str(), calibrationFolder.c_str());
+			}
+			else if(type_ == kTypeColorDepth && stereoModel_.right().isValidForRectification() && !hardwareRegistration)
+			{
+				UINFO("Custom calibration files for \"%s\" were found in \"%s\" folder. To use "
+					  "factory calibration, remove the corresponding files from that directory.", calibrationName.c_str(), calibrationFolder.c_str());
+			}
+		}
+
+		freenectDevice_ = new FreenectDevice(ctx_, deviceId_, type_==kTypeColorDepth, hardwareRegistration);
 		if(freenectDevice_->init())
 		{
 			freenectDevice_->start();
@@ -1050,18 +1259,43 @@ SensorData CameraFreenect::captureImage(CameraInfo * info)
 			if(!rgb.empty() && !depth.empty())
 			{
 				UASSERT(freenectDevice_->getDepthFocal() != 0.0f);
-				if(!rgb.empty() && !depth.empty())
+
+				// default calibration
+				CameraModel model(
+						freenectDevice_->getDepthFocal(), //fx
+						freenectDevice_->getDepthFocal(), //fy
+						float(rgb.cols/2) - 0.5f,  //cx
+						float(rgb.rows/2) - 0.5f,  //cy
+						this->getLocalTransform(),
+						0,
+						rgb.size());
+
+				if(type_==kTypeIRDepth)
 				{
-					CameraModel model(
-							freenectDevice_->getDepthFocal(), //fx
-							freenectDevice_->getDepthFocal(), //fy
-							float(rgb.cols/2) - 0.5f,  //cx
-							float(rgb.rows/2) - 0.5f,  //cy
-							this->getLocalTransform(),
-							0,
-							rgb.size());
-					data = SensorData(rgb, depth, model, this->getNextSeqID(), UTimer::now());
+					if(stereoModel_.left().isValidForRectification())
+					{
+						rgb = stereoModel_.left().rectifyImage(rgb);
+						depth = stereoModel_.left().rectifyImage(depth, 0);
+						model = stereoModel_.left();
+					}
 				}
+				else
+				{
+					if(stereoModel_.right().isValidForRectification())
+					{
+						rgb = stereoModel_.right().rectifyImage(rgb);
+						model = stereoModel_.right();
+
+						if(stereoModel_.left().isValidForRectification() && !stereoModel_.stereoTransform().isNull())
+						{
+							depth = stereoModel_.left().rectifyImage(depth, 0);
+							depth = util2d::registerDepth(depth, stereoModel_.left().K(), rgb.size(), stereoModel_.right().K(), stereoModel_.stereoTransform());
+						}
+					}
+				}
+				model.setLocalTransform(this->getLocalTransform());
+
+				data = SensorData(rgb, depth, model, this->getNextSeqID(), UTimer::now());
 			}
 		}
 		else
@@ -1248,6 +1482,9 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 			}
 			else
 			{
+				UINFO("Custom calibration files for \"%s\" were found in \"%s\" folder. To use "
+					  "factory calibration, remove the corresponding files from that directory.", calibrationName.c_str(), calibrationFolder.c_str());
+
 				if(type_==kTypeColor2DepthSD)
 				{
 					UWARN("Freenect2: When using custom calibration file, type "
@@ -1445,6 +1682,7 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 							depth = util2d::registerDepth(
 									depth,
 									stereoModel_.left().P().colRange(0,3).rowRange(0,3), //scaled depth K
+									depth.size(),
 									stereoModel_.right().P().colRange(0,3).rowRange(0,3), //scaled color K
 									stereoModel_.stereoTransform());
 							util2d::fillRegisteredDepthHoles(depth, true, false);

@@ -155,9 +155,11 @@ class RTABMAP_EXP CameraOpenNI2 :
 public:
 	static bool available();
 	static bool exposureGainAvailable();
+	enum Type {kTypeColorDepth, kTypeIRDepth, kTypeIR};
 
 public:
 	CameraOpenNI2(const std::string & deviceId = "",
+					Type type = kTypeColorDepth,
 					float imageRate = 0,
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenNI2();
@@ -177,6 +179,7 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+	Type _type;
 	openni::Device * _device;
 	openni::VideoStream * _color;
 	openni::VideoStream * _depth;
@@ -184,6 +187,7 @@ private:
 	float _depthFy;
 	std::string _deviceId;
 	bool _openNI2StampsAndIDsUsed;
+	StereoCameraModel _stereoModel;
 };
 
 
@@ -197,10 +201,12 @@ class RTABMAP_EXP CameraFreenect :
 {
 public:
 	static bool available();
+	enum Type {kTypeColorDepth, kTypeIRDepth};
 
 public:
 	// default local transform z in, x right, y down));
 	CameraFreenect(int deviceId= 0,
+					Type type = kTypeColorDepth,
 					float imageRate=0.0f,
 					const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraFreenect();
@@ -214,8 +220,10 @@ protected:
 
 private:
 	int deviceId_;
+	Type type_;
 	freenect_context * ctx_;
 	FreenectDevice * freenectDevice_;
+	StereoCameraModel stereoModel_;
 };
 
 /////////////////////////

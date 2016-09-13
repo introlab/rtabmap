@@ -56,14 +56,19 @@ public:
 	const rtabmap::CameraModel & getRightCameraModel() const {return models_[1];}
 	const rtabmap::StereoCameraModel & getStereoCameraModel() const {return stereoModel_;}
 	bool isProcessing() const {return processingData_;}
+	int getStereoPairs() const {return (int)stereoImagePoints_[0].size();}
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
 	void resetSettings();
 
+	void setCameraName(const QString & name);
+	void setProgressVisibility(bool visible);
 	void setSwitchedImages(bool switched);
-	void setStereoMode(bool stereo);
+	void setStereoMode(bool stereo, const QString & leftSuffix = "left", const QString & rightSuffix = "right");
 	void setSavingDirectory(const QString & savingDirectory) {savingDirectory_ = savingDirectory;}
+
+	StereoCameraModel stereoCalibration(const CameraModel & left, const CameraModel & right, bool ignoreStereoRectification) const;
 
 public slots:
 	void setBoardWidth(int width);
@@ -71,11 +76,12 @@ public slots:
 	void setSquareSize(double size);
 	void setMaxScale(int scale);
 
-private slots:
 	void processImages(const cv::Mat & imageLeft, const cv::Mat & imageRight, const QString & cameraName);
-	void restart();
 	void calibrate();
+	void restart();
 	bool save();
+
+private slots:
 	void unlock();
 
 protected:
@@ -96,6 +102,8 @@ private:
 private:
 	// parameters
 	bool stereo_;
+	QString leftSuffix_;
+	QString rightSuffix_;
 	QString savingDirectory_;
 
 	QString cameraName_;

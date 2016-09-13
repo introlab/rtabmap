@@ -87,7 +87,7 @@ public:
 
 	void initRectificationMap() {left_.initRectificationMap(); right_.initRectificationMap();}
 
-	void setName(const std::string & name);
+	void setName(const std::string & name, const std::string & leftSuffix = "left", const std::string & rightSuffix = "right");
 	const std::string & name() const {return name_;}
 
 	// backward compatibility
@@ -95,6 +95,7 @@ public:
 
 	bool load(const std::string & directory, const std::string & cameraName, bool ignoreStereoTransform = true);
 	bool save(const std::string & directory, bool ignoreStereoTransform = true) const;
+	bool saveStereoTransform(const std::string & directory) const;
 
 	double baseline() const {return right_.fx()!=0.0?-right_.Tx()/right_.fx():0.0;}
 
@@ -117,7 +118,12 @@ public:
 	const CameraModel & left() const {return left_;}
 	const CameraModel & right() const {return right_;}
 
+	const std::string & getLeftSuffix() const {return leftSuffix_;}
+	const std::string & getRightSuffix() const {return rightSuffix_;}
+
 private:
+	std::string leftSuffix_;
+	std::string rightSuffix_;
 	CameraModel left_;
 	CameraModel right_;
 	std::string name_;

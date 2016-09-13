@@ -4091,7 +4091,7 @@ int PreferencesDialog::getSourceScanNormalsK() const
 	return _ui->spinBox_cameraImages_scanNormalsK->value();
 }
 
-Camera * PreferencesDialog::createCamera(bool useRawImages)
+Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 {
 	Src driver = this->getSourceDriver();
 	Camera * camera = 0;
@@ -4114,37 +4114,19 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	}
 	else if(driver == PreferencesDialog::kSrcOpenNI2)
 	{
-		if(useRawImages)
-		{
-			QMessageBox::warning(this, tr("Calibration"),
-					tr("Using raw images for \"OpenNI2\" driver is not yet supported. "
-						"Factory calibration loaded from OpenNI2 is used."), QMessageBox::Ok);
-			return 0;
-		}
-		else
-		{
-			camera = new CameraOpenNI2(
-					_ui->lineEdit_openni2OniPath->text().isEmpty()?this->getSourceDevice().toStdString():_ui->lineEdit_openni2OniPath->text().toStdString(),
-					this->getGeneralInputRate(),
-					this->getSourceLocalTransform());
-		}
+		camera = new CameraOpenNI2(
+				_ui->lineEdit_openni2OniPath->text().isEmpty()?this->getSourceDevice().toStdString():_ui->lineEdit_openni2OniPath->text().toStdString(),
+				useColor?CameraOpenNI2::kTypeColorDepth:CameraOpenNI2::kTypeIRDepth,
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
 	}
 	else if(driver == PreferencesDialog::kSrcFreenect)
 	{
-		if(useRawImages)
-		{
-			QMessageBox::warning(this, tr("Calibration"),
-					tr("Using raw images for \"Freenect\" driver is not yet supported. "
-						"Factory calibration loaded from Freenect is used."), QMessageBox::Ok);
-			return 0;
-		}
-		else
-		{
-			camera = new CameraFreenect(
-					this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
-					this->getGeneralInputRate(),
-					this->getSourceLocalTransform());
-		}
+		camera = new CameraFreenect(
+				this->getSourceDevice().isEmpty()?0:atoi(this->getSourceDevice().toStdString().c_str()),
+				useColor?CameraFreenect::kTypeColorDepth:CameraFreenect::kTypeIRDepth,
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
 	}
 	else if(driver == PreferencesDialog::kSrcOpenNI_CV ||
 			driver == PreferencesDialog::kSrcOpenNI_CV_ASUS)
@@ -4179,12 +4161,22 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 	}
 	else if (driver == kSrcRealSense)
 	{
-		camera = new CameraRealSense(
-			this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
-			_ui->comboBox_realsensePresetRGB->currentIndex(),
-			_ui->comboBox_realsensePresetDepth->currentIndex(),
-			this->getGeneralInputRate(),
-			this->getSourceLocalTransform());
+		if(useRawImages)
+		{
+			QMessageBox::warning(this, tr("Calibration"),
+					tr("Using raw images for \"RealSense\" driver is not yet supported. "
+						"Factory calibration loaded from RealSense is used."), QMessageBox::Ok);
+			return 0;
+		}
+		else
+		{
+			camera = new CameraRealSense(
+				this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
+				_ui->comboBox_realsensePresetRGB->currentIndex(),
+				_ui->comboBox_realsensePresetDepth->currentIndex(),
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
+		}
 	}
 	else if(driver == kSrcRGBDImages)
 	{
@@ -4372,12 +4364,11 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 
 	if(camera)
 	{
-		// don't set calibration folder if we want raw images
 		QString dir = this->getCameraInfoDir();
 		QString calibrationFile = _ui->lineEdit_calibrationFile->text();
 		if(!(driver >= kSrcRGB && driver <= kSrcVideo))
 		{
-			calibrationFile.remove("_left.yaml").remove("_right.yaml").remove("_pose.yaml");
+			calibrationFile.remove("_left.yaml").remove("_right.yaml").remove("_pose.yaml").remove("_rgb.yaml").remove("_depth.yaml");
 		}
 		QString name = QFileInfo(calibrationFile.remove(".yaml")).baseName();
 		if(!_ui->lineEdit_calibrationFile->text().isEmpty())
@@ -4389,6 +4380,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages)
 			}
 		}
 
+		// don't set calibration folder if we want raw images
 		if(!camera->init(useRawImages?"":dir.toStdString(), name.toStdString()))
 		{
 			UWARN("init camera failed... ");
@@ -4642,11 +4634,6 @@ void PreferencesDialog::calibrate()
 				   tr("Cannot calibrate database source!"));
 		return;
 	}
-	Camera * camera = this->createCamera(true);
-	if(!camera)
-	{
-		return;
-	}
 
 	if(!this->getCameraInfoDir().isEmpty())
 	{
@@ -4660,20 +4647,195 @@ void PreferencesDialog::calibrate()
 			}
 		}
 	}
-	_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB); // RGB+Depth or left+right
-	_calibrationDialog->setSwitchedImages(dynamic_cast<CameraFreenect2*>(camera) != 0);
-	_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
-	_calibrationDialog->registerToEventsManager();
 
-	CameraThread cameraThread(camera, this->getAllParameters());
-	UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+	Src driver = this->getSourceDriver();
+	if(driver == PreferencesDialog::kSrcFreenect || driver == PreferencesDialog::kSrcOpenNI2)
+	{
+		// 3 steps calibration: RGB -> IR -> Extrinsic
+		QMessageBox::StandardButton button = QMessageBox::question(this, tr("Calibration"),
+				tr("With \"%1\" driver, Color and IR cameras cannot be streamed at the "
+					"same time. A 3-steps calibration is required (Color -> IR -> extrinsics). We will "
+					"start with the Color camera calibration. Do you want to continue?").arg(this->getSourceDriverStr()),
+					QMessageBox::Yes | QMessageBox::No | QMessageBox::Ignore, QMessageBox::Yes);
 
-	cameraThread.start();
+		if(button == QMessageBox::Yes || button == QMessageBox::Ignore)
+		{
+			_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
 
-	_calibrationDialog->exec();
-	_calibrationDialog->unregisterFromEventsManager();
+			Camera * camera = 0;
 
-	cameraThread.join(true);
+			// Step 1: RGB
+			if(button != QMessageBox::Ignore)
+			{
+				camera = this->createCamera(true, true); // RAW color
+				if(!camera)
+				{
+					return;
+				}
+
+				_calibrationDialog->setStereoMode(false); // this forces restart
+				_calibrationDialog->setCameraName(QString(camera->getSerial().c_str())+"_rgb");
+				_calibrationDialog->registerToEventsManager();
+				CameraThread cameraThread(camera, this->getAllParameters());
+				UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+				cameraThread.start();
+				_calibrationDialog->exec();
+				_calibrationDialog->unregisterFromEventsManager();
+				cameraThread.join(true);
+				camera = 0;
+			}
+
+			button = QMessageBox::question(this, tr("Calibration"),
+						tr("We will now calibrate the IR camera. Hide the IR projector with a Post-It and "
+							"make sure you have enough ambient IR light (e.g., external IR source or sunlight!) to see the "
+							"checkboard with the IR camera. Do you want to continue?"),
+							QMessageBox::Yes | QMessageBox::No | QMessageBox::Ignore, QMessageBox::Yes);
+			if(button == QMessageBox::Yes || button == QMessageBox::Ignore)
+			{
+				// Step 2: IR
+				if(button != QMessageBox::Ignore)
+				{
+					camera = this->createCamera(true, false); // RAW ir
+					if(!camera)
+					{
+						return;
+					}
+
+					_calibrationDialog->setStereoMode(false); // this forces restart
+					_calibrationDialog->setCameraName(QString(camera->getSerial().c_str())+"_depth");
+					_calibrationDialog->registerToEventsManager();
+					CameraThread cameraThread(camera, this->getAllParameters());
+					UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+					cameraThread.start();
+					_calibrationDialog->exec();
+					_calibrationDialog->unregisterFromEventsManager();
+					cameraThread.join(true);
+					camera = 0;
+				}
+
+				button = QMessageBox::question(this, tr("Calibration"),
+							tr("We will now calibrate the extrinsics. Important: Make sure "
+								"the cameras and the checkboard don't move and that both "
+								"cameras can see the checkboard. We will repeat this "
+								"multiple times. Each time, you will have to move the camera (or "
+								"checkboard) for a different point of view. Do you want to "
+								"continue?"),
+								QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+				bool ok = false;
+				int totalSamples = 0;
+				if(button == QMessageBox::Yes)
+				{
+					totalSamples = QInputDialog::getInt(this, tr("Calibration"), tr("Samples: "), 3, 1, 99, 1, &ok);
+				}
+
+				if(ok)
+				{
+					int count = 0;
+					_calibrationDialog->setStereoMode(true, "depth", "rgb"); // this forces restart
+					_calibrationDialog->setCameraName("");
+					_calibrationDialog->setModal(true);
+					_calibrationDialog->setProgressVisibility(false);
+					_calibrationDialog->show();
+					CameraModel irModel;
+					CameraModel rgbModel;
+					for(;count < totalSamples && button == QMessageBox::Yes; )
+					{
+						// Step 3: Extrinsics
+						camera = this->createCamera(false, true); // Rectified color
+						if(!camera)
+						{
+							return;
+						}
+						SensorData rgbData = camera->takeImage();
+						UASSERT(rgbData.cameraModels().size() == 1);
+						rgbModel = rgbData.cameraModels()[0];
+						delete camera;
+						camera = this->createCamera(false, false); // Rectified ir
+						if(!camera)
+						{
+							return;
+						}
+						SensorData irData = camera->takeImage();
+						std::string serial = camera->getSerial();
+						UASSERT(irData.cameraModels().size() == 1);
+						irModel = irData.cameraModels()[0];
+						delete camera;
+
+						if(!rgbData.imageRaw().empty() && !irData.imageRaw().empty())
+						{
+							// assume rgb sensor is on right (e.g., Kinect, Xtion Live Pro)
+							int pair = _calibrationDialog->getStereoPairs();
+							_calibrationDialog->processImages(irData.imageRaw(), rgbData.imageRaw(), serial.c_str());
+							if(_calibrationDialog->getStereoPairs() - pair > 0)
+							{
+								++count;
+								if(count < totalSamples)
+								{
+									button = QMessageBox::question(this, tr("Calibration"),
+										tr("A stereo pair has been taken (total=%1/%2). Move the checkboard or "
+											"camera to another position. Press \"Yes\" when you are ready "
+											"for the next capture.").arg(count).arg(totalSamples),
+											QMessageBox::Yes | QMessageBox::Abort, QMessageBox::Yes);
+								}
+							}
+							else
+							{
+								button = QMessageBox::question(this, tr("Calibration"),
+										tr("Could not detect the checkboard on both images or "
+										   "the point of view didn't change enough. Try again?"),
+											QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+							}
+						}
+						else
+						{
+							button = QMessageBox::question(this, tr("Calibration"),
+										tr("Failed to start the camera. Try again?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+						}
+					}
+					if(count == totalSamples && button == QMessageBox::Yes)
+					{
+						StereoCameraModel stereoModel = _calibrationDialog->stereoCalibration(irModel, rgbModel, true);
+						stereoModel.setName(stereoModel.name(), "depth", "rgb");
+						if(stereoModel.stereoTransform().isNull())
+						{
+							QMessageBox::warning(this, tr("Calibration"),
+									tr("Extrinsic calibration has failed!"), QMessageBox::Ok);
+						}
+						else if(stereoModel.saveStereoTransform(this->getCameraInfoDir().toStdString()))
+						{
+							QMessageBox::information(this, tr("Calibration"),
+									tr("Calibration is completed! Extrinsics have been saved to \"%1/%2_pose.yaml\"").arg(this->getCameraInfoDir()).arg(stereoModel.name().c_str()), QMessageBox::Ok);
+						}
+					}
+				}
+			}
+		}
+	}
+	else // standard calibration
+	{
+		Camera * camera = this->createCamera(true);
+		if(!camera)
+		{
+			return;
+		}
+
+		bool freenect2 = this->getSourceType() == kSrcFreenect2;
+		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB, freenect2?"rgb":"left", freenect2?"depth":"right"); // RGB+Depth or left+right
+		_calibrationDialog->setSwitchedImages(freenect2);
+		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
+		_calibrationDialog->registerToEventsManager();
+
+		CameraThread cameraThread(camera, this->getAllParameters());
+		UEventsManager::createPipe(&cameraThread, _calibrationDialog, "CameraEvent");
+
+		cameraThread.start();
+
+		_calibrationDialog->exec();
+		_calibrationDialog->unregisterFromEventsManager();
+
+		cameraThread.join(true);
+	}
 }
 
 void PreferencesDialog::calibrateSimple()

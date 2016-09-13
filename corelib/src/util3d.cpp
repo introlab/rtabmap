@@ -779,7 +779,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 
 				if(tmp->size())
 				{
-					tmp = util3d::transformPointCloud(tmp, model.localTransform());
+					if(!model.localTransform().isNull() && !model.localTransform().isIdentity())
+					{
+						tmp = util3d::transformPointCloud(tmp, model.localTransform());
+					}
 
 					if(sensorData.cameraModels().size() > 1)
 					{
@@ -833,7 +836,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 
 		if(cloud->size())
 		{
-			if(cloud->size())
+			if(cloud->size() && !sensorData.stereoCameraModel().left().localTransform().isNull() && !sensorData.stereoCameraModel().left().localTransform().isIdentity())
 			{
 				cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
 			}
@@ -862,8 +865,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		UDEBUG("");
 		UASSERT(int((sensorData.imageRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.imageRaw().cols);
 		UASSERT(int((sensorData.depthRaw().cols/sensorData.cameraModels().size())*sensorData.cameraModels().size()) == sensorData.depthRaw().cols);
-		UASSERT(sensorData.imageRaw().cols % sensorData.depthRaw().cols == 0);
-		UASSERT(sensorData.imageRaw().rows % sensorData.depthRaw().rows == 0);
+		UASSERT_MSG(sensorData.imageRaw().cols % sensorData.depthRaw().cols == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().cols, sensorData.depthRaw().cols).c_str());
+		UASSERT_MSG(sensorData.imageRaw().rows % sensorData.depthRaw().rows == 0, uFormat("rgb=%d depth=%d", sensorData.imageRaw().rows, sensorData.depthRaw().rows).c_str());
 		int subRGBWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		int subDepthWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 
@@ -929,7 +932,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 
 				if(tmp->size())
 				{
-					tmp = util3d::transformPointCloud(tmp, model.localTransform());
+					if(!model.localTransform().isNull() && !model.localTransform().isIdentity())
+					{
+						tmp = util3d::transformPointCloud(tmp, model.localTransform());
+					}
 
 					if(sensorData.cameraModels().size() > 1)
 					{
@@ -972,7 +978,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 				validIndices,
 				stereoParameters);
 
-		if(cloud->size())
+		if(cloud->size() && !sensorData.stereoCameraModel().left().localTransform().isNull() && !sensorData.stereoCameraModel().left().localTransform().isIdentity())
 		{
 			cloud = util3d::transformPointCloud(cloud, sensorData.stereoCameraModel().left().localTransform());
 		}

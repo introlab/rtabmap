@@ -1337,6 +1337,7 @@ cv::Mat interpolate(const cv::Mat & image, int factor, float depthErrorRatio)
 cv::Mat registerDepth(
 		const cv::Mat & depth,
 		const cv::Mat & depthK,
+		const cv::Size & colorSize,
 		const cv::Mat & colorK,
 		const rtabmap::Transform & transform)
 {
@@ -1356,10 +1357,13 @@ cv::Mat registerDepth(
 	float rcx = colorK.at<double>(0,2);
 	float rcy = colorK.at<double>(1,2);
 
+	//UDEBUG("depth(%dx%d) fx=%f fy=%f cx=%f cy=%f", depth.cols, depth.rows, fx, fy, cx, cy);
+	//UDEBUG("color(%dx%d) fx=%f fy=%f cx=%f cy=%f", colorSize.width, colorSize.height, rfx, rfy, rcx, rcy);
+
 	Eigen::Affine3f proj = transform.toEigen3f();
 	Eigen::Vector4f P4,P3;
 	P4[3] = 1;
-	cv::Mat registered = cv::Mat::zeros(depth.rows, depth.cols, depth.type());
+	cv::Mat registered = cv::Mat::zeros(colorSize, depth.type());
 
 	bool depthInMM = depth.type() == CV_16UC1;
 	for(int y=0; y<depth.rows; ++y)
