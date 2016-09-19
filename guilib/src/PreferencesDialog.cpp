@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QSettings>
 #include <QtCore/QDir>
 #include <QtCore/QTimer>
+#include <QUrl>
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -42,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QProgressDialog>
 #include <QScrollBar>
 #include <QStatusBar>
+#include <QDesktopServices>
 #include <QtGui/QCloseEvent>
 
 #include "ui_preferencesDialog.h"
@@ -60,6 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Optimizer.h"
 #include "rtabmap/core/OptimizerG2O.h"
 #include "rtabmap/core/DBReader.h"
+#include "rtabmap/core/clams/discrete_depth_distortion_model.h"
 
 #include "rtabmap/gui/LoopClosureViewer.h"
 #include "rtabmap/gui/CameraViewer.h"
@@ -70,6 +73,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportScansDialog.h"
 #include "PostProcessingDialog.h"
 #include "CreateSimpleCalibrationDialog.h"
+#include "DepthCalibrationDialog.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -505,8 +509,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->pushButton_calibrate_simple, SIGNAL(clicked()), this, SLOT(calibrateSimple()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
 	connect(_ui->toolButton_openni2OniPath, SIGNAL(clicked()), this, SLOT(selectSourceOni2Path()));
+	connect(_ui->toolButton_source_distortionModel, SIGNAL(clicked()), this, SLOT(selectSourceDistortionModel()));
+	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(visualizeDistortionModel()));
 	connect(_ui->lineEdit_openniOniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openni2OniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_source_distortionModel, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->groupBox_scanFromDepth, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_cameraScanFromDepth_decimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1336,6 +1343,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
 		_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(1.0);
+		_ui->lineEdit_source_distortionModel->setText("");
 
 		_ui->source_comboBox_image_type->setCurrentIndex(kSrcDC1394-kSrcDC1394);
 		_ui->lineEdit_cameraStereoImages_path_left->setText("");
@@ -1639,6 +1647,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("rgbd");
 	_ui->comboBox_cameraRGBD->setCurrentIndex(settings.value("driver", _ui->comboBox_cameraRGBD->currentIndex()).toInt());
 	_ui->checkbox_rgbd_colorOnly->setChecked(settings.value("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked()).toBool());
+	_ui->lineEdit_source_distortionModel->setText(settings.value("distortion_model", _ui->lineEdit_source_distortionModel->text()).toString());
 	settings.endGroup(); // rgbd
 
 	settings.beginGroup("stereo");
@@ -2066,6 +2075,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("rgbd");
 	settings.setValue("driver", 	   _ui->comboBox_cameraRGBD->currentIndex());
 	settings.setValue("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked());
+	settings.setValue("distortion_model", _ui->lineEdit_source_distortionModel->text());
 	settings.endGroup(); // rgbd
 
 	settings.beginGroup("stereo");
@@ -2566,6 +2576,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		const PostProcessingDialog * postProcessingDialog = qobject_cast<const PostProcessingDialog *>(widget);
 		const GraphViewer * graphViewer = qobject_cast<const GraphViewer *>(widget);
 		const CalibrationDialog * calibrationDialog = qobject_cast<const CalibrationDialog *>(widget);
+		const DepthCalibrationDialog * depthCalibrationDialog = qobject_cast<const DepthCalibrationDialog *>(widget);
 
 		if(cloudViewer)
 		{
@@ -2595,6 +2606,10 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		{
 			calibrationDialog->saveSettings(settings);
 		}
+		else if(depthCalibrationDialog)
+		{
+			depthCalibrationDialog->saveSettings(settings);
+		}
 		else
 		{
 			UERROR("Widget \"%s\" cannot be exported in config file.", widget->objectName().toStdString().c_str());
@@ -2621,6 +2636,7 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		PostProcessingDialog * postProcessingDialog = qobject_cast<PostProcessingDialog *>(widget);
 		GraphViewer * graphViewer = qobject_cast<GraphViewer *>(widget);
 		CalibrationDialog * calibrationDialog = qobject_cast<CalibrationDialog *>(widget);
+		DepthCalibrationDialog * depthCalibrationDialog = qobject_cast<DepthCalibrationDialog *>(widget);
 
 		if(cloudViewer)
 		{
@@ -2649,6 +2665,10 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		else if(calibrationDialog)
 		{
 			calibrationDialog->loadSettings(settings);
+		}
+		else if(depthCalibrationDialog)
+		{
+			depthCalibrationDialog->loadSettings(settings);
 		}
 		else
 		{
@@ -2785,6 +2805,31 @@ void PreferencesDialog::openDatabaseViewer()
 	else
 	{
 		delete viewer;
+	}
+}
+
+void PreferencesDialog::visualizeDistortionModel()
+{
+	if(!_ui->lineEdit_source_distortionModel->text().isEmpty() &&
+			QFileInfo(_ui->lineEdit_source_distortionModel->text()).exists())
+	{
+		clams::DiscreteDepthDistortionModel model;
+		model.load(_ui->lineEdit_source_distortionModel->text().toStdString());
+		if(model.isValid())
+		{
+			cv::Mat img = model.visualize();
+			QString name = QFileInfo(_ui->lineEdit_source_distortionModel->text()).baseName()+".png";
+			cv::imwrite(name.toStdString(), img);
+			QDesktopServices::openUrl(QUrl::fromLocalFile(name));
+		}
+		else
+		{
+			QMessageBox::warning(this, tr("Distortion Model"), tr("Model loaded from \"%1\" is not valid!").arg(_ui->lineEdit_source_distortionModel->text()));
+		}
+	}
+	else
+	{
+		QMessageBox::warning(this, tr("Distortion Model"), tr("File \"%1\" doesn't exist!").arg(_ui->lineEdit_source_distortionModel->text()));
 	}
 }
 
@@ -2969,6 +3014,20 @@ void PreferencesDialog::selectSourceStereoVideoPath2()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_cameraStereoVideo_path_2->setText(path);
+	}
+}
+
+void PreferencesDialog::selectSourceDistortionModel()
+{
+	QString dir = _ui->lineEdit_source_distortionModel->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_source_distortionModel->text(), tr("Distortion model (*.bin)"));
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_source_distortionModel->setText(path);
 	}
 }
 
@@ -4054,13 +4113,17 @@ Transform PreferencesDialog::getLaserLocalTransform() const
 	return t;
 }
 
-bool PreferencesDialog::getSourceDatabaseStampsUsed() const
+bool PreferencesDialog::isSourceDatabaseStampsUsed() const
 {
 	return _ui->source_checkBox_useDbStamps->isChecked();
 }
 bool PreferencesDialog::isSourceRGBDColorOnly() const
 {
 	return _ui->checkbox_rgbd_colorOnly->isChecked();
+}
+QString PreferencesDialog::getSourceDistortionModel() const
+{
+	return _ui->lineEdit_source_distortionModel->text();
 }
 int PreferencesDialog::getSourceImageDecimation() const
 {
@@ -4577,6 +4640,11 @@ void PreferencesDialog::testOdometry()
 			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 			_ui->spinBox_cameraImages_scanNormalsK->value());
+	if(this->getSourceType() == PreferencesDialog::kSrcRGBD &&
+		!_ui->lineEdit_source_distortionModel->text().isEmpty())
+	{
+		cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+	}
 	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
 	UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
 	UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
@@ -4612,6 +4680,11 @@ void PreferencesDialog::testCamera()
 				_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 				_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 				_ui->spinBox_cameraImages_scanNormalsK->value());
+		if(this->getSourceType() == PreferencesDialog::kSrcRGBD &&
+			!_ui->lineEdit_source_distortionModel->text().isEmpty())
+		{
+			cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+		}
 		UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
 
 		cameraThread.start();

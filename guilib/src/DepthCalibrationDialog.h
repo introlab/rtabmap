@@ -25,62 +25,59 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef PROGRESSDIALOG_H_
-#define PROGRESSDIALOG_H_
-
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#ifndef GUILIB_SRC_DEPTHCALIBRATIONDIALOG_H_
+#define GUILIB_SRC_DEPTHCALIBRATIONDIALOG_H_
 
 #include <QDialog>
+#include <QMap>
+#include <QtCore/QSettings>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Parameters.h>
 
-class QLabel;
-class QTextEdit;
-class QProgressBar;
-class QPushButton;
-class QCheckBox;
+class Ui_DepthCalibrationDialog;
+
+namespace clams {
+class DiscreteDepthDistortionModel;
+}
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ProgressDialog : public QDialog
+class ProgressDialog;
+
+class DepthCalibrationDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~ProgressDialog();
+	DepthCalibrationDialog(QWidget * parent = 0);
+	virtual ~DepthCalibrationDialog();
 
-	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
-	void setValue(int value);
-	int maximumSteps() const;
-	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
-	void setCancelButtonVisible(bool visible);
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
+
+	void calibrate(const std::map<int, Transform> & poses,
+			const QMap<int, Signature> & cachedSignatures,
+			const QString & workingDirectory,
+			const ParametersMap & parameters);
 
 signals:
-	void canceled();
-
-protected:
-	virtual void closeEvent(QCloseEvent * event);
+	void configChanged();
 
 public slots:
-	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep();
-	void clear();
-	void resetProgress();
+	void restoreDefaults();
 
 private slots:
-	void closeDialog();
+	void saveModel();
+	void cancel();
 
 private:
-	QLabel * _text;
-	QTextEdit * _detailedText;
-	QProgressBar * _progressBar;
-	QPushButton * _closeButton;
-	QPushButton * _cancelButton;
-	QCheckBox * _closeWhenDoneCheckBox;
-	QString _endMessage;
-	int _delayedClosingTime; // sec
+	Ui_DepthCalibrationDialog * _ui;
+	ProgressDialog * _progressDialog;
+	bool _canceled;
+	clams::DiscreteDepthDistortionModel * _model;
+	QString _workingDirectory;
 };
 
-}
+} /* namespace rtabmap */
 
-#endif /* PROGRESSDIALOG_H_ */
+#endif /* GUILIB_SRC_DEPTHCALIBRATIONDIALOG_H_ */

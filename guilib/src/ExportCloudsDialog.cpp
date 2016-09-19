@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/GainCompensator.h"
+#include "rtabmap/core/clams/discrete_depth_distortion_model.h"
 
 #include <pcl/conversions.h>
 #include <pcl/io/pcd_io.h>
@@ -58,7 +59,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
-	QDialog(parent)
+	QDialog(parent),
+	_canceled(false)
 {
 	_ui = new Ui_ExportCloudsDialog();
 	_ui->setupUi(this);
@@ -77,6 +79,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->lineEdit_distortionModel, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
+	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(selectDistortionModel()));
 
 	connect(_ui->groupBox_filtering, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_filteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -120,6 +124,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	_progressDialog->setVisible(false);
 	_progressDialog->setAutoClose(true, 2);
 	_progressDialog->setMinimumWidth(600);
+	_progressDialog->setCancelButtonVisible(true);
+	connect(_progressDialog, SIGNAL(canceled()), this, SLOT(cancel()));
 
 #ifdef DISABLE_VTK
 	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(false);
@@ -148,6 +154,12 @@ void ExportCloudsDialog::updateTexturingAvailability()
 	_ui->label_meshDecimation->setEnabled(_ui->doubleSpinBox_meshDecimationFactor->isEnabled());
 }
 
+void ExportCloudsDialog::cancel()
+{
+	_canceled = true;
+	_progressDialog->appendText(tr("Canceled!"));
+}
+
 void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & group) const
 {
 	if(!group.isEmpty())
@@ -162,6 +174,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
+	settings.setValue("regenerate_distortion_model", _ui->lineEdit_distortionModel->text());
 
 
 	settings.setValue("filtering", _ui->groupBox_filtering->isChecked());
@@ -225,6 +238,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
+	_ui->lineEdit_distortionModel->setText(settings.value("regenerate_distortion_model", _ui->lineEdit_distortionModel->text()).toString());
 
 	_ui->groupBox_filtering->setChecked(settings.value("filtering", _ui->groupBox_filtering->isChecked()).toBool());
 	_ui->doubleSpinBox_filteringRadius->setValue(settings.value("filtering_radius", _ui->doubleSpinBox_filteringRadius->value()).toDouble());
@@ -285,6 +299,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
+	_ui->lineEdit_distortionModel->setText("");
 
 	_ui->groupBox_filtering->setChecked(false);
 	_ui->doubleSpinBox_filteringRadius->setValue(0.02);
@@ -337,6 +352,20 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 	_ui->groupBox_mls->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_gp3->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_organized->setVisible(_ui->comboBox_pipeline->currentIndex() == 0);
+}
+
+void ExportCloudsDialog::selectDistortionModel()
+{
+	QString dir = _ui->lineEdit_distortionModel->text();
+	if(dir.isEmpty())
+	{
+		dir = _workingDirectory;
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Distortion model (*.bin)"));
+	if(path.size())
+	{
+		_ui->lineEdit_distortionModel->setText(path);
+	}
 }
 
 void ExportCloudsDialog::setSaveButton()
@@ -423,7 +452,7 @@ void ExportCloudsDialog::exportClouds(
 			saveClouds(workingDirectory, poses, clouds, _ui->checkBox_binary->isChecked());
 		}
 	}
-	else
+	else if(!_canceled)
 	{
 		_progressDialog->setAutoClose(false);
 	}
@@ -605,6 +634,8 @@ bool ExportCloudsDialog::getExportedClouds(
 		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
 		std::map<int, pcl::TextureMesh::Ptr> & textureMeshes)
 {
+	_canceled = false;
+	_workingDirectory = workingDirectory;
 	enableRegeneration(cachedSignatures.size());
 	if(this->exec() == QDialog::Accepted)
 	{
@@ -650,6 +681,11 @@ bool ExportCloudsDialog::getExportedClouds(
 				cachedClouds,
 				parameters);
 
+		if(_canceled)
+		{
+			return false;
+		}
+
 		if(clouds.empty())
 		{
 			_progressDialog->setAutoClose(false);
@@ -686,6 +722,10 @@ bool ExportCloudsDialog::getExportedClouds(
 					_progressDialog->appendText(tr("Cloud %1 has gain %2").arg(jter->first).arg(gain));
 					_progressDialog->incrementStep();
 					QApplication::processEvents();
+					if(_canceled)
+					{
+						return false;
+					}
 				}
 			}
 		}
@@ -721,6 +761,10 @@ bool ExportCloudsDialog::getExportedClouds(
 				_progressDialog->appendText(tr("Assembled cloud %1, total=%2 (%3/%4).").arg(iter->first).arg(assembledCloud->size()).arg(++i).arg(clouds.size()));
 				_progressDialog->incrementStep();
 				QApplication::processEvents();
+				if(_canceled)
+				{
+					return false;
+				}
 			}
 
 			pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
@@ -738,6 +782,11 @@ bool ExportCloudsDialog::getExportedClouds(
 
 			clouds.clear();
 			clouds.insert(std::make_pair(0, std::make_pair(assembledCloud, pcl::IndicesPtr(new std::vector<int>))));
+		}
+
+		if(_canceled)
+		{
+			return false;
 		}
 
 		std::map<int, Transform> viewPoints = poses;
@@ -787,6 +836,10 @@ bool ExportCloudsDialog::getExportedClouds(
 
 				_progressDialog->appendText(tr("Smoothing (MLS) the cloud (%1 points)...").arg(cloudWithNormals->size()));
 				QApplication::processEvents();
+				if(_canceled)
+				{
+					return false;
+				}
 
 				cloudWithNormals = util3d::mls(
 						cloudWithoutNormals,
@@ -832,6 +885,10 @@ bool ExportCloudsDialog::getExportedClouds(
 
 			_progressDialog->incrementStep();
 			QApplication::processEvents();
+			if(_canceled)
+			{
+				return false;
+			}
 		}
 
 		//used for organized texturing below
@@ -968,6 +1025,10 @@ bool ExportCloudsDialog::getExportedClouds(
 
 					_progressDialog->incrementStep();
 					QApplication::processEvents();
+					if(_canceled)
+					{
+						return false;
+					}
 				}
 
 				if(_ui->checkBox_assemble->isChecked() && mergedClouds->size())
@@ -1015,7 +1076,6 @@ bool ExportCloudsDialog::getExportedClouds(
 					_progressDialog->incrementStep();
 					QApplication::processEvents();
 				}
-
 			}
 			else
 			{
@@ -1073,8 +1133,17 @@ bool ExportCloudsDialog::getExportedClouds(
 
 					_progressDialog->incrementStep();
 					QApplication::processEvents();
+					if(_canceled)
+					{
+						return false;
+					}
 				}
 			}
+		}
+
+		if(_canceled)
+		{
+			return false;
 		}
 
 		// texture mesh
@@ -1228,6 +1297,10 @@ bool ExportCloudsDialog::getExportedClouds(
 				_progressDialog->appendText(tr("TextureMesh %1 created [cameras=%2] (%3/%4).").arg(iter->first).arg(cameraPoses.size()).arg(++i).arg(meshes.size()));
 				_progressDialog->incrementStep();
 				QApplication::processEvents();
+				if(_canceled)
+				{
+					return false;
+				}
 			}
 
 			if(textureMeshes.size() > 1 && _ui->checkBox_assemble->isChecked())
@@ -1260,7 +1333,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud;
 	pcl::IndicesPtr previousIndices;
 	Transform previousPose;
-	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter, ++index)
+	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end() && !_canceled; ++iter, ++index)
 	{
 		int points = 0;
 		int totalIndices = 0;
@@ -1278,6 +1351,16 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					d.uncompressData(&image, &depth, 0);
 					if(!image.empty() && !depth.empty())
 					{
+						if(!_ui->lineEdit_distortionModel->text().isEmpty() &&
+						   QFileInfo(_ui->lineEdit_distortionModel->text()).exists())
+						{
+							clams::DiscreteDepthDistortionModel model;
+							model.load(_ui->lineEdit_distortionModel->text().toStdString());
+							depth = depth.clone();// make sure we are not modifying data in cached signatures.
+							model.undistort(depth);
+							d.setDepthOrRightRaw(depth);
+						}
+
 						UASSERT(iter->first == d.id());
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
 						cloudWithoutNormals = util3d::cloudRGBFromSensorData(
@@ -1555,6 +1638,10 @@ void ExportCloudsDialog::saveClouds(
 						}
 						_progressDialog->incrementStep();
 						QApplication::processEvents();
+						if(_canceled)
+						{
+							return;
+						}
 					}
 				}
 			}
@@ -1708,6 +1795,10 @@ void ExportCloudsDialog::saveMeshes(
 						}
 						_progressDialog->incrementStep();
 						QApplication::processEvents();
+						if(_canceled)
+						{
+							return;
+						}
 					}
 				}
 			}
@@ -1847,6 +1938,10 @@ void ExportCloudsDialog::saveTextureMeshes(
 					}
 					_progressDialog->incrementStep();
 					QApplication::processEvents();
+					if(_canceled)
+					{
+						return;
+					}
 				}
 			}
 		}

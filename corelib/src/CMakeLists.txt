@@ -74,6 +74,12 @@ SET(SRC_FILES
 	FlannIndex.cpp
 	
 	sqlite3/sqlite3.c	
+	
+	#clams stuff
+	clams/discrete_depth_distortion_model_helpers.cpp
+	clams/discrete_depth_distortion_model.cpp
+	clams/frame_projector.cpp
+	clams/slam_calibrator.cpp
 )
 
 IF(OpenCV_VERSION_MAJOR EQUAL 2)

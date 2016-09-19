@@ -1356,9 +1356,9 @@ cv::Point3f projectDisparityTo3D(
 // Register point cloud to camera (return registered depth image)
 cv::Mat projectCloudToCamera(
 		const cv::Size & imageSize,
-		const cv::Mat & cameraMatrixK, // /base_link -> /camera_link
+		const cv::Mat & cameraMatrixK,
 		const cv::Mat & laserScan,     // assuming laser scan points are already in /base_link coordinate
-		const rtabmap::Transform & cameraTransform)
+		const rtabmap::Transform & cameraTransform) // /base_link -> /camera_link
 {
 	UASSERT(!cameraTransform.isNull());
 	UASSERT(!laserScan.empty());
@@ -1421,9 +1421,9 @@ cv::Mat projectCloudToCamera(
 
 cv::Mat projectCloudToCamera(
 		const cv::Size & imageSize,
-		const cv::Mat & cameraMatrixK, // /base_link -> /camera_link
+		const cv::Mat & cameraMatrixK,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan,  // assuming points are already in /base_link coordinate
-		const rtabmap::Transform & cameraTransform)
+		const rtabmap::Transform & cameraTransform)           // /base_link -> /camera_link
 {
 	UASSERT(!cameraTransform.isNull());
 	UASSERT(!laserScan->empty());
@@ -1446,17 +1446,22 @@ cv::Mat projectCloudToCamera(
 
 		// re-project in camera frame
 		float z = ptScan.z;
-		float invZ = 1.0f/z;
-		int dx = (fx*ptScan.x)*invZ + cx;
-		int dy = (fy*ptScan.y)*invZ + cy;
-
-		if(z > 0.0f && uIsInBounds(dx, 0, registered.cols) && uIsInBounds(dy, 0, registered.rows))
+		if(z > 0.0f)
 		{
-			++count;
-			float &zReg = registered.at<float>(dy, dx);
-			if(zReg == 0 || z < zReg)
+			float invZ = 1.0f/z;
+			int dx = (fx*ptScan.x)*invZ + cx;
+			if(uIsInBounds(dx, 0, registered.cols))
 			{
-				zReg = z;
+				int dy = (fy*ptScan.y)*invZ + cy;
+				if(uIsInBounds(dy, 0, registered.rows))
+				{
+					++count;
+					float &zReg = registered.at<float>(dy, dx);
+					if(zReg == 0 || z < zReg)
+					{
+						zReg = z;
+					}
+				}
 			}
 		}
 	}

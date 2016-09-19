@@ -76,7 +76,8 @@ public:
 
 	void initRectificationMap();
 
-	bool isValidForProjection() const {return fx()>0.0 && fy()>0.0;}
+	bool isValidForProjection() const {return fx()>0.0 && fy()>0.0 && cx()>0.0 && cy()>0.0;}
+	bool isValidForReprojection() const {return fx()>0.0 && fy()>0.0 && cx()>0.0 && cy()>0.0 && imageWidth()>0 && imageHeight()>0;}
 	bool isValidForRectification() const
 	{
 		return imageSize_.width>0 &&
@@ -123,6 +124,13 @@ public:
 	// For depth images, your should use cv::INTER_NEAREST
 	cv::Mat rectifyImage(const cv::Mat & raw, int interpolation = cv::INTER_LINEAR) const;
 	cv::Mat rectifyDepth(const cv::Mat & raw) const;
+
+	// Project 2D pixel to 3D (in /camera_link frame)
+	void project(float u, float v, float depth, float & x, float & y, float & z) const;
+	// Reproject 3D point (in /camera_link frame) to pixel
+	void reproject(float x, float y, float z, float & u, float & v) const;
+	void reproject(float x, float y, float z, int & u, int & v) const;
+	bool inFrame(int u, int v) const;
 
 private:
 	std::string name_;

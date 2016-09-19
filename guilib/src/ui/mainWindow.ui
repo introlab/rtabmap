@@ -56,6 +56,7 @@
     <addaction name="menuExport_poses"/>
     <addaction name="actionExport_images_RGB_jpg_Depth_png"/>
     <addaction name="actionExport_cameras_in_Bundle_format_out"/>
+    <addaction name="actionDepth_Calibration"/>
     <addaction name="separator"/>
     <addaction name="actionClose_database"/>
     <addaction name="separator"/>
@@ -1343,6 +1344,11 @@
    </property>
    <property name="text">
     <string>RealSense</string>
+   </property>
+  </action>
+  <action name="actionDepth_Calibration">
+   <property name="text">
+    <string>Depth calibration...</string>
    </property>
   </action>
  </widget>

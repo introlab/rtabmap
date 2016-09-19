@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-490</y>
+            <y>-179</y>
             <width>673</width>
             <height>2496</height>
            </rect>
@@ -2357,7 +2357,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -2384,7 +2384,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                             </widget>
                            </item>
                            <item>
-                            <layout class="QGridLayout" name="gridLayout_55" columnstretch="0,0,1">
+                            <layout class="QGridLayout" name="gridLayout_55" columnstretch="0,0,0,1,0">
                              <item row="0" column="1">
                               <widget class="QComboBox" name="comboBox_cameraRGBD">
                                <property name="sizeAdjustPolicy">
@@ -2432,7 +2432,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </item>
                               </widget>
                              </item>
-                             <item row="0" column="2">
+                             <item row="0" column="3">
                               <widget class="QLabel" name="label_228">
                                <property name="text">
                                 <string>Driver</string>
@@ -2442,7 +2442,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </property>
                               </widget>
                              </item>
-                             <item row="3" column="2">
+                             <item row="1" column="3">
                               <widget class="QLabel" name="label_229">
                                <property name="text">
                                 <string>Only RGB images are published.</string>
@@ -2452,7 +2452,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </property>
                               </widget>
                              </item>
-                             <item row="3" column="1">
+                             <item row="1" column="1">
                               <widget class="QCheckBox" name="checkbox_rgbd_colorOnly">
                                <property name="text">
                                 <string/>
@@ -2462,12 +2462,56 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </property>
                               </widget>
                              </item>
+                             <item row="2" column="0">
+                              <widget class="QToolButton" name="toolButton_source_distortionModel">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="3">
+                              <widget class="QLabel" name="label_341">
+                               <property name="text">
+                                <string>Distortion model (output from depth calibration).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QLineEdit" name="lineEdit_source_distortionModel">
+                               <property name="minimumSize">
+                                <size>
+                                 <width>100</width>
+                                 <height>0</height>
+                                </size>
+                               </property>
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="2">
+                              <widget class="QToolButton" name="toolButton_distortionModel">
+                               <property name="toolTip">
+                                <string>Open database viewer</string>
+                               </property>
+                               <property name="text">
+                                <string/>
+                               </property>
+                               <property name="icon">
+                                <iconset resource="../GuiLib.qrc">
+                                 <normaloff>:/images/mag_glass.png</normaloff>:/images/mag_glass.png</iconset>
+                               </property>
+                              </widget>
+                             </item>
                             </layout>
                            </item>
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>2</number>
+                              <number>1</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">

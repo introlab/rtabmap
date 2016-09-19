@@ -215,8 +215,9 @@ public:
 	QString getSourceDriverStr() const;
 	QString getSourceDevice() const;
 
-	bool getSourceDatabaseStampsUsed() const;
+	bool isSourceDatabaseStampsUsed() const;
 	bool isSourceRGBDColorOnly() const;
+	QString getSourceDistortionModel() const;
 	int getSourceImageDecimation() const;
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceScanFromDepth() const;
@@ -292,6 +293,7 @@ private slots:
 	void setupTreeView();
 	void updateBasicParameter();
 	void openDatabaseViewer();
+	void visualizeDistortionModel();
 	void selectSourceDatabase();
 	void selectCalibrationPath();
 	void selectSourceImagesStamps();
@@ -305,6 +307,7 @@ private slots:
 	void selectSourceVideoPath();
 	void selectSourceStereoVideoPath();
 	void selectSourceStereoVideoPath2();
+	void selectSourceDistortionModel();
 	void selectSourceOniPath();
 	void selectSourceOni2Path();
 	void selectSourceSvoPath();

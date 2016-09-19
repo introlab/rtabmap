@@ -65,6 +65,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportScansDialog.h"
 #include "AboutDialog.h"
 #include "PostProcessingDialog.h"
+#include "DepthCalibrationDialog.h"
 
 #include <QtGui/QCloseEvent>
 #include <QtGui/QPixmap>
@@ -165,7 +166,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_rawLikelihoodCurve(0),
 	_autoScreenCaptureOdomSync(false),
 	_autoScreenCaptureRAM(false),
-	_firstCall(true)
+	_firstCall(true),
+	_progressCanceled(false)
 {
 	UDEBUG("");
 
@@ -186,6 +188,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_exportScansDialog->setObjectName("ExportScansDialog");
 	_postProcessingDialog = new PostProcessingDialog(this);
 	_postProcessingDialog->setObjectName("PostProcessingDialog");
+	_depthCalibrationDialog = new DepthCalibrationDialog(this);
+	_depthCalibrationDialog->setObjectName("DepthCalibrationDialog");
 
 	_ui = new Ui_mainWindow();
 	UDEBUG("Setup ui...");
@@ -235,6 +239,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadWindowGeometry(_exportCloudsDialog);
 	_preferencesDialog->loadWindowGeometry(_exportScansDialog);
 	_preferencesDialog->loadWindowGeometry(_postProcessingDialog);
+	_preferencesDialog->loadWindowGeometry(_depthCalibrationDialog);
 	_preferencesDialog->loadWindowGeometry(_aboutDialog);
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
@@ -281,6 +286,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_initProgressDialog = new ProgressDialog(this);
 	_initProgressDialog->setWindowTitle(tr("Progress dialog"));
 	_initProgressDialog->setMinimumWidth(800);
+	connect(_initProgressDialog, SIGNAL(canceled()), this, SLOT(cancelProgress()));
 
 	connect(_ui->widget_mapVisibility, SIGNAL(visibilityChanged(int, bool)), this, SLOT(updateNodeVisibility(int, bool)));
 
@@ -375,6 +381,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionTrigger_a_new_map, SIGNAL(triggered()), this, SLOT(triggerNewMap()));
 	connect(_ui->actionData_recorder, SIGNAL(triggered()), this, SLOT(dataRecorder()));
 	connect(_ui->actionPost_processing, SIGNAL(triggered()), this, SLOT(postProcessing()));
+	connect(_ui->actionDepth_Calibration, SIGNAL(triggered()), this, SLOT(depthCalibration()));
 
 	_ui->actionPause->setShortcut(Qt::Key_Space);
 	_ui->actionSave_GUI_config->setShortcut(QKeySequence::Save);
@@ -458,6 +465,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_exportCloudsDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_exportScansDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_depthCalibrationDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar, SIGNAL(orientationChanged(Qt::Orientation)), this, SLOT(configGUIModified()));
 	connect(statusBarAction, SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
@@ -518,6 +526,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadWidgetState(_exportCloudsDialog);
 	_preferencesDialog->loadWidgetState(_exportScansDialog);
 	_preferencesDialog->loadWidgetState(_postProcessingDialog);
+	_preferencesDialog->loadWidgetState(_depthCalibrationDialog);
 
 	if(_ui->statsToolBox->findChildren<StatItem*>().size() == 0)
 	{
@@ -848,12 +857,13 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 	{
 		_firstStamp = info.stamp;
 	}
-
+	_ui->statsToolBox->updateStat("Camera/Time total/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeTotal*1000.0f);
 	_ui->statsToolBox->updateStat("Camera/Time capturing/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeCapture*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time undistort depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeUndistortDepth*1000.0f);
 	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeImageDecimation*1000.0f);
 	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeDisparity*1000.0f);
 	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeMirroring*1000.0f);
-	_ui->statsToolBox->updateStat("Camera/Time scan_from_depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f);
+	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f);
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataIgnored)
@@ -1907,6 +1917,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	{
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+		_ui->actionDepth_Calibration->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 	}
 
 	_processingStatistics = false;
@@ -2170,6 +2181,10 @@ void MainWindow::updateMapCloud(
 				if(poses.size() < 200 || i % 100 == 0)
 				{
 					QApplication::processEvents();
+					if(_progressCanceled)
+					{
+						break;
+					}
 				}
 			}
 		}
@@ -3254,6 +3269,8 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		{
 			_initProgressDialog->appendText("Updating the 3D map cloud...");
 			_initProgressDialog->incrementStep();
+			_initProgressDialog->setCancelButtonVisible(true);
+			_progressCanceled = false;
 			QApplication::processEvents();
 			std::map<int, Transform> poses = event.getPoses();
 			alignPosesToGroundTruth(poses, groundTruth);
@@ -3277,10 +3294,13 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		{
 			_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+			_ui->actionDepth_Calibration->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		}
 		_processingDownloadedMap = false;
 	}
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+	_initProgressDialog->setCancelButtonVisible(false);
+	_progressCanceled = false;
 }
 
 void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event)
@@ -3379,7 +3399,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 		{
 			if(dynamic_cast<DBReader*>(_camera->camera()) != 0)
 			{
-				_camera->setImageRate( _preferencesDialog->getSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
+				_camera->setImageRate( _preferencesDialog->isSourceDatabaseStampsUsed()?-1:_preferencesDialog->getGeneralInputRate());
 			}
 			else
 			{
@@ -3755,6 +3775,12 @@ void MainWindow::beep()
 	QApplication::beep();
 }
 
+void MainWindow::cancelProgress()
+{
+	_progressCanceled = true;
+	_initProgressDialog->appendText(tr("Canceled!"));
+}
+
 void MainWindow::configGUIModified()
 {
 	this->setWindowModified(true);
@@ -3774,6 +3800,7 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_exportCloudsDialog);
 	_preferencesDialog->saveWidgetState(_exportScansDialog);
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
+	_preferencesDialog->saveWidgetState(_depthCalibrationDialog);
 	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
 	_preferencesDialog->saveSettings();
 	this->saveFigures();
@@ -4012,7 +4039,7 @@ void MainWindow::startDetection()
 		float detectionRate = uStr2Float(parameters.at(Parameters::kRtabmapDetectionRate()));
 		int bufferingSize = uStr2Float(parameters.at(Parameters::kRtabmapImageBufferSize()));
 		if(((detectionRate!=0.0f && detectionRate <= inputRate) || (detectionRate > 0.0f && inputRate == 0.0f)) &&
-			(_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->getSourceDatabaseStampsUsed()))
+			(_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->isSourceDatabaseStampsUsed()))
 		{
 			int button = QMessageBox::question(this,
 					tr("Incompatible frame rates!"),
@@ -4028,7 +4055,7 @@ void MainWindow::startDetection()
 			}
 		}
 		if(bufferingSize != 0 &&
-		  (_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->getSourceDatabaseStampsUsed()))
+		  (_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->isSourceDatabaseStampsUsed()))
 		{
 			int button = QMessageBox::question(this,
 					tr("Some images may be skipped!"),
@@ -4090,6 +4117,10 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanFromDepthMaxDepth(),
 			_preferencesDialog->getSourceScanVoxelSize(),
 			_preferencesDialog->getSourceScanNormalsK());
+	if(_preferencesDialog->getSourceType() == PreferencesDialog::kSrcRGBD)
+	{
+		_camera->setDistortionModel(_preferencesDialog->getSourceDistortionModel().toStdString());
+	}
 
 	//Create odometry thread if rgbd slam
 	if(uStr2Bool(parameters.at(Parameters::kRGBDEnabled()).c_str()))
@@ -4468,6 +4499,8 @@ void MainWindow::postProcessing()
 	_initProgressDialog->clear();
 	_initProgressDialog->show();
 	_initProgressDialog->appendText("Post-processing beginning!");
+	_initProgressDialog->setCancelButtonVisible(true);
+	_progressCanceled = false;
 
 	int totalSteps = 0;
 	if(refineNeighborLinks)
@@ -4498,7 +4531,7 @@ void MainWindow::postProcessing()
 		UDEBUG("");
 
 		UASSERT(detectLoopClosureIterations>0);
-		for(int n=0; n<detectLoopClosureIterations; ++n)
+		for(int n=0; n<detectLoopClosureIterations && !_progressCanceled; ++n)
 		{
 			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
 					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
@@ -4513,7 +4546,7 @@ void MainWindow::postProcessing()
 
 			int i=0;
 			std::set<int> addedLinks;
-			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter, ++i)
+			for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end() && !_progressCanceled; ++iter, ++i)
 			{
 				int from = iter->first;
 				int to = iter->second;
@@ -4552,9 +4585,6 @@ void MainWindow::postProcessing()
 						}
 						else
 						{
-							_initProgressDialog->incrementStep();
-							QApplication::processEvents();
-
 							Signature signatureFrom = _cachedSignatures[from];
 							Signature signatureTo = _cachedSignatures[to];
 
@@ -4579,6 +4609,7 @@ void MainWindow::postProcessing()
 						}
 					}
 				}
+				_initProgressDialog->incrementStep();
 			}
 			_initProgressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!")
 					.arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
@@ -4610,7 +4641,7 @@ void MainWindow::postProcessing()
 		_initProgressDialog->appendText(tr("Total new loop closures detected=%1").arg(loopClosuresAdded));
 	}
 
-	if(refineNeighborLinks || refineLoopClosureLinks)
+	if(!_progressCanceled && (refineNeighborLinks || refineLoopClosureLinks))
 	{
 		UDEBUG("");
 		if(refineLoopClosureLinks)
@@ -4623,7 +4654,7 @@ void MainWindow::postProcessing()
 		RegistrationIcp regIcp(parameters);
 
 		int i=0;
-		for(std::multimap<int, Link>::iterator iter = _currentLinksMap.begin(); iter!=_currentLinksMap.end(); ++iter, ++i)
+		for(std::multimap<int, Link>::iterator iter = _currentLinksMap.begin(); iter!=_currentLinksMap.end() && !_progressCanceled; ++iter, ++i)
 		{
 			int type = iter->second.type();
 
@@ -4712,7 +4743,7 @@ void MainWindow::postProcessing()
 	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
 	_initProgressDialog->incrementStep();
 
-	if(sba)
+	if(!_progressCanceled && sba)
 	{
 		UASSERT(Optimizer::isAvailable(sbaType));
 		_initProgressDialog->appendText(tr("SBA (%1 nodes, %2 constraints, %3 iterations)...")
@@ -4759,8 +4790,26 @@ void MainWindow::postProcessing()
 
 	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	_initProgressDialog->appendText("Post-processing finished!");
+	_initProgressDialog->setCancelButtonVisible(false);
+	_progressCanceled = false;
 
 	delete optimizer;
+}
+
+void MainWindow::depthCalibration()
+{
+	if(_currentPosesMap.size() && _cachedSignatures.size())
+	{
+		_depthCalibrationDialog->calibrate(
+				_currentPosesMap,
+				_cachedSignatures,
+				_preferencesDialog->getWorkingDirectory(),
+				_preferencesDialog->getAllParameters());
+	}
+	else
+	{
+		QMessageBox::warning(this, tr("Depth Calibration"), tr("No data in cache. Try to refresh the cache."));
+	}
 }
 
 void MainWindow::deleteMemory()
@@ -5157,6 +5206,7 @@ void MainWindow::clearTheCache()
 	_ui->actionPost_processing->setEnabled(false);
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
+	_ui->actionDepth_Calibration->setEnabled(false);
 	_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(false);
 	_ui->actionView_scans->setEnabled(false);
 	_ui->actionExport_octomap->setEnabled(false);
@@ -6008,7 +6058,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		}
 	}
 	actions = _ui->menuFile->actions();
-	if(actions.size()==16)
+	if(actions.size()==17)
 	{
 		if(actions.at(2)->isSeparator())
 		{
@@ -6018,9 +6068,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		{
 			UWARN("Menu File separators have not the same order.");
 		}
-		if(actions.at(12)->isSeparator())
+		if(actions.at(13)->isSeparator())
 		{
-			actions.at(12)->setVisible(!monitoring);
+			actions.at(13)->setVisible(!monitoring);
 		}
 		else
 		{
@@ -6083,6 +6133,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_octomap->setEnabled(false);
 #endif
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+		_ui->actionDepth_Calibration->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(true);
@@ -6144,6 +6195,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_octomap->setEnabled(false);
 #endif
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+		_ui->actionDepth_Calibration->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
 		_ui->menuSelect_source->setEnabled(true);
@@ -6190,6 +6242,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionView_scans->setEnabled(false);
 		_ui->actionExport_octomap->setEnabled(false);
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
+		_ui->actionDepth_Calibration->setEnabled(false);
 		_ui->actionDownload_all_clouds->setEnabled(false);
 		_ui->actionDownload_graph->setEnabled(false);
 		_ui->menuSelect_source->setEnabled(false);
@@ -6233,6 +6286,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionView_scans->setEnabled(false);
 			_ui->actionExport_octomap->setEnabled(false);
 			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
+			_ui->actionDepth_Calibration->setEnabled(false);
 			_ui->actionDownload_all_clouds->setEnabled(false);
 			_ui->actionDownload_graph->setEnabled(false);
 			_state = kDetecting;
@@ -6267,6 +6321,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->actionExport_octomap->setEnabled(false);
 #endif
 			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+			_ui->actionDepth_Calibration->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 			_ui->actionDownload_all_clouds->setEnabled(true);
 			_ui->actionDownload_graph->setEnabled(true);
 			_state = kPaused;
@@ -6297,6 +6352,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionView_scans->setEnabled(false);
 		_ui->actionExport_octomap->setEnabled(false);
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
+		_ui->actionDepth_Calibration->setEnabled(false);
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);
@@ -6332,6 +6388,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionExport_octomap->setEnabled(false);
 #endif
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
+		_ui->actionDepth_Calibration->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionDelete_memory->setEnabled(true);
 		_ui->actionDownload_all_clouds->setEnabled(true);
 		_ui->actionDownload_graph->setEnabled(true);

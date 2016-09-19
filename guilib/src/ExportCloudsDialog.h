@@ -87,8 +87,10 @@ public slots:
 
 private slots:
 	void updateReconstructionFlavor();
+	void selectDistortionModel();
 	void updateMLSGrpVisibility();
 	void updateTexturingAvailability();
+	void cancel();
 
 private:
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > getClouds(
@@ -118,6 +120,8 @@ private:
 private:
 	Ui_ExportCloudsDialog * _ui;
 	ProgressDialog * _progressDialog;
+	QString _workingDirectory;
+	bool _canceled;
 };
 
 }

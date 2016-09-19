@@ -53,12 +53,16 @@ ProgressDialog::ProgressDialog(QWidget *parent, Qt::WindowFlags flags) :
 	_detailedText->setLineWrapMode(QTextEdit::NoWrap);
 	_closeButton = new QPushButton(this);
 	_closeButton->setText("Close");
+	_cancelButton = new QPushButton(this);
+	_cancelButton->setText("Cancel");
+	_cancelButton-> setVisible(false);
 	_closeWhenDoneCheckBox = new QCheckBox(this);
 	_closeWhenDoneCheckBox->setChecked(true);
 	_closeWhenDoneCheckBox->setText("Close when done.");
 	_endMessage = "Finished!";
 	this->clear();
 	connect(_closeButton, SIGNAL(clicked()), this, SLOT(close()));
+	connect(_cancelButton, SIGNAL(clicked()), this, SIGNAL(canceled()));
 
 	QVBoxLayout * layout = new QVBoxLayout(this);
 	layout->addWidget(_text);
@@ -67,6 +71,8 @@ ProgressDialog::ProgressDialog(QWidget *parent, Qt::WindowFlags flags) :
 	QHBoxLayout * hLayout = new QHBoxLayout();
 	layout->addLayout(hLayout);
 	hLayout->addWidget(_closeWhenDoneCheckBox);
+	hLayout->addStretch();
+	hLayout->addWidget(_cancelButton);
 	hLayout->addWidget(_closeButton);
 	this->setLayout(layout);
 
@@ -85,6 +91,11 @@ void ProgressDialog::setAutoClose(bool on, int delayedClosingTimeSec)
 		_delayedClosingTime = delayedClosingTimeSec;
 	}
 	_closeWhenDoneCheckBox->setChecked(on);
+}
+
+void ProgressDialog::setCancelButtonVisible(bool visible)
+{
+	_cancelButton->setVisible(visible);
 }
 
 void ProgressDialog::appendText(const QString & text, const QColor & color)

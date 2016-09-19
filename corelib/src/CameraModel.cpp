@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UDirectory.h>
 #include <rtabmap/utilite/UFile.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UMath.h>
 #include <opencv2/imgproc/imgproc.hpp>
 
 namespace rtabmap {
@@ -75,9 +76,19 @@ CameraModel::CameraModel(
 {
 	UASSERT_MSG(fx > 0.0, uFormat("fx=%f", fx).c_str());
 	UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
-	UASSERT_MSG(cx >= 0.0, uFormat("cx=%f", cx).c_str());
-	UASSERT_MSG(cy >= 0.0, uFormat("cy=%f", cy).c_str());
+	UASSERT_MSG(cx > 0.0 || imageSize.width>0, uFormat("cx=%f imageSize.width=%d", cx, imageSize.width).c_str());
+	UASSERT_MSG(cy > 0.0 || imageSize.height>0, uFormat("cy=%f imageSize.height=%d", cy, imageSize.height).c_str());
 	UASSERT(!localTransform.isNull());
+
+	if(cx<=0.0)
+	{
+		cx = double(imageSize.width)/2.0-0.5;
+	}
+	if(cy<=0.0)
+	{
+		cy = double(imageSize.height)/2.0-0.5;
+	}
+
 	if(Tx != 0.0)
 	{
 		P_ = cv::Mat::eye(3, 4, CV_64FC1),
@@ -110,9 +121,19 @@ CameraModel::CameraModel(
 {
 	UASSERT_MSG(fx > 0.0, uFormat("fx=%f", fx).c_str());
 	UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
-	UASSERT_MSG(cx >= 0.0, uFormat("cx=%f", cx).c_str());
-	UASSERT_MSG(cy >= 0.0, uFormat("cy=%f", cy).c_str());
+	UASSERT_MSG(cx > 0.0 || imageSize.width>0, uFormat("cx=%f imageSize.width=%d", cx, imageSize.width).c_str());
+	UASSERT_MSG(cy > 0.0 || imageSize.height>0, uFormat("cy=%f imageSize.height=%d", cy, imageSize.height).c_str());
 	UASSERT(!localTransform.isNull());
+
+	if(cx<=0.0)
+	{
+		cx = double(imageSize.width)/2.0-0.5;
+	}
+	if(cy<=0.0)
+	{
+		cy = double(imageSize.height)/2.0-0.5;
+	}
+
 	if(Tx != 0.0)
 	{
 		P_ = cv::Mat::eye(3, 4, CV_64FC1),
@@ -499,6 +520,42 @@ cv::Mat CameraModel::rectifyDepth(const cv::Mat & raw) const
 		UERROR("Cannot rectify image because the rectify map is not initialized.");
 		return raw.clone();
 	}
+}
+
+// resulting 3D point is in /camera_link frame
+void CameraModel::project(float u, float v, float depth, float & x, float & y, float & z) const
+{
+	if(depth > 0.0f)
+	{
+		// Fill in XYZ
+		x = (u - cx()) * depth / fx();
+		y = (v - cy()) * depth / fy();
+		z = depth;
+	}
+	else
+	{
+		x = y = z = std::numeric_limits<float>::quiet_NaN();
+	}
+}
+// 3D point is in /camera_link frame
+void CameraModel::reproject(float x, float y, float z, float & u, float & v) const
+{
+	UASSERT(z!=0.0f);
+	float invZ = 1.0f/z;
+	u = (fx()*x)*invZ + cx();
+	v = (fy()*y)*invZ + cy();
+}
+void CameraModel::reproject(float x, float y, float z, int & u, int & v) const
+{
+	UASSERT(z!=0.0f);
+	float invZ = 1.0f/z;
+	u = (fx()*x)*invZ + cx();
+	v = (fy()*y)*invZ + cy();
+}
+
+bool CameraModel::inFrame(int u, int v) const
+{
+	return uIsInBounds(u, 0, imageWidth()) && uIsInBounds(v, 0, imageHeight());
 }
 
 } /* namespace rtabmap */

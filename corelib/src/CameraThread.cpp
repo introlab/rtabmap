@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/StereoDense.h"
+#include "rtabmap/core/clams/discrete_depth_distortion_model.h"
 
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -56,7 +57,8 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_scanMinDepth(0.0f),
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
-		_stereoDense(new StereoBM(parameters))
+		_stereoDense(new StereoBM(parameters)),
+		_distortionModel(0)
 {
 	UASSERT(_camera != 0);
 }
@@ -69,6 +71,10 @@ CameraThread::~CameraThread()
 	{
 		delete _camera;
 	}
+	if(_distortionModel)
+	{
+		delete _distortionModel;
+	}
 	delete _stereoDense;
 }
 
@@ -80,8 +86,29 @@ void CameraThread::setImageRate(float imageRate)
 	}
 }
 
+void CameraThread::setDistortionModel(const std::string & path)
+{
+	if(_distortionModel)
+	{
+		delete _distortionModel;
+		_distortionModel = 0;
+	}
+	if(!path.empty())
+	{
+		_distortionModel = new clams::DiscreteDepthDistortionModel();
+		_distortionModel->load(path);
+		if(!_distortionModel->isValid())
+		{
+			UERROR("Loaded distortion model \"%s\" is not valid!", path.c_str());
+			delete _distortionModel;
+			_distortionModel = 0;
+		}
+	}
+}
+
 void CameraThread::mainLoop()
 {
+	UTimer totalTime;
 	UDEBUG("");
 	CameraInfo info;
 	SensorData data = _camera->takeImage(&info);
@@ -92,6 +119,26 @@ void CameraThread::mainLoop()
 		{
 			data.setDepthOrRightRaw(cv::Mat());
 		}
+
+		if(_distortionModel && !data.depthRaw().empty())
+		{
+			UTimer timer;
+			if(_distortionModel->getWidth() == data.depthRaw().cols &&
+			   _distortionModel->getHeight() == data.depthRaw().rows	)
+			{
+				cv::Mat depth = data.depthRaw().clone();// make sure we are not modifying data in cached signatures.
+				_distortionModel->undistort(depth);
+				data.setDepthOrRightRaw(depth);
+			}
+			else
+			{
+				UERROR("Distortion model size is %dx%d but dpeth image is %dx%d!",
+						_distortionModel->getWidth(), _distortionModel->getHeight(),
+						data.depthRaw().cols, data.depthRaw().rows);
+			}
+			info.timeUndistortDepth = timer.ticks();
+		}
+
 		if(_imageDecimation>1 && !data.imageRaw().empty())
 		{
 			UDEBUG("");
@@ -228,6 +275,7 @@ void CameraThread::mainLoop()
 		}
 
 		info.cameraName = _camera->getSerial();
+		info.timeTotal = totalTime.ticks();
 		this->post(new CameraEvent(data, info));
 	}
 	else if(!this->isKilled())

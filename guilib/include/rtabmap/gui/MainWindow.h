@@ -69,6 +69,7 @@ class TwistGridWidget;
 class ExportCloudsDialog;
 class ExportScansDialog;
 class PostProcessingDialog;
+class DepthCalibrationDialog;
 class DataRecorder;
 class OctoMap;
 
@@ -121,6 +122,7 @@ protected:
 private slots:
 	void changeState(MainWindow::State state);
 	void beep();
+	void cancelProgress();
 	void configGUIModified();
 	void saveConfigGUI();
 	void newDatabase();
@@ -141,6 +143,7 @@ private slots:
 	void exportImages();
 	void exportOctomap();
 	void postProcessing();
+	void depthCalibration();
 	void deleteMemory();
 	void openWorkingDirectory();
 	void updateEditMenu();
@@ -264,6 +267,7 @@ private:
 	ExportCloudsDialog * _exportCloudsDialog;
 	ExportScansDialog * _exportScansDialog;
 	PostProcessingDialog * _postProcessingDialog;
+	DepthCalibrationDialog * _depthCalibrationDialog;
 	DataRecorder * _dataRecorder;
 
 	QSet<int> _lastIds;
@@ -330,6 +334,7 @@ private:
 	QVector<int> _loopClosureIds;
 
 	bool _firstCall;
+	bool _progressCanceled;
 };
 
 }
