@@ -4543,6 +4543,7 @@ void MainWindow::postProcessing()
 
 			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+(int)clusters.size());
 			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... found %1 clusters.").arg(clusters.size()));
+			QApplication::processEvents();
 
 			int i=0;
 			std::set<int> addedLinks;
@@ -4604,6 +4605,7 @@ void MainWindow::postProcessing()
 									_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.variance, info.variance)));
 									++loopClosuresAdded;
 									_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+									QApplication::processEvents();
 								}
 							}
 						}
@@ -4622,6 +4624,8 @@ void MainWindow::postProcessing()
 			{
 				_initProgressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
 						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
+				QApplication::processEvents();
+
 				int fromId = optimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first;
 				std::map<int, rtabmap::Transform> posesOut;
 				std::multimap<int, rtabmap::Link> linksOut;
@@ -4650,6 +4654,7 @@ void MainWindow::postProcessing()
 		}
 		// TODO: support ICP from laser scans?
 		_initProgressDialog->appendText(tr("Refining links..."));
+		QApplication::processEvents();
 
 		RegistrationIcp regIcp(parameters);
 
