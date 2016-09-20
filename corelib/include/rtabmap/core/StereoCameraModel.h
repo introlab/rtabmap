@@ -35,7 +35,7 @@ namespace rtabmap {
 class RTABMAP_EXP StereoCameraModel
 {
 public:
-	StereoCameraModel() {}
+	StereoCameraModel() : leftSuffix_("left"), rightSuffix_("right") {}
 	StereoCameraModel(
 			const std::string & name,
 			const cv::Size & imageSize1,
