@@ -90,6 +90,7 @@ public:
 	std::set<int> reactivateSignatures(const std::list<int> & ids, unsigned int maxLoaded, double & timeDbAccess);
 
 	int cleanup();
+	void saveStatistics(const Statistics & statistics);
 	void emptyTrash();
 	void joinTrashThread();
 	bool addLink(const Link & link, bool addInDatabase = false);

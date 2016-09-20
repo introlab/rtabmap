@@ -115,6 +115,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->dockWidget_info->setVisible(false);
 	ui_->dockWidget_stereoView->setVisible(false);
 	ui_->dockWidget_view3d->setVisible(false);
+	ui_->dockWidget_statistics->setVisible(false);
 
 	// Create cloud viewers
 	constraintsViewer_ = new CloudViewer(ui_->dockWidgetContents);
@@ -159,6 +160,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->menuView->addAction(ui_->dockWidget_guiparameters->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_coreparameters->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_info->toggleViewAction());
+	ui_->menuView->addAction(ui_->dockWidget_statistics->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 
 	connect(ui_->parameters_toolbox, SIGNAL(parametersChanged(const QStringList &)), this, SLOT(notifyParametersChanged(const QStringList &)));
@@ -311,6 +313,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->dockWidget_guiparameters->installEventFilter(this);
 	ui_->dockWidget_coreparameters->installEventFilter(this);
 	ui_->dockWidget_info->installEventFilter(this);
+	ui_->dockWidget_statistics->installEventFilter(this);
 }
 
 DatabaseViewer::~DatabaseViewer()
@@ -778,6 +781,7 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 
 	if(event->isAccepted())
 	{
+		ui_->toolBox_statistics->closeFigures();
 		if(dbDriver_)
 		{
 			delete dbDriver_;
@@ -1145,6 +1149,7 @@ void DatabaseViewer::updateIds()
 	dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
 	int badcountInLTM = 0;
 	int badCountInGraph = 0;
+	double firstStamp = 0.0;
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1156,6 +1161,17 @@ void DatabaseViewer::updateIds()
 		int mapId;
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
+
+		double stamp=0.0;
+		std::map<std::string, float> statistics = dbDriver_->getStatistics(ids_[i], stamp);
+		if(firstStamp==0.0)
+		{
+			firstStamp = stamp;
+		}
+		for(std::map<std::string, float>::iterator iter=statistics.begin(); iter!=statistics.end(); ++iter)
+		{
+			ui_->toolBox_statistics->updateStat(iter->first.c_str(), float(stamp-firstStamp), iter->second, true);
+		}
 
 		if(i>0)
 		{

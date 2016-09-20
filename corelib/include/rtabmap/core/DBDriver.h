@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UThreadNode.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/SensorData.h"
+#include <rtabmap/core/Statistics.h>
 
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Link.h>
@@ -94,7 +95,8 @@ public:
 				const cv::Point3f & viewpoint);
 
 public:
-	void addStatisticsAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
+	void addInfoAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
+	void addStatistics(const Statistics & statistics) const;
 
 public:
 	// Mutex-protected methods of abstract versions below
@@ -114,6 +116,7 @@ public:
 	int getTotalNodesSize() const;
 	int getTotalDictionarySize() const;
 	ParametersMap getLastParameters() const;
+	std::map<std::string, float> getStatistics(int nodeId, double & stamp) const;
 
 	void executeNoResult(const std::string & sql) const;
 
@@ -157,6 +160,7 @@ private:
 	virtual int getTotalNodesSizeQuery() const = 0;
 	virtual int getTotalDictionarySizeQuery() const = 0;
 	virtual ParametersMap getLastParametersQuery() const = 0;
+	virtual std::map<std::string, float> getStatisticsQuery(int nodeId, double & stamp) const = 0;
 
 	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 
@@ -176,6 +180,8 @@ private:
 				const cv::Mat & obstacles,
 				float cellSize,
 				const cv::Point3f & viewpoint) const = 0;
+
+	virtual void addStatisticsQuery(const Statistics & statistics) const = 0;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const = 0;

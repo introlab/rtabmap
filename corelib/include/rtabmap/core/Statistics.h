@@ -134,10 +134,11 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Keypoint, Dictionary_size, words);
 	RTABMAP_STATS(Keypoint, Indexed_words, words);
 	RTABMAP_STATS(Keypoint, Index_memory_usage, KB);
-	RTABMAP_STATS(Keypoint, Response_threshold,);
 
 public:
 	static const std::map<std::string, float> & defaultData();
+	static std::string serializeData(const std::map<std::string, float> & data);
+	static std::map<std::string, float> deserializeData(const std::string & data);
 
 public:
 	Statistics();

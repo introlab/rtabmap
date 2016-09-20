@@ -197,6 +197,15 @@ ParametersMap DBDriver::getLastParameters() const
 	return parameters;
 }
 
+std::map<std::string, float> DBDriver::getStatistics(int nodeId, double & stamp) const
+{
+	std::map<std::string, float> statistics;
+	_dbSafeAccessMutex.lock();
+	statistics = getStatisticsQuery(nodeId, stamp);
+	_dbSafeAccessMutex.unlock();
+	return statistics;
+}
+
 std::string DBDriver::getDatabaseVersion() const
 {
 	std::string version = "0.0.0";
@@ -866,7 +875,7 @@ void DBDriver::getAllLabels(std::map<int, std::string> & labels) const
 	_dbSafeAccessMutex.unlock();
 }
 
-void DBDriver::addStatisticsAfterRun(
+void DBDriver::addInfoAfterRun(
 		int stMemSize,
 		int lastSignAdded,
 		int processMemUsed,
@@ -881,13 +890,26 @@ void DBDriver::addStatisticsAfterRun(
 		if(uStrNumCmp(this->getDatabaseVersion(), "0.11.8") >= 0)
 		{
 			std::string param = Parameters::serialize(parameters);
-			query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used,dictionary_size,parameters) values("
-				  << stMemSize << ","
-				  << lastSignAdded << ","
-				  << processMemUsed << ","
-				  << databaseMemUsed << ","
-				  << dictionarySize << ","
-				  "\"" << param.c_str() << "\");";
+			if(uStrNumCmp(this->getDatabaseVersion(), "0.11.11") >= 0)
+			{
+				query << "INSERT INTO Info(STM_size,last_sign_added,process_mem_used,database_mem_used,dictionary_size,parameters) values("
+					  << stMemSize << ","
+					  << lastSignAdded << ","
+					  << processMemUsed << ","
+					  << databaseMemUsed << ","
+					  << dictionarySize << ","
+					  "\"" << param.c_str() << "\");";
+			}
+			else
+			{
+				query << "INSERT INTO Statistics(STM_size,last_sign_added,process_mem_used,database_mem_used,dictionary_size,parameters) values("
+					  << stMemSize << ","
+					  << lastSignAdded << ","
+					  << processMemUsed << ","
+					  << databaseMemUsed << ","
+					  << dictionarySize << ","
+					  "\"" << param.c_str() << "\");";
+			}
 		}
 		else
 		{
@@ -901,6 +923,13 @@ void DBDriver::addStatisticsAfterRun(
 
 		this->executeNoResultQuery(query.str());
 	}
+}
+
+void DBDriver::addStatistics(const Statistics & statistics) const
+{
+	_dbSafeAccessMutex.lock();
+	addStatisticsQuery(statistics);
+	_dbSafeAccessMutex.unlock();
 }
 
 void DBDriver::generateGraph(

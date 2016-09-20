@@ -1285,7 +1285,7 @@ void Memory::clear()
 		if(_memoryChanged)
 		{
 			UDEBUG("");
-			_dbDriver->addStatisticsAfterRun(memSize,
+			_dbDriver->addInfoAfterRun(memSize,
 					_lastSignature?_lastSignature->id():0,
 					UProcessInfo::getMemoryUsage(),
 					_dbDriver->getMemoryUsed(),
@@ -1580,6 +1580,14 @@ int Memory::cleanup()
 	}
 
 	return signatureRemoved;
+}
+
+void Memory::saveStatistics(const Statistics & statistics)
+{
+	if(_dbDriver)
+	{
+		_dbDriver->addStatistics(statistics);
+	}
 }
 
 void Memory::emptyTrash()

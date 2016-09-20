@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Statistics.h"
 #include <rtabmap/utilite/UStl.h>
+#include <rtabmap/utilite/UConversion.h>
 
 namespace rtabmap {
 std::map<std::string, float> Statistics::_defaultData;
@@ -38,11 +39,44 @@ const std::map<std::string, float> & Statistics::defaultData()
 	return _defaultData;
 }
 
+std::string Statistics::serializeData(const std::map<std::string, float> & data)
+{
+	std::stringstream output;
+	for(std::map<std::string, float>::const_iterator iter=data.begin(); iter!=data.end(); ++iter)
+	{
+		if(iter != data.begin())
+		{
+			output << ";";
+		}
+		// make sure there are no commas instead of dots
+		output << iter->first << ":" << uReplaceChar(uNumber2Str(iter->second), ',', '.');
+	}
+	return output.str();
+}
+
+std::map<std::string, float> Statistics::deserializeData(const std::string & data)
+{
+	std::map<std::string, float> output;
+	std::list<std::string> tuplets = uSplit(data, ';');
+	for(std::list<std::string>::iterator iter=tuplets.begin(); iter!=tuplets.end(); ++iter)
+	{
+		std::list<std::string> p = uSplit(*iter, ':');
+		if(p.size() == 2)
+		{
+			std::string key = p.front();
+			std::string value = p.back();
+			uInsert(output, std::make_pair(key, uStr2Float(value)));
+		}
+	}
+	return output;
+}
+
 Statistics::Statistics() :
 	_extended(0),
 	_refImageId(0),
 	_loopClosureId(0),
 	_proximiyDetectionId(0),
+	_stamp(0.0f),
 	_currentGoalId(0)
 {
 	_defaultDataInitialized = true;

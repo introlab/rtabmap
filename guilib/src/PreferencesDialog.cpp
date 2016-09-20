@@ -279,6 +279,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_imageHighestHypShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_beep, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_stamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->checkBox_cacheStatistics, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_notifyWhenNewGlobalPathIsReceived, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_posteriorGraphView, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -1188,6 +1189,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->general_checkBox_cloudsKept->setChecked(true);
 		_ui->checkBox_beep->setChecked(false);
 		_ui->checkBox_stamps->setChecked(true);
+		_ui->checkBox_cacheStatistics->setChecked(true);
 		_ui->checkBox_notifyWhenNewGlobalPathIsReceived->setChecked(false);
 		_ui->checkBox_verticalLayoutUsed->setChecked(true);
 		_ui->checkBox_imageRejectedShown->setChecked(true);
@@ -1563,6 +1565,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_imageHighestHypShown->setChecked(settings.value("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked()).toBool());
 	_ui->checkBox_beep->setChecked(settings.value("beep", _ui->checkBox_beep->isChecked()).toBool());
 	_ui->checkBox_stamps->setChecked(settings.value("figure_time", _ui->checkBox_stamps->isChecked()).toBool());
+	_ui->checkBox_cacheStatistics->setChecked(settings.value("figure_cache", _ui->checkBox_cacheStatistics->isChecked()).toBool());
 	_ui->checkBox_notifyWhenNewGlobalPathIsReceived->setChecked(settings.value("notifyNewGlobalPath", _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked()).toBool());
 	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
 	_ui->checkBox_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked()).toBool());
@@ -1989,6 +1992,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("imageHighestHypShown", _ui->checkBox_imageHighestHypShown->isChecked());
 	settings.setValue("beep",                 _ui->checkBox_beep->isChecked());
 	settings.setValue("figure_time",          _ui->checkBox_stamps->isChecked());
+	settings.setValue("figure_cache",         _ui->checkBox_cacheStatistics->isChecked());
 	settings.setValue("notifyNewGlobalPath",  _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked());
 	settings.setValue("odomQualityThr",       _ui->spinBox_odomQualityWarnThr->value());
 	settings.setValue("posteriorGraphView",   _ui->checkBox_posteriorGraphView->isChecked());
@@ -3768,6 +3772,10 @@ bool PreferencesDialog::beepOnPause() const
 bool PreferencesDialog::isTimeUsedInFigures() const
 {
 	return _ui->checkBox_stamps->isChecked();
+}
+bool PreferencesDialog::isCacheSavedInFigures() const
+{
+	return _ui->checkBox_cacheStatistics->isChecked();
 }
 bool PreferencesDialog::notifyWhenNewGlobalPathIsReceived() const
 {

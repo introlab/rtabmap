@@ -617,7 +617,15 @@ int DBDriverSqlite3::getLastNodesSizeQuery() const
 	int size = 0;
 	if(_ppDb)
 	{
-		std::string query = "SELECT count(id) from Node WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+		std::string query;
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			query = "SELECT count(id) from Node WHERE time_enter >= (SELECT MAX(time_enter) FROM Info);";
+		}
+		else
+		{
+			query = "SELECT count(id) from Node WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+		}
 
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
@@ -641,7 +649,15 @@ int DBDriverSqlite3::getLastDictionarySizeQuery() const
 	int size = 0;
 	if(_ppDb)
 	{
-		std::string query = "SELECT count(id) from Word WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+		std::string query;
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			query = "SELECT count(id) from Word WHERE time_enter >= (SELECT MAX(time_enter) FROM Info);";
+		}
+		else
+		{
+			query = "SELECT count(id) from Word WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+		}
 
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
@@ -716,9 +732,19 @@ ParametersMap DBDriverSqlite3::getLastParametersQuery() const
 	{
 		if(uStrNumCmp(_version, "0.11.8") >= 0)
 		{
-			std::string query = "SELECT parameters "
-					 "FROM Statistics "
-					 "WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+			std::string query;
+			if(uStrNumCmp(_version, "0.11.11") >= 0)
+			{
+				query = "SELECT parameters "
+						 "FROM Info "
+						 "WHERE time_enter >= (SELECT MAX(time_enter) FROM Info);";
+			}
+			else
+			{
+				query = "SELECT parameters "
+						 "FROM Statistics "
+						 "WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics);";
+			}
 
 			int rc = SQLITE_OK;
 			sqlite3_stmt * ppStmt = 0;
@@ -742,6 +768,44 @@ ParametersMap DBDriverSqlite3::getLastParametersQuery() const
 		}
 	}
 	return parameters;
+}
+
+std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, double & stamp) const
+{
+	UDEBUG("");
+	std::map<std::string, float> data;
+	if(_ppDb)
+	{
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			std::stringstream query;
+
+			query << "SELECT stamp, data "
+				  << "FROM Statistics "
+				  << "WHERE id=" << nodeId << ";";
+
+			int rc = SQLITE_OK;
+			sqlite3_stmt * ppStmt = 0;
+			rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_step(ppStmt);
+			if(rc == SQLITE_ROW)
+			{
+				stamp = sqlite3_column_double(ppStmt, 0);
+				std::string text((const char *)sqlite3_column_text(ppStmt, 1));
+				if(text.size())
+				{
+					data = Statistics::deserializeData(text);
+				}
+
+				rc = sqlite3_step(ppStmt);
+			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
+	return data;
 }
 
 void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
@@ -2127,10 +2191,20 @@ void DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 		std::string query;
 		std::list<int> ids;
 
-		query = "SELECT n.id "
-				 "FROM Node AS n "
-				 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
-				 "ORDER BY n.id;";
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			query = "SELECT n.id "
+					 "FROM Node AS n "
+					 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Info) "
+					 "ORDER BY n.id;";
+		}
+		else
+		{
+			query = "SELECT n.id "
+					 "FROM Node AS n "
+					 "WHERE n.time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
+					 "ORDER BY n.id;";
+		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -2169,10 +2243,20 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 		std::list<VisualWord *> visualWords;
 
 		// Get the visual words
-		query = "SELECT id, descriptor_size, descriptor "
-				"FROM Word "
-				"WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
-				"ORDER BY id;";
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			query = "SELECT id, descriptor_size, descriptor "
+					"FROM Word "
+					"WHERE time_enter >= (SELECT MAX(time_enter) FROM Info) "
+					"ORDER BY id;";
+		}
+		else
+		{
+			query = "SELECT id, descriptor_size, descriptor "
+					"FROM Word "
+					"WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
+					"ORDER BY id;";
+		}
 
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -3074,6 +3158,52 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create query
+		if(uStrNumCmp(this->getDatabaseVersion(), "0.11.11") >= 0)
+		{
+			std::string param = Statistics::serializeData(statistics.data());
+			if(param.size() && statistics.refImageId()>0)
+			{
+				std::string query = "INSERT INTO Statistics(id, stamp, data) values(?,?,?);";
+				rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				int index = 1;
+				rc = sqlite3_bind_int(ppStmt, index++, statistics.refImageId());
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				rc = sqlite3_bind_double(ppStmt, index++, statistics.stamp());
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				rc = sqlite3_bind_text(ppStmt, index++, param.c_str(), -1, SQLITE_STATIC);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				//step
+				rc=sqlite3_step(ppStmt);
+				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				rc = sqlite3_reset(ppStmt);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				// Finalize (delete) the statement
+				rc = sqlite3_finalize(ppStmt);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				UDEBUG("Time=%fs", timer.ticks());
+			}
+		}
 	}
 }
 

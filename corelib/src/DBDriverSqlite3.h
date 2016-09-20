@@ -63,6 +63,7 @@ private:
 	virtual int getTotalNodesSizeQuery() const;
 	virtual int getTotalDictionarySizeQuery() const;
 	virtual ParametersMap getLastParametersQuery() const;
+	virtual std::map<std::string, float> getStatisticsQuery(int nodeId, double & stamp) const;
 
 	virtual void executeNoResultQuery(const std::string & sql) const;
 
@@ -82,6 +83,8 @@ private:
 			const cv::Mat & obstacles,
 			float cellSize,
 			const cv::Point3f & viewpoint) const;
+
+	virtual void addStatisticsQuery(const Statistics & statistics) const;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;

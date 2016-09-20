@@ -85,7 +85,7 @@ CREATE TABLE Map_Node_Word (
 	FOREIGN KEY (word_id) REFERENCES Word(id)
 );
 
-CREATE TABLE Statistics (
+CREATE TABLE Info (
 	STM_size INTEGER,
 	last_sign_added INTEGER,
 	process_mem_used INTEGER,
@@ -93,6 +93,13 @@ CREATE TABLE Statistics (
 	dictionary_size INTEGER,
 	parameters TEXT,
 	time_enter DATE
+);
+
+CREATE TABLE Statistics (
+	id INTEGER NOT NULL,
+	stamp FLOAT,
+	data TEXT,	
+	FOREIGN KEY (id) REFERENCES Node(id)
 );
 
 CREATE TABLE Admin (
@@ -120,18 +127,19 @@ BEGIN
  UPDATE Word SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
-CREATE TRIGGER insert_Statistics_timeEnter AFTER INSERT ON Statistics
+CREATE TRIGGER insert_Info_timeEnter AFTER INSERT ON Info
 BEGIN
- UPDATE Statistics SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
+ UPDATE Info SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
-
 
 -- *******************************************************************
 -- INDEXES
 -- *******************************************************************
+CREATE UNIQUE INDEX IDX_Node_id on Node (id);
 CREATE INDEX IDX_Map_Node_Word_node_id on Map_Node_Word (node_id);
 CREATE INDEX IDX_Link_from_id on Link (from_id);
 CREATE UNIQUE INDEX IDX_node_label on Node (label);
+CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);
 
 -- *******************************************************************
 -- VERSION

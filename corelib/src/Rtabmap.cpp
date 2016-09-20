@@ -2557,6 +2557,9 @@ bool Rtabmap::process(
 		UDEBUG("");
 	}
 
+	//Save statistics to database
+	_memory->saveStatistics(statistics_);
+
 	//Start trashing
 	UDEBUG("Empty trash...");
 	_memory->emptyTrash();
