@@ -54,7 +54,7 @@ namespace clams
 		// -- For all selected frames, accumulate training examples
 		//    in the distortion model.
 		size_t counts;
-		#pragma omp parallel for
+		//#pragma omp parallel for // error on linux
 		for(std::map<int, rtabmap::Transform>::const_iterator iter = trajectory.begin(); iter != trajectory.end(); ++iter)
 		{
 		  size_t idx = iter->first;
