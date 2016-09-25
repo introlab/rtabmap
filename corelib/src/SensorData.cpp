@@ -568,7 +568,7 @@ void SensorData::uncompressData(
 		//backward compatibility, set image size in camera model if not set
 		if(!_imageRaw.empty() && _cameraModels.size())
 		{
-			cv::Size size(_imageRaw.cols/_cameraModels.size(), _imageRaw.rows/_cameraModels.size());
+			cv::Size size(_imageRaw.cols/_cameraModels.size(), _imageRaw.rows);
 			for(unsigned int i=0; i<_cameraModels.size(); ++i)
 			{
 				if(_cameraModels[i].isValidForProjection() && _cameraModels[i].imageWidth() == 0)

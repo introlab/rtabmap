@@ -367,8 +367,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 {
 	UDEBUG("");
 	UASSERT(model.isValidForProjection());
-	UASSERT((model.imageHeight() == 0 && model.imageWidth() == 0) || (model.imageHeight() == imageRgb.rows && model.imageWidth() == imageRgb.cols));
-	UASSERT(imageRgb.rows % imageDepth.rows == 0 && imageRgb.cols % imageDepth.cols == 0);
+	UASSERT_MSG((model.imageHeight() == 0 && model.imageWidth() == 0) ||
+			    (model.imageHeight() == imageRgb.rows && model.imageWidth() == imageRgb.cols),
+				uFormat("model=%dx%d rgb=%dx%d", model.imageWidth(), model.imageHeight(), imageRgb.cols, imageRgb.rows).c_str());
+	UASSERT_MSG(imageRgb.rows % imageDepth.rows == 0 && imageRgb.cols % imageDepth.cols == 0,
+			uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepth.cols, imageDepth.rows).c_str());
 	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
 	UASSERT_MSG(imageRgb.rows % decimation == 0, uFormat("imageDepth.rows=%d decimation=%d", imageRgb.rows, decimation).c_str());
 	UASSERT_MSG(imageRgb.cols % decimation == 0, uFormat("imageDepth.cols=%d decimation=%d", imageRgb.cols, decimation).c_str());
