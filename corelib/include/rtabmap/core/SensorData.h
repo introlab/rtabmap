@@ -187,7 +187,14 @@ public:
 	const StereoCameraModel & stereoCameraModel() const {return _stereoCameraModel;}
 
 	void setUserDataRaw(const cv::Mat & userDataRaw); // only set raw
-	void setUserData(const cv::Mat & userData); // detect automatically if raw or compressed. If raw, the data is compressed too.
+	/**
+	 * Set user data. Detect automatically if raw or compressed. If raw, the data is
+	 * compressed too. A matrix of type CV_8UC1 with 1 row is considered as compressed.
+	 * If you have one dimension unsigned 8 bits raw data, make sure to transpose it
+	 * (to have multiple rows instead of multiple columns) in order to be detected as
+	 * not compressed.
+	 */
+	void setUserData(const cv::Mat & userData);
 	const cv::Mat & userDataRaw() const {return _userDataRaw;}
 	const cv::Mat & userDataCompressed() const {return _userDataCompressed;}
 

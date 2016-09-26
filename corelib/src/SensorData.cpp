@@ -64,7 +64,7 @@ SensorData::SensorData(
 		_imageRaw = image;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -98,7 +98,7 @@ SensorData::SensorData(
 		_imageRaw = image;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -145,7 +145,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -204,7 +204,7 @@ SensorData::SensorData(
 		_laserScanCompressed = laserScan;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -250,7 +250,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -309,7 +309,7 @@ SensorData::SensorData(
 		_laserScanCompressed = laserScan;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -356,7 +356,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = right;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -415,7 +415,7 @@ SensorData::SensorData(
 		_laserScanCompressed = laserScan;
 	}
 
-	if(userData.type() == CV_8UC1) // Bytes
+	 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 	{
 		_userDataCompressed = userData; // assume compressed
 	}
@@ -459,7 +459,7 @@ void SensorData::setUserData(const cv::Mat & userData)
 
 	if(!userData.empty())
 	{
-		if(userData.type() == CV_8UC1) // Bytes
+		 if(userData.type() == CV_8UC1 &&  userData.rows == 1 && userData.cols > int(3*sizeof(int))) // Bytes
 		{
 			_userDataCompressed = userData; // assume compressed
 		}
