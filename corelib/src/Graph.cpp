@@ -73,12 +73,7 @@ bool exportPoses(
 		{
 			tmpPath+=".g2o";
 		}
-#ifdef WITH_G2O
 		return OptimizerG2O::saveGraph(tmpPath, poses, constraints, g2oRobust);
-#else
-		UERROR("Cannot export in g2o format because RTAB-Map is not built with g2o support!");
-		return false;
-#endif
 	}
 	else
 	{
