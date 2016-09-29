@@ -62,6 +62,9 @@ if(@CONF_WITH_GUI@)
 endif(@CONF_WITH_GUI@)
 
 # Dependencies
+if(@CONF_VTK_QT@)
+   find_package(VTK COMPONENTS vtkGUISupportQt NO_MODULE) # to define vtkGUISupportQt target
+endif(@CONF_VTK_QT@)
 set(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} @CONF_DEPENDENCIES@)
 
 #backward compatibilities
