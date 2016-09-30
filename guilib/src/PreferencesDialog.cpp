@@ -4820,6 +4820,7 @@ void PreferencesDialog::calibrate()
 					_calibrationDialog->show();
 					CameraModel irModel;
 					CameraModel rgbModel;
+					std::string serial;
 					for(;count < totalSamples && button == QMessageBox::Yes; )
 					{
 						// Step 3: Extrinsics
@@ -4838,7 +4839,7 @@ void PreferencesDialog::calibrate()
 							return;
 						}
 						SensorData irData = camera->takeImage();
-						std::string serial = camera->getSerial();
+						serial = camera->getSerial();
 						UASSERT(irData.cameraModels().size() == 1);
 						irModel = irData.cameraModels()[0];
 						delete camera;
@@ -4882,10 +4883,9 @@ void PreferencesDialog::calibrate()
 						{
 							QMessageBox::warning(this, tr("Calibration"),
 									tr("Extrinsic calibration has failed! Look on the terminal "
-									   "for possible error messages. Make sure the calibration "
-									   "name is set and that corresponding calibration files exist "
-									   "in \"Documents/RTAB-Map/camera_info\" folder. If not, re-do "
-									   "step 1 and 2 and make sure to export the calibration files."), QMessageBox::Ok);
+									   "for possible error messages. Make sure corresponding calibration files exist "
+									   "in \"%1\" folder for camera \"%2\" or calibration name set. If not, re-do "
+									   "step 1 and 2 and make sure to export the calibration files.").arg(this->getCameraInfoDir()).arg(serial.c_str()), QMessageBox::Ok);
 						}
 						else if(stereoModel.saveStereoTransform(this->getCameraInfoDir().toStdString()))
 						{
