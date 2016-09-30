@@ -825,36 +825,49 @@ void CalibrationDialog::calibrate()
 StereoCameraModel CalibrationDialog::stereoCalibration(const CameraModel & left, const CameraModel & right, bool ignoreStereoRectification) const
 {
 	StereoCameraModel output;
-	if(stereoImagePoints_[0].empty())
+	if (stereoImagePoints_[0].empty())
 	{
 		UERROR("No stereo correspondences!");
 		return output;
 	}
 	UINFO("stereo calibration (samples=%d)...", (int)stereoImagePoints_[0].size());
 
-	if(left.imageSize()!=imageSize_[0])
+	if (left.K_raw().empty() || left.D_raw().empty())
 	{
-		UERROR("left model (%dx%d) has not the same size as the processed images (%dx%d)",
-				left.imageSize().width, left.imageSize().height,
-				imageSize_[0].width, imageSize_[0].height);
+		UERROR("Empty intrinsic parameters (K, D) for the %s camera! Aborting stereo calibration...", leftSuffix_.toStdString().c_str());
+		return output;
 	}
-	if(right.imageSize()!=imageSize_[1])
+	if (right.K_raw().empty() || right.D_raw().empty())
 	{
-		UERROR("right model (%dx%d) has not the same size as the processed images (%dx%d)",
-				right.imageSize().width, right.imageSize().height,
-				imageSize_[1].width, imageSize_[1].height);
+		UERROR("Empty intrinsic parameters (K, D) for the %s camera! Aborting stereo calibration...", rightSuffix_.toStdString().c_str());
+		return output;
 	}
 
-	cv::Size imageSize = imageSize_[0].width > imageSize_[1].width?imageSize_[0]:imageSize_[1];
+	if (left.imageSize() != imageSize_[0])
+	{
+		UERROR("left model (%dx%d) has not the same size as the processed images (%dx%d)",
+			left.imageSize().width, left.imageSize().height,
+			imageSize_[0].width, imageSize_[0].height);
+		return output;
+	}
+	if (right.imageSize() != imageSize_[1])
+	{
+		UERROR("right model (%dx%d) has not the same size as the processed images (%dx%d)",
+			right.imageSize().width, right.imageSize().height,
+			imageSize_[1].width, imageSize_[1].height);
+		return output;
+	}
+
+	cv::Size imageSize = imageSize_[0].width > imageSize_[1].width ? imageSize_[0] : imageSize_[1];
 	cv::Mat R, T, E, F;
 
 	std::vector<std::vector<cv::Point3f> > objectPoints(1);
 	cv::Size boardSize(ui_->spinBox_boardWidth->value(), ui_->spinBox_boardHeight->value());
 	float squareSize = ui_->doubleSpinBox_squareSize->value();
 	// compute board corner positions
-	for( int i = 0; i < boardSize.height; ++i )
-		for( int j = 0; j < boardSize.width; ++j )
-			objectPoints[0].push_back(cv::Point3f(float( j*squareSize ), float( i*squareSize ), 0));
+	for (int i = 0; i < boardSize.height; ++i)
+		for (int j = 0; j < boardSize.width; ++j)
+			objectPoints[0].push_back(cv::Point3f(float(j*squareSize), float(i*squareSize), 0));
 	objectPoints.resize(stereoImagePoints_[0].size(), objectPoints[0]);
 
 	// calibrate extrinsic

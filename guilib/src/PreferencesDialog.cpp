@@ -4881,7 +4881,11 @@ void PreferencesDialog::calibrate()
 						if(stereoModel.stereoTransform().isNull())
 						{
 							QMessageBox::warning(this, tr("Calibration"),
-									tr("Extrinsic calibration has failed!"), QMessageBox::Ok);
+									tr("Extrinsic calibration has failed! Look on the terminal "
+									   "for possible error messages. Make sure the calibration "
+									   "name is set and that corresponding calibration files exist "
+									   "in \"Documents/RTAB-Map/camera_info\" folder. If not, re-do "
+									   "step 1 and 2 and make sure to export the calibration files."), QMessageBox::Ok);
 						}
 						else if(stereoModel.saveStereoTransform(this->getCameraInfoDir().toStdString()))
 						{
