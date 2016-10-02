@@ -44,6 +44,7 @@ public:
 	void parseParameters(const ParametersMap & parameters);
 	void setCellSize(float cellSize);
 	float getCellSize() const {return cellSize_;}
+	bool isGridFromDepth() const {return occupancyFromCloud_;}
 
 	template<typename PointT>
 	typename pcl::PointCloud<PointT>::Ptr segmentCloud(
