@@ -2141,7 +2141,7 @@ bool Rtabmap::process(
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
 					// ignore links with high variance
-					if(iter->second.transVariance() < 1.0)
+					if(iter->second.transVariance() <= 1.0)
 					{
 						Transform t1 = uValue(poses, iter->second.from(), Transform());
 						Transform t2 = uValue(poses, iter->second.to(), Transform());
@@ -2156,6 +2156,10 @@ bool Rtabmap::process(
 							maxLinearLink = &iter->second;
 						}
 					}
+				}
+				if(maxLinearLink)
+				{
+					UINFO("Max optimization error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
 				}
 
 				if(maxLinearError > _optimizationMaxLinearError)
