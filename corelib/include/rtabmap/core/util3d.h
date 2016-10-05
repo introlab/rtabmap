@@ -195,15 +195,15 @@ cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXY
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform = Transform());
 // For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
 pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP laserScanToPointCloudNormal(const cv::Mat & laserScan, const Transform & transform = Transform());
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to null.
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP laserScanToPointCloudRGB(const cv::Mat & laserScan, const Transform & transform = Transform());
+// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to default r,g,b parameters.
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP laserScanToPointCloudRGB(const cv::Mat & laserScan, const Transform & transform = Transform(), unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
 
 // For laserScan of type CV_32FC2, z is set to null.
 pcl::PointXYZ RTABMAP_EXP laserScanToPoint(const cv::Mat & laserScan, int index);
 // For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
 pcl::PointNormal RTABMAP_EXP laserScanToPointNormal(const cv::Mat & laserScan, int index);
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to null.
-pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const cv::Mat & laserScan, int index);
+// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to default r,g,b parameters.
+pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const cv::Mat & laserScan, int index, unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
 
 
 cv::Point3f RTABMAP_EXP projectDisparityTo3D(

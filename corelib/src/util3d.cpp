@@ -1240,7 +1240,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr laserScanToPointCloudNormal(const cv::Mat
 	return output;
 }
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr laserScanToPointCloudRGB(const cv::Mat & laserScan, const Transform & transform)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr laserScanToPointCloudRGB(const cv::Mat & laserScan, const Transform & transform,  unsigned char r, unsigned char g, unsigned char b)
 {
 	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
 
@@ -1250,7 +1250,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr laserScanToPointCloudRGB(const cv::Mat & 
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(int i=0; i<laserScan.cols; ++i)
 	{
-		output->at(i) = util3d::laserScanToPointRGB(laserScan, i);
+		output->at(i) = util3d::laserScanToPointRGB(laserScan, i, r, g, b);
 		if(!nullTransform)
 		{
 			output->at(i) = pcl::transformPoint(output->at(i), transform3f);
@@ -1295,7 +1295,7 @@ pcl::PointNormal laserScanToPointNormal(const cv::Mat & laserScan, int index)
 	return output;
 }
 
-pcl::PointXYZRGB laserScanToPointRGB(const cv::Mat & laserScan, int index)
+pcl::PointXYZRGB laserScanToPointRGB(const cv::Mat & laserScan, int index, unsigned char r, unsigned char g, unsigned char b)
 {
 	UASSERT(!laserScan.empty() && index < laserScan.cols);
 	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
@@ -1303,7 +1303,7 @@ pcl::PointXYZRGB laserScanToPointRGB(const cv::Mat & laserScan, int index)
 	const float * ptr = laserScan.ptr<float>(0, index);
 	output.x = ptr[0];
 	output.y = ptr[1];
-	if(laserScan.type() >= 3)
+	if(laserScan.channels() >= 3)
 	{
 		output.z = ptr[2];
 	}
@@ -1313,6 +1313,12 @@ pcl::PointXYZRGB laserScanToPointRGB(const cv::Mat & laserScan, int index)
 		output.b = (unsigned char)(ptrInt[3] & 0xFF);
 		output.g = (unsigned char)((ptrInt[3] >> 8) & 0xFF);
 		output.r = (unsigned char)((ptrInt[3] >> 16) & 0xFF);
+	}
+	else
+	{
+		output.r = r;
+		output.g = g;
+		output.b = b;
 	}
 	return output;
 }
