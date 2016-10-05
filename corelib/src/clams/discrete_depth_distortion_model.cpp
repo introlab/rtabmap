@@ -30,6 +30,7 @@ RTAB-Map integration: Mathieu Labbe
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
 #include "rtabmap/core/clams/frame_projector.h"
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UMath.h>
 #include "eigen_extensions/eigen_extensions.h"
 
 using namespace std;
@@ -187,14 +188,13 @@ namespace clams
     UASSERT(width_ == depth.cols);
     UASSERT(height_ ==depth.rows);
     UASSERT(depth.type() == CV_16UC1 || depth.type() == CV_32FC1);
-
     if(depth.type() == CV_32FC1)
     {
 		#pragma omp parallel for
 		for(int v = 0; v < height_; ++v) {
 		  for(int u = 0; u < width_; ++u) {
 			 float & z = depth.at<float>(v, u);
-			if(z == 0.0f)
+			if(uIsNan(z) || z == 0.0f)
 			  continue;
 			double zf = z;
 			frustum(v, u).interpolatedUndistort(&zf);
@@ -208,7 +208,7 @@ namespace clams
 		for(int v = 0; v < height_; ++v) {
 		  for(int u = 0; u < width_; ++u) {
 		    unsigned short & z = depth.at<unsigned short>(v, u);
-			if(z == 0)
+			if(uIsNan(z) || z == 0)
 			  continue;
 			double zf = z * 0.001;
 			frustum(v, u).interpolatedUndistort(&zf);
