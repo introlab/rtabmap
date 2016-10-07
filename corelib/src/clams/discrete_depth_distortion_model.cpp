@@ -117,6 +117,13 @@ namespace clams
       eigen_extensions::deserialize(in, &total_numerators_);
       eigen_extensions::deserialize(in, &total_denominators_);
       eigen_extensions::deserialize(in, &multipliers_);
+      UDEBUG("Frustum: max_dist=%f", max_dist_);
+      UDEBUG("Frustum: num_bins=%d", num_bins_);
+      UDEBUG("Frustum: bin_depth=%f", bin_depth_);
+      UDEBUG("Frustum: counts=%d", counts_.rows());
+      UDEBUG("Frustum: total_numerators=%d", total_numerators_.rows());
+      UDEBUG("Frustum: total_denominators=%d", total_denominators_.rows());
+      UDEBUG("Frustum: multipliers=%d", multipliers_.rows());
     }
 
   DiscreteDepthDistortionModel::DiscreteDepthDistortionModel(const DiscreteDepthDistortionModel& other)
@@ -171,6 +178,7 @@ namespace clams
 
   void DiscreteDepthDistortionModel::deleteFrustums()
   {
+	  UDEBUG("");
     for(size_t y = 0; y < frustums_.size(); ++y)
       for(size_t x = 0; x < frustums_[y].size(); ++x)
         if(frustums_[y][x])
@@ -300,8 +308,10 @@ namespace clams
 
     void DiscreteDepthDistortionModel::deserialize(std::istream& in)
     {
+      UDEBUG("");
       string buf;
       getline(in, buf);
+      UDEBUG("buf=%s", buf.c_str());
       assert(buf == "DiscreteDepthDistortionModel v01");
       eigen_extensions::deserializeScalar(in, &width_);
       eigen_extensions::deserializeScalar(in, &height_);
@@ -311,16 +321,25 @@ namespace clams
       eigen_extensions::deserializeScalar(in, &num_bins_x_);
       eigen_extensions::deserializeScalar(in, &num_bins_y_);
       eigen_extensions::deserializeScalar(in, &training_samples_);
-
+      UINFO("Distortion Model: width=%d", width_);
+      UINFO("Distortion Model: height=%d", height_);
+      UINFO("Distortion Model: bin_width=%d", bin_width_);
+      UINFO("Distortion Model: bin_height=%d", bin_height_);
+      UINFO("Distortion Model: bin_depth=%f", bin_depth_);
+      UINFO("Distortion Model: num_bins_x=%d", num_bins_x_);
+      UINFO("Distortion Model: num_bins_y=%d", num_bins_y_);
+      UINFO("Distortion Model: training_samples=%d", training_samples_);
       deleteFrustums();
       frustums_.resize(num_bins_y_);
       for(size_t y = 0; y < frustums_.size(); ++y) {
         frustums_[y].resize(num_bins_x_, NULL);
         for(size_t x = 0; x < frustums_[y].size(); ++x) {
+        	UDEBUG("Distortion Model: Frustum[%d][%d]", y, x);
           frustums_[y][x] = new DiscreteFrustum;
           frustums_[y][x]->deserialize(in);
         }
       }
+      UDEBUG("");
     }
 
   DiscreteFrustum& DiscreteDepthDistortionModel::frustum(int y, int x)
