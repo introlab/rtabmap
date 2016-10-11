@@ -2562,7 +2562,10 @@ bool Rtabmap::process(
 	}
 
 	//Save statistics to database
-	_memory->saveStatistics(statistics_);
+	if(_memory->isIncremental())
+	{
+		_memory->saveStatistics(statistics_);
+	}
 
 	//Start trashing
 	UDEBUG("Empty trash...");
