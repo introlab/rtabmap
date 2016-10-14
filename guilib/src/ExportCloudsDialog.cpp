@@ -361,7 +361,7 @@ void ExportCloudsDialog::selectDistortionModel()
 	{
 		dir = _workingDirectory;
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Distortion model (*.bin)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Distortion model (*.bin *.txt)"));
 	if(path.size())
 	{
 		_ui->lineEdit_distortionModel->setText(path);

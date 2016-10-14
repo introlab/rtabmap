@@ -3028,7 +3028,7 @@ void PreferencesDialog::selectSourceDistortionModel()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_source_distortionModel->text(), tr("Distortion model (*.bin)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_source_distortionModel->text(), tr("Distortion model (*.bin *.txt)"));
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_source_distortionModel->setText(path);

@@ -31,6 +31,7 @@ RTAB-Map integration: Mathieu Labbe
 #include "rtabmap/core/clams/frame_projector.h"
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/UFile.h>
 #include "eigen_extensions/eigen_extensions.h"
 
 using namespace std;
@@ -97,26 +98,52 @@ namespace clams
     *z *= mult;
   }
 
-  void DiscreteFrustum::serialize(std::ostream& out) const
+  void DiscreteFrustum::serialize(std::ostream& out, bool ascii) const
     {
-      eigen_extensions::serializeScalar(max_dist_, out);
-      eigen_extensions::serializeScalar(num_bins_, out);
-      eigen_extensions::serializeScalar(bin_depth_, out);
-      eigen_extensions::serialize(counts_, out);
-      eigen_extensions::serialize(total_numerators_, out);
-      eigen_extensions::serialize(total_denominators_, out);
-      eigen_extensions::serialize(multipliers_, out);
+	  if(ascii)
+	  {
+		eigen_extensions::serializeScalarASCII(max_dist_, out);
+		eigen_extensions::serializeScalarASCII(num_bins_, out);
+		eigen_extensions::serializeScalarASCII(bin_depth_, out);
+		eigen_extensions::serializeASCII(counts_, out);
+		eigen_extensions::serializeASCII(total_numerators_, out);
+		eigen_extensions::serializeASCII(total_denominators_, out);
+		eigen_extensions::serializeASCII(multipliers_, out);
+	  }
+	  else
+	  {
+		eigen_extensions::serializeScalar(max_dist_, out);
+		eigen_extensions::serializeScalar(num_bins_, out);
+		eigen_extensions::serializeScalar(bin_depth_, out);
+		eigen_extensions::serialize(counts_, out);
+		eigen_extensions::serialize(total_numerators_, out);
+		eigen_extensions::serialize(total_denominators_, out);
+		eigen_extensions::serialize(multipliers_, out);
+	  }
     }
 
-    void DiscreteFrustum::deserialize(std::istream& in)
+    void DiscreteFrustum::deserialize(std::istream& in, bool ascii)
     {
-      eigen_extensions::deserializeScalar(in, &max_dist_);
-      eigen_extensions::deserializeScalar(in, &num_bins_);
-      eigen_extensions::deserializeScalar(in, &bin_depth_);
-      eigen_extensions::deserialize(in, &counts_);
-      eigen_extensions::deserialize(in, &total_numerators_);
-      eigen_extensions::deserialize(in, &total_denominators_);
-      eigen_extensions::deserialize(in, &multipliers_);
+    	if(ascii)
+    	{
+			eigen_extensions::deserializeScalarASCII(in, &max_dist_);
+			eigen_extensions::deserializeScalarASCII(in, &num_bins_);
+			eigen_extensions::deserializeScalarASCII(in, &bin_depth_);
+			eigen_extensions::deserializeASCII(in, &counts_);
+			eigen_extensions::deserializeASCII(in, &total_numerators_);
+			eigen_extensions::deserializeASCII(in, &total_denominators_);
+			eigen_extensions::deserializeASCII(in, &multipliers_);
+    	}
+    	else
+    	{
+			eigen_extensions::deserializeScalar(in, &max_dist_);
+			eigen_extensions::deserializeScalar(in, &num_bins_);
+			eigen_extensions::deserializeScalar(in, &bin_depth_);
+			eigen_extensions::deserialize(in, &counts_);
+			eigen_extensions::deserialize(in, &total_numerators_);
+			eigen_extensions::deserialize(in, &total_denominators_);
+			eigen_extensions::deserialize(in, &multipliers_);
+    	}
       UDEBUG("Frustum: max_dist=%f", max_dist_);
       UDEBUG("Frustum: num_bins=%d", num_bins_);
       UDEBUG("Frustum: bin_depth=%f", bin_depth_);
@@ -267,60 +294,91 @@ namespace clams
 
   void DiscreteDepthDistortionModel::load(const std::string& path)
     {
+	  bool ascii = UFile::getExtension(path).compare("txt") == 0;
       ifstream f;
       f.open(path.c_str());
       if(!f.is_open()) {
         cerr << "Failed to open " << path << endl;
         assert(f.is_open());
       }
-      deserialize(f);
+      deserialize(f, ascii);
       f.close();
     }
 
     void DiscreteDepthDistortionModel::save(const std::string& path) const
     {
+      bool ascii = UFile::getExtension(path).compare("txt") == 0;
       ofstream f;
       f.open(path.c_str());
       if(!f.is_open()) {
         cerr << "Failed to open " << path << endl;
         assert(f.is_open());
       }
-      serialize(f);
+      serialize(f, ascii);
       f.close();
     }
 
-    void DiscreteDepthDistortionModel::serialize(std::ostream& out) const
+    void DiscreteDepthDistortionModel::serialize(std::ostream& out, bool ascii) const
     {
       out << "DiscreteDepthDistortionModel v01" << endl;
-      eigen_extensions::serializeScalar(width_, out);
-      eigen_extensions::serializeScalar(height_, out);
-      eigen_extensions::serializeScalar(bin_width_, out);
-      eigen_extensions::serializeScalar(bin_height_, out);
-      eigen_extensions::serializeScalar(bin_depth_, out);
-      eigen_extensions::serializeScalar(num_bins_x_, out);
-      eigen_extensions::serializeScalar(num_bins_y_, out);
-      eigen_extensions::serializeScalar(training_samples_, out);
+      if(ascii)
+      {
+		eigen_extensions::serializeScalarASCII(width_, out);
+		eigen_extensions::serializeScalarASCII(height_, out);
+		eigen_extensions::serializeScalarASCII(bin_width_, out);
+		eigen_extensions::serializeScalarASCII(bin_height_, out);
+		eigen_extensions::serializeScalarASCII(bin_depth_, out);
+		eigen_extensions::serializeScalarASCII(num_bins_x_, out);
+		eigen_extensions::serializeScalarASCII(num_bins_y_, out);
+		eigen_extensions::serializeScalarASCII(training_samples_, out);
+      }
+      else
+      {
+		eigen_extensions::serializeScalar(width_, out);
+		eigen_extensions::serializeScalar(height_, out);
+		eigen_extensions::serializeScalar(bin_width_, out);
+		eigen_extensions::serializeScalar(bin_height_, out);
+		eigen_extensions::serializeScalar(bin_depth_, out);
+		eigen_extensions::serializeScalar(num_bins_x_, out);
+		eigen_extensions::serializeScalar(num_bins_y_, out);
+		eigen_extensions::serializeScalar(training_samples_, out);
+      }
+
 
       for(int y = 0; y < num_bins_y_; ++y)
         for(int x = 0; x < num_bins_x_; ++x)
-          frustums_[y][x]->serialize(out);
+          frustums_[y][x]->serialize(out, ascii);
     }
 
-    void DiscreteDepthDistortionModel::deserialize(std::istream& in)
+    void DiscreteDepthDistortionModel::deserialize(std::istream& in, bool ascii)
     {
       UDEBUG("");
       string buf;
       getline(in, buf);
       UDEBUG("buf=%s", buf.c_str());
       assert(buf == "DiscreteDepthDistortionModel v01");
-      eigen_extensions::deserializeScalar(in, &width_);
-      eigen_extensions::deserializeScalar(in, &height_);
-      eigen_extensions::deserializeScalar(in, &bin_width_);
-      eigen_extensions::deserializeScalar(in, &bin_height_);
-      eigen_extensions::deserializeScalar(in, &bin_depth_);
-      eigen_extensions::deserializeScalar(in, &num_bins_x_);
-      eigen_extensions::deserializeScalar(in, &num_bins_y_);
-      eigen_extensions::deserializeScalar(in, &training_samples_);
+      if(ascii)
+      {
+    	  eigen_extensions::deserializeScalarASCII(in, &width_);
+		  eigen_extensions::deserializeScalarASCII(in, &height_);
+		  eigen_extensions::deserializeScalarASCII(in, &bin_width_);
+		  eigen_extensions::deserializeScalarASCII(in, &bin_height_);
+		  eigen_extensions::deserializeScalarASCII(in, &bin_depth_);
+		  eigen_extensions::deserializeScalarASCII(in, &num_bins_x_);
+		  eigen_extensions::deserializeScalarASCII(in, &num_bins_y_);
+		  eigen_extensions::deserializeScalarASCII(in, &training_samples_);
+      }
+      else
+      {
+		  eigen_extensions::deserializeScalar(in, &width_);
+		  eigen_extensions::deserializeScalar(in, &height_);
+		  eigen_extensions::deserializeScalar(in, &bin_width_);
+		  eigen_extensions::deserializeScalar(in, &bin_height_);
+		  eigen_extensions::deserializeScalar(in, &bin_depth_);
+		  eigen_extensions::deserializeScalar(in, &num_bins_x_);
+		  eigen_extensions::deserializeScalar(in, &num_bins_y_);
+		  eigen_extensions::deserializeScalar(in, &training_samples_);
+      }
       UINFO("Distortion Model: width=%d", width_);
       UINFO("Distortion Model: height=%d", height_);
       UINFO("Distortion Model: bin_width=%d", bin_width_);
@@ -336,7 +394,7 @@ namespace clams
         for(size_t x = 0; x < frustums_[y].size(); ++x) {
         	UDEBUG("Distortion Model: Frustum[%d][%d]", y, x);
           frustums_[y][x] = new DiscreteFrustum;
-          frustums_[y][x]->deserialize(in);
+          frustums_[y][x]->deserialize(in, ascii);
         }
       }
       UDEBUG("");

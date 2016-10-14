@@ -49,8 +49,8 @@ namespace clams
     int index(double z) const;
     void undistort(double* z) const;
     void interpolatedUndistort(double* z) const;
-    void serialize(std::ostream& out) const;
-    void deserialize(std::istream& in);
+    void serialize(std::ostream& out, bool ascii) const;
+    void deserialize(std::istream& in, bool ascii);
   
   protected:
     double max_dist_;
@@ -88,8 +88,8 @@ namespace clams
     void addExample(int v, int u, double ground_truth, double measurement);
     void save(const std::string& path) const;
 	void load(const std::string& path);
-	void serialize(std::ostream& out) const;
-	void deserialize(std::istream& in);
+	void serialize(std::ostream& out, bool ascii) const;
+	void deserialize(std::istream& in, bool ascii);
     cv::Mat visualize(const std::string& path = "") const;
 
     int getWidth() const {return width_;}

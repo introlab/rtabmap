@@ -152,7 +152,7 @@ void DepthCalibrationDialog::saveModel()
 {
 	if(_model && _model->getTrainingSamples())
 	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save distortion model to ..."), _workingDirectory+QDir::separator()+"distortion_model.bin", tr("Distortion model (*.bin)"));
+		QString path = QFileDialog::getSaveFileName(this, tr("Save distortion model to ..."), _workingDirectory+QDir::separator()+"distortion_model.bin", tr("Distortion model (*.bin *.txt)"));
 		if(!path.isEmpty())
 		{
 			//
@@ -163,7 +163,7 @@ void DepthCalibrationDialog::saveModel()
 
 			if(!results.empty())
 			{
-				QString name = QString(path).replace(".bin", ".png", Qt::CaseInsensitive);
+				QString name = QString(path).replace(".bin", ".png", Qt::CaseInsensitive).replace(".txt", ".png", Qt::CaseInsensitive);
 				cv::imwrite(name.toStdString(), results);
 				QDesktopServices::openUrl(QUrl::fromLocalFile(name));
 			}
