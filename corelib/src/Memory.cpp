@@ -3637,7 +3637,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	cv::Mat ground, obstacles;
 	float cellSize = 0.0f;
 	cv::Point3f viewPoint(0,0,0);
-	if(_createOccupancyGrid)
+	if(_createOccupancyGrid && !data.depthOrRightRaw().empty())
 	{
 		_occupancy->createLocalMap(*s, ground, obstacles, viewPoint);
 		cellSize = _occupancy->getCellSize();
