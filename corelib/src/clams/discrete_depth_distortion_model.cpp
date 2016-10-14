@@ -296,7 +296,7 @@ namespace clams
     {
 	  bool ascii = UFile::getExtension(path).compare("txt") == 0;
       ifstream f;
-      f.open(path.c_str());
+      f.open(path.c_str(), ascii ? ios::in : ios::in | ios::binary);
       if(!f.is_open()) {
         cerr << "Failed to open " << path << endl;
         assert(f.is_open());
@@ -309,7 +309,7 @@ namespace clams
     {
       bool ascii = UFile::getExtension(path).compare("txt") == 0;
       ofstream f;
-      f.open(path.c_str());
+      f.open(path.c_str(), ascii?ios::out: ios::out | ios::binary);
       if(!f.is_open()) {
         cerr << "Failed to open " << path << endl;
         assert(f.is_open());
