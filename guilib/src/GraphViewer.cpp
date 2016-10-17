@@ -56,12 +56,12 @@ class NodeItem: public QGraphicsEllipseItem
 public:
 	// in meter
 	NodeItem(int id, int mapId, const Transform & pose, float radius) :
-		QGraphicsEllipseItem(QRectF(-radius,-radius,radius*2.0f,radius*2.0f)),
+		QGraphicsEllipseItem(QRectF(-radius*100.0f,-radius*100.0f,radius*100.0f*2.0f,radius*100.0f*2.0f)),
 		_id(id),
 		_mapId(mapId),
 		_pose(pose)
 	{
-		this->setPos(-pose.y(),-pose.x());
+		this->setPos(-pose.y()*100.0f,-pose.x()*100.0f);
 		this->setBrush(pen().color());
 		this->setAcceptHoverEvents(true);
 	}
@@ -78,7 +78,7 @@ public:
 	}
 
 	const Transform & pose() const {return _pose;}
-	void setPose(const Transform & pose) {this->setPos(-pose.y(),-pose.x()); _pose=pose;}
+	void setPose(const Transform & pose) {this->setPos(-pose.y()*100.0f,-pose.x()*100.0f); _pose=pose;}
 
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
@@ -105,7 +105,7 @@ class LinkItem: public QGraphicsLineItem
 public:
 	// in meter
 	LinkItem(int from, int to, const Transform & poseA, const Transform & poseB, const Link & link, bool interSessionClosure) :
-		QGraphicsLineItem(-poseA.y(), -poseA.x(), -poseB.y(), -poseB.x()),
+		QGraphicsLineItem(-poseA.y()*100.0f, -poseA.x()*100.0f, -poseB.y()*100.0f, -poseB.x()*100.0f),
 		_from(from),
 		_to(to),
 		_poseA(poseA),
@@ -126,7 +126,7 @@ public:
 
 	void setPoses(const Transform & poseA, const Transform & poseB)
 	{
-		this->setLine(-poseA.y(), -poseA.x(), -poseB.y(), -poseB.x());
+		this->setLine(-poseA.y()*100.0f, -poseA.x()*100.0f, -poseB.y()*100.0f, -poseB.x()*100.0f);
 		_poseA = poseA;
 		_poseB = poseB;
 	}
@@ -155,7 +155,7 @@ protected:
 		}
 		this->setToolTip(str);
 		QPen pen = this->pen();
-		pen.setWidthF(pen.widthF()+0.02);
+		pen.setWidthF(pen.widthF()+2);
 		this->setPen(pen);
 		QGraphicsLineItem::hoverEnterEvent(event);
 	}
@@ -163,7 +163,7 @@ protected:
 	virtual void hoverLeaveEvent ( QGraphicsSceneHoverEvent * event )
 	{
 		QPen pen = this->pen();
-		pen.setWidthF(pen.widthF()-0.02);
+		pen.setWidthF(pen.widthF()-2);
 		this->setPen(pen);
 		QGraphicsLineItem::hoverEnterEvent(event);
 	}
@@ -217,11 +217,11 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	// add referential
 	_originReferential = new QGraphicsItemGroup();
 	this->scene()->addItem(_originReferential); // ownership transfered
-	QGraphicsLineItem * item = this->scene()->addLine(0,0,0,-1, QPen(QBrush(Qt::red), _linkWidth));
+	QGraphicsLineItem * item = this->scene()->addLine(0,0,0,-100, QPen(QBrush(Qt::red), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
 	_originReferential->addToGroup(item);
-	item = this->scene()->addLine(0,0,-1,0, QPen(QBrush(Qt::green), _linkWidth));
+	item = this->scene()->addLine(0,0,-100,0, QPen(QBrush(Qt::green), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
 	_originReferential->addToGroup(item);
@@ -229,11 +229,11 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	// current pose
 	_referential = new QGraphicsItemGroup();
 	this->scene()->addItem(_referential); // ownership transfered
-	item = this->scene()->addLine(0,0,0,-0.5, QPen(QBrush(Qt::red), _linkWidth));
+	item = this->scene()->addLine(0,0,0,-50, QPen(QBrush(Qt::red), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
 	_referential->addToGroup(item);
-	item = this->scene()->addLine(0,0,-0.5,0, QPen(QBrush(Qt::green), _linkWidth));
+	item = this->scene()->addLine(0,0,-50,0, QPen(QBrush(Qt::green), _linkWidth));
 	item->setZValue(100);
 	item->setParentItem(_root);
 	_referential->addToGroup(item);
@@ -362,7 +362,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					//create a link item
 					linkItem = new LinkItem(idFrom, idTo, poseA, poseB, iter->second, interSessionClosure);
 					QPen p = linkItem->pen();
-					p.setWidthF(_linkWidth);
+					p.setWidthF(_linkWidth*100.0f);
 					linkItem->setPen(p);
 					linkItem->setZValue(10);
 					this->scene()->addItem(linkItem);
@@ -559,7 +559,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 					//create a link item
 					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1);
 					QPen p = linkItem->pen();
-					p.setWidthF(_linkWidth);
+					p.setWidthF(_linkWidth*100.0f);
 					linkItem->setPen(p);
 					linkItem->setZValue(10);
 					this->scene()->addItem(linkItem);
@@ -618,7 +618,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 
 void GraphViewer::updateReferentialPosition(const Transform & t)
 {
-	QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24(), -t.o14());
+	QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24()*100.0f, -t.o14()*100.0f);
 	_referential->setTransform(qt);
 	_localRadius->setTransform(qt);
 
@@ -637,10 +637,10 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 		_gridCellSize = resolution;
 		QImage image = uCvMat2QImage(map8U, false);
 		_gridMap->resetTransform();
-		_gridMap->setTransform(QTransform::fromScale(resolution, -resolution), true);
+		_gridMap->setTransform(QTransform::fromScale(resolution*100.0f, -resolution*100.0f), true);
 		_gridMap->setRotation(90);
 		_gridMap->setPixmap(QPixmap::fromImage(image));
-		_gridMap->setPos(-yMin, -xMin);
+		_gridMap->setPos(-yMin*100.0f, -xMin*100.0f);
 		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
 	}
 	else
@@ -693,7 +693,7 @@ void GraphViewer::setGlobalPath(const std::vector<std::pair<int, Transform> > & 
 			int idTo = globalPath[i+1].first;
 			LinkItem * item = new LinkItem(idFrom, idTo, globalPath[i].second, globalPath[i+1].second, Link(), false);
 			QPen p = item->pen();
-			p.setWidthF(_linkWidth);
+			p.setWidthF(_linkWidth*100.0f);
 			item->setPen(p);
 			item->setColor(_globalPathColor);
 			this->scene()->addItem(item);
@@ -772,7 +772,7 @@ void GraphViewer::updateLocalPath(const std::vector<int> & localPath)
 					//create a link item
 					LinkItem * item = new LinkItem(idFrom, idTo, _nodeItems.value(idFrom)->pose(), _nodeItems.value(idTo)->pose(), Link(), false);
 					QPen p = item->pen();
-					p.setWidthF(_linkWidth);
+					p.setWidthF(_linkWidth*100.0f);
 					item->setPen(p);
 					item->setColor(_localPathColor);
 					this->scene()->addItem(item);
@@ -961,11 +961,11 @@ void GraphViewer::setNodeRadius(float radius)
 	_nodeRadius = radius;
 	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
-		iter.value()->setRect(-_nodeRadius, -_nodeRadius, _nodeRadius*2.0f, _nodeRadius*2.0f);
+		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
 	}
 	for(QMap<int, NodeItem*>::iterator iter=_gtNodeItems.begin(); iter!=_gtNodeItems.end(); ++iter)
 	{
-		iter.value()->setRect(-_nodeRadius, -_nodeRadius, _nodeRadius*2.0f, _nodeRadius*2.0f);
+		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
 	}
 }
 void GraphViewer::setLinkWidth(float width)
@@ -978,7 +978,7 @@ void GraphViewer::setLinkWidth(float width)
 		if(line)
 		{
 			QPen pen = line->pen();
-			pen.setWidthF(_linkWidth);
+			pen.setWidthF(_linkWidth*100.0f);
 			line->setPen(pen);
 		}
 	}
