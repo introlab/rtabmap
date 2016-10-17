@@ -1947,18 +1947,21 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 
 	for(ParametersMap::iterator iter = _modifiedParameters.begin(); iter!=_modifiedParameters.end(); ++iter)
 	{
-		bool different = true;
-		if(Parameters::getType(iter->first).compare("double") ==0 ||
-		   Parameters::getType(iter->first).compare("float") == 0)
+		if (_parameters.at(iter->first).compare(iter->second) != 0)
 		{
-			if(uStr2Double(_parameters.at(iter->first)) == uStr2Double(iter->second))
+			bool different = true;
+			if (Parameters::getType(iter->first).compare("double") == 0 ||
+				Parameters::getType(iter->first).compare("float") == 0)
 			{
-				different = false;
+				if (uStr2Double(_parameters.at(iter->first)) == uStr2Double(iter->second))
+				{
+					different = false;
+				}
 			}
-		}
-		if(different)
-		{
-			UINFO("modified %s = %s->%s", iter->first.c_str(),  _parameters.at(iter->first).c_str(), iter->second.c_str());
+			if (different)
+			{
+				UINFO("modified %s = %s->%s", iter->first.c_str(), _parameters.at(iter->first).c_str(), iter->second.c_str());
+			}
 		}
 	}
 
@@ -4164,6 +4167,7 @@ int PreferencesDialog::getSourceScanNormalsK() const
 
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 {
+	UDEBUG("");
 	Src driver = this->getSourceDriver();
 	Camera * camera = 0;
 	if(driver == PreferencesDialog::kSrcOpenNI_PCL)

@@ -654,9 +654,26 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, c
 	qDeleteAll(_features);
 	_features.clear();
 
+	float xRatio = 0;
+	float yRatio = 0;
+	if (this->sceneRect().isValid() && !depth.empty() && int(this->sceneRect().height()) % depth.rows == 0 && int(this->sceneRect().width()) % depth.cols == 0)
+	{
+		UDEBUG("depth=%dx%d sceneRect=%fx%f", depth.cols, depth.rows, this->sceneRect().width(), this->sceneRect().height());
+		xRatio = float(depth.cols)/float(this->sceneRect().width());
+		yRatio = float(depth.rows)/float(this->sceneRect().height());
+		UDEBUG("xRatio=%f yRatio=%f", xRatio, yRatio);
+	}
+
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = refWords.begin(); iter != refWords.end(); ++iter )
 	{
-		addFeature(iter->first, iter->second, depth.empty()?0:util2d::getDepth(depth, iter->second.pt.x, iter->second.pt.y, false), color);
+		if (xRatio > 0 && yRatio > 0)
+		{
+			addFeature(iter->first, iter->second, util2d::getDepth(depth, iter->second.pt.x*xRatio, iter->second.pt.y*yRatio, false), color);
+		}
+		else
+		{
+			addFeature(iter->first, iter->second, 0, color);
+		}
 	}
 
 	if(!_graphicsView->isVisible())
@@ -670,9 +687,26 @@ void ImageView::setFeatures(const std::vector<cv::KeyPoint> & features, const cv
 	qDeleteAll(_features);
 	_features.clear();
 
+	float xRatio = 0;
+	float yRatio = 0;
+	if (this->sceneRect().isValid() && !depth.empty() && int(this->sceneRect().height()) % depth.rows == 0 && int(this->sceneRect().width()) % depth.cols == 0)
+	{
+		UDEBUG("depth=%dx%d sceneRect=%fx%f", depth.cols, depth.rows, this->sceneRect().width(), this->sceneRect().height());
+		xRatio = float(depth.cols) / float(this->sceneRect().width());
+		yRatio = float(depth.rows) / float(this->sceneRect().height());
+		UDEBUG("xRatio=%f yRatio=%f", xRatio, yRatio);
+	}
+
 	for(unsigned int i = 0; i< features.size(); ++i )
 	{
-		addFeature(i, features[i], depth.empty()?0:util2d::getDepth(depth, features[i].pt.x, features[i].pt.y, false), color);
+		if(xRatio > 0 && yRatio > 0)
+		{
+			addFeature(i, features[i], util2d::getDepth(depth, features[i].pt.x*xRatio, features[i].pt.y*yRatio, false), color);
+		}
+		else
+		{
+			addFeature(i, features[i], 0, color);
+		}
 	}
 
 	if(!_graphicsView->isVisible())

@@ -1972,6 +1972,7 @@ CameraRealSense::CameraRealSense(int device, int presetRGB, int presetDepth, flo
 	presetRGB_(presetRGB),
 	presetDepth_(presetDepth)
 {
+	UDEBUG("");
 }
 
 CameraRealSense::~CameraRealSense()
@@ -1986,17 +1987,21 @@ CameraRealSense::~CameraRealSense()
 
 bool CameraRealSense::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
+	UDEBUG("");
 #ifdef RTABMAP_REALSENSE
 	if (ctx_ == 0)
 	{
 		ctx_ = new rs::context();
 	}
+
+	UDEBUG("");
 	if (ctx_->get_device_count() == 0)
 	{
 		UERROR("No RealSense device detected!");
 		return false;
 	}
 
+	UDEBUG("");
 	dev_ = ctx_->get_device(deviceId_);
 	if (dev_ == 0)
 	{
