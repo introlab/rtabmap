@@ -2387,6 +2387,7 @@ void MainWindow::updateMapCloud(
 
 #ifdef RTABMAP_OCTOMAP
 	_cloudViewer->removeOctomap();
+	_cloudViewer->removeCloud("octomap_cloud");
 	if(_preferencesDialog->isOctomapUpdated())
 	{
 		UDEBUG("");
@@ -2398,7 +2399,19 @@ void MainWindow::updateMapCloud(
 	{
 		UDEBUG("");
 		UTimer time;
-		_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
+		if(_preferencesDialog->isOctomapCubeRendering())
+		{
+			_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
+		}
+		else
+		{
+			pcl::IndicesPtr obstacles(new std::vector<int>);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = _octomap->createCloud(_preferencesDialog->getOctomapTreeDepth(), obstacles.get());
+			if(obstacles->size())
+			{
+				_cloudViewer->addCloud("octomap_cloud", cloud);
+			}
+		}
 		UINFO("Octomap show 3d map time = %fs", time.ticks());
 	}
 #endif

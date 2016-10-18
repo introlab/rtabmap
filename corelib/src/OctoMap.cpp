@@ -439,7 +439,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	int gi=0;
 	for (octomap::ColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
 	{
-		if(octree_->isNodeOccupied(*it))
+		if(octree_->isNodeOccupied(*it) && (obstacleIndices || emptyIndices == 0))
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
 			if(octree_->getTreeDepth() == it.getDepth() && hasColor_)
@@ -465,7 +465,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 			}
 			++oi;
 		}
-		else
+		else if(emptyIndices || obstacleIndices == 0)
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
 			(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);

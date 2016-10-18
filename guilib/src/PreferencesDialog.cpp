@@ -382,6 +382,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_octomap_treeDepth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_octomap_2dgrid, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_octomap_show3dMap, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_octomap_cubeRendering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->groupBox_organized, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mesh_angleTolerance, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1260,6 +1261,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_octomap_treeDepth->setValue(16);
 		_ui->checkBox_octomap_2dgrid->setChecked(true);
 		_ui->checkBox_octomap_show3dMap->setChecked(true);
+		_ui->checkBox_octomap_cubeRendering->setChecked(true);
 		_ui->doubleSpinBox_octomap_occupancyThr->setValue(0.5);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
@@ -1616,6 +1618,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->spinBox_octomap_treeDepth->setValue(settings.value("octomap_depth", _ui->spinBox_octomap_treeDepth->value()).toInt());
 	_ui->checkBox_octomap_2dgrid->setChecked(settings.value("octomap_2dgrid", _ui->checkBox_octomap_2dgrid->isChecked()).toBool());
 	_ui->checkBox_octomap_show3dMap->setChecked(settings.value("octomap_3dmap", _ui->checkBox_octomap_show3dMap->isChecked()).toBool());
+	_ui->checkBox_octomap_cubeRendering->setChecked(settings.value("octomap_cube", _ui->checkBox_octomap_cubeRendering->isChecked()).toBool());
 	_ui->doubleSpinBox_octomap_occupancyThr->setValue(settings.value("octomap_occupancy_thr", _ui->doubleSpinBox_octomap_occupancyThr->value()).toDouble());
 
 	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
@@ -2046,6 +2049,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("octomap_depth",               _ui->spinBox_octomap_treeDepth->value());
 	settings.setValue("octomap_2dgrid",              _ui->checkBox_octomap_2dgrid->isChecked());
 	settings.setValue("octomap_3dmap",               _ui->checkBox_octomap_show3dMap->isChecked());
+	settings.setValue("octomap_cube",                _ui->checkBox_octomap_cubeRendering->isChecked());
 	settings.setValue("octomap_occupancy_thr",       _ui->doubleSpinBox_octomap_occupancyThr->value());
 
 
@@ -3811,6 +3815,10 @@ bool PreferencesDialog::isOctomapShown() const
 	return _ui->groupBox_octomap->isChecked() && _ui->checkBox_octomap_show3dMap->isChecked();
 #endif
 	return false;
+}
+bool PreferencesDialog::isOctomapCubeRendering() const
+{
+	return _ui->checkBox_octomap_cubeRendering->isChecked();
 }
 bool PreferencesDialog::isOctomap2dGrid() const
 {
