@@ -1595,6 +1595,26 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->imageView_source->setImageDepth(depth);
 			}
+			if(img.isNull() && depth.isNull())
+			{
+				QRect sceneRect;
+				if(signature.sensorData().cameraModels().size())
+				{
+					for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
+					{
+						sceneRect.setWidth(sceneRect.width()+signature.sensorData().cameraModels()[i].imageWidth());
+						sceneRect.setHeight(sceneRect.height()+signature.sensorData().cameraModels()[i].imageHeight());
+					}
+				}
+				else if(signature.sensorData().stereoCameraModel().isValidForProjection())
+				{
+					sceneRect.setRect(0,0,signature.sensorData().stereoCameraModel().left().imageWidth(), signature.sensorData().stereoCameraModel().left().imageHeight());
+				}
+				if(sceneRect.isValid())
+				{
+					_ui->imageView_source->setSceneRect(sceneRect);
+				}
+			}
 			if(!lcImg.isNull())
 			{
 				_ui->imageView_loopClosure->setImage(lcImg);
