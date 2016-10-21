@@ -1288,6 +1288,31 @@ bool ExportCloudsDialog::getExportedClouds(
 								cameraModels,
 								images,
 								dir.filePath("tmp_textures").toStdString());
+
+						if(!_ui->checkBox_binary->isVisible() && // not visible -> we are not exporting to file
+							textureMesh->tex_coordinates.size() &&
+							textureMesh->tex_coordinates[0].size()) // assume first is the texture, second is occluded texture
+						{
+							// When not saving to file, tex_coordinates should be linked to points, not polygon vertices
+							int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+							std::vector<Eigen::Vector2f> tmpCoordinates = textureMesh->tex_coordinates[0];
+							textureMesh->tex_coordinates[0].resize(nPoints);
+
+							int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
+							UASSERT(textureMesh->tex_polygons[0].size() == tmpCoordinates.size()/polygonSize);
+							for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
+							{
+								const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
+								UASSERT(polygonSize == (int)vertices.vertices.size());
+								for(int j=0; j<polygonSize; ++j)
+								{
+									//uv
+									UASSERT((int)vertices.vertices[j] < nPoints);
+									UASSERT(i*polygonSize+j < tmpCoordinates.size());
+									textureMesh->tex_coordinates[0][vertices.vertices[j]] = tmpCoordinates[i*polygonSize+j];
+								}
+							}
+						}
 					}
 
 					textureMeshes.insert(std::make_pair(iter->first, textureMesh));

@@ -659,8 +659,11 @@ bool CloudViewer::addCloudTextureMesh(
 		{
 			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->FrontfaceCullingOn();
 		}
-		_visualizer->getCloudActorMap()->find(id)->second.actor->GetTexture()->SetInterpolate(1);
-		_visualizer->getCloudActorMap()->find(id)->second.actor->GetTexture()->SetBlendingMode(vtkTexture::VTK_TEXTURE_BLENDING_MODE_REPLACE);
+		if(!textureMesh->cloud.is_dense)
+		{
+			_visualizer->getCloudActorMap()->find(id)->second.actor->GetTexture()->SetInterpolate(1);
+			_visualizer->getCloudActorMap()->find(id)->second.actor->GetTexture()->SetBlendingMode(vtkTexture::VTK_TEXTURE_BLENDING_MODE_REPLACE);
+		}
 		_visualizer->updatePointCloudPose(id, pose.toEigen3f());
 		_addedClouds.insert(id, pose);
 		return true;
