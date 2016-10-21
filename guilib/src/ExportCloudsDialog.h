@@ -116,6 +116,7 @@ private:
 	void setSaveButton();
 	void setOkButton();
 	void enableRegeneration(bool enabled);
+	void updateTexturingAvailability(bool isExporting);
 
 private:
 	Ui_ExportCloudsDialog * _ui;

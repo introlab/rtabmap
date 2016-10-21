@@ -145,10 +145,13 @@ void ExportCloudsDialog::updateMLSGrpVisibility()
 	_ui->groupBox_4->setVisible(_ui->comboBox_upsamplingMethod->currentIndex() == 3);
 	_ui->groupBox_5->setVisible(_ui->comboBox_upsamplingMethod->currentIndex() == 4);
 }
-
 void ExportCloudsDialog::updateTexturingAvailability()
 {
-	_ui->checkBox_textureMapping->setEnabled(!_ui->checkBox_assemble->isChecked() || _ui->checkBox_binary->isVisible());
+	updateTexturingAvailability(_ui->checkBox_binary->isVisible());
+}
+void ExportCloudsDialog::updateTexturingAvailability(bool isExporting)
+{
+	_ui->checkBox_textureMapping->setEnabled(!_ui->checkBox_assemble->isChecked() || isExporting);
 	_ui->label_textureMapping->setEnabled(_ui->checkBox_textureMapping->isEnabled());
 	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked());
 	_ui->label_meshDecimation->setEnabled(_ui->doubleSpinBox_meshDecimationFactor->isEnabled());
@@ -377,7 +380,7 @@ void ExportCloudsDialog::setSaveButton()
 	_ui->checkBox_mesh_quad->setVisible(false);
 	_ui->checkBox_mesh_quad->setEnabled(false);
 	_ui->label_quad->setVisible(false);
-	updateTexturingAvailability();
+	updateTexturingAvailability(true);
 }
 
 void ExportCloudsDialog::setOkButton()
@@ -389,7 +392,7 @@ void ExportCloudsDialog::setOkButton()
 	_ui->checkBox_mesh_quad->setVisible(true);
 	_ui->checkBox_mesh_quad->setEnabled(true);
 	_ui->label_quad->setVisible(true);
-	updateTexturingAvailability();
+	updateTexturingAvailability(false);
 }
 
 void ExportCloudsDialog::enableRegeneration(bool enabled)
@@ -435,7 +438,7 @@ void ExportCloudsDialog::exportClouds(
 		else if(meshes.size())
 		{
 			bool exportMeshes = true;
-			if(_ui->checkBox_textureMapping->isChecked())
+			if(_ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
 			{
 				QMessageBox::StandardButton r = QMessageBox::warning(this, tr("Exporting Texture Mesh"),
 						tr("No texture mesh could be created, do you want to continue with saving only the meshes (%1)?").arg(meshes.size()),
@@ -1147,7 +1150,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 
 		// texture mesh
-		UDEBUG("texture mapping=%d", _ui->checkBox_textureMapping->isChecked()?1:0);
+		UDEBUG("texture mapping=%d", _ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked()?1:0);
 		if(_ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
 		{
 			QDir dir(workingDirectory);
@@ -1672,7 +1675,8 @@ void ExportCloudsDialog::saveMeshes(
 				{
 					path += ".ply";
 				}
-				else if(QFileInfo(path).suffix() == "ply")
+
+				if(QFileInfo(path).suffix() == "ply")
 				{
 					if(binaryMode)
 					{
