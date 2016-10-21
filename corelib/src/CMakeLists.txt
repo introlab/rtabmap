@@ -140,6 +140,14 @@ IF(freenect2_FOUND)
 		${LIBRARIES}
 		${freenect2_LIBRARIES}
 	)
+	# Explicitly link to OpenCL (in case of CUDA installed)
+	FIND_PACKAGE(OpenCL QUIET)
+	IF(OpenCL_FOUND)
+		SET(LIBRARIES
+			${OpenCL_LIBRARIES}
+			${LIBRARIES}
+		)
+	ENDIF(OpenCL_FOUND)
 ENDIF(freenect2_FOUND)
 
 IF(RealSense_FOUND)
