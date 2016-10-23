@@ -1089,6 +1089,7 @@ void DatabaseViewer::extractImages()
 			}
 		}
 
+		int imagesExported = 0;
 		for(int i=0; i<ids_.size(); ++i)
 		{
 			int id = ids_.at(i);
@@ -1100,19 +1101,23 @@ void DatabaseViewer::extractImages()
 				cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
 				cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw());
 				UINFO(QString("Saved left/%1.%2 and right/%1.%2").arg(id).arg(ext).toStdString().c_str());
+				++imagesExported;
 			}
 			else if(!data.imageRaw().empty() && !data.depthRaw().empty())
 			{
 				cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
 				cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw());
 				UINFO(QString("Saved rgb/%1.%2 and depth/%1.png").arg(id).arg(ext).toStdString().c_str());
+				++imagesExported;
 			}
 			else if(!data.imageRaw().empty())
 			{
 				cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
 				UINFO(QString("Saved %1.%2").arg(id).arg(ext).toStdString().c_str());
+				++imagesExported;
 			}
 		}
+		QMessageBox::information(this, tr("Exporting"), tr("%1 images exported!").arg(imagesExported));
 	}
 }
 
