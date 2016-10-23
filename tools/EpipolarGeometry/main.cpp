@@ -201,6 +201,7 @@ int main(int argc, char** argv)
 
    timer.start();
    std::list<int> wordIds1 = dictionary.addNewWords(descriptors1, 1);
+   dictionary.update();
    std::list<int> wordIds2 = dictionary.addNewWords(descriptors2, 2);
    UINFO("quantization to words = %d ms", timer.elapsed());
 
