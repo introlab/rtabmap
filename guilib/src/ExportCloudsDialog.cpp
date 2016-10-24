@@ -1295,7 +1295,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						{
 							// When not saving to file, tex_coordinates should be linked to points, not polygon vertices
 							int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
-							std::vector<Eigen::Vector2f> tmpCoordinates = textureMesh->tex_coordinates[0];
+							std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > tmpCoordinates = textureMesh->tex_coordinates[0];
 							textureMesh->tex_coordinates[0].resize(nPoints);
 
 							int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
