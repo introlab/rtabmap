@@ -31,21 +31,20 @@
     <!-- MAIN CONTENT -->
     <div id="main_content_wrap" class="outer">
       <section id="main_content" class="inner">
-        <p><a href="http://www.youtube.com/watch?v=AMLwjo80WzI"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/onlinergbdslam.jpeg" alt="video" title="video"></a></p>
+        <p><a href="http://www.youtube.com/watch?v=AMLwjo80WzI"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/onlinergbdslam.jpeg" alt="video"></a></p>
 
 <h2>
 <a id="overview" class="anchor" href="#overview" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Overview</h2>
 
 <p><img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" alt="RTAB-Map logo" title="RTAB-Map" align="left" width="120">
-<strong>RTAB-Map</strong> (Real-Time Appearance-Based Mapping) is a RGB-D Graph-Based SLAM approach based on an incremental appearance-based loop closure detector. The loop closure detector uses a bag-of-words approach to determinate how likely a new image comes from a previous location or a new location. When a loop closure hypothesis is accepted, a new constraint is added to the map's graph, then a graph optimizer minimizes the errors in the map. A memory management approach is used to limit the number of locations used for loop closure detection and graph optimization, so that real-time constraints on large-scale environnements are always respected. RTAB-Map can be used alone with a hand-held Kinect or stereo camera for 6DoF RGB-D mapping, or on a robot equipped with a laser rangefinder for 3DoF mapping.
-<a name="papers"></a></p>
+<strong>RTAB-Map</strong> (Real-Time Appearance-Based Mapping) is a RGB-D Graph-Based SLAM approach based on an incremental appearance-based loop closure detector. The loop closure detector uses a bag-of-words approach to determinate how likely a new image comes from a previous location or a new location. When a loop closure hypothesis is accepted, a new constraint is added to the map's graph, then a graph optimizer minimizes the errors in the map. A memory management approach is used to limit the number of locations used for loop closure detection and graph optimization, so that real-time constraints on large-scale environnements are always respected. RTAB-Map can be used alone with a hand-held Kinect or stereo camera for 6DoF RGB-D mapping, or on a robot equipped with a laser rangefinder for 3DoF mapping.</p>
 
 <ul>
 <li>
 <strong>RGB-D mapping</strong>
 
 <ul>
-<li>M. Labbé and F. Michaud, “<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf">Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM</a>,” in <em>Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems</em>, 2014. (<a href="http://ieeexplore.ieee.org/xpl/login.jsp?tp=&amp;arnumber=6942926">IEEE Xplore</a>)</li>
+<li>M. Labbé and F. Michaud, “<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf">Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM</a>,” in <em>Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems</em>, 2014. (<a href="http://ieeexplore.ieee.org/xpl/login.jsp?tp=&amp;amp;arnumber=6942926">IEEE Xplore</a>)</li>
 <li>Results shown in this paper can be reproduced by the <a href="https://github.com/introlab/rtabmap/wiki/Multi-session">Multi-session mapping</a> tutorial.</li>
 </ul>
 </li>
@@ -55,7 +54,7 @@
 <ul>
 <li>M. Labbé and F. Michaud, “<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/b/bc/TRO2013.pdf">Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation</a>,” in <em>IEEE Transactions on Robotics</em>, vol. 29, no. 3, pp. 734-745, 2013. (<a href="http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6459608">IEEE Xplore</a>)</li>
 <li>M. Labbé and F. Michaud, “<a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/f/f0/Labbe11memory.pdf">Memory management for real-time appearance-based loop closure detection</a>,” in <em>Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems</em>, 2011, pp. 1271–1276. (<a href="http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6094602">IEEE Xplore</a>)</li>
-<li>Visit <a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">RTAB-Map's page on IntRoLab</a> for detailed information on the loop closure detection approach and related datasets. </li>
+<li>Visit <a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">RTAB-Map's page on IntRoLab</a> for detailed information on the loop closure detection approach and related datasets.</li>
 </ul>
 </li>
 </ul>
@@ -63,48 +62,44 @@
 <h2>
 <a id="install" class="anchor" href="#install" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Install</h2>
 
-<p><a href="https://github.com/introlab/rtabmap_ros#rtabmap_ros"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ros.png" alt="ROS" width="50"></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#ubuntu"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ubuntu.png" alt="Ubuntu" width="50"></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#macosx"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/apple.png" alt="Mac OS X" width="50"></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#windows"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/windows.png" alt="Windows" width="50"></a> <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/tango.png" alt="Google Tango" width="50"></a> <a href="https://github.com/introlab/rtabmap/wiki/Installation#raspberrypi"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/raspberrypi.png" alt="Raspberry Pi" width="40"></a> </p>
+<p><a href="https://github.com/introlab/rtabmap_ros#rtabmap_ros"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ros.png" alt="ROS" width="50"></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#ubuntu"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/ubuntu.png" alt="Ubuntu" width="50"></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#macosx"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/apple.png" alt="Mac OS X" width="50"></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#windows"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/windows.png" alt="Windows" width="50"></a>  <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/tango.png" alt="Google Tango" width="50"></a>  <a href="https://github.com/introlab/rtabmap/wiki/Installation#raspberrypi"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/logos/raspberrypi.png" alt="Raspberry Pi" width="40"></a></p>
 
 <ul>
 <li>
-<a href="https://github.com/introlab/rtabmap/wiki/Installation">Installation</a> instructions. </li>
+<a href="https://code.google.com/p/rtabmap/wiki/Installation">Installation</a> instructions. </li>
 <li>
-<a href="https://github.com/introlab/rtabmap/wiki/Tutorials">Tutorials</a>.</li>
+<a href="https://code.google.com/p/rtabmap/wiki/Tutorials">Tutorials</a>.</li>
 <li>
-<a href="https://github.com/introlab/rtabmap/wiki/Tools">Tools</a>.</li>
+<a href="https://code.google.com/p/rtabmap/wiki/Tools">Tools</a>.</li>
 <li>For <strong>ROS</strong> users, take a look to <a href="http://wiki.ros.org/rtabmap">rtabmap</a> page on the ROS wiki for a package overview. See also <a href="http://wiki.ros.org/rtabmap_ros/Tutorials/SetupOnYourRobot">SetupOnYourRobot</a> to know how to integrate RTAB-Map on your robot.</li>
 </ul>
 
 <h3>
 <a id="troubleshooting" class="anchor" href="#troubleshooting" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Troubleshooting</h3>
 
-<ul>
-<li>
-<strong>Standalone</strong>
+<p><strong>Standalone</strong></p>
 
 <ul>
 <li>Visit the <a href="https://github.com/introlab/rtabmap/wiki">wiki</a>.</li>
 <li>Ask a question on the <a href="http://official-rtab-map-forum.67519.x6.nabble.com/">RTAB-Map Forum</a>.</li>
-<li>Post an <a href="https://github.com/introlab/rtabmap/issues">issue on GitHub</a> (see old issues on <a href="https://code.google.com/p/rtabmap/issues/list">Google code</a>).</li>
-<li>For the loop closure detection approach, visit <a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">RTAB-Map on IntRoLab website</a>.</li>
-</ul>
+<li>Post an <a href="https://github.com/introlab/rtabmap/issues">issue on GitHub</a> </li>
+<li>For the loop closure detection approach, visit <a href="https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">RTAB-Map on IntRoLab website</a>
 </li>
-<li>
-<strong>ROS</strong>
+</ul>
+
+<p><strong>ROS</strong></p>
 
 <ul>
 <li>Visit <a href="http://wiki.ros.org/rtabmap_ros">rtabmap_ros</a> wiki page for nodes documentation, demos and tutorials on ROS. </li>
 <li>Ask a question on <a href="http://answers.ros.org/questions/scope:all/sort:activity-desc/tags:rtabmap_ros/page:1/">answers.ros.org</a> with <strong>rtabmap</strong> or <strong>rtabmap_ros</strong> tag.</li>
-</ul>
-</li>
 </ul>
 
 <h2>
 <a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
 
 <ul>
-<li>If OpenCV is built <strong>without the nonfree</strong> module, RTAB-Map can be used under the permissive BSD License. </li>
-<li>If OpenCV is built <strong>with the nonfree</strong> module, RTAB-Map is free for research only because it depends on <strong>SURF</strong> and <strong>SIFT</strong> features. <strong>SIFT</strong> and <strong>SURF</strong> are <strong>not free</strong> for commercial use.
+<li>If OpenCV is built <strong>without the nonfree</strong> module, RTAB-Map can be used under the permissive BSD License.</li>
+<li>If OpenCV is built <strong>with the nonfree</strong> module, RTAB-Map is free for research only because it depends on <strong>SURF</strong> and <strong>SIFT</strong> features. <strong>SIFT</strong> and <strong>SURF</strong> are not free for commercial use.
 
 <ul>
 <li>SURF noncommercial notice: <a href="http://www.vision.ee.ethz.ch/%7Esurf/download.html">http://www.vision.ee.ethz.ch/~surf/download.html</a>
@@ -139,13 +134,12 @@
 
 <ul>
 <li>
-<p>I'm pleased to announce that RTAB-Map is now on <strong>Project Tango</strong>. The app is <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap">available</a> on Google Play Store. </p>
+<p>I'm pleased to announce that RTAB-Map is now on <strong>Project Tango</strong>. The app is <a href="https://play.google.com/store/apps/details?id=com.introlab.rtabmap">available</a> on Google Play Store.</p>
 
 <p><a href="https://youtu.be/BE8kMkrCeuA"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango.jpeg" alt="video" title="video"></a></p>
-
-<ul>
-<li>Screenshots:</li>
-</ul>
+</li>
+<li>
+<p>Screenshots:</p>
 
 <p><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap-tango.png" alt="rtabmap tango 1" width="600"></p>
 
@@ -270,11 +264,8 @@
 <p><a href="http://www.youtube.com/watch?v=CAk-QGMlQmI"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/rtabmap.jpeg" alt="video" title="video"></a></p>
 
 <p><a href="http://www.youtube.com/watch?v=1dImRinTJSE"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/newcollegeomni.jpeg" alt="video" title="video"></a></p>
-
-<ul>
-<li>More loop closure detection videos <a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">here</a>.</li>
-</ul>
 </li>
+<li><p>More loop closure detection videos <a href="http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map">here</a>.</p></li>
 </ul>
       </section>
     </div>
