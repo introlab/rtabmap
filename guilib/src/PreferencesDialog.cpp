@@ -497,6 +497,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_stereoZed_resolution, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_stereoZed_quality, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_stereoZed_quality, SIGNAL(currentIndexChanged(int)), this, SLOT(updateStereoDisparityVisibility()));
+	connect(_ui->checkbox_stereoZed_selfCalibration, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraStereo, SIGNAL(currentIndexChanged(int)), this, SLOT(updateStereoDisparityVisibility()));
 	connect(_ui->comboBox_stereoZed_sensingMode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_stereoZed_confidenceThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1358,6 +1359,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_stereoVideo_rectify->setChecked(false);
 		_ui->comboBox_stereoZed_resolution->setCurrentIndex(2);
 		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
+		_ui->checkbox_stereoZed_selfCalibration->setChecked(false);
 		_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(1);
 		_ui->spinBox_stereoZed_confidenceThr->setValue(100);
 		_ui->checkbox_stereoZed_odom->setChecked(false);
@@ -1714,6 +1716,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("StereoZed");
 	_ui->comboBox_stereoZed_resolution->setCurrentIndex(settings.value("resolution", _ui->comboBox_stereoZed_resolution->currentIndex()).toInt());
 	_ui->comboBox_stereoZed_quality->setCurrentIndex(settings.value("quality", _ui->comboBox_stereoZed_quality->currentIndex()).toInt());
+	_ui->checkbox_stereoZed_selfCalibration->setChecked(settings.value("self_calibration", _ui->checkbox_stereoZed_selfCalibration->isChecked()).toBool());
 	_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(settings.value("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex()).toInt());
 	_ui->spinBox_stereoZed_confidenceThr->setValue(settings.value("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value()).toInt());
 	_ui->checkbox_stereoZed_odom->setChecked(settings.value("odom", _ui->checkbox_stereoZed_odom->isChecked()).toBool());
@@ -2147,6 +2150,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("StereoZed");
 	settings.setValue("resolution", _ui->comboBox_stereoZed_resolution->currentIndex());
 	settings.setValue("quality", _ui->comboBox_stereoZed_quality->currentIndex());
+	settings.setValue("self_calibration", _ui->checkbox_stereoZed_selfCalibration->isChecked());
 	settings.setValue("sensing_mode", _ui->comboBox_stereoZed_sensingMode->currentIndex());
 	settings.setValue("confidence_thr", _ui->spinBox_stereoZed_confidenceThr->value());
 	settings.setValue("odom", _ui->checkbox_stereoZed_odom->isChecked());
@@ -4359,6 +4363,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 	}
 	else if (driver == kSrcStereoZed)
 	{
+		UDEBUG("ZED");
 		if(!_ui->lineEdit_zedSvoPath->text().isEmpty())
 		{
 			camera = new CameraStereoZed(
@@ -4368,7 +4373,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->spinBox_stereoZed_confidenceThr->value(),
 				_ui->checkbox_stereoZed_odom->isChecked(),
 				this->getGeneralInputRate(),
-				this->getSourceLocalTransform());
+				this->getSourceLocalTransform(),
+				_ui->checkbox_stereoZed_selfCalibration->isChecked());
 		}
 		else
 		{
@@ -4380,7 +4386,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->spinBox_stereoZed_confidenceThr->value(),
 				_ui->checkbox_stereoZed_odom->isChecked(),
 				this->getGeneralInputRate(),
-				this->getSourceLocalTransform());
+				this->getSourceLocalTransform(),
+				_ui->checkbox_stereoZed_selfCalibration->isChecked());
 		}
 	}
 	else if(driver == kSrcUsbDevice)
@@ -4447,6 +4454,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 
 	if(camera)
 	{
+		UDEBUG("Init");
 		QString dir = this->getCameraInfoDir();
 		QString calibrationFile = _ui->lineEdit_calibrationFile->text();
 		if(!(driver >= kSrcRGB && driver <= kSrcVideo))
@@ -4491,6 +4499,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		}
 	}
 
+	UDEBUG("");
 	return camera;
 }
 

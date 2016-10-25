@@ -755,7 +755,8 @@ CameraStereoZed::CameraStereoZed(
 		int confidenceThr,
 		bool computeOdometry,
 		float imageRate,
-		const Transform & localTransform) :
+		const Transform & localTransform,
+		bool selfCalibration) :
 	Camera(imageRate, localTransform),
 	zed_(0),
 	src_(CameraVideo::kUsbDevice),
@@ -763,11 +764,13 @@ CameraStereoZed::CameraStereoZed(
 	svoFilePath_(""),
 	resolution_(resolution),
 	quality_(quality),
+	selfCalibration_(selfCalibration),
 	sensingMode_(sensingMode),
 	confidenceThr_(confidenceThr),
 	computeOdometry_(computeOdometry),
 	lost_(true)
 {
+	UDEBUG("");
 #ifdef RTABMAP_ZED
 	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <sl::zed::LAST_RESOLUTION);
 	UASSERT(quality_ >= sl::zed::NONE && quality_ <sl::zed::LAST_MODE);
@@ -783,7 +786,8 @@ CameraStereoZed::CameraStereoZed(
 		int confidenceThr,
 		bool computeOdometry,
 		float imageRate,
-		const Transform & localTransform) :
+		const Transform & localTransform,
+		bool selfCalibration) :
 	Camera(imageRate, localTransform),
 	zed_(0),
 	src_(CameraVideo::kVideoFile),
@@ -791,11 +795,13 @@ CameraStereoZed::CameraStereoZed(
 	svoFilePath_(filePath),
 	resolution_(2),
 	quality_(quality),
+	selfCalibration_(selfCalibration),
 	sensingMode_(sensingMode),
 	confidenceThr_(confidenceThr),
 	computeOdometry_(computeOdometry),
 	lost_(true)
 {
+	UDEBUG("");
 #ifdef RTABMAP_ZED
 	UASSERT(resolution_ >= sl::zed::HD2K && resolution_ <sl::zed::LAST_RESOLUTION);
 	UASSERT(quality_ >= sl::zed::NONE && quality_ <sl::zed::LAST_MODE);
@@ -816,6 +822,7 @@ CameraStereoZed::~CameraStereoZed()
 
 bool CameraStereoZed::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
+	UDEBUG("");
 #ifdef RTABMAP_ZED
 	if(zed_)
 	{
@@ -826,32 +833,29 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	lost_ = true;
 	if(src_ == CameraVideo::kVideoFile)
 	{
+		UINFO("svo file = %s", svoFilePath_.c_str());
 		zed_ = new sl::zed::Camera(svoFilePath_); // Use in SVO playback mode
 	}
 	else
 	{
-		if(zed_->isZEDconnected())
-		{
-			zed_ = new sl::zed::Camera((sl::zed::ZEDResolution_mode)resolution_, getImageRate(), usbDevice_); // Use in Live Mode
-		}
-		else
-		{
-			UERROR("ZED camera initialization failed: ZED is not connected!");
-			return false;
-		}
+		UINFO("Resolution=%d imagerate=%f device=%d", resolution_, getImageRate(), usbDevice_);
+		zed_ = new sl::zed::Camera((sl::zed::ZEDResolution_mode)resolution_, getImageRate(), usbDevice_); // Use in Live Mode
 	}
 
-	//init WITH self-calibration
 	sl::zed::InitParams parameters(
 		(sl::zed::MODE)quality_, //MODE
-		sl::zed::METER,  //UNIT
-		sl::zed::IMAGE,  //COORDINATE_SYSTEM
+		(sl::zed::UNIT)sl::zed::METER,  //UNIT
+		(sl::zed::COORDINATE_SYSTEM)sl::zed::IMAGE,  //COORDINATE_SYSTEM
 		false,  // verbose
-		-1,     //device
+		-1,     //device (GPU)
 		-1.,    //minDist
-		false,  //disableSelfCalib
+		!selfCalibration_,  //disableSelfCalib: false = self calibrated
 		false); //vflip
+
+	UINFO("Init ZED: Mode=%d Unit=%d CoordinateSystem=%d Verbose=false device=-1 minDist=-1 self-calibration=%s vflip=false",
+			quality_, sl::zed::METER, sl::zed::IMAGE, selfCalibration_?"true":"false");
 	sl::zed::ERRCODE err = zed_->init(parameters);
+	UDEBUG("");
 
 	// Quit if an error occurred
 	if (err != sl::zed::SUCCESS)
