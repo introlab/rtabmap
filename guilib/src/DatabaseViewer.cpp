@@ -1003,7 +1003,7 @@ void DatabaseViewer::extractImages()
 	}
 
 	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), QDir::homePath());
-	if(!path.isNull())
+	if(!path.isEmpty())
 	{
 		if(ids_.size())
 		{

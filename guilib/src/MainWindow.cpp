@@ -5733,7 +5733,7 @@ void MainWindow::exportImages()
 	}
 
 	QString path = QFileDialog::getExistingDirectory(this, tr("Select directory where to save images..."), this->getWorkingDirectory());
-	if(!path.isNull())
+	if(!path.isEmpty())
 	{
 		SensorData data;
 		if(_cachedSignatures.contains(poses.rbegin()->first))
@@ -5815,63 +5815,63 @@ void MainWindow::exportImages()
 					tr("Export images..."),
 					tr("Data in the cache don't seem to have images (tested node %1). Calibration file will not be saved. Try refreshing the cache (with clouds).").arg(poses.rbegin()->first));
 		}
-	}
 
-	_initProgressDialog->resetProgress();
-	_initProgressDialog->show();
-	_initProgressDialog->setMaximumSteps(_cachedSignatures.size());
+		_initProgressDialog->resetProgress();
+		_initProgressDialog->show();
+		_initProgressDialog->setMaximumSteps(_cachedSignatures.size());
 
-	unsigned int saved = 0;
-	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-	{
-		int id = iter->first;
-		SensorData data;
-		if(_cachedSignatures.contains(iter->first))
+		unsigned int saved = 0;
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			data = _cachedSignatures.value(iter->first).sensorData();
-			data.uncompressData();
+			int id = iter->first;
+			SensorData data;
+			if(_cachedSignatures.contains(iter->first))
+			{
+				data = _cachedSignatures.value(iter->first).sensorData();
+				data.uncompressData();
+			}
+			QString info;
+			bool warn = false;
+			if(!data.imageRaw().empty() && !data.rightRaw().empty())
+			{
+				cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
+				cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw());
+				info = tr("Saved left/%1.%2 and right/%1.%2.").arg(id).arg(ext);
+			}
+			else if(!data.imageRaw().empty() && !data.depthRaw().empty())
+			{
+				cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
+				cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw());
+				info = tr("Saved rgb/%1.%2 and depth/%1.png.").arg(id).arg(ext);
+			}
+			else if(!data.imageRaw().empty())
+			{
+				cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
+				info = tr("Saved %1.%2.").arg(id).arg(ext);
+			}
+			else
+			{
+				info = tr("No images saved for node %1!").arg(id);
+				warn = true;
+			}
+			saved += warn?0:1;
+			_initProgressDialog->appendText(info, !warn?Qt::black:Qt::darkYellow);
+			_initProgressDialog->incrementStep();
+			QApplication::processEvents();
+
 		}
-		QString info;
-		bool warn = false;
-		if(!data.imageRaw().empty() && !data.rightRaw().empty())
+		if(saved!=poses.size())
 		{
-			cv::imwrite(QString("%1/left/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
-			cv::imwrite(QString("%1/right/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.rightRaw());
-			info = tr("Saved left/%1.%2 and right/%1.%2.").arg(id).arg(ext);
-		}
-		else if(!data.imageRaw().empty() && !data.depthRaw().empty())
-		{
-			cv::imwrite(QString("%1/rgb/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
-			cv::imwrite(QString("%1/depth/%2.png").arg(path).arg(id).toStdString(), data.depthRaw());
-			info = tr("Saved rgb/%1.%2 and depth/%1.png.").arg(id).arg(ext);
-		}
-		else if(!data.imageRaw().empty())
-		{
-			cv::imwrite(QString("%1/%2.%3").arg(path).arg(id).arg(ext).toStdString(), data.imageRaw());
-			info = tr("Saved %1.%2.").arg(id).arg(ext);
+			_initProgressDialog->setAutoClose(false);
+			_initProgressDialog->appendText(tr("%1 images of %2 saved to \"%3\".").arg(saved).arg(poses.size()).arg(path));
 		}
 		else
 		{
-			info = tr("No images saved for node %1!").arg(id);
-			warn = true;
+			_initProgressDialog->appendText(tr("%1 images saved to \"%2\".").arg(saved).arg(path));
 		}
-		saved += warn?0:1;
-		_initProgressDialog->appendText(info, !warn?Qt::black:Qt::darkYellow);
-		_initProgressDialog->incrementStep();
-		QApplication::processEvents();
 
+		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 	}
-	if(saved!=poses.size())
-	{
-		_initProgressDialog->setAutoClose(false);
-		_initProgressDialog->appendText(tr("%1 images of %2 saved to \"%3\".").arg(saved).arg(poses.size()).arg(path));
-	}
-	else
-	{
-		_initProgressDialog->appendText(tr("%1 images saved to \"%2\".").arg(saved).arg(path));
-	}
-
-	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
 }
 
 void MainWindow::exportBundlerFormat()

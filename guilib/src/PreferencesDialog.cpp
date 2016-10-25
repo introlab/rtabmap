@@ -2503,7 +2503,7 @@ void PreferencesDialog::readSettingsEnd()
 
 void PreferencesDialog::saveWindowGeometry(const QWidget * window)
 {
-	if(!window->objectName().isNull() && !window->isMaximized())
+	if(!window->objectName().isEmpty() && !window->isMaximized())
 	{
 		QSettings settings(getIniFilePath(), QSettings::IniFormat);
 		settings.beginGroup("Gui");
@@ -2516,7 +2516,7 @@ void PreferencesDialog::saveWindowGeometry(const QWidget * window)
 
 void PreferencesDialog::loadWindowGeometry(QWidget * window)
 {
-	if(!window->objectName().isNull())
+	if(!window->objectName().isEmpty())
 	{
 		QByteArray bytes;
 		QSettings settings(getIniFilePath(), QSettings::IniFormat);
@@ -2534,7 +2534,7 @@ void PreferencesDialog::loadWindowGeometry(QWidget * window)
 
 void PreferencesDialog::saveMainWindowState(const QMainWindow * mainWindow)
 {
-	if(!mainWindow->objectName().isNull())
+	if(!mainWindow->objectName().isEmpty())
 	{
 		saveWindowGeometry(mainWindow);
 
@@ -2551,7 +2551,7 @@ void PreferencesDialog::saveMainWindowState(const QMainWindow * mainWindow)
 
 void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow,  bool & maximized, bool & statusBarShown)
 {
-	if(!mainWindow->objectName().isNull())
+	if(!mainWindow->objectName().isEmpty())
 	{
 		loadWindowGeometry(mainWindow);
 
@@ -2574,7 +2574,7 @@ void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow,  bool & ma
 
 void PreferencesDialog::saveWidgetState(const QWidget * widget)
 {
-	if(!widget->objectName().isNull())
+	if(!widget->objectName().isEmpty())
 	{
 		QSettings settings(getIniFilePath(), QSettings::IniFormat);
 		settings.beginGroup("Gui");
@@ -2633,7 +2633,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 
 void PreferencesDialog::loadWidgetState(QWidget * widget)
 {
-	if(!widget->objectName().isNull())
+	if(!widget->objectName().isEmpty())
 	{
 		QByteArray bytes;
 		QSettings settings(getIniFilePath(), QSettings::IniFormat);
