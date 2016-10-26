@@ -113,6 +113,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_gainOverlap, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainAlpha, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainBeta, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_gainLinkedLocationsOnly, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
 	connect(_ui->groupBox_meshing, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -208,6 +209,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("gain_overlap", _ui->doubleSpinBox_gainOverlap->value());
 	settings.setValue("gain_alpha", _ui->doubleSpinBox_gainAlpha->value());
 	settings.setValue("gain_beta", _ui->doubleSpinBox_gainBeta->value());
+	settings.setValue("gain_linked_locations", _ui->checkBox_gainLinkedLocationsOnly->isChecked());
 
 	settings.setValue("mesh", _ui->groupBox_meshing->isChecked());
 	settings.setValue("mesh_radius", _ui->doubleSpinBox_gp3Radius->value());
@@ -271,6 +273,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_gainOverlap->setValue(settings.value("gain_overlap", _ui->doubleSpinBox_gainOverlap->value()).toDouble());
 	_ui->doubleSpinBox_gainAlpha->setValue(settings.value("gain_alpha", _ui->doubleSpinBox_gainAlpha->value()).toDouble());
 	_ui->doubleSpinBox_gainBeta->setValue(settings.value("gain_beta", _ui->doubleSpinBox_gainBeta->value()).toDouble());
+	_ui->checkBox_gainLinkedLocationsOnly->setChecked(settings.value("gain_linked_locations", _ui->checkBox_gainLinkedLocationsOnly->isChecked()).toBool());
 
 	_ui->groupBox_meshing->setChecked(settings.value("mesh", _ui->groupBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
@@ -327,11 +330,12 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(0.01);
 	_ui->spinBox_dilationSteps->setValue(0);
 
-	_ui->groupBox_gain->setChecked(true);
+	_ui->groupBox_gain->setChecked(false);
 	_ui->doubleSpinBox_gainRadius->setValue(0.02);
 	_ui->doubleSpinBox_gainOverlap->setValue(0.05);
 	_ui->doubleSpinBox_gainAlpha->setValue(0.01);
 	_ui->doubleSpinBox_gainBeta->setValue(10);
+	_ui->checkBox_gainLinkedLocationsOnly->setChecked(false);
 
 	_ui->groupBox_meshing->setChecked(false);
 	_ui->doubleSpinBox_gp3Radius->setValue(0.04);
@@ -713,7 +717,27 @@ bool ExportCloudsDialog::getExportedClouds(
 			QApplication::processEvents();
 			QApplication::processEvents();
 
-			compensator.feed(clouds, links);
+			if(!_ui->checkBox_gainLinkedLocationsOnly->isChecked())
+			{
+				std::multimap<int, Link> allLinks;
+				for(std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
+				{
+					int from = iter->first;
+					std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::const_iterator jter = iter;
+					++jter;
+					for(;jter!=clouds.end(); ++jter)
+					{
+						int to = jter->first;
+						allLinks.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, poses.at(from).inverse()*poses.at(to))));
+					}
+				}
+
+				compensator.feed(clouds, allLinks);
+			}
+			else
+			{
+				compensator.feed(clouds, links);
+			}
 
 			_progressDialog->appendText(tr("Applying gain compensation..."));
 			for(std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::iterator jter=clouds.begin();jter!=clouds.end(); ++jter)

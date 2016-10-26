@@ -31,7 +31,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/core/util3d_transforms.h>
-#include <pcl/registration/correspondence_estimation.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/common/common.h>
+#include <pcl/common/transforms.h>
+#include <pcl/common/eigen.h>
+#include <pcl/correspondence.h>
 
 namespace rtabmap {
 
@@ -90,6 +94,30 @@ void GainCompensator::feed(
 	feed(clouds, indices, links);
 }
 
+// @see https://studiofreya.com/3d-math-and-physics/simple-aabb-vs-aabb-collision-detection/
+struct AABB
+{
+    AABB() : c(), r() {}
+
+    AABB(const Eigen::Vector3f & center, const Eigen::Vector3f & halfwidths)
+        : c(center)
+        , r(halfwidths)
+    {}
+
+    Eigen::Vector3f c;        // center point
+    Eigen::Vector3f r;        // halfwidths
+};
+
+bool testAABBAABB(const AABB &a, const AABB &b)
+{
+    if ( fabs(a.c[0] - b.c[0]) > (a.r[0] + b.r[0]) ) return false;
+    if ( fabs(a.c[1] - b.c[1]) > (a.r[1] + b.r[1]) ) return false;
+    if ( fabs(a.c[2] - b.c[2]) > (a.r[2] + b.r[2]) ) return false;
+
+    // We have an overlap
+    return true;
+};
+
 /**
  * @see https://github.com/opencv/opencv/blob/master/modules/stitching/src/exposure_compensate.cpp
  */
@@ -116,71 +144,147 @@ void feedImpl(
 
 	// make id to index map
 	idToIndex.clear();
+	std::vector<int> indexToId(clouds.size());
 	int oi=0;
+	std::map<int, std::pair<Eigen::Vector3f, Eigen::Vector3f> > boundingBoxes;
 	for(typename std::map<int, typename pcl::PointCloud<PointT>::Ptr>::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
 	{
 		idToIndex.insert(std::make_pair(iter->first, oi));
+		indexToId[oi] = iter->first;
 		UASSERT(indices.empty() || uContains(indices, iter->first));
-		N(oi,oi) = iter->second->size();
+		Eigen::Vector4f minPt(0,0,0,0);
+		Eigen::Vector4f maxPt(0,0,0,0);
+		if(indices.empty() || indices.at(iter->first)->empty())
+		{
+			N(oi,oi) = iter->second->size();
+			pcl::getMinMax3D(*iter->second, minPt, maxPt);
+		}
+		else
+		{
+			N(oi,oi) = indices.at(iter->first)->size();
+			pcl::getMinMax3D(*iter->second, *indices.at(iter->first), minPt, maxPt);
+		}
+		minPt[0] -= maxCorrespondenceDistance;
+		minPt[1] -= maxCorrespondenceDistance;
+		minPt[2] -= maxCorrespondenceDistance;
+		maxPt[0] += maxCorrespondenceDistance;
+		maxPt[1] += maxCorrespondenceDistance;
+		maxPt[2] += maxCorrespondenceDistance;
+		boundingBoxes.insert(std::make_pair(iter->first, std::make_pair(Eigen::Vector3f(minPt[0], minPt[1], minPt[2]), Eigen::Vector3f(maxPt[0], maxPt[1], maxPt[2]))));
 		++oi;
 	}
 
-	typename pcl::registration::CorrespondenceEstimation<PointT, PointT>::Ptr est;
-	est.reset(new pcl::registration::CorrespondenceEstimation<PointT, PointT>);
-
+	typename pcl::search::KdTree<PointT> kdtree;
+	int lastKdTreeId = 0;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 	{
 		if(uContains(idToIndex, iter->second.from()) && uContains(idToIndex, iter->second.to()))
 		{
-			UDEBUG("estimate...%d %d", iter->second.from(), iter->second.to());
 			const typename pcl::PointCloud<PointT>::Ptr & cloudFrom = clouds.at(iter->second.from());
 			const typename pcl::PointCloud<PointT>::Ptr & cloudTo = clouds.at(iter->second.to());
 			if(cloudFrom->size() && cloudTo->size())
 			{
-				est->setInputTarget(cloudFrom); //match
-				if(iter->second.transform().isIdentity() || iter->second.transform().isNull())
+				//Are bounding boxes intersect?
+				std::pair<Eigen::Vector3f, Eigen::Vector3f> bbMinMaxFrom = boundingBoxes.at(iter->second.from());
+				std::pair<Eigen::Vector3f, Eigen::Vector3f> bbMinMaxTo = boundingBoxes.at(iter->second.to());
+				Eigen::Affine3f t = Transform::getIdentity().toEigen3f();
+				if(!iter->second.transform().isIdentity() && !iter->second.transform().isNull())
 				{
-					est->setInputSource(cloudTo); //query
+					t = iter->second.transform().toEigen3f();
+					pcl::transformPoint(bbMinMaxTo.first, bbMinMaxTo.first, t);
+					pcl::transformPoint(bbMinMaxTo.second, bbMinMaxTo.second, t);
 				}
-				else
+				AABB bbFrom(Eigen::Vector3f((bbMinMaxFrom.second[0] + bbMinMaxFrom.first[0])/2.0f, (bbMinMaxFrom.second[1] + bbMinMaxFrom.first[1])/2.0f, (bbMinMaxFrom.second[2] + bbMinMaxFrom.first[2])/2.0f),
+						 Eigen::Vector3f((bbMinMaxFrom.second[0] - bbMinMaxFrom.first[0])/2.0f, (bbMinMaxFrom.second[1] - bbMinMaxFrom.first[1])/2.0f, (bbMinMaxFrom.second[2] - bbMinMaxFrom.first[2])/2.0f));
+				AABB bbTo(Eigen::Vector3f((bbMinMaxTo.second[0] + bbMinMaxTo.first[0])/2.0f, (bbMinMaxTo.second[1] + bbMinMaxTo.first[1])/2.0f, (bbMinMaxTo.second[2] + bbMinMaxTo.first[2])/2.0f),
+						 Eigen::Vector3f((bbMinMaxTo.second[0] - bbMinMaxTo.first[0])/2.0f, (bbMinMaxTo.second[1] - bbMinMaxTo.first[1])/2.0f, (bbMinMaxTo.second[2] - bbMinMaxTo.first[2])/2.0f));
+				//UDEBUG("%d = %f,%f,%f %f,%f,%f", iter->second.from(), bbMinMaxFrom.first[0], bbMinMaxFrom.first[1], bbMinMaxFrom.first[2], bbMinMaxFrom.second[0], bbMinMaxFrom.second[1], bbMinMaxFrom.second[2]);
+				//UDEBUG("%d = %f,%f,%f %f,%f,%f", iter->second.to(), bbMinMaxTo.first[0], bbMinMaxTo.first[1], bbMinMaxTo.first[2], bbMinMaxTo.second[0], bbMinMaxTo.second[1], bbMinMaxTo.second[2]);
+				if(testAABBAABB(bbFrom, bbTo))
 				{
-					est->setInputSource(util3d::transformPointCloud(cloudTo, iter->second.transform())); //query
-				}
-
-				if(indices.size())
-				{
-					if(indices.at(iter->second.from())->size())
+					if(lastKdTreeId <= 0 || lastKdTreeId!=iter->second.from())
 					{
-						est->setIndicesTarget(indices.at(iter->second.from()));
+						//reconstruct kdtree
+						if(indices.size() && indices.at(iter->second.from())->size())
+						{
+							kdtree.setInputCloud(cloudFrom, indices.at(iter->second.from()));
+						}
+						else
+						{
+							kdtree.setInputCloud(cloudFrom);
+						}
 					}
-					if(indices.at(iter->second.to())->size())
+
+					pcl::Correspondences correspondences;
+					pcl::IndicesPtr indicesTo(new std::vector<int>);
+					std::set<int> addedFrom;
+					if(indices.size() && indices.at(iter->second.to())->size())
 					{
-						est->setIndicesSource(indices.at(iter->second.to()));
+						const pcl::IndicesPtr & indicesTo = indices.at(iter->second.to());
+						correspondences.resize(indicesTo->size());
+						int oi=0;
+						for(unsigned int i=0; i<indicesTo->size(); ++i)
+						{
+							std::vector<int> k_indices;
+							std::vector<float> k_sqr_distances;
+							if(kdtree.radiusSearch(pcl::transformPoint(cloudTo->at(indicesTo->at(i)), t), maxCorrespondenceDistance, k_indices, k_sqr_distances, 1))
+							{
+								if(addedFrom.find(k_indices[0]) == addedFrom.end())
+								{
+									correspondences[oi].index_match = k_indices[0];
+									correspondences[oi].index_query = indicesTo->at(i);
+									correspondences[oi].distance = k_sqr_distances[0];
+									addedFrom.insert(k_indices[0]);
+									++oi;
+								}
+							}
+						}
+						correspondences.resize(oi);
 					}
-				}
-
-				pcl::Correspondences correspondences;
-				est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
-				UDEBUG("correspondences = %d", (int)correspondences.size());
-				if((minOverlap <= 0.0 && correspondences.size()) ||
-						(double(correspondences.size()) / double(clouds.at(iter->second.from())->size()) >= minOverlap &&
-						 double(correspondences.size()) / double(clouds.at(iter->second.to())->size()) >= minOverlap))
-				{
-					int i = idToIndex.at(iter->second.from());
-					int j = idToIndex.at(iter->second.to());
-					N(i, j) = N(j, i) = correspondences.size();
-
-					double Isum1 = 0, Isum2 = 0;
-					for (unsigned int c = 0; c < correspondences.size(); ++c)
+					else
 					{
-						const PointT & pt1 = cloudFrom->at(correspondences.at(c).index_match);
-						const PointT & pt2 = cloudTo->at(correspondences.at(c).index_query);
-
-						Isum1 += std::sqrt(static_cast<double>(sqr(pt1.r) + sqr(pt1.g) + sqr(pt1.b)));
-						Isum2 += std::sqrt(static_cast<double>(sqr(pt2.r) + sqr(pt2.g) + sqr(pt2.b)));
+						correspondences.resize(cloudTo->size());
+						int oi=0;
+						for(unsigned int i=0; i<cloudTo->size(); ++i)
+						{
+							std::vector<int> k_indices;
+							std::vector<float> k_sqr_distances;
+							if(kdtree.radiusSearch(pcl::transformPoint(cloudTo->at(i), t), maxCorrespondenceDistance, k_indices, k_sqr_distances, 1))
+							{
+								if(addedFrom.find(k_indices[0]) == addedFrom.end())
+								{
+									correspondences[oi].index_match = k_indices[0];
+									correspondences[oi].index_query = i;
+									correspondences[oi].distance = k_sqr_distances[0];
+									addedFrom.insert(k_indices[0]);
+									++oi;
+								}
+							}
+						}
+						correspondences.resize(oi);
 					}
-					I(i, j) = Isum1 / N(i, j);
-					I(j, i) = Isum2 / N(i, j);
+
+					UDEBUG("%d->%d: correspondences = %d", iter->second.from(), iter->second.to(), (int)correspondences.size());
+					if((minOverlap <= 0.0 && correspondences.size()) ||
+							(double(correspondences.size()) / double(clouds.at(iter->second.from())->size()) >= minOverlap &&
+							 double(correspondences.size()) / double(clouds.at(iter->second.to())->size()) >= minOverlap))
+					{
+						int i = idToIndex.at(iter->second.from());
+						int j = idToIndex.at(iter->second.to());
+
+						double Isum1 = 0, Isum2 = 0;
+						for (unsigned int c = 0; c < correspondences.size(); ++c)
+						{
+							const PointT & pt1 = cloudFrom->at(correspondences.at(c).index_match);
+							const PointT & pt2 = cloudTo->at(correspondences.at(c).index_query);
+
+							Isum1 += std::sqrt(static_cast<double>(sqr(pt1.r) + sqr(pt1.g) + sqr(pt1.b)));
+							Isum2 += std::sqrt(static_cast<double>(sqr(pt2.r) + sqr(pt2.g) + sqr(pt2.b)));
+						}
+						N(i, j) = N(j, i) = correspondences.size();
+						I(i, j) = Isum1 / N(i, j);
+						I(j, i) = Isum2 / N(i, j);
+					}
 				}
 			}
 		}
@@ -202,6 +306,13 @@ void feedImpl(
 
 	gains = cv::Mat_<double>();
 	cv::solve(A, b, gains);
+	if(ULogger::kDebug)
+	{
+		for(int i=0; i<gains.rows; ++i)
+		{
+			UDEBUG("Gain index=%d (id=%d) = %f", i, indexToId[i], gains.row(i)[0]);
+		}
+	}
 }
 
 void GainCompensator::feed(

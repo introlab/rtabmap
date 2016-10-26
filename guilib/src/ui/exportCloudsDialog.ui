@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
+        <y>-823</y>
         <width>773</width>
-        <height>1689</height>
+        <height>1731</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -811,6 +811,38 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
           <bool>true</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_12" columnstretch="0,1">
+          <item row="2" column="1">
+           <widget class="QLabel" name="label_binaryFile_4">
+            <property name="text">
+             <string>Alpha</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_gainBeta">
+            <property name="suffix">
+             <string/>
+            </property>
+            <property name="decimals">
+             <number>0</number>
+            </property>
+            <property name="minimum">
+             <double>1.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>1000.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>1.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>100.000000000000000</double>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="1">
            <widget class="QLabel" name="label_binaryFile_3">
             <property name="text">
@@ -853,16 +885,6 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="1">
-           <widget class="QLabel" name="label_binaryFile_4">
-            <property name="text">
-             <string>Alpha</string>
-            </property>
-            <property name="wordWrap">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
           <item row="2" column="0">
            <widget class="QDoubleSpinBox" name="doubleSpinBox_gainAlpha">
             <property name="suffix">
@@ -882,28 +904,6 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             </property>
             <property name="value">
              <double>0.010000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QDoubleSpinBox" name="doubleSpinBox_gainBeta">
-            <property name="suffix">
-             <string/>
-            </property>
-            <property name="decimals">
-             <number>0</number>
-            </property>
-            <property name="minimum">
-             <double>1.000000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>1000.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>1.000000000000000</double>
-            </property>
-            <property name="value">
-             <double>100.000000000000000</double>
             </property>
            </widget>
           </item>
@@ -936,6 +936,23 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             </property>
             <property name="value">
              <double>0.050000000000000</double>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="label_binaryFile_7">
+            <property name="text">
+             <string>Do compensation just between linked locations. Otherwise, a full compensation between all locations is done (longer to do but quality is better).</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QCheckBox" name="checkBox_gainLinkedLocationsOnly">
+            <property name="text">
+             <string/>
             </property>
            </widget>
           </item>
