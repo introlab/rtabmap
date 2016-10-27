@@ -76,6 +76,7 @@ class GestureCamera : public Camera {
 
   float cam_start_dist_;
   float cam_cur_dist_;
+  glm::vec3 anchor_offset_;
 
   float start_touch_dist_;
   float cur_touch_dist_;

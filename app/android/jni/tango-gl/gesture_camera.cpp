@@ -16,6 +16,7 @@
 
 #include "tango-gl/gesture_camera.h"
 #include "tango-gl/util.h"
+#include "glm/gtx/quaternion.hpp"
 
 namespace {
 // Render camera observation distance in third person camera mode.
@@ -30,8 +31,14 @@ const float kTopDownCameraDist = 5.0f;
 // Zoom in speed.
 const float kZoomSpeed = 10.0f;
 
+// Move speed
+const float kMoveSpeed = 10.0f;
+
+// Rotation speed
+const float kRotationSpeed = 2.0f;
+
 // Min/max clamp value of camera observation distance.
-const float kCamViewMinDist = 1.0f;
+const float kCamViewMinDist = .1f;
 const float kCamViewMaxDist = 100.f;
 
 // FOV set up values.
@@ -70,8 +77,8 @@ void GestureCamera::OnTouchEvent(int touch_count, TouchEvent event, float x0,
         break;
       }
       case kTouchMove: {
-        float rotation_x = touch0_start_position_.y - y0;
-        float rotation_y = touch0_start_position_.x - x0;
+        float rotation_x = (touch0_start_position_.y - y0) * kRotationSpeed;
+        float rotation_y = (touch0_start_position_.x - x0) * kRotationSpeed;
 
         cam_cur_angle_.x = cam_start_angle_.x + rotation_x;
         cam_cur_angle_.y = cam_start_angle_.y + rotation_y;
@@ -88,17 +95,30 @@ void GestureCamera::OnTouchEvent(int touch_count, TouchEvent event, float x0,
         float abs_y = y0 - y1;
         start_touch_dist_ = std::sqrt(abs_x * abs_x + abs_y * abs_y);
         cam_start_dist_ = GetPosition().z;
+
+        // center touch
+        touch0_start_position_.x = (x0+x1)/2.0f;
+        touch0_start_position_.y = (y0+y1)/2.0f;
         break;
       }
       case kTouchMove: {
         float abs_x = x0 - x1;
         float abs_y = y0 - y1;
-        float dist =
-            start_touch_dist_ - std::sqrt(abs_x * abs_x + abs_y * abs_y);
-        cam_cur_dist_ =
-            tango_gl::util::Clamp(cam_start_dist_ + dist * kZoomSpeed,
+        float dist = start_touch_dist_ - std::sqrt(abs_x * abs_x + abs_y * abs_y);
+
+        cam_cur_dist_ = tango_gl::util::Clamp(cam_start_dist_ + dist * kZoomSpeed,
                                   kCamViewMinDist, kCamViewMaxDist);
+
+        glm::vec2 touch_center_position((x0+x1)/2.0f, (y0+y1)/2.0f);
+        glm::vec2 offset;
+        offset.x = (touch_center_position.x - touch0_start_position_.x) * kMoveSpeed;
+        offset.y = (touch_center_position.y - touch0_start_position_.y) * kMoveSpeed;
+        touch0_start_position_ = touch_center_position;
+
         StartCameraToCurrentTransform();
+
+        anchor_offset_ += glm::rotate(cam_parent_transform_->GetRotation(), glm::vec3(-offset.x, offset.y, 0));
+
         break;
       }
       default: { break; }
@@ -126,7 +146,10 @@ Segment GestureCamera::GetSegmentFromTouch(float normalized_x,
 }
 
 void GestureCamera::SetAnchorPosition(const glm::vec3& pos, const glm::quat & rotation) {
-	cam_parent_transform_->SetPosition(pos);
+	// Anchor position
+	cam_parent_transform_->SetPosition(pos+anchor_offset_);
+
+	// Anchor rotation
 	if(camera_type_ == kThirdPersonFollow)
 	{
 		cam_cur_target_rot_ = rotation;
@@ -145,6 +168,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = 0.0f;
+      anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
       cam_cur_angle_.x = 0.0f;
       cam_cur_angle_.y = 0.0f;
       cam_cur_target_rot_ = glm::quat(1,0,0,0);
@@ -157,6 +181,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = kThirdPersonFollow?kThirdPersonFollowCameraDist:kThirdPersonCameraDist;
+      anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
       cam_cur_angle_.x = -M_PI / 4.0f;
       cam_cur_angle_.y = kThirdPersonFollow?0:M_PI / 4.0f;
       cam_cur_target_rot_ = glm::quat(1,0,0,0);
@@ -167,6 +192,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
       SetPosition(glm::vec3(0.0f, 0.0f, 0.0f));
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = kTopDownCameraDist;
+      anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
       cam_cur_angle_.x = -M_PI / 2.0f;
       cam_cur_angle_.y = 0.0f;
       cam_cur_target_rot_ = glm::quat(1,0,0,0);
@@ -179,9 +205,12 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
 
 void GestureCamera::StartCameraToCurrentTransform()
 {
+  //Anchor rotation
   glm::quat parent_cam_rot = glm::rotate(cam_cur_target_rot_, cam_cur_angle_.y, glm::vec3(0, 1, 0));
   parent_cam_rot = glm::rotate(parent_cam_rot, cam_cur_angle_.x, glm::vec3(1, 0, 0));
-  SetPosition(glm::vec3(0.0f, 0.0f, cam_cur_dist_));
   cam_parent_transform_->SetRotation(parent_cam_rot);
+
+  //Camera position
+  SetPosition(glm::vec3(0, 0, cam_cur_dist_));
 }
 }  // namespace tango_gl

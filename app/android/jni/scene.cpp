@@ -252,7 +252,7 @@ int Scene::Render() {
 	  }
 	  else
 	  {
-		// In third person or top down more, we follow the camera movement.
+		// In third person or top down mode, we follow the camera movement.
 		gesture_camera_->SetAnchorPosition(position, rotation);
 
 		frustum_->SetPosition(position);
