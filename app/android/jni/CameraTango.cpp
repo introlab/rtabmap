@@ -42,10 +42,10 @@ const float maxDepthError = 0.10;
 const int scanDownsampling = 10;
 
 // Callbacks
-void onPointCloudAvailableRouter(void* context, const TangoXYZij* xyz_ij)
+void onPointCloudAvailableRouter(void* context, const TangoPointCloud* point_cloud)
 {
 	CameraTango* app = static_cast<CameraTango*>(context);
-	app->cloudReceived(cv::Mat(1, xyz_ij->xyz_count, CV_32FC3, xyz_ij->xyz[0]), xyz_ij->timestamp);
+	app->cloudReceived(cv::Mat(1, point_cloud->num_points, CV_32FC4, point_cloud->points[0]), point_cloud->timestamp);
 }
 
 void onFrameAvailableRouter(void* context, TangoCameraId id, const TangoImageBuffer* color)
@@ -182,6 +182,14 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 		return false;
 	}
 
+	// Need to specify the depth_mode as XYZC.
+	ret = TangoConfig_setInt32(tango_config_, "config_depth_mode", TANGO_POINTCLOUD_XYZC);
+	if (ret != TANGO_SUCCESS)
+	{
+		LOGE("Failed to set 'depth_mode' configuration flag with error code: %d", ret);
+		return false;
+	}
+
 	// Note that it's super important for AR applications that we enable low
 	// latency imu integration so that we have pose information available as
 	// quickly as possible. Without setting this flag, you'll often receive
@@ -208,7 +216,7 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	LOGI("NativeRTABMap: Setup callbacks");
 	// Attach the OnXYZijAvailable callback.
 	// The callback will be called after the service is connected.
-	ret = TangoService_connectOnXYZijAvailable(onPointCloudAvailableRouter);
+	ret = TangoService_connectOnPointCloudAvailable(onPointCloudAvailableRouter);
 	if (ret != TANGO_SUCCESS)
 	{
 		LOGE("NativeRTABMap: Failed to connect to point cloud callback with error code: %d", ret);
@@ -341,7 +349,7 @@ void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 {
 	if(this->isRunning())
 	{
-		UASSERT(cloud.type() == CV_32FC3);
+		UASSERT(cloud.type() == CV_32FC4);
 		boost::mutex::scoped_lock  lock(dataMutex_);
 
 		bool notify = cloud_.empty();
