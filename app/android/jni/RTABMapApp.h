@@ -161,7 +161,7 @@ class RTABMapApp : public UEventsHandler {
   bool paused_;
   bool clearSceneOnNextRender_;
   bool filterPolygonsOnNextRender_;
-  bool gainCompensationOnNextRender_;
+  int gainCompensationOnNextRender_;
   bool cameraJustInitialized_;
   int totalPoints_;
   int totalPolygons_;

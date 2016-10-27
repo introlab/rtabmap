@@ -125,7 +125,7 @@ RTABMapApp::RTABMapApp() :
 		paused_(false),
 		clearSceneOnNextRender_(false),
 		filterPolygonsOnNextRender_(false),
-		gainCompensationOnNextRender_(false),
+		gainCompensationOnNextRender_(0),
 		cameraJustInitialized_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
@@ -600,10 +600,9 @@ int RTABMapApp::Render()
 		}
 	}
 
-	if(notifyDataLoaded || gainCompensationOnNextRender_)
+	if(notifyDataLoaded || gainCompensationOnNextRender_>0)
 	{
 		LOGI("Gain compensation...");
-		gainCompensationOnNextRender_ = false;
 		boost::mutex::scoped_lock  lock(meshesMutex_);
 		if(createdMeshes_.size() > 1)
 		{
@@ -616,6 +615,23 @@ int RTABMapApp::Render()
 			std::map<int, rtabmap::Transform> poses;
 			std::multimap<int, rtabmap::Link> links;
 			rtabmap_->getGraph(poses, links, false, true);
+			if(gainCompensationOnNextRender_ == 2)
+			{
+				// full compensation
+				links.clear();
+				for(std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
+				{
+					int from = iter->first;
+					std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr>::const_iterator jter = iter;
+					++jter;
+					for(;jter!=clouds.end(); ++jter)
+					{
+						int to = jter->first;
+						links.insert(std::make_pair(from, rtabmap::Link(from, to, rtabmap::Link::kUserClosure, poses.at(from).inverse()*poses.at(to))));
+					}
+				}
+			}
+
 			compensator.feed(clouds, links);
 			for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 			{
@@ -633,6 +649,7 @@ int RTABMapApp::Render()
 				iter->second.texture = rtabmap::compressImage2(iter->second.texture, ".jpg");
 			}
 		}
+		gainCompensationOnNextRender_ = 0;
 		notifyDataLoaded = true;
 	}
 
@@ -1082,7 +1099,7 @@ int RTABMapApp::postProcessing(int approach)
 					LOGE("g2o not available!");
 				}
 			}
-			else if(approach!=4 || approach!=5)
+			else if(approach!=4 && approach!=5)
 			{
 				// simple graph optmimization
 				rtabmap_->getGraph(poses, links, true, true);
@@ -1099,7 +1116,7 @@ int RTABMapApp::postProcessing(int approach)
 
 			rtabmap_->setOptimizedPoses(poses);
 		}
-		else if(approach!=4 || approach!=5)
+		else if(approach!=4 && approach!=5)
 		{
 			returnedValue = -1;
 		}
@@ -1114,10 +1131,10 @@ int RTABMapApp::postProcessing(int approach)
 			}
 
 			// gain compensation
-			if(approach == -1 || approach == 5)
+			if(approach == -1 || approach == 5 || approach == 6)
 			{
 				boost::mutex::scoped_lock  lock(renderingMutex_);
-				gainCompensationOnNextRender_ = true;
+				gainCompensationOnNextRender_ = approach == 6 ? 2 : 1; // 2 = full, 1 = fast
 			}
 		}
 	}

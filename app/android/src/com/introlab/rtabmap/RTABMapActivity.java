@@ -130,7 +130,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setTitle(R.string.menu_name);
-
+    
     // Query screen size, the screen size is used for computing the normalized
     // touch point.
     Display display = getWindowManager().getDefaultDisplay();
@@ -791,12 +791,19 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  mProgressDialog.show();
     	  RTABMapLib.postProcessing(4);
       }
-      else if (itemId == R.id.gain_compensation)
+      else if (itemId == R.id.gain_compensation_fast)
       {		
     	  mProgressDialog.setTitle("Post-Processing");
-		  mProgressDialog.setMessage(String.format("Gain compensation..."));
+		  mProgressDialog.setMessage(String.format("Fast gain compensation..."));
 		  mProgressDialog.show();
     	  RTABMapLib.postProcessing(5);
+      }
+      else if (itemId == R.id.gain_compensation_full)
+      {		
+    	  mProgressDialog.setTitle("Post-Processing");
+		  mProgressDialog.setMessage(String.format("Full gain compensation..."));
+		  mProgressDialog.show();
+    	  RTABMapLib.postProcessing(6);
       }
       else if (itemId == R.id.sba)
       {
