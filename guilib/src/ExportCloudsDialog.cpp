@@ -818,7 +818,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 
 		std::map<int, Transform> viewPoints = poses;
-		if(_ui->groupBox_mls->isChecked())
+		if(_ui->groupBox_mls->isVisible() && _ui->groupBox_mls->isChecked())
 		{
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
 					"[search radius=%1m voxel=%2m]").arg(_ui->doubleSpinBox_mlsRadius->value()).arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
@@ -850,7 +850,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = iter->second.first;
 
-			if(_ui->groupBox_mls->isChecked())
+			if(_ui->groupBox_mls->isVisible() && _ui->groupBox_mls->isChecked())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZRGB>);
 				if(iter->second.first->isOrganized())
