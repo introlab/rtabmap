@@ -103,6 +103,16 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpCorrespondenceRatio(), std::string("0.3")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kIcpMaxCorrespondenceDistance(), std::string("0.05")));
 
+	parameters.insert(*rtabmap::Parameters::getDefaultParameters().find(rtabmap::Parameters::kKpMaxFeatures()));
+	parameters.insert(*rtabmap::Parameters::getDefaultParameters().find(rtabmap::Parameters::kMemRehearsalSimilarity()));
+	parameters.insert(*rtabmap::Parameters::getDefaultParameters().find(rtabmap::Parameters::kMemMapLabelsAdded()));
+	if(dataRecorderMode_)
+	{
+		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), std::string("-1")));
+		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemRehearsalSimilarity(), std::string("1.0"))); // deactivate rehearsal
+		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kMemMapLabelsAdded(), "false")); // don't create map labels
+	}
+
 	return parameters;
 }
 
@@ -123,6 +133,7 @@ RTABMapApp::RTABMapApp() :
 		meshTrianglePix_(1),
 		meshAngleToleranceDeg_(15.0),
 		paused_(false),
+		dataRecorderMode_(false),
 		clearSceneOnNextRender_(false),
 		filterPolygonsOnNextRender_(false),
 		gainCompensationOnNextRender_(0),
@@ -206,6 +217,10 @@ void RTABMapApp::openDatabase(const std::string & databasePath)
 
 	rtabmap_->init(parameters, databasePath);
 	rtabmapThread_ = new rtabmap::RtabmapThread(rtabmap_);
+	if(parameters.find(rtabmap::Parameters::kRtabmapDetectionRate()) != parameters.end())
+	{
+		rtabmapThread_->setDetectorRate(uStr2Float(parameters.at(rtabmap::Parameters::kRtabmapDetectionRate())));
+	}
 
 	// Generate all meshes
 	std::map<int, rtabmap::Signature> signatures;
@@ -402,7 +417,7 @@ int RTABMapApp::Render()
 
 		// update buffered signatures
 		std::map<int, rtabmap::SensorData> bufferedSensorData;
-		if(!trajectoryMode_)
+		if(!trajectoryMode_ && !dataRecorderMode_)
 		{
 			for(std::list<rtabmap::Statistics>::iterator iter=rtabmapEvents.begin(); iter!=rtabmapEvents.end(); ++iter)
 			{
@@ -831,6 +846,14 @@ void RTABMapApp::setFullResolution(bool enabled)
 		rtabmap::ParametersMap parameters;
 		parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImagePreDecimation(), std::string(fullResolution_?"2":"1")));
 		this->post(new rtabmap::ParamEvent(parameters));
+	}
+}
+
+void RTABMapApp::setDataRecorderMode(bool enabled)
+{
+	if(dataRecorderMode_ != enabled)
+	{
+		dataRecorderMode_ = enabled; // parameters will be set when resuming (we assume we are paused)
 	}
 }
 

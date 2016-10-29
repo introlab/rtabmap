@@ -79,6 +79,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private MenuItem mItemRenderingPointCloud;
   private MenuItem mItemRenderingMesh;
   private MenuItem mItemRenderingTextureMesh;
+  private MenuItem mItemDataRecorderMode;
   
   
   private String mOpenedDatabasePath = "";
@@ -337,10 +338,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  mItemRenderingPointCloud = menu.findItem(R.id.point_cloud);
 	  mItemRenderingMesh = menu.findItem(R.id.mesh);
 	  mItemRenderingTextureMesh = menu.findItem(R.id.texture_mesh);
+	  mItemDataRecorderMode = menu.findItem(R.id.data_recorder);
 	  mItemSave.setEnabled(false);
 	  mItemExport.setEnabled(false);
 	  mItemOpen.setEnabled(false);
 	  mItemPostProcessing.setEnabled(false);
+	  mItemDataRecorderMode.setEnabled(false);
 	  
 	  return true;
   }
@@ -525,6 +528,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					mItemPostProcessing.setEnabled(false);
 					mItemSave.setEnabled(false);
 					mItemExport.setEnabled(false);
+					mItemDataRecorderMode.setEnabled(false);
 					RTABMapLib.setPausedMapping(false); // resume mapping
 				}
 			}
@@ -658,9 +662,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
       {
     	  item.setChecked(!item.isChecked());
     	  mItemSave.setEnabled(item.isChecked());
-		  mItemExport.setEnabled(item.isChecked());
-    	  mItemOpen.setEnabled(item.isChecked());
-    	  mItemPostProcessing.setEnabled(item.isChecked());
+		  mItemExport.setEnabled(item.isChecked() && !mItemDataRecorderMode.isChecked());
+    	  mItemOpen.setEnabled(item.isChecked() && !mItemDataRecorderMode.isChecked());
+    	  mItemPostProcessing.setEnabled(item.isChecked() && !mItemDataRecorderMode.isChecked());
+    	  mItemDataRecorderMode.setEnabled(item.isChecked());
     	 // mItemSave.setEnabled(item.isChecked() && !mWorkingDirectory.isEmpty());
     	  if(item.isChecked())
     	  {
@@ -675,8 +680,15 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  else
     	  {
     		  RTABMapLib.setPausedMapping(false);
-    		  ((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?"Localization":"Mapping");
-    		  mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
+    		  if(mItemDataRecorderMode.isChecked())
+    		  {
+    			  mToast.makeText(getActivity(), String.format("Data Recorder Mode: no map is created, only raw data is recorded."), mToast.LENGTH_LONG).show();
+    		  }
+    		  else
+    		  {
+	    		  ((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?"Localization":"Mapping");
+	    		  mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
+    		  }
     	  }
       } 
       else if (itemId == R.id.post_processing_standard)
@@ -1112,6 +1124,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 										mItemOpen.setEnabled(false);
 										mItemPostProcessing.setEnabled(false);
 										mItemExport.setEnabled(false);
+										mItemDataRecorderMode.setEnabled(false);
 				                    }
 				                })
 				                .setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -1135,6 +1148,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							  mItemOpen.setEnabled(false);
 							  mItemPostProcessing.setEnabled(false);
 							  mItemExport.setEnabled(false);
+							  mItemDataRecorderMode.setEnabled(false);
 						  }
 					  }
 				  }
@@ -1153,6 +1167,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			  mItemOpen.setEnabled(false);
 			  mItemPostProcessing.setEnabled(false);
 			  mItemExport.setEnabled(false);
+			  mItemDataRecorderMode.setEnabled(false);
     	  }
       }
       else if(itemId == R.id.reset)
@@ -1180,6 +1195,56 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			  mOpenedDatabasePath = "";
         	  RTABMapLib.openDatabase(mTempDatabasePath);
 		  }
+      }
+      else if(itemId == R.id.data_recorder)
+      {
+		  final boolean dataRecorderOldState = item.isChecked();
+		  new AlertDialog.Builder(getActivity())
+          .setTitle("Data Recorder Mode")
+          .setMessage("Changing from/to data recorder mode will close the current session. Do you want to continue?")
+          .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {           	  
+            	  // reset
+            	  ((TextView)findViewById(R.id.points)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.polygons)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.nodes)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.words)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
+            	  ((TextView)findViewById(R.id.db_size)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.inliers)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.features)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.update_time)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.hypothesis)).setText(String.valueOf(0));
+            	  ((TextView)findViewById(R.id.fps)).setText(String.valueOf(0));
+        		  mTotalLoopClosures = 0;
+        		  ((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
+            	   
+        		  mItemDataRecorderMode.setChecked(!dataRecorderOldState);
+            	  RTABMapLib.setDataRecorderMode(mItemDataRecorderMode.isChecked());
+            	  
+            	  mOpenedDatabasePath = "";
+        		  RTABMapLib.openDatabase(mTempDatabasePath);
+        		  
+        		  mItemOpen.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
+    			  mItemPostProcessing.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
+    			  mItemExport.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
+            	  
+            	  if(mItemDataRecorderMode.isChecked())
+            	  {
+            		  mToast.makeText(getActivity(), String.format("Data recorder mode activated! Tip: You can increase data update rate in Parameters menu under Mapping options."), mToast.LENGTH_LONG).show();
+            	  }
+            	  else
+            	  {
+            		  mToast.makeText(getActivity(), String.format("Data recorder mode deactivated!"), mToast.LENGTH_LONG).show();
+            	  }
+              }
+          })
+          .setNegativeButton("No", new DialogInterface.OnClickListener() {
+              public void onClick(DialogInterface dialog, int which) {
+                  dialog.dismiss();
+              }
+          })
+          .show();
       }
       else if(itemId == R.id.export_obj || itemId == R.id.export_ply)
       {

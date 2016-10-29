@@ -192,6 +192,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setFullResolution(
 	return app.setFullResolution(enabled);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setDataRecorderMode(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setDataRecorderMode(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMaxCloudDepth(
 		JNIEnv*, jobject, float value)
 {

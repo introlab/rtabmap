@@ -67,6 +67,7 @@
 	           <item android:id="@+id/nodes_filtering" android:checked="false" android:title="Nodes Filtering" />
 	           <item android:id="@+id/drift_correction" android:checked="false" android:title="Drift Correction" />
 	           <item android:id="@+id/resolution" android:checked="false" android:title="720p Mode" />
+	           <item android:id="@+id/data_recorder" android:checked="false" android:title="Data Recorder Mode" />
 	           <item android:id="@+id/menu_param_settings" android:checkable="false" android:title="Parameters...">
 		           <menu >
 			           <item android:id="@+id/update_rate" android:title="Map Update Rate..." />

@@ -68,6 +68,7 @@ public class RTABMapLib
     public static native void setGridVisible(boolean visible);
     public static native void setAutoExposure(boolean enabled);
     public static native void setFullResolution(boolean enabled);
+    public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);
     public static native void setMeshAngleTolerance(float value);
     public static native void setMeshTriangleSize(int value);

@@ -122,6 +122,7 @@ class RTABMapApp : public UEventsHandler {
   void setGridVisible(bool visible);
   void setAutoExposure(bool enabled);
   void setFullResolution(bool enabled);
+  void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
   void setMeshAngleTolerance(float value);
   void setMeshTriangleSize(int value);
@@ -159,6 +160,7 @@ class RTABMapApp : public UEventsHandler {
   rtabmap::ParametersMap mappingParameters_;
 
   bool paused_;
+  bool dataRecorderMode_;
   bool clearSceneOnNextRender_;
   bool filterPolygonsOnNextRender_;
   int gainCompensationOnNextRender_;
