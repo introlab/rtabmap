@@ -3163,7 +3163,7 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 
 void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
 {
-	UDEBUG("");
+	UDEBUG("Ref ID = %d", statistics.refImageId());
 	if(_ppDb)
 	{
 		std::string type;

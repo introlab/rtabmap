@@ -783,6 +783,15 @@ void DBDriver::getLastNodeId(int & id) const
 
 	_dbSafeAccessMutex.lock();
 	this->getLastIdQuery("Node", id);
+	int statisticsId = 0;
+	if(uStrNumCmp(this->getDatabaseVersion(), "0.11.11") >= 0)
+	{
+		this->getLastIdQuery("Statistics", statisticsId);
+		if(statisticsId > id)
+		{
+			id = statisticsId;
+		}
+	}
 	_dbSafeAccessMutex.unlock();
 }
 
