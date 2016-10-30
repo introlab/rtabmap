@@ -34,7 +34,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/search/kdtree.h>
 #include <pcl/common/common.h>
 #include <pcl/common/transforms.h>
-#include <pcl/common/eigen.h>
 #include <pcl/correspondence.h>
 
 namespace rtabmap {
@@ -146,7 +145,7 @@ void feedImpl(
 	idToIndex.clear();
 	std::vector<int> indexToId(clouds.size());
 	int oi=0;
-	std::map<int, std::pair<Eigen::Vector3f, Eigen::Vector3f> > boundingBoxes;
+	std::map<int, std::pair<pcl::PointXYZ, pcl::PointXYZ> > boundingBoxes;
 	for(typename std::map<int, typename pcl::PointCloud<PointT>::Ptr>::const_iterator iter=clouds.begin(); iter!=clouds.end(); ++iter)
 	{
 		idToIndex.insert(std::make_pair(iter->first, oi));
@@ -170,7 +169,7 @@ void feedImpl(
 		maxPt[0] += maxCorrespondenceDistance;
 		maxPt[1] += maxCorrespondenceDistance;
 		maxPt[2] += maxCorrespondenceDistance;
-		boundingBoxes.insert(std::make_pair(iter->first, std::make_pair(Eigen::Vector3f(minPt[0], minPt[1], minPt[2]), Eigen::Vector3f(maxPt[0], maxPt[1], maxPt[2]))));
+		boundingBoxes.insert(std::make_pair(iter->first, std::make_pair(pcl::PointXYZ(minPt[0], minPt[1], minPt[2]), pcl::PointXYZ(maxPt[0], maxPt[1], maxPt[2]))));
 		++oi;
 	}
 
@@ -185,19 +184,19 @@ void feedImpl(
 			if(cloudFrom->size() && cloudTo->size())
 			{
 				//Are bounding boxes intersect?
-				std::pair<Eigen::Vector3f, Eigen::Vector3f> bbMinMaxFrom = boundingBoxes.at(iter->second.from());
-				std::pair<Eigen::Vector3f, Eigen::Vector3f> bbMinMaxTo = boundingBoxes.at(iter->second.to());
+				std::pair<pcl::PointXYZ, pcl::PointXYZ> bbMinMaxFrom = boundingBoxes.at(iter->second.from());
+				std::pair<pcl::PointXYZ, pcl::PointXYZ> bbMinMaxTo = boundingBoxes.at(iter->second.to());
 				Eigen::Affine3f t = Transform::getIdentity().toEigen3f();
 				if(!iter->second.transform().isIdentity() && !iter->second.transform().isNull())
 				{
 					t = iter->second.transform().toEigen3f();
-					pcl::transformPoint(bbMinMaxTo.first, bbMinMaxTo.first, t);
-					pcl::transformPoint(bbMinMaxTo.second, bbMinMaxTo.second, t);
+					bbMinMaxTo.first = pcl::transformPoint(bbMinMaxTo.first, t);
+					bbMinMaxTo.second = pcl::transformPoint(bbMinMaxTo.second, t);
 				}
-				AABB bbFrom(Eigen::Vector3f((bbMinMaxFrom.second[0] + bbMinMaxFrom.first[0])/2.0f, (bbMinMaxFrom.second[1] + bbMinMaxFrom.first[1])/2.0f, (bbMinMaxFrom.second[2] + bbMinMaxFrom.first[2])/2.0f),
-						 Eigen::Vector3f((bbMinMaxFrom.second[0] - bbMinMaxFrom.first[0])/2.0f, (bbMinMaxFrom.second[1] - bbMinMaxFrom.first[1])/2.0f, (bbMinMaxFrom.second[2] - bbMinMaxFrom.first[2])/2.0f));
-				AABB bbTo(Eigen::Vector3f((bbMinMaxTo.second[0] + bbMinMaxTo.first[0])/2.0f, (bbMinMaxTo.second[1] + bbMinMaxTo.first[1])/2.0f, (bbMinMaxTo.second[2] + bbMinMaxTo.first[2])/2.0f),
-						 Eigen::Vector3f((bbMinMaxTo.second[0] - bbMinMaxTo.first[0])/2.0f, (bbMinMaxTo.second[1] - bbMinMaxTo.first[1])/2.0f, (bbMinMaxTo.second[2] - bbMinMaxTo.first[2])/2.0f));
+				AABB bbFrom(Eigen::Vector3f((bbMinMaxFrom.second.x + bbMinMaxFrom.first.x)/2.0f, (bbMinMaxFrom.second.y + bbMinMaxFrom.first.y)/2.0f, (bbMinMaxFrom.second.z + bbMinMaxFrom.first.z)/2.0f),
+						 Eigen::Vector3f((bbMinMaxFrom.second.x - bbMinMaxFrom.first.x)/2.0f, (bbMinMaxFrom.second.y - bbMinMaxFrom.first.y)/2.0f, (bbMinMaxFrom.second.z - bbMinMaxFrom.first.z)/2.0f));
+				AABB bbTo(Eigen::Vector3f((bbMinMaxTo.second.x + bbMinMaxTo.first.x)/2.0f, (bbMinMaxTo.second.y + bbMinMaxTo.first.y)/2.0f, (bbMinMaxTo.second.z + bbMinMaxTo.first.z)/2.0f),
+						 Eigen::Vector3f((bbMinMaxTo.second.x - bbMinMaxTo.first.x)/2.0f, (bbMinMaxTo.second.y - bbMinMaxTo.first.y)/2.0f, (bbMinMaxTo.second.z - bbMinMaxTo.first.z)/2.0f));
 				//UDEBUG("%d = %f,%f,%f %f,%f,%f", iter->second.from(), bbMinMaxFrom.first[0], bbMinMaxFrom.first[1], bbMinMaxFrom.first[2], bbMinMaxFrom.second[0], bbMinMaxFrom.second[1], bbMinMaxFrom.second[2]);
 				//UDEBUG("%d = %f,%f,%f %f,%f,%f", iter->second.to(), bbMinMaxTo.first[0], bbMinMaxTo.first[1], bbMinMaxTo.first[2], bbMinMaxTo.second[0], bbMinMaxTo.second[1], bbMinMaxTo.second[2]);
 				if(testAABBAABB(bbFrom, bbTo))
