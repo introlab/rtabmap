@@ -1706,7 +1706,11 @@ void DatabaseViewer::view3DMap()
 	items.append("4");
 	items.append("8");
 	items.append("16");
-	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation"), items, 2, false, &ok);
+	items.append("-2");
+	items.append("-4");
+	items.append("-8");
+	items.append("-16");
+	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value)."), items, 2, false, &ok);
 	if(ok)
 	{
 		int decimation = item.toInt();
@@ -1928,7 +1932,11 @@ void DatabaseViewer::generate3DMap()
 	items.append("4");
 	items.append("8");
 	items.append("16");
-	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation"), items, 2, false, &ok);
+	items.append("-2");
+	items.append("-4");
+	items.append("-8");
+	items.append("-16");
+	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value)."), items, 2, false, &ok);
 	if(ok)
 	{
 		int decimation = item.toInt();
@@ -4129,14 +4137,14 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 		dataTo.uncompressData(&tmpC, &tmpD, 0);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom = util3d::cloudFromSensorData(
 				dataFrom,
-				ui_->spinBox_icp_decimation->value(),
+				ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
 				ui_->doubleSpinBox_icp_maxDepth->value(),
 				ui_->doubleSpinBox_icp_minDepth->value(),
 				0,
 				ui_->parameters_toolbox->getParameters());
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo = util3d::cloudFromSensorData(
 				dataTo,
-				ui_->spinBox_icp_decimation->value(),
+				ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
 				ui_->doubleSpinBox_icp_maxDepth->value(),
 				ui_->doubleSpinBox_icp_minDepth->value(),
 				0,

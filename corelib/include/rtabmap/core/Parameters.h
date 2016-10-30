@@ -207,8 +207,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, GenerateIds,             bool, true,     "True=Generate location IDs, False=use input image IDs.");
 	RTABMAP_PARAM(Mem, BadSignaturesIgnored,    bool, false,     "Bad signatures are ignored.");
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,     "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
-	RTABMAP_PARAM(Mem, ImagePreDecimation,      int, 1,          "Image decimation (>=1) before features extraction.");
-	RTABMAP_PARAM(Mem, ImagePostDecimation,     int, 1,          "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image.");
+	RTABMAP_PARAM(Mem, ImagePreDecimation,      int, 1,          "Image decimation (>=1) before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
+	RTABMAP_PARAM(Mem, ImagePostDecimation,     int, 1,          "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
 	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,      "If > 1, downsample the laser scans when creating a signature.");
 	RTABMAP_PARAM(Mem, LaserScanNormalK,        int, 0,          "If > 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.");
 	RTABMAP_PARAM(Mem, UseOdomFeatures,         bool, false, "Use odometry features.");
@@ -370,7 +370,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, GuessMotion,            bool, false,      "Guess next transformation from the last motion computed.");
 	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,       "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,       "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
-	RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,           "Decimation of the images before registration.");
+	RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,           "Decimation of the images before registration. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
 	RTABMAP_PARAM(Odom, AlignWithGround,        bool, false,      "Align odometry with the ground on initialization.");
 
 	// Odometry Bag-of-words
@@ -464,14 +464,14 @@ class RTABMAP_EXP Parameters
 
 	// Occupancy Grid
 	RTABMAP_PARAM(Grid, FromDepth,               bool,   true,    "Create occupancy grid from depth image(s), otherwise it is created from laser scan.");
-	RTABMAP_PARAM(Grid, DepthDecimation,         int,    4,       uFormat("[%s=true] Decimation of the depth image before creating cloud.", kGridDepthDecimation().c_str()));
-	RTABMAP_PARAM(Grid, DepthMin,                float,  0.0,     uFormat("[%s=true] Minimum cloud's depth from sensor.", kGridDepthDecimation().c_str()));
-	RTABMAP_PARAM(Grid, DepthMax,                float,  4.0,     uFormat("[%s=true] Maximum cloud's depth from sensor. 0=inf.", kGridDepthDecimation().c_str()));
-	RTABMAP_PARAM_STR(Grid, DepthRoiRatios,      "0.0 0.0 0.0 0.0", uFormat("[%s=true] Region of interest ratios [left, right, top, bottom].", kGridDepthDecimation().c_str()));
+	RTABMAP_PARAM(Grid, DepthDecimation,         int,    4,       uFormat("[%s=true] Decimation of the depth image before creating cloud. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).", kGridDepthDecimation().c_str()));
+	RTABMAP_PARAM(Grid, DepthMin,                float,  0.0,     uFormat("[%s=true] Minimum cloud's depth from sensor.", kGridFromDepth().c_str()));
+	RTABMAP_PARAM(Grid, DepthMax,                float,  4.0,     uFormat("[%s=true] Maximum cloud's depth from sensor. 0=inf.", kGridFromDepth().c_str()));
+	RTABMAP_PARAM_STR(Grid, DepthRoiRatios,      "0.0 0.0 0.0 0.0", uFormat("[%s=true] Region of interest ratios [left, right, top, bottom].", kGridFromDepth().c_str()));
 	RTABMAP_PARAM(Grid, FootprintLength,         float,  0.0,     "Footprint length used to filter points over the footprint of the robot.");
 	RTABMAP_PARAM(Grid, FootprintWidth,          float,  0.0,     "Footprint width used to filter points over the footprint of the robot. Footprint length should be set.");
 	RTABMAP_PARAM(Grid, FootprintHeight,         float,  0.0,     "Footprint height used to filter points over the footprint of the robot. Footprint length and width should be set.");
-	RTABMAP_PARAM(Grid, ScanDecimation,          int,    1,       uFormat("[%s=false] Decimation of the laser scan before creating cloud.", kGridDepthDecimation().c_str()));
+	RTABMAP_PARAM(Grid, ScanDecimation,          int,    1,       uFormat("[%s=false] Decimation of the laser scan before creating cloud.", kGridFromDepth().c_str()));
 	RTABMAP_PARAM(Grid, CellSize,                float,  0.05,    "Resolution of the occupancy grid.");
 	RTABMAP_PARAM(Grid, MapFrameProjection,      bool,   false,   "Projection in map frame. On a 3D terrain and a fixed local camera transform (the cloud is created relative to ground), you may want to disable this to do the projection in robot frame instead.");
 	RTABMAP_PARAM(Grid, NormalsSegmentation,     bool,   true,    "Segment ground from obstacles using point normals, otherwise a fast passthrough is used.");

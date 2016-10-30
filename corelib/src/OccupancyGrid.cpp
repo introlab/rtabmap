@@ -74,6 +74,10 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 {
 	Parameters::parse(parameters, Parameters::kGridFromDepth(), occupancyFromCloud_);
 	Parameters::parse(parameters, Parameters::kGridDepthDecimation(), cloudDecimation_);
+	if(cloudDecimation_ == 0)
+	{
+		cloudDecimation_ = 1;
+	}
 	Parameters::parse(parameters, Parameters::kGridDepthMin(), cloudMinDepth_);
 	Parameters::parse(parameters, Parameters::kGridDepthMax(), cloudMaxDepth_);
 	Parameters::parse(parameters, Parameters::kGridFootprintLength(), footprintLength_);

@@ -983,7 +983,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>3</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -991,7 +991,7 @@
           <x>0</x>
           <y>0</y>
           <width>324</width>
-          <height>188</height>
+          <height>210</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1443,8 +1443,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
-          <height>126</height>
+          <width>283</width>
+          <height>225</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1543,8 +1543,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>181</width>
-          <height>200</height>
+          <width>283</width>
+          <height>225</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1554,14 +1554,17 @@
          <item row="1" column="0">
           <widget class="QSpinBox" name="spinBox_icp_decimation">
            <property name="minimum">
-            <number>1</number>
+            <number>-32</number>
+           </property>
+           <property name="maximum">
+            <number>32</number>
            </property>
           </widget>
          </item>
          <item row="1" column="2">
           <widget class="QLabel" name="label_9">
            <property name="text">
-            <string>Decimation</string>
+            <string>Decimation. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>

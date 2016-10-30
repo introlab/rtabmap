@@ -3888,7 +3888,7 @@ int PreferencesDialog::getCloudMeshingTriangleSize()
 int PreferencesDialog::getCloudDecimation(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
-	return _3dRenderingDecimation[index]->value();
+	return _3dRenderingDecimation[index]->value()==0?1:_3dRenderingDecimation[index]->value();
 }
 double PreferencesDialog::getCloudMaxDepth(int index) const
 {

@@ -108,7 +108,10 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomKalmanMeasurementNoise(), _kalmanMeasurementNoise);
 	Parameters::parse(parameters, Parameters::kOdomImageDecimation(), _imageDecimation);
 	Parameters::parse(parameters, Parameters::kOdomAlignWithGround(), _alignWithGround);
-	UASSERT(_imageDecimation>=1);
+	if(_imageDecimation == 0)
+	{
+		_imageDecimation = 1;
+	}
 
 	if(_filteringStrategy == 2)
 	{

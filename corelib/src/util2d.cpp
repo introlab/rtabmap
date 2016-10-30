@@ -1224,7 +1224,7 @@ cv::Mat decimate(const cv::Mat & image, int decimation)
 
 cv::Mat interpolate(const cv::Mat & image, int factor, float depthErrorRatio)
 {
-	UASSERT(factor >= 1);
+	UASSERT_MSG(factor >= 1, uFormat("factor=%d", factor).c_str());
 	cv::Mat out;
 	if(!image.empty())
 	{

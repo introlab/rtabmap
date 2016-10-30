@@ -358,6 +358,7 @@ void ExportCloudsDialog::restoreDefaults()
 void ExportCloudsDialog::updateReconstructionFlavor()
 {
 	_ui->groupBox_mls->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->groupBox_mls->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_gp3->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_organized->setVisible(_ui->comboBox_pipeline->currentIndex() == 0);
 }
@@ -818,7 +819,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 
 		std::map<int, Transform> viewPoints = poses;
-		if(_ui->groupBox_mls->isVisible() && _ui->groupBox_mls->isChecked())
+		if(_ui->groupBox_mls->isEnabled() && _ui->groupBox_mls->isChecked())
 		{
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
 					"[search radius=%1m voxel=%2m]").arg(_ui->doubleSpinBox_mlsRadius->value()).arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
@@ -850,10 +851,10 @@ bool ExportCloudsDialog::getExportedClouds(
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = iter->second.first;
 
-			if(_ui->groupBox_mls->isVisible() && _ui->groupBox_mls->isChecked())
+			if(_ui->groupBox_mls->isEnabled() && _ui->groupBox_mls->isChecked())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZRGB>);
-				if(iter->second.first->isOrganized())
+				if(iter->second.second->size())
 				{
 					pcl::copyPointCloud(*cloudWithNormals, *iter->second.second, *cloudWithoutNormals);
 				}
@@ -1244,65 +1245,70 @@ bool ExportCloudsDialog::getExportedClouds(
 						int w = ster->second.width;
 						int h = ster->second.height;
 						UASSERT(w > 1 && h > 1);
-						UASSERT(textureMesh->tex_polygons.size() && textureMesh->tex_polygons[0].size());
-
-						textureMesh->tex_coordinates.resize(1);
-						if(!_ui->checkBox_mesh_quad->isEnabled()) // disabled -> we are exporting to file
+						if(textureMesh->tex_polygons.size() && textureMesh->tex_polygons[0].size())
 						{
-							// When saving to file, tex_coordinates should be linked to polygon vertices, not points
-							int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
-							textureMesh->tex_coordinates[0].resize(polygonSize*textureMesh->tex_polygons[0].size());
-							for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
+							textureMesh->tex_coordinates.resize(1);
+							if(!_ui->checkBox_mesh_quad->isEnabled()) // disabled -> we are exporting to file
 							{
-								const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
-								UASSERT(polygonSize == (int)vertices.vertices.size());
-								for(int k=0; k<polygonSize; ++k)
+								// When saving to file, tex_coordinates should be linked to polygon vertices, not points
+								int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
+								textureMesh->tex_coordinates[0].resize(polygonSize*textureMesh->tex_polygons[0].size());
+								for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
+								{
+									const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
+									UASSERT(polygonSize == (int)vertices.vertices.size());
+									for(int k=0; k<polygonSize; ++k)
+									{
+										//uv
+										UASSERT(vertices.vertices[k] < oter->second.size());
+										int originalVertex = oter->second[vertices.vertices[k]];
+										textureMesh->tex_coordinates[0][i*polygonSize+k] = Eigen::Vector2f(
+												float(originalVertex % w) / float(w),      // u
+												float(h - originalVertex / w) / float(h)); // v
+									}
+								}
+							}
+							else
+							{
+								int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+								textureMesh->tex_coordinates[0].resize(nPoints);
+								for(int i=0; i<nPoints; ++i)
 								{
 									//uv
-									UASSERT(vertices.vertices[k] < oter->second.size());
-									int originalVertex = oter->second[vertices.vertices[k]];
-									textureMesh->tex_coordinates[0][i*polygonSize+k] = Eigen::Vector2f(
+									UASSERT(i < (int)oter->second.size());
+									int originalVertex = oter->second[i];
+									textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
 											float(originalVertex % w) / float(w),      // u
 											float(h - originalVertex / w) / float(h)); // v
 								}
 							}
-						}
-						else
-						{
-							int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
-							textureMesh->tex_coordinates[0].resize(nPoints);
-							for(int i=0; i<nPoints; ++i)
+
+							pcl::TexMaterial mesh_material;
+							mesh_material.tex_d = 1.0f;
+							mesh_material.tex_Ns = 75.0f;
+							mesh_material.tex_illum = 1;
+
+							std::stringstream tex_name;
+							tex_name << "material_" << iter->first;
+							tex_name >> mesh_material.tex_name;
+
+							std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
+							mesh_material.tex_file = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", iter->first);
+							if(!cv::imwrite(mesh_material.tex_file, images.at(iter->first)))
 							{
-								//uv
-								UASSERT(i < (int)oter->second.size());
-								int originalVertex = oter->second[i];
-								textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
-										float(originalVertex % w) / float(w),      // u
-										float(h - originalVertex / w) / float(h)); // v
+								UERROR("Cannot save texture of image %d", iter->first);
 							}
-						}
+							else
+							{
+								UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
+							}
 
-						pcl::TexMaterial mesh_material;
-						mesh_material.tex_d = 1.0f;
-						mesh_material.tex_Ns = 75.0f;
-						mesh_material.tex_illum = 1;
-
-						std::stringstream tex_name;
-						tex_name << "material_" << iter->first;
-						tex_name >> mesh_material.tex_name;
-
-						std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
-						mesh_material.tex_file = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", iter->first);
-						if(!cv::imwrite(mesh_material.tex_file, images.at(iter->first)))
-						{
-							UERROR("Cannot save texture of image %d", iter->first);
+							textureMesh->tex_materials.push_back(mesh_material);
 						}
 						else
 						{
-							UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
+							UWARN("No polygons for mesh %d!?", iter->first);
 						}
-
-						textureMesh->tex_materials.push_back(mesh_material);
 					}
 					else
 					{
@@ -1422,7 +1428,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
 						cloudWithoutNormals = util3d::cloudRGBFromSensorData(
 								d,
-								_ui->spinBox_decimation->value(),
+								_ui->spinBox_decimation->value() == 0?1:_ui->spinBox_decimation->value(),
 								_ui->doubleSpinBox_maxDepth->value(),
 								_ui->doubleSpinBox_minDepth->value(),
 								indices.get(),

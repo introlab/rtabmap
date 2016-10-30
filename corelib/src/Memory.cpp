@@ -419,8 +419,14 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
 	UASSERT_MSG(_recentWmRatio >= 0.0f && _recentWmRatio <= 1.0f, uFormat("value=%f", _recentWmRatio).c_str());
-	UASSERT(_imagePreDecimation >= 1);
-	UASSERT(_imagePostDecimation >= 1);
+	if(_imagePreDecimation == 0)
+	{
+		_imagePreDecimation = 1;
+	}
+	if(_imagePostDecimation == 0)
+	{
+		_imagePostDecimation = 1;
+	}
 	UASSERT(_rehearsalMaxDistance >= 0.0f);
 	UASSERT(_rehearsalMaxAngle >= 0.0f);
 

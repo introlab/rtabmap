@@ -254,38 +254,72 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
-		const cv::Mat & imageDepth,
+		const cv::Mat & imageDepthIn,
 		const CameraModel & model,
 		int decimation,
 		float maxDepth,
 		float minDepth,
 		std::vector<int> * validIndices)
 {
+	if(decimation == 0)
+	{
+		decimation = 1;
+	}
 	float rgbToDepthFactorX = 1.0f;
 	float rgbToDepthFactorY = 1.0f;
 
 	UASSERT(model.isValidForProjection());
-	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
+	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
 
+	cv::Mat imageDepth = imageDepthIn;
 	if(model.imageHeight()>0 && model.imageWidth()>0)
 	{
-		UASSERT(model.imageHeight() % imageDepth.rows == 0 && model.imageWidth() % imageDepth.cols == 0);
-		UASSERT_MSG(model.imageHeight() % decimation == 0, uFormat("model.imageHeight()=%d decimation=%d", model.imageHeight(), decimation).c_str());
-		UASSERT_MSG(model.imageWidth() % decimation == 0, uFormat("model.imageWidth()=%d decimation=%d", model.imageWidth(), decimation).c_str());
+		UASSERT(model.imageHeight() % imageDepthIn.rows == 0 && model.imageWidth() % imageDepthIn.cols == 0);
+
+		if(decimation < 0)
+		{
+			UDEBUG("Decimation from model (%d)", decimation);
+			UASSERT_MSG(model.imageHeight() % decimation == 0, uFormat("model.imageHeight()=%d decimation=%d", model.imageHeight(), decimation).c_str());
+			UASSERT_MSG(model.imageWidth() % decimation == 0, uFormat("model.imageWidth()=%d decimation=%d", model.imageWidth(), decimation).c_str());
+
+			// decimate from RGB image size, upsample depth if needed
+			decimation = -1*decimation;
+
+			int targetSize = model.imageHeight() / decimation;
+			if(targetSize > imageDepthIn.rows)
+			{
+				UDEBUG("Depth interpolation factor=%d", targetSize/imageDepthIn.rows);
+				imageDepth = util2d::interpolate(imageDepthIn, targetSize/imageDepthIn.rows);
+				decimation = 1;
+			}
+			else if(targetSize == imageDepthIn.rows)
+			{
+				decimation = 1;
+			}
+			else
+			{
+				UASSERT(imageDepthIn.rows % targetSize == 0);
+				decimation = imageDepthIn.rows / targetSize;
+			}
+		}
+		else
+		{
+			UASSERT_MSG(imageDepthIn.rows % decimation == 0, uFormat("imageDepth.rows=%d decimation=%d", imageDepthIn.rows, decimation).c_str());
+			UASSERT_MSG(imageDepthIn.cols % decimation == 0, uFormat("imageDepth.cols=%d decimation=%d", imageDepthIn.cols, decimation).c_str());
+		}
+
 		rgbToDepthFactorX = 1.0f/float((model.imageWidth() / imageDepth.cols));
 		rgbToDepthFactorY = 1.0f/float((model.imageHeight() / imageDepth.rows));
 	}
 	else
 	{
+		decimation = abs(decimation);
 		UASSERT_MSG(imageDepth.rows % decimation == 0, uFormat("rows=%d decimation=%d", imageDepth.rows, decimation).c_str());
 		UASSERT_MSG(imageDepth.cols % decimation == 0, uFormat("cols=%d decimation=%d", imageDepth.cols, decimation).c_str());
 	}
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-	if(decimation < 1)
-	{
-		return cloud;
-	}
+
 
 	//cloud.header = cameraInfo.header;
 	cloud->height = imageDepth.rows/decimation;
@@ -358,29 +392,62 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		const cv::Mat & imageRgb,
-		const cv::Mat & imageDepth,
+		const cv::Mat & imageDepthIn,
 		const CameraModel & model,
 		int decimation,
 		float maxDepth,
 		float minDepth,
 		std::vector<int> * validIndices)
 {
+	if(decimation == 0)
+	{
+		decimation = 1;
+	}
 	UDEBUG("");
 	UASSERT(model.isValidForProjection());
 	UASSERT_MSG((model.imageHeight() == 0 && model.imageWidth() == 0) ||
 			    (model.imageHeight() == imageRgb.rows && model.imageWidth() == imageRgb.cols),
 				uFormat("model=%dx%d rgb=%dx%d", model.imageWidth(), model.imageHeight(), imageRgb.cols, imageRgb.rows).c_str());
-	UASSERT_MSG(imageRgb.rows % imageDepth.rows == 0 && imageRgb.cols % imageDepth.cols == 0,
-			uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepth.cols, imageDepth.rows).c_str());
-	UASSERT(!imageDepth.empty() && (imageDepth.type() == CV_16UC1 || imageDepth.type() == CV_32FC1));
-	UASSERT_MSG(imageRgb.rows % decimation == 0, uFormat("imageDepth.rows=%d decimation=%d", imageRgb.rows, decimation).c_str());
-	UASSERT_MSG(imageRgb.cols % decimation == 0, uFormat("imageDepth.cols=%d decimation=%d", imageRgb.cols, decimation).c_str());
+	UASSERT_MSG(imageRgb.rows % imageDepthIn.rows == 0 && imageRgb.cols % imageDepthIn.cols == 0,
+			uFormat("rgb=%dx%d depth=%dx%d", imageRgb.cols, imageRgb.rows, imageDepthIn.cols, imageDepthIn.rows).c_str());
+	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
+	if(decimation < 0)
+	{
+		UASSERT_MSG(imageRgb.rows % decimation == 0, uFormat("imageRgb.rows=%d decimation=%d", imageRgb.rows, decimation).c_str());
+		UASSERT_MSG(imageRgb.cols % decimation == 0, uFormat("imageRgb.cols=%d decimation=%d", imageRgb.cols, decimation).c_str());
+	}
+	else
+	{
+		UASSERT_MSG(imageDepthIn.rows % decimation == 0, uFormat("imageDepth.rows=%d decimation=%d", imageDepthIn.rows, decimation).c_str());
+		UASSERT_MSG(imageDepthIn.cols % decimation == 0, uFormat("imageDepth.cols=%d decimation=%d", imageDepthIn.cols, decimation).c_str());
+	}
+
+	cv::Mat imageDepth = imageDepthIn;
+	if(decimation < 0)
+	{
+		UDEBUG("Decimation from RGB image (%d)", decimation);
+		// decimate from RGB image size, upsample depth if needed
+		decimation = -1*decimation;
+
+		int targetSize = imageRgb.rows / decimation;
+		if(targetSize > imageDepthIn.rows)
+		{
+			UDEBUG("Depth interpolation factor=%d", targetSize/imageDepthIn.rows);
+			imageDepth = util2d::interpolate(imageDepthIn, targetSize/imageDepthIn.rows);
+			decimation = 1;
+		}
+		else if(targetSize == imageDepthIn.rows)
+		{
+			decimation = 1;
+		}
+		else
+		{
+			UASSERT(imageDepthIn.rows % targetSize == 0);
+			decimation = imageDepthIn.rows / targetSize;
+		}
+	}
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-	if(decimation < 1)
-	{
-		return cloud;
-	}
 
 	bool mono;
 	if(imageRgb.channels() == 3) // BGR
@@ -714,6 +781,11 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 		const ParametersMap & stereoParameters,
 		const std::vector<float> & roiRatios)
 {
+	if(decimation == 0)
+	{
+		decimation = 1;
+	}
+
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
 	if(!sensorData.depthRaw().empty() && sensorData.cameraModels().size())
@@ -857,6 +929,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		const ParametersMap & stereoParameters,
 		const std::vector<float> & roiRatios)
 {
+	if(decimation == 0)
+	{
+		decimation = 1;
+	}
+
 	UASSERT(!sensorData.imageRaw().empty());
 	UASSERT((!sensorData.depthRaw().empty() && sensorData.cameraModels().size()) ||
 			(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection()));

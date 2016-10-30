@@ -63,25 +63,16 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-577</y>
-            <width>678</width>
-            <height>2417</height>
+            <y>0</y>
+            <width>673</width>
+            <height>2520</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -95,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -776,7 +767,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <item row="2" column="2">
                        <widget class="QLabel" name="label_108">
                         <property name="text">
-                         <string>3D cloud decimation (1-2-4-8-...).</string>
+                         <string>3D cloud decimation (1-2-4-8-...). Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -808,13 +799,13 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <item row="2" column="0">
                        <widget class="QSpinBox" name="spinBox_decimation">
                         <property name="minimum">
-                         <number>1</number>
+                         <number>-32</number>
                         </property>
                         <property name="maximum">
                          <number>32</number>
                         </property>
                         <property name="value">
-                         <number>4</number>
+                         <number>1</number>
                         </property>
                        </widget>
                       </item>
@@ -1099,13 +1090,13 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <item row="2" column="1">
                        <widget class="QSpinBox" name="spinBox_decimation_odom">
                         <property name="minimum">
-                         <number>1</number>
+                         <number>-32</number>
                         </property>
                         <property name="maximum">
                          <number>32</number>
                         </property>
                         <property name="value">
-                         <number>2</number>
+                         <number>1</number>
                         </property>
                        </widget>
                       </item>
@@ -4290,16 +4281,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -5713,7 +5695,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="12" column="1">
                        <widget class="QLabel" name="label_retrieved_13">
                         <property name="text">
-                         <string>Image pre decimation. This option can be used to reduce image size before features extraction.</string>
+                         <string>Image pre decimation. This option can be used to reduce image size before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -5785,7 +5767,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="13" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePostDecimation">
                         <property name="minimum">
-                         <number>1</number>
+                         <number>-16</number>
                         </property>
                         <property name="maximum">
                          <number>16</number>
@@ -5831,7 +5813,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="13" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
-                         <string>Image post decimation. This option can be used to save images in lower resolution (size/decimation). It is done on the original image.</string>
+                         <string>Image post decimation. This option can be used to save images in lower resolution (size/decimation). It is done on the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -5880,7 +5862,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="12" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePreDecimation">
                         <property name="minimum">
-                         <number>1</number>
+                         <number>-16</number>
                         </property>
                         <property name="maximum">
                          <number>16</number>
@@ -8516,7 +8498,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="0" column="0">
                           <widget class="QSpinBox" name="spinBox_grid_decimation">
                            <property name="minimum">
-                            <number>1</number>
+                            <number>-32</number>
                            </property>
                            <property name="maximum">
                             <number>32</number>
@@ -8529,7 +8511,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="0" column="1">
                           <widget class="QLabel" name="label_322">
                            <property name="text">
-                            <string>Image Decimation (1-2-4-8-...).</string>
+                            <string>Image Decimation (1-2-4-8-...). Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
@@ -9352,7 +9334,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="7" column="1">
                        <widget class="QLabel" name="label_248">
                         <property name="text">
-                         <string>Decimation of images before features extraction.</string>
+                         <string>Decimation of images before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -9365,7 +9347,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <item row="7" column="0">
                        <widget class="QSpinBox" name="odom_imageDecimation">
                         <property name="minimum">
-                         <number>1</number>
+                         <number>-32</number>
+                        </property>
+                        <property name="maximum">
+                         <number>32</number>
                         </property>
                        </widget>
                       </item>
@@ -10376,16 +10361,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -10525,16 +10501,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -10692,16 +10659,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -10781,16 +10739,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -10902,16 +10851,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
