@@ -261,6 +261,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		float minDepth,
 		std::vector<int> * validIndices)
 {
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	if(decimation == 0)
 	{
 		decimation = 1;
@@ -279,8 +280,16 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		if(decimation < 0)
 		{
 			UDEBUG("Decimation from model (%d)", decimation);
-			UASSERT_MSG(model.imageHeight() % decimation == 0, uFormat("model.imageHeight()=%d decimation=%d", model.imageHeight(), decimation).c_str());
-			UASSERT_MSG(model.imageWidth() % decimation == 0, uFormat("model.imageWidth()=%d decimation=%d", model.imageWidth(), decimation).c_str());
+			if(model.imageHeight() % decimation != 0)
+			{
+				UERROR("Decimation is not valid for current image size (model.imageHeight()=%d decimation=%d). The cloud is not created.", model.imageHeight(), decimation);
+				return cloud;
+			}
+			if(model.imageWidth() % decimation != 0)
+			{
+				UERROR("Decimation is not valid for current image size (model.imageWidth()=%d decimation=%d). The cloud is not created.", model.imageWidth(), decimation);
+				return cloud;
+			}
 
 			// decimate from RGB image size, upsample depth if needed
 			decimation = -1*decimation;
@@ -304,8 +313,16 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		}
 		else
 		{
-			UASSERT_MSG(imageDepthIn.rows % decimation == 0, uFormat("imageDepth.rows=%d decimation=%d", imageDepthIn.rows, decimation).c_str());
-			UASSERT_MSG(imageDepthIn.cols % decimation == 0, uFormat("imageDepth.cols=%d decimation=%d", imageDepthIn.cols, decimation).c_str());
+			if(imageDepthIn.rows % decimation != 0)
+			{
+				UERROR("Decimation is not valid for current image size (imageDepth.rows=%d decimation=%d). The cloud is not created.", imageDepthIn.rows, decimation);
+				return cloud;
+			}
+			if(imageDepthIn.cols % decimation != 0)
+			{
+				UERROR("Decimation is not valid for current image size (imageDepth.cols=%d decimation=%d). The cloud is not created.", imageDepthIn.cols, decimation);
+				return cloud;
+			}
 		}
 
 		rgbToDepthFactorX = 1.0f/float((model.imageWidth() / imageDepth.cols));
@@ -317,9 +334,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		UASSERT_MSG(imageDepth.rows % decimation == 0, uFormat("rows=%d decimation=%d", imageDepth.rows, decimation).c_str());
 		UASSERT_MSG(imageDepth.cols % decimation == 0, uFormat("cols=%d decimation=%d", imageDepth.cols, decimation).c_str());
 	}
-
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-
 
 	//cloud.header = cameraInfo.header;
 	cloud->height = imageDepth.rows/decimation;
@@ -399,6 +413,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 		float minDepth,
 		std::vector<int> * validIndices)
 {
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 	if(decimation == 0)
 	{
 		decimation = 1;
@@ -413,13 +428,29 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
 	if(decimation < 0)
 	{
-		UASSERT_MSG(imageRgb.rows % decimation == 0, uFormat("imageRgb.rows=%d decimation=%d", imageRgb.rows, decimation).c_str());
-		UASSERT_MSG(imageRgb.cols % decimation == 0, uFormat("imageRgb.cols=%d decimation=%d", imageRgb.cols, decimation).c_str());
+		if(imageRgb.rows % decimation != 0)
+		{
+			UERROR("Decimation is not valid for current image size (imageRgb.rows=%d decimation=%d). The cloud is not created.", imageRgb.rows, decimation);
+			return cloud;
+		}
+		if(imageRgb.cols % decimation != 0)
+		{
+			UERROR("Decimation is not valid for current image size (imageRgb.cols=%d decimation=%d). The cloud is not created.", imageRgb.cols, decimation);
+			return cloud;
+		}
 	}
 	else
 	{
-		UASSERT_MSG(imageDepthIn.rows % decimation == 0, uFormat("imageDepth.rows=%d decimation=%d", imageDepthIn.rows, decimation).c_str());
-		UASSERT_MSG(imageDepthIn.cols % decimation == 0, uFormat("imageDepth.cols=%d decimation=%d", imageDepthIn.cols, decimation).c_str());
+		if(imageDepthIn.rows % decimation != 0)
+		{
+			UERROR("Decimation is not valid for current image size (imageDepth.rows=%d decimation=%d). The cloud is not created.", imageDepthIn.rows, decimation);
+			return cloud;
+		}
+		if(imageDepthIn.cols % decimation != 0)
+		{
+			UERROR("Decimation is not valid for current image size (imageDepth.cols=%d decimation=%d). The cloud is not created.", imageDepthIn.cols, decimation);
+			return cloud;
+		}
 	}
 
 	cv::Mat imageDepth = imageDepthIn;
@@ -446,8 +477,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 			decimation = imageDepthIn.rows / targetSize;
 		}
 	}
-
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
 	bool mono;
 	if(imageRgb.channels() == 3) // BGR
