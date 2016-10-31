@@ -34,7 +34,7 @@
          <item row="3" column="0">
           <widget class="QSpinBox" name="spinBox_normalKSearch">
            <property name="minimum">
-            <number>0</number>
+            <number>3</number>
            </property>
            <property name="value">
             <number>20</number>

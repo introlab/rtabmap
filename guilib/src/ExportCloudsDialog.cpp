@@ -1434,59 +1434,62 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 								indices.get(),
 								parameters);
 
-						// Don't voxelize if we create organized mesh
-						if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
+						if(cloudWithoutNormals->size())
 						{
-							cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _ui->doubleSpinBox_voxelSize_assembled->value());
-							indices->resize(cloudWithoutNormals->size());
-							for(unsigned int i=0; i<indices->size(); ++i)
+							// Don't voxelize if we create organized mesh
+							if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
 							{
-								indices->at(i) = i;
+								cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _ui->doubleSpinBox_voxelSize_assembled->value());
+								indices->resize(cloudWithoutNormals->size());
+								for(unsigned int i=0; i<indices->size(); ++i)
+								{
+									indices->at(i) = i;
+								}
 							}
-						}
 
-						// view point
-						Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-						if(d.cameraModels().size() && !d.cameraModels()[0].localTransform().isNull())
-						{
-							viewPoint[0] = d.cameraModels()[0].localTransform().x();
-							viewPoint[1] = d.cameraModels()[0].localTransform().y();
-							viewPoint[2] = d.cameraModels()[0].localTransform().z();
-						}
-						else if(!d.stereoCameraModel().localTransform().isNull())
-						{
-							viewPoint[0] = d.stereoCameraModel().localTransform().x();
-							viewPoint[1] = d.stereoCameraModel().localTransform().y();
-							viewPoint[2] = d.stereoCameraModel().localTransform().z();
-						}
-
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
-						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
-
-						if(_ui->groupBox_subtraction->isChecked() &&
-						   _ui->doubleSpinBox_subtractPointFilteringRadius->value() > 0.0)
-						{
-							pcl::IndicesPtr beforeSubtractionIndices = indices;
-							if(	cloud->size() &&
-								previousCloud.get() != 0 &&
-								previousIndices.get() != 0 &&
-								previousIndices->size() &&
-								!previousPose.isNull())
+							// view point
+							Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+							if(d.cameraModels().size() && !d.cameraModels()[0].localTransform().isNull())
 							{
-								rtabmap::Transform t = iter->second.inverse() * previousPose;
-								pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(previousCloud, t);
-								indices = rtabmap::util3d::subtractFiltering(
-										cloud,
-										indices,
-										transformedCloud,
-										previousIndices,
-										_ui->doubleSpinBox_subtractPointFilteringRadius->value(),
-										_ui->doubleSpinBox_subtractPointFilteringAngle->value(),
-										_ui->spinBox_subtractFilteringMinPts->value());
+								viewPoint[0] = d.cameraModels()[0].localTransform().x();
+								viewPoint[1] = d.cameraModels()[0].localTransform().y();
+								viewPoint[2] = d.cameraModels()[0].localTransform().z();
 							}
-							previousCloud = cloud;
-							previousIndices = beforeSubtractionIndices;
-							previousPose = iter->second;
+							else if(!d.stereoCameraModel().localTransform().isNull())
+							{
+								viewPoint[0] = d.stereoCameraModel().localTransform().x();
+								viewPoint[1] = d.stereoCameraModel().localTransform().y();
+								viewPoint[2] = d.stereoCameraModel().localTransform().z();
+							}
+
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+							pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+
+							if(_ui->groupBox_subtraction->isChecked() &&
+							   _ui->doubleSpinBox_subtractPointFilteringRadius->value() > 0.0)
+							{
+								pcl::IndicesPtr beforeSubtractionIndices = indices;
+								if(	cloud->size() &&
+									previousCloud.get() != 0 &&
+									previousIndices.get() != 0 &&
+									previousIndices->size() &&
+									!previousPose.isNull())
+								{
+									rtabmap::Transform t = iter->second.inverse() * previousPose;
+									pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(previousCloud, t);
+									indices = rtabmap::util3d::subtractFiltering(
+											cloud,
+											indices,
+											transformedCloud,
+											previousIndices,
+											_ui->doubleSpinBox_subtractPointFilteringRadius->value(),
+											_ui->doubleSpinBox_subtractPointFilteringAngle->value(),
+											_ui->spinBox_subtractFilteringMinPts->value());
+								}
+								previousCloud = cloud;
+								previousIndices = beforeSubtractionIndices;
+								previousPose = iter->second;
+							}
 						}
 					}
 				}
