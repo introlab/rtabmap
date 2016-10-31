@@ -3586,10 +3586,13 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 	else
 	{
-		// just compress user data
+		// just compress user data and laser scan (scans can be used for local scan matching)
 		rtabmap::CompressionThread ctUserData(data.userDataRaw());
+		rtabmap::CompressionThread ctLaserScan(laserScan);
 		ctUserData.start();
+		ctLaserScan.start();
 		ctUserData.join();
+		ctLaserScan.join();
 
 		s = new Signature(id,
 			_idMapCount,
@@ -3600,8 +3603,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						cv::Mat(),
-						LaserScanInfo(),
+						ctLaserScan.getCompressedData(),
+						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -3609,8 +3612,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						0,
 						ctUserData.getCompressedData()):
 				SensorData(
-						cv::Mat(),
-						LaserScanInfo(),
+						ctLaserScan.getCompressedData(),
+						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
