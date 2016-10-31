@@ -234,6 +234,14 @@ IF(WITH_FREENECT2)
 	      SET(freenect2_INCLUDE_DIRS ${freenect2_INCLUDE_DIR})
 	   ENDIF(NOT freenect2_INCLUDE_DIRS)
        MESSAGE(STATUS "Found freenect2: ${freenect2_INCLUDE_DIRS}")
+       # Explicitly link to OpenCL (in case of CUDA installed)
+	   FIND_PACKAGE(OpenCL QUIET)
+	   IF(OpenCL_FOUND)
+		  SET(freenect2_LIBRARIES
+			${OpenCL_LIBRARIES}
+			${freenect2_LIBRARIES}
+		  )
+	   ENDIF(OpenCL_FOUND)
     ENDIF(freenect2_FOUND)
 ENDIF(WITH_FREENECT2)
 
