@@ -49,10 +49,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private static final String TAG = RTABMapActivity.class.getSimpleName();
 
   // The minimum Tango Core version required from this application.
-  private static final int  MIN_TANGO_CORE_VERSION = 6804;
+  private static final int  MIN_TANGO_CORE_VERSION = 9377;
 
   // The package name of Tang Core, used for checking minimum Tango Core version.
-  private static final String TANGO_PACKAGE_NAME = "com.projecttango.tango";
+  private static final String TANGO_PACKAGE_NAME = "com.google.tango";
   
   public static final String EXTRA_KEY_PERMISSIONTYPE = "PERMISSIONTYPE";
   public static final String EXTRA_VALUE_ADF = "ADF_LOAD_SAVE_PERMISSION";
