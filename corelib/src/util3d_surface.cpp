@@ -626,8 +626,9 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
 		pcl::PointCloud<pcl::Normal>::Ptr normals = computeNormals(cloud, kNormalSearch);
 		// Concatenate the XYZ and normal fields
-		pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals;
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
 		pcl::concatenateFields (*cloud, *normals, *cloudWithNormals);
+		textureMesh->cloud = pcl::PCLPointCloud2();
 		pcl::toPCLPointCloud2 (*cloudWithNormals, textureMesh->cloud);
 	}
 

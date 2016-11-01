@@ -149,13 +149,13 @@ void ExportCloudsDialog::updateMLSGrpVisibility()
 }
 void ExportCloudsDialog::updateTexturingAvailability()
 {
-	updateTexturingAvailability(_ui->checkBox_binary->isVisible());
+	updateTexturingAvailability(_ui->checkBox_binary->isEnabled());
 }
 void ExportCloudsDialog::updateTexturingAvailability(bool isExporting)
 {
 	_ui->checkBox_textureMapping->setEnabled(!_ui->checkBox_assemble->isChecked() || isExporting);
 	_ui->label_textureMapping->setEnabled(_ui->checkBox_textureMapping->isEnabled());
-	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked());
+	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked() || _ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->label_meshDecimation->setEnabled(_ui->doubleSpinBox_meshDecimationFactor->isEnabled());
 }
 
@@ -299,6 +299,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 
 void ExportCloudsDialog::restoreDefaults()
 {
+	_ui->comboBox_pipeline->setCurrentIndex(0);
 	_ui->checkBox_binary->setChecked(true);
 	_ui->spinBox_normalKSearch->setValue(10);
 
@@ -382,6 +383,7 @@ void ExportCloudsDialog::setSaveButton()
 	_ui->buttonBox->button(QDialogButtonBox::Ok)->setVisible(false);
 	_ui->buttonBox->button(QDialogButtonBox::Save)->setVisible(true);
 	_ui->checkBox_binary->setVisible(true);
+	_ui->checkBox_binary->setEnabled(true);
 	_ui->label_binaryFile->setVisible(true);
 	_ui->checkBox_mesh_quad->setVisible(false);
 	_ui->checkBox_mesh_quad->setEnabled(false);
@@ -394,6 +396,7 @@ void ExportCloudsDialog::setOkButton()
 	_ui->buttonBox->button(QDialogButtonBox::Ok)->setVisible(true);
 	_ui->buttonBox->button(QDialogButtonBox::Save)->setVisible(false);
 	_ui->checkBox_binary->setVisible(false);
+	_ui->checkBox_binary->setEnabled(false);
 	_ui->label_binaryFile->setVisible(false);
 	_ui->checkBox_mesh_quad->setVisible(true);
 	_ui->checkBox_mesh_quad->setEnabled(true);
@@ -1250,6 +1253,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							textureMesh->tex_coordinates.resize(1);
 							if(!_ui->checkBox_mesh_quad->isEnabled()) // disabled -> we are exporting to file
 							{
+								UDEBUG("");
 								// When saving to file, tex_coordinates should be linked to polygon vertices, not points
 								int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
 								textureMesh->tex_coordinates[0].resize(polygonSize*textureMesh->tex_polygons[0].size());
@@ -1270,6 +1274,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							}
 							else
 							{
+								UDEBUG("");
 								int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
 								textureMesh->tex_coordinates[0].resize(nPoints);
 								for(int i=0; i<nPoints; ++i)
@@ -1318,12 +1323,14 @@ bool ExportCloudsDialog::getExportedClouds(
 								cameraPoses,
 								cameraModels,
 								images,
-								dir.filePath("tmp_textures").toStdString());
+								dir.filePath("tmp_textures").toStdString(),
+								_ui->spinBox_normalKSearch->value());
 
-						if(!_ui->checkBox_binary->isVisible() && // not visible -> we are not exporting to file
+						if(!_ui->checkBox_binary->isEnabled() && // not enabled -> we are not exporting to file
 							textureMesh->tex_coordinates.size() &&
 							textureMesh->tex_coordinates[0].size()) // assume first is the texture, second is occluded texture
 						{
+							UDEBUG("");
 							// When not saving to file, tex_coordinates should be linked to points, not polygon vertices
 							int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
@@ -1368,6 +1375,7 @@ bool ExportCloudsDialog::getExportedClouds(
 
 			if(textureMeshes.size() > 1 && _ui->checkBox_assemble->isChecked())
 			{
+				UDEBUG("Concatenate texture meshes");
 				_progressDialog->appendText(tr("Assembling %1 meshes...").arg(textureMeshes.size()));
 				QApplication::processEvents();
 				uSleep(100);
@@ -1379,7 +1387,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			}
 
 		}
-
+		UDEBUG("");
 		return true;
 	}
 	return false;
