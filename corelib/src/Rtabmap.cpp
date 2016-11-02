@@ -2894,11 +2894,10 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transfo
 				}
 			}
 			UASSERT_MSG(path.size(), uFormat("nearestId=%d ids=%d", nearestId, (int)ids.size()).c_str());
-			if(maxGraphDepth > 0)
+			if(maxGraphDepth > 0 && !_memory->isGraphReduced() && (int)path.size() > maxGraphDepth*2+1)
 			{
-				UASSERT_MSG((int)path.size() <= maxGraphDepth*2+1,
-						uFormat("nearestId=%d path=%d ids=%d maxGraphDepth=%d",
-								nearestId, (int)path.size(), (int)ids.size(), maxGraphDepth).c_str());
+				UWARN("%s=Off but path(%d) > maxGraphDepth(%d)*2+1, nearestId=%d ids=%d. Is reduce graph activated before?",
+					Parameters::kMemReduceGraph().c_str(), (int)path.size(), maxGraphDepth, nearestId, (int)ids.size());
 			}
 			paths.insert(std::make_pair(nearestId, path));
 		}
