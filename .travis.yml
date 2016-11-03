@@ -27,4 +27,5 @@ script:
     - make
 
 notifications:
-  email: false
+  email:
+    - matlabbe@gmail.com
