@@ -1747,8 +1747,8 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 	float base_max = -std::numeric_limits<float>::max ();
 	float base_min = std::numeric_limits<float>::max ();
 	bool found_finite = false;
-	for (size_t x = 0; x < output.cols; ++x)
-		for (size_t y = 0; y < output.rows; ++y)
+	for (int x = 0; x < output.cols; ++x)
+		for (int y = 0; y < output.rows; ++y)
 		{
 			float z = depth.type()==CV_32FC1?output.at<float>(y, x):float(output.at<unsigned short>(y, x))/1000.0f;
 			if (z > 0.0f && uIsFinite(z))
@@ -1778,10 +1778,10 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 
 	UDEBUG("small_width=%d small_height=%d small_depth=%d", (int)small_width, (int)small_height, (int)small_depth);
 	Array3D data (small_width, small_height, small_depth);
-	for (size_t x = 0; x < depth.cols; ++x)
+	for (int x = 0; x < depth.cols; ++x)
 	{
 		const size_t small_x = static_cast<size_t> (static_cast<float> (x) / sigmaS + 0.5f) + padding_xy;
-		for (size_t y = 0; y < depth.rows; ++y)
+		for (int y = 0; y < depth.rows; ++y)
 		{
 			float v = depth.type()==CV_32FC1?output.at<float>(y,x):float(output.at<unsigned short>(y,x))/1000.0f;
 			if((v > 0 && uIsFinite(v)))
@@ -1825,12 +1825,12 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 
 	if (earlyDivision)
 	{
-		for (std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> >::iterator d = data.begin (); d != data.end (); ++d)
+		for (std::vector<Eigen::Vector2f>::iterator d = data.begin (); d != data.end (); ++d)
 		  *d /= ((*d)[0] != 0) ? (*d)[1] : 1;
 	}
 
-	for (size_t x = 0; x < depth.cols; ++x)
-	  for (size_t y = 0; y < depth.rows; ++y)
+	for (int x = 0; x < depth.cols; ++x)
+	  for (int y = 0; y < depth.rows; ++y)
 	  {
 		  float z = depth.type()==CV_32FC1?output.at<float>(y,x):float(output.at<unsigned short>(y,x))/1000.0f;
 		  if(z > 0 && uIsFinite(z))
