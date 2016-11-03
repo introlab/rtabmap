@@ -58,7 +58,10 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
 		_stereoDense(new StereoBM(parameters)),
-		_distortionModel(0)
+		_distortionModel(0),
+		_bilateralFiltering(false),
+		_bilateralSigmaS(10),
+		_bilateralSigmaR(0.1)
 {
 	UASSERT(_camera != 0);
 }
@@ -106,6 +109,14 @@ void CameraThread::setDistortionModel(const std::string & path)
 	}
 }
 
+void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
+{
+	UASSERT(sigmaS > 0.0f && sigmaR > 0.0f);
+	_bilateralFiltering = true;
+	_bilateralSigmaS = sigmaS;
+	_bilateralSigmaR = sigmaR;
+}
+
 void CameraThread::mainLoop()
 {
 	UTimer totalTime;
@@ -137,6 +148,13 @@ void CameraThread::mainLoop()
 						data.depthRaw().cols, data.depthRaw().rows);
 			}
 			info.timeUndistortDepth = timer.ticks();
+		}
+
+		if(_bilateralFiltering && !data.depthRaw().empty())
+		{
+			UTimer timer;
+			data.setDepthOrRightRaw(util2d::fastBilateralFiltering(data.depthRaw(), _bilateralSigmaS, _bilateralSigmaR));
+			info.timeBilateralFiltering = timer.ticks();
 		}
 
 		if(_imageDecimation>1 && !data.imageRaw().empty())

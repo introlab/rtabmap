@@ -139,7 +139,7 @@ public:
 			const pcl::TextureMesh::Ptr & textureMesh,
 			const Transform & pose = Transform::getIdentity());
 
-	bool addOctomap(const OctoMap * octomap, unsigned int treeDepth = 0, bool showEdges = true, bool lightingOn = false);
+	bool addOctomap(const OctoMap * octomap, unsigned int treeDepth = 0);
 	void removeOctomap();
 
 	bool addTextureMesh (
@@ -241,6 +241,8 @@ public:
 
 	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
 	void setRenderingRate(double rate);
+	void setLighting(bool on);
+	void setEdgeVisibility(bool visible);
 	double getRenderingRate() const;
 
 	void getCameraPosition(
@@ -312,6 +314,8 @@ private:
     QAction * _aSetGridCellSize;
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
+    QAction * _aSetLighting;
+    QAction * _aSetEdgeVisibility;
     QMenu * _menu;
     std::set<std::string> _graphes;
     std::set<std::string> _coordinates;

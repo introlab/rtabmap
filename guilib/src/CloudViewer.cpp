@@ -127,6 +127,9 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_aSetGridCellCount(0),
 		_aSetGridCellSize(0),
 		_aSetBackgroundColor(0),
+		_aSetRenderingRate(0),
+		_aSetLighting(0),
+		_aSetEdgeVisibility(0),
 		_menu(0),
 		_trajectory(new pcl::PointCloud<pcl::PointXYZ>),
 		_maxTrajectorySize(100),
@@ -234,6 +237,12 @@ void CloudViewer::createMenu()
 	_aSetGridCellSize = new QAction("Set cell size...", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);	
 	_aSetRenderingRate = new QAction("Set rendering rate...", this);
+	_aSetLighting = new QAction("Lighting", this);
+	_aSetLighting->setCheckable(true);
+	_aSetLighting->setChecked(false);
+	_aSetEdgeVisibility = new QAction("Show edges", this);
+	_aSetEdgeVisibility->setCheckable(true);
+	_aSetEdgeVisibility->setChecked(false);
 
 	QMenu * cameraMenu = new QMenu("Camera", this);
 	cameraMenu->addAction(_aLockCamera);
@@ -270,6 +279,8 @@ void CloudViewer::createMenu()
 	_menu->addMenu(gridMenu);
 	_menu->addAction(_aSetBackgroundColor);
 	_menu->addAction(_aSetRenderingRate);
+	_menu->addAction(_aSetLighting);
+	_menu->addAction(_aSetEdgeVisibility);
 }
 
 void CloudViewer::saveSettings(QSettings & settings, const QString & group) const
@@ -531,7 +542,8 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
 	if(_visualizer->addPolygonMesh<pcl::PointXYZ>(cloud, polygons, id))
 	{
-		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->LightingOff();
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		if(_backfaceCulling)
 		{
 			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->BackfaceCullingOn();
@@ -561,7 +573,8 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
 	if(_visualizer->addPolygonMesh<pcl::PointXYZRGB>(cloud, polygons, id))
 	{
-		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->LightingOff();
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		if(_backfaceCulling)
 		{
 			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->BackfaceCullingOn();
@@ -591,7 +604,8 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
 	if(_visualizer->addPolygonMesh<pcl::PointXYZRGBNormal>(cloud, polygons, id))
 	{
-		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->LightingOff();
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		if(_backfaceCulling)
 		{
 			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->BackfaceCullingOn();
@@ -620,7 +634,8 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d polygons", id.c_str(), (int)mesh->polygons.size());
 	if(_visualizer->addPolygonMesh(*mesh, id))
 	{
-		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->LightingOff();
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		if(_backfaceCulling)
 		{
 			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->BackfaceCullingOn();
@@ -650,7 +665,8 @@ bool CloudViewer::addCloudTextureMesh(
 	UDEBUG("Adding %s", id.c_str());
 	if(this->addTextureMesh(*textureMesh, id))
 	{
-		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->LightingOff();
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		if(_backfaceCulling)
 		{
 			_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->BackfaceCullingOn();
@@ -671,7 +687,7 @@ bool CloudViewer::addCloudTextureMesh(
 	return false;
 }
 
-bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bool showEdges, bool lightingOn)
+bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth)
 {
 	UDEBUG("");
 #ifdef RTABMAP_OCTOMAP
@@ -751,8 +767,8 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bo
 		octomapActor->SetMapper(mapper);
 
 		octomapActor->GetProperty()->SetRepresentationToSurface();
-		octomapActor->GetProperty()->SetEdgeVisibility(showEdges);
-		octomapActor->GetProperty()->SetLighting(lightingOn);
+		octomapActor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
+		octomapActor->GetProperty()->SetLighting(_aSetLighting->isChecked());
 
 		renderer->AddActor(octomapActor);
 		_octomapActor = octomapActor.GetPointer();
@@ -905,7 +921,10 @@ bool CloudViewer::addTextureMesh (
 	   int viewport)
 {
 #if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-	return _visualizer->addTextureMesh(mesh, id, viewport);
+	if(!_visualizer->addTextureMesh(mesh, id, viewport))
+	{
+		return false;
+	}
 #else
 	// Copied from PCL 1.8
 
@@ -1141,8 +1160,11 @@ bool CloudViewer::addTextureMesh (
   // Save the viewpoint transformation matrix to the global actor map
   (*_visualizer->getCloudActorMap())[id].viewpoint_transformation_ = transformation;
 
-  return (true);
 #endif
+
+  _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+  _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
+  return true;
 }
 
 bool CloudViewer::addOccupancyGridMap(
@@ -1201,7 +1223,6 @@ bool CloudViewer::addOccupancyGridMap(
 		mesh->tex_coordinates.push_back(coordinates);
 
 		this->addTextureMesh(*mesh, "map");
-		_visualizer->getCloudActorMap()->find("map")->second.actor->GetProperty()->LightingOff();
 		setCloudOpacity("map", opacity);
 
 		//removed tmp texture file
@@ -1732,6 +1753,28 @@ void CloudViewer::setRenderingRate(double rate)
 {
 	_renderingRate = rate;
 	_visualizer->getInteractorStyle()->GetInteractor()->SetDesiredUpdateRate(_renderingRate);
+}
+
+void CloudViewer::setLighting(bool on)
+{
+	_aSetLighting->setChecked(on);
+	pcl::visualization::CloudActorMapPtr cloudActorMap = _visualizer->getCloudActorMap();
+	for(pcl::visualization::CloudActorMap::iterator iter=cloudActorMap->begin(); iter!=cloudActorMap->end(); ++iter)
+	{
+		iter->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+	}
+	this->update();
+}
+
+void CloudViewer::setEdgeVisibility(bool visible)
+{
+	_aSetEdgeVisibility->setChecked(visible);
+	pcl::visualization::CloudActorMapPtr cloudActorMap = _visualizer->getCloudActorMap();
+	for(pcl::visualization::CloudActorMap::iterator iter=cloudActorMap->begin(); iter!=cloudActorMap->end(); ++iter)
+	{
+		iter->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
+	}
+	this->update();
 }
 
 void CloudViewer::getCameraPosition(
@@ -2467,6 +2510,14 @@ void CloudViewer::handleAction(QAction * a)
 		{
 			this->update();
 		}
+	}
+	else if(a == _aSetLighting)
+	{
+		this->setLighting(_aSetLighting->isChecked());
+	}
+	else if(a == _aSetEdgeVisibility)
+	{
+		this->setEdgeVisibility(_aSetEdgeVisibility->isChecked());
 	}
 }
 

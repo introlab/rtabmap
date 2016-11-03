@@ -136,6 +136,12 @@ void RTABMAP_EXP fillRegisteredDepthHoles(
 		bool horizontal,
 		bool fillDoubleHoles = false);
 
+cv::Mat RTABMAP_EXP fastBilateralFiltering(
+		const cv::Mat & depth,
+		float sigmaS = 15.0f,
+		float sigmaR = 0.05f,
+		bool earlyDivision = false);
+
 } // namespace util3d
 } // namespace rtabmap
 

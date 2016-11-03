@@ -517,6 +517,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_openniOniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_openni2OniPath, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_source_distortionModel, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->groupBox_bilateral, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_bilateral_sigmaR, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->groupBox_scanFromDepth, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_cameraScanFromDepth_decimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1349,6 +1352,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
 		_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(1.0);
 		_ui->lineEdit_source_distortionModel->setText("");
+		_ui->groupBox_bilateral->setChecked(false);
+		_ui->doubleSpinBox_bilateral_sigmaS->setValue(10.0);
+		_ui->doubleSpinBox_bilateral_sigmaR->setValue(0.1);
 
 		_ui->source_comboBox_image_type->setCurrentIndex(kSrcDC1394-kSrcDC1394);
 		_ui->lineEdit_cameraStereoImages_path_left->setText("");
@@ -1656,6 +1662,9 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_cameraRGBD->setCurrentIndex(settings.value("driver", _ui->comboBox_cameraRGBD->currentIndex()).toInt());
 	_ui->checkbox_rgbd_colorOnly->setChecked(settings.value("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked()).toBool());
 	_ui->lineEdit_source_distortionModel->setText(settings.value("distortion_model", _ui->lineEdit_source_distortionModel->text()).toString());
+	_ui->groupBox_bilateral->setChecked(settings.value("bilateral", _ui->groupBox_bilateral->isChecked()).toBool());
+	_ui->doubleSpinBox_bilateral_sigmaS->setValue(settings.value("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value()).toDouble());
+	_ui->doubleSpinBox_bilateral_sigmaR->setValue(settings.value("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value()).toDouble());
 	settings.endGroup(); // rgbd
 
 	settings.beginGroup("stereo");
@@ -2087,9 +2096,12 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("imageDecimation",  _ui->spinBox_source_imageDecimation->value());
 
 	settings.beginGroup("rgbd");
-	settings.setValue("driver", 	   _ui->comboBox_cameraRGBD->currentIndex());
-	settings.setValue("rgbdColorOnly", _ui->checkbox_rgbd_colorOnly->isChecked());
-	settings.setValue("distortion_model", _ui->lineEdit_source_distortionModel->text());
+	settings.setValue("driver", 	       _ui->comboBox_cameraRGBD->currentIndex());
+	settings.setValue("rgbdColorOnly",     _ui->checkbox_rgbd_colorOnly->isChecked());
+	settings.setValue("distortion_model",  _ui->lineEdit_source_distortionModel->text());
+	settings.setValue("bilateral",	       _ui->groupBox_bilateral->isChecked());
+	settings.setValue("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value());
+	settings.setValue("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value());
 	settings.endGroup(); // rgbd
 
 	settings.beginGroup("stereo");
@@ -4148,6 +4160,18 @@ QString PreferencesDialog::getSourceDistortionModel() const
 {
 	return _ui->lineEdit_source_distortionModel->text();
 }
+bool PreferencesDialog::isBilateralFiltering() const
+{
+	return _ui->groupBox_bilateral->isChecked();
+}
+double PreferencesDialog::getBilateralSigmaS() const
+{
+	return _ui->doubleSpinBox_bilateral_sigmaS->value();
+}
+double PreferencesDialog::getBilateralSigmaR() const
+{
+	return _ui->doubleSpinBox_bilateral_sigmaR->value();
+}
 int PreferencesDialog::getSourceImageDecimation() const
 {
 	return _ui->spinBox_source_imageDecimation->value();
@@ -4669,10 +4693,18 @@ void PreferencesDialog::testOdometry()
 			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 			_ui->spinBox_cameraImages_scanNormalsK->value());
-	if(this->getSourceType() == PreferencesDialog::kSrcRGBD &&
-		!_ui->lineEdit_source_distortionModel->text().isEmpty())
+	if(this->getSourceType() == PreferencesDialog::kSrcRGBD)
 	{
-		cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+		if(_ui->groupBox_bilateral->isChecked())
+		{
+			cameraThread.enableBilateralFiltering(
+					_ui->doubleSpinBox_bilateral_sigmaS->value(),
+					_ui->doubleSpinBox_bilateral_sigmaR->value());
+		}
+		if(!_ui->lineEdit_source_distortionModel->text().isEmpty())
+		{
+			cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+		}
 	}
 	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
 	UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
@@ -4709,10 +4741,18 @@ void PreferencesDialog::testCamera()
 				_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 				_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 				_ui->spinBox_cameraImages_scanNormalsK->value());
-		if(this->getSourceType() == PreferencesDialog::kSrcRGBD &&
-			!_ui->lineEdit_source_distortionModel->text().isEmpty())
+		if(this->getSourceType() == PreferencesDialog::kSrcRGBD)
 		{
-			cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+			if(_ui->groupBox_bilateral->isChecked())
+			{
+				cameraThread.enableBilateralFiltering(
+						_ui->doubleSpinBox_bilateral_sigmaS->value(),
+						_ui->doubleSpinBox_bilateral_sigmaR->value());
+			}
+			if(!_ui->lineEdit_source_distortionModel->text().isEmpty())
+			{
+				cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
+			}
 		}
 		UEventsManager::createPipe(&cameraThread, window, "CameraEvent");
 

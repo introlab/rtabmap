@@ -3227,7 +3227,7 @@ void DatabaseViewer::updateConstraintView(
 	ui_->label_type->setText(tr("%1 (%2)")
 			.arg(link.type())
 			.arg(link.type()==Link::kNeighbor?"Neighbor":
-				 link.type()==Link::kNeighbor?"Merged neighbor":
+				 link.type()==Link::kNeighborMerged?"Merged neighbor":
 				 link.type()==Link::kGlobalClosure?"Loop closure":
 				 link.type()==Link::kLocalSpaceClosure?"Space proximity link":
 				 link.type()==Link::kLocalTimeClosure?"Time proximity link":

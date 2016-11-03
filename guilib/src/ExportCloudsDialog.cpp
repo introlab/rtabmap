@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/util3d.h"
+#include "rtabmap/core/util2d.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
@@ -82,6 +83,10 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->lineEdit_distortionModel, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(selectDistortionModel()));
+
+	connect(_ui->groupBox_bilateral, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_bilateral_sigmaR, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
 	connect(_ui->groupBox_filtering, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_filteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -181,6 +186,9 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
 	settings.setValue("regenerate_distortion_model", _ui->lineEdit_distortionModel->text());
 
+	settings.setValue("bilateral", _ui->groupBox_bilateral->isChecked());
+	settings.setValue("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value());
+	settings.setValue("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value());
 
 	settings.setValue("filtering", _ui->groupBox_filtering->isChecked());
 	settings.setValue("filtering_radius", _ui->doubleSpinBox_filteringRadius->value());
@@ -246,6 +254,10 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
 	_ui->lineEdit_distortionModel->setText(settings.value("regenerate_distortion_model", _ui->lineEdit_distortionModel->text()).toString());
 
+	_ui->groupBox_bilateral->setChecked(settings.value("bilateral", _ui->groupBox_bilateral->isChecked()).toBool());
+	_ui->doubleSpinBox_bilateral_sigmaS->setValue(settings.value("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value()).toDouble());
+	_ui->doubleSpinBox_bilateral_sigmaR->setValue(settings.value("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value()).toDouble());
+
 	_ui->groupBox_filtering->setChecked(settings.value("filtering", _ui->groupBox_filtering->isChecked()).toBool());
 	_ui->doubleSpinBox_filteringRadius->setValue(settings.value("filtering_radius", _ui->doubleSpinBox_filteringRadius->value()).toDouble());
 	_ui->spinBox_filteringMinNeighbors->setValue(settings.value("filtering_min_neighbors", _ui->spinBox_filteringMinNeighbors->value()).toInt());
@@ -308,6 +320,10 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
 	_ui->lineEdit_distortionModel->setText("");
+
+	_ui->groupBox_bilateral->setChecked(false);
+	_ui->doubleSpinBox_bilateral_sigmaS->setValue(10.0);
+	_ui->doubleSpinBox_bilateral_sigmaR->setValue(0.1);
 
 	_ui->groupBox_filtering->setChecked(false);
 	_ui->doubleSpinBox_filteringRadius->setValue(0.02);
@@ -1429,6 +1445,15 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							model.load(_ui->lineEdit_distortionModel->text().toStdString());
 							depth = depth.clone();// make sure we are not modifying data in cached signatures.
 							model.undistort(depth);
+							d.setDepthOrRightRaw(depth);
+						}
+
+						// bilateral filtering
+						if(_ui->groupBox_bilateral->isChecked())
+						{
+							depth = util2d::fastBilateralFiltering(depth,
+									_ui->doubleSpinBox_bilateral_sigmaS->value(),
+									_ui->doubleSpinBox_bilateral_sigmaR->value());
 							d.setDepthOrRightRaw(depth);
 						}
 

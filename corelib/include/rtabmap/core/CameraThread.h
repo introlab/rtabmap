@@ -63,6 +63,8 @@ public:
 	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
 	void setImageRate(float imageRate);
 	void setDistortionModel(const std::string & path);
+	void enableBilateralFiltering(float sigmaS, float sigmaR);
+	void disableBilateralFiltering() {_bilateralFiltering = false;}
 
 	void setScanFromDepth(
 			bool enabled,
@@ -102,6 +104,9 @@ private:
 	int _scanNormalsK;
 	StereoDense * _stereoDense;
 	clams::DiscreteDepthDistortionModel * _distortionModel;
+	bool _bilateralFiltering;
+	float _bilateralSigmaS;
+	float _bilateralSigmaR;
 };
 
 } // namespace rtabmap

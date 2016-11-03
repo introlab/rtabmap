@@ -220,6 +220,9 @@ public:
 	bool isSourceDatabaseStampsUsed() const;
 	bool isSourceRGBDColorOnly() const;
 	QString getSourceDistortionModel() const;
+	bool isBilateralFiltering() const;
+	double getBilateralSigmaS() const;
+	double getBilateralSigmaR() const;
 	int getSourceImageDecimation() const;
 	bool isSourceStereoDepthGenerated() const;
 	bool isSourceScanFromDepth() const;
