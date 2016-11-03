@@ -21,6 +21,7 @@ install:
     - sudo apt-get -y install libpcl-1.7-all libfreenect-dev ros-indigo-libg2o ros-indigo-octomap libopenni2-dev
 
 script: 
+    - source /opt/ros/indigo/setup.bash
     - mkdir -p build && cd build
     - cmake .. 
     - make
