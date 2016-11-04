@@ -3,6 +3,7 @@ package com.introlab.rtabmap;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
 
 import android.app.Activity;
@@ -651,6 +652,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	        };
 	        fileList = path.list(filter);
+	        Arrays.sort(fileList);
 	    }
 	    else {
 	    	fileList = new String[0];
@@ -1397,12 +1399,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  final String[] files = loadFileList(mWorkingDirectory);
     	  if(files.length > 0)
     	  {
-    		  String[] filesWithSize = files;
+    		  String[] filesWithSize = new String[files.length];
     		  for(int i = 0; i<filesWithSize.length; ++i)
   	          {
   	        	  File filePath = new File(mWorkingDirectory+files[i]);
   	        	  long mb = filePath.length()/(1024*1024);
-  	        	  filesWithSize[i] += " ("+mb+" MB)";
+  	        	  filesWithSize[i] = files[i] + " ("+mb+" MB)";
   	          }
     		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
     		  builder.setTitle("Choose your file");
