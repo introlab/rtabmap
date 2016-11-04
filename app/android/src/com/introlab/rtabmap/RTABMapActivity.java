@@ -2,6 +2,8 @@ package com.introlab.rtabmap;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -106,6 +108,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private LinearLayout mLayoutDebug;
   
   private int mTotalLoopClosures = 0;
+  private boolean mMapIsEmpty = false;
   
   private Toast mToast = null;
   
@@ -676,17 +679,18 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     			  mPauseFirstTime = false;
     			  mToast.makeText(getActivity(), String.format("Tip: Try \"Post-Processing...\" to optimize even more the map!"), mToast.LENGTH_LONG).show();
     		  }
+    		  mMapIsEmpty = false;
     	  }
     	  else
     	  {
     		  RTABMapLib.setPausedMapping(false);
+    		  ((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?"Localization":mItemDataRecorderMode.isChecked()?"Recording":"Mapping");
     		  if(mItemDataRecorderMode.isChecked())
     		  {
     			  mToast.makeText(getActivity(), String.format("Data Recorder Mode: no map is created, only raw data is recorded."), mToast.LENGTH_LONG).show();
     		  }
-    		  else
+    		  else if(!mMapIsEmpty)
     		  {
-	    		  ((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?"Localization":"Mapping");
 	    		  mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
     		  }
     	  }
@@ -705,7 +709,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								if(loopDetected >= 0)
 								{
 									mTotalLoopClosures+=loopDetected;
-									mProgressDialog.setMessage(String.format("Optimization done! Adjusting colors..."));
+									mProgressDialog.setMessage(String.format("Optimization done! Increasing visual appeal..."));
 								}
 								else if(loopDetected < 0)
 								{
@@ -816,6 +820,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  mProgressDialog.setMessage(String.format("Full gain compensation..."));
 		  mProgressDialog.show();
     	  RTABMapLib.postProcessing(6);
+      }
+      else if (itemId == R.id.bilateral_filtering)
+      {		
+    	  mProgressDialog.setTitle("Post-Processing");
+		  mProgressDialog.setMessage(String.format("Mesh smoothing..."));
+		  mProgressDialog.show();
+    	  RTABMapLib.postProcessing(7);
       }
       else if (itemId == R.id.sba)
       {
@@ -1094,7 +1105,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			  AlertDialog.Builder builder = new AlertDialog.Builder(this);
 			  builder.setTitle("RTAB-Map Database Name (*.db):");
 			  final EditText input = new EditText(this);
-			  input.setInputType(InputType.TYPE_CLASS_TEXT);        
+			  input.setInputType(InputType.TYPE_CLASS_TEXT); 
+			  String timeStamp = new SimpleDateFormat("yyMMdd-hhmmss").format(new Date());
+			  input.setText(timeStamp);
+			  input.setSelectAllOnFocus(true);
+			  input.selectAll();
 			  builder.setView(input);
 			  builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 				  @Override
@@ -1195,6 +1210,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			  mOpenedDatabasePath = "";
         	  RTABMapLib.openDatabase(mTempDatabasePath);
 		  }
+		  mMapIsEmpty = true;
       }
       else if(itemId == R.id.data_recorder)
       {
@@ -1258,6 +1274,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  final EditText input = new EditText(this);
 		  input.setInputType(InputType.TYPE_CLASS_TEXT);        
 		  builder.setView(input);
+		  String timeStamp = new SimpleDateFormat("yyMMdd-hhmmss").format(new Date());
+		  input.setText(timeStamp);
+		  input.setSelectAllOnFocus(true);
+		  input.selectAll();
 		  builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 			  @Override
 			  public void onClick(DialogInterface dialog, int which)
@@ -1377,9 +1397,16 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  final String[] files = loadFileList(mWorkingDirectory);
     	  if(files.length > 0)
     	  {
+    		  String[] filesWithSize = files;
+    		  for(int i = 0; i<filesWithSize.length; ++i)
+  	          {
+  	        	  File filePath = new File(mWorkingDirectory+files[i]);
+  	        	  long mb = filePath.length()/(1024*1024);
+  	        	  filesWithSize[i] += " ("+mb+" MB)";
+  	          }
     		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
     		  builder.setTitle("Choose your file");
-              builder.setItems(files, new DialogInterface.OnClickListener() {
+              builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
                   public void onClick(DialogInterface dialog, int which) {
                 	  mOpenedDatabasePath = mWorkingDirectory + files[which];
                 	  

@@ -29,8 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "util.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/core/util3d_transforms.h"
-#include "rtabmap/core/util2d.h"
 #include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/util2d.h"
 #include <tango_client_api.h>
 
 namespace rtabmap {
@@ -613,6 +613,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 					}
 				}
 			}
+
 			if(oi)
 			{
 				scan = cv::Mat(1, oi, CV_32FC3, scanData.data()).clone();

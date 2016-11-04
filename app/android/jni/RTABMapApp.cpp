@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "RTABMapApp.h"
 
 #include <rtabmap/core/Rtabmap.h>
+#include <rtabmap/core/util2d.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_filtering.h>
@@ -137,6 +138,7 @@ RTABMapApp::RTABMapApp() :
 		clearSceneOnNextRender_(false),
 		filterPolygonsOnNextRender_(false),
 		gainCompensationOnNextRender_(0),
+		bilateralFilteringOnNextRender_(false),
 		cameraJustInitialized_(false),
 		totalPoints_(0),
 		totalPolygons_(0),
@@ -325,6 +327,49 @@ private:
 };
 
 // OpenGL thread
+bool RTABMapApp::smoothMesh(int id, Mesh & mesh)
+{
+	UTimer t;
+	// reconstruct depth image
+	cv::Mat depth = cv::Mat::zeros(mesh.height, mesh.width, CV_32FC1);
+	rtabmap::Transform localTransformInv = mesh.cameraModel.localTransform().inverse();
+	for(unsigned int i=0; i<mesh.denseToOrganizedIndices.size(); ++i)
+	{
+		// FastBilateralFilter works in camera frame
+		pcl::PointXYZRGB pt = rtabmap::util3d::transformPoint(mesh.cloud->at(i), localTransformInv);
+		depth.at<float>(mesh.denseToOrganizedIndices[i]) = pt.z;
+	}
+
+	depth = rtabmap::util2d::fastBilateralFiltering(depth, 2.0f, 0.075f);
+	LOGI("smoothMesh() Bilateral filtering of %d, time=%fs", id, t.ticks());
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudOrganized = rtabmap::util3d::cloudFromDepthRGB(mesh.texture.rows>1?mesh.texture:rtabmap::uncompressImage(mesh.texture), depth, mesh.cameraModel, 1, maxCloudDepth_);
+	cloudOrganized = rtabmap::util3d::transformPointCloud(cloudOrganized, mesh.cameraModel.localTransform());
+
+	//reconstruct the mesh with smoothed surfaces
+	std::vector<pcl::Vertices> polygons = rtabmap::util3d::organizedFastMesh(cloudOrganized, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
+
+	// filter NaN points
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+	std::vector<pcl::Vertices> outputPolygons;
+	std::vector<int> denseToOrganizedIndices = rtabmap::util3d::filterNaNPointsFromMesh(*cloudOrganized, polygons, *outputCloud, outputPolygons);
+
+	LOGI("smoothMesh() Reconstructing the mesh of %d, time=%fs", id, t.ticks());
+	if(outputPolygons.size())
+	{
+		mesh.cloud = outputCloud;
+		mesh.polygons = outputPolygons;
+		mesh.denseToOrganizedIndices = denseToOrganizedIndices;
+	}
+	else
+	{
+		LOGE("smoothMesh() Failed to smooth surface %d", id);
+		return false;
+	}
+	return true;
+}
+
+// OpenGL thread
 int RTABMapApp::Render()
 {
 	UTimer fpsTime;
@@ -368,7 +413,7 @@ int RTABMapApp::Render()
 			{
 				cv::Mat compressed = iter->second.texture;
 				iter->second.texture = rtabmap::uncompressImage(iter->second.texture);
-				main_scene_.addMesh(iter->first, iter->second, iter->second.pose);
+				main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose);
 				main_scene_.setCloudVisible(iter->first, iter->second.visible);
 				iter->second.texture = compressed;
 			}
@@ -484,7 +529,7 @@ int RTABMapApp::Render()
 						main_scene_.setCloudVisible(id, true);
 						std::map<int, Mesh>::iterator meshIter = createdMeshes_.find(id);
 						UASSERT(meshIter!=createdMeshes_.end());
-						meshIter->second.pose = iter->second;
+						meshIter->second.pose = opengl_world_T_rtabmap_world.inverse()*iter->second;
 						meshIter->second.visible = true;
 					}
 					else if(uContains(bufferedSensorData, id))
@@ -514,7 +559,7 @@ int RTABMapApp::Render()
 								pcl::PointCloud<pcl::PointXYZRGB>::Ptr outputCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 								std::vector<pcl::Vertices> outputPolygons;
 
-								std::vector<int> denseToOrganizedIndices = rtabmap::util3d::filterNotUsedVerticesFromMesh(*output, polygons, *outputCloud, outputPolygons);
+								std::vector<int> denseToOrganizedIndices = rtabmap::util3d::filterNaNPointsFromMesh(*output, polygons, *outputCloud, outputPolygons);
 
 								LOGI("Creating mesh, %d polygons (%fs)", (int)outputPolygons.size(), time.ticks());
 
@@ -529,9 +574,10 @@ int RTABMapApp::Render()
 									inserted.first->second.width = cloud->width;
 									inserted.first->second.height = cloud->height;
 									inserted.first->second.polygons = outputPolygons;
-									inserted.first->second.pose = iter->second;
+									inserted.first->second.pose = opengl_world_T_rtabmap_world.inverse()*iter->second;
 									inserted.first->second.visible = true;
 									inserted.first->second.texture = data.imageRaw();
+									inserted.first->second.cameraModel = data.cameraModels()[0];
 
 									main_scene_.addMesh(id, inserted.first->second, iter->second);
 
@@ -582,7 +628,7 @@ int RTABMapApp::Render()
 	}
 	else
 	{
-		main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_);
+		main_scene_.setCloudVisible(-1, odomCloudShown_ && !trajectoryMode_ && !paused_);
 
 		//just process the last one
 		if(!odomEvent.pose().isNull())
@@ -660,11 +706,41 @@ int RTABMapApp::Render()
 						compensator.apply(iter->first, iter->second.texture);
 					}
 				}
-				main_scene_.updateMesh(iter->first, iter->second);
+
+				// If we do bilateral filtering, do it right now as the texture is uncompressed
+				if((notifyDataLoaded || bilateralFilteringOnNextRender_) &&
+					iter->second.cloud->size() && smoothMesh(iter->first, iter->second))
+				{
+					main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose);
+				}
+				else
+				{
+					main_scene_.updateMesh(iter->first, iter->second);
+				}
+
 				iter->second.texture = rtabmap::compressImage2(iter->second.texture, ".jpg");
 			}
+			bilateralFilteringOnNextRender_ = false;
 		}
 		gainCompensationOnNextRender_ = 0;
+		notifyDataLoaded = true;
+	}
+
+	if(bilateralFilteringOnNextRender_)
+	{
+		LOGI("Bilateral filtering...");
+		bilateralFilteringOnNextRender_ = false;
+		boost::mutex::scoped_lock  lock(meshesMutex_);
+		for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
+		{
+			if(iter->second.cloud->size())
+			{
+				if(smoothMesh(iter->first, iter->second))
+				{
+					main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose);
+				}
+			}
+		}
 		notifyDataLoaded = true;
 	}
 
@@ -1122,7 +1198,7 @@ int RTABMapApp::postProcessing(int approach)
 					LOGE("g2o not available!");
 				}
 			}
-			else if(approach!=4 && approach!=5)
+			else if(approach!=4 && approach!=5 && approach != 7)
 			{
 				// simple graph optmimization
 				rtabmap_->getGraph(poses, links, true, true);
@@ -1139,25 +1215,30 @@ int RTABMapApp::postProcessing(int approach)
 
 			rtabmap_->setOptimizedPoses(poses);
 		}
-		else if(approach!=4 && approach!=5)
+		else if(approach!=4 && approach!=5 && approach != 7)
 		{
 			returnedValue = -1;
 		}
 
 		if(returnedValue >=0)
 		{
+			boost::mutex::scoped_lock  lock(renderingMutex_);
 			// filter polygons
-			if(approach == 4)
+			if(approach == -1 && approach == 4)
 			{
-				boost::mutex::scoped_lock  lock(renderingMutex_);
 				filterPolygonsOnNextRender_ = true;
 			}
 
 			// gain compensation
 			if(approach == -1 || approach == 5 || approach == 6)
 			{
-				boost::mutex::scoped_lock  lock(renderingMutex_);
 				gainCompensationOnNextRender_ = approach == 6 ? 2 : 1; // 2 = full, 1 = fast
+			}
+
+			// bilateral filtering
+			if(approach == -1 && approach == 7)
+			{
+				bilateralFilteringOnNextRender_ = true;
 			}
 		}
 	}

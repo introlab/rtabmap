@@ -346,6 +346,49 @@ std::vector<int> filterNotUsedVerticesFromMesh(
 	return output;
 }
 
+std::vector<int> filterNaNPointsFromMesh(
+		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,
+		std::vector<pcl::Vertices> & outputPolygons)
+{
+	UDEBUG("size=%d polygons=%d", (int)cloud.size(), (int)polygons.size());
+	std::map<int, int> addedVertices; //<oldIndex, newIndex>
+	std::vector<int> output; //<oldIndex>
+	output.resize(cloud.size());
+	outputCloud.resize(cloud.size());
+	outputCloud.is_dense = true;
+	std::vector<int> organizedToDense(cloud.size(), -1);
+
+	int oi = 0;
+	for(unsigned int i=0; i<cloud.size(); ++i)
+	{
+		if(pcl::isFinite(cloud.at(i)))
+		{
+			outputCloud.at(oi) = cloud.at(i);
+			output[oi] = i;
+			organizedToDense[i] = oi;
+			++oi;
+ 		}
+	}
+	outputCloud.resize(oi);
+	output.resize(oi);
+
+	// remap polygons to dense cloud
+	outputPolygons = polygons;
+	for(unsigned int i=0; i<outputPolygons.size(); ++i)
+	{
+		pcl::Vertices & v = outputPolygons[i];
+		for(unsigned int j=0; j<v.vertices.size(); ++j)
+		{
+			UASSERT(organizedToDense[v.vertices[j]] >= 0);
+			v.vertices[j] = organizedToDense[v.vertices[j]];
+		}
+	}
+
+	return output;
+}
+
 std::vector<pcl::Vertices> filterCloseVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,
 		const std::vector<pcl::Vertices> & polygons,

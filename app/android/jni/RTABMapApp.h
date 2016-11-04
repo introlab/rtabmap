@@ -138,6 +138,7 @@ class RTABMapApp : public UEventsHandler {
 
  private:
   rtabmap::ParametersMap getRtabmapParameters();
+  bool smoothMesh(int id, Mesh & mesh);
 
  private:
   rtabmap::CameraTango * camera_;
@@ -164,6 +165,7 @@ class RTABMapApp : public UEventsHandler {
   bool clearSceneOnNextRender_;
   bool filterPolygonsOnNextRender_;
   int gainCompensationOnNextRender_;
+  bool bilateralFilteringOnNextRender_;
   bool cameraJustInitialized_;
   int totalPoints_;
   int totalPolygons_;

@@ -100,6 +100,11 @@ std::vector<int> RTABMAP_EXP filterNotUsedVerticesFromMesh(
 		const std::vector<pcl::Vertices> & polygons,
 		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,
 		std::vector<pcl::Vertices> & outputPolygons);
+std::vector<int> RTABMAP_EXP filterNaNPointsFromMesh(
+		const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
+		const std::vector<pcl::Vertices> & polygons,
+		pcl::PointCloud<pcl::PointXYZRGB> & outputCloud,
+		std::vector<pcl::Vertices> & outputPolygons);
 
 std::vector<pcl::Vertices> RTABMAP_EXP filterCloseVerticesFromMesh(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud,

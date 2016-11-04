@@ -1845,7 +1845,9 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 				  v = 0.0f;
 			  }
 			  if(depth.type()==CV_32FC1)
+			  {
 				  output.at<float>(y,x) = v;
+			  }
 			  else
 			  {
 				  v*=1000.0f;

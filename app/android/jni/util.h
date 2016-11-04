@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <android/log.h>
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/core/CameraModel.h>
 #include <tango-gl/util.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -42,6 +43,7 @@ class LogHandler : public UEventsHandler
 public:
 	LogHandler()
 	{
+		ULogger::setLevel(ULogger::kWarning);
 		ULogger::setEventLevel(ULogger::kWarning);
 		ULogger::setPrintThreadId(true);
 
@@ -142,9 +144,10 @@ struct Mesh
 	std::vector<int> denseToOrganizedIndices; // should be set if cloud is dense, used for texturing
 	unsigned int width;  // width of the organized cloud
 	unsigned int height; // height of the organized cloud
-	rtabmap::Transform pose;
+	rtabmap::Transform pose; // in rtabmap coordinates
 	bool visible;
 	cv::Mat texture;
+	rtabmap::CameraModel cameraModel;
 };
 
 #endif /* UTIL_H_ */

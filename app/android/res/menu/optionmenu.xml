@@ -16,6 +16,7 @@
 	              <item android:id="@+id/icp_refining" android:title="ICP Refining" />
 	              <item android:id="@+id/gain_compensation_fast" android:title="Adjust Colors (Fast)" />
 	              <item android:id="@+id/gain_compensation_full" android:title="Adjust Colors (Full)" />
+	              <item android:id="@+id/bilateral_filtering" android:title="Mesh Smoothing" />
 	              <item android:id="@+id/sba" android:title="Bundle Adjustement" />
 	              <item android:id="@+id/polygons_filtering" android:title="Noise Filtering" />
 	            </menu>  
