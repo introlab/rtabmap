@@ -1224,7 +1224,7 @@ int RTABMapApp::postProcessing(int approach)
 		{
 			boost::mutex::scoped_lock  lock(renderingMutex_);
 			// filter polygons
-			if(approach == -1 && approach == 4)
+			if(approach == -1 || approach == 4)
 			{
 				filterPolygonsOnNextRender_ = true;
 			}
@@ -1236,7 +1236,7 @@ int RTABMapApp::postProcessing(int approach)
 			}
 
 			// bilateral filtering
-			if(approach == -1 && approach == 7)
+			if(approach == -1 || approach == 7)
 			{
 				bilateralFilteringOnNextRender_ = true;
 			}
