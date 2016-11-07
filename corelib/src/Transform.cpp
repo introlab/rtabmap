@@ -282,9 +282,9 @@ std::ostream& operator<<(std::ostream& os, const Transform& s)
 	{
 		for(int j = 0; j < 4; ++j)
 		{
-			std::cout << std::left << std::setw(12) << s.data()[i*4 + j];
+			os << std::left << std::setw(12) << s.data()[i*4 + j];
 		}
-		std::cout << std::endl;
+		os << std::endl;
 	}
 	return os;
 }
