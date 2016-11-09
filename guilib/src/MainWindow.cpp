@@ -4632,9 +4632,9 @@ void MainWindow::postProcessing()
 							{
 								Transform transform;
 								RegistrationInfo info;
-								RegistrationVis registration(parameters);
-								transform = registration.computeTransformation(signatureFrom, signatureTo, Transform(), &info);
-
+								Registration * registration = Registration::create(parameters);
+								transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
+								delete registration;
 								if(!transform.isNull())
 								{
 									UINFO("Added new loop closure between %d and %d.", from, to);

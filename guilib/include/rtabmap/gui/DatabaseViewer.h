@@ -92,8 +92,6 @@ private slots:
 	void detectMoreLoopClosures();
 	void refineAllNeighborLinks();
 	void refineAllLoopClosureLinks();
-	void refineVisuallyAllNeighborLinks();
-	void refineVisuallyAllLoopClosureLinks();
 	void resetAllChanges();
 	void sliderAValueChanged(int);
 	void sliderBValueChanged(int);
@@ -106,7 +104,6 @@ private slots:
 	void updateGrid();
 	void updateGraphView();
 	void refineConstraint();
-	void refineConstraintVisually();
 	void addConstraint();
 	void resetConstraint();
 	void rejectConstraint();
@@ -154,7 +151,6 @@ private:
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
 	void refineConstraint(int from, int to,  bool silent, bool updateGraph);
-	void refineConstraintVisually(int from, int to,  bool silent, bool updateGraph);
 	bool addConstraint(int from, int to, bool silent, bool updateGraph);
 
 private:

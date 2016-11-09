@@ -184,20 +184,16 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
 	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
 	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
-	connect(ui_->actionVisual_Refine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllNeighborLinks()));
-	connect(ui_->actionVisual_Refine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineVisuallyAllLoopClosureLinks()));
 	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
 	connect(ui_->actionRegenerate_local_grid_maps_selected, SIGNAL(triggered()), this, SLOT(regenerateCurrentLocalMaps()));
 	connect(ui_->actionReset_all_changes, SIGNAL(triggered()), this, SLOT(resetAllChanges()));
 
 	//ICP buttons
 	connect(ui_->pushButton_refine, SIGNAL(clicked()), this, SLOT(refineConstraint()));
-	connect(ui_->pushButton_refineVisually, SIGNAL(clicked()), this, SLOT(refineConstraintVisually()));
 	connect(ui_->pushButton_add, SIGNAL(clicked()), this, SLOT(addConstraint()));
 	connect(ui_->pushButton_reset, SIGNAL(clicked()), this, SLOT(resetConstraint()));
 	connect(ui_->pushButton_reject, SIGNAL(clicked()), this, SLOT(rejectConstraint()));
 	ui_->pushButton_refine->setEnabled(false);
-	ui_->pushButton_refineVisually->setEnabled(false);
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reset->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
@@ -225,6 +221,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_showScan, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showMap, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showGrid, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_odomFrame_3dview, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 
 	ui_->horizontalSlider_neighbors->setTracking(false);
 	ui_->horizontalSlider_loops->setTracking(false);
@@ -238,6 +235,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_show3Dclouds, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->checkBox_show2DScans, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->checkBox_show3DWords, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
+	connect(ui_->checkBox_odomFrame, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	ui_->checkBox_showOptimized->setEnabled(false);
 
 	ui_->horizontalSlider_iterations->setTracking(false);
@@ -1219,7 +1217,7 @@ void DatabaseViewer::updateIds()
 				}
 				else
 				{
-					links_.insert(std::make_pair(ids_[i], jter->second));
+					links_.insert(std::make_pair(ids_[i], jter->second))->second;
 				}
 				addPose = true;
 			}
@@ -1710,7 +1708,10 @@ void DatabaseViewer::view3DMap()
 	items.append("-4");
 	items.append("-8");
 	items.append("-16");
-	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value)."), items, 2, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation. \n"
+			"Negative decimation is done from RGB size instead\n"
+			"of depth size (if depth is smaller than RGB, it may be\n"
+			"interpolated depending of the decimation value)."), items, 2, false, &ok);
 	if(ok)
 	{
 		int decimation = item.toInt();
@@ -1936,7 +1937,10 @@ void DatabaseViewer::generate3DMap()
 	items.append("-4");
 	items.append("-8");
 	items.append("-16");
-	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value)."), items, 2, false, &ok);
+	QString item = QInputDialog::getItem(this, tr("Decimation?"), tr("Image decimation.\n"
+			"Negative decimation is done from RGB size instead\n"
+			"of depth size (if depth is smaller than RGB, it may be\n"
+			"interpolated depending of the decimation value)."), items, 2, false, &ok);
 	if(ok)
 	{
 		int decimation = item.toInt();
@@ -2179,6 +2183,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	int iterations = ui_->spinBox_detectMore_iterations->value();
 	UASSERT(iterations > 0);
 	int added = 0;
+	std::multimap<int, int> checkedLoopClosures;
 	for(int n=0; n<iterations; ++n)
 	{
 		UINFO("iteration %d/%d", n+1, iterations);
@@ -2196,15 +2201,21 @@ void DatabaseViewer::detectMoreLoopClosures()
 				from = iter->second;
 				to = iter->first;
 			}
-			if(!findActiveLink(from, to).isValid() && !containsLink(linksRemoved_, from, to) &&
-				addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end())
+
+			// only add new links and one per cluster per iteration
+			if(rtabmap::graph::findLink(checkedLoopClosures, from, to) == checkedLoopClosures.end())
 			{
-				if(addConstraint(from, to, true, false))
+				if(!findActiveLink(from, to).isValid() && !containsLink(linksRemoved_, from, to) &&
+				   addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end())
 				{
-					UINFO("Added new loop closure between %d and %d.", from, to);
-					++added;
-					addedLinks.insert(from);
-					addedLinks.insert(to);
+					checkedLoopClosures.insert(std::make_pair(from, to));
+					if(addConstraint(from, to, true, false))
+					{
+						UINFO("Added new loop closure between %d and %d.", from, to);
+						++added;
+						addedLinks.insert(from);
+						addedLinks.insert(to);
+					}
 				}
 			}
 		}
@@ -2259,56 +2270,6 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 			int from = loopLinks_[i].from();
 			int to = loopLinks_[i].to();
 			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), true, false);
-
-			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
-			progressDialog.incrementStep();
-			QApplication::processEvents();
-		}
-		this->updateGraphView();
-
-		progressDialog.setValue(progressDialog.maximumSteps());
-		progressDialog.appendText("Refining links finished!");
-	}
-}
-
-void DatabaseViewer::refineVisuallyAllNeighborLinks()
-{
-	if(neighborLinks_.size())
-	{
-		rtabmap::ProgressDialog progressDialog(this);
-		progressDialog.setMaximumSteps(neighborLinks_.size());
-		progressDialog.show();
-
-		for(int i=0; i<neighborLinks_.size(); ++i)
-		{
-			int from = neighborLinks_[i].from();
-			int to = neighborLinks_[i].to();
-			this->refineConstraintVisually(neighborLinks_[i].from(), neighborLinks_[i].to(), true, false);
-
-			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
-			progressDialog.incrementStep();
-			QApplication::processEvents();
-		}
-		this->updateGraphView();
-
-		progressDialog.setValue(progressDialog.maximumSteps());
-		progressDialog.appendText("Refining links finished!");
-	}
-}
-
-void DatabaseViewer::refineVisuallyAllLoopClosureLinks()
-{
-	if(loopLinks_.size())
-	{
-		rtabmap::ProgressDialog progressDialog(this);
-		progressDialog.setMaximumSteps(loopLinks_.size());
-		progressDialog.show();
-
-		for(int i=0; i<loopLinks_.size(); ++i)
-		{
-			int from = loopLinks_[i].from();
-			int to = loopLinks_[i].to();
-			this->refineConstraintVisually(loopLinks_[i].from(), loopLinks_[i].to(), true, false);
 
 			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
 			progressDialog.incrementStep();
@@ -2515,7 +2476,7 @@ void DatabaseViewer::update(int value,
 				if(view3D->isVisible())
 				{
 					Transform pose = Transform::getIdentity();
-					if(signatures.size())
+					if(signatures.size() && ui_->checkBox_odomFrame_3dview->isChecked())
 					{
 						float x, y, z, roll, pitch, yaw;
 						(*signatures.begin())->getPose().getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
@@ -3318,6 +3279,23 @@ void DatabaseViewer::updateConstraintView(
 		UASSERT(dataTo.imageRaw().empty() || dataTo.imageRaw().type()==CV_8UC3 || dataTo.imageRaw().type() == CV_8UC1);
 		UASSERT(dataTo.depthOrRightRaw().empty() || dataTo.depthOrRightRaw().type()==CV_8UC1 || dataTo.depthOrRightRaw().type() == CV_16UC1 || dataTo.depthOrRightRaw().type() == CV_32FC1);
 
+		// get odom pose
+		Transform pose = Transform::getIdentity();
+		if(ui_->checkBox_odomFrame->isChecked())
+		{
+			int m,w;
+			std::string l;
+			double s;
+			Transform p,g;
+			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g);
+			if(!p.isNull())
+			{
+				// keep just the z and roll/pitch rotation
+				float x, y, z, roll, pitch, yaw;
+				p.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+				pose = Transform(0,0,z,roll,pitch,0);
+			}
+		}
 
 		if(cloudFrom->size() == 0 && cloudTo->size() == 0)
 		{
@@ -3356,11 +3334,11 @@ void DatabaseViewer::updateConstraintView(
 
 				if(cloudFrom.get() && cloudFrom->size())
 				{
-					constraintsViewer_->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+					constraintsViewer_->addCloud("cloud0", cloudFrom, pose, Qt::red);
 				}
 				if(cloudTo.get() && cloudTo->size())
 				{
-					constraintsViewer_->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+					constraintsViewer_->addCloud("cloud1", cloudTo, pose, Qt::cyan);
 				}
 			}
 			else
@@ -3414,7 +3392,7 @@ void DatabaseViewer::updateConstraintView(
 
 					if(cloudFrom->size())
 					{
-						constraintsViewer_->addCloud("words0", cloudFrom, Transform::getIdentity(), Qt::red);
+						constraintsViewer_->addCloud("words0", cloudFrom, pose, Qt::red);
 					}
 					else
 					{
@@ -3423,7 +3401,7 @@ void DatabaseViewer::updateConstraintView(
 					}
 					if(cloudTo->size())
 					{
-						constraintsViewer_->addCloud("words1", cloudTo, Transform::getIdentity(), Qt::cyan);
+						constraintsViewer_->addCloud("words1", cloudTo, pose, Qt::cyan);
 					}
 					else
 					{
@@ -3453,11 +3431,11 @@ void DatabaseViewer::updateConstraintView(
 		{
 			if(cloudFrom->size())
 			{
-				constraintsViewer_->addCloud("cloud0", cloudFrom, Transform::getIdentity(), Qt::red);
+				constraintsViewer_->addCloud("cloud0", cloudFrom, pose, Qt::red);
 			}
 			if(cloudTo->size())
 			{
-				constraintsViewer_->addCloud("cloud1", cloudTo, Transform::getIdentity(), Qt::cyan);
+				constraintsViewer_->addCloud("cloud1", cloudTo, pose, Qt::cyan);
 			}
 		}
 
@@ -3583,7 +3561,7 @@ void DatabaseViewer::updateConstraintView(
 
 							if(assembledScans->size())
 							{
-								constraintsViewer_->addCloud("scan2", assembledScans, Transform::getIdentity(), Qt::cyan);
+								constraintsViewer_->addCloud("scan2", assembledScans, pose, Qt::cyan);
 							}
 							if(graph->size())
 							{
@@ -3600,25 +3578,25 @@ void DatabaseViewer::updateConstraintView(
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
-					constraintsViewer_->addCloud("scan0", scan, Transform::getIdentity(), Qt::yellow);
+					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 				}
 				else
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
-					constraintsViewer_->addCloud("scan0", scan, Transform::getIdentity(), Qt::yellow);
+					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 				}
 				if(dataTo.laserScanRaw().channels() == 6)
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
-					constraintsViewer_->addCloud("scan1", scan, Transform::getIdentity(), Qt::magenta);
+					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
 				}
 				else
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
-					constraintsViewer_->addCloud("scan1", scan, Transform::getIdentity(), Qt::magenta);
+					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
 				}
 			}
 			else
@@ -3632,7 +3610,7 @@ void DatabaseViewer::updateConstraintView(
 		{
 			if(scanFrom->size())
 			{
-				constraintsViewer_->addCloud("scan0", scanFrom, Transform::getIdentity(), Qt::yellow);
+				constraintsViewer_->addCloud("scan0", scanFrom, pose, Qt::yellow);
 			}
 			else
 			{
@@ -3640,7 +3618,7 @@ void DatabaseViewer::updateConstraintView(
 			}
 			if(scanTo->size())
 			{
-				constraintsViewer_->addCloud("scan1", scanTo, Transform::getIdentity(), Qt::magenta);
+				constraintsViewer_->addCloud("scan1", scanTo, pose, Qt::magenta);
 			}
 			else
 			{
@@ -3651,12 +3629,13 @@ void DatabaseViewer::updateConstraintView(
 
 		//update coordinate
 
-		constraintsViewer_->addOrUpdateCoordinate("from_coordinate", Transform::getIdentity(), 0.2);
-		constraintsViewer_->addOrUpdateCoordinate("to_coordinate", t, 0.2);
+		constraintsViewer_->addOrUpdateCoordinate("from_coordinate", pose, 0.2);
+		constraintsViewer_->addOrUpdateCoordinate("to_coordinate", pose*t, 0.2);
+		constraintsViewer_->removeCoordinate("to_coordinate_gt");
 		if(uContains(groundTruthPoses_, link.from()) && uContains(groundTruthPoses_, link.to()))
 		{
 			constraintsViewer_->addOrUpdateCoordinate("to_coordinate_gt",
-					groundTruthPoses_.at(link.from()).inverse()*groundTruthPoses_.at(link.to()), 0.1);
+					pose*(groundTruthPoses_.at(link.from()).inverse()*groundTruthPoses_.at(link.to())), 0.1);
 		}
 
 		constraintsViewer_->clearTrajectory();
@@ -3671,7 +3650,6 @@ void DatabaseViewer::updateConstraintView(
 void DatabaseViewer::updateConstraintButtons()
 {
 	ui_->pushButton_refine->setEnabled(false);
-	ui_->pushButton_refineVisually->setEnabled(false);
 	ui_->pushButton_reset->setEnabled(false);
 	ui_->pushButton_add->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
@@ -3713,7 +3691,6 @@ void DatabaseViewer::updateConstraintButtons()
 			ui_->pushButton_reset->setEnabled(false);
 		}
 		ui_->pushButton_refine->setEnabled(true);
-		ui_->pushButton_refineVisually->setEnabled(true);
 	}
 }
 
@@ -4127,49 +4104,70 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	dbDriver_->getNodeData(currentLink.to(), dataTo);
 
 	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
+	Registration * registration = Registration::create(parameters);
 
 	UTimer timer;
-	if(ui_->checkBox_icp_from_depth->isChecked())
+	if(registration->isScanRequired())
 	{
-		// generate laser scans from depth image
+		if(ui_->checkBox_icp_from_depth->isChecked())
+		{
+			// generate laser scans from depth image
+			cv::Mat tmpA, tmpB, tmpC, tmpD;
+			dataFrom.uncompressData(&tmpA, &tmpB, 0);
+			dataTo.uncompressData(&tmpC, &tmpD, 0);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom = util3d::cloudFromSensorData(
+					dataFrom,
+					ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
+					ui_->doubleSpinBox_icp_maxDepth->value(),
+					ui_->doubleSpinBox_icp_minDepth->value(),
+					0,
+					ui_->parameters_toolbox->getParameters());
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo = util3d::cloudFromSensorData(
+					dataTo,
+					ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
+					ui_->doubleSpinBox_icp_maxDepth->value(),
+					ui_->doubleSpinBox_icp_minDepth->value(),
+					0,
+					ui_->parameters_toolbox->getParameters());
+			int maxLaserScans = cloudFrom->size();
+			dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), LaserScanInfo(maxLaserScans, 0));
+			dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), LaserScanInfo(maxLaserScans, 0));
+
+			if(!dataFrom.laserScanCompressed().empty() || !dataTo.laserScanCompressed().empty())
+			{
+				UWARN("There are laser scans in data, but generate laser scan from "
+					  "depth image option is activated. Ignoring saved laser scans...");
+			}
+		}
+		else
+		{
+			cv::Mat tmpA, tmpB;
+			dataFrom.uncompressData(0, 0, &tmpA);
+			dataTo.uncompressData(0, 0, &tmpB);
+		}
+	}
+
+	if(registration->isImageRequired())
+	{
 		cv::Mat tmpA, tmpB, tmpC, tmpD;
 		dataFrom.uncompressData(&tmpA, &tmpB, 0);
 		dataTo.uncompressData(&tmpC, &tmpD, 0);
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFrom = util3d::cloudFromSensorData(
-				dataFrom,
-				ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
-				ui_->doubleSpinBox_icp_maxDepth->value(),
-				ui_->doubleSpinBox_icp_minDepth->value(),
-				0,
-				ui_->parameters_toolbox->getParameters());
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTo = util3d::cloudFromSensorData(
-				dataTo,
-				ui_->spinBox_icp_decimation->value()==0?1:ui_->spinBox_icp_decimation->value(),
-				ui_->doubleSpinBox_icp_maxDepth->value(),
-				ui_->doubleSpinBox_icp_minDepth->value(),
-				0,
-				ui_->parameters_toolbox->getParameters());
-		int maxLaserScans = cloudFrom->size();
-		dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), LaserScanInfo(maxLaserScans, 0));
-		dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), LaserScanInfo(maxLaserScans, 0));
+	}
 
-		if(!dataFrom.laserScanCompressed().empty() || !dataTo.laserScanCompressed().empty())
-		{
-			UWARN("There are laser scans in data, but generate laser scan from "
-				  "depth image option is activated. Ignoring saved laser scans...");
-		}
-	}
-	else
-	{
-		cv::Mat tmpA, tmpB;
-		dataFrom.uncompressData(0, 0, &tmpA);
-		dataTo.uncompressData(0, 0, &tmpB);
-	}
 	UINFO("Uncompress time: %f s", timer.ticks());
 
-	RegistrationIcp registration(parameters);
-	transform = registration.computeTransformation(dataFrom, dataTo, t, &info);
-	UINFO("Icp time: %f s", timer.ticks());
+	Signature fromS(dataFrom);
+	Signature toS(dataTo);
+	transform = registration->computeTransformation(fromS, toS, t, &info);
+	delete registration;
+	UINFO("(%d ->%d) Registration time: %f s", from, to, timer.ticks());
+
+	if(!silent)
+	{
+		ui_->graphicsView_A->setFeatures(fromS.getWords(), dataFrom.depthRaw());
+		ui_->graphicsView_B->setFeatures(toS.getWords(), dataTo.depthRaw());
+		updateWordsMatching();
+	}
 
 	if(!transform.isNull())
 	{
@@ -4212,96 +4210,6 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 	}
 }
 
-void DatabaseViewer::refineConstraintVisually()
-{
-	int from = ids_.at(ui_->horizontalSlider_A->value());
-	int to = ids_.at(ui_->horizontalSlider_B->value());
-	refineConstraintVisually(from, to, false, true);
-}
-
-void DatabaseViewer::refineConstraintVisually(int from, int to, bool silent, bool updateGraph)
-{
-	UDEBUG("");
-	if(from == to)
-	{
-		UWARN("Cannot refine link to same node");
-		return;
-	}
-
-	Link currentLink =  findActiveLink(from, to);
-	if(!currentLink.isValid())
-	{
-		UERROR("Not found link! (%d->%d)", from, to);
-		return;
-	}
-
-	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
-
-	Transform t;
-	RegistrationInfo info;
-
-	// Add sensor data to generate features
-	SensorData dataFrom;
-	dbDriver_->getNodeData(from, dataFrom);
-	dataFrom.uncompressData();
-	SensorData dataTo;
-	dbDriver_->getNodeData(to, dataTo);
-	dataTo.uncompressData();
-
-
-	UDEBUG("");
-	RegistrationVis reg(parameters);
-	Signature fromS(dataFrom);
-	Signature toS(dataTo);
-	t = reg.computeTransformationMod(fromS, toS, currentLink.transform(), &info);
-	UDEBUG("");
-
-	if(!silent)
-	{
-		ui_->graphicsView_A->setFeatures(fromS.getWords(), dataFrom.depthRaw());
-		ui_->graphicsView_B->setFeatures(toS.getWords(), dataTo.depthRaw());
-		updateWordsMatching();
-	}
-
-	if(!t.isNull())
-	{
-		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), t, info.variance, info.variance);
-
-		bool updated = false;
-		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
-		while(iter != linksRefined_.end() && iter->first == currentLink.from())
-		{
-			if(iter->second.to() == currentLink.to() &&
-			   iter->second.type() == currentLink.type())
-			{
-				iter->second = newLink;
-				updated = true;
-				break;
-			}
-			++iter;
-		}
-		if(!updated)
-		{
-			linksRefined_.insert(std::make_pair(newLink.from(), newLink));
-
-			if(updateGraph)
-			{
-				this->updateGraphView();
-			}
-		}
-		if(ui_->dockWidget_constraints->isVisible())
-		{
-			this->updateConstraintView(newLink, false);
-		}
-	}
-	else if(!silent)
-	{
-		QMessageBox::warning(this,
-				tr("Add link"),
-				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
-	}
-}
-
 void DatabaseViewer::addConstraint()
 {
 	int from = ids_.at(ui_->horizontalSlider_A->value());
@@ -4339,10 +4247,11 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 
 		UDEBUG("");
-		RegistrationVis reg(parameters);
+		Registration * reg = Registration::create(parameters);
 		Signature fromS(dataFrom);
 		Signature toS(dataTo);
-		t = reg.computeTransformationMod(fromS, toS, Transform::getIdentity(), &info);
+		t = reg->computeTransformationMod(fromS, toS, Transform(), &info);
+		delete reg;
 		UDEBUG("");
 
 		if(!silent)

@@ -52,8 +52,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>203</width>
-           <height>208</height>
+           <width>194</width>
+           <height>196</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -210,8 +210,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>202</width>
-           <height>208</height>
+           <width>194</width>
+           <height>196</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -484,7 +484,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -512,9 +512,7 @@
     <addaction name="actionGenerate_g2o_graph_g2o"/>
     <addaction name="separator"/>
     <addaction name="actionDetect_more_loop_closures"/>
-    <addaction name="actionVisual_Refine_all_neighbor_links"/>
     <addaction name="actionRefine_all_neighbor_links"/>
-    <addaction name="actionVisual_Refine_all_loop_closure_links"/>
     <addaction name="actionRefine_all_loop_closure_links"/>
     <addaction name="separator"/>
     <addaction name="actionRegenerate_local_grid_maps"/>
@@ -576,6 +574,16 @@
          </property>
          <property name="checked">
           <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_odomFrame">
+         <property name="text">
+          <string>Odom Frame</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -709,16 +717,12 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_5">
        <item>
-        <widget class="QPushButton" name="pushButton_refineVisually">
-         <property name="text">
-          <string>Refine (Visual)</string>
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QPushButton" name="pushButton_refine">
+         <property name="toolTip">
+          <string>Refine with the registration strategy set in &quot;Core Parameters&quot;-&gt;&quot;Reg&quot;</string>
+         </property>
          <property name="text">
-          <string>Refine (ICP)</string>
+          <string>Refine</string>
          </property>
         </widget>
        </item>
@@ -990,8 +994,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>324</width>
-          <height>210</height>
+          <width>424</width>
+          <height>186</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1126,8 +1130,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>280</width>
-          <height>584</height>
+          <width>424</width>
+          <height>535</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1443,8 +1447,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>283</width>
-          <height>225</height>
+          <width>437</width>
+          <height>162</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1543,12 +1547,12 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>283</width>
-          <height>225</height>
+          <width>424</width>
+          <height>198</height>
          </rect>
         </property>
         <attribute name="label">
-         <string>ICP</string>
+         <string>Refine</string>
         </attribute>
         <layout class="QGridLayout" name="gridLayout_3" columnstretch="0,0,1">
          <item row="1" column="0">
@@ -1594,7 +1598,7 @@
          <item row="0" column="2">
           <widget class="QLabel" name="label_7">
            <property name="text">
-            <string>Generate laser scans from RGB-D images</string>
+            <string>Generate laser scans from RGB-D images using the following parameters.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
@@ -1822,6 +1826,16 @@
         </widget>
        </item>
        <item>
+        <widget class="QCheckBox" name="checkBox_odomFrame_3dview">
+         <property name="text">
+          <string>Odom Frame</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="horizontalSpacer_4">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
@@ -1964,27 +1978,23 @@
   </action>
   <action name="actionRefine_all_neighbor_links">
    <property name="text">
-    <string>ICP: Refine all neighbor links...</string>
+    <string>Refine all neighbor links...</string>
+   </property>
+   <property name="toolTip">
+    <string>Refine all neighbor links with the registration strategy set in &quot;Core Parameters&quot;-&gt;&quot;Reg&quot;</string>
    </property>
   </action>
   <action name="actionRefine_all_loop_closure_links">
    <property name="text">
-    <string>ICP: Refine all loop closure links...</string>
+    <string>Refine all loop closure links...</string>
+   </property>
+   <property name="toolTip">
+    <string>Refine all loop closure links with the registration strategy set in &quot;Core Parameters&quot;-&gt;&quot;Reg&quot;</string>
    </property>
   </action>
   <action name="actionDetect_more_loop_closures">
    <property name="text">
     <string>Detect more loop closures...</string>
-   </property>
-  </action>
-  <action name="actionVisual_Refine_all_neighbor_links">
-   <property name="text">
-    <string>Visual: Refine all neighbor links...</string>
-   </property>
-  </action>
-  <action name="actionVisual_Refine_all_loop_closure_links">
-   <property name="text">
-    <string>Visual: Refine all loop closure links...</string>
    </property>
   </action>
   <action name="actionSave_config">
