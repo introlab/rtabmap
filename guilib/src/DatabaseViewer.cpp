@@ -1217,7 +1217,7 @@ void DatabaseViewer::updateIds()
 				}
 				else
 				{
-					links_.insert(std::make_pair(ids_[i], jter->second))->second;
+					links_.insert(std::make_pair(ids_[i], jter->second));
 				}
 				addPose = true;
 			}
