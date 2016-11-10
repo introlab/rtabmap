@@ -23,7 +23,7 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
+        <y>-1311</y>
         <width>773</width>
         <height>1902</height>
        </rect>
@@ -1250,7 +1250,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                 <string> pix</string>
                </property>
                <property name="minimum">
-                <number>2</number>
+                <number>1</number>
                </property>
                <property name="maximum">
                 <number>99</number>

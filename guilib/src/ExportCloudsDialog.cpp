@@ -363,7 +363,7 @@ void ExportCloudsDialog::restoreDefaults()
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
-	_ui->spinBox_mesh_triangleSize->setValue(2);
+	_ui->spinBox_mesh_triangleSize->setValue(1);
 
 	updateReconstructionFlavor();
 	updateTexturingAvailability();
