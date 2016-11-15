@@ -224,6 +224,7 @@ StatsToolBox::StatsToolBox(QWidget * parent) :
 	_plotMenu = new QMenu(this);
 	_plotMenu->addAction(tr("<New figure>"));
 	_workingDirectory = QDir::homePath();
+	_newFigureMaxItems = 0;
 }
 
 StatsToolBox::~StatsToolBox()
@@ -437,7 +438,7 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 		//Plot
 		UPlot * newPlot = new UPlot(figure);
 		newPlot->setWorkingDirectory(_workingDirectory);
-		newPlot->setMaxVisibleItems(50);
+		newPlot->setMaxVisibleItems(_newFigureMaxItems);
 		newPlot->setObjectName(newPlotName);
 		hLayout->addWidget(newPlot);
 		_plotMenu->addAction(newPlotName);

@@ -97,6 +97,7 @@ public:
 	void getFiguresSetup(QList<int> & curvesPerFigure, QStringList & curveNames);
 	void addCurve(const QString & name, bool newFigure = true, bool cacheOn = false);
 	void setWorkingDirectory(const QString & workingDirectory);
+	void setNewFigureMaxItems(int value) {_newFigureMaxItems = value;}
 	void closeFigures();
 	void setCacheOn(bool on);
 
@@ -121,6 +122,7 @@ private:
 	QMenu * _plotMenu;
 	QToolBox * _statBox;
 	QString _workingDirectory;
+	int _newFigureMaxItems;
 	QMap<QString, QWidget*> _figures;
 };
 

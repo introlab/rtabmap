@@ -516,6 +516,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	this->changeState(kIdle);
 	this->applyPrefSettings(PreferencesDialog::kPanelAll);
 
+	_ui->statsToolBox->setNewFigureMaxItems(50);
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
