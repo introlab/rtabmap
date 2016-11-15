@@ -160,7 +160,7 @@ int QMultiComboBox::count()
 
 void QMultiComboBox::setCurrentIndex(int index)
 {
-    cout << __FUNCTION__ << "DONT USE THIS ................" << endl;
+  //  cout << __FUNCTION__ << "DONT USE THIS ................" << endl;
 }
 
 
