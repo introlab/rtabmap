@@ -106,14 +106,14 @@ else
 end
 ylabel('Time (s)')
 xlabel('Node indexes')
-meanTime = mean(LogF(:,1))*1000
+meanTimeMS = mean(LogF(:,1))*1000
 plot([1 length(LogF(:,1))], [0.7 0.7], 'r')
 plot([1 length(LogF(:,1))], [1 1], 'k')
 %plot([1 length(LogF(:,1))], [350 350], 'r')
 %legend('Processing time', 'Time limit')%, 'Acquisition rate (1 Hz)')
 %title('Processing time')
 
-maxTime = max(sum(LogF(:,2:7),2)+LogF(:,17))
+maxTimeMS = max(sum(LogF(:,2:7),2)+LogF(:,17))*1000
 maxDict = max(LogI(:, 6))
 maxWM = max(LogI(:,7))
 %%
