@@ -232,7 +232,7 @@ void ULogger::unregisterCurrentThread()
 	{
 		if(iter->second == id)
 		{
-			iter = registeredThreads_.erase(iter);
+			registeredThreads_.erase(iter++);
 			threadIdFilter_.erase(id);
 			break;
 		}
