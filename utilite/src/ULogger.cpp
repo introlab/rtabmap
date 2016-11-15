@@ -234,7 +234,6 @@ void ULogger::unregisterCurrentThread()
 		{
 			registeredThreads_.erase(iter++);
 			threadIdFilter_.erase(id);
-			break;
 		}
 		else
 		{
