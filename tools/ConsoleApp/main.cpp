@@ -259,6 +259,15 @@ int main(int argc, char * argv[])
 	uInsert(pm, ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
 	uInsert(pm, ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
+        // Process an empty image to make sure every libraries are loaded.
+        ULogger::Level level = ULogger::level();
+        ULogger::setLevel(ULogger::kError);
+        cv::Mat tmp = cv::Mat::zeros(640,480,CV_8UC1);
+        rtabmap.init(pm);
+        rtabmap.process(tmp);
+        rtabmap.close();
+        ULogger::setLevel(level);
+
 	rtabmap.init(pm, inputDbPath);
 
 	printf("rtabmap init time = %fs\n", timer.ticks());
@@ -273,7 +282,7 @@ int main(int argc, char * argv[])
 	printf(" Time threshold = %1.2f ms\n", rtabmap.getTimeThreshold());
 	printf(" Image rate = %1.2f s (%1.2f Hz)\n", rate, 1/rate);
 	printf(" Repeating data set = %s\n", repeat?"true":"false");
-	printf(" Camera starts at image %d (default 1)\n", startAt);
+	printf(" Camera starts at image %d (default 0)\n", startAt);
 	if(createGT)
 	{
 		printf(" Creating the ground truth matrix.\n");
