@@ -117,6 +117,11 @@ void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
 	_bilateralSigmaR = sigmaR;
 }
 
+void CameraThread::mainLoopBegin()
+{
+	ULogger::registerCurrentThread("Camera");
+}
+
 void CameraThread::mainLoop()
 {
 	UTimer totalTime;

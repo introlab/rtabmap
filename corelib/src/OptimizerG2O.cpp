@@ -235,7 +235,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int vertigoVertexId = poses.rbegin()->first+1;
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
-			int id1 = iter->first;
+			int id1 = iter->second.from();
 			int id2 = iter->second.to();
 
 			UASSERT(!iter->second.transform().isNull());
@@ -547,14 +547,16 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		const std::map<int, Signature> & signatures)
+		const std::map<int, CameraModel> & models,
+		std::map<int, cv::Point3f> & points3DMap,
+		const std::map<int, std::map<int, cv::Point2f> > & wordReferences) // <ID words, IDs frames + keypoint>
 {
 	std::map<int, Transform> optimizedPoses;
 #ifdef RTABMAP_G2O
 	UDEBUG("Optimizing graph...");
 
 	optimizedPoses.clear();
-	if(links.size()>=1 && poses.size()>=2 && iterations() > 0)
+	if(links.size()>=1 && poses.size()>=2 && iterations() > 0 && models.size() == poses.size())
 	{
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
@@ -593,40 +595,14 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(solver_ptr));
 		}
 
-		std::map<int, Transform> frames = poses;
-
 		UDEBUG("fill poses to g2o...");
-		std::map<int, CameraModel> models;
-		for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); )
+		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); )
 		{
 			// Get camera model
-			CameraModel model;
-			if(uContains(signatures, iter->first))
-			{
-				if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValidForProjection())
-				{
-					model = signatures.at(iter->first).sensorData().cameraModels()[0];
-				}
-				else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValidForProjection())
-				{
-					model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
-				}
-				else
-				{
-					UERROR("Missing calibration for node %d", iter->first);
-					return optimizedPoses;
-				}
-			}
-			else
-			{
-				UERROR("Did not find node %d in cache", iter->first);
-				return optimizedPoses;
-			}
+			std::map<int, CameraModel>::const_iterator iterModel = models.find(iter->first);
+			UASSERT(iterModel != models.end() && iterModel->second.isValidForProjection());
 
-			UASSERT(model.isValidForProjection());
-
-			models.insert(std::make_pair(iter->first, model));
-			Transform camPose = iter->second * model.localTransform();
+			Transform camPose = iter->second * iterModel->second.localTransform();
 			//iter->second = (iter->second * model.localTransform()).inverse();
 			UDEBUG("%d t=%s", iter->first, camPose.prettyPrint().c_str());
 
@@ -636,7 +612,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			Eigen::Affine3d a = camPose.toEigen3d();
 			g2o::SBACam cam(Eigen::Quaterniond(a.rotation()), a.translation());
-			cam.setKcam(model.fx(), model.fy(), model.cx(), model.cy(), 0);
+			cam.setKcam(iterModel->second.fx(), iterModel->second.fy(), iterModel->second.cx(), iterModel->second.cy(), 0);
 			vCam->setEstimate(cam);
 			if(iter->first == rootId)
 			{
@@ -652,18 +628,11 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		UDEBUG("fill edges to g2o and associate each 3D point to all frames observing it...");
 		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
-			Link link = iter->second;
-			if(link.to() < link.from())
-			{
-				link = link.inverse();
-			}
-			if(uContains(signatures, link.from()) &&
-			   uContains(signatures, link.to()) &&
-			   uContains(frames, link.from()) &&
-			   uContains(frames, link.to()))
+			if(uContains(poses, iter->second.from()) &&
+			   uContains(poses, iter->second.to()))
 			{
 				// add edge
-				int id1 = iter->first;
+				int id1 = iter->second.from();
 				int id2 = iter->second.to();
 
 				UASSERT(!iter->second.transform().isNull());
@@ -703,47 +672,48 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			}
 		}
 
-		std::map<int, cv::Point3f> points3DMap;
-		std::map<int, std::map<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
-		this->computeBACorrespondences(frames, links, signatures, points3DMap, wordReferences);
-
 		UDEBUG("fill 3D points to g2o...");
-		int stepVertexId = frames.rbegin()->first+1;
-		for(std::map<int, std::map<int, cv::Point2f> >::iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+		int stepVertexId = poses.rbegin()->first+1;
+		for(std::map<int, std::map<int, cv::Point2f> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
-			const cv::Point3f & pt3d = points3DMap.at(iter->first);
-			g2o::VertexSBAPointXYZ* vpt3d = new g2o::VertexSBAPointXYZ();
-
-			vpt3d->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
-			vpt3d->setId(stepVertexId + iter->first);
-			vpt3d->setMarginalized(true);
-			optimizer.addVertex(vpt3d);
-
-			// set observations
-			for(std::map<int, cv::Point2f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+			if(points3DMap.find(iter->first) != points3DMap.end())
 			{
-				int camId = jter->first;
+				const cv::Point3f & pt3d = points3DMap.at(iter->first);
+				g2o::VertexSBAPointXYZ* vpt3d = new g2o::VertexSBAPointXYZ();
 
-				const cv::Point2f & pt = jter->second;
+				vpt3d->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
+				vpt3d->setId(stepVertexId + iter->first);
+				vpt3d->setMarginalized(true);
+				optimizer.addVertex(vpt3d);
 
-				Eigen::Matrix<double,2,1> obs;
-				obs << pt.x, pt.y;
-
-				UDEBUG("Added observation pt=%d to cam=%d (%f,%f)", vpt3d->id(), camId, pt.x, pt.y);
-
-				g2o::EdgeProjectP2MC* e = new g2o::EdgeProjectP2MC();
-
-				e->setVertex(0, vpt3d);
-				e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(camId)));
-				e->setMeasurement(obs);
-				e->setInformation(Eigen::Matrix2d::Identity() / pixelVariance_);
-
-				if(robustKernel)
+				// set observations
+				for(std::map<int, cv::Point2f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
 				{
-					e->setRobustKernel(new g2o::RobustKernelHuber);
-				}
+					int camId = jter->first;
+					if(poses.find(camId) != poses.end())
+					{
+						const cv::Point2f & pt = jter->second;
 
-				optimizer.addEdge(e);
+						Eigen::Matrix<double,2,1> obs;
+						obs << pt.x, pt.y;
+
+						//UDEBUG("Added observation pt=%d to cam=%d (%f,%f)", vpt3d->id(), camId, pt.x, pt.y);
+
+						g2o::EdgeProjectP2MC* e = new g2o::EdgeProjectP2MC();
+
+						e->setVertex(0, vpt3d);
+						e->setVertex(1, dynamic_cast<g2o::OptimizableGraph::Vertex*>(optimizer.vertex(camId)));
+						e->setMeasurement(obs);
+						e->setInformation(Eigen::Matrix2d::Identity() / pixelVariance_);
+
+						if(robustKernel)
+						{
+							e->setRobustKernel(new g2o::RobustKernelHuber);
+						}
+
+						optimizer.addEdge(e);
+					}
+				}
 			}
 		}
 
@@ -809,23 +779,55 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			return optimizedPoses;
 		}
 
+		// update poses
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			const g2o::VertexCam* v = (const g2o::VertexCam*)optimizer.vertex(iter->first);
 			if(v)
 			{
 				Transform t = Transform::fromEigen3d(v->estimate());
-				UDEBUG("%d t=%s", iter->first, t.prettyPrint().c_str());
 				// remove model local transform
 				t *= models.at(iter->first).localTransform().inverse();
-				optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+				//UDEBUG("%d from=%s to=%s", iter->first, iter->second.prettyPrint().c_str(), t.prettyPrint().c_str());
 				UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
+
+				// FIXME: is there a way that we can add the 2D constraint directly in SBA?
+				if(this->isSlam2d())
+				{
+					// get transform between old and new pose
+					t = iter->second.inverse() * t;
+					optimizedPoses.insert(std::pair<int, Transform>(iter->first, iter->second * t.to3DoF()));
+				}
+				else
+				{
+					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
+				}
 			}
 			else
 			{
-				UERROR("Vertex %d not found!?", iter->first);
+				UERROR("Vertex (pose) %d not found!?", iter->first);
 			}
 		}
+
+		//update points3D
+		for(std::map<int, cv::Point3f>::iterator iter = points3DMap.begin(); iter!=points3DMap.end(); ++iter)
+		{
+			const g2o::VertexSBAPointXYZ* v = (const g2o::VertexSBAPointXYZ*)optimizer.vertex(stepVertexId + iter->first);
+			if(v)
+			{
+				cv::Point3f p(v->estimate()[0], v->estimate()[1], v->estimate()[2]);
+				//UDEBUG("%d from=%f,%f,%f to=%f,%f,%f", iter->first, iter->second.x, iter->second.y, iter->second.z, p.x, p.y, p.z);
+				iter->second = p;
+			}
+			else
+			{
+				UERROR("Vertex (point3D) %d not found!?", iter->first);
+			}
+		}
+	}
+	else if(poses.size() > 1 && poses.size() != models.size())
+	{
+		UERROR("This method should be called with size of poses = size camera models!");
 	}
 	else if(poses.size() == 1 || iterations() <= 0)
 	{
@@ -893,7 +895,7 @@ bool OptimizerG2O::saveGraph(
 			Eigen::Quaternionf q = iter->second.transform().getQuaternionf();
 			fprintf(file, "%s %d %d%s %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
 					prefix.c_str(),
-					iter->first,
+					iter->second.from(),
 					iter->second.to(),
 					suffix.c_str(),
 					iter->second.transform().x(),

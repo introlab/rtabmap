@@ -1194,6 +1194,10 @@ void VWDictionary::addWord(VisualWord * vw)
 		{
 			_unusedWords.insert(std::pair<int, VisualWord *>(vw->id(), vw));
 		}
+		if(_lastWordId < vw->id())
+		{
+			_lastWordId = vw->id();
+		}
 	}
 }
 

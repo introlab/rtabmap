@@ -87,6 +87,7 @@ public:
 	Camera * camera() {return _camera;} // return null if not set, valid until CameraThread is deleted
 
 private:
+	virtual void mainLoopBegin();
 	virtual void mainLoop();
 	virtual void mainLoopKill();
 

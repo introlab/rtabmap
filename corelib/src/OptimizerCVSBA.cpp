@@ -57,7 +57,9 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
-		const std::map<int, Signature> & signatures)
+		const std::map<int, CameraModel> & models,
+		std::map<int, cv::Point3f> & points3DMap,
+		const std::map<int, std::map<int, cv::Point2f> > & wordReferences) // <ID words, IDs frames + keypoint>)
 {
 #ifdef RTABMAP_CVSBA
 	// run sba optimization
@@ -73,100 +75,72 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 	params.verbose=ULogger::level() <= ULogger::kInfo;
 	sba.setParams(params);
 
-	std::map<int, Transform> frames = poses;
-
-	std::vector<cv::Mat> cameraMatrix(frames.size()); //nframes
-	std::vector<cv::Mat> R(frames.size()); //nframes
-	std::vector<cv::Mat> T(frames.size()); //nframes
-	std::vector<cv::Mat> distCoeffs(frames.size()); //nframes
+	std::vector<cv::Mat> cameraMatrix(poses.size()); //nframes
+	std::vector<cv::Mat> R(poses.size()); //nframes
+	std::vector<cv::Mat> T(poses.size()); //nframes
+	std::vector<cv::Mat> distCoeffs(poses.size()); //nframes
 	std::map<int, int> frameIdToIndex;
-	std::map<int, CameraModel> models;
 	int oi=0;
-	for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); )
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
-		CameraModel model;
-		if(uContains(signatures, iter->first))
+		// Get camera model
+		std::map<int, CameraModel>::const_iterator iterModel = models.find(iter->first);
+		UASSERT(iterModel != models.end() && iterModel->second.isValidForProjection());
+
+		frameIdToIndex.insert(std::make_pair(iter->first, oi));
+
+		cameraMatrix[oi] = iterModel->second.K();
+		if(iterModel->second.D().cols != 5)
 		{
-			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValidForProjection())
-			{
-				model = signatures.at(iter->first).sensorData().cameraModels()[0];
-			}
-			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValidForProjection())
-			{
-				model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
-			}
-			else
-			{
-				UERROR("Missing calibration for node %d", iter->first);
-			}
+			distCoeffs[oi] = cv::Mat::zeros(1, 5, CV_64FC1);
+			UWARN("Camera model %d: Distortion coefficients are not 5, setting all them to 0 (assuming no distortion)", iter->first);
 		}
 		else
 		{
-			UERROR("Did not find node %d in cache", iter->first);
+			distCoeffs[oi] = iterModel->second.D();
 		}
 
-		if(model.isValidForProjection())
-		{
-			frameIdToIndex.insert(std::make_pair(iter->first, oi));
+		Transform t = (iter->second * iterModel->second.localTransform()).inverse();
 
-			cameraMatrix[oi] = model.K();
-			if(model.D().cols != 5)
-			{
-				distCoeffs[oi] = cv::Mat::zeros(1, 5, CV_64FC1);
-				UWARN("Camera model %d: Distortion coefficients are not 5, setting all them to 0 (assuming no distortion)", iter->first);
-			}
-			else
-			{
-				distCoeffs[oi] = model.D();
-			}
+		R[oi] = (cv::Mat_<double>(3,3) <<
+				(double)t.r11(), (double)t.r12(), (double)t.r13(),
+				(double)t.r21(), (double)t.r22(), (double)t.r23(),
+				(double)t.r31(), (double)t.r32(), (double)t.r33());
+		T[oi] = (cv::Mat_<double>(1,3) << (double)t.x(), (double)t.y(), (double)t.z());
+		++oi;
 
-			Transform t = (iter->second * model.localTransform()).inverse();
-
-			R[oi] = (cv::Mat_<double>(3,3) <<
-					(double)t.r11(), (double)t.r12(), (double)t.r13(),
-					(double)t.r21(), (double)t.r22(), (double)t.r23(),
-					(double)t.r31(), (double)t.r32(), (double)t.r33());
-			T[oi] = (cv::Mat_<double>(1,3) << (double)t.x(), (double)t.y(), (double)t.z());
-			++oi;
-
-			models.insert(std::make_pair(iter->first, model));
-
-			UDEBUG("Pose %d = %s", iter->first, t.prettyPrint().c_str());
-
-			++iter;
-		}
-		else
-		{
-			frames.erase(iter++);
-		}
+		UDEBUG("Pose %d = %s", iter->first, t.prettyPrint().c_str());
 	}
 	cameraMatrix.resize(oi);
 	R.resize(oi);
 	T.resize(oi);
 	distCoeffs.resize(oi);
 
-	std::map<int, cv::Point3f> points3DMap;
-	std::map<int, std::map<int, cv::Point2f> > wordReferences; // <ID words, IDs frames + keypoint>
-	computeBACorrespondences(frames, links, signatures, points3DMap, wordReferences);
-
-	UDEBUG("points=%d frames=%d", (int)wordReferences.size(), (int)frames.size());
-	std::vector<cv::Point3f> points(wordReferences.size()); //npoints
-	std::vector<std::vector<cv::Point2f> >  imagePoints(frames.size()); //nframes -> npoints
-	std::vector<std::vector<int> > visibility(frames.size()); //nframes -> npoints
-	for(unsigned int i=0; i<frames.size(); ++i)
+	UDEBUG("points=%d frames=%d", (int)points3DMap.size(), (int)poses.size());
+	std::vector<cv::Point3f> points(points3DMap.size()); //npoints
+	std::vector<std::vector<cv::Point2f> >  imagePoints(poses.size()); //nframes -> npoints
+	std::vector<std::vector<int> > visibility(poses.size()); //nframes -> npoints
+	for(unsigned int i=0; i<poses.size(); ++i)
 	{
 		imagePoints[i].resize(wordReferences.size(), cv::Point2f(std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::quiet_NaN()));
 		visibility[i].resize(wordReferences.size(), 0);
 	}
 	int i=0;
-	for(std::map<int, std::map<int, cv::Point2f> >::iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
+	for(std::map<int, cv::Point3f>::const_iterator kter = points3DMap.begin(); kter!=points3DMap.end(); ++kter)
 	{
-		points[i] = points3DMap.at(iter->first);
+		points[i] = kter->second;
 
-		for(std::map<int, cv::Point2f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+		std::map<int, std::map<int, cv::Point2f> >::const_iterator iter = wordReferences.find(kter->first);
+		if(iter != wordReferences.end())
 		{
-			imagePoints[frameIdToIndex.at(jter->first)][i] = jter->second;
-			visibility[frameIdToIndex.at(jter->first)][i] = 1;
+			for(std::map<int, cv::Point2f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
+			{
+				if(frameIdToIndex.find(jter->first) != frameIdToIndex.end())
+				{
+					imagePoints[frameIdToIndex.at(jter->first)][i] = jter->second;
+					visibility[frameIdToIndex.at(jter->first)][i] = 1;
+				}
+			}
 		}
 		++i;
 	}
@@ -184,7 +158,8 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 
 	//update poses
 	i=0;
-	for(std::map<int, Transform>::iterator iter=frames.begin(); iter!=frames.end(); ++iter)
+	std::map<int, Transform> newPoses = poses;
+	for(std::map<int, Transform>::iterator iter=newPoses.begin(); iter!=newPoses.end(); ++iter)
 	{
 		Transform t(R[i].at<double>(0,0), R[i].at<double>(0,1), R[i].at<double>(0,2), T[i].at<double>(0),
 					R[i].at<double>(1,0), R[i].at<double>(1,1), R[i].at<double>(1,2), T[i].at<double>(1),
@@ -192,12 +167,28 @@ std::map<int, Transform> OptimizerCVSBA::optimizeBA(
 
 		UDEBUG("New pose %d = %s", iter->first, t.prettyPrint().c_str());
 
-		iter->second = (models.at(iter->first).localTransform() * t).inverse();
+		if(this->isSlam2d())
+		{
+			t = (models.at(iter->first).localTransform() * t).inverse();
+			t = iter->second.inverse() * t;
+			iter->second *= t.to3DoF();
+		}
+		else
+		{
+			iter->second = (models.at(iter->first).localTransform() * t).inverse();
+		}
 
 		++i;
 	}
 
-	return frames;
+	//update 3D points
+	i=0;
+	for(std::map<int, cv::Point3f>::iterator kter = points3DMap.begin(); kter!=points3DMap.end(); ++kter)
+	{
+		kter->second = points[i++];
+	}
+
+	return newPoses;
 
 #else
 	UERROR("RTAB-Map is not built with cvsba!");

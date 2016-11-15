@@ -154,56 +154,6 @@ Optimizer * Optimizer::create(Optimizer::Type type, const ParametersMap & parame
 	return optimizer;
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust) :
-		iterations_(iterations),
-		slam2d_(slam2d),
-		covarianceIgnored_(covarianceIgnored),
-		epsilon_(epsilon),
-		robust_(robust)
-{
-}
-
-Optimizer::Optimizer(const ParametersMap & parameters) :
-		iterations_(Parameters::defaultOptimizerIterations()),
-		slam2d_(Parameters::defaultOptimizerSlam2D()),
-		covarianceIgnored_(Parameters::defaultOptimizerVarianceIgnored()),
-		epsilon_(Parameters::defaultOptimizerEpsilon()),
-		robust_(Parameters::defaultOptimizerRobust())
-{
-	parseParameters(parameters);
-}
-
-void Optimizer::parseParameters(const ParametersMap & parameters)
-{
-	Parameters::parse(parameters, Parameters::kOptimizerIterations(), iterations_);
-	Parameters::parse(parameters, Parameters::kOptimizerVarianceIgnored(), covarianceIgnored_);
-	Parameters::parse(parameters, Parameters::kOptimizerSlam2D(), slam2d_);
-	Parameters::parse(parameters, Parameters::kOptimizerEpsilon(), epsilon_);
-	Parameters::parse(parameters, Parameters::kOptimizerRobust(), robust_);
-}
-
-std::map<int, Transform> Optimizer::optimize(
-		int rootId,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & constraints,
-		std::list<std::map<int, Transform> > * intermediateGraphes,
-		double * finalError,
-		int * iterationsDone)
-{
-	UERROR("Optimizer %d doesn't implement optimize() method.", (int)this->type());
-	return std::map<int, Transform>();
-}
-
-std::map<int, Transform> Optimizer::optimizeBA(
-		int rootId,
-		const std::map<int, Transform> & poses,
-		const std::multimap<int, Link> & links,
-		const std::map<int, Signature> & signatures)
-{
-	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
-	return std::map<int, Transform>();
-}
-
 void Optimizer::getConnectedGraph(
 		int fromId,
 		const std::map<int, Transform> & posesIn,
@@ -271,6 +221,129 @@ void Optimizer::getConnectedGraph(
 	}
 }
 
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust) :
+		iterations_(iterations),
+		slam2d_(slam2d),
+		covarianceIgnored_(covarianceIgnored),
+		epsilon_(epsilon),
+		robust_(robust)
+{
+}
+
+Optimizer::Optimizer(const ParametersMap & parameters) :
+		iterations_(Parameters::defaultOptimizerIterations()),
+		slam2d_(Parameters::defaultRegForce3DoF()),
+		covarianceIgnored_(Parameters::defaultOptimizerVarianceIgnored()),
+		epsilon_(Parameters::defaultOptimizerEpsilon()),
+		robust_(Parameters::defaultOptimizerRobust())
+{
+	parseParameters(parameters);
+}
+
+void Optimizer::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kOptimizerIterations(), iterations_);
+	Parameters::parse(parameters, Parameters::kOptimizerVarianceIgnored(), covarianceIgnored_);
+	Parameters::parse(parameters, Parameters::kRegForce3DoF(), slam2d_);
+	Parameters::parse(parameters, Parameters::kOptimizerEpsilon(), epsilon_);
+	Parameters::parse(parameters, Parameters::kOptimizerRobust(), robust_);
+}
+
+std::map<int, Transform> Optimizer::optimize(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes,
+		double * finalError,
+		int * iterationsDone)
+{
+	UERROR("Optimizer %d doesn't implement optimize() method.", (int)this->type());
+	return std::map<int, Transform>();
+}
+
+std::map<int, Transform> Optimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, CameraModel> & models,
+		std::map<int, cv::Point3f> & points3DMap,
+		const std::map<int, std::map<int, cv::Point2f> > & wordReferences)
+{
+	UERROR("Optimizer %d doesn't implement optimizeBA() method.", (int)this->type());
+	return std::map<int, Transform>();
+}
+
+std::map<int, Transform> Optimizer::optimizeBA(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & links,
+		const std::map<int, Signature> & signatures)
+{
+	UDEBUG("");
+	std::map<int, CameraModel> models;
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		// Get camera model
+		CameraModel model;
+		if(uContains(signatures, iter->first))
+		{
+			if(signatures.at(iter->first).sensorData().cameraModels().size() == 1 && signatures.at(iter->first).sensorData().cameraModels().at(0).isValidForProjection())
+			{
+				model = signatures.at(iter->first).sensorData().cameraModels()[0];
+			}
+			else if(signatures.at(iter->first).sensorData().stereoCameraModel().isValidForProjection())
+			{
+				model = signatures.at(iter->first).sensorData().stereoCameraModel().left();
+			}
+			else
+			{
+				UERROR("Missing calibration for node %d", iter->first);
+				return std::map<int, Transform>();
+			}
+		}
+		else
+		{
+			UERROR("Did not find node %d in cache", iter->first);
+			return std::map<int, Transform>();
+		}
+
+		UASSERT(model.isValidForProjection());
+
+		models.insert(std::make_pair(iter->first, model));
+	}
+
+	// compute correspondences
+	std::map<int, cv::Point3f> points3DMap;
+	std::map<int, std::map<int, cv::Point2f> > wordReferences;
+	this->computeBACorrespondences(poses, links, signatures, points3DMap, wordReferences);
+
+	return optimizeBA(rootId, poses, links, models, points3DMap, wordReferences);
+}
+
+Transform Optimizer::optimizeBA(
+		const Link & link,
+		const CameraModel & model,
+		std::map<int, cv::Point3f> & points3DMap,
+		const std::map<int, std::map<int, cv::Point2f> > & wordReferences)
+{
+	std::map<int, Transform> poses;
+	poses.insert(std::make_pair(link.from(), Transform::getIdentity()));
+	poses.insert(std::make_pair(link.to(), link.transform()));
+	std::multimap<int, Link> links;
+	links.insert(std::make_pair(link.from(), link));
+	std::map<int, CameraModel> models;
+	models.insert(std::make_pair(link.from(), model));
+	models.insert(std::make_pair(link.to(), model));
+	poses = optimizeBA(link.from(), poses, links, models, points3DMap, wordReferences);
+	if(poses.size() == 2)
+	{
+		return poses.rbegin()->second;
+	}
+	else
+	{
+		return link.transform();
+	}
+}
 
 void Optimizer::computeBACorrespondences(
 		const std::map<int, Transform> & poses,
@@ -279,6 +352,7 @@ void Optimizer::computeBACorrespondences(
 		std::map<int, cv::Point3f> & points3DMap,
 		std::map<int, std::map<int, cv::Point2f> > & wordReferences) // <ID words, IDs frames + keypoint>
 {
+	UDEBUG("");
 	int wordCount = 0;
 	int edgeWithWordsAdded = 0;
 	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)

@@ -553,7 +553,16 @@ void SensorData::uncompressData(
 		cv::Mat * groundCellsRaw,
 		cv::Mat * obstacleCellsRaw)
 {
-	UDEBUG("%d", this->id());
+	UDEBUG("%d data(%d,%d,%d,%d,%d)", this->id(), imageRaw?1:0, depthRaw?1:0, laserScanRaw?1:0, userDataRaw?1:0, groundCellsRaw?1:0, obstacleCellsRaw?1:0);
+	if(imageRaw == 0 &&
+		depthRaw == 0 &&
+		laserScanRaw == 0 &&
+		userDataRaw == 0 &&
+		groundCellsRaw == 0 &&
+		obstacleCellsRaw == 0)
+	{
+		return;
+	}
 	uncompressDataConst(
 			imageRaw,
 			depthRaw,

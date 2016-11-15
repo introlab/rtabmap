@@ -193,8 +193,8 @@ public:
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
 
-	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0) const;
-	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
+	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false) const;
+	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false);
 	Transform computeIcpTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransformMulti(
 			int newId,

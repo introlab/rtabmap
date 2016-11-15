@@ -1184,7 +1184,8 @@ bool Rtabmap::process(
 						guess = newPose.inverse() * _optimizedPoses.at(*iter);
 					}
 
-					Transform transform = _memory->computeTransform(signature->id(), *iter, guess, &info);
+					// For proximity by time, correspondences should be already enough precise, so don't recompute them
+					Transform transform = _memory->computeTransform(signature->id(), *iter, guess, &info, true);
 
 					if(!transform.isNull())
 					{
@@ -1217,7 +1218,7 @@ bool Rtabmap::process(
 	}
 
 	timeProximityByTimeDetection = timer.ticks();
-	UINFO("timeLocalTimeDetection=%fs", timeProximityByTimeDetection);
+	UINFO("timeProximityByTimeDetection=%fs", timeProximityByTimeDetection);
 
 	//============================================================
 	// Bayes filter update

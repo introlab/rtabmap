@@ -35,8 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d.h"
 
-#include "rtabmap/core/OptimizerG2O.h"
-
 #if CV_MAJOR_VERSION < 3
 #include "opencv/solvepnp.h"
 #endif

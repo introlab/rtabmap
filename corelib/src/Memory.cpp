@@ -2091,7 +2091,8 @@ Transform Memory::computeTransform(
 		int fromId,
 		int toId,
 		Transform guess,
-		RegistrationInfo * info)
+		RegistrationInfo * info,
+		bool useKnownCorrespondencesIfPossible)
 {
 	Signature * fromS = this->_getSignature(fromId);
 	Signature * toS = this->_getSignature(toId);
@@ -2100,7 +2101,7 @@ Transform Memory::computeTransform(
 
 	if(fromS && toS)
 	{
-		return computeTransform(*fromS, *toS, guess, info);
+		return computeTransform(*fromS, *toS, guess, info, useKnownCorrespondencesIfPossible);
 	}
 	else
 	{
@@ -2119,7 +2120,8 @@ Transform Memory::computeTransform(
 		Signature & fromS,
 		Signature & toS,
 		Transform guess,
-		RegistrationInfo * info) const
+		RegistrationInfo * info,
+		bool useKnownCorrespondencesIfPossible) const
 {
 	Transform transform;
 
@@ -2172,6 +2174,12 @@ Transform Memory::computeTransform(
 			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
 			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
 		}
+		else if(useKnownCorrespondencesIfPossible)
+		{
+			// This will make RegistrationVis bypassing the correspondences computation
+			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+		}
 
 		if(guess.isNull() && !_registrationPipeline->isImageRequired())
 		{
@@ -2181,12 +2189,12 @@ Transform Memory::computeTransform(
 			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
 			if(!guess.isNull())
 			{
-				transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+				transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 			}
 		}
 		else
 		{
-			transform = _registrationPipeline->computeTransformation(tmpFrom, tmpTo, guess, info);
+			transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 		}
 
 		if(!transform.isNull())

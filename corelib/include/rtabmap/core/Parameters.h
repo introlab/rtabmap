@@ -336,22 +336,23 @@ class RTABMAP_EXP Parameters
 	// Graph optimization
 #ifdef RTABMAP_GTSAM
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 2,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
+	RTABMAP_PARAM(Optimizer, Iterations,        int, 10,          "Optimization iterations.");
 #else
 #ifdef RTABMAP_G2O
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 1,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
+	RTABMAP_PARAM(Optimizer, Iterations,        int, 10,          "Optimization iterations.");
 #else
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 0,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
-#endif
-#endif
 	RTABMAP_PARAM(Optimizer, Iterations,        int, 100,        "Optimization iterations.");
-	RTABMAP_PARAM(Optimizer, Slam2D,            bool, false,     "If optimization is done only on x,y and theta (3DoF). Otherwise, it is done on full 6DoF poses.");
+#endif
+#endif
 	RTABMAP_PARAM(Optimizer, VarianceIgnored,   bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
-	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.0001,  "Stop optimizing when the error improvement is less than this value.");
+	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.00001, "Stop optimizing when the error improvement is less than this value.");
 	RTABMAP_PARAM(Optimizer, Robust,            bool, false,     uFormat("Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies). Not compatible with \"%s\" if enabled.", kRGBDOptimizeMaxError().c_str()));
 
 	RTABMAP_PARAM(g2o, Solver,                  int, 0,          "0=csparse 1=pcg 2=cholmod");
 	RTABMAP_PARAM(g2o, Optimizer,               int, 0,          "0=Levenberg 1=GaussNewton");
-	RTABMAP_PARAM(g2o, PixelVariance,           double, 1,       "Pixel variance used for SBA.");
+	RTABMAP_PARAM(g2o, PixelVariance,           double, 1.0,     "Pixel variance used for bundle adjustment.");
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F)");
@@ -379,6 +380,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomF2M, ScanMaxSize,         int, 2000,    "[Geometry] Maximum local scan map size.");
 	RTABMAP_PARAM(OdomF2M, ScanSubtractRadius,  float, 0.05,  "[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the scans.");
 	RTABMAP_PARAM_STR(OdomF2M, FixedMapPath,    "",           "Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP estimation is used.")
+	RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba.");
+	RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxFrames, int, 0, "Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).");
 
 	// Odometry Mono
 	RTABMAP_PARAM(OdomMono, InitMinFlow,            float, 100,  "Minimum optical flow required for the initialization step.");
@@ -428,6 +431,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,       uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
 	RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01,   uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
 	RTABMAP_PARAM(Vis, CorFlowMaxLevel,          int, 3,        uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
+	RTABMAP_PARAM(Vis, BundleAdjustment,         int, 0,        "Optimization with bundle adjustment: 0=disabled, 1=g2o, 2=cvsba.");
 
 	// ICP registration parameters
 	RTABMAP_PARAM(Icp, MaxTranslation,            float, 0.2,   "Maximum ICP translation correction accepted (m).");

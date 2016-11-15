@@ -185,6 +185,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 	{
 		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->odom_f2m_bundleStrategy->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->loopClosure_bundle->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->groupBoxx_g2o->setEnabled(false);
 	}
 	if(!OptimizerG2O::isCSparseAvailable())
 	{
@@ -201,6 +204,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	if(!Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
 		_ui->graphOptimization_type->setItemData(2, 0, Qt::UserRole - 1);
+	}
+	if(!Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	{
+		_ui->odom_f2m_bundleStrategy->setItemData(2, 0, Qt::UserRole - 1);
+		_ui->loopClosure_bundle->setItemData(2, 0, Qt::UserRole - 1);
 	}
 #ifdef RTABMAP_VERTIGO
 	if(!Optimizer::isAvailable(Optimizer::kTypeG2O) && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
@@ -397,6 +405,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_logger_printTime, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
 	connect(_ui->checkBox_logger_printThreadId, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
 	connect(_ui->comboBox_loggerType, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteLoggingPanel()));
+	_ui->comboBox_loggerFilter->SetDisplayText("Select:");
+	connect(_ui->comboBox_loggerFilter, SIGNAL(itemChanged()), this, SLOT(makeObsoleteLoggingPanel()));
 
 	//Source panel
 	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -705,7 +715,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_maxLocalLocationsRetrieved->setObjectName(Parameters::kRGBDMaxLocalRetrieved().c_str());
 
 	_ui->graphOptimization_type->setObjectName(Parameters::kOptimizerStrategy().c_str());
-	_ui->graphOptimization_slam2d->setObjectName(Parameters::kOptimizerSlam2D().c_str());
 	_ui->graphOptimization_iterations->setObjectName(Parameters::kOptimizerIterations().c_str());
 	_ui->graphOptimization_covarianceIgnored->setObjectName(Parameters::kOptimizerVarianceIgnored().c_str());
 	_ui->graphOptimization_fromGraphEnd->setObjectName(Parameters::kRGBDOptimizeFromGraphEnd().c_str());
@@ -715,7 +724,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
 	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());
-	_ui->doubleSpinBox_g2o_variance->setObjectName(Parameters::kg2oPixelVariance().c_str());
+	_ui->doubleSpinBox_g2o_pixelVariance->setObjectName(Parameters::kg2oPixelVariance().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
@@ -772,6 +781,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_flow_maxLevel_2->setObjectName(Parameters::kVisCorFlowMaxLevel().c_str());
 	_ui->odom_flow_iterations_2->setObjectName(Parameters::kVisCorFlowIterations().c_str());
 	_ui->odom_flow_eps_2->setObjectName(Parameters::kVisCorFlowEps().c_str());
+	_ui->loopClosure_bundle->setObjectName(Parameters::kVisBundleAdjustment().c_str());
 
 	//RegistrationIcp
 	_ui->globalDetection_icpMaxTranslation->setObjectName(Parameters::kIcpMaxTranslation().c_str());
@@ -834,6 +844,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubtractRadius().c_str());
 	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomF2MFixedMapPath().c_str());
 	connect(_ui->toolButton_odomBowFixedLocalMap, SIGNAL(clicked()), this, SLOT(changeOdomBowFixedLocalMapPath()));
+	_ui->odom_f2m_bundleStrategy->setObjectName(Parameters::kOdomF2MBundleAdjustment().c_str());
+	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
 
 	//Odometry Mono
 	_ui->doubleSpinBox_minFlow->setObjectName(Parameters::kOdomMonoInitMinFlow().c_str());
@@ -891,7 +903,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_kp_roi1, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
 	connect(_ui->doubleSpinBox_kp_roi2, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
 	connect(_ui->doubleSpinBox_kp_roi3, SIGNAL(valueChanged(double)), this, SLOT(updateKpROI()));
-	connect(_ui->graphOptimization_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateG2oVisibility()));
 	connect(_ui->checkBox_useOdomFeatures, SIGNAL(toggled(bool)), this, SLOT(useOdomFeatures()));
 
 	//Create a model from the stacked widgets
@@ -1276,6 +1287,10 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_logger_printTime->setChecked(true);
 		_ui->checkBox_logger_printThreadId->setChecked(false);
 		_ui->comboBox_loggerType->setCurrentIndex(1);
+		for(int i=0; i<_ui->comboBox_loggerFilter->count(); ++i)
+		{
+			_ui->comboBox_loggerFilter->setItemChecked(i, false);
+		}
 	}
 	else if(groupBox->objectName() == _ui->groupBox_source0->objectName())
 	{
@@ -2369,6 +2384,45 @@ bool PreferencesDialog::validateForm()
 		}
 	}
 
+	// Registration bundle adjustment strategy
+	if(_ui->loopClosure_bundle->currentIndex() == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected visual registration bundle adjustment optimization strategy (g2o) is not available. RTAB-Map is not built "
+				   "with g2o. Bundle adjustment is disabled."));
+		_ui->loopClosure_bundle->setCurrentIndex(0);
+	}
+	if(_ui->loopClosure_bundle->currentIndex() == 2 && !Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected visual registration bundle adjustment optimization strategy (cvsba) is not available. RTAB-Map is not built "
+				   "with cvsba. Bundle adjustment is disabled."));
+		_ui->loopClosure_bundle->setCurrentIndex(0);
+	}
+
+	// Local bundle adjustment strategy for odometry F2M
+	if(_ui->odom_f2m_bundleStrategy->currentIndex() == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected odometry local bundle adjustment optimization strategy (g2o) is not available. RTAB-Map is not built "
+				   "with g2o. Bundle adjustment is disabled."));
+		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
+	}
+	if(_ui->odom_f2m_bundleStrategy->currentIndex() == 2 && !Optimizer::isAvailable(Optimizer::kTypeCVSBA))
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Selected odometry local bundle adjustment optimization strategy (cvsba) is not available. RTAB-Map is not built "
+				   "with cvsba. Bundle adjustment is disabled."));
+		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
+	}
+	if(_ui->odom_f2m_bundleStrategy->currentIndex() > 0 && _ui->loopClosure_correspondencesType->currentIndex() == 1)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Odometry local bundle adjustment optimization cannot be used at the same time than Optical Flow correspondences "
+					"strategy (see Visual Registration panel). Bundle adjustment is disabled."));
+		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
+	}
+
 	// verify that Robust and Reject threshold are not set at the same time
 	if(_ui->graphOptimization_robust->isChecked() && _ui->graphOptimization_maxError->value()>0.0)
 	{
@@ -2487,6 +2541,24 @@ void PreferencesDialog::showEvent ( QShowEvent * event )
 
 		this->setWindowTitle(tr("Preferences"));
 	}
+
+	// setup logger filter
+	std::map<std::string, unsigned long> threads = ULogger::getRegisteredThreads();
+	std::vector<std::string> threadsChecked = this->getGeneralLoggerThreads();
+	std::set<std::string> threadsCheckedSet(threadsChecked.begin(), threadsChecked.end());
+	_ui->comboBox_loggerFilter->clear();
+	for(std::map<std::string, unsigned long>::iterator iter=threads.begin(); iter!=threads.end(); ++iter)
+	{
+		if(threadsCheckedSet.find(iter->first.c_str()) != threadsCheckedSet.end())
+		{
+			_ui->comboBox_loggerFilter->addItem(QString(iter->first.c_str()), QVariant(true));
+		}
+		else
+		{
+			_ui->comboBox_loggerFilter->addItem(QString(iter->first.c_str()), QVariant(false));
+		}
+	}
+
 	this->readSettingsBegin();
 }
 
@@ -3625,11 +3697,6 @@ void PreferencesDialog::updateKpROI()
 	_ui->lineEdit_kp_roi->setText(strings.join(" "));
 }
 
-void PreferencesDialog::updateG2oVisibility()
-{
-	_ui->groupBox_g2o->setVisible(_ui->graphOptimization_type->currentIndex() == 1);
-}
-
 void PreferencesDialog::updateStereoDisparityVisibility()
 {
 	Src driver = this->getSourceDriver();
@@ -3775,6 +3842,18 @@ bool PreferencesDialog::getGeneralLoggerPrintTime() const
 bool PreferencesDialog::getGeneralLoggerPrintThreadId() const
 {
 	return _ui->checkBox_logger_printThreadId->isChecked();
+}
+std::vector<std::string> PreferencesDialog::getGeneralLoggerThreads() const
+{
+	std::vector<std::string> threads;
+	for(int i=0; i<_ui->comboBox_loggerFilter->count(); ++i)
+	{
+		if(_ui->comboBox_loggerFilter->itemData(i).toBool())
+		{
+			threads.push_back(_ui->comboBox_loggerFilter->itemText(i).toStdString());
+		}
+	}
+	return threads;
 }
 bool PreferencesDialog::isVerticalLayoutUsed() const
 {

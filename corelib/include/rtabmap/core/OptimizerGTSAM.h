@@ -42,7 +42,7 @@ public:
 public:
 	OptimizerGTSAM(
 			int iterations         = Parameters::defaultOptimizerIterations(),
-			bool slam2d            = Parameters::defaultOptimizerSlam2D(),
+			bool slam2d            = Parameters::defaultRegForce3DoF(),
 			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
 			double epsilon         = Parameters::defaultOptimizerEpsilon(),
 			bool robust            = Parameters::defaultOptimizerRobust()) :

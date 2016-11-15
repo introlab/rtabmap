@@ -124,7 +124,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 					inf.values[2][2] = iter->second.infMatrix().at<double>(5,5); // theta-theta
 				}
 
-				int id1 = iter->first;
+				int id1 = iter->second.from();
 				int id2 = iter->second.to();
 				AISNavigation::TreePoseGraph2::Vertex* v1=pg2.vertex(id1);
 				AISNavigation::TreePoseGraph2::Vertex* v2=pg2.vertex(id2);
@@ -152,7 +152,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 					memcpy(inf[0], iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
 				}
 
-				int id1 = iter->first;
+				int id1 = iter->second.from();
 				int id2 = iter->second.to();
 				AISNavigation::TreePoseGraph3::Vertex* v1=pg3.vertex(id1);
 				AISNavigation::TreePoseGraph3::Vertex* v2=pg3.vertex(id2);
@@ -356,7 +356,7 @@ bool OptimizerTORO::saveGraph(
 			float x,y,z, yaw,pitch,roll;
 			iter->second.transform().getTranslationAndEulerAngles(x,y,z, roll, pitch, yaw);
 			fprintf(file, "EDGE3 %d %d %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f\n",
-					iter->first,
+					iter->second.from(),
 					iter->second.to(),
 					x,
 					y,

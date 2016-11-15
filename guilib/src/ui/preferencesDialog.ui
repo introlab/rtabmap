@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>976</width>
-    <height>731</height>
+    <height>747</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -23,8 +23,8 @@
    <iconset resource="../GuiLib.qrc">
     <normaloff>:/images/RTAB-Map.ico</normaloff>:/images/RTAB-Map.ico</iconset>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout_26">
-   <item>
+  <layout class="QGridLayout" name="gridLayout_49">
+   <item row="0" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,1">
      <property name="spacing">
       <number>0</number>
@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-427</y>
+            <y>0</y>
             <width>673</width>
             <height>2520</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>5</number>
+                <number>4</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -1894,6 +1894,19 @@ Show a yellow background when the number of odometry inliers goes under this thr
                     <string>Logging</string>
                    </property>
                    <layout class="QGridLayout" name="gridLayout_40" columnstretch="0,1">
+                    <item row="0" column="1">
+                     <widget class="QLabel" name="label_60">
+                      <property name="text">
+                       <string>Logger level.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
                     <item row="0" column="0">
                      <widget class="QComboBox" name="comboBox_loggerLevel">
                       <property name="currentIndex">
@@ -1922,19 +1935,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         <string>ERROR</string>
                        </property>
                       </item>
-                     </widget>
-                    </item>
-                    <item row="0" column="1">
-                     <widget class="QLabel" name="label_60">
-                      <property name="text">
-                       <string>Logger level.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
                      </widget>
                     </item>
                     <item row="1" column="0">
@@ -2110,6 +2110,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       </property>
                       <property name="checked">
                        <bool>false</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="0">
+                     <widget class="QMultiComboBox" name="comboBox_loggerFilter">
+                      <property name="currentIndex">
+                       <number>-1</number>
+                      </property>
+                      <property name="sizeAdjustPolicy">
+                       <enum>QComboBox::AdjustToContents</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="1">
+                     <widget class="QLabel" name="label_164">
+                      <property name="text">
+                       <string>Logger thread filter. If some threads are selected, only messages from these threads will be printed. If no thread is selected, then all messages are logged. </string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
@@ -7867,13 +7890,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                 </layout>
                </widget>
                <widget class="QWidget" name="page_19">
-                <layout class="QVBoxLayout" name="verticalLayout_94">
+                <layout class="QVBoxLayout" name="verticalLayout_26">
                  <item>
                   <widget class="QGroupBox" name="groupBox_graphOptimization2">
                    <property name="title">
                     <string>Graph Optimization</string>
                    </property>
-                   <layout class="QGridLayout" name="gridLayout_49" columnstretch="0,1">
+                   <layout class="QGridLayout" name="gridLayout_81" columnstretch="0,1">
                     <item row="0" column="0">
                      <widget class="QComboBox" name="graphOptimization_type">
                       <item>
@@ -7893,169 +7916,24 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </item>
                      </widget>
                     </item>
-                    <item row="2" column="0">
-                     <widget class="QSpinBox" name="graphOptimization_iterations">
-                      <property name="minimum">
-                       <number>0</number>
-                      </property>
-                      <property name="maximum">
-                       <number>10000</number>
-                      </property>
-                      <property name="value">
-                       <number>100</number>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="4" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_covarianceIgnored">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="9" column="1">
-                     <widget class="QLabel" name="label_151">
-                      <property name="text">
-                       <string>Optimize graph from the newest node.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="8" column="1">
-                     <widget class="Line" name="line">
-                      <property name="orientation">
-                       <enum>Qt::Horizontal</enum>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="5" column="0">
-                     <widget class="QCheckBox" name="graphOptimization_slam2d">
-                      <property name="text">
-                       <string/>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="5" column="1">
-                     <widget class="QLabel" name="label_164">
-                      <property name="text">
-                       <string>2d SLAM: use fast 3DoF (x, y, theta) optimization instead of 6DoF (x, y, z, roll, pitch, yaw) optimization.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
                     <item row="0" column="1">
                      <widget class="QLabel" name="label_45">
                       <property name="text">
-                       <string>Graph optimization algorithm.</string>
+                       <string>Graph optimization algorithm. See Optimizer panel.</string>
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                       </property>
                      </widget>
                     </item>
-                    <item row="11" column="1">
-                     <widget class="QLabel" name="label_183">
-                      <property name="text">
-                       <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="10" column="1">
-                     <widget class="QLabel" name="label_211">
-                      <property name="text">
-                       <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="2" column="1">
-                     <widget class="QLabel" name="label_31">
-                      <property name="text">
-                       <string>Iterations.</string>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="1">
-                     <widget class="QLabel" name="label_64">
-                      <property name="text">
-                       <string>Stop optimizing when the error improvement is less than this value.</string>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="0">
-                     <widget class="QDoubleSpinBox" name="graphOptimization_stopEpsilon">
-                      <property name="decimals">
-                       <number>5</number>
-                      </property>
-                      <property name="minimum">
-                       <double>0.000000000000000</double>
-                      </property>
-                      <property name="maximum">
-                       <double>1.000000000000000</double>
-                      </property>
-                      <property name="singleStep">
-                       <double>0.001000000000000</double>
-                      </property>
-                      <property name="value">
-                       <double>0.001000000000000</double>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="4" column="1">
-                     <widget class="QLabel" name="label_141">
-                      <property name="text">
-                       <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links (transitional and rotational variances).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="6" column="0">
+                    <item row="1" column="0">
                      <widget class="QCheckBox" name="graphOptimization_robust">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
+                    <item row="1" column="1">
                      <widget class="QLabel" name="label_258">
                       <property name="text">
                        <string>Robust graph optimization using Vertigo (only for g2o and GTSAM optimization strategies). This approach can filter wrong loop closure detections.</string>
@@ -8068,7 +7946,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="0">
+                    <item row="2" column="0">
                      <widget class="QDoubleSpinBox" name="graphOptimization_maxError">
                       <property name="suffix">
                        <string> m</string>
@@ -8090,10 +7968,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="7" column="1">
+                    <item row="2" column="1">
                      <widget class="QLabel" name="label_259">
                       <property name="text">
-                       <string>Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph.</string>
+                       <string>Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph. It should not be used at the same time than Vertigo above.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -8103,89 +7981,57 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="1" column="1">
-                     <widget class="QGroupBox" name="groupBox_g2o">
-                      <property name="title">
-                       <string>g2o</string>
+                    <item row="3" column="0" rowspan="2">
+                     <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
+                      <property name="text">
+                       <string/>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_70" columnstretch="0,1">
-                       <item row="1" column="0">
-                        <widget class="QComboBox" name="comboBox_g2o_optimizer">
-                         <item>
-                          <property name="text">
-                           <string>Levenberg</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>Gauss Newton</string>
-                          </property>
-                         </item>
-                        </widget>
-                       </item>
-                       <item row="0" column="0">
-                        <widget class="QComboBox" name="comboBox_g2o_solver">
-                         <item>
-                          <property name="text">
-                           <string>CSparse</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>PCG</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>Cholmod</string>
-                          </property>
-                         </item>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_107">
-                         <property name="text">
-                          <string>Solver.</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_138">
-                         <property name="text">
-                          <string>Optimization algorithm.</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_variance">
-                         <property name="enabled">
-                          <bool>false</bool>
-                         </property>
-                         <property name="decimals">
-                          <number>4</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.000100000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>10.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>1.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_148">
-                         <property name="enabled">
-                          <bool>false</bool>
-                         </property>
-                         <property name="text">
-                          <string>Pixel variance for SBA.</string>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
+                     </widget>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="Line" name="line">
+                      <property name="orientation">
+                       <enum>Qt::Horizontal</enum>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="4" column="1">
+                     <widget class="QLabel" name="label_151">
+                      <property name="text">
+                       <string>Optimize graph from the newest node.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="5" column="1">
+                     <widget class="QLabel" name="label_211">
+                      <property name="text">
+                       <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="6" column="1">
+                     <widget class="QLabel" name="label_183">
+                      <property name="text">
+                       <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
                      </widget>
                     </item>
                    </layout>
@@ -8198,8 +8044,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    </property>
                    <property name="sizeHint" stdset="0">
                     <size>
-                     <width>20</width>
-                     <height>1338</height>
+                     <width>17</width>
+                     <height>2098</height>
                     </size>
                    </property>
                   </spacer>
@@ -9474,7 +9320,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <item>
                             <widget class="QLabel" name="label_226">
                              <property name="text">
-                              <string>The approach maintains a local map of features to match to. It adds incrementally new points to local map up to maximum map size, then removes old points as new points are added. See &quot;Motion Estimation&quot; panel for registration parameters. Note that only visual registration parameters are used in this approach. If you want to use a different registration pipeline than Visual (e.g. with ICP), use &quot;Frame to Frame&quot; approach instead.</string>
+                              <string>The approach maintains a local map of features to match to. It adds incrementally new points to local map up to maximum map size, then removes old points as new points are added. See &quot;Motion Estimation&quot; panel for registration parameters.</string>
                              </property>
                              <property name="wordWrap">
                               <bool>true</bool>
@@ -9486,6 +9332,35 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </item>
                            <item>
                             <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,0,1">
+                             <item row="1" column="0">
+                              <widget class="QSpinBox" name="spinBox_odom_f2m_maxNewFeatures">
+                               <property name="minimum">
+                                <number>0</number>
+                               </property>
+                               <property name="maximum">
+                                <number>999999</number>
+                               </property>
+                               <property name="singleStep">
+                                <number>1</number>
+                               </property>
+                               <property name="value">
+                                <number>0</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="3" column="2">
+                              <widget class="QLabel" name="label_215">
+                               <property name="text">
+                                <string>[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the laser scans.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
                              <item row="2" column="2">
                               <widget class="QLabel" name="label_195">
                                <property name="text">
@@ -9564,35 +9439,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="1" column="0">
-                              <widget class="QSpinBox" name="spinBox_odom_f2m_maxNewFeatures">
-                               <property name="minimum">
-                                <number>0</number>
-                               </property>
-                               <property name="maximum">
-                                <number>999999</number>
-                               </property>
-                               <property name="singleStep">
-                                <number>1</number>
-                               </property>
-                               <property name="value">
-                                <number>0</number>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="3" column="2">
-                              <widget class="QLabel" name="label_215">
-                               <property name="text">
-                                <string>[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the laser scans.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
                              <item row="3" column="0">
                               <widget class="QDoubleSpinBox" name="doubleSpinBox_odom_f2m_scanRadius">
                                <property name="suffix">
@@ -9610,6 +9456,61 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               <widget class="QSpinBox" name="spinBox_odom_f2m_scanMaxSize">
                                <property name="maximum">
                                 <number>999999999</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="2">
+                              <widget class="QLabel" name="label_357">
+                               <property name="text">
+                                <string>[Visual] Local bundle adjustment. See Optimizer panel. This will not work with Optical Flow correspondences strategy is selected in Visual Registration panel.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="6" column="2">
+                              <widget class="QLabel" name="label_358">
+                               <property name="text">
+                                <string>[Visual] Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="5" column="0">
+                              <widget class="QComboBox" name="odom_f2m_bundleStrategy">
+                               <property name="sizeAdjustPolicy">
+                                <enum>QComboBox::AdjustToContents</enum>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>Disabled</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>g2o</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>cvsba</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item row="6" column="0">
+                              <widget class="QSpinBox" name="odom_f2m_bundleMaxFrames">
+                               <property name="maximum">
+                                <number>999999</number>
                                </property>
                               </widget>
                              </item>
@@ -10271,45 +10172,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_41" stretch="0,0,0,1">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_23" columnstretch="0,1">
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_146">
-                        <property name="text">
-                         <string>Motion estimation approach using 3D and/or 2D visual words correspondences.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_262">
-                        <property name="text">
-                         <string>Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_2">
-                        <property name="text">
-                         <string>Minimum correspondences to accept the estimated transformation.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="4" column="0">
                        <widget class="QSpinBox" name="loopClosure_bowIterations">
                         <property name="minimum">
@@ -10431,6 +10293,80 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="value">
                          <number>10</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_146">
+                        <property name="text">
+                         <string>Motion estimation approach using 3D and/or 2D visual words correspondences.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_262">
+                        <property name="text">
+                         <string>Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_2">
+                        <property name="text">
+                         <string>Minimum correspondences to accept the estimated transformation.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QComboBox" name="loopClosure_bundle">
+                        <property name="sizeAdjustPolicy">
+                         <enum>QComboBox::AdjustToContentsOnFirstShow</enum>
+                        </property>
+                        <item>
+                         <property name="text">
+                          <string>Disabled</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>g2o</string>
+                         </property>
+                        </item>
+                        <item>
+                         <property name="text">
+                          <string>cvsba</string>
+                         </property>
+                        </item>
+                       </widget>
+                      </item>
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_346">
+                        <property name="text">
+                         <string>Refine transformation with bundle adjustment. See Optimizer panel.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -11664,6 +11600,190 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                     <size>
                      <width>20</width>
                      <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
+               <widget class="QWidget" name="page_65">
+                <layout class="QVBoxLayout" name="verticalLayout_114">
+                 <item>
+                  <widget class="QGroupBox" name="groupBox_optimizer1">
+                   <property name="title">
+                    <string>Optimizer</string>
+                   </property>
+                   <layout class="QVBoxLayout" name="verticalLayout_113">
+                    <item>
+                     <layout class="QGridLayout" name="gridLayout_80" columnstretch="0,1">
+                      <item row="0" column="0">
+                       <widget class="QSpinBox" name="graphOptimization_iterations">
+                        <property name="minimum">
+                         <number>0</number>
+                        </property>
+                        <property name="maximum">
+                         <number>10000</number>
+                        </property>
+                        <property name="value">
+                         <number>100</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QDoubleSpinBox" name="graphOptimization_stopEpsilon">
+                        <property name="decimals">
+                         <number>5</number>
+                        </property>
+                        <property name="minimum">
+                         <double>0.000000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.001000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="1">
+                       <widget class="QLabel" name="label_141">
+                        <property name="text">
+                         <string>Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links (transitional and rotational variances).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_64">
+                        <property name="text">
+                         <string>Stop optimizing when the error improvement is less than this value.</string>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
+                       <widget class="QCheckBox" name="graphOptimization_covarianceIgnored">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_31">
+                        <property name="text">
+                         <string>Iterations.</string>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBoxx_g2o">
+                      <property name="title">
+                       <string>g2o</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_70" columnstretch="0,1">
+                       <item row="1" column="0">
+                        <widget class="QComboBox" name="comboBox_g2o_optimizer">
+                         <item>
+                          <property name="text">
+                           <string>Levenberg</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Gauss Newton</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QComboBox" name="comboBox_g2o_solver">
+                         <item>
+                          <property name="text">
+                           <string>CSparse</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>PCG</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Cholmod</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_107">
+                         <property name="text">
+                          <string>Solver.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_138">
+                         <property name="text">
+                          <string>Optimization algorithm.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_148">
+                         <property name="text">
+                          <string>Pixel variance used for bundle adjustment.</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_pixelVariance">
+                         <property name="decimals">
+                          <number>5</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.001000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.001000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                   </layout>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_58">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>2185</height>
                     </size>
                    </property>
                   </spacer>
@@ -13487,7 +13607,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
      </item>
     </layout>
    </item>
-   <item>
+   <item row="1" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <widget class="QRadioButton" name="radioButton_basic">
@@ -13526,6 +13646,11 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
    <extends>QWidget</extends>
    <header>../include/rtabmap/utilite/UPlot.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QMultiComboBox</class>
+   <extends>QComboBox</extends>
+   <header>3rdParty/QMultiComboBox.h</header>
   </customwidget>
  </customwidgets>
  <resources>

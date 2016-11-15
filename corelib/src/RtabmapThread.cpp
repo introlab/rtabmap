@@ -171,6 +171,7 @@ void RtabmapThread::publishMap(bool optimized, bool full, bool graphOnly) const
 
 void RtabmapThread::mainLoopBegin()
 {
+	ULogger::registerCurrentThread("Rtabmap");
 	if(_rtabmap == 0)
 	{
 		UERROR("Cannot start rtabmap thread if no rtabmap object is set! Stopping the thread...");

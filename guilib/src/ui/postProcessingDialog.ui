@@ -115,7 +115,7 @@
       <item>
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>See &quot;RTAB-Map settings/RGB-D SLAM/Loop closure constraint&quot; to tune the parameters used.</string>
+         <string>See &quot;RTAB-Map settings/Motion Estimation&quot; to tune the parameters used.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -128,7 +128,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_3">
      <property name="title">
-      <string>Refine links with ICP 3D</string>
+      <string>Refine links with ICP</string>
      </property>
      <property name="checkable">
       <bool>false</bool>
@@ -137,7 +137,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>See &quot;RTAB-Map settings/RGB-D SLAM/ICP&quot; to tune the parameters used.</string>
+         <string>Laser scans are required. See &quot;RTAB-Map settings/Motion Estimation/ICP&quot; to tune the parameters used.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>

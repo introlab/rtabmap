@@ -74,6 +74,11 @@ void OdometryThread::handleEvent(UEvent * event)
 	}
 }
 
+void OdometryThread::mainLoopBegin()
+{
+	ULogger::registerCurrentThread("Odometry");
+}
+
 void OdometryThread::mainLoopKill()
 {
 	_dataAdded.release();

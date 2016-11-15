@@ -42,7 +42,7 @@ public:
 public:
 	OptimizerCVSBA(
 			int iterations         = Parameters::defaultOptimizerIterations(),
-			bool slam2d            = Parameters::defaultOptimizerSlam2D(),
+			bool slam2d            = Parameters::defaultRegForce3DoF(),
 			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored()) :
 		Optimizer(iterations, slam2d, covarianceIgnored) {}
 	OptimizerCVSBA(const ParametersMap & parameters) :
@@ -55,7 +55,9 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, Signature> & signatures);
+			const std::map<int, CameraModel> & models,
+			std::map<int, cv::Point3f> & points3DMap,
+			const std::map<int, std::map<int, cv::Point2f> > & wordReferences); // <ID words, IDs frames + keypoint>);
 };
 
 } /* namespace rtabmap */

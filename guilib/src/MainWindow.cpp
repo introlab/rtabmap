@@ -169,6 +169,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_firstCall(true),
 	_progressCanceled(false)
 {
+	ULogger::registerCurrentThread("MainWindow");
 	UDEBUG("");
 
 	initGuiResource();
@@ -3474,6 +3475,7 @@ void MainWindow::applyPrefSettings(PreferencesDialog::PANEL_FLAGS flags)
 						 (_preferencesDialog->getWorkingDirectory()+QDir::separator()+LOG_FILE_NAME).toStdString(), true);
 		ULogger::setPrintTime(_preferencesDialog->getGeneralLoggerPrintTime());
 		ULogger::setPrintThreadId(_preferencesDialog->getGeneralLoggerPrintThreadId());
+		ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 	}
 }
 

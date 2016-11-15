@@ -31,6 +31,8 @@
 #include <time.h>
 #include <string>
 #include <vector>
+#include <map>
+#include <set>
 
 #include <stdarg.h>
 
@@ -346,6 +348,21 @@ public:
 	static void setEventLevel(ULogger::Level eventSentLevel) {eventLevel_ = eventSentLevel;}
 	static ULogger::Level eventLevel() {return eventLevel_;}
 
+	/**
+	 * If not empty, only show log messages from threads included in this list.
+	 */
+	static void setTreadIdFilter(const std::set<unsigned long> & ids) {threadIdFilter_ = ids;}
+	static void setTreadIdFilter(const std::vector<std::string> & ids);
+	static const std::set<unsigned long> & getTreadIdFilter() {return threadIdFilter_;}
+
+	/**
+	 * Threads can register to this list. If name is empty, it will
+	 * clear the thread in the list. Should be called from the thread itself.
+	 */
+	static void registerCurrentThread(const std::string & name);
+	static void unregisterCurrentThread();
+	static std::map<std::string, unsigned long> getRegisteredThreads();
+
     /**
      * Reset to default parameters.
      */
@@ -550,6 +567,9 @@ private:
 	static bool buffered_;
 
 	static std::string bufferedMsgs_;
+
+	static std::set<unsigned long> threadIdFilter_;
+	static std::map<std::string, unsigned long> registeredThreads_;
 };
 
 #endif // ULOGGER_H

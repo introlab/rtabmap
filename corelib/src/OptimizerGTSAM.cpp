@@ -126,7 +126,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		int switchCounter = poses.rbegin()->first+1;
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
-			int id1 = iter->first;
+			int id1 = iter->second.from();
 			int id2 = iter->second.to();
 
 			UASSERT(!iter->second.transform().isNull());

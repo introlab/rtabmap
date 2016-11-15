@@ -139,6 +139,7 @@ public:
 	int getGeneralLoggerType() const;
 	bool getGeneralLoggerPrintTime() const;
 	bool getGeneralLoggerPrintThreadId() const;
+	std::vector<std::string> getGeneralLoggerThreads() const;
 	bool isVerticalLayoutUsed() const;
 	bool imageRejectedShown() const;
 	bool imageHighestHypShown() const;
@@ -288,7 +289,6 @@ private slots:
 	void addParameter(const QString & value);
 	void updatePredictionPlot();
 	void updateKpROI();
-	void updateG2oVisibility();
 	void updateStereoDisparityVisibility();
 	void useOdomFeatures();
 	void changeWorkingDirectory();
