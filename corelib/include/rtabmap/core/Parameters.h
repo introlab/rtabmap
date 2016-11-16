@@ -531,7 +531,7 @@ public:
 	static void parse(const ParametersMap & parameters, ParametersMap & parametersOut);
 
 	static const char * showUsage();
-	static ParametersMap parseArguments(int argc, char * argv[]);
+	static ParametersMap parseArguments(int argc, char * argv[], bool onlyParameters = false);
 
 	static std::string getVersion();
 	static std::string getDefaultDatabaseName();

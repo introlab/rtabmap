@@ -3821,6 +3821,22 @@ void MainWindow::configGUIModified()
 	this->setWindowModified(true);
 }
 
+void MainWindow::updateParameters(const ParametersMap & parameters)
+{
+	if(parameters.size())
+	{
+		for(ParametersMap::const_iterator iter= parameters.begin(); iter!=parameters.end(); ++iter)
+		{
+			QString msg = tr("Parameter update \"%1\"=\"%2\"")
+							.arg(iter->first.c_str())
+							.arg(iter->second.c_str());
+			_ui->widget_console->appendMsg(msg);
+			UWARN(msg.toStdString().c_str());
+		}
+		_preferencesDialog->updateParameters(parameters);
+	}
+}
+
 //ACTIONS
 void MainWindow::saveConfigGUI()
 {
@@ -4089,22 +4105,43 @@ void MainWindow::startDetection()
 				return;
 			}
 		}
-		if(bufferingSize != 0 &&
-		  (_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->isSourceDatabaseStampsUsed()))
+		if(_preferencesDialog->getSourceDriver() != PreferencesDialog::kSrcDatabase || !_preferencesDialog->isSourceDatabaseStampsUsed())
 		{
-			int button = QMessageBox::question(this,
-					tr("Some images may be skipped!"),
-					tr("\"RTAB-Map/Images buffer size\" is not infinite (size=%1). As the "
-					   "source input is a directory of images/video/database, some images may be "
-					   "skipped by the detector if the \"Source/Input rate\" (which is %2 Hz) is higher than the "
-					   "rate at which RTAB-Map can process the images. You may want to set the "
-					   "\"RTAB-Map/Images buffer size\" to 0 (infinite) to guaranty that all "
-					   "images are processed. Would you want to start the detection "
-					   "anyway?").arg(bufferingSize).arg(inputRate),
-					 QMessageBox::Yes | QMessageBox::No);
-			if(button == QMessageBox::No)
+			if(bufferingSize != 0)
 			{
-				return;
+				int button = QMessageBox::question(this,
+						tr("Some images may be skipped!"),
+						tr("\"RTAB-Map/Images buffer size\" is not infinite (size=%1). As the "
+						   "source input is a directory of images/video/database, some images may be "
+						   "skipped by the detector if the \"Source/Input rate\" (which is %2 Hz) is higher than the "
+						   "rate at which RTAB-Map can process the images. You may want to set the "
+						   "\"RTAB-Map/Images buffer size\" to 0 (infinite) to guaranty that all "
+						   "images are processed. Would you want to start the detection "
+						   "anyway?").arg(bufferingSize).arg(inputRate),
+						 QMessageBox::Yes | QMessageBox::No);
+				if(button == QMessageBox::No)
+				{
+					return;
+				}
+			}
+			else if(inputRate == 0)
+			{
+				int button = QMessageBox::question(this,
+						tr("Large number of images may be buffered!"),
+						tr("\"RTAB-Map/Images buffer size\" is infinite. As the "
+						   "source input is a directory of images/video/database and "
+						   "that \"Source/Input rate\" is infinite too, a lot of images "
+						   "could be buffered at the same time (e.g., reading all images "
+						   "of a directory at once). This could make the GUI not responsive. "
+						   "You may want to set \"Source/Input rate\" at the rate at "
+						   "which the images have been recorded. "
+						   "Would you want to start the detection "
+						   "anyway?").arg(bufferingSize).arg(inputRate),
+						 QMessageBox::Yes | QMessageBox::No);
+				if(button == QMessageBox::No)
+				{
+					return;
+				}
 			}
 		}
 	}

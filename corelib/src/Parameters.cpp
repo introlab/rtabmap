@@ -507,159 +507,171 @@ const char * Parameters::showUsage()
 			;
 }
 
-ParametersMap Parameters::parseArguments(int argc, char * argv[])
+ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParameters)
 {
 	ParametersMap out;
 	const ParametersMap & parameters = getDefaultParameters();
 	const std::map<std::string, std::pair<bool, std::string> > & removedParams = getRemovedParameters();
 	for(int i=0;i<argc;++i)
 	{
-		if(strcmp(argv[i], "--nolog") == 0)
+		bool checkParameters = onlyParameters;
+		if(!checkParameters)
 		{
-			ULogger::setType(ULogger::kTypeNoLog);
-		}
-		else if(strcmp(argv[i], "--logconsole") == 0)
-		{
-			ULogger::setType(ULogger::kTypeConsole);
-		}
-		else if(strcmp(argv[i], "--logfile") == 0)
-		{
-			++i;
-			if(i < argc)
+			if(strcmp(argv[i], "--nolog") == 0)
 			{
-				ULogger::setType(ULogger::kTypeFile, argv[i], false);
+				ULogger::setType(ULogger::kTypeNoLog);
 			}
-			else
+			else if(strcmp(argv[i], "--logconsole") == 0)
 			{
-				UERROR("\"--logfile\" argument requires following file path");
+				ULogger::setType(ULogger::kTypeConsole);
 			}
-		}
-		else if(strcmp(argv[i], "--logfilea") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				ULogger::setType(ULogger::kTypeFile, argv[i], true);
-			}
-			else
-			{
-				UERROR("\"--logfilea\" argument requires following file path");
-			}
-		}
-		else if(strcmp(argv[i], "--udebug") == 0)
-		{
-			ULogger::setLevel(ULogger::kDebug);
-		}
-		else if(strcmp(argv[i], "--uinfo") == 0)
-		{
-			ULogger::setLevel(ULogger::kInfo);
-		}
-		else if(strcmp(argv[i], "--uwarn") == 0)
-		{
-			ULogger::setLevel(ULogger::kWarning);
-		}
-		else if(strcmp(argv[i], "--uerror") == 0)
-		{
-			ULogger::setLevel(ULogger::kError);
-		}
-		else if(strcmp(argv[i], "--ulogtime") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				ULogger::setPrintTime(uStr2Bool(argv[i]));
-			}
-			else
-			{
-				UERROR("\"--ulogtime\" argument requires a following boolean value");
-			}
-		}
-		else if(strcmp(argv[i], "--ulogwhere") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				ULogger::setPrintWhere(uStr2Bool(argv[i]));
-			}
-			else
-			{
-				UERROR("\"--ulogwhere\" argument requires a following boolean value");
-			}
-		}
-		else if(strcmp(argv[i], "--ulogthread") == 0)
-		{
-			++i;
-			if(i < argc)
-			{
-				ULogger::setPrintThreadId(uStr2Bool(argv[i]));
-			}
-			else
-			{
-				UERROR("\"--ulogthread\" argument requires a following boolean value");
-			}
-		}
-		else if(strcmp(argv[i], "--params") == 0)
-		{
-			for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
-			{
-				std::string str = "Param: " + iter->first + " = \"" + iter->second + "\"";
-				std::cout <<
-						str <<
-						std::setw(60 - str.size()) <<
-						" [" <<
-						rtabmap::Parameters::getDescription(iter->first).c_str() <<
-						"]" <<
-						std::endl;
-			}
-			UWARN("App will now exit after showing default RTAB-Map parameters because "
-					 "argument \"--params\" is detected!");
-			exit(0);
-		}
-		else // check for parameters
-		{
-			std::string key = uReplaceChar(argv[i], '-', "");
-			ParametersMap::const_iterator iter = parameters.find(key);
-			if(iter != parameters.end())
+			else if(strcmp(argv[i], "--logfile") == 0)
 			{
 				++i;
 				if(i < argc)
 				{
-					uInsert(out, ParametersPair(iter->first, argv[i]));
+					ULogger::setType(ULogger::kTypeFile, argv[i], false);
+				}
+				else
+				{
+					UERROR("\"--logfile\" argument requires following file path");
+				}
+			}
+			else if(strcmp(argv[i], "--logfilea") == 0)
+			{
+				++i;
+				if(i < argc)
+				{
+					ULogger::setType(ULogger::kTypeFile, argv[i], true);
+				}
+				else
+				{
+					UERROR("\"--logfilea\" argument requires following file path");
+				}
+			}
+			else if(strcmp(argv[i], "--udebug") == 0)
+			{
+				ULogger::setLevel(ULogger::kDebug);
+			}
+			else if(strcmp(argv[i], "--uinfo") == 0)
+			{
+				ULogger::setLevel(ULogger::kInfo);
+			}
+			else if(strcmp(argv[i], "--uwarn") == 0)
+			{
+				ULogger::setLevel(ULogger::kWarning);
+			}
+			else if(strcmp(argv[i], "--uerror") == 0)
+			{
+				ULogger::setLevel(ULogger::kError);
+			}
+			else if(strcmp(argv[i], "--ulogtime") == 0)
+			{
+				++i;
+				if(i < argc)
+				{
+					ULogger::setPrintTime(uStr2Bool(argv[i]));
+				}
+				else
+				{
+					UERROR("\"--ulogtime\" argument requires a following boolean value");
+				}
+			}
+			else if(strcmp(argv[i], "--ulogwhere") == 0)
+			{
+				++i;
+				if(i < argc)
+				{
+					ULogger::setPrintWhere(uStr2Bool(argv[i]));
+				}
+				else
+				{
+					UERROR("\"--ulogwhere\" argument requires a following boolean value");
+				}
+			}
+			else if(strcmp(argv[i], "--ulogthread") == 0)
+			{
+				++i;
+				if(i < argc)
+				{
+					ULogger::setPrintThreadId(uStr2Bool(argv[i]));
+				}
+				else
+				{
+					UERROR("\"--ulogthread\" argument requires a following boolean value");
 				}
 			}
 			else
 			{
-				// backward compatibility
-				std::map<std::string, std::pair<bool, std::string> >::const_iterator jter = removedParams.find(key);
-				if(jter!=removedParams.end())
+				checkParameters = true;
+			}
+		}
+
+		if(checkParameters) // check for parameters
+		{
+			if(strcmp(argv[i], "--params") == 0)
+			{
+				for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 				{
-					if(jter->second.first)
+					std::string str = "Param: " + iter->first + " = \"" + iter->second + "\"";
+					std::cout <<
+							str <<
+							std::setw(60 - str.size()) <<
+							" [" <<
+							rtabmap::Parameters::getDescription(iter->first).c_str() <<
+							"]" <<
+							std::endl;
+				}
+				UWARN("App will now exit after showing default RTAB-Map parameters because "
+						 "argument \"--params\" is detected!");
+				exit(0);
+			}
+			else
+			{
+				std::string key = uReplaceChar(argv[i], '-', "");
+				ParametersMap::const_iterator iter = parameters.find(key);
+				if(iter != parameters.end())
+				{
+					++i;
+					if(i < argc)
 					{
-						++i;
-						if(i < argc)
+						uInsert(out, ParametersPair(iter->first, argv[i]));
+					}
+				}
+				else
+				{
+					// backward compatibility
+					std::map<std::string, std::pair<bool, std::string> >::const_iterator jter = removedParams.find(key);
+					if(jter!=removedParams.end())
+					{
+						if(jter->second.first)
 						{
-							std::string value = argv[i];
-							if(!value.empty())
+							++i;
+							if(i < argc)
 							{
-								value = uReplaceChar(value, ',', ' '); // for table
-								key = jter->second.second;
-								UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
-										jter->first.c_str(), jter->second.second.c_str(), value.c_str());
-								uInsert(out, ParametersPair(key, value));
+								std::string value = argv[i];
+								if(!value.empty())
+								{
+									value = uReplaceChar(value, ',', ' '); // for table
+									key = jter->second.second;
+									UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
+											jter->first.c_str(), jter->second.second.c_str(), value.c_str());
+									uInsert(out, ParametersPair(key, value));
+								}
 							}
+							else
+							{
+								UERROR("Value missing for argument \"%s\"", argv[i-1]);
+							}
+						}
+						else if(jter->second.second.empty())
+						{
+							UERROR("Parameter \"%s\" doesn't exist anymore.", jter->first.c_str());
 						}
 						else
 						{
-							UERROR("Value missing for argument \"%s\"", argv[i-1]);
+							UERROR("Parameter \"%s\" doesn't exist anymore, check this similar parameter \"%s\".", jter->first.c_str(), jter->second.second.c_str());
 						}
-					}
-					else if(jter->second.second.empty())
-					{
-						UERROR("Parameter \"%s\" doesn't exist anymore.", jter->first.c_str());
-					}
-					else
-					{
-						UERROR("Parameter \"%s\" doesn't exist anymore, check this similar parameter \"%s\".", jter->first.c_str(), jter->second.second.c_str());
 					}
 				}
 			}
