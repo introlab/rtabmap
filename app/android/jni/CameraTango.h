@@ -77,7 +77,7 @@ public:
 	void close(); // close Tango connection
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
-	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose, bool inOpenGLFrame) const;
+	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
 	void setDecimation(int value) {decimation_ = value;}
 	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
 
@@ -90,7 +90,7 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
-	rtabmap::Transform getPoseAtTimestamp(double timestamp, bool inOpenGLFrame);
+	rtabmap::Transform getPoseAtTimestamp(double timestamp);
 
 	virtual void mainLoopBegin();
 	virtual void mainLoop();
@@ -108,10 +108,8 @@ private:
 	double tangoColorStamp_;
 	boost::mutex dataMutex_;
 	USemaphore dataReady_;
-	rtabmap::Transform imuTDevice_;
-	rtabmap::Transform imuTDepthCamera_;
-	rtabmap::Transform deviceTDepth_;
 	CameraModel model_;
+	Transform deviceTColorCamera_;
 };
 
 } /* namespace rtabmap */

@@ -77,21 +77,26 @@ protected:
 };
 
 static const rtabmap::Transform opengl_world_T_tango_world(
-		1.0f, 0.0f,  0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
+		1.0f,  0.0f,  0.0f, 0.0f,
+		0.0f,  0.0f,  1.0f, 0.0f,
 		0.0f, -1.0f,  0.0f, 0.0f);
 
-static const rtabmap::Transform depth_camera_T_opengl_camera(
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, -1.0f, 0.0f);
+static const rtabmap::Transform rtabmap_world_T_tango_world(
+		 0.0f, 1.0f, 0.0f, 0.0f,
+	    -1.0f, 0.0f, 0.0f, 0.0f,
+		 0.0f, 0.0f, 1.0f, 0.0f);
+
+static const rtabmap::Transform tango_device_T_rtabmap_device(
+		 0.0f, -1.0f, 0.0f, 0.0f,
+	     0.0f,  0.0f, 1.0f, 0.0f,
+		-1.0f,  0.0f, 0.0f, 0.0f);
 
 static const rtabmap::Transform opengl_world_T_rtabmap_world(
-		0.0f, -1.0f,  0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		-1.0f, 0.0f,  0.0f, 0.0f);
+		 0.0f, -1.0f, 0.0f, 0.0f,
+		 0.0f,  0.0f, 1.0f, 0.0f,
+		-1.0f,  0.0f, 0.0f, 0.0f);
 
-static const rtabmap::Transform rtabmap_world_T_opengl_world(
+static const rtabmap::Transform rtabmap_device_T_opengl_device(
 		 0.0f, 0.0f, -1.0f, 0.0f,
 		-1.0f, 0.0f,  0.0f, 0.0f,
 		 0.0f, 1.0f,  0.0f, 0.0f);

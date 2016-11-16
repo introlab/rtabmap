@@ -89,7 +89,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), std::string("15")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), std::string("0"))); // 0=3D-3D 1=PnP
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("0.05")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("0.1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityPathMaxNeighbors(), std::string("0"))); // disable scan matching to merged nodes
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), std::string("false"))); // just keep loop closure detection
 
@@ -413,7 +413,7 @@ int RTABMapApp::Render()
 			{
 				cv::Mat compressed = iter->second.texture;
 				iter->second.texture = rtabmap::uncompressImage(iter->second.texture);
-				main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose);
+				main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose*rtabmap_device_T_opengl_device);
 				main_scene_.setCloudVisible(iter->first, iter->second.visible);
 				iter->second.texture = compressed;
 			}
@@ -433,7 +433,7 @@ int RTABMapApp::Render()
 	if(!pose.isNull())
 	{
 		// update camera pose?
-		main_scene_.SetCameraPose(pose);
+		main_scene_.SetCameraPose(opengl_world_T_tango_world*pose);
 		if(!camera_->isRunning() && cameraJustInitialized_)
 		{
 			notifyDataLoaded = true;

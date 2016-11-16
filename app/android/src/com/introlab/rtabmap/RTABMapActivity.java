@@ -98,7 +98,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private int mParamTimeThrMsIndex = 4;
   private int mParamMaxFeaturesIndex = 2;
   private int mParamLoopThrMsIndex = 1;
-  private int mParamOptimizeErrorIndex = 3;
+  private int mParamOptimizeErrorIndex = 4;
   
   final String[] mUpdateRateValues = {"0.5", "1", "2", "Max"};
   final String[] mTimeThrValues = {"400", "500", "600", "700", "800", "900", "1000", "1100", "1200", "1300", "1400", "1500", "No Limit"};

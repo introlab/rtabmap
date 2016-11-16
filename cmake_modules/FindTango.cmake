@@ -9,12 +9,13 @@
 FIND_PATH(Tango_INCLUDE_DIR tango_client_api.h)
 
 FIND_LIBRARY(Tango_LIBRARY NAMES tango_client_api)
+FIND_LIBRARY(Tango_support_LIBRARY NAMES tango_support_api)
 
-IF (Tango_INCLUDE_DIR AND Tango_LIBRARY)
+IF (Tango_INCLUDE_DIR AND Tango_LIBRARY AND Tango_support_LIBRARY)
    SET(Tango_FOUND TRUE)
    SET(Tango_INCLUDE_DIRS ${Tango_INCLUDE_DIR})
-   SET(Tango_LIBRARIES ${Tango_LIBRARY})
-ENDIF (Tango_INCLUDE_DIR AND Tango_LIBRARY)
+   SET(Tango_LIBRARIES ${Tango_LIBRARY} ${Tango_support_LIBRARY})
+ENDIF (Tango_INCLUDE_DIR AND Tango_LIBRARY AND Tango_support_LIBRARY)
 
 IF (Tango_FOUND)
    # show which Tango was found only if not quiet
@@ -24,7 +25,7 @@ IF (Tango_FOUND)
 ELSE (Tango_FOUND)
    # fatal error if Tango is required but not found
    IF (Tango_FIND_REQUIRED)
-      MESSAGE(FATAL_ERROR "Could not find Tango")
+      MESSAGE(FATAL_ERROR "Could not find Tango (client and/or support libraries)")
    ENDIF (Tango_FIND_REQUIRED)
 ENDIF (Tango_FOUND)
 

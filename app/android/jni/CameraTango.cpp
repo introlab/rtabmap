@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryEvent.h"
 #include "rtabmap/core/util2d.h"
 #include <tango_client_api.h>
+#include <tango_support_api.h>
 
 namespace rtabmap {
 
@@ -80,7 +81,7 @@ void onPoseAvailableRouter(void* context, const TangoPoseData* pose)
 	if(pose->status_code == TANGO_POSE_VALID)
 	{
 		CameraTango* app = static_cast<CameraTango*>(context);
-		app->poseReceived(app->tangoPoseToTransform(pose, true));
+		app->poseReceived(app->tangoPoseToTransform(pose));
 	}
 }
 
@@ -90,18 +91,11 @@ void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
 	app->tangoEventReceived(event->type, event->event_key, event->event_value);
 }
 
-// In OpenGL, axes are x->right, y->up and z->outScreen
-// Image is x->right, y->down and z->inScreen
-static rtabmap::Transform opticalRotation(
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, -1.0f, 0.0f);
-
 //////////////////////////////
 // CameraTango
 //////////////////////////////
 CameraTango::CameraTango(int decimation, bool autoExposure) :
-		Camera(0, opticalRotation),
+		Camera(0),
 		tango_config_(0),
 		firstFrame_(true),
 		decimation_(decimation),
@@ -121,6 +115,8 @@ CameraTango::~CameraTango() {
 bool CameraTango::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	close();
+
+	TangoSupport_initializeLibrary();
 
 	// Connect to Tango
 	LOGI("NativeRTABMap: Setup tango config");
@@ -269,34 +265,16 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	// as well. We use timestamp 0.0 and the target frame pair to get the
 	// extrinsics from the sensors.
 	//
-	// Get device with respect to imu transformation matrix.
-	frame_pair.base = TANGO_COORDINATE_FRAME_IMU;
-	frame_pair.target = TANGO_COORDINATE_FRAME_DEVICE;
-	ret = TangoService_getPoseAtTime(0.0, frame_pair, &pose_data);
-	if (ret != TANGO_SUCCESS)
-	{
-		LOGE("NativeRTABMap: Failed to get transform between the IMU frame and device frames");
-		return false;
-	}
-	imuTDevice_ = rtabmap::Transform(
-			pose_data.translation[0],
-			pose_data.translation[1],
-			pose_data.translation[2],
-			pose_data.orientation[0],
-			pose_data.orientation[1],
-			pose_data.orientation[2],
-			pose_data.orientation[3]);
-
-	// Get color camera with respect to imu transformation matrix.
-	frame_pair.base = TANGO_COORDINATE_FRAME_IMU;
-	frame_pair.target = TANGO_COORDINATE_FRAME_CAMERA_DEPTH;
+	// Get color camera with respect to device transformation matrix.
+	frame_pair.base = TANGO_COORDINATE_FRAME_DEVICE;
+	frame_pair.target = TANGO_COORDINATE_FRAME_CAMERA_COLOR;
 	ret = TangoService_getPoseAtTime(0.0, frame_pair, &pose_data);
 	if (ret != TANGO_SUCCESS)
 	{
 		LOGE("NativeRTABMap: Failed to get transform between the color camera frame and device frames");
 		return false;
 	}
-	imuTDepthCamera_ = rtabmap::Transform(
+	deviceTColorCamera_ = rtabmap::Transform(
 			pose_data.translation[0],
 			pose_data.translation[1],
 			pose_data.translation[2],
@@ -304,8 +282,6 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 			pose_data.orientation[1],
 			pose_data.orientation[2],
 			pose_data.orientation[3]);
-
-	deviceTDepth_ = imuTDevice_.inverse() * imuTDepthCamera_;
 
 	// camera intrinsic
 	TangoCameraIntrinsics color_camera_intrinsics;
@@ -323,11 +299,11 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 			this->getLocalTransform());
 	model_.setImageSize(cv::Size(color_camera_intrinsics.width, color_camera_intrinsics.height));
 
-	// optical rotation
-	model_.setLocalTransform(Transform(
-			0.0f, 0.0f, 1.0f, 0.0f,
-			-1.0f, 0.0f, 0.0f, 0.0f,
-			0.0f, -1.0f, 0.0f, 0.0f));
+	// device to camera optical rotation in rtabmap frame
+	model_.setLocalTransform(tango_device_T_rtabmap_device.inverse()*deviceTColorCamera_);
+
+	LOGI("deviceTColorCameraTango  =%s", deviceTColorCamera_.prettyPrint().c_str());
+	LOGI("deviceTColorCameraRtabmap=%s", (tango_device_T_rtabmap_device.inverse()*deviceTColorCamera_).prettyPrint().c_str());
 
 	cameraStartedTime_.restart();
 
@@ -389,11 +365,16 @@ void CameraTango::rgbReceived(const cv::Mat & tangoImage, int type, double times
 	}
 }
 
+static rtabmap::Transform opticalRotationTango(
+								1.0f,  0.0f,  0.0f, 0.0f,
+							    0.0f, -1.0f,  0.0f, 0.0f,
+								0.0f,  0.0f, -1.0f, 0.0f);
 void CameraTango::poseReceived(const Transform & pose)
 {
 	if(!pose.isNull() && pose.getNormSquared() < 100000)
 	{
-		this->post(new PoseEvent(pose));
+		// send pose of the camera (without optical rotation), not the device
+		this->post(new PoseEvent(pose*deviceTColorCamera_*opticalRotationTango));
 	}
 }
 
@@ -412,69 +393,52 @@ std::string CameraTango::getSerial() const
 	return "Tango";
 }
 
-rtabmap::Transform CameraTango::tangoPoseToTransform(const TangoPoseData * tangoPose, bool inOpenGLFrame) const
+rtabmap::Transform CameraTango::tangoPoseToTransform(const TangoPoseData * tangoPose) const
 {
 	UASSERT(tangoPose);
 	rtabmap::Transform pose;
-	if(!deviceTDepth_.isNull())
-	{
-		pose = rtabmap::Transform(
-				tangoPose->translation[0],
-				tangoPose->translation[1],
-				tangoPose->translation[2],
-				tangoPose->orientation[0],
-				tangoPose->orientation[1],
-				tangoPose->orientation[2],
-				tangoPose->orientation[3]);
 
-		// transform in OpenGL + extrinsics
-		// opengl_world_T_opengl_camera =
-		//      opengl_world_T_start_service *
-		//      start_service_T_device *
-		//      device_T_imu *
-		//      imu_T_depth_camera *
-		//      depth_camera_T_opengl_camera;
-		if(inOpenGLFrame)
-		{
-			pose = opengl_world_T_tango_world * pose * deviceTDepth_ * depth_camera_T_opengl_camera;
-		}
-	}
+	pose = rtabmap::Transform(
+			tangoPose->translation[0],
+			tangoPose->translation[1],
+			tangoPose->translation[2],
+			tangoPose->orientation[0],
+			tangoPose->orientation[1],
+			tangoPose->orientation[2],
+			tangoPose->orientation[3]);
 
 	return pose;
 }
 
-rtabmap::Transform CameraTango::getPoseAtTimestamp(double timestamp, bool inOpenGLFrame)
+rtabmap::Transform CameraTango::getPoseAtTimestamp(double timestamp)
 {
 	rtabmap::Transform pose;
-	if(!deviceTDepth_.isNull())
+
+	TangoPoseData pose_start_service_T_device;
+	TangoCoordinateFramePair frame_pair;
+	frame_pair.base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
+	frame_pair.target = TANGO_COORDINATE_FRAME_DEVICE;
+	TangoErrorType status = TangoService_getPoseAtTime(timestamp, frame_pair, &pose_start_service_T_device);
+	if (status != TANGO_SUCCESS)
 	{
-		TangoPoseData pose_start_service_T_device;
-		TangoCoordinateFramePair frame_pair;
-		frame_pair.base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
-		frame_pair.target = TANGO_COORDINATE_FRAME_DEVICE;
-		TangoErrorType status = TangoService_getPoseAtTime(timestamp, frame_pair, &pose_start_service_T_device);
-		if (status != TANGO_SUCCESS)
-		{
-			LOGE(
-				"PoseData: Failed to get transform between the Start of service and "
-				"device frames at timestamp %lf",
-				timestamp);
-		}
-		if (pose_start_service_T_device.status_code != TANGO_POSE_VALID)
-		{
-			LOGW(
-				"PoseData: Failed to get transform between the Start of service and "
-				"device frames at timestamp %lf",
-				timestamp);
-		}
-		else
-		{
-
-			pose = tangoPoseToTransform(&pose_start_service_T_device, inOpenGLFrame);
-		}
-
-
+		LOGE(
+			"PoseData: Failed to get transform between the Start of service and "
+			"device frames at timestamp %lf",
+			timestamp);
 	}
+	if (pose_start_service_T_device.status_code != TANGO_POSE_VALID)
+	{
+		LOGW(
+			"PoseData: Failed to get transform between the Start of service and "
+			"device frames at timestamp %lf",
+			timestamp);
+	}
+	else
+	{
+
+		pose = tangoPoseToTransform(&pose_start_service_T_device);
+	}
+
 	return pose;
 }
 
@@ -558,26 +522,37 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 		// Querying the depth image's frame transformation based on the depth image's
 		// timestamp.
 		cv::Mat depth;
-		Transform poseDepth = getPoseAtTimestamp(cloudStamp, false);
-		Transform poseColor = getPoseAtTimestamp(rgbStamp, false);
 
-		if(poseColor.getNormSquared() > 100000)
+		// Calculate the relative pose from color camera frame at timestamp
+		// color_timestamp t1 and depth
+		// camera frame at depth_timestamp t0.
+		Transform colorToDepth;
+		TangoPoseData pose_color_image_t1_T_depth_image_t0;
+		if (TangoSupport_calculateRelativePose(
+				rgbStamp, TANGO_COORDINATE_FRAME_CAMERA_COLOR, cloudStamp,
+			  TANGO_COORDINATE_FRAME_CAMERA_DEPTH,
+			  &pose_color_image_t1_T_depth_image_t0) == TANGO_SUCCESS)
 		{
-			LOGE("Very large odometry color pose detected (%s)! Ignoring this frame!", poseColor.prettyPrint().c_str());
-			poseColor.setNull();
+			colorToDepth = tangoPoseToTransform(&pose_color_image_t1_T_depth_image_t0);
 		}
-		if(poseDepth.getNormSquared() > 100000)
+		else
 		{
-			LOGE("Very large odometry depth pose detected (%s)! Ignoring this frame!", poseDepth.prettyPrint().c_str());
-			poseDepth.setNull();
+			LOGE(
+				"SynchronizationApplication: Could not find a valid relative pose at "
+				"time for color and "
+				" depth cameras.");
 		}
 
+		if(colorToDepth.getNormSquared() > 100000)
+		{
+			LOGE("Very large color to depth error detected (%s)! Ignoring this frame!", colorToDepth.prettyPrint().c_str());
+			colorToDepth.setNull();
+		}
 		cv::Mat scan;
-		if(!poseDepth.isNull() && !poseColor.isNull())
+		if(!colorToDepth.isNull())
 		{
 			// The Color Camera frame at timestamp t0 with respect to Depth
 			// Camera frame at timestamp t1.
-			Transform colorToDepth = deviceTDepth_.inverse() * poseColor.inverse() * poseDepth * deviceTDepth_;
 			LOGI("colorToDepth=%s", colorToDepth.prettyPrint().c_str());
 
 			int pixelsSet = 0;
@@ -622,17 +597,24 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 		}
 		else
 		{
-			LOGE("Poses are null?!? color=%d (stamp=%f) depth=%d (stamp=%f)", poseColor.isNull()?0:1, rgbStamp, poseDepth.isNull()?0:1, cloudStamp);
+			LOGE("color to depth pose is null?!? (rgb stamp=%f) (depth stamp=%f)", rgbStamp, cloudStamp);
 		}
 
 		if(!rgb.empty() && !depth.empty())
 		{
 			depth = rtabmap::util2d::fillDepthHoles(depth, holeSize, maxDepthError);
 
-			Transform poseColorOpenGL = getPoseAtTimestamp(rgbStamp, true);
+			Transform poseDevice = getPoseAtTimestamp(rgbStamp);
+
+			LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
+			LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
+			LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
 
 			//Rotate in RTAB-Map's coordinate
-			Transform odom = rtabmap_world_T_opengl_world * poseColorOpenGL * depth_camera_T_opengl_camera * model.localTransform().inverse();
+			Transform odom = rtabmap_world_T_tango_world * poseDevice * tango_device_T_rtabmap_device;
+
+			LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
+			LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
 
 			data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, model.localTransform()), rgb, depth, model, this->getNextSeqID(), rgbStamp);
 			data.setGroundTruth(odom);
