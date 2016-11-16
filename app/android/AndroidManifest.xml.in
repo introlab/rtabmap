@@ -2,7 +2,7 @@
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.introlab.rtabmap"
-        android:versionCode="16"
+        android:versionCode="17"
         android:versionName="@RTABMAP_VERSION@">
 
     <uses-permission android:name="android.permission.CAMERA" />
@@ -26,7 +26,7 @@
         <activity android:name="RTABMapActivity"
                 android:label="@string/app_name"
                 android:launchMode="singleTask"
-                android:screenOrientation="nosensor">
+                android:screenOrientation="landscape">
             <!-- Tell NativeActivity the name of our .so -->
             <meta-data android:name="android.app.lib_name"
                     android:value="NativeRTABMap" />
