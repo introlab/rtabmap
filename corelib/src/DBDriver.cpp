@@ -602,6 +602,7 @@ bool DBDriver::getCalibration(
 		std::vector<CameraModel> & models,
 		StereoCameraModel & stereoModel) const
 {
+	UDEBUG("");
 	bool found = false;
 	// look in the trash
 	_trashesMutex.lock();

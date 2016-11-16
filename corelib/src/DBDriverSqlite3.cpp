@@ -1062,6 +1062,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					}
 					else if(uStrNumCmp(_version, "0.7.0") >= 0)
 					{
+						UDEBUG("Loading calibration version >= 0.7.0");
 						double fx = sqlite3_column_double(ppStmt, index++);
 						double fyOrBaseline = sqlite3_column_double(ppStmt, index++);
 						double cx = sqlite3_column_double(ppStmt, index++);
@@ -1078,6 +1079,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					}
 					else
 					{
+						UDEBUG("Loading calibration version < 0.7.0");
 						float depthConstant = sqlite3_column_double(ppStmt, index++);
 						float fx = 1.0f/depthConstant;
 						float fy = 1.0f/depthConstant;
@@ -1269,7 +1271,7 @@ bool DBDriverSqlite3::getCalibrationQuery(
 
 		const void * data = 0;
 		int dataSize = 0;
-		Transform localTransform;
+		Transform localTransform = Transform::getIdentity();
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
@@ -1279,6 +1281,16 @@ bool DBDriverSqlite3::getCalibrationQuery(
 			int index = 0;
 
 			// calibration
+			if(uStrNumCmp(_version, "0.10.0") < 0)
+			{
+				data = sqlite3_column_blob(ppStmt, index); // local transform
+				dataSize = sqlite3_column_bytes(ppStmt, index++);
+				if((unsigned int)dataSize == localTransform.size()*sizeof(float) && data)
+				{
+					memcpy(localTransform.data(), data, dataSize);
+				}
+			}
+
 			if(uStrNumCmp(_version, "0.10.0") >= 0)
 			{
 				data = sqlite3_column_blob(ppStmt, index);
@@ -1351,10 +1363,12 @@ bool DBDriverSqlite3::getCalibrationQuery(
 			}
 			else if(uStrNumCmp(_version, "0.7.0") >= 0)
 			{
+				UDEBUG("Loading calibration version >= 0.7.0");
 				double fx = sqlite3_column_double(ppStmt, index++);
 				double fyOrBaseline = sqlite3_column_double(ppStmt, index++);
 				double cx = sqlite3_column_double(ppStmt, index++);
 				double cy = sqlite3_column_double(ppStmt, index++);
+				UDEBUG("fx=%f fyOrBaseline=%f cx=%f cy=%f", fx, fyOrBaseline, cx, cy);
 				if(fyOrBaseline < 1.0)
 				{
 					//it is a baseline
@@ -1367,6 +1381,7 @@ bool DBDriverSqlite3::getCalibrationQuery(
 			}
 			else
 			{
+				UDEBUG("Loading calibration version < 0.7.0");
 				float depthConstant = sqlite3_column_double(ppStmt, index++);
 				float fx = 1.0f/depthConstant;
 				float fy = 1.0f/depthConstant;
