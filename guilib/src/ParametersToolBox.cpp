@@ -358,7 +358,11 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout,
 {
 	QDoubleSpinBox * widget = new QDoubleSpinBox(this);
 	double def = uStr2Double(Parameters::getDefaultParameters().at(key.toStdString()));
-	if(def<0.01)
+	if(def<0.001)
+	{
+		widget->setDecimals(5);
+	}
+	else if(def<0.01)
 	{
 		widget->setDecimals(4);
 	}

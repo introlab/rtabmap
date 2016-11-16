@@ -2419,7 +2419,7 @@ void DatabaseViewer::update(int value,
 					{
 						if(!data.depthRaw().empty() && data.depthRaw().cols!=data.imageRaw().cols && data.imageRaw().cols)
 						{
-							labelCalib->setText(tr("%1 %2x%3 [%8x%9] fx=%4 fy=%5 cx=%6 cy=%7")
+							labelCalib->setText(tr("%1 %2x%3 [%8x%9] fx=%4 fy=%5 cx=%6 cy=%7 T=%10")
 									.arg(data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageWidth()>0?data.cameraModels()[0].imageWidth():data.imageRaw().cols/data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageHeight()>0?data.cameraModels()[0].imageHeight():data.imageRaw().rows)
@@ -2428,31 +2428,34 @@ void DatabaseViewer::update(int value,
 									.arg(data.cameraModels()[0].cx())
 									.arg(data.cameraModels()[0].cy())
 									.arg(data.depthRaw().cols/data.cameraModels().size())
-									.arg(data.depthRaw().rows));
+									.arg(data.depthRaw().rows)
+									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str()));
 						}
 						else
 						{
-							labelCalib->setText(tr("%1 %2x%3 fx=%4 fy=%5 cx=%6 cy=%7")
+							labelCalib->setText(tr("%1 %2x%3 fx=%4 fy=%5 cx=%6 cy=%7 T=%8")
 									.arg(data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageWidth()>0?data.cameraModels()[0].imageWidth():data.imageRaw().cols/data.cameraModels().size())
 									.arg(data.cameraModels()[0].imageHeight()>0?data.cameraModels()[0].imageHeight():data.imageRaw().rows)
 									.arg(data.cameraModels()[0].fx())
 									.arg(data.cameraModels()[0].fy())
 									.arg(data.cameraModels()[0].cx())
-									.arg(data.cameraModels()[0].cy()));
+									.arg(data.cameraModels()[0].cy())
+									.arg(data.cameraModels()[0].localTransform().prettyPrint().c_str()));
 						}
 					}
 					else
 					{
 						//stereo
-						labelCalib->setText(tr("%1x%2 fx=%3 fy=%4 cx=%5 cy=%6 baseline=%7m")
+						labelCalib->setText(tr("%1x%2 fx=%3 fy=%4 cx=%5 cy=%6 baseline=%7m T=%8")
 									.arg(data.stereoCameraModel().left().imageWidth()>0?data.stereoCameraModel().left().imageWidth():data.imageRaw().cols)
 									.arg(data.stereoCameraModel().left().imageHeight()>0?data.stereoCameraModel().left().imageHeight():data.imageRaw().rows)
 									.arg(data.stereoCameraModel().left().fx())
 									.arg(data.stereoCameraModel().left().fy())
 									.arg(data.stereoCameraModel().left().cx())
 									.arg(data.stereoCameraModel().left().cy())
-									.arg(data.stereoCameraModel().baseline()));
+									.arg(data.stereoCameraModel().baseline())
+									.arg(data.stereoCameraModel().localTransform().prettyPrint().c_str()));
 					}
 
 				}
