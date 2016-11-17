@@ -733,8 +733,8 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 					if(addParameter)
 					{
 						key = oldIter->second.second;
-						UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
-								oldIter->first.c_str(), oldIter->second.second.c_str(), iter->second);
+						UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s, default=%s).",
+								oldIter->first.c_str(), oldIter->second.second.c_str(), iter->second, Parameters::getDefaultParameters().at(oldIter->second.second).c_str());
 					}
 					else if(oldIter->second.second.empty())
 					{
@@ -743,8 +743,8 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 					}
 					else
 					{
-						UWARN("Parameter \"%s\" doesn't exist anymore, you may want to use this similar parameter \"%s\":\"%s\".",
-									oldIter->first.c_str(), oldIter->second.second.c_str(), Parameters::getDescription(oldIter->second.second).c_str());
+						UWARN("Parameter \"%s\" (value=%s) doesn't exist anymore, you may want to use this similar parameter \"%s (default=%s): %s\".",
+									oldIter->first.c_str(), iter->second, oldIter->second.second.c_str(), Parameters::getDefaultParameters().at(oldIter->second.second).c_str(), Parameters::getDescription(oldIter->second.second).c_str());
 					}
 
 				}

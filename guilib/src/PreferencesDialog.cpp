@@ -1819,112 +1819,54 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 		QMessageBox::information(this, tr("INI file doesn't exist..."), tr("The configuration file \"%1\" does not exist, it will be created with default parameters.").arg(path));
 	}
 
-	QSettings settings(path, QSettings::IniFormat);
+	ParametersMap parameters;
+	Parameters::readINI(path.toStdString(), parameters);
 
-
-	settings.beginGroup("Core");
-
-	// Compare version in ini with the current RTAB-Map version
-	QStringList version = settings.value("Version", "").toString().split('.');
-	if(version.size() == 3)
-	{
-		if(!RTABMAP_VERSION_COMPARE(version[0].toInt(), version[1].toInt(), version[2].toInt()))
-		{
-			if(path.contains(".rtabmap"))
-			{
-				UWARN("Version in the config file \"%s\" is more recent (\"%s\") than "
-					   "current RTAB-Map version used (\"%s\"). The config file will be upgraded "
-					   "to new version.",
-					   path.toStdString().c_str(),
-					   settings.value("Version", "").toString().toStdString().c_str(),
-					   RTABMAP_VERSION);
-			}
-			else
-			{
-				UERROR("Version in the config file \"%s\" is more recent (\"%s\") than "
-					   "current RTAB-Map version used (\"%s\"). New parameters (if there are some) will "
-					   "be ignored.",
-					   path.toStdString().c_str(),
-					   settings.value("Version", "").toString().toStdString().c_str(),
-					   RTABMAP_VERSION);
-			}
-		}
-	}
-
-	QStringList keys = settings.allKeys();
-	// Get profile
-	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
 	for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
 	{
-		QString key(iter->first.c_str());
-		QString value = settings.value(key, "").toString();
-		if(value.isEmpty())
+		std::string value = iter->second;
+		if(iter->first.compare(Parameters::kRtabmapWorkingDirectory()) == 0)
 		{
-			// look for old parameter name
-			rtabmap::ParametersMap::const_iterator oldIter = Parameters::getBackwardCompatibilityMap().find(iter->first);
-			if(oldIter!=Parameters::getBackwardCompatibilityMap().end())
+			// The directory should exist if not the default one
+			if(!QDir(value.c_str()).exists() && value.compare(Parameters::createDefaultWorkingDirectory().c_str()) != 0)
 			{
-				value = settings.value(QString(oldIter->second.c_str()), "").toString();
-				if(!value.isEmpty())
+				if(QDir(this->getWorkingDirectory().toStdString().c_str()).exists())
 				{
-					UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s).",
-							oldIter->second.c_str(), oldIter->first.c_str(), value.toStdString().c_str());
+					UWARN("Reading config: Not existing working directory \"%s\". Keeping old one (\"%s\").",
+						value.c_str(),
+						this->getWorkingDirectory().toStdString().c_str());
+					value = this->getWorkingDirectory().toStdString();
+				}
+				else
+				{
+					std::string defaultWorkingDir = Parameters::createDefaultWorkingDirectory();
+					UWARN("Reading config: Not existing working directory \"%s\". Using default one (\"%s\").",
+						value.c_str(),
+						defaultWorkingDir.c_str());
+					value = defaultWorkingDir;
 				}
 			}
 		}
-
-		if(!value.isEmpty())
-		{
-			if(key.toStdString().compare(Parameters::kRtabmapWorkingDirectory()) == 0)
-			{
-				// The directory should exist if not the default one
-				if(!QDir(value).exists() && value.compare(Parameters::createDefaultWorkingDirectory().c_str()) != 0)
-				{
-					if(QDir(this->getWorkingDirectory().toStdString().c_str()).exists())
-					{
-						UWARN("Reading config: Not existing working directory \"%s\". Keeping old one (\"%s\").",
-							value.toStdString().c_str(),
-							this->getWorkingDirectory().toStdString().c_str());
-						value = this->getWorkingDirectory();
-					}
-					else
-					{
-						UWARN("Reading config: Not existing working directory \"%s\". Using default one (\"%s\").",
-							value.toStdString().c_str(),
-							(*iter).second.c_str());
-						value = (*iter).second.c_str();
-					}
-				}
-			}
-			this->setParameter(key.toStdString(), value.toStdString());
-		}
-		else
-		{
-			// Add information about the working directory if not in the config file
-			if(key.toStdString().compare(Parameters::kRtabmapWorkingDirectory()) == 0)
-			{
-				if(!_initialized)
-				{
-					QMessageBox::information(this,
-							tr("Working directory"),
-							tr("RTAB-Map needs a working directory to put the database.\n\n"
-							   "By default, the directory \"%1\" is used.\n\n"
-							   "The working directory can be changed any time in the "
-							   "preferences menu.").arg(
-									   Parameters::createDefaultWorkingDirectory().c_str()));
-				}
-				this->setParameter(key.toStdString(), Parameters::createDefaultWorkingDirectory());
-				UDEBUG("key.toStdString()=%s", Parameters::createDefaultWorkingDirectory().c_str());
-			}
-			else
-			{
-				// Use the default value if the key doesn't exist yet
-				this->setParameter(key.toStdString(), (*iter).second);
-				UDEBUG("key.toStdString()=%s", key.toStdString().c_str());
-			}
-		}
+		this->setParameter(iter->first, value);
 	}
-	settings.endGroup(); // Core
+
+	// Add information about the working directory if not in the config file
+	if(parameters.find(Parameters::kRtabmapWorkingDirectory()) == parameters.end())
+	{
+		if(!_initialized)
+		{
+			QMessageBox::information(this,
+					tr("Working directory"),
+					tr("RTAB-Map needs a working directory to put the database.\n\n"
+					   "By default, the directory \"%1\" is used.\n\n"
+					   "The working directory can be changed any time in the "
+					   "preferences menu.").arg(
+							   Parameters::createDefaultWorkingDirectory().c_str()));
+		}
+		this->setParameter(Parameters::kRtabmapWorkingDirectory(), Parameters::createDefaultWorkingDirectory());
+		UDEBUG("key.toStdString()=%s", Parameters::createDefaultWorkingDirectory().c_str());
+	}
+
 	return true;
 }
 
