@@ -428,28 +428,42 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
 	if(decimation < 0)
 	{
-		if(imageRgb.rows % decimation != 0)
+		if(imageRgb.rows % decimation != 0 || imageRgb.cols % decimation != 0)
 		{
-			UERROR("Decimation is not valid for current image size (imageRgb.rows=%d decimation=%d). The cloud is not created.", imageRgb.rows, decimation);
-			return cloud;
-		}
-		if(imageRgb.cols % decimation != 0)
-		{
-			UERROR("Decimation is not valid for current image size (imageRgb.cols=%d decimation=%d). The cloud is not created.", imageRgb.cols, decimation);
-			return cloud;
+			int oldDecimation = decimation;
+			while(decimation <= -1)
+			{
+				if(imageRgb.rows % decimation == 0 && imageRgb.cols % decimation == 0)
+				{
+					break;
+				}
+				++decimation;
+			}
+
+			if(imageRgb.rows % oldDecimation != 0 || imageRgb.cols % oldDecimation != 0)
+			{
+				UWARN("Decimation (%d) is not valid for current image size (rgb=%dx%d). Highest compatible decimation used=%d.", oldDecimation, imageRgb.cols, imageRgb.rows, decimation);
+			}
 		}
 	}
 	else
 	{
-		if(imageDepthIn.rows % decimation != 0)
+		if(imageDepthIn.rows % decimation != 0 || imageDepthIn.cols % decimation != 0)
 		{
-			UERROR("Decimation is not valid for current image size (imageDepth.rows=%d decimation=%d). The cloud is not created.", imageDepthIn.rows, decimation);
-			return cloud;
-		}
-		if(imageDepthIn.cols % decimation != 0)
-		{
-			UERROR("Decimation is not valid for current image size (imageDepth.cols=%d decimation=%d). The cloud is not created.", imageDepthIn.cols, decimation);
-			return cloud;
+			int oldDecimation = decimation;
+			while(decimation >= 1)
+			{
+				if(imageDepthIn.rows % decimation == 0 && imageDepthIn.cols % decimation == 0)
+				{
+					break;
+				}
+				--decimation;
+			}
+
+			if(imageDepthIn.rows % oldDecimation != 0 || imageDepthIn.cols % oldDecimation != 0)
+			{
+				UWARN("Decimation (%d) is not valid for current image size (depth=%dx%d). Highest compatible decimation used=%d.", oldDecimation, imageDepthIn.cols, imageDepthIn.rows, decimation);
+			}
 		}
 	}
 
