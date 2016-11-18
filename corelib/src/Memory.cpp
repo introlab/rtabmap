@@ -1290,13 +1290,15 @@ void Memory::clear()
 		UDEBUG("Adding statistics after run...");
 		if(_memoryChanged)
 		{
+			ParametersMap parameters = Parameters::getDefaultParameters();
+			uInsert(parameters, parameters_);
 			UDEBUG("");
 			_dbDriver->addInfoAfterRun(memSize,
 					_lastSignature?_lastSignature->id():0,
 					UProcessInfo::getMemoryUsage(),
 					_dbDriver->getMemoryUsed(),
 					(int)_vwd->getVisualWords().size(),
-					parameters_);
+					parameters);
 		}
 	}
 	UDEBUG("");
