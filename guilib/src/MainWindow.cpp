@@ -3943,6 +3943,12 @@ void MainWindow::openDatabase(const QString & path)
 
 			if(parameters.size())
 			{
+				//backward compatibility with databases not saving all parameters, use default for not saved ones
+				for(ParametersMap::const_iterator iter=Parameters::getDefaultParameters().begin(); iter!=Parameters::getDefaultParameters().end(); ++iter)
+				{
+					parameters.insert(*iter);
+				}
+
 				ParametersMap currentParameters = _preferencesDialog->getAllParameters();
 				ParametersMap differentParameters;
 				for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
