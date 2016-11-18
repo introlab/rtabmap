@@ -474,7 +474,8 @@ int RTABMapApp::Render()
 						uInsert(bufferedSensorData, std::make_pair(jter->first, jter->second.sensorData()));
 						uInsert(rawPoses_, std::make_pair(jter->first, jter->second.getPose()));
 					}
-					else if(!jter->second.sensorData().imageCompressed().empty() &&
+					else if(totalPoints_ == 0 &&
+							!jter->second.sensorData().imageCompressed().empty() &&
 							!jter->second.sensorData().depthOrRightCompressed().empty())
 					{
 						// uncompress
@@ -483,6 +484,8 @@ int RTABMapApp::Render()
 						data.uncompressData(&tmpA, &tmpB);
 						uInsert(bufferedSensorData, std::make_pair(jter->first, data));
 						uInsert(rawPoses_, std::make_pair(jter->first, jter->second.getPose()));
+
+						LOGI("Detecting that we are loading a database, so do some post-processing...");
 						notifyDataLoaded = true;
 					}
 				}
@@ -952,7 +955,7 @@ int RTABMapApp::setMappingParameter(const std::string & key, const std::string &
 {
 	if(rtabmap::Parameters::getDefaultParameters().find(key) != rtabmap::Parameters::getDefaultParameters().end())
 	{
-		LOGI(uFormat("Setting param \"%s\"  to \"\"", key.c_str(), value.c_str()).c_str());
+		LOGI(uFormat("Setting param \"%s\"  to \"%s\"", key.c_str(), value.c_str()).c_str());
 		uInsert(mappingParameters_, rtabmap::ParametersPair(key, value));
 		UEventsManager::post(new rtabmap::ParamEvent(mappingParameters_));
 		return 0;
