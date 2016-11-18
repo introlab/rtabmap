@@ -2,7 +2,7 @@
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.introlab.rtabmap"
-        android:versionCode="18"
+        android:versionCode="19"
         android:versionName="@RTABMAP_VERSION@">
 
     <uses-permission android:name="android.permission.CAMERA" />

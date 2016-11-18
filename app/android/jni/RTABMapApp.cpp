@@ -373,6 +373,7 @@ bool RTABMapApp::smoothMesh(int id, Mesh & mesh)
 int RTABMapApp::Render()
 {
 	UTimer fpsTime;
+	bool notifyCameraStarted = false;
 	bool notifyDataLoaded = false;
 	boost::mutex::scoped_lock  lock(renderingMutex_);
 
@@ -413,7 +414,7 @@ int RTABMapApp::Render()
 			{
 				cv::Mat compressed = iter->second.texture;
 				iter->second.texture = rtabmap::uncompressImage(iter->second.texture);
-				main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose*rtabmap_device_T_opengl_device);
+				main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose);
 				main_scene_.setCloudVisible(iter->first, iter->second.visible);
 				iter->second.texture = compressed;
 			}
@@ -436,7 +437,7 @@ int RTABMapApp::Render()
 		main_scene_.SetCameraPose(opengl_world_T_tango_world*pose);
 		if(!camera_->isRunning() && cameraJustInitialized_)
 		{
-			notifyDataLoaded = true;
+			notifyCameraStarted = true;
 			cameraJustInitialized_ = false;
 		}
 	}
@@ -450,7 +451,7 @@ int RTABMapApp::Render()
 			odomEvents_.clear();
 			if(cameraJustInitialized_)
 			{
-				notifyDataLoaded = true;
+				notifyCameraStarted = true;
 				cameraJustInitialized_ = false;
 			}
 		}
@@ -797,7 +798,7 @@ int RTABMapApp::Render()
 		UEventsManager::post(new PostRenderEvent(rtabmapEvents.back()));
     }
 
-    return notifyDataLoaded?1:0;
+    return notifyDataLoaded||notifyCameraStarted?1:0;
 }
 
 void RTABMapApp::SetCameraType(
