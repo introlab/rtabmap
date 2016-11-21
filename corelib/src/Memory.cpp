@@ -309,7 +309,13 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 	UINFO("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved?1:0, postInitClosingEvents?1:0);
 	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
 
-	if(!databaseSaved || (!_memoryChanged && !_linksChanged))
+	bool databaseNameChanged = false;
+	if(databaseSaved)
+	{
+		databaseNameChanged = ouputDatabasePath.size() && _dbDriver->getUrl().size() && _dbDriver->getUrl().compare(ouputDatabasePath) != 0?true:false;
+	}
+
+	if(!databaseSaved || (!_memoryChanged && !_linksChanged && !databaseNameChanged))
 	{
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("No changes added to database.")));
 
@@ -317,7 +323,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 		if(_dbDriver)
 		{
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
-			_dbDriver->closeConnection(false);
+			_dbDriver->closeConnection(false, ouputDatabasePath);
 			delete _dbDriver;
 			_dbDriver = 0;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));

@@ -1082,14 +1082,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 				        								notificationManager.notify(0, n); 
 				        							}
+				                		    		mOpenedDatabasePath = newDatabasePath;
 					                		    	mProgressDialog.dismiss();
 			                		    		}
 			                		    	});
 			                		    } 
 			                		});
 					        	    saveThread.start();
-									
-									mOpenedDatabasePath = newDatabasePath;
 								}
 			                })
 			                .setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -1145,14 +1144,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 		        								notificationManager.notify(0, n); 
 		        							}
+		                		    		mOpenedDatabasePath = newDatabasePath;
 			                		    	mProgressDialog.dismiss();
 	                		    		}
 	                		    	});
 	                		    } 
 	                		});
 			        	    saveThread.start();
-			        	    
-			        	    mOpenedDatabasePath = newDatabasePath;
 					  }
 				  }
 			  }
