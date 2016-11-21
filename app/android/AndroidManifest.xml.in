@@ -2,7 +2,7 @@
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.introlab.rtabmap"
-        android:versionCode="20"
+        android:versionCode="21"
         android:versionName="@RTABMAP_VERSION@">
 
     <uses-permission android:name="android.permission.CAMERA" />
@@ -14,7 +14,7 @@
     <uses-library android:name="com.projecttango.libtango_device2" android:required="true" />
 
     <!-- This is the platform API where NativeActivity was introduced. -->
-    <uses-sdk android:minSdkVersion="18" />
+    <uses-sdk android:minSdkVersion="17" />
 
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 
