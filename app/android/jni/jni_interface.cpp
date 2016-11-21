@@ -192,6 +192,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setFullResolution(
 	return app.setFullResolution(enabled);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setAppendMode(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setAppendMode(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setDataRecorderMode(
 		JNIEnv*, jobject, bool enabled)
 {
@@ -234,9 +240,11 @@ Java_com_introlab_rtabmap_RTABMapLib_resetMapping(
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_save(
-		JNIEnv* env, jobject)
+		JNIEnv* env, jobject, jstring databasePath)
 {
-	return app.save();
+	std::string databasePathC;
+	GetJStringContent(env,databasePath,databasePathC);
+	return app.save(databasePathC);
 }
 
 JNIEXPORT bool JNICALL

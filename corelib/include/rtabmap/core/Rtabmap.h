@@ -67,7 +67,14 @@ public:
 	void init(const ParametersMap & parameters, const std::string & databasePath = "");
 	void init(const std::string & configFile = "", const std::string & databasePath = "");
 
-	void close(bool databaseSaved = true);
+	/**
+	 * Close rtabmap. This will delete rtabmap object if set.
+	 * @param databaseSaved true=database saved, false=database discarded.
+	 * @param databasePath output database file name, ignored if
+	 *                     Db/Sqlite3InMemory=false (opened database is
+	 *                     then overwritten).
+	 */
+	void close(bool databaseSaved = true, const std::string & ouputDatabasePath = "");
 
 	const std::string & getWorkingDir() const {return _wDir;}
 	bool isRGBDMode() const { return _rgbdSlamMode; }

@@ -68,6 +68,7 @@ public class RTABMapLib
     public static native void setGridVisible(boolean visible);
     public static native void setAutoExposure(boolean enabled);
     public static native void setFullResolution(boolean enabled);
+    public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);
     public static native void setMeshAngleTolerance(float value);
@@ -75,7 +76,7 @@ public class RTABMapLib
     public static native int setMappingParameter(String key, String value);
 
     public static native void resetMapping();
-    public static native void save();
+    public static native void save(String outputDatabasePath);
     public static native boolean exportMesh(String filePath);
     public static native int postProcessing(int approach);
     

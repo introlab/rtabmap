@@ -80,7 +80,7 @@ public:
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
 			bool postInitClosingEvents = false);
-	void close(bool databaseSaved = true, bool postInitClosingEvents = false);
+	void close(bool databaseSaved = true, bool postInitClosingEvents = false, const std::string & ouputDatabasePath = "");
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
 	int incrementMapId(std::map<int, int> * reducedIds = 0);

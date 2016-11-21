@@ -82,8 +82,14 @@ public:
 	void setDataBufferSize(unsigned int bufferSize);
 	void createIntermediateNodes(bool enabled);
 
-	// this will delete rtabmap object if set
-	void close(bool databaseSaved);
+	/**
+	 * Close rtabmap. This will delete rtabmap object if set.
+	 * @param databaseSaved true=database saved, false=database discarded.
+	 * @param databasePath output database file name, ignored if
+	 *                     Db/Sqlite3InMemory=false (opened database is
+	 *                     then overwritten).
+	 */
+	void close(bool databaseSaved, const std::string & databasePath = "");
 
 protected:
 	virtual void handleEvent(UEvent * anEvent);

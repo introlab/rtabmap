@@ -14,7 +14,7 @@
     <uses-library android:name="com.projecttango.libtango_device2" android:required="true" />
 
     <!-- This is the platform API where NativeActivity was introduced. -->
-    <uses-sdk android:minSdkVersion="17" />
+    <uses-sdk android:minSdkVersion="18" />
 
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 

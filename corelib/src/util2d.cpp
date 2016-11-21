@@ -1742,15 +1742,15 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 	UDEBUG("Begin: depth float=%d %dx%d sigmaS=%f sigmaR=%f earlDivision=%d",
 			depth.type()==CV_32FC1?1:0, depth.cols, depth.rows, sigmaS, sigmaR, earlyDivision?1:0);
 
-	cv::Mat output = depth.clone();
+	cv::Mat output = cv::Mat::zeros(depth.size(), CV_32FC1);
 
 	float base_max = -std::numeric_limits<float>::max ();
 	float base_min = std::numeric_limits<float>::max ();
 	bool found_finite = false;
-	for (int x = 0; x < output.cols; ++x)
-		for (int y = 0; y < output.rows; ++y)
+	for (int x = 0; x < depth.cols; ++x)
+		for (int y = 0; y < depth.rows; ++y)
 		{
-			float z = depth.type()==CV_32FC1?output.at<float>(y, x):float(output.at<unsigned short>(y, x))/1000.0f;
+			float z = depth.type()==CV_32FC1?depth.at<float>(y, x):float(depth.at<unsigned short>(y, x))/1000.0f;
 			if (z > 0.0f && uIsFinite(z))
 			{
 				if (base_max < z)
@@ -1783,7 +1783,7 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 		const size_t small_x = static_cast<size_t> (static_cast<float> (x) / sigmaS + 0.5f) + padding_xy;
 		for (int y = 0; y < depth.rows; ++y)
 		{
-			float v = depth.type()==CV_32FC1?output.at<float>(y,x):float(output.at<unsigned short>(y,x))/1000.0f;
+			float v = depth.type()==CV_32FC1?depth.at<float>(y,x):float(depth.at<unsigned short>(y,x))/1000.0f;
 			if((v > 0 && uIsFinite(v)))
 			{
 				float z = v - base_min;
@@ -1832,7 +1832,7 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 	for (int x = 0; x < depth.cols; ++x)
 	  for (int y = 0; y < depth.rows; ++y)
 	  {
-		  float z = depth.type()==CV_32FC1?output.at<float>(y,x):float(output.at<unsigned short>(y,x))/1000.0f;
+		  float z = depth.type()==CV_32FC1?depth.at<float>(y,x):float(depth.at<unsigned short>(y,x))/1000.0f;
 		  if(z > 0 && uIsFinite(z))
 		  {
 			  z -= base_min;
@@ -1844,19 +1844,11 @@ cv::Mat fastBilateralFiltering(const cv::Mat & depth, float sigmaS, float sigmaR
 			  {
 				  v = 0.0f;
 			  }
-			  if(depth.type()==CV_32FC1)
+			  if(depth.type()==CV_16UC1 && v>65.5350f)
 			  {
-				  output.at<float>(y,x) = v;
+				  v = 65.5350f;
 			  }
-			  else
-			  {
-				  v*=1000.0f;
-				  if(v>65535.0f)
-				  {
-					  v = 65535.0f;
-				  }
-				  output.at<unsigned short>(y,x) = v;
-			  }
+			  output.at<float>(y,x) = v;
 		  }
 	  }
 

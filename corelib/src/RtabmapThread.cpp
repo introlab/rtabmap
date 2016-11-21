@@ -117,12 +117,12 @@ void RtabmapThread::createIntermediateNodes(bool enabled)
 	_createIntermediateNodes = enabled;
 }
 
-void RtabmapThread::close(bool databaseSaved)
+void RtabmapThread::close(bool databaseSaved, const std::string & ouputDatabasePath)
 {
 	this->join(true);
 	if(_rtabmap)
 	{
-		_rtabmap->close(databaseSaved);
+		_rtabmap->close(databaseSaved, ouputDatabasePath);
 		delete _rtabmap;
 		_rtabmap = 0;
 	}
@@ -241,7 +241,7 @@ void RtabmapThread::mainLoop()
 			UWARN("Closing... %d data still buffered! They will be cleared.", (int)_dataBuffer.size());
 			this->clearBufferedData();
 		}
-		_rtabmap->close(uStr2Bool(parameters.at("saved")));
+		_rtabmap->close(uStr2Bool(parameters.at("saved")), parameters.at("outputPath"));
 		break;
 	case kStateDumpingMemory:
 		_rtabmap->dumpData();
@@ -409,6 +409,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 				UASSERT(rtabmapEvent->value1().isUndef() || rtabmapEvent->value1().isBool());
 				ParametersMap param;
 				param.insert(ParametersPair("saved", uBool2Str(rtabmapEvent->value1().isUndef() || rtabmapEvent->value1().toBool())));
+				param.insert(ParametersPair("outputPath", rtabmapEvent->value2().toStr()));
 				pushNewState(kStateClose, param);
 			}
 			else if(cmd == RtabmapEventCmd::kCmdResetMemory)

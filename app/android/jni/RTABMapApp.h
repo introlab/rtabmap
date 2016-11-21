@@ -122,6 +122,7 @@ class RTABMapApp : public UEventsHandler {
   void setGridVisible(bool visible);
   void setAutoExposure(bool enabled);
   void setFullResolution(bool enabled);
+  void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
   void setMeshAngleTolerance(float value);
@@ -129,7 +130,7 @@ class RTABMapApp : public UEventsHandler {
   int setMappingParameter(const std::string & key, const std::string & value);
 
   void resetMapping();
-  void save();
+  void save(const std::string & databasePath);
   bool exportMesh(const std::string & filePath);
   int postProcessing(int approach);
 
@@ -154,6 +155,7 @@ class RTABMapApp : public UEventsHandler {
   bool trajectoryMode_;
   bool autoExposure_;
   bool fullResolution_;
+  bool appendMode_;
   float maxCloudDepth_;
   int meshTrianglePix_;
   float meshAngleToleranceDeg_;

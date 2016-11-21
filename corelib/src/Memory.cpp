@@ -304,7 +304,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	return success;
 }
 
-void Memory::close(bool databaseSaved, bool postInitClosingEvents)
+void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::string & ouputDatabasePath)
 {
 	UINFO("databaseSaved=%d, postInitClosingEvents=%d", databaseSaved?1:0, postInitClosingEvents?1:0);
 	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
@@ -342,7 +342,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents)
 			_dbDriver->emptyTrashes();
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Saving memory, done!"));
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Closing database \"%s\"...", _dbDriver->getUrl().c_str())));
-			_dbDriver->closeConnection();
+			_dbDriver->closeConnection(true, ouputDatabasePath);
 			delete _dbDriver;
 			_dbDriver = 0;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database, done!"));

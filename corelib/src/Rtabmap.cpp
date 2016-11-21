@@ -320,7 +320,7 @@ void Rtabmap::init(const std::string & configFile, const std::string & databaseP
 	this->init(param, databasePath);
 }
 
-void Rtabmap::close(bool databaseSaved)
+void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 {
 	UINFO("databaseSaved=%d", databaseSaved?1:0);
 	_highestHypothesis = std::make_pair(0,0.0f);
@@ -354,7 +354,7 @@ void Rtabmap::close(bool databaseSaved)
 	}
 	if(_memory)
 	{
-		_memory->close(databaseSaved, true);
+		_memory->close(databaseSaved, true, ouputDatabasePath);
 		delete _memory;
 		_memory = 0;
 	}
@@ -1024,7 +1024,7 @@ bool Rtabmap::process(
 				{
 					UINFO("Odometry refining: guess = %s", guess.prettyPrint().c_str());
 					RegistrationInfo info;
-					Transform t = _memory->computeTransform(oldId, signature->id(), guess, &info);
+					Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &info);
 					if(!t.isNull())
 					{
 						UINFO("Odometry refining: update neighbor link (%d->%d, variance=%f) from %s to %s",

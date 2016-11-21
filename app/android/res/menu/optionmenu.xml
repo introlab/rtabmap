@@ -65,6 +65,7 @@
 	           <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
 	           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
 	           <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
+	           <item android:id="@+id/append" android:checked="true" android:title="Append Mode" />
 	           <item android:id="@+id/nodes_filtering" android:checked="false" android:title="Nodes Filtering" />
 	           <item android:id="@+id/drift_correction" android:checked="false" android:title="Drift Correction" />
 	           <item android:id="@+id/resolution" android:checked="false" android:title="HD Mode" />

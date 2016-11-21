@@ -390,7 +390,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 
 	return true;
 }
-void DBDriverSqlite3::disconnectDatabaseQuery(bool save)
+void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & outputUrl)
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -411,10 +411,22 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save)
 		{
 			UTimer timer;
 			timer.start();
-			UINFO("Saving database to %s ...",  this->getUrl().c_str());
-			rc = loadOrSaveDb(_ppDb, this->getUrl(), 1); // Save memory to file
+			std::string outputFile = this->getUrl();
+			if(!outputUrl.empty())
+			{
+				outputFile = outputUrl;
+			}
+			UINFO("Saving database to %s ...",  outputFile.c_str());
+			rc = loadOrSaveDb(_ppDb, outputFile, 1); // Save memory to file
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 			ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
+		}
+		else if(save && !outputUrl.empty() && outputUrl.compare(this->getUrl()) != 0)
+		{
+			UWARN("Output database path (%s) is different than the opened database "
+					"path (%s). Exporting to a different path is only available "
+					"when database is in memory (%s=true). Opened database path is overwritten.",
+					outputUrl.c_str(), this->getUrl().c_str(), Parameters::kDbSqlite3InMemory().c_str());
 		}
 
 		// Then close (delete) the database connection
