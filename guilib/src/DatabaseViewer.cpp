@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QDesktopWidget>
 #include <QGraphicsLineItem>
 #include <QtGui/QCloseEvent>
 #include <QGraphicsOpacityEffect>
@@ -1735,13 +1736,15 @@ void DatabaseViewer::view3DMap()
 				QDialog * window = new QDialog(this, Qt::Window);
 				window->setModal(this->isModal());
 				window->setWindowTitle(tr("3D Map"));
-				window->setMinimumWidth(800);
-				window->setMinimumHeight(600);
+				window->setMinimumWidth(120);
+				window->setMinimumHeight(90);
+				window->resize(QDesktopWidget().availableGeometry(this).size() * 0.7);
 
 				rtabmap::CloudViewer * viewer = new rtabmap::CloudViewer(window);
 
 				QVBoxLayout *layout = new QVBoxLayout();
 				layout->addWidget(viewer);
+				layout->setContentsMargins(0,0,0,0);
 				viewer->setCameraLockZ(false);
 				window->setLayout(layout);
 				connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));

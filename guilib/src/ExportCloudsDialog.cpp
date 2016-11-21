@@ -57,6 +57,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QDesktopWidget>
 
 namespace rtabmap {
 
@@ -524,8 +525,9 @@ void ExportCloudsDialog::viewClouds(
 		{
 			window->setWindowTitle(tr("Clouds (%1 nodes)").arg(clouds.size()));
 		}
-		window->setMinimumWidth(800);
-		window->setMinimumHeight(600);
+		window->setMinimumWidth(120);
+		window->setMinimumHeight(90);
+		window->resize(QDesktopWidget().availableGeometry(this).size() * 0.7);
 
 		CloudViewer * viewer = new CloudViewer(window);
 		viewer->setCameraLockZ(false);
@@ -536,6 +538,7 @@ void ExportCloudsDialog::viewClouds(
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
+		layout->setContentsMargins(0,0,0,0);
 		window->setLayout(layout);
 		connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
 
