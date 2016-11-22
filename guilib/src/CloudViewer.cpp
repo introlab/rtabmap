@@ -52,7 +52,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkGlyph3D.h>
 #include <vtkGlyph3DMapper.h>
 #include <vtkLookupTable.h>
-#if PCL_VERSION_COMPARE(<, 1, 7, 2)
 #include <vtkTextureUnitManager.h>
 #include <vtkJPEGReader.h>
 #include <vtkBMPReader.h>
@@ -60,7 +59,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkPNGReader.h>
 #include <vtkTIFFReader.h>
 #include <vtkOpenGLRenderWindow.h>
-#endif
 
 #ifdef RTABMAP_OCTOMAP
 #include <rtabmap/core/OctoMap.h>
@@ -792,7 +790,6 @@ void CloudViewer::removeOctomap()
 #endif
 }
 
-#if PCL_VERSION_COMPARE(<, 1, 7, 2)
 // Copied from PCL 1.8
 int textureFromTexMaterial (const pcl::TexMaterial& tex_mat,
                             vtkTexture* vtk_tex)
@@ -913,20 +910,13 @@ int textureFromTexMaterial (const pcl::TexMaterial& tex_mat,
 
   return (0);
 }
-#endif
 
 bool CloudViewer::addTextureMesh (
 	   const pcl::TextureMesh &mesh,
 	   const std::string &id,
 	   int viewport)
 {
-#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
-	if(!_visualizer->addTextureMesh(mesh, id, viewport))
-	{
-		return false;
-	}
-#else
-	// Copied from PCL 1.8
+	// Copied from PCL 1.8, modified to ignore vertex color
 
   pcl::visualization::CloudActorMap::iterator am_it = _visualizer->getCloudActorMap()->find (id);
   if (am_it != _visualizer->getCloudActorMap()->end ())
@@ -982,8 +972,8 @@ bool CloudViewer::addTextureMesh (
   vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New ();
   bool has_color = false;
   vtkSmartPointer<vtkMatrix4x4> transformation = vtkSmartPointer<vtkMatrix4x4>::New ();
-  if ((pcl::getFieldIndex(mesh.cloud, "rgba") != -1) ||
-      (pcl::getFieldIndex(mesh.cloud, "rgb") != -1))
+  if (0)//(pcl::getFieldIndex(mesh.cloud, "rgba") != -1) ||
+      //(pcl::getFieldIndex(mesh.cloud, "rgb") != -1))
   {
     pcl::PointCloud<pcl::PointXYZRGB> cloud;
     pcl::fromPCLPointCloud2(mesh.cloud, cloud);
@@ -1159,8 +1149,6 @@ bool CloudViewer::addTextureMesh (
 
   // Save the viewpoint transformation matrix to the global actor map
   (*_visualizer->getCloudActorMap())[id].viewpoint_transformation_ = transformation;
-
-#endif
 
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
