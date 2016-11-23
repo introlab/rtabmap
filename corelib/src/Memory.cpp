@@ -151,7 +151,7 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Closing database connection, done!"));
 	}
 
-	if(_dbDriver == 0 && !dbUrl.empty())
+	if(_dbDriver == 0)
 	{
 		_dbDriver = DBDriver::create(parameters);
 	}
@@ -161,11 +161,11 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 	{
 		_dbDriver->setTimestampUpdateEnabled(true); // make sure that timestamp update is enabled (may be disabled above)
 		success = false;
-		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + "..."));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\"..."));
 		if(_dbDriver->openConnection(dbUrl, dbOverwritten))
 		{
 			success = true;
-			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database ") + dbUrl + ", done!"));
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\", done!"));
 
 			// Load the last working memory...
 			std::list<Signature*> dbSignatures;

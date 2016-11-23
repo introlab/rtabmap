@@ -284,7 +284,7 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	}
 	else
 	{
-		UWARN("Using empty database. Mapping session will not be saved.");
+		UWARN("Using empty database. Mapping session will not be saved unless it is closed with an output database path.");
 	}
 
 	bool newDatabase = _databasePath.empty() || !UFile::exists(_databasePath);

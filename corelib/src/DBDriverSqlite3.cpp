@@ -314,24 +314,29 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	// Open a database connection
 	_ppDb = 0;
 
-	if(url.empty())
-	{
-		UERROR("url is empty...");
-		return false;
-	}
-
 	int rc = SQLITE_OK;
-	bool dbFileExist = UFile::exists(url.c_str());
-	if(dbFileExist && overwritten)
+	bool dbFileExist = false;
+	if(!url.empty())
 	{
-		UINFO("Deleting database %s...", url.c_str());
-		UASSERT(UFile::erase(url.c_str()) == 0);
-		dbFileExist = false;
+		dbFileExist = UFile::exists(url.c_str());
+		if(dbFileExist && overwritten)
+		{
+			UINFO("Deleting database %s...", url.c_str());
+			UASSERT(UFile::erase(url.c_str()) == 0);
+			dbFileExist = false;
+		}
 	}
 
-	if(_dbInMemory)
+	if(_dbInMemory || url.empty())
 	{
-		ULOGGER_INFO("Using database \"%s\" in the memory.", url.c_str());
+		if(!url.empty())
+		{
+			ULOGGER_INFO("Using database \"%s\" in the memory.", url.c_str());
+		}
+		else
+		{
+			ULOGGER_INFO("Using empty database in the memory.");
+		}
 		rc = sqlite3_open_v2(":memory:", &_ppDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	}
 	else
@@ -364,7 +369,10 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 
 	if(!dbFileExist)
 	{
-		ULOGGER_INFO("Database \"%s\" doesn't exist, creating a new one...", url.c_str());
+		if(!url.empty())
+		{
+			ULOGGER_INFO("Database \"%s\" doesn't exist, creating a new one...", url.c_str());
+		}
 		// Create the database
 		std::string schema = DATABASESCHEMA_SQL;
 		schema = uHex2Str(schema);
@@ -407,7 +415,7 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 			}
 		}
 
-		if(save && _dbInMemory)
+		if(save && (_dbInMemory || this->getUrl().empty()))
 		{
 			UTimer timer;
 			timer.start();
@@ -416,10 +424,18 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 			{
 				outputFile = outputUrl;
 			}
-			UINFO("Saving database to %s ...",  outputFile.c_str());
-			rc = loadOrSaveDb(_ppDb, outputFile, 1); // Save memory to file
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
+			if(outputFile.empty())
+			{
+				UERROR("Database was initialized with an empty url (in memory). To save it "
+						"the output url should not be empty. The database is thus closed without being saved!");
+			}
+			else
+			{
+				UINFO("Saving database to %s ...",  outputFile.c_str());
+				rc = loadOrSaveDb(_ppDb, outputFile, 1); // Save memory to file
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
+			}
 		}
 		else if(save && !outputUrl.empty() && outputUrl.compare(this->getUrl()) != 0)
 		{

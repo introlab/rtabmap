@@ -52,7 +52,7 @@ class RTABMapApp : public UEventsHandler {
 
   void onCreate(JNIEnv* env, jobject caller_activity);
 
-  void openDatabase(const std::string & databasePath);
+  void openDatabase(const std::string & databasePath = "");
 
   bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
 

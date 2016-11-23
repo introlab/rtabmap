@@ -56,6 +56,13 @@ Java_com_introlab_rtabmap_RTABMapLib_onCreate(
 }
 
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_openEmptyDatabase(
+    JNIEnv* env, jobject)
+{
+	return app.openDatabase();
+}
+
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_openDatabase(
     JNIEnv* env, jobject, jstring databasePath)
 {

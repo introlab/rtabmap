@@ -1020,9 +1020,24 @@ void RTABMapApp::resetMapping()
 void RTABMapApp::save(const std::string & databasePath)
 {
 	rtabmapThread_->join(true);
+
+	if(dataRecorderMode_)
+	{
+		// to save mapping parameters in the database
+		dataRecorderMode_ = false;
+		rtabmap::ParametersMap parameters = getRtabmapParameters();
+		rtabmap_->parseParameters(parameters);
+		dataRecorderMode_ = true;
+	}
+
 	rtabmap_->close(true, databasePath);
-	rtabmap_->init(getRtabmapParameters(), databasePath);
+	rtabmap_->init(getRtabmapParameters(), dataRecorderMode_?"":databasePath);
+	if(dataRecorderMode_)
+	{
+		clearSceneOnNextRender_ = true;
+	}
 	rtabmapThread_->start();
+
 }
 
 bool RTABMapApp::exportMesh(const std::string & filePath)

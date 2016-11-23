@@ -86,7 +86,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   
   
   private String mOpenedDatabasePath = "";
-  private String mTempDatabasePath = "";
   private String mWorkingDirectory = "";
   
   private int mMaxDepthIndex = 5;
@@ -177,7 +176,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     }   
     
     mOpenedDatabasePath = "";
-    mTempDatabasePath = "";
     mWorkingDirectory = "";
     mTotalLoopClosures = 0;
     
@@ -187,13 +185,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	mWorkingDirectory = extStore.getAbsolutePath() + "/" + getString(R.string.app_name) + "/";
     	extStore = new File(mWorkingDirectory);
     	extStore.mkdirs();
-    	mTempDatabasePath = mWorkingDirectory + "rtabmap.tmp.db";
-    	extStore = new File(mTempDatabasePath);
-    	
-    	if(extStore.exists())
-    	{
-    		extStore.delete();
-    	}   	
     }
     else
     {
@@ -204,7 +195,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     }
     
     RTABMapLib.onCreate(this);
-    RTABMapLib.openDatabase(mTempDatabasePath);
+    RTABMapLib.openEmptyDatabase();
   }
   
   @Override
@@ -908,7 +899,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		        if(which >=0 && which < mUpdateRateValues.length)
 		        {
 		        	mParamUpdateRateHzIndex = which;
-			        if(RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", mUpdateRateValues[which]) != 0)
+			        if(RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", which == mUpdateRateValues.length-1?"0":mUpdateRateValues[which]) != 0)
 			        {
 			        	mToast.makeText(getActivity(), "Failed to set parameter \"Rtabmap/DetectionRate\"!", mToast.LENGTH_LONG).show();
 			        }
@@ -1082,7 +1073,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 				        								notificationManager.notify(0, n); 
 				        							}
-				                		    		mOpenedDatabasePath = newDatabasePath;
+				                		    		if(!mItemDataRecorderMode.isChecked())
+				                		    		{
+				                		    			mOpenedDatabasePath = newDatabasePath;
+				                		    		}
 					                		    	mProgressDialog.dismiss();
 			                		    		}
 			                		    	});
@@ -1144,7 +1138,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 		        								notificationManager.notify(0, n); 
 		        							}
-		                		    		mOpenedDatabasePath = newDatabasePath;
+		                		    		if(!mItemDataRecorderMode.isChecked())
+		                		    		{
+		                		    			mOpenedDatabasePath = newDatabasePath;
+		                		    		}
 			                		    	mProgressDialog.dismiss();
 	                		    		}
 	                		    	});
@@ -1180,7 +1177,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		  else
 		  {
 			  mOpenedDatabasePath = "";
-        	  RTABMapLib.openDatabase(mTempDatabasePath);
+        	  RTABMapLib.openEmptyDatabase();
 		  }
 		  mMapIsEmpty = true;
       }
@@ -1211,7 +1208,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
             	  RTABMapLib.setDataRecorderMode(mItemDataRecorderMode.isChecked());
             	  
             	  mOpenedDatabasePath = "";
-        		  RTABMapLib.openDatabase(mTempDatabasePath);
+        		  RTABMapLib.openEmptyDatabase();
         		  
         		  mItemOpen.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
     			  mItemPostProcessing.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
@@ -1437,12 +1434,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
                 	  RTABMapLib.openDatabase(mOpenedDatabasePath);
                 	  RTABMapLib.setCamera(1);
-                	  
-                	  File extStore = new File(mTempDatabasePath);
-                  	  if(extStore.exists())
-                  	  {
-                          extStore.delete();
-                  	  }  
                   }
               });
               builder.show();

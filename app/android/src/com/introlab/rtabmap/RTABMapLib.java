@@ -25,6 +25,7 @@ public class RTABMapLib
     // The activity object is used for checking if the API version is outdated.
     public static native void onCreate(RTABMapActivity activity);
     
+    public static native void openEmptyDatabase();
     public static native void openDatabase(String databasePath);
     
     /*
