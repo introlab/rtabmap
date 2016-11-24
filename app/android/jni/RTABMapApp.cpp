@@ -992,16 +992,44 @@ void RTABMapApp::setMeshTriangleSize(int value)
 
 int RTABMapApp::setMappingParameter(const std::string & key, const std::string & value)
 {
-	if(rtabmap::Parameters::getDefaultParameters().find(key) != rtabmap::Parameters::getDefaultParameters().end())
+	std::string compatibleKey = key;
+
+	// Backward compatibility
+	std::map<std::string, std::pair<bool, std::string> >::const_iterator iter=rtabmap::Parameters::getRemovedParameters().find(key);
+	if(iter != rtabmap::Parameters::getRemovedParameters().end())
 	{
-		LOGI(uFormat("Setting param \"%s\"  to \"%s\"", key.c_str(), value.c_str()).c_str());
+		if(iter->second.first)
+		{
+			// can be migrated
+			compatibleKey = iter->second.second;
+			LOGW("Parameter name changed: \"%s\" -> \"%s\". Please update the code accordingly. Value \"%s\" is still set to the new parameter name.",
+					iter->first.c_str(), iter->second.second.c_str(), value.c_str());
+		}
+		else
+		{
+			if(iter->second.second.empty())
+			{
+				LOGE("Parameter \"%s\" doesn't exist anymore!",
+						iter->first.c_str());
+			}
+			else
+			{
+				LOGE("Parameter \"%s\" doesn't exist anymore! You may look at this similar parameter: \"%s\"",
+						iter->first.c_str(), iter->second.second.c_str());
+			}
+		}
+	}
+
+	if(rtabmap::Parameters::getDefaultParameters().find(compatibleKey) != rtabmap::Parameters::getDefaultParameters().end())
+	{
+		LOGI(uFormat("Setting param \"%s\"  to \"%s\"", compatibleKey.c_str(), value.c_str()).c_str());
 		uInsert(mappingParameters_, rtabmap::ParametersPair(key, value));
 		UEventsManager::post(new rtabmap::ParamEvent(mappingParameters_));
 		return 0;
 	}
 	else
 	{
-		LOGE(uFormat("Key \"%s\" doesn't exist!", key.c_str()).c_str());
+		LOGE(uFormat("Key \"%s\" doesn't exist!", compatibleKey.c_str()).c_str());
 		return -1;
 	}
 }

@@ -137,20 +137,25 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 
 	ui_->graphicsView_stereo->setAlpha(255);
 
-	QSet<QString> ignoredGroups;
-	ignoredGroups.insert("Rtabmap");
-	ignoredGroups.insert("Mem");
-	ignoredGroups.insert("Kp");
-	ignoredGroups.insert("Odom");
-	ignoredGroups.insert("OdomBow");
-	ignoredGroups.insert("OdomFlow");
-	ignoredGroups.insert("OdomMono");
-	ignoredGroups.insert("VhEp");
-	ignoredGroups.insert("StereoBM");
-	ignoredGroups.insert("RGBD");
-	ignoredGroups.insert("DbSqlite3");
-	ignoredGroups.insert("Bayes");
-	ui_->parameters_toolbox->setupUi(ignoredGroups);
+	ParametersMap parameters;
+	uInsert(parameters, Parameters::getDefaultParameters("SURF"));
+	uInsert(parameters, Parameters::getDefaultParameters("SIFT"));
+	uInsert(parameters, Parameters::getDefaultParameters("BRIEF"));
+	uInsert(parameters, Parameters::getDefaultParameters("FAST"));
+	uInsert(parameters, Parameters::getDefaultParameters("GFTT"));
+	uInsert(parameters, Parameters::getDefaultParameters("ORB"));
+	uInsert(parameters, Parameters::getDefaultParameters("FREAK"));
+	uInsert(parameters, Parameters::getDefaultParameters("BRISK"));
+	uInsert(parameters, Parameters::getDefaultParameters("Optimizer"));
+	uInsert(parameters, Parameters::getDefaultParameters("g2o"));
+	uInsert(parameters, Parameters::getDefaultParameters("Reg"));
+	uInsert(parameters, Parameters::getDefaultParameters("Vis"));
+	uInsert(parameters, Parameters::getDefaultParameters("Icp"));
+	uInsert(parameters, Parameters::getDefaultParameters("Stereo"));
+	uInsert(parameters, Parameters::getDefaultParameters("StereoBM"));
+	uInsert(parameters, Parameters::getDefaultParameters("Grid"));
+	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDOptimizeMaxError()));
+	ui_->parameters_toolbox->setupUi(parameters);
 
 	this->readSettings();
 
@@ -4230,8 +4235,14 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		UWARN("Cannot add link to same node");
 		return false;
 	}
+	else if(from < to)
+	{
+		int tmp = from;
+		from = to;
+		to = tmp;
+	}
 
-	bool updateSlider = false;
+	Link newLink;
 	if(!containsLink(linksAdded_, from, to) &&
 	   !containsLink(links_, from, to))
 	{
@@ -4269,16 +4280,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		
 		if(!t.isNull())
 		{
-			// transform is valid, make a link
-			if(from>to)
-			{
-				linksAdded_.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.variance, info.variance)));
-			}
-			else
-			{
-				linksAdded_.insert(std::make_pair(to, Link(to, from, Link::kUserClosure, t.inverse(), info.variance, info.variance)));
-			}
-			updateSlider = true;
+			newLink = Link(from, to, Link::kUserClosure, t, info.variance, info.variance);
 		}
 		else if(!silent)
 		{
@@ -4289,20 +4291,120 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 	}
 	else if(containsLink(linksRemoved_, from, to))
 	{
-		//simply remove from linksRemoved
-		linksRemoved_.erase(rtabmap::graph::findLink(linksRemoved_, from, to));
-		updateSlider = true;
+		newLink = rtabmap::graph::findLink(linksRemoved_, from, to)->second;
 	}
 
-	if(updateSlider)
+	bool updateConstraints = true;
+	float maxOptimizationError = uStr2Float(ui_->parameters_toolbox->getParameters().at(Parameters::kRGBDOptimizeMaxError()));
+	if(newLink.isValid() &&
+	   maxOptimizationError > 0.0f &&
+	   uStr2Int(ui_->parameters_toolbox->getParameters().at(Parameters::kOptimizerIterations())) > 0.0f)
 	{
+		int fromId = newLink.from();
+		int mapId = mapIds_.at(newLink.from());
+		// use first node of the map containing from
+		for(std::map<int, int>::iterator iter=mapIds_.begin(); iter!=mapIds_.end(); ++iter)
+		{
+			if(iter->second == mapId)
+			{
+				fromId = iter->first;
+				break;
+			}
+		}
+		std::multimap<int, Link> linksIn = updateLinksWithModifications(links_);
+		linksIn.insert(std::make_pair(newLink.from(), newLink));
+		const Link * maxLinearLink = 0;
+		const Link * maxAngularLink = 0;
+		float maxLinearError = 0.0f;
+		float maxAngularError = 0.0f;
+		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> links;
+		optimizer->getConnectedGraph(fromId, poses_, linksIn, poses, links);
+		poses = optimizer->optimize(fromId, poses, links);
+		for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		{
+			// ignore links with high variance
+			if(iter->second.transVariance() <= 1.0)
+			{
+				Transform t1 = uValue(poses, iter->second.from(), Transform());
+				Transform t2 = uValue(poses, iter->second.to(), Transform());
+				Transform t = t1.inverse()*t2;
+				float linearError = uMax3(
+						fabs(iter->second.transform().x() - t.x()),
+						fabs(iter->second.transform().y() - t.y()),
+						fabs(iter->second.transform().z() - t.z()));
+				Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+				Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+				float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+				if(linearError > maxLinearError)
+				{
+					maxLinearError = linearError;
+					maxLinearLink = &iter->second;
+				}
+				if(angularError > maxAngularError)
+				{
+					maxAngularError = angularError;
+					maxAngularLink = &iter->second;
+				}
+			}
+		}
+		if(maxLinearLink)
+		{
+			UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+		}
+		if(maxLinearLink)
+		{
+			UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+		}
+
+		if(maxLinearError > maxOptimizationError)
+		{
+			std::string msg = uFormat("Rejecting edge %d->%d because "
+					  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
+					  "\"%s\" is %f m.",
+					  newLink.from(),
+					  newLink.to(),
+					  maxLinearError,
+					  maxLinearLink->from(),
+					  maxLinearLink->to(),
+					  maxAngularError*180.0f/M_PI,
+					  maxAngularLink->from(),
+					  maxAngularLink->to(),
+					  Parameters::kRGBDOptimizeMaxError().c_str(),
+					  maxOptimizationError);
+			UWARN("%s", msg.c_str());
+
+			if(!silent)
+			{
+				QMessageBox::warning(this,
+						tr("Add link"),
+						tr("%1").arg(msg.c_str()));
+			}
+
+			updateConstraints = false;
+		}
+	}
+
+	if(updateConstraints)
+	{
+		if(containsLink(linksRemoved_, from, to))
+		{
+			//simply remove from linksRemoved
+			linksRemoved_.erase(rtabmap::graph::findLink(linksRemoved_, from, to));
+		}
+		else
+		{
+			linksAdded_.insert(std::make_pair(newLink.from(), newLink));
+		}
 		updateLoopClosuresSlider(from, to);
 		if(updateGraph)
 		{
 			this->updateGraphView();
 		}
 	}
-	return updateSlider;
+
+	return updateConstraints;
 }
 
 void DatabaseViewer::resetConstraint()
