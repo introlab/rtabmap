@@ -700,7 +700,7 @@ int RTABMapApp::Render()
 		}
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;
-		rtabmap_->getGraph(poses, links, false, true);
+		rtabmap_->getGraph(poses, links, true, true);
 		if(gainCompensationOnNextRender_ == 2)
 		{
 			// full compensation
