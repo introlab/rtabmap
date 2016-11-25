@@ -119,8 +119,6 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 
 	UDEBUG("");
 	this->parseParameters(parameters);
-	bool loadAllNodesInWM = Parameters::defaultMemInitWMWithAllNodes();
-	Parameters::parse(parameters, Parameters::kMemInitWMWithAllNodes(), loadAllNodesInWM);
 
 	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Clearing memory..."));
 	DBDriver * tmpDriver = 0;
@@ -166,77 +164,78 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		{
 			success = true;
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Connecting to database \"") + dbUrl + "\", done!"));
-
-			// Load the last working memory...
-			std::list<Signature*> dbSignatures;
-
-			if(loadAllNodesInWM)
-			{
-				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
-				std::set<int> ids;
-				_dbDriver->getAllNodeIds(ids, true);
-				_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
-			}
-			else
-			{
-				// load previous session working memory
-				if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
-				_dbDriver->loadLastNodes(dbSignatures);
-			}
-			for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
-			{
-				// ignore bad signatures
-				if(!((*iter)->isBadSignature() && _badSignaturesIgnored))
-				{
-					// insert all in WM
-					// Note: it doesn't make sense to keep last STM images
-					//       of the last session in the new STM because they can be
-					//       only linked with the ones of the current session by
-					//       global loop closures.
-					_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
-					_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
-				}
-				else
-				{
-					delete *iter;
-				}
-			}
-			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
-
-			// Assign the last signature
-			if(_stMem.size()>0)
-			{
-				_lastSignature = uValue(_signatures, *_stMem.rbegin(), (Signature*)0);
-			}
-			else if(_workingMem.size()>0)
-			{
-				_lastSignature = uValue(_signatures, _workingMem.rbegin()->first, (Signature*)0);
-			}
-
-			// Last id
-			_dbDriver->getLastNodeId(_idCount);
-			_idMapCount = _lastSignature?_lastSignature->mapId()+1:kIdStart;
 		}
 		else
 		{
 			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kError, std::string("Connecting to database ") + dbUrl + ", path is invalid!"));
 		}
 	}
-	else
-	{
-		_idCount = kIdStart;
-		_idMapCount = kIdStart;
-	}
 
-	_workingMem.insert(std::make_pair(kIdVirtual, 0));
+	loadDataFromDb(postInitClosingEvents);
 
-	UDEBUG("ids start with %d", _idCount+1);
-	UDEBUG("map ids start with %d", _idMapCount);
+	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
 
+	return success;
+}
 
-	// Now load the dictionary if we have a connection
+void Memory::loadDataFromDb(bool postInitClosingEvents)
+{
 	if(_dbDriver && _dbDriver->isConnected())
 	{
+		bool loadAllNodesInWM = Parameters::defaultMemInitWMWithAllNodes();
+		Parameters::parse(parameters_, Parameters::kMemInitWMWithAllNodes(), loadAllNodesInWM);
+
+		// Load the last working memory...
+		std::list<Signature*> dbSignatures;
+
+		if(loadAllNodesInWM)
+		{
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading all nodes to WM...")));
+			std::set<int> ids;
+			_dbDriver->getAllNodeIds(ids, true);
+			_dbDriver->loadSignatures(std::list<int>(ids.begin(), ids.end()), dbSignatures);
+		}
+		else
+		{
+			// load previous session working memory
+			if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading last nodes to WM...")));
+			_dbDriver->loadLastNodes(dbSignatures);
+		}
+		for(std::list<Signature*>::reverse_iterator iter=dbSignatures.rbegin(); iter!=dbSignatures.rend(); ++iter)
+		{
+			// ignore bad signatures
+			if(!((*iter)->isBadSignature() && _badSignaturesIgnored))
+			{
+				// insert all in WM
+				// Note: it doesn't make sense to keep last STM images
+				//       of the last session in the new STM because they can be
+				//       only linked with the ones of the current session by
+				//       global loop closures.
+				_signatures.insert(std::pair<int, Signature *>((*iter)->id(), *iter));
+				_workingMem.insert(std::make_pair((*iter)->id(), UTimer::now()));
+			}
+			else
+			{
+				delete *iter;
+			}
+		}
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Loading nodes to WM, done! (") + uNumber2Str(int(_workingMem.size() + _stMem.size())) + " loaded)"));
+
+		// Assign the last signature
+		if(_stMem.size()>0)
+		{
+			_lastSignature = uValue(_signatures, *_stMem.rbegin(), (Signature*)0);
+		}
+		else if(_workingMem.size()>0)
+		{
+			_lastSignature = uValue(_signatures, _workingMem.rbegin()->first, (Signature*)0);
+		}
+
+		// Last id
+		_dbDriver->getLastNodeId(_idCount);
+		_idMapCount = _lastSignature?_lastSignature->mapId()+1:kIdStart;
+
+		// Now load the dictionary if we have a connection
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
 		if(loadAllNodesInWM)
 		{
@@ -271,37 +270,44 @@ bool Memory::init(const std::string & dbUrl, bool dbOverwritten, const Parameter
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		_vwd->update();
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Loading dictionary, done! (%d words)", (int)_vwd->getUnusedWordsSize())));
-	}
 
-	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
-	// Enable loaded signatures
-	const std::map<int, Signature *> & signatures = this->getSignatures();
-	for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
-	{
-		Signature * s = this->_getSignature(i->first);
-		UASSERT(s != 0);
-
-		const std::multimap<int, cv::KeyPoint> & words = s->getWords();
-		if(words.size())
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(std::string("Adding word references...")));
+		// Enable loaded signatures
+		const std::map<int, Signature *> & signatures = this->getSignatures();
+		for(std::map<int, Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
-			UDEBUG("node=%d, word references=%d", s->id(), words.size());
-			for(std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
+			Signature * s = this->_getSignature(i->first);
+			UASSERT(s != 0);
+
+			const std::multimap<int, cv::KeyPoint> & words = s->getWords();
+			if(words.size())
 			{
-				_vwd->addWordRef(iter->first, i->first);
+				UDEBUG("node=%d, word references=%d", s->id(), words.size());
+				for(std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
+				{
+					_vwd->addWordRef(iter->first, i->first);
+				}
+				s->setEnabled(true);
 			}
-			s->setEnabled(true);
 		}
-	}
-	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
+		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
 
-	if(_vwd->getUnusedWordsSize())
+		if(_vwd->getUnusedWordsSize())
+		{
+			UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
+		}
+		UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
+	}
+	else
 	{
-		UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
+		_idCount = kIdStart;
+		_idMapCount = kIdStart;
 	}
-	UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
 
-	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kInitialized));
-	return success;
+	_workingMem.insert(std::make_pair(kIdVirtual, 0));
+
+	UDEBUG("ids start with %d", _idCount+1);
+	UDEBUG("map ids start with %d", _idMapCount);
 }
 
 void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::string & ouputDatabasePath)
@@ -521,7 +527,12 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			if((_memoryChanged || _linksChanged) && _dbDriver)
 			{
 				UWARN("Switching from Mapping to Localization mode, the database will be saved and reloaded.");
-				this->init(_dbDriver->getUrl());
+				bool memoryChanged = _memoryChanged;
+				bool linksChanged = _linksChanged;
+				this->clear();
+				_memoryChanged = memoryChanged;
+				_linksChanged = linksChanged;
+				this->loadDataFromDb(false);
 				UWARN("Switching from Mapping to Localization mode, the database is reloaded!");
 			}
 		}
