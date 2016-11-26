@@ -552,7 +552,7 @@ Transform RegistrationVis::computeTransformationImpl(
 			// create 3D keypoints
 			std::vector<cv::Point3f> kptsFrom3D;
 			std::vector<cv::Point3f> kptsTo3D;
-			if(fromSignature.getWords3().empty() || kptsFrom.size() != fromSignature.getWords3().size())
+			if(fromSignature.getWords3().empty() || (kptsFrom.size() && kptsFrom.size() != fromSignature.getWords3().size()))
 			{
 				if(fromSignature.getWords3().size() && kptsFrom.size() != fromSignature.getWords3().size())
 				{
@@ -890,9 +890,9 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					VWDictionary dictionary(_featureParameters);
 					std::list<int> fromWordIds;
-					for(unsigned int i=0; i<kptsFrom.size(); ++i)
+					for (unsigned int i = 0; i < descriptorsFrom.rows; ++i)
 					{
-						int id = orignalWordsFromIds.size()?orignalWordsFromIds[i]:i;
+						int id = orignalWordsFromIds.size() ? orignalWordsFromIds[i] : i;
 						dictionary.addWord(new VisualWord(id, descriptorsFrom.row(i), 1));
 						fromWordIds.push_back(id);
 					}
@@ -915,7 +915,10 @@ Transform RegistrationVis::computeTransformationImpl(
 					{
 						if(fromWordIdsSet.count(*iter) == 1)
 						{
-							wordsFrom.insert(std::make_pair(*iter, kptsFrom[i]));
+							if (kptsFrom.size())
+							{
+								wordsFrom.insert(std::make_pair(*iter, kptsFrom[i]));
+							}
 							if(kptsFrom3D.size())
 							{
 								words3From.insert(std::make_pair(*iter, kptsFrom3D[i]));

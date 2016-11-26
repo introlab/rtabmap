@@ -775,6 +775,8 @@ void ImageView::setImageDepth(const QImage & imageDepth)
 {
 	_imageDepth = QPixmap::fromImage(imageDepth);
 
+	UASSERT(_imageDepth.width() && _imageDepth.height());
+
 	if( _image.width() > 0 &&
 		_image.width() > _imageDepth.width() &&
 		_image.height() > _imageDepth.height() &&

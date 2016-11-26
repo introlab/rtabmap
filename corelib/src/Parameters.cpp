@@ -776,7 +776,11 @@ void Parameters::writeINI(const std::string & configFile, const ParametersMap & 
 	{
 		std::string key = (*i).first;
 		key = uReplaceChar(key, '/', '\\'); // Ini files use \ by default for separators, so replace the /
-		ini.SetValue("Core", key.c_str(), (*i).second.c_str(), NULL, true);
+		
+		std::string value = (*i).second.c_str();
+		value = uReplaceChar(value, '\\', '/'); // use always slash for values
+
+		ini.SetValue("Core", key.c_str(), value.c_str(), NULL, true);
 	}
 
 	ini.SaveFile(configFile.c_str());

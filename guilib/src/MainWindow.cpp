@@ -1245,7 +1245,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			}
 
 			_ui->imageView_odometry->setImage(uCvMat2QImage(odom.data().imageRaw()));
-			if(_ui->imageView_odometry->isImageDepthShown())
+			if(_ui->imageView_odometry->isImageDepthShown() && !odom.data().depthOrRightRaw().empty())
 			{
 				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
 			}

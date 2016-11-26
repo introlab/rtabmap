@@ -98,10 +98,11 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 		{
 			UERROR("Error initializing the memory for BOW Odometry.");
 		}
-		else
+		else if(memory.getLastWorkingSignature())
 		{
 			// get the graph
-			std::map<int, int> ids = memory.getNeighborsId(memory.getLastSignatureId(), 0, -1);
+			std::map<int, int> ids = memory.getNeighborsId(memory.getLastWorkingSignature()->id(), 0, -1);
+			UDEBUG("ids=%d", (int)ids.size());
 			std::map<int, Transform> poses;
 			std::multimap<int, Link> links;
 			memory.getMetricConstraints(uKeysSet(ids), poses, links, true);
@@ -112,6 +113,8 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 				Optimizer * optimizer = Optimizer::create(parameters);
 				std::map<int, Transform> optimizedPoses = optimizer->optimize(poses.begin()->first, poses, links);
 				delete optimizer;
+
+				UDEBUG("optimizedPoses=%d", (int)optimizedPoses.size());
 
 				std::multimap<int, cv::Point3f> words3D;
 				std::multimap<int, cv::Mat> wordsDescriptors;
@@ -124,6 +127,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 					const Signature * s = memory.getSignature(posesIter->first);
 					if(s)
 					{
+						UDEBUG("%d has %d words", posesIter->first, (int)s->getWords3().size());
 						// Transform 3D points accordingly to pose and add them to local map
 						for(std::multimap<int, cv::Point3f>::const_iterator pointsIter=s->getWords3().begin();
 							pointsIter!=s->getWords3().end();
@@ -148,6 +152,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 					}
 				}
 				UASSERT(words3D.size() == wordsDescriptors.size());
+				UDEBUG("words3D=%d", (int)words3D.size());
 				map_->setWords3(words3D);
 				map_->setWordsDescriptors(wordsDescriptors);
 			}

@@ -2189,65 +2189,8 @@ void PreferencesDialog::writeCoreSettings(const QString & filePath) const
 	{
 		path = filePath;
 	}
-	QSettings settings(path, QSettings::IniFormat);
-	settings.beginGroup("Core");
-	settings.remove("");
 
-	// save current RTAB-Map version
-	settings.setValue("Version", QString(RTABMAP_VERSION));
-
-	const rtabmap::ParametersMap & parameters = Parameters::getDefaultParameters();
-	for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
-	{
-		QObject * obj = _ui->stackedWidget->findChild<QObject*>((*iter).first.c_str());
-		if(obj)
-		{
-			QSpinBox * spin = qobject_cast<QSpinBox *>(obj);
-			QDoubleSpinBox * doubleSpin = qobject_cast<QDoubleSpinBox *>(obj);
-			QComboBox * combo = qobject_cast<QComboBox *>(obj);
-			QCheckBox * check = qobject_cast<QCheckBox *>(obj);
-			QRadioButton * radio = qobject_cast<QRadioButton *>(obj);
-			QLineEdit * lineEdit = qobject_cast<QLineEdit *>(obj);
-			QGroupBox * groupBox = qobject_cast<QGroupBox *>(obj);
-			if(spin)
-			{
-				settings.setValue(obj->objectName(), spin->value());
-			}
-			else if(doubleSpin)
-			{
-				settings.setValue(obj->objectName(), doubleSpin->value());
-			}
-			else if(combo)
-			{
-				settings.setValue(obj->objectName(), combo->currentIndex());
-			}
-			else if(check)
-			{
-				settings.setValue(obj->objectName(), uBool2Str(check->isChecked()).c_str());
-			}
-			else if(radio)
-			{
-				settings.setValue(obj->objectName(), uBool2Str(radio->isChecked()).c_str());
-			}
-			else if(lineEdit)
-			{
-				settings.setValue(obj->objectName(), lineEdit->text());
-			}
-			else if(groupBox)
-			{
-				settings.setValue(obj->objectName(), uBool2Str(groupBox->isChecked()).c_str());
-			}
-			else
-			{
-				ULOGGER_WARN("QObject called %s can't be cast to a supported widget", (*iter).first.c_str());
-			}
-		}
-		else
-		{
-			ULOGGER_WARN("Can't find the related QObject for parameter %s", (*iter).first.c_str());
-		}
-	}
-	settings.endGroup(); // Core
+	Parameters::writeINI(path.toStdString(), this->getAllParameters());
 }
 
 bool PreferencesDialog::validateForm()
