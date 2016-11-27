@@ -226,6 +226,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 
 		// 0.11.12
 		removedParameters_.insert(std::make_pair("Optimizer/Slam2D",              std::make_pair(true,  Parameters::kRegForce3DoF())));
+		removedParameters_.insert(std::make_pair("OdomF2M/FixedMapPath",          std::make_pair(false,  "")));
 
 		// 0.11.10 typos
 		removedParameters_.insert(std::make_pair("Grid/FlatObstaclesDetected",    std::make_pair(true,  Parameters::kGridFlatObstacleDetected())));
@@ -242,13 +243,13 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 
 		// 0.11.2
 		removedParameters_.insert(std::make_pair("OdomLocalMap/HistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
-		removedParameters_.insert(std::make_pair("OdomLocalMap/FixedMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
+		removedParameters_.insert(std::make_pair("OdomLocalMap/FixedMapPath",     std::make_pair(false, "")));
 		removedParameters_.insert(std::make_pair("OdomF2F/GuessMotion",           std::make_pair(true, Parameters::kOdomGuessMotion())));
 		removedParameters_.insert(std::make_pair("OdomF2F/KeyFrameThr",           std::make_pair(false, Parameters::kOdomKeyFrameThr())));
 
 		// 0.11.0
 		removedParameters_.insert(std::make_pair("OdomBow/LocalHistorySize",      std::make_pair(true, Parameters::kOdomF2MMaxSize())));
-		removedParameters_.insert(std::make_pair("OdomBow/FixedLocalMapPath",     std::make_pair(true, Parameters::kOdomF2MFixedMapPath())));
+		removedParameters_.insert(std::make_pair("OdomBow/FixedLocalMapPath",     std::make_pair(false, "")));
 		removedParameters_.insert(std::make_pair("OdomFlow/KeyFrameThr",          std::make_pair(false, Parameters::kOdomKeyFrameThr())));
 		removedParameters_.insert(std::make_pair("OdomFlow/GuessMotion",          std::make_pair(true, Parameters::kOdomGuessMotion())));
 

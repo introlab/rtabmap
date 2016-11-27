@@ -3456,52 +3456,41 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	if(!pose.isNull() &&
 		data.cameraModels().size() == 1 &&
 		words.size() &&
-		words3D.size() == 0)
+		words3D.size() == 0 &&
+		_signatures.size() &&
+		_signatures.rbegin()->second->mapId() == _idMapCount) // same map
 	{
-		bool fillWithNaN = true;
-		if(_signatures.size())
+		UDEBUG("Generate 3D words using odometry");
+		Signature * previousS = _signatures.rbegin()->second;
+		if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
 		{
-			UDEBUG("Generate 3D words using odometry");
-			Signature * previousS = _signatures.rbegin()->second;
-			if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
-			{
-				Transform cameraTransform = pose.inverse() * previousS->getPose();
-				// compute 3D words by epipolar geometry with the previous signature
-				std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
-						uMultimapToMapUnique(words),
-						uMultimapToMapUnique(previousS->getWords()),
-						data.cameraModels()[0],
-						cameraTransform);
+			Transform cameraTransform = pose.inverse() * previousS->getPose();
+			// compute 3D words by epipolar geometry with the previous signature
+			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
+					uMultimapToMapUnique(words),
+					uMultimapToMapUnique(previousS->getWords()),
+					data.cameraModels()[0],
+					cameraTransform);
 
-				// words3D should have the same size than words
-				float bad_point = std::numeric_limits<float>::quiet_NaN ();
-				for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
-				{
-					std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
-					if(jter != inliers.end())
-					{
-						words3D.insert(std::make_pair(iter->first, jter->second));
-					}
-					else
-					{
-						words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
-					}
-				}
-
-				t = timer.ticks();
-				UASSERT(words3D.size() == words.size());
-				if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-				UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
-				fillWithNaN = false;
-			}
-		}
-		if(fillWithNaN)
-		{
+			// words3D should have the same size than words
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
-				words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
+				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
+				if(jter != inliers.end())
+				{
+					words3D.insert(std::make_pair(iter->first, jter->second));
+				}
+				else
+				{
+					words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
+				}
 			}
+
+			t = timer.ticks();
+			UASSERT(words3D.size() == words.size());
+			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+			UDEBUG("time keypoints 3D (%d) = %fs", (int)words3D.size(), t);
 		}
 	}
 

@@ -336,7 +336,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 			{
 				if (_rtabmap->isRGBDMode())
 				{
-					if (!e->info().odomPose.isNull())
+					if (!e->info().odomPose.isNull() || (_rtabmap->getMemory() && !_rtabmap->getMemory()->isIncremental()))
 					{
 						this->addData(OdometryEvent(e->data(), e->info().odomPose, e->info().odomCovariance));
 					}
@@ -347,7 +347,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 				}
 				else
 				{ 
-					this->addData(OdometryEvent(e->data(), Transform(), 1, 1));
+					this->addData(OdometryEvent(e->data(), e->info().odomPose, e->info().odomCovariance));
 				}
 				
 			}
@@ -356,7 +356,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 		{
 			UDEBUG("OdometryEvent");
 			OdometryEvent * e = (OdometryEvent*)event;
-			if(!e->pose().isNull())
+			if(!e->pose().isNull() || (_rtabmap->getMemory() && !_rtabmap->getMemory()->isIncremental()))
 			{
 				this->addData(*e);
 			}
@@ -630,7 +630,10 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		_transVariance = 0;
 		while(_dataBufferMaxSize > 0 && _dataBuffer.size() > _dataBufferMaxSize)
 		{
-			ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
+			if(_rate > 0.0f)
+			{
+				ULOGGER_WARN("Data buffer is full, the oldest data is removed to add the new one.");
+			}
 			_dataBuffer.pop_front();
 			notify = false;
 		}

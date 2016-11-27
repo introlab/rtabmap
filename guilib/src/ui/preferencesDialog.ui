@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>4</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -98,6 +98,42 @@
                    <layout class="QVBoxLayout" name="verticalLayout_28">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_39" columnstretch="0,1">
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_247">
+                        <property name="text">
+                         <string>Use time for figures' x-axis. Otherwise, sensor data IDs are used for camera/odometry info and for all mapping statistics, node IDs are used.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="checkBox_notifyWhenNewGlobalPathIsReceived">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_313">
+                        <property name="text">
+                         <string>Insert created clouds in the GUI cache to avoid regenerating clouds on export.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QCheckBox" name="general_checkBox_imagesKept">
                         <property name="text">
@@ -112,19 +148,6 @@
                        <widget class="QLabel" name="label_102">
                         <property name="text">
                          <string>Notify when a new global path is received.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_313">
-                        <property name="text">
-                         <string>Insert created clouds in the GUI cache to avoid regenerating clouds on export.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -177,33 +200,10 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="checkBox_notifyWhenNewGlobalPathIsReceived">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="3" column="0">
                        <widget class="QCheckBox" name="checkBox_stamps">
                         <property name="text">
                          <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_247">
-                        <property name="text">
-                         <string>Use time for figures' x-axis. Otherwise, sensor data IDs are used for camera/odometry info and for all mapping statistics, node IDs are used.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -222,6 +222,26 @@
                       </item>
                       <item row="4" column="0">
                        <widget class="QCheckBox" name="checkBox_cacheStatistics">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_239">
+                        <property name="text">
+                         <string>Disable odometry. This option only makes sense in localization mode with a pre-built map and that odometry cannot be computed from the source selected (e.g. RGB source).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
+                       <widget class="QCheckBox" name="checkbox_odomDisabled">
                         <property name="text">
                          <string/>
                         </property>
@@ -2423,7 +2443,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3970,6 +3990,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <layout class="QVBoxLayout" name="verticalLayout_5">
                            <item>
                             <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_20">
+                               <property name="text">
+                                <string>Source type.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
                              <item row="0" column="0">
                               <widget class="QComboBox" name="source_comboBox_image_type">
                                <property name="currentIndex">
@@ -3992,25 +4025,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </item>
                               </widget>
                              </item>
-                             <item row="0" column="1">
-                              <widget class="QLabel" name="label_20">
-                               <property name="text">
-                                <string>Source type.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
                             </layout>
                            </item>
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_image">
                              <property name="currentIndex">
-                              <number>0</number>
+                              <number>1</number>
                              </property>
                              <widget class="QWidget" name="page_7">
                               <layout class="QVBoxLayout" name="verticalLayout_30">
@@ -7387,7 +7407,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QLabel" name="label_83">
                       <property name="text">
-                       <string>Rigid transformations between nodes are saved on the neighbor links of the RTAB-Map's graph. On loop closures, a new constraint is added to the graph and TORO optimizes the graph.</string>
+                       <string>Rigid transformations between nodes are saved on the neighbor links of the RTAB-Map's graph. On loop closures, a new constraint is added to graph and the graph optimizer optimizes the graph.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>
@@ -9035,41 +9055,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     </item>
                     <item>
                      <layout class="QGridLayout" name="gridLayout_27" columnstretch="0,1">
-                      <item row="8" column="0">
-                       <widget class="QDoubleSpinBox" name="odom_flow_keyframeThr">
-                        <property name="maximum">
-                         <double>1.000000000000000</double>
-                        </property>
-                        <property name="singleStep">
-                         <double>0.100000000000000</double>
-                        </property>
-                        <property name="value">
-                         <double>0.500000000000000</double>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="6" column="0">
                        <widget class="QCheckBox" name="odom_flow_guessMotion">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="1">
-                       <widget class="QLabel" name="label_233">
-                        <property name="text">
-                         <string>Pose estimation filtering strategy.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="5" column="0">
-                       <widget class="QCheckBox" name="odom_fillInfoData">
                         <property name="text">
                          <string/>
                         </property>
@@ -9088,30 +9075,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
-                       <widget class="QCheckBox" name="odom_holonomic">
-                        <property name="text">
-                         <string/>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="10" column="0">
                        <widget class="QSpinBox" name="odom_dataBufferSize">
                         <property name="maximum">
                          <number>999999</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="label_238">
-                        <property name="text">
-                         <string>If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -9178,10 +9145,59 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
-                       <widget class="QSpinBox" name="odom_countdown">
+                      <item row="7" column="1">
+                       <widget class="QLabel" name="label_248">
+                        <property name="text">
+                         <string>Decimation of images before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="7" column="0">
+                       <widget class="QSpinBox" name="odom_imageDecimation">
+                        <property name="minimum">
+                         <number>-32</number>
+                        </property>
                         <property name="maximum">
-                         <number>999999</number>
+                         <number>32</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_314">
+                        <property name="text">
+                         <string>Align odometry with ground on initialization.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="0">
+                       <widget class="QCheckBox" name="odom_alignWithGround">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_238">
+                        <property name="text">
+                         <string>If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>
@@ -9246,6 +9262,46 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="8" column="0">
+                       <widget class="QDoubleSpinBox" name="odom_flow_keyframeThr">
+                        <property name="maximum">
+                         <double>1.000000000000000</double>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.100000000000000</double>
+                        </property>
+                        <property name="value">
+                         <double>0.500000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="4" column="1">
+                       <widget class="QLabel" name="label_233">
+                        <property name="text">
+                         <string>Pose estimation filtering strategy.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="odom_fillInfoData">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="odom_holonomic">
+                        <property name="text">
+                         <string/>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="9" column="0">
                        <widget class="QDoubleSpinBox" name="odom_flow_scanKeyframeThr">
                         <property name="maximum">
@@ -9259,46 +9315,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
-                       <widget class="QLabel" name="label_248">
-                        <property name="text">
-                         <string>Decimation of images before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="7" column="0">
-                       <widget class="QSpinBox" name="odom_imageDecimation">
-                        <property name="minimum">
-                         <number>-32</number>
-                        </property>
+                      <item row="2" column="0">
+                       <widget class="QSpinBox" name="odom_countdown">
                         <property name="maximum">
-                         <number>32</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="label_314">
-                        <property name="text">
-                         <string>Align odometry with ground on initialization.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QCheckBox" name="odom_alignWithGround">
-                        <property name="text">
-                         <string/>
+                         <number>999999</number>
                         </property>
                        </widget>
                       </item>
@@ -9331,7 +9351,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                             </widget>
                            </item>
                            <item>
-                            <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,0,1">
+                            <layout class="QGridLayout" name="gridLayout_29" columnstretch="0,1">
                              <item row="1" column="0">
                               <widget class="QSpinBox" name="spinBox_odom_f2m_maxNewFeatures">
                                <property name="minimum">
@@ -9348,7 +9368,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="3" column="2">
+                             <item row="3" column="1">
                               <widget class="QLabel" name="label_215">
                                <property name="text">
                                 <string>[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the laser scans.</string>
@@ -9361,7 +9381,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="2" column="2">
+                             <item row="2" column="1">
                               <widget class="QLabel" name="label_195">
                                <property name="text">
                                 <string>[Geometry] Maximum local scan map size (points).</string>
@@ -9374,23 +9394,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="4" column="0">
-                              <widget class="QLineEdit" name="odom_fixedLocalMapPath"/>
-                             </item>
-                             <item row="4" column="2">
-                              <widget class="QLabel" name="label_239">
-                               <property name="text">
-                                <string>Path to a fixed map (RTAB-Map's database) to be used for odometry. Odometry will be constraint to this map. RGB-only images can be used if odometry PnP pose estimation is activated.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="0" column="2">
+                             <item row="0" column="1">
                               <widget class="QLabel" name="label_190">
                                <property name="text">
                                 <string>[Visual] Maximum map size: If &gt; 0 (example 5000), the odometry will maintain a local map of X maximum features. This will decrease odometry drifting when the camera is not moving.</string>
@@ -9419,14 +9423,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="4" column="1">
-                              <widget class="QToolButton" name="toolButton_odomBowFixedLocalMap">
-                               <property name="text">
-                                <string>...</string>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="1" column="2">
+                             <item row="1" column="1">
                               <widget class="QLabel" name="label_194">
                                <property name="text">
                                 <string>[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.</string>
@@ -9459,7 +9456,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="5" column="2">
+                             <item row="4" column="1">
                               <widget class="QLabel" name="label_357">
                                <property name="text">
                                 <string>[Visual] Local bundle adjustment. See Optimizer panel. This will not work with Optical Flow correspondences strategy is selected in Visual Registration panel.</string>
@@ -9472,7 +9469,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="6" column="2">
+                             <item row="5" column="1">
                               <widget class="QLabel" name="label_358">
                                <property name="text">
                                 <string>[Visual] Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).</string>
@@ -9485,7 +9482,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </property>
                               </widget>
                              </item>
-                             <item row="5" column="0">
+                             <item row="4" column="0">
                               <widget class="QComboBox" name="odom_f2m_bundleStrategy">
                                <property name="sizeAdjustPolicy">
                                 <enum>QComboBox::AdjustToContents</enum>
@@ -9507,7 +9504,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                                </item>
                               </widget>
                              </item>
-                             <item row="6" column="0">
+                             <item row="5" column="0">
                               <widget class="QSpinBox" name="odom_f2m_bundleMaxFrames">
                                <property name="maximum">
                                 <number>999999</number>

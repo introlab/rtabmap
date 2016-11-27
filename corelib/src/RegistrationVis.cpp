@@ -236,6 +236,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				fromSignature.sensorData().descriptors().rows == 0 ||
 				fromSignature.getWordsDescriptors().size() == 0);
 		UASSERT((toSignature.getWords().empty() && toSignature.getWords3().empty())||
+				(toSignature.getWords().size() && toSignature.getWords3().empty())||
 				(toSignature.getWords().size() == toSignature.getWords3().size()));
 		UASSERT((int)toSignature.sensorData().keypoints().size() == toSignature.sensorData().descriptors().rows ||
 				toSignature.getWords().size() == toSignature.getWordsDescriptors().size() ||
@@ -601,7 +602,7 @@ Transform RegistrationVis::computeTransformationImpl(
 						   "is maybe a problem with the logic above (getWords3() should be null or equal to kptsTo).");
 				}
 				kptsTo3D = detector->generateKeypoints3D(toSignature.sensorData(), kptsTo);
-				if(detector->getMinDepth() > 0.0f || detector->getMaxDepth() > 0.0f)
+				if(kptsTo3D.size() && (detector->getMinDepth() > 0.0f || detector->getMaxDepth() > 0.0f))
 				{
 					UDEBUG("");
 					//remove all keypoints/descriptors with no valid 3D points

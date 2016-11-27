@@ -62,7 +62,6 @@ private:
 	float scanKeyFrameThr_;
 	int scanMaximumMapSize_;
 	float scanSubtractRadius_;
-	std::string fixedMapPath_;
 	int bundleAdjustment_;
 	int	bundleAdjustmentMaxFrames_;
 

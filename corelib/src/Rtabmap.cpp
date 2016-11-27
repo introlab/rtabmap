@@ -810,7 +810,7 @@ void Rtabmap::resetMemory()
 //============================================================
 bool Rtabmap::process(
 		const SensorData & data,
-		const Transform & odomPose,
+		Transform odomPose,
 		const cv::Mat & covariance)
 {
 	UDEBUG("");
@@ -883,9 +883,20 @@ bool Rtabmap::process(
 	{
 		if(odomPose.isNull())
 		{
-			UERROR("RGB-D SLAM mode is enabled and no odometry is provided. "
-				   "Image %d is ignored!", data.id());
-			return false;
+			if(_memory->isIncremental())
+			{
+				UERROR("RGB-D SLAM mode is enabled, memory is incremental but no odometry is provided. "
+					   "Image %d is ignored!", data.id());
+				return false;
+			}
+			else // fake localization
+			{
+				if(_lastLocalizationPose.isNull())
+				{
+					_lastLocalizationPose = Transform::getIdentity();
+				}
+				odomPose = _mapCorrection.inverse() * _lastLocalizationPose;
+			}
 		}
 		else if(_memory->isIncremental()) // only in mapping mode
 		{
@@ -1185,10 +1196,11 @@ bool Rtabmap::process(
 					}
 
 					// For proximity by time, correspondences should be already enough precise, so don't recompute them
-					Transform transform = _memory->computeTransform(signature->id(), *iter, guess, &info, true);
+					Transform transform = _memory->computeTransform(*iter, signature->id(), guess, &info, true);
 
 					if(!transform.isNull())
 					{
+						transform = transform.inverse();
 						UDEBUG("Add local loop closure in TIME (%d->%d) %s",
 								signature->id(),
 								*iter,
@@ -1740,13 +1752,17 @@ bool Rtabmap::process(
 		info.variance = 1.0f;
 		if(_rgbdSlamMode)
 		{
-			transform = _memory->computeTransform(signature->id(), _loopClosureHypothesis.first, Transform(), &info);
+			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
 			loopClosureVisualInliers = info.inliers;
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
 				UWARN("Rejected loop closure %d -> %d: %s",
 						_loopClosureHypothesis.first, signature->id(), info.rejectedMsg.c_str());
+			}
+			else
+			{
+				transform = transform.inverse();
 			}
 		}
 		if(!rejectedHypothesis)
@@ -1848,9 +1864,10 @@ bool Rtabmap::process(
 							++localVisualPathsChecked;
 							RegistrationInfo info;
 							Transform guess = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(nearestId);
-							Transform transform = _memory->computeTransform(signature->id(), nearestId, guess, &info);
+							Transform transform = _memory->computeTransform(nearestId, signature->id(), guess, &info);
 							if(!transform.isNull())
 							{
+								transform = transform.inverse();
 								if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
 								{
 									UINFO("[Visual] Add local loop closure in SPACE (%d->%d) %s",
@@ -2086,9 +2103,9 @@ bool Rtabmap::process(
 				// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
 				// parameters just changed state, we should put back all poses without map correction.
 				Transform oldPose = _optimizedPoses.at(localizationLinks.begin()->first);
+				Transform mapCorrectionInv = _mapCorrection.inverse();
 				Transform u = signature->getPose() * localizationLinks.begin()->second.transform();
 				Transform up = u * oldPose.inverse();
-				Transform mapCorrectionInv = _mapCorrection.inverse();
 				for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 				{
 					iter->second = mapCorrectionInv * up * iter->second;
@@ -2197,6 +2214,7 @@ bool Rtabmap::process(
 		}
 
 		// Update map correction, it should be identify when optimizing from the last node
+		UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
 		_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
 		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
 		if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
@@ -2333,6 +2351,11 @@ bool Rtabmap::process(
 	}
 
 	Signature lastSignatureData(signature->id());
+	Transform lastSignatureOptimizedPose;
+	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end())
+	{
+		lastSignatureOptimizedPose = _optimizedPoses.at(signature->id());
+	}
 	if(_publishLastSignatureData)
 	{
 		lastSignatureData = *signature;
@@ -2537,28 +2560,29 @@ bool Rtabmap::process(
 		UDEBUG("Get all node infos...");
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			Transform odomPose;
+			Transform odomPoseLocal;
 			int weight = -1;
 			int mapId = -1;
 			std::string label;
 			double stamp = 0;
 			Transform groundTruth;
 			std::vector<unsigned char> userData;
-			_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, groundTruth, false);
+			_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, false);
 			signatures.insert(std::make_pair(iter->first,
 					Signature(iter->first,
 							mapId,
 							weight,
 							stamp,
 							label,
-							odomPose,
+							odomPoseLocal,
 							groundTruth)));
 		}
+		localGraphSize = (int)poses.size();
+		poses.insert(std::make_pair(lastSignatureData.id(), lastSignatureOptimizedPose)); // in case we are in localization
 		statistics_.setPoses(poses);
 		statistics_.setConstraints(constraints);
 		statistics_.setSignatures(signatures);
 		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), poses.size());
-		localGraphSize = (int)poses.size();
 		UDEBUG("");
 	}
 
@@ -3210,13 +3234,13 @@ void Rtabmap::get3DMap(
 
 		for(std::set<int>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
 		{
-			Transform odomPose;
+			Transform odomPoseLocal;
 			int weight = -1;
 			int mapId = -1;
 			std::string label;
 			double stamp = 0;
 			Transform groundTruth;
-			_memory->getNodeInfo(*iter, odomPose, mapId, weight, label, stamp, groundTruth, true);
+			_memory->getNodeInfo(*iter, odomPoseLocal, mapId, weight, label, stamp, groundTruth, true);
 			SensorData data = _memory->getNodeData(*iter);
 			data.setId(*iter);
 			std::multimap<int, cv::KeyPoint> words;
@@ -3229,7 +3253,7 @@ void Rtabmap::get3DMap(
 							weight,
 							stamp,
 							label,
-							odomPose,
+							odomPoseLocal,
 							groundTruth,
 							data)));
 			signatures.at(*iter).setWords(words);
@@ -3280,20 +3304,20 @@ void Rtabmap::getGraph(
 		{
 			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				Transform odomPose;
+				Transform odomPoseLocal;
 				int weight = -1;
 				int mapId = -1;
 				std::string label;
 				double stamp = 0;
 				Transform groundTruth;
-				_memory->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, groundTruth, global);
+				_memory->getNodeInfo(iter->first, odomPoseLocal, mapId, weight, label, stamp, groundTruth, global);
 				signatures->insert(std::make_pair(iter->first,
 						Signature(iter->first,
 							mapId,
 							weight,
 							stamp,
 							label,
-							odomPose,
+							odomPoseLocal,
 							groundTruth)));
 
 				std::multimap<int, cv::KeyPoint> words;

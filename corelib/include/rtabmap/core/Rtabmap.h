@@ -61,7 +61,7 @@ public:
 	bool process(const cv::Mat & image, int id=0); // for convenience, an id is automatically generated if id=0
 	bool process(
 			const SensorData & data,
-			const Transform & odomPose,
+			Transform odomPose,
 			const cv::Mat & covariance = cv::Mat::eye(6,6,CV_64FC1)); // for convenience
 
 	void init(const ParametersMap & parameters, const std::string & databasePath = "");

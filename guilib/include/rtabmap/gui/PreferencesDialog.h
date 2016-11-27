@@ -130,6 +130,7 @@ public:
 	QString loadCustomConfig(const QString & section, const QString & key);
 
 	rtabmap::ParametersMap getAllParameters() const;
+	std::string getParameter(const std::string & key) const;
 	void updateParameters(const ParametersMap & parameters);
 
 	//General panel
@@ -149,6 +150,7 @@ public:
 	bool notifyWhenNewGlobalPathIsReceived() const;
 	int getOdomQualityWarnThr() const;
 	bool isPosteriorGraphView() const;
+	bool isOdomDisabled() const;
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;
@@ -293,7 +295,6 @@ private slots:
 	void useOdomFeatures();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
-	void changeOdomBowFixedLocalMapPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();

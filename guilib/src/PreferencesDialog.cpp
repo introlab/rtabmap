@@ -291,6 +291,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_notifyWhenNewGlobalPathIsReceived, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_posteriorGraphView, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
 	_3dRenderingShowClouds.resize(2);
@@ -842,8 +843,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_odom_f2m_maxNewFeatures->setObjectName(Parameters::kOdomF2MMaxNewFeatures().c_str());
 	_ui->spinBox_odom_f2m_scanMaxSize->setObjectName(Parameters::kOdomF2MScanMaxSize().c_str());
 	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubtractRadius().c_str());
-	_ui->odom_fixedLocalMapPath->setObjectName(Parameters::kOdomF2MFixedMapPath().c_str());
-	connect(_ui->toolButton_odomBowFixedLocalMap, SIGNAL(clicked()), this, SLOT(changeOdomBowFixedLocalMapPath()));
 	_ui->odom_f2m_bundleStrategy->setObjectName(Parameters::kOdomF2MBundleAdjustment().c_str());
 	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
 
@@ -1212,6 +1211,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_imageHighestHypShown->setChecked(false);
 		_ui->spinBox_odomQualityWarnThr->setValue(50);
 		_ui->checkBox_posteriorGraphView->setChecked(true);
+		_ui->checkbox_odomDisabled->setChecked(false);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_cloudRendering1->objectName())
 	{
@@ -1594,6 +1594,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_notifyWhenNewGlobalPathIsReceived->setChecked(settings.value("notifyNewGlobalPath", _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked()).toBool());
 	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
 	_ui->checkBox_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked()).toBool());
+	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -1971,6 +1972,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("notifyNewGlobalPath",  _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked());
 	settings.setValue("odomQualityThr",       _ui->spinBox_odomQualityWarnThr->value());
 	settings.setValue("posteriorGraphView",   _ui->checkBox_posteriorGraphView->isChecked());
+	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -2388,6 +2390,15 @@ bool PreferencesDialog::validateForm()
 		_ui->fastThresholdMin->setValue(_ui->fastThreshold->value());
 	}
 
+	if(_ui->checkbox_odomDisabled->isChecked() &&
+		_ui->general_checkBox_SLAM_mode->isChecked() &&
+		_ui->general_checkBox_activateRGBD->isChecked())
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+				tr("Odometry is disabled but incremental RGB-D SLAM is activated! Re-enabling odometry."));
+		_ui->checkbox_odomDisabled->setChecked(false);
+	}
+
 	return true;
 }
 
@@ -2697,6 +2708,17 @@ rtabmap::ParametersMap PreferencesDialog::getAllParameters() const
 	uInsert(parameters, _modifiedParameters);
 
 	return parameters;
+}
+
+std::string PreferencesDialog::getParameter(const std::string & key) const
+{
+	if(_modifiedParameters.find(key) != _modifiedParameters.end())
+	{
+		return _modifiedParameters.at(key);
+	}
+
+	UASSERT(_parameters.find(key) != _parameters.end());
+	return _parameters.at(key);
 }
 
 void PreferencesDialog::updateParameters(const ParametersMap & parameters)
@@ -3642,23 +3664,6 @@ void PreferencesDialog::changeDictionaryPath()
 	}
 }
 
-void PreferencesDialog::changeOdomBowFixedLocalMapPath()
-{
-	QString path;
-	if(_ui->odom_fixedLocalMapPath->text().isEmpty())
-	{
-		path = QFileDialog::getOpenFileName(this, tr("Database"), this->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
-	}
-	else
-	{
-		path = QFileDialog::getOpenFileName(this, tr("Database"), _ui->odom_fixedLocalMapPath->text(), tr("RTAB-Map database files (*.db)"));
-	}
-	if(!path.isEmpty())
-	{
-		_ui->odom_fixedLocalMapPath->setText(path);
-	}
-}
-
 void PreferencesDialog::updateSourceGrpVisibility()
 {
 	_ui->groupBox_sourceRGBD->setVisible(_ui->comboBox_sourceType->currentIndex() == 0);
@@ -3775,6 +3780,10 @@ int PreferencesDialog::getOdomQualityWarnThr() const
 bool PreferencesDialog::isPosteriorGraphView() const
 {
 	return _ui->checkBox_posteriorGraphView->isChecked();
+}
+bool PreferencesDialog::isOdomDisabled() const
+{
+	return _ui->checkbox_odomDisabled->isChecked();
 }
 
 bool PreferencesDialog::isCloudsShown(int index) const

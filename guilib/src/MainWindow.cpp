@@ -926,7 +926,6 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
 	{
 		_lastOdomPose = pose;
-		_odometryReceived = true;
 	}
 
 	if(_ui->dockWidget_cloudViewer->isVisible())
@@ -1071,19 +1070,22 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				// F2M: scan local map
 				if(!odom.info().localScanMap.empty())
 				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-					cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
-					if(!_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
+					if(!lost)
 					{
-						UERROR("Adding scanMapOdom to viewer failed!");
+						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
+						cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
+						if(!_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
+						{
+							UERROR("Adding scanMapOdom to viewer failed!");
+						}
+						else
+						{
+							_cloudViewer->setCloudVisibility("scanMapOdom", true);
+							_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
+							_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
+						}
 					}
-					else
-					{
-						_cloudViewer->setCloudVisibility("scanMapOdom", true);
-						_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
-						_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
-						scanUpdated = true;
-					}
+					scanUpdated = true;
 				}
 				// scan cloud
 				if(!odom.data().laserScanRaw().empty())
@@ -1117,9 +1119,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			}
 
 			// 3d features
-			if(_preferencesDialog->isFeaturesShown(1))
+			if(_preferencesDialog->isFeaturesShown(1) && !odom.info().localMap.empty())
 			{
-				if(!odom.info().localMap.empty())
+				if(!lost)
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 					cloud->resize(odom.info().localMap.size());
@@ -1140,9 +1142,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					_cloudViewer->addCloud("featuresOdom", cloud, _odometryCorrection);
 					_cloudViewer->setCloudVisibility("featuresOdom", true);
 					_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
-
-					featuresUpdated = true;
 				}
+				featuresUpdated = true;
 			}
 		}
 		if(!dataIgnored)
@@ -1168,6 +1169,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 	if(!odom.pose().isNull())
 	{
+		_odometryReceived = true;
 		// update camera position
 		_cloudViewer->updateCameraTargetPosition(_odometryCorrection*odom.pose());
 
@@ -1434,7 +1436,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			signature = stat.getSignatures().at(stat.refImageId());
 			signature.sensorData().uncompressData(); // make sure data are uncompressed
 
-			if(!smallMovement)
+			if(!smallMovement && uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())))
 			{
 				_cachedSignatures.insert(signature.id(), signature);
 				_cachedMemoryUsage += signature.sensorData().getMemoryUsed();
@@ -2456,7 +2458,7 @@ void MainWindow::updateMapCloud(
 			UDEBUG("");
 			_cloudViewer->setCloudVisibility("scanMapOdom", false);
 		}
-		else
+		else if(_cloudViewer->getBackgroundColor() != Qt::darkRed) // not lost
 		{
 			UDEBUG("");
 			_cloudViewer->updateCloudPose("scanMapOdom", _odometryCorrection);
@@ -2471,7 +2473,7 @@ void MainWindow::updateMapCloud(
 			UDEBUG("");
 			_cloudViewer->setCloudVisibility("featuresOdom", false);
 		}
-		else
+		else if(_cloudViewer->getBackgroundColor() != Qt::darkRed) // not lost
 		{
 			UDEBUG("");
 			_cloudViewer->updateCloudPose("featuresOdom", _odometryCorrection);
@@ -4236,7 +4238,7 @@ void MainWindow::startDetection()
 				_odomThread = 0;
 			}
 
-			if(!camera->odomProvided())
+			if(!camera->odomProvided() && !_preferencesDialog->isOdomDisabled())
 			{
 				Odometry * odom = Odometry::create(parameters);
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
@@ -4281,6 +4283,13 @@ void MainWindow::startDetection()
 
 	_occupancyGrid->clear();
 	_occupancyGrid->parseParameters(parameters);
+
+	// clear odometry visual stuff
+	_cloudViewer->removeCloud("cloudOdom");
+	_cloudViewer->removeCloud("scanOdom");
+	_cloudViewer->removeCloud("scanMapOdom");
+	_cloudViewer->removeCloud("featuresOdom");
+	_cloudViewer->setBackgroundColor(_cloudViewer->getDefaultBackgroundColor());
 
 	emit stateChanged(kDetecting);
 }
