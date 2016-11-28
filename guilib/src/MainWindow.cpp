@@ -2518,17 +2518,6 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 		pcl::IndicesPtr indices(new std::vector<int>);
 		UASSERT(nodeId == data.id());
 
-		if(image.cols % _preferencesDialog->getCloudDecimation(0) != 0 ||
-		   image.rows % _preferencesDialog->getCloudDecimation(0) != 0)
-		{
-			UERROR("Decimation (%d) is not modulo of the image resolution (%dx%d)! The cloud cannot be "
-					"created. Go to Preferences->3D Rendering under \"Map\" column to modify this parameter.",
-					_preferencesDialog->getCloudDecimation(0),
-					image.cols,
-					image.rows);
-			return outputPair;
-		}
-
 		// Create organized cloud
 		cloud = util3d::cloudRGBFromSensorData(data,
 				_preferencesDialog->getCloudDecimation(0),

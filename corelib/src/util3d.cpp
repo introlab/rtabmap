@@ -993,16 +993,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		int subRGBWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		int subDepthWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 
-		if(subRGBWidth % decimation != 0 || subDepthWidth % decimation != 0)
-		{
-			UWARN("Image size (rgb=%d,%d depth=%d,%d) modulus decimation (%d) is not null "
-				  "for the cloud creation! Setting decimation to 1...",
-				  subRGBWidth, sensorData.imageRaw().rows,
-				  subDepthWidth, sensorData.depthRaw().rows,
-				  decimation);
-			decimation = 1;
-		}
-
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
 			if(sensorData.cameraModels()[i].isValidForProjection())

@@ -316,6 +316,7 @@ private:
     QAction * _aSetRenderingRate;
     QAction * _aSetLighting;
     QAction * _aSetEdgeVisibility;
+    QAction * _aBackfaceCulling;
     QMenu * _menu;
     std::set<std::string> _graphes;
     std::set<std::string> _coordinates;
@@ -337,7 +338,6 @@ private:
     QString _workingDirectory;
     QColor _defaultBgColor;
     QColor _currentBgColor;
-    bool _backfaceCulling;
     bool _frontfaceCulling;
     double _renderingRate;
     vtkProp * _octomapActor;

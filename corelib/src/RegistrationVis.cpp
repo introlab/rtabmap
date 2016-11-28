@@ -866,6 +866,10 @@ Transform RegistrationVis::computeTransformationImpl(
 						UWARN("saved projected.bmp");*/
 
 					}
+					else
+					{
+						UWARN("All projected points are outside the camera. Guess (%s) is wrong or images are not overlapping.", guess.prettyPrint().c_str());
+					}
 					UDEBUG("");
 				}
 				else
@@ -1318,8 +1322,8 @@ Transform RegistrationVis::computeTransformationImpl(
 	}
 	else if(toSignature.sensorData().isValid())
 	{
-		UWARN("Missing correspondences for registration. toWords = %d toImageEmpty=%d",
-				(int)toSignature.getWords().size(), toSignature.sensorData().imageRaw().empty()?1:0);
+		UWARN("Missing correspondences for registration (%d->%d). toWords = %d toImageEmpty=%d",
+				fromSignature.id(), toSignature.id(), (int)toSignature.getWords().size(), toSignature.sensorData().imageRaw().empty()?1:0);
 	}
 
 	info.inliers = inliersCount;
