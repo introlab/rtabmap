@@ -83,7 +83,9 @@ void segmentObstaclesFromGround(
 				normalKSearch,
 				viewPoint);
 
-		if(segmentFlatObstacles)
+		UDEBUG("cloud=%d, indices=%d flatSurfaces=%d", (int)cloud->size(), (int)indices->size(), (int)flatSurfaces->size());
+
+		if(segmentFlatObstacles && flatSurfaces->size())
 		{
 			int biggestFlatSurfaceIndex;
 			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = extractClusters(
@@ -93,7 +95,7 @@ void segmentObstaclesFromGround(
 					minClusterSize,
 					std::numeric_limits<int>::max(),
 					&biggestFlatSurfaceIndex);
-
+			UDEBUG("clusteredFlatSurfaces=%d", (int)clusteredFlatSurfaces.size());
 
 			// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
 			if(clusteredFlatSurfaces.size())
@@ -137,6 +139,8 @@ void segmentObstaclesFromGround(
 		{
 			ground = flatSurfaces;
 		}
+
+		UDEBUG("ground=%d", (int)ground->size());
 
 		if(ground->size() != cloud->size())
 		{

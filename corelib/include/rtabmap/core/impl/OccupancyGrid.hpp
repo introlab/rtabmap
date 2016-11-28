@@ -87,6 +87,7 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		indices = util3d::passThrough(cloud, indices, "z",
 				minGroundHeight_!=0.0f?minGroundHeight_:std::numeric_limits<int>::min(),
 				maxObstacleHeight_>0.0f?maxObstacleHeight_:std::numeric_limits<int>::max());
+		UDEBUG("indices after max obstacles height filtering = %d", (int)indices->size());
 	}
 
 	if(indices->size())
