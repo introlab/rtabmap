@@ -3540,6 +3540,10 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 
 	timer.start();
 	ULOGGER_DEBUG("refWords.size() = %d", refWords.size());
+	if(refWords.size())
+	{
+		_ui->imageView_source->clearFeatures();
+	}
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = refWords.begin(); iter != refWords.end(); ++iter )
 	{
 		int id = iter->first;
@@ -3576,6 +3580,10 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	timer.start();
 	ULOGGER_DEBUG("loopWords.size() = %d", loopWords.size());
 	QList<QPair<cv::Point2f, cv::Point2f> > uniqueCorrespondences;
+	if(loopWords.size())
+	{
+		_ui->imageView_loopClosure->clearFeatures();
+	}
 	for(std::multimap<int, cv::KeyPoint>::const_iterator iter = loopWords.begin(); iter != loopWords.end(); ++iter )
 	{
 		int id = iter->first;
@@ -3641,6 +3649,12 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	else
 	{
 		deltaX = _ui->imageView_source->width();
+	}
+
+	if(refWords.size() && loopWords.size())
+	{
+		_ui->imageView_source->clearLines();
+		_ui->imageView_loopClosure->clearLines();
 	}
 
 	for(QList<QPair<cv::Point2f, cv::Point2f> >::iterator iter = uniqueCorrespondences.begin();
