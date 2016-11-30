@@ -19,9 +19,10 @@ using namespace Eigen;
 EdgeSE2Switchable::EdgeSE2Switchable() : g2o::BaseMultiEdge<3, g2o::SE2>()
 {
   resize(3);
-  _jacobianOplus[0].resize(3,3);    
-  _jacobianOplus[1].resize(3,3);
-  _jacobianOplus[2].resize(3,1); 
+  _jacobianOplus.clear();
+  _jacobianOplus.push_back(JacobianType(0, 3, 3));
+  _jacobianOplus.push_back(JacobianType(0, 3, 3));
+  _jacobianOplus.push_back(JacobianType(0, 3, 1));
 
 }
 // ================================================

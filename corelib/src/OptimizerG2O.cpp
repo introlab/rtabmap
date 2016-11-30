@@ -523,10 +523,6 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				}
 			}
 		}
-		optimizer.clear();
-		g2o::Factory::destroy();
-		g2o::OptimizationAlgorithmFactory::destroy();
-		g2o::HyperGraphActionLibrary::destroy();
 	}
 	else if(poses.size() == 1 || iterations() <= 0)
 	{
