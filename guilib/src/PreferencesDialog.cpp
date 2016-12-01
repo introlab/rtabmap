@@ -1098,7 +1098,7 @@ void PreferencesDialog::setupSignals()
 			}
 			else if(groupBox)
 			{
-				connect(groupBox, SIGNAL(clicked(bool)), this, SLOT(addParameter(bool)));
+				connect(groupBox, SIGNAL(toggled(bool)), this, SLOT(addParameter(bool)));
 			}
 			else
 			{
@@ -2794,7 +2794,6 @@ void PreferencesDialog::selectSourceDatabase()
 		_ui->source_database_lineEdit_path->setText(paths.size()==1?paths.front():paths.join(";"));
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 		_ui->source_spinBox_database_cameraIndex->setValue(-1);
-		_ui->source_checkBox_useDbStamps->setChecked(true);
 	}
 }
 
