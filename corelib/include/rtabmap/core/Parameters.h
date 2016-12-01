@@ -351,7 +351,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Optimizer, Robust,            bool, false,     uFormat("Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies). Not compatible with \"%s\" if enabled.", kRGBDOptimizeMaxError().c_str()));
 
 	RTABMAP_PARAM(g2o, Solver,                  int, 0,          "0=csparse 1=pcg 2=cholmod");
-	RTABMAP_PARAM(g2o, Optimizer,               int, 1,          "0=Levenberg 1=GaussNewton");
+	RTABMAP_PARAM(g2o, Optimizer,               int, 0,          "0=Levenberg 1=GaussNewton");
 	RTABMAP_PARAM(g2o, PixelVariance,           double, 1.0,     "Pixel variance used for bundle adjustment.");
 
 	// Odometry

@@ -4294,7 +4294,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		newLink = rtabmap::graph::findLink(linksRemoved_, from, to)->second;
 	}
 
-	bool updateConstraints = true;
+	bool updateConstraints = newLink.isValid();
 	float maxOptimizationError = uStr2Float(ui_->parameters_toolbox->getParameters().at(Parameters::kRGBDOptimizeMaxError()));
 	if(newLink.isValid() &&
 	   maxOptimizationError > 0.0f &&
@@ -4321,60 +4321,79 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
 		optimizer->getConnectedGraph(fromId, poses_, linksIn, poses, links);
+		UASSERT(poses.find(fromId) != poses.end());
+		UASSERT(poses.find(newLink.from()) != poses.end());
+		UASSERT(poses.find(newLink.to()) != poses.end());
+		UASSERT(graph::findLink(links, newLink.from(), newLink.to()) != links.end());
 		poses = optimizer->optimize(fromId, poses, links);
-		for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+		std::string msg;
+		if(poses.size())
 		{
-			// ignore links with high variance
-			if(iter->second.transVariance() <= 1.0)
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
-				Transform t1 = uValue(poses, iter->second.from(), Transform());
-				Transform t2 = uValue(poses, iter->second.to(), Transform());
-				Transform t = t1.inverse()*t2;
-				float linearError = uMax3(
-						fabs(iter->second.transform().x() - t.x()),
-						fabs(iter->second.transform().y() - t.y()),
-						fabs(iter->second.transform().z() - t.z()));
-				Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-				Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-				float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-				if(linearError > maxLinearError)
+				// ignore links with high variance
+				if(iter->second.transVariance() <= 1.0)
 				{
-					maxLinearError = linearError;
-					maxLinearLink = &iter->second;
-				}
-				if(angularError > maxAngularError)
-				{
-					maxAngularError = angularError;
-					maxAngularLink = &iter->second;
+					UASSERT(poses.find(iter->second.from())!=poses.end());
+					UASSERT(poses.find(iter->second.to())!=poses.end());
+					Transform t1 = poses.at(iter->second.from());
+					Transform t2 = poses.at(iter->second.to());
+					UASSERT(!t1.isNull() && !t2.isNull());
+					Transform t = t1.inverse()*t2;
+					float linearError = uMax3(
+							fabs(iter->second.transform().x() - t.x()),
+							fabs(iter->second.transform().y() - t.y()),
+							fabs(iter->second.transform().z() - t.z()));
+					Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+					if(linearError > maxLinearError)
+					{
+						maxLinearError = linearError;
+						maxLinearLink = &iter->second;
+					}
+					if(angularError > maxAngularError)
+					{
+						maxAngularError = angularError;
+						maxAngularLink = &iter->second;
+					}
 				}
 			}
-		}
-		if(maxLinearLink)
-		{
-			UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-		}
-		if(maxLinearLink)
-		{
-			UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
-		}
+			if(maxLinearLink)
+			{
+				UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+			}
+			if(maxLinearLink)
+			{
+				UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+			}
 
-		if(maxLinearError > maxOptimizationError)
+			if(maxLinearError > maxOptimizationError)
+			{
+				msg = uFormat("Rejecting edge %d->%d because "
+						  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
+						  "\"%s\" is %f m.",
+						  newLink.from(),
+						  newLink.to(),
+						  maxLinearError,
+						  maxLinearLink->from(),
+						  maxLinearLink->to(),
+						  maxAngularError*180.0f/M_PI,
+						  maxAngularLink->from(),
+						  maxAngularLink->to(),
+						  Parameters::kRGBDOptimizeMaxError().c_str(),
+						  maxOptimizationError);
+			}
+		}
+		else
 		{
-			std::string msg = uFormat("Rejecting edge %d->%d because "
-					  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
-					  "\"%s\" is %f m.",
+			msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
 					  newLink.from(),
-					  newLink.to(),
-					  maxLinearError,
-					  maxLinearLink->from(),
-					  maxLinearLink->to(),
-					  maxAngularError*180.0f/M_PI,
-					  maxAngularLink->from(),
-					  maxAngularLink->to(),
-					  Parameters::kRGBDOptimizeMaxError().c_str(),
-					  maxOptimizationError);
+					  newLink.to());
+		}
+		if(!msg.empty())
+		{
 			UWARN("%s", msg.c_str());
-
 			if(!silent)
 			{
 				QMessageBox::warning(this,
