@@ -77,6 +77,12 @@ StatItem::~StatItem()
 
 }
 
+void StatItem::clearCache()
+{
+	_x.clear();
+	_y.clear();
+}
+
 void StatItem::addValue(float y)
 {
 	if(_cacheOn)
@@ -95,6 +101,11 @@ void StatItem::addValue(float x, float y)
 {
 	if(_cacheOn)
 	{
+		if (_x.size() && x <_x.back())
+		{
+			clearCache();
+		}
+
 		if(_y.size() % 100)
 		{
 			_y.reserve(_y.size()+100);
@@ -511,6 +522,28 @@ void StatsToolBox::figureDeleted(QObject * obj)
 	}
 }
 
+void StatsToolBox::clear()
+{
+	for (QMap<QString, QWidget*>::iterator i = _figures.begin(); i != _figures.end(); ++i)
+	{
+		QList<UPlot *> plots = i.value()->findChildren<UPlot *>();
+		if (plots.size() == 1)
+		{
+			QStringList names = plots[0]->curveNames();
+			plots[0]->clearData();
+		}
+		else
+		{
+			UERROR("");
+		}
+	}
+	QList<StatItem*> items = _statBox->currentWidget()->findChildren<StatItem*>();
+	for (int i = 0; i<items.size(); ++i)
+	{
+		items[i]->clearCache();
+	}
+}
+
 void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
 {
 	QMenu topMenu(this);
@@ -524,19 +557,7 @@ void StatsToolBox::contextMenuEvent(QContextMenuEvent * event)
 	{
 		if(action == aClearFigures)
 		{
-			for(QMap<QString, QWidget*>::iterator i=_figures.begin(); i!=_figures.end(); ++i)
-			{
-				QList<UPlot *> plots = i.value()->findChildren<UPlot *>();
-				if(plots.size() == 1)
-				{
-					QStringList names = plots[0]->curveNames();
-					plots[0]->clearData();
-				}
-				else
-				{
-					UERROR("");
-				}
-			}
+			this->clear();
 		}
 		else
 		{

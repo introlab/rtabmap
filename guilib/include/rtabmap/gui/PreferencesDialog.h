@@ -151,6 +151,7 @@ public:
 	int getOdomQualityWarnThr() const;
 	bool isPosteriorGraphView() const;
 	bool isOdomDisabled() const;
+	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
 	bool isLabelsShown() const;

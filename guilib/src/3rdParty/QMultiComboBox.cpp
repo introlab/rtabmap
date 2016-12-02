@@ -13,6 +13,7 @@
 #include <QCoreApplication>
 #include <QDesktopWidget>
 
+#include "rtabmap/utilite/ULogger.h"
 
 QMultiComboBox::QMultiComboBox(QWidget *widget ) :
     QComboBox(widget),
@@ -81,7 +82,6 @@ void QMultiComboBox::paintEvent(QPaintEvent *e)
 
 void QMultiComboBox::showPopup()
 {
-
     QRect rec = QRect(geometry());
 
     //QPoint p = this->mapToGlobal(QPoint(0,rec.height()));
@@ -94,11 +94,14 @@ void QMultiComboBox::showPopup()
     QPoint below = this->mapToGlobal(QPoint(0,rec.height()));
     int belowHeight = screen.bottom() - below.y();
 
+	// compute width
+	int textWidth = vlist_.sizeHint().width();
+
     // first activate it with height 1px to get all the items initialized
     QRect rec2;
     rec2.setTopLeft(below);
-    rec2.setWidth(rec.width());
-    rec.setHeight(1);
+    rec2.setWidth(textWidth>rec.width()? textWidth:rec.width());
+    rec2.setHeight(rec.height());
     popframe_.setGeometry(rec2);
     popframe_.raise();
     popframe_.show();
@@ -108,7 +111,6 @@ void QMultiComboBox::showPopup()
     int contheight = vlist_.count()*vlist_.sizeHintForRow(0) + 4; // +4 - should be determined by margins?
     belowHeight = min(abs(belowHeight)-screenbound_, contheight);
     aboveHeight = min(abs(aboveHeight)-screenbound_, contheight);
-
     if (popheight_ > 0) // fixed
     {
         rec2.setHeight(popheight_);
@@ -127,7 +129,6 @@ void QMultiComboBox::showPopup()
             rec2.setHeight(aboveHeight);
         }
     }
-
     popframe_.setGeometry(rec2);
     popframe_.raise();
     popframe_.show();
@@ -149,6 +150,7 @@ void QMultiComboBox::addItem ( const QString & text, const QVariant & userData)
     else
         wi->setCheckState(Qt::Unchecked);
     vlist_.addItem(wi);
+	vlist_.setMinimumWidth(vlist_.sizeHintForColumn(0));
 }
 
 

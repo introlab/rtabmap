@@ -97,7 +97,7 @@ public:
 	bool save(const std::string & directory, bool ignoreStereoTransform = true) const;
 	bool saveStereoTransform(const std::string & directory) const;
 
-	double baseline() const {return right_.fx()!=0.0?-right_.Tx()/right_.fx():0.0;}
+	double baseline() const {return right_.fx()!=0.0 && left_.fx() != 0.0 ? left_.Tx() / left_.fx() - right_.Tx()/right_.fx():0.0;}
 
 	float computeDepth(float disparity) const;
 	float computeDisparity(float depth) const; // m

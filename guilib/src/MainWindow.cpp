@@ -942,126 +942,112 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			   (odom.data().cameraModels().size() || odom.data().stereoCameraModel().isValidForProjection()) &&
 			   _preferencesDialog->isCloudsShown(1))
 			{
-
-				if(odom.data().imageRaw().cols % _preferencesDialog->getCloudDecimation(1) != 0 ||
-				   odom.data().imageRaw().rows % _preferencesDialog->getCloudDecimation(1) != 0)
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+				pcl::IndicesPtr indices(new std::vector<int>);
+				cloud = util3d::cloudRGBFromSensorData(odom.data(),
+						_preferencesDialog->getCloudDecimation(1),
+						_preferencesDialog->getCloudMaxDepth(1),
+						_preferencesDialog->getCloudMinDepth(1),
+						indices.get(),
+						_preferencesDialog->getAllParameters());
+				if(indices->size())
 				{
-					UERROR("Decimation (%d) is not modulo of the image resolution (%dx%d)! The cloud cannot be "
-							"created. Go to Preferences->3D Rendering under \"Odom\" column to modify this parameter.",
-							_preferencesDialog->getCloudDecimation(1),
-							odom.data().imageRaw().cols,
-							odom.data().imageRaw().rows);
-				}
-				else
-				{
+					cloud = util3d::transformPointCloud(cloud, pose);
 
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
-					pcl::IndicesPtr indices(new std::vector<int>);
-					cloud = util3d::cloudRGBFromSensorData(odom.data(),
-							_preferencesDialog->getCloudDecimation(1),
-							_preferencesDialog->getCloudMaxDepth(1),
-							_preferencesDialog->getCloudMinDepth(1),
-							indices.get(),
-							_preferencesDialog->getAllParameters());
-					if(indices->size())
+					if(_preferencesDialog->isCloudMeshing())
 					{
-						cloud = util3d::transformPointCloud(cloud, pose);
+						// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
+						output = util3d::extractIndices(cloud, indices, false, true);
 
-						if(_preferencesDialog->isCloudMeshing())
+						// Fast organized mesh
+						Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+						if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
 						{
-							// we need to extract indices as pcl::OrganizedFastMesh doesn't take indices
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
-							output = util3d::extractIndices(cloud, indices, false, true);
-
-							// Fast organized mesh
-							Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
-							if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+							viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
+							viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
+							viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
+						}
+						else if(!odom.data().stereoCameraModel().localTransform().isNull())
+						{
+							viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
+							viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
+							viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
+						}
+						std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
+								output,
+								_preferencesDialog->getCloudMeshingAngle(),
+								_preferencesDialog->isCloudMeshingQuad(),
+								_preferencesDialog->getCloudMeshingTriangleSize(),
+								Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
+						if(polygons.size())
+						{
+							if(_preferencesDialog->isCloudMeshingTexture() && !odom.data().imageRaw().empty())
 							{
-								viewpoint[0] = odom.data().cameraModels()[0].localTransform().x();
-								viewpoint[1] = odom.data().cameraModels()[0].localTransform().y();
-								viewpoint[2] = odom.data().cameraModels()[0].localTransform().z();
-							}
-							else if(!odom.data().stereoCameraModel().localTransform().isNull())
-							{
-								viewpoint[0] = odom.data().stereoCameraModel().localTransform().x();
-								viewpoint[1] = odom.data().stereoCameraModel().localTransform().y();
-								viewpoint[2] = odom.data().stereoCameraModel().localTransform().z();
-							}
-							std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
-									output,
-									_preferencesDialog->getCloudMeshingAngle(),
-									_preferencesDialog->isCloudMeshingQuad(),
-									_preferencesDialog->getCloudMeshingTriangleSize(),
-									Eigen::Vector3f(pose.x(), pose.y(), pose.z()) + viewpoint);
-							if(polygons.size())
-							{
-								if(_preferencesDialog->isCloudMeshingTexture() && !odom.data().imageRaw().empty())
+								pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
+								pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
+								textureMesh->tex_polygons.push_back(polygons);
+								int w = cloud->width;
+								int h = cloud->height;
+								UASSERT(w > 1 && h > 1);
+								textureMesh->tex_coordinates.resize(1);
+								int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+								textureMesh->tex_coordinates[0].resize(nPoints);
+								for(int i=0; i<nPoints; ++i)
 								{
-									pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
-									pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
-									textureMesh->tex_polygons.push_back(polygons);
-									int w = cloud->width;
-									int h = cloud->height;
-									UASSERT(w > 1 && h > 1);
-									textureMesh->tex_coordinates.resize(1);
-									int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
-									textureMesh->tex_coordinates[0].resize(nPoints);
-									for(int i=0; i<nPoints; ++i)
-									{
-										//uv
-										textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
-												float(i % w) / float(w),      // u
-												float(h - i / w) / float(h)); // v
-									}
-
-									pcl::TexMaterial mesh_material;
-									mesh_material.tex_d = 1.0f;
-									mesh_material.tex_Ns = 75.0f;
-									mesh_material.tex_illum = 1;
-
-									mesh_material.tex_name = "material_odom";
-
-									QDir dir(_preferencesDialog->getWorkingDirectory());
-									ExportCloudsDialog::removeDirRecursively(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
-									dir.mkdir("tmp_textures");
-
-									std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
-									mesh_material.tex_file = uFormat("%s/%s.png", tmpDirectory.c_str(), "texture_odom");
-									if(!cv::imwrite(mesh_material.tex_file, odom.data().imageRaw()))
-									{
-										UERROR("Cannot save texture of image odom");
-									}
-									else
-									{
-										UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
-									}
-
-									textureMesh->tex_materials.push_back(mesh_material);
-
-									if(!_cloudViewer->addCloudTextureMesh("cloudOdom", textureMesh, _odometryCorrection))
-									{
-										UERROR("Adding cloudOdom to viewer failed!");
-									}
+									//uv
+									textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
+											float(i % w) / float(w),      // u
+											float(h - i / w) / float(h)); // v
 								}
-								else if(!_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
+
+								pcl::TexMaterial mesh_material;
+								mesh_material.tex_d = 1.0f;
+								mesh_material.tex_Ns = 75.0f;
+								mesh_material.tex_illum = 1;
+
+								mesh_material.tex_name = "material_odom";
+
+								QDir dir(_preferencesDialog->getWorkingDirectory());
+								ExportCloudsDialog::removeDirRecursively(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
+								dir.mkdir("tmp_textures");
+
+								std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
+								mesh_material.tex_file = uFormat("%s/%s.png", tmpDirectory.c_str(), "texture_odom");
+								if(!cv::imwrite(mesh_material.tex_file, odom.data().imageRaw()))
+								{
+									UERROR("Cannot save texture of image odom");
+								}
+								else
+								{
+									UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
+								}
+
+								textureMesh->tex_materials.push_back(mesh_material);
+
+								if(!_cloudViewer->addCloudTextureMesh("cloudOdom", textureMesh, _odometryCorrection))
 								{
 									UERROR("Adding cloudOdom to viewer failed!");
 								}
 							}
-						}
-						else
-						{
-							if(!_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
+							else if(!_cloudViewer->addCloudMesh("cloudOdom", output, polygons, _odometryCorrection))
 							{
 								UERROR("Adding cloudOdom to viewer failed!");
 							}
 						}
-						_cloudViewer->setCloudVisibility("cloudOdom", true);
-						_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
-						_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
-
-						cloudUpdated = true;
 					}
+					else
+					{
+						if(!_cloudViewer->addCloud("cloudOdom", cloud, _odometryCorrection))
+						{
+							UERROR("Adding cloudOdom to viewer failed!");
+						}
+					}
+					_cloudViewer->setCloudVisibility("cloudOdom", true);
+					_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
+					_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
+
+					cloudUpdated = true;
 				}
 			}
 
@@ -1436,7 +1422,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			signature = stat.getSignatures().at(stat.refImageId());
 			signature.sensorData().uncompressData(); // make sure data are uncompressed
 
-			if(!smallMovement && uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())))
+			if(!smallMovement && 
+			   uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
+				signature.getWeight()>=0) // ignore intermediate nodes for the cache
 			{
 				_cachedSignatures.insert(signature.id(), signature);
 				_cachedMemoryUsage += signature.sensorData().getMemoryUsed();
@@ -2132,14 +2120,17 @@ void MainWindow::updateMapCloud(
 					{
 						cv::Mat ground;
 						cv::Mat obstacles;
-						jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles);
-						_gridLocalMaps.insert(std::make_pair(iter->first, std::make_pair(ground, obstacles)));
-						_gridViewPoints.insert(std::make_pair(iter->first, jter->sensorData().gridViewPoint()));
-						_cachedGridsMemoryUsage += ground.total()*ground.elemSize() + obstacles.total()*obstacles.elemSize();
-
-						if(ground.cols || obstacles.cols)
+						if (jter->sensorData().gridCellSize() > 0.0f)
 						{
-							_occupancyGrid->addToCache(iter->first, ground, obstacles);
+							jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles);
+							_gridLocalMaps.insert(std::make_pair(iter->first, std::make_pair(ground, obstacles)));
+							_gridViewPoints.insert(std::make_pair(iter->first, jter->sensorData().gridViewPoint()));
+							_cachedGridsMemoryUsage += ground.total()*ground.elemSize() + obstacles.total()*obstacles.elemSize();
+
+							if (ground.cols || obstacles.cols)
+							{
+								_occupancyGrid->addToCache(iter->first, ground, obstacles);
+							}
 						}
 					}
 #ifdef RTABMAP_OCTOMAP
@@ -3002,7 +2993,7 @@ Transform MainWindow::alignPosesToGroundTruth(
 		const std::map<int, Transform> & groundTruth)
 {
 	Transform t = Transform::getIdentity();
-	if(groundTruth.size() && poses.size())
+	if(groundTruth.size() && poses.size() && _preferencesDialog->isGroundTruthAligned())
 	{
 		unsigned int maxSize = poses.size()>groundTruth.size()? (unsigned int)poses.size(): (unsigned int)groundTruth.size();
 		pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
@@ -5301,6 +5292,7 @@ void MainWindow::clearTheCache()
 	_currentLabels.clear();
 	_odometryCorrection = Transform::getIdentity();
 	_lastOdomPose.setNull();
+	_ui->statsToolBox->clear();
 	//disable save cloud action
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
 	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);

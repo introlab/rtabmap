@@ -292,6 +292,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_posteriorGraphView, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->checkbox_groundTruthAlign, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
 	_3dRenderingShowClouds.resize(2);
@@ -1212,6 +1213,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_odomQualityWarnThr->setValue(50);
 		_ui->checkBox_posteriorGraphView->setChecked(true);
 		_ui->checkbox_odomDisabled->setChecked(false);
+		_ui->checkbox_groundTruthAlign->setChecked(true);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_cloudRendering1->objectName())
 	{
@@ -1595,6 +1597,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
 	_ui->checkBox_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked()).toBool());
 	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
+	_ui->checkbox_groundTruthAlign->setChecked(settings.value("gtAlign", _ui->checkbox_groundTruthAlign->isChecked()).toBool());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -1973,6 +1976,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("odomQualityThr",       _ui->spinBox_odomQualityWarnThr->value());
 	settings.setValue("posteriorGraphView",   _ui->checkBox_posteriorGraphView->isChecked());
 	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
+	settings.setValue("gtAlign",              _ui->checkbox_groundTruthAlign->isChecked());
 
 	for(int i=0; i<2; ++i)
 	{
@@ -3783,6 +3787,10 @@ bool PreferencesDialog::isPosteriorGraphView() const
 bool PreferencesDialog::isOdomDisabled() const
 {
 	return _ui->checkbox_odomDisabled->isChecked();
+}
+bool PreferencesDialog::isGroundTruthAligned() const
+{
+	return _ui->checkbox_groundTruthAlign->isChecked();
 }
 
 bool PreferencesDialog::isCloudsShown(int index) const
