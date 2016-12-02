@@ -580,7 +580,7 @@ void SensorData::uncompressData(
 			cv::Size size(_imageRaw.cols/_cameraModels.size(), _imageRaw.rows);
 			for(unsigned int i=0; i<_cameraModels.size(); ++i)
 			{
-				if(_cameraModels[i].isValidForProjection() && _cameraModels[i].imageWidth() == 0)
+				if(_cameraModels[i].fx() && _cameraModels[i].fy() && _cameraModels[i].imageWidth() == 0)
 				{
 					_cameraModels[i].setImageSize(size);
 				}

@@ -162,9 +162,24 @@ bool DBReader::init(
 		StereoCameraModel stereoModel;
 		if(_dbDriver->getCalibration(*_ids.begin(), models, stereoModel))
 		{
-			if(models.size() && models.at(0).isValidForProjection())
+			if(models.size())
 			{
-				_calibrated = true;
+				if(models.at(0).isValidForProjection())
+				{
+					_calibrated = true;
+				}
+				else if(models.at(0).fx() && models.at(0).fy() && models.at(0).imageWidth() == 0)
+				{
+					// backward compatibility for databases not saving cx,cy and imageSize
+					SensorData data;
+					_dbDriver->getNodeData(*_ids.begin(), data, true, false, false, false);
+					cv::Mat rgb;
+					data.uncompressData(&rgb, 0); // this will update camera models if old format
+					if(data.cameraModels().size() && data.cameraModels().at(0).isValidForProjection())
+					{
+						_calibrated = true;
+					}
+				}
 			}
 			else if(stereoModel.isValidForProjection())
 			{

@@ -691,94 +691,99 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 	}
 
 	event->accept();
-	if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
+	if(dbDriver_)
 	{
-		QMessageBox::StandardButton button = QMessageBox::question(this,
-				tr("Links modified"),
-				tr("Some links are modified (%1 added, %2 refined, %3 removed), do you want to save them?")
-				.arg(linksAdded_.size()).arg(linksRefined_.size()).arg(linksRemoved_.size()),
-				QMessageBox::Cancel | QMessageBox::Yes | QMessageBox::No,
-				QMessageBox::Cancel);
-
-		if(button == QMessageBox::Yes)
+		if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
 		{
-			// Added links
-			for(std::multimap<int, rtabmap::Link>::iterator iter=linksAdded_.begin(); iter!=linksAdded_.end(); ++iter)
+			QMessageBox::StandardButton button = QMessageBox::question(this,
+					tr("Links modified"),
+					tr("Some links are modified (%1 added, %2 refined, %3 removed), do you want to save them?")
+					.arg(linksAdded_.size()).arg(linksRefined_.size()).arg(linksRemoved_.size()),
+					QMessageBox::Cancel | QMessageBox::Yes | QMessageBox::No,
+					QMessageBox::Cancel);
+
+			if(button == QMessageBox::Yes)
 			{
-				std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
-				if(refinedIter != linksRefined_.end())
+				// Added links
+				for(std::multimap<int, rtabmap::Link>::iterator iter=linksAdded_.begin(); iter!=linksAdded_.end(); ++iter)
 				{
-					dbDriver_->addLink(refinedIter->second);
-					dbDriver_->addLink(refinedIter->second.inverse());
+					std::multimap<int, rtabmap::Link>::iterator refinedIter = rtabmap::graph::findLink(linksRefined_, iter->second.from(), iter->second.to());
+					if(refinedIter != linksRefined_.end())
+					{
+						dbDriver_->addLink(refinedIter->second);
+						dbDriver_->addLink(refinedIter->second.inverse());
+					}
+					else
+					{
+						dbDriver_->addLink(iter->second);
+						dbDriver_->addLink(iter->second.inverse());
+					}
 				}
-				else
+
+				//Refined links
+				for(std::multimap<int, rtabmap::Link>::iterator iter=linksRefined_.begin(); iter!=linksRefined_.end(); ++iter)
 				{
-					dbDriver_->addLink(iter->second);
-					dbDriver_->addLink(iter->second.inverse());
+					if(!containsLink(linksAdded_, iter->second.from(), iter->second.to()))
+					{
+						dbDriver_->updateLink(iter->second);
+						dbDriver_->updateLink(iter->second.inverse());
+					}
 				}
+
+				// Rejected links
+				for(std::multimap<int, rtabmap::Link>::iterator iter=linksRemoved_.begin(); iter!=linksRemoved_.end(); ++iter)
+				{
+					dbDriver_->removeLink(iter->second.to(), iter->second.from());
+					dbDriver_->removeLink(iter->second.from(), iter->second.to());
+				}
+				linksAdded_.clear();
+				linksRefined_.clear();
+				linksRemoved_.clear();
 			}
 
-			//Refined links
-			for(std::multimap<int, rtabmap::Link>::iterator iter=linksRefined_.begin(); iter!=linksRefined_.end(); ++iter)
+			if(button != QMessageBox::Yes && button != QMessageBox::No)
 			{
-				if(!containsLink(linksAdded_, iter->second.from(), iter->second.to()))
-				{
-					dbDriver_->updateLink(iter->second);
-					dbDriver_->updateLink(iter->second.inverse());
-				}
+				event->ignore();
 			}
-
-			// Rejected links
-			for(std::multimap<int, rtabmap::Link>::iterator iter=linksRemoved_.begin(); iter!=linksRemoved_.end(); ++iter)
-			{
-				dbDriver_->removeLink(iter->second.to(), iter->second.from());
-				dbDriver_->removeLink(iter->second.from(), iter->second.to());
-			}
-			linksAdded_.clear();
-			linksRefined_.clear();
-			linksRemoved_.clear();
 		}
 
-		if(button != QMessageBox::Yes && button != QMessageBox::No)
+		if(event->isAccepted() &&
+			generatedLocalMaps_.size() &&
+			uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.11.10") >= 0)
 		{
-			event->ignore();
-		}
-	}
+			QMessageBox::StandardButton button = QMessageBox::question(this,
+					tr("Local occupancy grid maps modified"),
+					tr("%1 occupancy grid maps are modified, do you want to "
+						"save them? This will overwrite occupancy grids saved in the database.")
+					.arg(generatedLocalMaps_.size()),
+					QMessageBox::Cancel | QMessageBox::Yes | QMessageBox::No,
+					QMessageBox::Cancel);
 
-	if(event->isAccepted() && generatedLocalMaps_.size())
-	{
-		QMessageBox::StandardButton button = QMessageBox::question(this,
-				tr("Local occupancy grid maps modified"),
-				tr("%1 occupancy grid maps are modified, do you want to "
-					"save them? This will overwrite occupancy grids saved in the database.")
-				.arg(generatedLocalMaps_.size()),
-				QMessageBox::Cancel | QMessageBox::Yes | QMessageBox::No,
-				QMessageBox::Cancel);
-
-		if(button == QMessageBox::Yes)
-		{
-			// Rejected links
-			UASSERT(generatedLocalMaps_.size() == generatedLocalMapsInfo_.size());
-			std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator mapIter = generatedLocalMaps_.begin();
-			std::map<int, std::pair<float, cv::Point3f> >::iterator infoIter = generatedLocalMapsInfo_.begin();
-			for(; mapIter!=generatedLocalMaps_.end(); ++mapIter, ++infoIter)
+			if(button == QMessageBox::Yes)
 			{
-				UASSERT(mapIter->first == infoIter->first);
-				dbDriver_->updateOccupancyGrid(
-						mapIter->first,
-						mapIter->second.first,
-						mapIter->second.second,
-						infoIter->second.first,
-						infoIter->second.second);
+				// Rejected links
+				UASSERT(generatedLocalMaps_.size() == generatedLocalMapsInfo_.size());
+				std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator mapIter = generatedLocalMaps_.begin();
+				std::map<int, std::pair<float, cv::Point3f> >::iterator infoIter = generatedLocalMapsInfo_.begin();
+				for(; mapIter!=generatedLocalMaps_.end(); ++mapIter, ++infoIter)
+				{
+					UASSERT(mapIter->first == infoIter->first);
+					dbDriver_->updateOccupancyGrid(
+							mapIter->first,
+							mapIter->second.first,
+							mapIter->second.second,
+							infoIter->second.first,
+							infoIter->second.second);
+				}
+				generatedLocalMaps_.clear();
+				generatedLocalMapsInfo_.clear();
+				localMaps_.clear();
 			}
-			generatedLocalMaps_.clear();
-			generatedLocalMapsInfo_.clear();
-			localMaps_.clear();
-		}
 
-		if(button != QMessageBox::Yes && button != QMessageBox::No)
-		{
-			event->ignore();
+			if(button != QMessageBox::Yes && button != QMessageBox::No)
+			{
+				event->ignore();
+			}
 		}
 	}
 

@@ -991,7 +991,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 								int h = cloud->height;
 								UASSERT(w > 1 && h > 1);
 								textureMesh->tex_coordinates.resize(1);
-								int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+								int nPoints = (int)(textureMesh->cloud.data.size()/textureMesh->cloud.point_step);
 								textureMesh->tex_coordinates[0].resize(nPoints);
 								for(int i=0; i<nPoints; ++i)
 								{
@@ -2125,7 +2125,7 @@ void MainWindow::updateMapCloud(
 							jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles);
 							_gridLocalMaps.insert(std::make_pair(iter->first, std::make_pair(ground, obstacles)));
 							_gridViewPoints.insert(std::make_pair(iter->first, jter->sensorData().gridViewPoint()));
-							_cachedGridsMemoryUsage += ground.total()*ground.elemSize() + obstacles.total()*obstacles.elemSize();
+							_cachedGridsMemoryUsage += (long)(ground.total()*ground.elemSize() + obstacles.total()*obstacles.elemSize());
 
 							if (ground.cols || obstacles.cols)
 							{
@@ -2674,12 +2674,12 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 						int h = cloud->height;
 						UASSERT(w > 1 && h > 1);
 						textureMesh->tex_coordinates.resize(1);
-						unsigned int nPoints = outputFiltered->size();
+						int nPoints = (int)outputFiltered->size();
 						textureMesh->tex_coordinates[0].resize(nPoints);
-						for(unsigned int i=0; i<nPoints; ++i)
+						for(int i=0; i<nPoints; ++i)
 						{
 							//uv
-							UASSERT(i < denseToOrganizedIndices.size());
+							UASSERT(i < (int)denseToOrganizedIndices.size());
 							int originalVertex = denseToOrganizedIndices[i];
 							textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
 									float(originalVertex % w) / float(w),      // u
@@ -2791,7 +2791,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				if(_preferencesDialog->isCloudsKept())
 				{
 					_cachedClouds.insert(std::make_pair(nodeId, outputPair));
-					_createdCloudsMemoryUsage += output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int);
+					_createdCloudsMemoryUsage += (long)(output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int));
 				}
 			}
 		}
