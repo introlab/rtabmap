@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraRGB.h"
+#include "rtabmap/core/Version.h"
 #include <list>
 
 namespace FlyCapture2
@@ -73,8 +74,10 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+#ifdef RTABMAP_DC1394
 	DC1394Device *device_;
 	StereoCameraModel stereoModel_;
+#endif
 };
 
 /////////////////////////
@@ -98,8 +101,10 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+#ifdef RTABMAP_FLYCAPTURE2
 	FlyCapture2::Camera * camera_;
 	void * triclopsCtx_; // TriclopsContext
+#endif
 };
 
 /////////////////////////
@@ -136,12 +141,13 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
-	virtual bool odomProvided() const { return computeOdometry_; }
+	virtual bool odomProvided() const;
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+#ifdef RTABMAP_ZED
 	sl::zed::Camera * zed_;
 	StereoCameraModel stereoModel_;
 	CameraVideo::Source src_;
@@ -154,6 +160,7 @@ private:
 	int confidenceThr_;
 	bool computeOdometry_;
 	bool lost_;
+#endif
 };
 
 /////////////////////////

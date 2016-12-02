@@ -347,8 +347,11 @@ bool CameraStereoDC1394::available()
 }
 
 CameraStereoDC1394::CameraStereoDC1394(float imageRate, const Transform & localTransform) :
-		Camera(imageRate, localTransform),
+		Camera(imageRate, localTransform)
+#ifdef RTABMAP_DC1394
+        ,
 		device_(0)
+#endif
 {
 #ifdef RTABMAP_DC1394
 	device_ = new DC1394Device();
@@ -401,7 +404,11 @@ bool CameraStereoDC1394::init(const std::string & calibrationFolder, const std::
 
 bool CameraStereoDC1394::isCalibrated() const
 {
+#ifdef RTABMAP_DC1394
 	return stereoModel_.isValidForProjection();
+#else
+	return false;
+#endif
 }
 
 std::string CameraStereoDC1394::getSerial() const
@@ -460,9 +467,12 @@ SensorData CameraStereoDC1394::captureImage(CameraInfo * info)
 // CameraTriclops
 //
 CameraStereoFlyCapture2::CameraStereoFlyCapture2(float imageRate, const Transform & localTransform) :
-		Camera(imageRate, localTransform),
+		Camera(imageRate, localTransform)
+#ifdef RTABMAP_FLYCAPTURE2
+        ,
 		camera_(0),
 		triclopsCtx_(0)
+#endif
 {
 #ifdef RTABMAP_FLYCAPTURE2
 	camera_ = new FlyCapture2::Camera();
@@ -757,7 +767,9 @@ CameraStereoZed::CameraStereoZed(
 		float imageRate,
 		const Transform & localTransform,
 		bool selfCalibration) :
-	Camera(imageRate, localTransform),
+	Camera(imageRate, localTransform)
+#ifdef RTABMAP_ZED
+    ,
 	zed_(0),
 	src_(CameraVideo::kUsbDevice),
 	usbDevice_(deviceId),
@@ -769,6 +781,7 @@ CameraStereoZed::CameraStereoZed(
 	confidenceThr_(confidenceThr),
 	computeOdometry_(computeOdometry),
 	lost_(true)
+#endif
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
@@ -788,7 +801,9 @@ CameraStereoZed::CameraStereoZed(
 		float imageRate,
 		const Transform & localTransform,
 		bool selfCalibration) :
-	Camera(imageRate, localTransform),
+	Camera(imageRate, localTransform)
+#ifdef RTABMAP_ZED
+    ,
 	zed_(0),
 	src_(CameraVideo::kVideoFile),
 	usbDevice_(0),
@@ -800,6 +815,7 @@ CameraStereoZed::CameraStereoZed(
 	confidenceThr_(confidenceThr),
 	computeOdometry_(computeOdometry),
 	lost_(true)
+#endif
 {
 	UDEBUG("");
 #ifdef RTABMAP_ZED
@@ -896,7 +912,11 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 
 bool CameraStereoZed::isCalibrated() const
 {
+#ifdef RTABMAP_ZED
 	return stereoModel_.isValidForProjection();
+#else
+	return false;
+#endif
 }
 
 std::string CameraStereoZed::getSerial() const
@@ -908,6 +928,15 @@ std::string CameraStereoZed::getSerial() const
 	}
 #endif
 	return "";
+}
+
+bool CameraStereoZed::odomProvided() const
+{
+#ifdef RTABMAP_ZED
+	return computeOdometry_;
+#else
+	return false;
+#endif
 }
 
 SensorData CameraStereoZed::captureImage(CameraInfo * info)

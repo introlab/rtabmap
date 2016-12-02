@@ -382,21 +382,18 @@ CameraOpenNI2::CameraOpenNI2(
 		Type type,
 		float imageRate,
 		const rtabmap::Transform & localTransform) :
-	Camera(imageRate, localTransform),
-	_type(type),
+	Camera(imageRate, localTransform)
 #ifdef RTABMAP_OPENNI2
+    ,
+	_type(type),
 	_device(new openni::Device()),
 	_color(new openni::VideoStream()),
 	_depth(new openni::VideoStream()),
-#else
-	_device(0),
-	_color(0),
-	_depth(0),
-#endif
 	_depthFx(0.0f),
 	_depthFy(0.0f),
 	_deviceId(deviceId),
 	_openNI2StampsAndIDsUsed(false)
+#endif
 {
 }
 
@@ -486,6 +483,13 @@ bool CameraOpenNI2::setMirroring(bool enabled)
 	}
 #endif
 	return false;
+}
+
+void CameraOpenNI2::setOpenNI2StampsAndIDsUsed(bool used)
+{
+#ifdef RTABMAP_OPENNI2
+	_openNI2StampsAndIDsUsed = used;
+#endif
 }
 
 bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::string & cameraName)
@@ -1122,11 +1126,14 @@ bool CameraFreenect::available()
 }
 
 CameraFreenect::CameraFreenect(int deviceId, Type type, float imageRate, const Transform & localTransform) :
-		Camera(imageRate, localTransform),
+		Camera(imageRate, localTransform)
+#ifdef RTABMAP_FREENECT
+        ,
 		deviceId_(deviceId),
 		type_(type),
 		ctx_(0),
 		freenectDevice_(0)
+#endif
 {
 #ifdef RTABMAP_FREENECT
 	if(freenect_init(&ctx_, NULL) < 0) UERROR("Cannot initialize freenect library");
@@ -1333,7 +1340,9 @@ CameraFreenect2::CameraFreenect2(
 	bool bilateralFiltering,
 	bool edgeAwareFiltering,
 	bool noiseFiltering) :
-		Camera(imageRate, localTransform),
+		Camera(imageRate, localTransform)
+#ifdef RTABMAP_FREENECT2
+        ,
 		deviceId_(deviceId),
 		type_(type),
 		freenect2_(0),
@@ -1345,6 +1354,7 @@ CameraFreenect2::CameraFreenect2(
 		bilateralFiltering_(bilateralFiltering),
 		edgeAwareFiltering_(edgeAwareFiltering),
 		noiseFiltering_(noiseFiltering)
+#endif
 {
 #ifdef RTABMAP_FREENECT2
 	UASSERT(minKinect2Depth_ < maxKinect2Depth_ && minKinect2Depth_>0 && maxKinect2Depth_>0 && maxKinect2Depth_<=65.535f);
@@ -1965,12 +1975,15 @@ bool CameraRealSense::available()
 }
 
 CameraRealSense::CameraRealSense(int device, int presetRGB, int presetDepth, float imageRate, const rtabmap::Transform & localTransform) :
-	Camera(imageRate, localTransform),
+	Camera(imageRate, localTransform)
+#ifdef RTABMAP_REALSENSE
+    ,
 	ctx_(0),
 	dev_(0),
 	deviceId_(device),
 	presetRGB_(presetRGB),
 	presetDepth_(presetDepth)
+#endif
 {
 	UDEBUG("");
 }
