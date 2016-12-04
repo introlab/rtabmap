@@ -89,6 +89,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private String mWorkingDirectory = "";
   
   private int mMaxDepthIndex = 5;
+  private int mMeshDecimationIndex = 0;
   private int mMeshAngleToleranceIndex = 2;
   private int mMeshTriangleSizeIndex = 0;
   
@@ -558,7 +559,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     	  mItemOpen.setEnabled(item.isChecked() && !mItemDataRecorderMode.isChecked());
     	  mItemPostProcessing.setEnabled(item.isChecked() && !mItemDataRecorderMode.isChecked());
     	  mItemDataRecorderMode.setEnabled(item.isChecked());
-    	 // mItemSave.setEnabled(item.isChecked() && !mWorkingDirectory.isEmpty());
+    	 
     	  if(item.isChecked())
     	  {
     		  RTABMapLib.setPausedMapping(true);
@@ -844,6 +845,25 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		        {
 			        mMaxDepthIndex = which;
 			        RTABMapLib.setMaxCloudDepth(which < 5?Float.parseFloat(values[which]):0);
+		        }
+		    }
+		  });
+		  builder.show();
+      }
+      else if(itemId == R.id.mesh_decimation)
+      {
+    	  // get double
+		  AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		  builder.setTitle("Mesh Decimation");
+		  final String[] values = {"Disabled", "Medium", "High"};
+		  builder.setSingleChoiceItems(values, mMeshDecimationIndex, new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		        dialog.dismiss();
+		        if(which >=0 && which <= 2)
+		        {
+		        	mMeshDecimationIndex = which;
+			        RTABMapLib.setMeshDecimation(which);
 		        }
 		    }
 		  });

@@ -46,6 +46,7 @@
 				           <item android:id="@+id/mesh" android:title="Mesh" />
 				           <item android:id="@+id/texture_mesh" android:checked="true" android:title="Texture Mesh" />
 			           </group>
+			           <item android:id="@+id/mesh_decimation" android:checkable="false" android:title="Mesh Decimation..." />
 			           <item android:id="@+id/mesh_angle_tolerance" android:checkable="false" android:title="Mesh Angle Tolerance..." />
             		   <item android:id="@+id/mesh_triangle_size" android:checkable="false" android:title="Mesh Triangle Size..." />
             		   <item android:id="@+id/max_depth" android:checkable="false" android:title="Max Depth..." />

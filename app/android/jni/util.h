@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/Vertices.h>
+#include <pcl/pcl_base.h>
 
 class LogHandler : public UEventsHandler
 {
@@ -144,15 +145,13 @@ inline rtabmap::Transform glmToTransform(const glm::mat4 & mat)
 
 struct Mesh
 {
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // dense or organized cloud
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // organized cloud
+	pcl::IndicesPtr indices;
 	std::vector<pcl::Vertices> polygons;
-	std::vector<int> denseToOrganizedIndices; // should be set if cloud is dense, used for texturing
-	unsigned int width;  // width of the organized cloud
-	unsigned int height; // height of the organized cloud
 	rtabmap::Transform pose; // in rtabmap coordinates
 	bool visible;
-	cv::Mat texture;
 	rtabmap::CameraModel cameraModel;
+	float gain;
 };
 
 #endif /* UTIL_H_ */

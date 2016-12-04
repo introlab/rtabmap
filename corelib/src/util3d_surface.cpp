@@ -138,6 +138,44 @@ std::list<std::list<int> > clusterPolygons(
 }
 
 std::vector<pcl::Vertices> organizedFastMesh(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		double angleTolerance,
+		bool quad,
+		int trianglePixelSize,
+		const Eigen::Vector3f & viewpoint)
+{
+	UDEBUG("size=%d angle=%f quad=%d triangleSize=%d", (int)cloud->size(), angleTolerance, quad?1:0, trianglePixelSize);
+	UASSERT(cloud->is_dense == false);
+	UASSERT(cloud->width > 1 && cloud->height > 1);
+
+	pcl::OrganizedFastMesh<pcl::PointXYZ> ofm;
+	ofm.setTrianglePixelSize (trianglePixelSize);
+	ofm.setTriangulationType (quad?pcl::OrganizedFastMesh<pcl::PointXYZ>::QUAD_MESH:pcl::OrganizedFastMesh<pcl::PointXYZ>::TRIANGLE_RIGHT_CUT);
+	ofm.setInputCloud (cloud);
+	ofm.setAngleTolerance(angleTolerance);
+	ofm.setViewpoint(viewpoint);
+
+	std::vector<pcl::Vertices> vertices;
+	ofm.reconstruct (vertices);
+
+	if(quad)
+	{
+		//flip all polygons (right handed)
+		std::vector<pcl::Vertices> output(vertices.size());
+		for(unsigned int i=0; i<vertices.size(); ++i)
+		{
+			output[i].vertices.resize(4);
+			output[i].vertices[0] = vertices[i].vertices[0];
+			output[i].vertices[3] = vertices[i].vertices[1];
+			output[i].vertices[2] = vertices[i].vertices[2];
+			output[i].vertices[1] = vertices[i].vertices[3];
+		}
+		return output;
+	}
+
+	return vertices;
+}
+std::vector<pcl::Vertices> organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance,
 		bool quad,

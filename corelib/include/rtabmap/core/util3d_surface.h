@@ -66,6 +66,12 @@ std::list<std::list<int> > RTABMAP_EXP clusterPolygons(
 		int minClusterSize = 0);
 
 std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		double angleTolerance,
+		bool quad,
+		int trianglePixelSize,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
+std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance = M_PI/16,
 		bool quad=true,

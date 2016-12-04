@@ -55,9 +55,10 @@ const std::string kPointCloudVertexShader =
 const std::string kPointCloudFragmentShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
+	"uniform float u_gain;\n"
     "varying vec3 v_color;\n"
     "void main() {\n"
-    "  gl_FragColor = vec4(v_color.z, v_color.y, v_color.x, 1.0);\n"
+    "  gl_FragColor = vec4(v_color.z*u_gain, v_color.y*u_gain, v_color.x*u_gain, 1.0);\n"
     "}\n";
 
 const std::string kTextureMeshVertexShader =
@@ -75,9 +76,13 @@ const std::string kTextureMeshFragmentShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
 	"uniform sampler2D u_Texture;\n"
+	"uniform float u_gain;\n"
     "varying vec2 v_TexCoordinate;\n"
     "void main() {\n"
     "  gl_FragColor = texture2D(u_Texture, v_TexCoordinate);\n"
+    "  gl_FragColor.x *= u_gain;\n"
+	"  gl_FragColor.y *= u_gain;\n"
+	"  gl_FragColor.z *= u_gain;\n"
     "}\n";
 
 const std::string kGraphVertexShader =
@@ -418,6 +423,7 @@ void Scene::setTraceVisible(bool visible)
 void Scene::addCloud(
 		int id,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
 		const rtabmap::Transform & pose)
 {
 	LOGI("add cloud %d", id);
@@ -433,7 +439,9 @@ void Scene::addCloud(
 	PointCloudDrawable * drawable = new PointCloudDrawable(
 			cloud_shader_program_,
 			texture_mesh_shader_program_,
-			cloud);
+			cloud,
+			indices,
+			1.0f);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }
@@ -441,6 +449,7 @@ void Scene::addCloud(
 void Scene::addMesh(
 		int id,
 		const Mesh & mesh,
+		const cv::Mat & texture,
 		const rtabmap::Transform & pose)
 {
 	LOGI("add mesh %d", id);
@@ -456,7 +465,8 @@ void Scene::addMesh(
 	PointCloudDrawable * drawable = new PointCloudDrawable(
 			cloud_shader_program_,
 			texture_mesh_shader_program_,
-			mesh);
+			mesh,
+			texture);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }
@@ -486,6 +496,11 @@ bool Scene::hasCloud(int id) const
 	return pointClouds_.find(id) != pointClouds_.end();
 }
 
+bool Scene::hasTexture(int id) const
+{
+	return pointClouds_.find(id) != pointClouds_.end() && pointClouds_.at(id)->hasTexture();
+}
+
 std::set<int> Scene::getAddedClouds() const
 {
 	return uKeysSet(pointClouds_);
@@ -500,11 +515,11 @@ void Scene::updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polyg
 	}
 }
 
-void Scene::updateMesh(int id, const Mesh & mesh)
+void Scene::updateMesh(int id, const Mesh & mesh, const cv::Mat & texture)
 {
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
 	if(iter != pointClouds_.end())
 	{
-		iter->second->updateMesh(mesh);
+		iter->second->updateMesh(mesh, texture);
 	}
 }

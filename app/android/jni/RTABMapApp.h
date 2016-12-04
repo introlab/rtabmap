@@ -125,6 +125,7 @@ class RTABMapApp : public UEventsHandler {
   void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
+  void setMeshDecimation(int value);
   void setMeshAngleTolerance(float value);
   void setMeshTriangleSize(int value);
   int setMappingParameter(const std::string & key, const std::string & value);
@@ -157,6 +158,7 @@ class RTABMapApp : public UEventsHandler {
   bool fullResolution_;
   bool appendMode_;
   float maxCloudDepth_;
+  int meshDecimation_;
   int meshTrianglePix_;
   float meshAngleToleranceDeg_;
 

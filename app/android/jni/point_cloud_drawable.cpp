@@ -38,31 +38,36 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 PointCloudDrawable::PointCloudDrawable(
 		GLuint cloudShaderProgram,
 		GLuint textureShaderProgram,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) :
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float gain) :
 		vertex_buffers_(0),
 		textures_(0),
 		nPoints_(0),
 		pose_(1.0f),
 		visible_(true),
 		cloud_shader_program_(cloudShaderProgram),
-		texture_shader_program_(textureShaderProgram)
+		texture_shader_program_(textureShaderProgram),
+		gain_(1.0f)
 {
-	updateCloud(cloud);
+	updateCloud(cloud, indices, gain);
 }
 
 PointCloudDrawable::PointCloudDrawable(
 		GLuint cloudShaderProgram,
 		GLuint textureShaderProgram,
-		const Mesh & mesh) :
+		const Mesh & mesh,
+		const cv::Mat & texture) :
 		vertex_buffers_(0),
 		textures_(0),
 		nPoints_(0),
 		pose_(1.0f),
 		visible_(true),
 		cloud_shader_program_(cloudShaderProgram),
-		texture_shader_program_(textureShaderProgram)
+		texture_shader_program_(textureShaderProgram),
+		gain_(1.0f)
 {
-	updateMesh(mesh);
+	updateMesh(mesh, texture);
 }
 
 PointCloudDrawable::~PointCloudDrawable()
@@ -86,7 +91,7 @@ PointCloudDrawable::~PointCloudDrawable()
 void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons)
 {
 	polygons_.clear();
-	if(polygons.size())
+	if(polygons.size() && organizedToDenseIndices_.size())
 	{
 		int polygonSize = polygons[0].vertices.size();
 		UASSERT(polygonSize == 3);
@@ -97,21 +102,18 @@ void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polyg
 			UASSERT((int)polygons[i].vertices.size() == polygonSize);
 			for(int j=0; j<polygonSize; ++j)
 			{
-				polygons_[oi++] = (unsigned short)polygons[i].vertices[j];
+				polygons_[oi++] = organizedToDenseIndices_.at((unsigned short)polygons[i].vertices[j]);
 			}
 		}
 	}
 }
 
-void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud)
+void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices, float gain)
 {
-	UASSERT(!cloud->empty());
-	if(nPoints_)
-	{
-		UASSERT((int)cloud->size() == nPoints_);
-	}
+	UASSERT(cloud.get() && !cloud->empty() && indices.get() && !indices->empty());
 	nPoints_ = 0;
 	polygons_.clear();
+	gain_ = gain;
 
 	if (vertex_buffers_)
 	{
@@ -135,13 +137,13 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 	}
 
 	LOGI("Creating cloud buffer %d", vertex_buffers_);
-	std::vector<float> vertices(cloud->size()*4);
-	for(unsigned int i=0; i<cloud->size(); ++i)
+	std::vector<float> vertices(indices->size()*4);
+	for(unsigned int i=0; i<indices->size(); ++i)
 	{
-		vertices[i*4] = cloud->at(i).x;
-		vertices[i*4+1] = cloud->at(i).y;
-		vertices[i*4+2] = cloud->at(i).z;
-		vertices[i*4+3] = cloud->at(i).rgb;
+		vertices[i*4] = cloud->at(indices->at(i)).x;
+		vertices[i*4+1] = cloud->at(indices->at(i)).y;
+		vertices[i*4+2] = cloud->at(indices->at(i)).z;
+		vertices[i*4+3] = cloud->at(indices->at(i)).rgb;
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
@@ -156,16 +158,12 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 		return;
 	}
 
-	nPoints_ = cloud->size();
+	nPoints_ = indices->size();
 }
 
-void PointCloudDrawable::updateMesh(const Mesh & mesh)
+void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 {
-	UASSERT(!mesh.cloud->empty());
-	if(nPoints_)
-	{
-		UASSERT((int)mesh.cloud->size() == nPoints_);
-	}
+	UASSERT(mesh.cloud.get() && !mesh.cloud->empty() && mesh.indices.get() && !mesh.indices->empty());
 	nPoints_ = 0;
 
 	if (vertex_buffers_)
@@ -175,8 +173,10 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 		vertex_buffers_ = 0;
 	}
 
+	gain_ = mesh.gain;
+
 	bool textureUpdate = false;
-	if(!mesh.texture.empty() && mesh.texture.type() == CV_8UC3)
+	if(!texture.empty() && texture.type() == CV_8UC3)
 	{
 		if (textures_)
 		{
@@ -196,8 +196,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 
 	if(textureUpdate)
 	{
-		UASSERT((!mesh.cloud->is_dense && mesh.cloud->width==mesh.width && mesh.cloud->height==mesh.height) ||
-				(mesh.cloud->is_dense && mesh.width>1 && mesh.height>1 && mesh.denseToOrganizedIndices.size() == mesh.cloud->size()));
+		UASSERT(!mesh.cloud->is_dense);
 		glGenTextures(1, &textures_);
 		if(!textures_)
 		{
@@ -209,37 +208,37 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 
 	LOGI("Creating cloud buffer %d", vertex_buffers_);
 	std::vector<float> vertices;
+	organizedToDenseIndices_ = std::vector<int>(mesh.cloud->width*mesh.cloud->height, -1);
 	if(textures_)
 	{
-		vertices = std::vector<float>(mesh.cloud->size()*6);
-		for(unsigned int i=0; i<mesh.cloud->size(); ++i)
+		vertices = std::vector<float>(mesh.indices->size()*6);
+		for(unsigned int i=0; i<mesh.indices->size(); ++i)
 		{
-			vertices[i*6] = mesh.cloud->at(i).x;
-			vertices[i*6+1] = mesh.cloud->at(i).y;
-			vertices[i*6+2] = mesh.cloud->at(i).z;
+			vertices[i*6] = mesh.cloud->at(mesh.indices->at(i)).x;
+			vertices[i*6+1] = mesh.cloud->at(mesh.indices->at(i)).y;
+			vertices[i*6+2] = mesh.cloud->at(mesh.indices->at(i)).z;
 
 			// rgb
-			vertices[i*6+3] = mesh.cloud->at(i).rgb;
+			vertices[i*6+3] = mesh.cloud->at(mesh.indices->at(i)).rgb;
 
 			// texture uv
-			int index = i;
-			if(mesh.cloud->is_dense)
-			{
-				index = mesh.denseToOrganizedIndices[i];
-			}
-			vertices[i*6+4] = float(index % mesh.width)/float(mesh.width); //u
-			vertices[i*6+5] = float(index / mesh.width)/float(mesh.height);  //v
+			int index = mesh.indices->at(i);
+			vertices[i*6+4] = float(index % mesh.cloud->width)/float(mesh.cloud->width); //u
+			vertices[i*6+5] = float(index / mesh.cloud->width)/float(mesh.cloud->height);  //v
+
+			organizedToDenseIndices_[mesh.indices->at(i)] = i;
 		}
 	}
 	else
 	{
-		vertices = std::vector<float>(mesh.cloud->size()*4);
-		for(unsigned int i=0; i<mesh.cloud->size(); ++i)
+		vertices = std::vector<float>(mesh.indices->size()*4);
+		for(unsigned int i=0; i<mesh.indices->size(); ++i)
 		{
-			vertices[i*4] = mesh.cloud->at(i).x;
-			vertices[i*4+1] = mesh.cloud->at(i).y;
-			vertices[i*4+2] = mesh.cloud->at(i).z;
-			vertices[i*4+3] = mesh.cloud->at(i).rgb;
+			vertices[i*4] = mesh.cloud->at(mesh.indices->at(i)).x;
+			vertices[i*4+1] = mesh.cloud->at(mesh.indices->at(i)).y;
+			vertices[i*4+2] = mesh.cloud->at(mesh.indices->at(i)).z;
+			vertices[i*4+3] = mesh.cloud->at(mesh.indices->at(i)).rgb;
+			organizedToDenseIndices_[mesh.indices->at(i)] = i;
 		}
 	}
 
@@ -262,7 +261,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cv::Mat rgbImage;
-		cv::cvtColor(mesh.texture, rgbImage, CV_BGR2RGB);
+		cv::cvtColor(texture, rgbImage, CV_BGR2RGB);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, rgbImage.cols, rgbImage.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbImage.data);
 
 		GLint error = glGetError();
@@ -277,7 +276,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 		}
 	}
 
-	nPoints_ = mesh.cloud->size();
+	nPoints_ = mesh.indices->size();
 
 	if(polygons_.size() != mesh.polygons.size())
 	{
@@ -312,6 +311,9 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix, const glm::m
 			GLuint texture_handle = glGetUniformLocation(texture_shader_program_, "u_Texture");
 			glUniform1i(texture_handle, 0);
 
+			GLuint gain_handle = glGetUniformLocation(texture_shader_program_, "u_gain");
+			glUniform1f(gain_handle, gain_);
+
 			GLint attribute_vertex = glGetAttribLocation(texture_shader_program_, "vertex");
 			GLint attribute_texture = glGetAttribLocation(texture_shader_program_, "a_TexCoordinate");
 
@@ -333,6 +335,9 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix, const glm::m
 
 			GLuint point_size_handle_ = glGetUniformLocation(cloud_shader_program_, "point_size");
 			glUniform1f(point_size_handle_, pointSize);
+
+			GLuint gain_handle = glGetUniformLocation(texture_shader_program_, "u_gain");
+			glUniform1f(gain_handle, gain_);
 
 			GLint attribute_vertex = glGetAttribLocation(cloud_shader_program_, "vertex");
 			GLint attribute_color = glGetAttribLocation(cloud_shader_program_, "color");

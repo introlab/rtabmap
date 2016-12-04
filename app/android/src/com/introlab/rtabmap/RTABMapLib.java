@@ -72,6 +72,7 @@ public class RTABMapLib
     public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);
+    public static native void setMeshDecimation(int value);
     public static native void setMeshAngleTolerance(float value);
     public static native void setMeshTriangleSize(int value);
     public static native int setMappingParameter(String key, String value);

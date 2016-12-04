@@ -100,22 +100,28 @@ class Scene {
   void addCloud(
   		  int id,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		  const pcl::IndicesPtr & indices,
   		  const rtabmap::Transform & pose);
   void addMesh(
   		int id,
   		const Mesh & mesh,
+		const cv::Mat & texture,
   		const rtabmap::Transform & pose);
 
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
   bool hasCloud(int id) const;
+  bool hasTexture(int id) const;
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
-  void updateMesh(int id, const Mesh & mesh);
+  void updateMesh(int id, const Mesh & mesh, const cv::Mat & texture);
 
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}
   void setPointSize(float size) {pointSize_ = size;}
+
+  bool isMeshRendering() const {return meshRendering_;}
+  bool isMeshTexturing() const {return meshRendering_ && meshRenderingTexture_;}
 
  private:
   // Camera object that allows user to use touch input to interact with.

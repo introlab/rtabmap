@@ -77,6 +77,7 @@ public:
 	void close(); // close Tango connection
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+	const CameraModel & getCameraModel() const {return model_;}
 	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
 	void setDecimation(int value) {decimation_ = value;}
 	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
