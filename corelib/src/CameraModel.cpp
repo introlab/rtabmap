@@ -180,8 +180,11 @@ void CameraModel::setImageSize(const cv::Size & size)
 		P_.at<double>(0,2) = ncx;
 		P_.at<double>(1,2) = ncy;
 	}
-	K_.at<double>(0,2) = ncx;
-	K_.at<double>(1,2) = ncy;
+	if(!K_.empty())
+	{
+		K_.at<double>(0,2) = ncx;
+		K_.at<double>(1,2) = ncy;
+	}
 }
 
 bool CameraModel::load(const std::string & directory, const std::string & cameraName)

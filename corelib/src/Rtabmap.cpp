@@ -270,6 +270,7 @@ void Rtabmap::flushStatisticLogs()
 
 void Rtabmap::init(const ParametersMap & parameters, const std::string & databasePath)
 {
+	UDEBUG("path=%s", databasePath.c_str());
 	ParametersMap::const_iterator iter;
 	if((iter=parameters.find(Parameters::kRtabmapWorkingDirectory())) != parameters.end())
 	{
@@ -777,6 +778,7 @@ void Rtabmap::exportPoses(const std::string & path, bool optimized, bool global,
 
 void Rtabmap::resetMemory()
 {
+	UDEBUG("");
 	_highestHypothesis = std::make_pair(0,0.0f);
 	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;

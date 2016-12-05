@@ -278,14 +278,14 @@ int main(int argc, char * argv[])
 	uInsert(pm, ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
 	uInsert(pm, ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
-        // Process an empty image to make sure every libraries are loaded.
-        ULogger::Level level = ULogger::level();
-        ULogger::setLevel(ULogger::kError);
-        cv::Mat tmp = cv::Mat::zeros(640,480,CV_8UC1);
-        rtabmap.init(pm);
-        rtabmap.process(tmp);
-        rtabmap.close();
-        ULogger::setLevel(level);
+	// Process an empty image to make sure every libraries are loaded.
+	ULogger::Level level = ULogger::level();
+	ULogger::setLevel(ULogger::kError);
+	cv::Mat tmp = cv::Mat::zeros(640,480,CV_8UC1);
+	rtabmap.init(pm);
+	rtabmap.process(tmp);
+	rtabmap.close(false);
+	ULogger::setLevel(level);
 
 	rtabmap.init(pm, inputDbPath);
 
