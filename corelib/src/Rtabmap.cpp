@@ -2351,10 +2351,11 @@ bool Rtabmap::process(
 	}
 
 	Signature lastSignatureData(signature->id());
-	Transform lastSignatureOptimizedPose;
-	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end())
+	Transform lastSignatureLocalizedPose;
+	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end() && signature->getLinks().size())
 	{
-		lastSignatureOptimizedPose = _optimizedPoses.at(signature->id());
+		// only if localized set it
+		lastSignatureLocalizedPose = _optimizedPoses.at(signature->id());
 	}
 	if(_publishLastSignatureData)
 	{
@@ -2578,7 +2579,10 @@ bool Rtabmap::process(
 							groundTruth)));
 		}
 		localGraphSize = (int)poses.size();
-		poses.insert(std::make_pair(lastSignatureData.id(), lastSignatureOptimizedPose)); // in case we are in localization
+		if(!lastSignatureLocalizedPose.isNull())
+		{
+			poses.insert(std::make_pair(lastSignatureData.id(), lastSignatureLocalizedPose)); // in case we are in localization
+		}
 		statistics_.setPoses(poses);
 		statistics_.setConstraints(constraints);
 		statistics_.setSignatures(signatures);

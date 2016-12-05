@@ -432,7 +432,9 @@ int RTABMapApp::Render()
 	}
 
 	// Did we lose OpenGL context? If so, recreate the context;
-	if(main_scene_.getAddedClouds().size() != createdMeshes_.size())
+	std::set<int> added = main_scene_.getAddedClouds();
+	added.erase(-1);
+	if(added.size() != createdMeshes_.size())
 	{
 		for(std::map<int, Mesh>::iterator iter=createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 		{
@@ -668,7 +670,7 @@ int RTABMapApp::Render()
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 					pcl::IndicesPtr indices(new std::vector<int>);
 					cloud = rtabmap::util3d::cloudRGBFromSensorData(odomEvent.data(), meshDecimation_, maxCloudDepth_, 0.0f, indices.get());
-					if(cloud->size())
+					if(cloud->size() && indices->size())
 					{
 						LOGI("Created odom cloud (rgb=%dx%d depth=%dx%d cloud=%dx%d)",
 								odomEvent.data().imageRaw().cols, odomEvent.data().imageRaw().rows,

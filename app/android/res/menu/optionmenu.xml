@@ -56,7 +56,7 @@
             <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
             <item android:id="@+id/graph_visible" android:checked="true" android:title="Graph Visible" />
             <item android:id="@+id/grid_visible" android:checked="true" android:title="Grid Visible" />
-            <item android:id="@+id/auto_exposure" android:checked="true" android:title="Auto Exposure" />
+            <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
         </group>   
         </menu>
 	    </item>
@@ -65,10 +65,10 @@
 	       <group android:id="@+id/group_mapping_visibility" android:checkableBehavior="all">
 	           <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
 	           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
-	           <item android:id="@+id/graph_optimization" android:checked="true" android:title="Optimized Graph" />
 	           <item android:id="@+id/append" android:checked="true" android:title="Append Mode" />
 	           <item android:id="@+id/nodes_filtering" android:checked="false" android:title="Nodes Filtering" />
 	           <item android:id="@+id/drift_correction" android:checked="false" android:title="Drift Correction" />
+	           <item android:id="@+id/auto_exposure" android:checked="true" android:title="Auto Exposure" />
 	           <item android:id="@+id/resolution" android:checked="false" android:title="HD Mode" />
 	           <item android:id="@+id/data_recorder" android:checked="false" android:title="Data Recorder Mode" />
 	           <item android:id="@+id/menu_param_settings" android:checkable="false" android:title="Parameters...">

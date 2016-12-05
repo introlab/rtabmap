@@ -79,6 +79,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   private MenuItem mItemExport;
   private MenuItem mItemLocalizationMode;
   private MenuItem mItemTrajectoryMode;
+  private MenuItem mItemAppendMode;
   private MenuItem mItemRenderingPointCloud;
   private MenuItem mItemRenderingMesh;
   private MenuItem mItemRenderingTextureMesh;
@@ -329,6 +330,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  mItemExport = menu.findItem(R.id.export);
 	  mItemLocalizationMode = menu.findItem(R.id.localization_mode);
 	  mItemTrajectoryMode = menu.findItem(R.id.trajectory_mode);
+	  mItemAppendMode = menu.findItem(R.id.append);
 	  mItemRenderingPointCloud = menu.findItem(R.id.point_cloud);
 	  mItemRenderingMesh = menu.findItem(R.id.mesh);
 	  mItemRenderingTextureMesh = menu.findItem(R.id.texture_mesh);
@@ -360,7 +362,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
   {
 	  if(mItemPause!=null)
 	  {
-		  ((TextView)findViewById(R.id.status)).setText(mItemPause.isChecked()?"Paused":mItemLocalizationMode.isChecked()?String.format("Localization (%s Hz)", mUpdateRateValues[mParamUpdateRateHzIndex]):String.format("Mapping (%s Hz)", mUpdateRateValues[mParamUpdateRateHzIndex]));
+		  ((TextView)findViewById(R.id.status)).setText(mItemPause.isChecked()?"Paused":mItemLocalizationMode.isChecked()?String.format("Localization (%s Hz)", mUpdateRateValues[mParamUpdateRateHzIndex]):mItemDataRecorderMode.isChecked()?String.format("Recording (%s Hz)", mUpdateRateValues[mParamUpdateRateHzIndex]):String.format("Mapping (%s Hz)", mUpdateRateValues[mParamUpdateRateHzIndex]));
 	  }
 	  
 	  ((TextView)findViewById(R.id.points)).setText(String.valueOf(points));
@@ -425,7 +427,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	  Log.i(TAG, String.format("rtabmapInitEventsUI() status=%d msg=%s", status, msg));
 	  
 	  ((TextView)findViewById(R.id.status)).setText(
-			  status == 1 && msg.isEmpty()?mItemPause!=null&&mItemPause.isChecked()?"Paused":mItemLocalizationMode!=null&&mItemLocalizationMode.isChecked()?"Localization":"Mapping":msg);
+			  status == 1 && msg.isEmpty()?(mItemPause!=null&&mItemPause.isChecked()?"Paused":mItemLocalizationMode!=null&&mItemLocalizationMode.isChecked()?"Localization":mItemDataRecorderMode!=null&&mItemDataRecorderMode.isChecked()?"Recording":"Mapping"):msg);
   }
   
   //called from jni
@@ -1233,6 +1235,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
         		  mItemOpen.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
     			  mItemPostProcessing.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
     			  mItemExport.setEnabled(!mItemDataRecorderMode.isChecked() && mItemPause.isChecked());
+    			  
+    			  mItemLocalizationMode.setEnabled(!mItemDataRecorderMode.isChecked());
+    			  mItemAppendMode.setEnabled(!mItemDataRecorderMode.isChecked());   			   
             	  
             	  if(mItemDataRecorderMode.isChecked())
             	  {

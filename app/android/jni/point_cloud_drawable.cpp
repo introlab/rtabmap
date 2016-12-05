@@ -336,7 +336,7 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix, const glm::m
 			GLuint point_size_handle_ = glGetUniformLocation(cloud_shader_program_, "point_size");
 			glUniform1f(point_size_handle_, pointSize);
 
-			GLuint gain_handle = glGetUniformLocation(texture_shader_program_, "u_gain");
+			GLuint gain_handle = glGetUniformLocation(cloud_shader_program_, "u_gain");
 			glUniform1f(gain_handle, gain_);
 
 			GLint attribute_vertex = glGetAttribLocation(cloud_shader_program_, "vertex");
