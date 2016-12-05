@@ -330,6 +330,7 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
+	_mapCorrectionBackup.setNull();
 	_lastLocalizationPose.setNull();
 	_lastLocalizationNodeId = 0;
 	_distanceTravelled = 0.0f;
@@ -647,6 +648,8 @@ int Rtabmap::triggerNewMap()
 		_optimizedPoses.clear();
 		_constraints.clear();
 		_lastLocalizationNodeId = 0;
+		_mapCorrection.setIdentity();
+		_mapCorrectionBackup.setNull();
 
 		//Verify if there are nodes that were merged through graph reduction
 		if(reducedIds.size() && _path.size())
@@ -781,6 +784,7 @@ void Rtabmap::resetMemory()
 	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
+	_mapCorrectionBackup.setNull();
 	_lastLocalizationPose.setNull();
 	_lastLocalizationNodeId = 0;
 	_distanceTravelled = 0.0f;
@@ -879,8 +883,15 @@ bool Rtabmap::process(
 	//============================================================
 	// If RGBD SLAM is enabled, a pose must be set.
 	//============================================================
+	bool fakeOdom = false;
 	if(_rgbdSlamMode)
 	{
+		if(!_memory->isIncremental() && !odomPose.isNull() && !_mapCorrectionBackup.isNull())
+		{
+			_mapCorrection = _mapCorrectionBackup;
+			_mapCorrectionBackup.setNull();
+		}
+
 		if(odomPose.isNull())
 		{
 			if(_memory->isIncremental())
@@ -895,6 +906,7 @@ bool Rtabmap::process(
 				{
 					_lastLocalizationPose = Transform::getIdentity();
 				}
+				fakeOdom = true;
 				odomPose = _mapCorrection.inverse() * _lastLocalizationPose;
 			}
 		}
@@ -2215,6 +2227,10 @@ bool Rtabmap::process(
 
 		// Update map correction, it should be identify when optimizing from the last node
 		UASSERT(_optimizedPoses.find(signature->id()) != _optimizedPoses.end());
+		if(fakeOdom && _mapCorrectionBackup.isNull())
+		{
+			_mapCorrectionBackup = _mapCorrection;
+		}
 		_mapCorrection = _optimizedPoses.at(signature->id()) * signature->getPose().inverse();
 		_lastLocalizationPose = _optimizedPoses.at(signature->id()); // update
 		if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)

@@ -49,7 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_preferencesDialog.h"
 
 #include "rtabmap/core/Version.h"
-#include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryThread.h"
