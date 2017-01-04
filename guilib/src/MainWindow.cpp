@@ -6056,21 +6056,27 @@ void MainWindow::exportBundlerFormat()
 							localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().localTransform();
 						}
 
-						Transform rotation(0,-1,0,0,
-								           0,0,1,0,
-								           -1,0,0,0);
+						static const Transform opengl_world_T_rtabmap_world(
+								 0.0f, -1.0f, 0.0f, 0.0f,
+								 0.0f,  0.0f, 1.0f, 0.0f,
+								-1.0f,  0.0f, 0.0f, 0.0f);
 
-						Transform R = rotation*iter->second.rotation().inverse();
+						static const Transform optical_rotation_inv(
+								 0.0f, -1.0f,  0.0f, 0.0f,
+								 0.0f,  0.0f, -1.0f, 0.0f,
+							     1.0f,  0.0f,  0.0f, 0.0f);
 
-						out << R.r11() << " " << R.r12() << " " << R.r13() << "\n";
-						out << R.r21() << " " << R.r22() << " " << R.r23() << "\n";
-						out << R.r31() << " " << R.r32() << " " << R.r33() << "\n";
+						Transform pose = iter->second;
+						if(!localTransform.isNull())
+						{
+							pose*=localTransform*optical_rotation_inv;
+						}
+						Transform poseGL = opengl_world_T_rtabmap_world*pose.inverse();
 
-						Transform t = R * iter->second.translation();
-						t.x() *= -1.0f;
-						t.y() *= -1.0f;
-						t.z() *= -1.0f;
-						out << t.x() << " " << t.y() << " " << t.z() << "\n";
+						out << poseGL.r11() << " " << poseGL.r12() << " " << poseGL.r13() << "\n";
+						out << poseGL.r21() << " " << poseGL.r22() << " " << poseGL.r23() << "\n";
+						out << poseGL.r31() << " " << poseGL.r32() << " " << poseGL.r33() << "\n";
+						out << poseGL.x()   << " " << poseGL.y()   << " " << poseGL.z()   << "\n";
 					}
 
 					QMessageBox::question(this,
