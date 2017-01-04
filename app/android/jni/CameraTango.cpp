@@ -197,6 +197,19 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 		return false;
 	}
 
+	// Drift correction allows motion tracking to recover after it loses tracking.
+	//
+	// The drift corrected pose is is available through the frame pair with
+	// base frame AREA_DESCRIPTION and target frame DEVICE.
+	/*ret = TangoConfig_setBool(tango_config_, "config_enable_drift_correction", true);
+	if (ret != TANGO_SUCCESS) {
+		LOGE(
+			"NativeRTABMap: enabling config_enable_drift_correction "
+			"failed with error code: %d",
+			ret);
+		return false;
+	}*/
+
 	// Get TangoCore version string from service.
 	char tango_core_version[kVersionStringLength];
 	ret = TangoConfig_getString(tango_config_, "tango_service_library_version", tango_core_version, kVersionStringLength);
@@ -229,6 +242,7 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 	// Attach the onPoseAvailable callback.
 	// The callback will be called after the service is connected.
 	TangoCoordinateFramePair pair;
+	//pair.base = TANGO_COORDINATE_FRAME_AREA_DESCRIPTION; // drift correction is enabled
 	pair.base = TANGO_COORDINATE_FRAME_START_OF_SERVICE;
 	pair.target = TANGO_COORDINATE_FRAME_DEVICE;
 	ret = TangoService_connectOnPoseAvailable(1, &pair, onPoseAvailableRouter);

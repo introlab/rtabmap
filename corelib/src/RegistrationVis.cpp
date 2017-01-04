@@ -946,7 +946,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					// match between all descriptors
 					VWDictionary dictionary(_featureParameters);
 					std::list<int> fromWordIds;
-					for (unsigned int i = 0; i < descriptorsFrom.rows; ++i)
+					for (int i = 0; i < descriptorsFrom.rows; ++i)
 					{
 						int id = orignalWordsFromIds.size() ? orignalWordsFromIds[i] : i;
 						dictionary.addWord(new VisualWord(id, descriptorsFrom.row(i), 1));

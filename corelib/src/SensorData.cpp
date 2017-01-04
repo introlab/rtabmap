@@ -740,7 +740,7 @@ void SensorData::uncompressDataConst(
 void SensorData::setFeatures(const std::vector<cv::KeyPoint> & keypoints, const std::vector<cv::Point3f> & keypoints3D, const cv::Mat & descriptors)
 {
 	UASSERT_MSG(keypoints3D.empty() || keypoints.size() == keypoints3D.size(), uFormat("keypoints=%d keypoints3D=%d", (int)keypoints.size(), (int)keypoints3D.size()).c_str());
-	UASSERT_MSG(descriptors.empty() || keypoints.size() == descriptors.rows, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors.rows).c_str());
+	UASSERT_MSG(descriptors.empty() || (int)keypoints.size() == descriptors.rows, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors.rows).c_str());
 	_keypoints = keypoints;
 	_keypoints3D = keypoints3D;
 	_descriptors = descriptors;
