@@ -3736,7 +3736,10 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 				else if(localMaps_.find(ids[i]) != localMaps_.end())
 				{
-					localMaps.insert(*localMaps_.find(ids.at(i)));
+					if(!localMaps_.find(ids[i])->second.first.empty() || !localMaps_.find(ids[i])->second.first.empty())
+					{
+						localMaps.insert(*localMaps_.find(ids.at(i)));
+					}
 				}
 				else
 				{
@@ -3745,6 +3748,10 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					cv::Mat ground, obstacles;
 					data.uncompressData(0, 0, 0, 0, &ground, &obstacles);
 					localMaps_.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
+					if(!ground.empty() || !obstacles.empty())
+					{
+						localMaps.insert(std::make_pair(ids.at(i), std::make_pair(ground, obstacles)));
+					}
 				}
 			}
 			//cleanup
@@ -4187,7 +4194,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 
 	if(!transform.isNull())
 	{
-		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, info.variance, info.variance);
+		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, info.varianceAng, info.varianceLin);
 
 		bool updated = false;
 		std::multimap<int, Link>::iterator iter = linksRefined_.find(currentLink.from());
@@ -4285,7 +4292,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		
 		if(!t.isNull())
 		{
-			newLink = Link(from, to, Link::kUserClosure, t, info.variance, info.variance);
+			newLink = Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin);
 		}
 		else if(!silent)
 		{

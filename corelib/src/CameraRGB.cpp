@@ -74,7 +74,8 @@ CameraImages::CameraImages() :
 		_depthFromScanFillHoles(1),
 		_depthFromScanFillHolesFromBorder(false),
 		_filenamesAreTimestamps(false),
-		syncImageRateWithStamps_(true),
+		_syncImageRateWithStamps(true),
+		_odometryFormat(0),
 		_groundTruthFormat(0),
 		_captureDelay(0.0)
 	{}
@@ -102,7 +103,8 @@ CameraImages::CameraImages(const std::string & path,
 	_depthFromScanFillHoles(1),
 	_depthFromScanFillHolesFromBorder(false),
 	_filenamesAreTimestamps(false),
-	syncImageRateWithStamps_(true),
+	_syncImageRateWithStamps(true),
+	_odometryFormat(0),
 	_groundTruthFormat(0),
 	_captureDelay(0.0)
 {
@@ -226,7 +228,8 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	}
 
 	bool success = _dir->isValid();
-	stamps_.clear();
+	_stamps.clear();
+	odometry_.clear();
 	groundTruth_.clear();
 	if(success)
 	{
@@ -246,7 +249,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 					double stamp = uStr2Double(sec + "." + decimals);
 					if(stamp > 0.0)
 					{
-						stamps_.push_back(stamp);
+						_stamps.push_back(stamp);
 					}
 					else
 					{
@@ -254,19 +257,19 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 					}
 				}
 			}
-			if(stamps_.size() != this->imagesCount())
+			if(_stamps.size() != this->imagesCount())
 			{
 				UERROR("The stamps count is not the same as the images (%d vs %d)! "
 					   "Converting filenames to timestamps is activated.",
-						(int)stamps_.size(), this->imagesCount());
-				stamps_.clear();
+						(int)_stamps.size(), this->imagesCount());
+				_stamps.clear();
 				success = false;
 			}
 		}
-		else if(timestampsPath_.size())
+		else if(_timestampsPath.size())
 		{
 			std::ifstream file;
-			file.open(timestampsPath_.c_str(), std::ifstream::in);
+			file.open(_timestampsPath.c_str(), std::ifstream::in);
 			while(file.good())
 			{
 				std::string str;
@@ -290,126 +293,139 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 					}
 					stampStr = stampStr+'.'+millisecStr;
 				}
-				stamps_.push_back(uStr2Double(stampStr));
+				_stamps.push_back(uStr2Double(stampStr));
 			}
 
 			file.close();
 
-			if(stamps_.size() != this->imagesCount())
+			if(_stamps.size() != this->imagesCount())
 			{
 				UERROR("The stamps count (%d) is not the same as the images (%d)! Please remove "
 						"the timestamps file path if you don't want to use them (current file path=%s).",
-						(int)stamps_.size(), this->imagesCount(), timestampsPath_.c_str());
-				stamps_.clear();
+						(int)_stamps.size(), this->imagesCount(), _timestampsPath.c_str());
+				_stamps.clear();
 				success = false;
 			}
 		}
 
-		if(groundTruthPath_.size())
+		if(success && _odometryPath.size())
 		{
-			std::map<int, Transform> poses;
-			std::map<int, double> stamps;
-			if(!graph::importPoses(groundTruthPath_, _groundTruthFormat, poses, 0, &stamps))
-			{
-				UERROR("Cannot read ground truth file \"%s\".", groundTruthPath_.c_str());
-				success = false;
-			}
-			else if((_groundTruthFormat != 1 && _groundTruthFormat != 5 && _groundTruthFormat != 6 && _groundTruthFormat != 7) && poses.size() != this->imagesCount())
-			{
-				UERROR("The ground truth count is not the same as the images (%d vs %d)! Please remove "
-						"the ground truth file path if you don't want to use it (current file path=%s).",
-						(int)poses.size(), this->imagesCount(), groundTruthPath_.c_str());
-				success = false;
-			}
-			else if((_groundTruthFormat == 1 || _groundTruthFormat == 5 || _groundTruthFormat == 6 || _groundTruthFormat == 7) && stamps_.size() == 0)
-			{
-				UERROR("When using RGBD-SLAM, GPS, MALAGA and ST LUCIA formats for ground truth, images must have timestamps!");
-				success = false;
-			}
-			else if(_groundTruthFormat == 1 || _groundTruthFormat == 5 || _groundTruthFormat == 6 || _groundTruthFormat == 7)
-			{
-				UDEBUG("");
-				//Match ground truth values with images
-				groundTruth_.clear();
-				std::map<double, int> stampsToIds;
-				for(std::map<int, double>::iterator iter=stamps.begin(); iter!=stamps.end(); ++iter)
-				{
-					stampsToIds.insert(std::make_pair(iter->second, iter->first));
-				}
-				std::vector<double> values = uValues(stamps);
+			success = readPoses(odometry_, _stamps, _odometryPath, _odometryFormat);
+		}
 
-				int validPoses = 0;
-				for(std::list<double>::iterator ster=stamps_.begin(); ster!=stamps_.end(); ++ster)
-				{
-					Transform pose; // null transform
-					std::map<double, int>::iterator endIter = stampsToIds.lower_bound(*ster);
-					bool warned = false;
-					if(endIter != stampsToIds.end())
-					{
-						if(endIter->first == *ster)
-						{
-							pose = poses.at(endIter->second);
-						}
-						else if(endIter != stampsToIds.begin())
-						{
-							//interpolate
-							std::map<double, int>::iterator beginIter = endIter;
-							--beginIter;
-							double stampBeg = beginIter->first;
-							double stampEnd = endIter->first;
-							UASSERT(stampEnd > stampBeg && *ster>stampBeg && *ster < stampEnd);
-							if(stampEnd - stampBeg > 10.0)
-							{
-								warned = true;
-								UDEBUG("Cannot interpolate ground truth pose for stamp %f between %f and %f (>10 sec)", 
-									*ster,
-									stampBeg,
-									stampEnd);
-							}
-							else
-							{
-								float t = (*ster - stampBeg) / (stampEnd-stampBeg);
-								Transform & ta = poses.at(beginIter->second);
-								Transform & tb = poses.at(endIter->second);
-								if(!ta.isNull() && !tb.isNull())
-								{
-									++validPoses;
-									pose = ta.interpolate(t, tb);
-								}
-							}
-						}
-					}
-					if(pose.isNull() && !warned)
-					{
-						UDEBUG("Ground truth pose not found for stamp %f", *ster);
-					}
-					groundTruth_.push_back(pose);
-				}
-				if(validPoses != (int)stamps_.size())
-				{
-					UWARN("%d valid ground truth poses of %d stamps", validPoses, (int)stamps_.size());
-				}
-			}
-			else
-			{
-				UDEBUG("");
-				groundTruth_ = uValuesList(poses);
-				if(stamps_.size() == 0 && stamps.size() == poses.size())
-				{
-					stamps_ = uValuesList(stamps);
-				}
-				else if(_groundTruthFormat==8 && stamps_.size() == 0 && stamps.size()>0 && stamps.size() != poses.size())
-				{
-					UERROR("With Karlsruhe ground truth format, timestamps (%d) and poses (%d) should match!", (int)stamps.size(), (int)poses.size());
-				}
-			}
-			UASSERT_MSG(groundTruth_.size() == stamps_.size(), uFormat("%d vs %d", (int)groundTruth_.size(), (int)stamps_.size()).c_str());
+		if(success && _groundTruthPath.size())
+		{
+			success = readPoses(groundTruth_, _stamps, _groundTruthPath, _groundTruthFormat);
 		}
 	}
 
 	_captureTimer.restart();
 
 	return success;
+}
+
+bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<double> & inOutStamps, const std::string & filePath, int format) const
+{
+	outputPoses.clear();
+	std::map<int, Transform> poses;
+	std::map<int, double> stamps;
+	if(!graph::importPoses(filePath, format, poses, 0, &stamps))
+	{
+		UERROR("Cannot read pose file \"%s\".", filePath.c_str());
+		return false;
+	}
+	else if((format != 1 && format != 5 && format != 6 && format != 7) && poses.size() != this->imagesCount())
+	{
+		UERROR("The pose count is not the same as the images (%d vs %d)! Please remove "
+				"the pose file path if you don't want to use it (current file path=%s).",
+				(int)poses.size(), this->imagesCount(), filePath.c_str());
+		return false;
+	}
+	else if((format == 1 || format == 5 || format == 6 || format == 7) && inOutStamps.size() == 0)
+	{
+		UERROR("When using RGBD-SLAM, GPS, MALAGA and ST LUCIA formats, images must have timestamps!");
+		return false;
+	}
+	else if(format == 1 || format == 5 || format == 6 || format == 7)
+	{
+		UDEBUG("");
+		//Match ground truth values with images
+		outputPoses.clear();
+		std::map<double, int> stampsToIds;
+		for(std::map<int, double>::iterator iter=stamps.begin(); iter!=stamps.end(); ++iter)
+		{
+			stampsToIds.insert(std::make_pair(iter->second, iter->first));
+		}
+		std::vector<double> values = uValues(stamps);
+
+		int validPoses = 0;
+		for(std::list<double>::iterator ster=inOutStamps.begin(); ster!=inOutStamps.end(); ++ster)
+		{
+			Transform pose; // null transform
+			std::map<double, int>::iterator endIter = stampsToIds.lower_bound(*ster);
+			bool warned = false;
+			if(endIter != stampsToIds.end())
+			{
+				if(endIter->first == *ster)
+				{
+					pose = poses.at(endIter->second);
+				}
+				else if(endIter != stampsToIds.begin())
+				{
+					//interpolate
+					std::map<double, int>::iterator beginIter = endIter;
+					--beginIter;
+					double stampBeg = beginIter->first;
+					double stampEnd = endIter->first;
+					UASSERT(stampEnd > stampBeg && *ster>stampBeg && *ster < stampEnd);
+					if(stampEnd - stampBeg > 10.0)
+					{
+						warned = true;
+						UDEBUG("Cannot interpolate pose for stamp %f between %f and %f (>10 sec)",
+							*ster,
+							stampBeg,
+							stampEnd);
+					}
+					else
+					{
+						float t = (*ster - stampBeg) / (stampEnd-stampBeg);
+						Transform & ta = poses.at(beginIter->second);
+						Transform & tb = poses.at(endIter->second);
+						if(!ta.isNull() && !tb.isNull())
+						{
+							++validPoses;
+							pose = ta.interpolate(t, tb);
+						}
+					}
+				}
+			}
+			if(pose.isNull() && !warned)
+			{
+				UDEBUG("Pose not found for stamp %f", *ster);
+			}
+			outputPoses.push_back(pose);
+		}
+		if(validPoses != (int)inOutStamps.size())
+		{
+			UWARN("%d valid poses of %d stamps", validPoses, (int)inOutStamps.size());
+		}
+	}
+	else
+	{
+		UDEBUG("");
+		outputPoses = uValuesList(poses);
+		if(inOutStamps.size() == 0 && stamps.size() == poses.size())
+		{
+			inOutStamps = uValuesList(stamps);
+		}
+		else if(format==8 && inOutStamps.size() == 0 && stamps.size()>0 && stamps.size() != poses.size())
+		{
+			UERROR("With Karlsruhe format, timestamps (%d) and poses (%d) should match!", (int)stamps.size(), (int)poses.size());
+			return false;
+		}
+	}
+	UASSERT_MSG(outputPoses.size() == inOutStamps.size(), uFormat("%d vs %d", (int)outputPoses.size(), (int)inOutStamps.size()).c_str());
+	return true;
 }
 
 bool CameraImages::isCalibrated() const
@@ -442,7 +458,7 @@ std::vector<std::string> CameraImages::filenames() const
 
 SensorData CameraImages::captureImage(CameraInfo * info)
 {
-	if(syncImageRateWithStamps_ && _captureDelay>0.0)
+	if(_syncImageRateWithStamps && _captureDelay>0.0)
 	{
 		int sleepTime = (1000*_captureDelay - 1000.0f*_captureTimer.getElapsedTime());
 		if(sleepTime > 2)
@@ -476,6 +492,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 	cv::Mat img;
 	cv::Mat scan;
 	double stamp = UTimer::now();
+	Transform odometryPose;
 	Transform groundTruthPose;
 	cv::Mat depthFromScan;
 	UDEBUG("");
@@ -541,13 +558,18 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 			}
 		}
 
-		if(stamps_.size())
+		if(_stamps.size())
 		{
-			stamp = stamps_.front();
-			stamps_.pop_front();
-			if(stamps_.size())
+			stamp = _stamps.front();
+			_stamps.pop_front();
+			if(_stamps.size())
 			{
-				_captureDelay = stamps_.front() - stamp;
+				_captureDelay = _stamps.front() - stamp;
+			}
+			if(odometry_.size())
+			{
+				odometryPose = odometry_.front();
+				odometry_.pop_front();
 			}
 			if(groundTruth_.size())
 			{
@@ -688,6 +710,13 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 
 	SensorData data(scan, LaserScanInfo(scan.empty()?0:_scanMaxPts, 0, _scanLocalTransform), _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
 	data.setGroundTruth(groundTruthPose);
+
+	if(info && !odometryPose.isNull())
+	{
+		info->odomPose = odometryPose;
+		info->odomCovariance = cv::Mat::eye(6,6,CV_64FC1); // Note that with TORO and g2o file formats, we could get the covariance
+	}
+
 	return data;
 }
 

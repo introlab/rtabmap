@@ -2187,11 +2187,11 @@ Transform Memory::computeTransform(
 			tmpFrom.setWords(std::multimap<int, cv::KeyPoint>());
 			tmpFrom.setWords3(std::multimap<int, cv::Point3f>());
 			tmpFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
-			tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
+			tmpFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 			tmpTo.setWords(std::multimap<int, cv::KeyPoint>());
 			tmpTo.setWords3(std::multimap<int, cv::Point3f>());
 			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
-			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());
+			tmpTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 		}
 		else if(useKnownCorrespondencesIfPossible)
 		{
@@ -3317,14 +3317,19 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	{
 		UINFO("Use odometry features");
 		keypoints = data.keypoints();
+		keypoints3D = data.keypoints3D();
 		descriptors = data.descriptors().clone();
 
 		UASSERT(descriptors.empty() || descriptors.rows == (int)keypoints.size());
+		UASSERT(keypoints3D.empty() || keypoints3D.size() == keypoints.size());
 
 		if((int)keypoints.size() > _feature2D->getMaxFeatures())
 		{
-			_feature2D->limitKeypoints(keypoints, descriptors, _feature2D->getMaxFeatures());
+			_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, _feature2D->getMaxFeatures());
 		}
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
+		UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
 
 		if(descriptors.empty())
 		{
@@ -3339,13 +3344,14 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			}
 
 			descriptors = _feature2D->generateDescriptors(imageMono, keypoints);
-			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
-			UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 		}
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemDescriptors_extraction(), t*1000.0f);
+		UDEBUG("time descriptors (%d) = %fs", descriptors.rows, t);
 
-		if((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
-		   (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection()))
+		if(keypoints3D.empty() &&
+			((!data.depthRaw().empty() && data.cameraModels().size() && data.cameraModels()[0].isValidForProjection()) ||
+		   (!data.rightRaw().empty() && data.stereoCameraModel().isValidForProjection())))
 		{
 			keypoints3D = _feature2D->generateKeypoints3D(data, keypoints);
 			if(_feature2D->getMinDepth() > 0.0f || _feature2D->getMaxDepth() > 0.0f)
@@ -3376,10 +3382,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				keypoints3D = validKeypoints3D;
 				descriptors = validDescriptors.rowRange(0, oi).clone();
 			}
-			t = timer.ticks();
-			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
-			UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
 		}
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_3D(), t*1000.0f);
+		UDEBUG("time keypoints 3D (%d) = %fs", (int)keypoints3D.size(), t);
 
 		UDEBUG("ratio=%f, meanWordsPerLocation=%d", _badSignRatio, meanWordsPerLocation);
 		if(descriptors.rows && descriptors.rows < _badSignRatio * float(meanWordsPerLocation))
@@ -3500,7 +3506,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	StereoCameraModel stereoCameraModel = data.stereoCameraModel();
 
 	// apply decimation?
-	if(_imagePostDecimation > 1)
+	if(_imagePostDecimation > 1 && !isIntermediateNode)
 	{
 		image = util2d::decimate(image, _imagePostDecimation);
 		depthOrRightImage = util2d::decimate(depthOrRightImage, _imagePostDecimation);
@@ -3521,7 +3527,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	// downsampling the laser scan?
 	cv::Mat laserScan = data.laserScanRaw();
 	int maxLaserScanMaxPts = data.laserScanInfo().maxPoints();
-	if(!laserScan.empty() && _laserScanDownsampleStepSize > 1)
+	if(!laserScan.empty() && _laserScanDownsampleStepSize > 1 && !isIntermediateNode)
 	{
 		laserScan = util3d::downsample(laserScan, _laserScanDownsampleStepSize);
 		maxLaserScanMaxPts /= _laserScanDownsampleStepSize;
@@ -3530,7 +3536,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		if(stats) stats->addStatistic(Statistics::kTimingMemScan_downsampling(), t*1000.0f);
 		UDEBUG("time downsampling scan = %fs", t);
 	}
-	if(!laserScan.empty() && _laserScanNormalK > 0 && laserScan.channels() == 3)
+	if(!laserScan.empty() && _laserScanNormalK > 0 && laserScan.channels() == 3 && !isIntermediateNode)
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
 		float x,y,z;
@@ -3543,7 +3549,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 
 	Signature * s;
-	if(this->isBinDataKept())
+	if(this->isBinDataKept() && !isIntermediateNode)
 	{
 		UDEBUG("Bin data kept: rgb=%d, depth=%d, scan=%d, userData=%d",
 				image.empty()?0:1,
@@ -3564,10 +3570,22 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
 		rtabmap::CompressionThread ctLaserScan(laserScan);
 		rtabmap::CompressionThread ctUserData(data.userDataRaw());
-		ctImage.start();
-		ctDepth.start();
-		ctLaserScan.start();
-		ctUserData.start();
+		if(!image.empty())
+		{
+			ctImage.start();
+		}
+		if(!depthOrRightImage.empty())
+		{
+			ctDepth.start();
+		}
+		if(!laserScan.empty())
+		{
+			ctLaserScan.start();
+		}
+		if(!data.userDataRaw().empty())
+		{
+			ctUserData.start();
+		}
 		ctImage.join();
 		ctDepth.join();
 		ctLaserScan.join();
@@ -3602,11 +3620,21 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 	else
 	{
+		UDEBUG("Bin data kept: scan=%d, userData=%d",
+						laserScan.empty()?0:1,
+						data.userDataRaw().empty()?0:1);
+
 		// just compress user data and laser scan (scans can be used for local scan matching)
 		rtabmap::CompressionThread ctUserData(data.userDataRaw());
 		rtabmap::CompressionThread ctLaserScan(laserScan);
-		ctUserData.start();
-		ctLaserScan.start();
+		if(!data.userDataRaw().empty() && !isIntermediateNode)
+		{
+			ctUserData.start();
+		}
+		if(!laserScan.empty() && !isIntermediateNode)
+		{
+			ctLaserScan.start();
+		}
 		ctUserData.join();
 		ctLaserScan.join();
 
@@ -3662,7 +3690,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	cv::Mat ground, obstacles;
 	float cellSize = 0.0f;
 	cv::Point3f viewPoint(0,0,0);
-	if(_createOccupancyGrid && !data.depthOrRightRaw().empty())
+	if(_createOccupancyGrid && !data.depthOrRightRaw().empty() && !isIntermediateNode)
 	{
 		_occupancy->createLocalMap(*s, ground, obstacles, viewPoint);
 		cellSize = _occupancy->getCellSize();
@@ -3817,19 +3845,12 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 		{
 			const VisualWord * wordFirst = _vwd->getWord(keys.front()); //get descriptor size
 			UASSERT(wordFirst!=0);
-			//Descriptors used for Memory::computeTransform()
-			cv::Mat descriptors(keys.size(), wordFirst->getDescriptor().cols, wordFirst->getDescriptor().type());
+
 			// Add all references
 			for(unsigned int i=0; i<keys.size(); ++i)
 			{
 				_vwd->addWordRef(keys.at(i), (*j)->id());
-				const VisualWord * word = _vwd->getWord(keys.at(i));
-				UASSERT(word != 0);
-
-				word->getDescriptor().copyTo(descriptors.row(i));
-
 			}
-			(*j)->sensorData().setFeatures(std::vector<cv::KeyPoint>(), descriptors);
 			(*j)->setEnabled(true);
 		}
 	}

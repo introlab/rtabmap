@@ -332,7 +332,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			kpts[i].size *= _imageDecimation;
 			kpts[i].octave += log2value;
 		}
-		data.setFeatures(kpts, decimatedData.descriptors());
+		data.setFeatures(kpts, decimatedData.keypoints3D(), decimatedData.descriptors());
 
 		if(info)
 		{
@@ -496,8 +496,14 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 		}
 
+		if(data.stamp() == 0)
+		{
+			UWARN("Null stamp detected");
+		}
+
 		previousStamp_ = data.stamp();
 		previousVelocityTransform_.setNull();
+
 		if(dt)
 		{
 			previousVelocityTransform_ = Transform(vx, vy, vz, vroll, vpitch, vyaw);
@@ -508,6 +514,9 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			distanceTravelled_ += t.getNorm();
 			info->distanceTravelled = distanceTravelled_;
 		}
+
+		info->varianceLin *= t.getNorm();
+		info->varianceAng *= t.getAngle();
 
 		return _pose *= t; // update
 	}

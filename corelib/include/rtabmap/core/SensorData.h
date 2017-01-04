@@ -213,12 +213,9 @@ public:
 	float gridCellSize() const {return _cellSize;}
 	const cv::Point3f & gridViewPoint() const {return _viewPoint;}
 
-	void setFeatures(const std::vector<cv::KeyPoint> & keypoints, const cv::Mat & descriptors)
-	{
-		_keypoints = keypoints;
-		_descriptors = descriptors;
-	}
+	void setFeatures(const std::vector<cv::KeyPoint> & keypoints, const std::vector<cv::Point3f> & keypoints3D, const cv::Mat & descriptors);
 	const std::vector<cv::KeyPoint> & keypoints() const {return _keypoints;}
+	const std::vector<cv::Point3f> & keypoints3D() const {return _keypoints3D;}
 	const cv::Mat & descriptors() const {return _descriptors;}
 
 	void setGroundTruth(const Transform & pose) {groundTruth_ = pose;}
@@ -257,6 +254,7 @@ private:
 
 	// features
 	std::vector<cv::KeyPoint> _keypoints;
+	std::vector<cv::Point3f> _keypoints3D;
 	cv::Mat _descriptors;
 
 	Transform groundTruth_;

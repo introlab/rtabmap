@@ -150,6 +150,7 @@ public:
 	bool notifyWhenNewGlobalPathIsReceived() const;
 	int getOdomQualityWarnThr() const;
 	bool isPosteriorGraphView() const;
+	int getOdomRegistrationApproach() const;
 	bool isOdomDisabled() const;
 	bool isGroundTruthAligned() const;
 
@@ -223,6 +224,7 @@ public:
 
 	bool isSourceDatabaseStampsUsed() const;
 	bool isSourceRGBDColorOnly() const;
+	bool isDepthFilteringAvailable() const;
 	QString getSourceDistortionModel() const;
 	bool isBilateralFiltering() const;
 	double getBilateralSigmaS() const;
@@ -307,6 +309,7 @@ private slots:
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
 	void selectSourceImagesPathScans();
+	void selectSourceImagesPathOdom();
 	void selectSourceImagesPathGt();
 	void selectSourceStereoImagesPathLeft();
 	void selectSourceStereoImagesPathRight();

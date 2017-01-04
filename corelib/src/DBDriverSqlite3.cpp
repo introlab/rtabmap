@@ -307,7 +307,6 @@ bool DBDriverSqlite3::getDatabaseVersionQuery(std::string & version) const
 	return false;
 }
 
-
 bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwritten)
 {
 	this->disconnectDatabaseQuery();
@@ -381,13 +380,15 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	UASSERT(this->getDatabaseVersionQuery(_version)); // must be true!
 	UINFO("Database version = %s", _version.c_str());
 
-	if(uStrNumCmp(_version, RTABMAP_VERSION) > 0)
+	// From 0.11.13, compare only with minor version (patch will be used for non-database structural changes)
+	if((uStrNumCmp(_version, "0.11.12") <= 0 && uStrNumCmp(_version, RTABMAP_VERSION) > 0) ||
+	   (uStrNumCmp(_version, "0.11.12") > 0 && uStrNumCmp(RTABMAP_VERSION, "0.11.12") > 0 && uStrNumCmp(_version, uFormat("%d.%d.99", RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR)) > 0))
 	{
-		UERROR("Opened database version (%s) is more recent than rtabmap "
-			   "installed version (%s). Please update rtabmap to new version!",
-			   _version.c_str(), RTABMAP_VERSION);
-		this->disconnectDatabaseQuery(false);
-		return false;
+			UERROR("Opened database version (%s) is more recent than rtabmap "
+				   "installed version (%s). Please update rtabmap to new version!",
+				   _version.c_str(), RTABMAP_VERSION);
+			this->disconnectDatabaseQuery(false);
+			return false;
 	}
 
 	//Set database optimizations

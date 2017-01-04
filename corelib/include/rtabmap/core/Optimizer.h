@@ -94,12 +94,13 @@ public:
 			double * finalError = 0,
 			int * iterationsDone = 0);
 	virtual std::map<int, Transform> optimizeBA(
-			int rootId,
+			int rootId, // if negative, all other poses are fixed
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, CameraModel> & models,
+			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, cv::Point2f> > & wordReferences); // <ID words, IDs frames + keypoint>);
+			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
+			std::set<int> * outliers = 0);
 
 	std::map<int, Transform> optimizeBA(
 			int rootId,
@@ -111,14 +112,15 @@ public:
 			const Link & link,
 			const CameraModel & model,
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, cv::Point2f> > & wordReferences);
+			const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+			std::set<int> * outliers = 0);
 
 	void computeBACorrespondences(
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
-			std::map<int, std::map<int, cv::Point2f> > & wordReferences); // <ID words, IDs frames + keypoint>
+			std::map<int, std::map<int, cv::Point3f> > & wordReferences); // <ID words, IDs frames + keypoint/depth>
 
 protected:
 	Optimizer(

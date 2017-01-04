@@ -245,7 +245,7 @@ private:
 	std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId);
-	Transform alignPosesToGroundTruth(std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth);
+	Transform alignPosesToGroundTruth(std::map<int, Transform> & poses, const std::map<int, Transform> & groundTruth, double stamp = 0.0, int refId = -1);
 	void drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords);
 	void setupMainLayout(bool vertical);
 	void updateSelectSourceMenu();

@@ -269,7 +269,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(FAST, GridRows,           int, 4,         "Grid rows (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
 	RTABMAP_PARAM(FAST, GridCols,           int, 4,         "Grid cols (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
 
-	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.001, "");
+	RTABMAP_PARAM(GFTT, QualityLevel, double, 0.01, "");
 	RTABMAP_PARAM(GFTT, MinDistance, double, 5, "");
 	RTABMAP_PARAM(GFTT, BlockSize, int, 3, "");
 	RTABMAP_PARAM(GFTT, UseHarrisDetector, bool, false, "");
@@ -336,23 +336,27 @@ class RTABMAP_EXP Parameters
 	// Graph optimization
 #ifdef RTABMAP_GTSAM
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 2,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
-	RTABMAP_PARAM(Optimizer, Iterations,        int, 10,          "Optimization iterations.");
+	RTABMAP_PARAM(Optimizer, Iterations,        int, 20,          "Optimization iterations.");
+	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.00001,  "Stop optimizing when the error improvement is less than this value.");
 #else
 #ifdef RTABMAP_G2O
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 1,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
-	RTABMAP_PARAM(Optimizer, Iterations,        int, 10,          "Optimization iterations.");
+	RTABMAP_PARAM(Optimizer, Iterations,        int, 20,          "Optimization iterations.");
+	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.0,     "Stop optimizing when the error improvement is less than this value.");
 #else
 	RTABMAP_PARAM(Optimizer, Strategy,          int, 0,          "Graph optimization strategy: 0=TORO, 1=g2o and 2=GTSAM.");
 	RTABMAP_PARAM(Optimizer, Iterations,        int, 100,        "Optimization iterations.");
+	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.00001, "Stop optimizing when the error improvement is less than this value.");
 #endif
 #endif
 	RTABMAP_PARAM(Optimizer, VarianceIgnored,   bool, false,     "Ignore constraints' variance. If checked, identity information matrix is used for each constraint. Otherwise, an information matrix is generated from the variance saved in the links.");
-	RTABMAP_PARAM(Optimizer, Epsilon,           double, 0.00001, "Stop optimizing when the error improvement is less than this value.");
 	RTABMAP_PARAM(Optimizer, Robust,            bool, false,     uFormat("Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies). Not compatible with \"%s\" if enabled.", kRGBDOptimizeMaxError().c_str()));
 
-	RTABMAP_PARAM(g2o, Solver,                  int, 0,          "0=csparse 1=pcg 2=cholmod");
+	RTABMAP_PARAM(g2o, Solver,                  int, 0,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
 	RTABMAP_PARAM(g2o, Optimizer,               int, 0,          "0=Levenberg 1=GaussNewton");
 	RTABMAP_PARAM(g2o, PixelVariance,           double, 1.0,     "Pixel variance used for bundle adjustment.");
+	RTABMAP_PARAM(g2o, RobustKernelDelta,       double, 8,       "Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.");
+	RTABMAP_PARAM(g2o, Baseline,                double, 0.075,   "When doing bundle adjustment with RGB-D data, we can set a fake baseline (m) to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.");
 
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F)");
@@ -370,6 +374,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, KalmanMeasurementNoise, float, 0.01,      "Process measurement covariance value.");
 	RTABMAP_PARAM(Odom, GuessMotion,            bool, false,      "Guess next transformation from the last motion computed.");
 	RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,       "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
+	RTABMAP_PARAM(Odom, VisKeyFrameThr,         int, 100,         "[Visual] Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,       "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
 	RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,           "Decimation of the images before registration. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
 	RTABMAP_PARAM(Odom, AlignWithGround,        bool, false,      "Align odometry with the ground on initialization.");
@@ -399,7 +404,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, InlierDistance,           float, 0.1,    uFormat("[%s = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.", kVisEstimationType().c_str()));
 	RTABMAP_PARAM(Vis, RefineIterations,         int, 5,        uFormat("[%s = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.", kVisEstimationType().c_str()));
 	RTABMAP_PARAM(Vis, PnPReprojError, 	         float, 2,      uFormat("[%s = 1] PnP reprojection error.", kVisEstimationType().c_str()));
-	RTABMAP_PARAM(Vis, PnPFlags,                 int, 1,        uFormat("[%s = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P", kVisEstimationType().c_str()));
+	RTABMAP_PARAM(Vis, PnPFlags,                 int, 0,        uFormat("[%s = 1] PnP flags: 0=Iterative, 1=EPNP, 2=P3P", kVisEstimationType().c_str()));
 	RTABMAP_PARAM(Vis, PnPRefineIterations,      int, 1,        uFormat("[%s = 1] Refine iterations.", kVisEstimationType().c_str()));
 	RTABMAP_PARAM(Vis, EpipolarGeometryVar,      float, 0.02,   uFormat("[%s = 2] Epipolar geometry maximum variance to accept the transformation.", kVisEstimationType().c_str()));
 	RTABMAP_PARAM(Vis, MinInliers,               int, 20, 		"Minimum feature correspondences to compute/accept the transformation.");
@@ -424,8 +429,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Vis, SubPixEps,                float, 0.02,   "See cv::cornerSubPix().");
 	RTABMAP_PARAM(Vis, CorType,                  int, 0,        "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
 	RTABMAP_PARAM(Vis, CorNNType, 	             int, 1,        uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.", kVisCorType().c_str()));
-	RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.8,    uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.", kVisCorType().c_str()));
-	RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 50,       uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
+	RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.6,    uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.", kVisCorType().c_str()));
+	RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 20,       uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
 	RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,       uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
 	RTABMAP_PARAM(Vis, CorFlowIterations,        int, 30,       uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
 	RTABMAP_PARAM(Vis, CorFlowEps,               float, 0.01,   uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));
@@ -457,7 +462,7 @@ class RTABMAP_EXP Parameters
 
 	RTABMAP_PARAM(StereoBM, BlockSize,           int, 15,       "See cv::StereoBM");
 	RTABMAP_PARAM(StereoBM, MinDisparity,        int, 0,        "See cv::StereoBM");
-	RTABMAP_PARAM(StereoBM, NumDisparities,      int, 64,       "See cv::StereoBM");
+	RTABMAP_PARAM(StereoBM, NumDisparities,      int, 128,      "See cv::StereoBM");
 	RTABMAP_PARAM(StereoBM, PreFilterSize,       int, 9,        "See cv::StereoBM");
 	RTABMAP_PARAM(StereoBM, PreFilterCap,        int, 31,       "See cv::StereoBM");
 	RTABMAP_PARAM(StereoBM, UniquenessRatio,     int, 15,       "See cv::StereoBM");

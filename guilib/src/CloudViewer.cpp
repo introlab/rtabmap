@@ -197,11 +197,16 @@ void CloudViewer::clear()
 	this->removeAllLines();
 	this->removeAllFrustums();
 	this->removeAllTexts();
-	this->clearTrajectory();
 	this->removeOccupancyGridMap();
 	this->removeOctomap();
 
 	this->addOrUpdateCoordinate("reference", Transform::getIdentity(), 0.2);
+	_lastPose.setNull();
+	if(_aLockCamera->isChecked() || _aFollowCamera->isChecked())
+	{
+		resetCamera();
+	}
+	this->clearTrajectory();
 }
 
 void CloudViewer::createMenu()

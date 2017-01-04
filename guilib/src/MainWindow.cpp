@@ -553,14 +553,23 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->updateStat("Odometry/ID/", false);
 	_ui->statsToolBox->updateStat("Odometry/Features/", false);
 	_ui->statsToolBox->updateStat("Odometry/Matches/", false);
+	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", false);
 	_ui->statsToolBox->updateStat("Odometry/Inliers/", false);
+	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", false);
-	_ui->statsToolBox->updateStat("Odometry/StdDev/", false);
-	_ui->statsToolBox->updateStat("Odometry/Variance/", false);
+	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", false);
+	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", false);
+	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", false);
+	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", false);
 	_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", false);
+	_ui->statsToolBox->updateStat("Odometry/LocalKeyFrames/", false);
+	_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", false);
+	_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", false);
+	_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", false);
+	_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", false);
 	_ui->statsToolBox->updateStat("Odometry/Interval/ms", false);
 	_ui->statsToolBox->updateStat("Odometry/Speed/kph", false);
 	_ui->statsToolBox->updateStat("Odometry/Distance/m", false);
@@ -1293,15 +1302,24 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 	//Process info
 	_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().inliers, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().matches, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDev/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().variance), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/Variance/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().variance, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().varianceLin), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().varianceLin, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().varianceAng), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().varianceAng, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/Features/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().features, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/LocalMapSize/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localMapSize, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/LocalScanMapSize/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localScanMapSize, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/LocalKeyFrames/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localKeyFrames, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/localBundleOutliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localBundleOutliers, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/localBundleConstraints/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localBundleConstraints, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/localBundleTime/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().localBundleTime*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/KeyFrameAdded/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().keyFrameAdded?1.0f:0.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/ID/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.data().id(), _preferencesDialog->isCacheSavedInFigures());
 
 	float x=0.0f,y,z, roll,pitch,yaw;
@@ -1341,6 +1359,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		_ui->statsToolBox->updateStat("Odometry/TGroll/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), roll*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TGpitch/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), pitch*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
 		_ui->statsToolBox->updateStat("Odometry/TGyaw/deg", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), yaw*180.0/CV_PI, _preferencesDialog->isCacheSavedInFigures());
+		if(odom.info().interval > 0)
+		{
+			_ui->statsToolBox->updateStat("Odometry/SpeedG/kph", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), x/odom.info().interval*3.6f, _preferencesDialog->isCacheSavedInFigures());
+		}
 	}
 
 	//cumulative pose
@@ -1689,7 +1711,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 
 			std::map<int, Transform> poses = stat.poses();
-			Transform groundTruthOffset = alignPosesToGroundTruth(poses, groundTruth);
+			Transform groundTruthOffset = alignPosesToGroundTruth(poses, groundTruth, stat.stamp(), stat.refImageId());
 			UDEBUG("time= %d ms", time.restart());
 
 			if(!_odometryReceived && poses.size())
@@ -1749,112 +1771,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 				UDEBUG("time= %d ms", time.restart());
 			}
-
-			// ground truth live statistics
-			if(poses.size() && groundTruth.size())
-			{
-				std::vector<float> translationalErrors(poses.size());
-				std::vector<float> rotationalErrors(poses.size());
-				int oi=0;
-				float sumTranslationalErrors = 0.0f;
-				float sumRotationalErrors = 0.0f;
-				float sumSqrdTranslationalErrors = 0.0f;
-				float sumSqrdRotationalErrors = 0.0f;
-				float radToDegree = 180.0f / M_PI;
-				float translational_min = 0.0f;
-				float translational_max = 0.0f;
-				float rotational_min = 0.0f;
-				float rotational_max = 0.0f;
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					std::map<int, Transform>::iterator jter = groundTruth.find(iter->first);
-					if(jter!=groundTruth.end())
-					{
-						Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-						Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-						double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-						rotationalErrors[oi] = a*radToDegree;
-						translationalErrors[oi] = iter->second.getDistance(jter->second);
-
-						sumTranslationalErrors+=translationalErrors[oi];
-						sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
-						sumRotationalErrors+=rotationalErrors[oi];
-						sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
-
-						if(oi == 0)
-						{
-							translational_min = translational_max = translationalErrors[oi];
-							rotational_min = rotational_max = rotationalErrors[oi];
-						}
-						else
-						{
-							if(translationalErrors[oi] < translational_min)
-							{
-								translational_min = translationalErrors[oi];
-							}
-							else if(translationalErrors[oi] > translational_max)
-							{
-								translational_max = translationalErrors[oi];
-							}
-
-							if(rotationalErrors[oi] < rotational_min)
-							{
-								rotational_min = rotationalErrors[oi];
-							}
-							else if(rotationalErrors[oi] > rotational_max)
-							{
-								rotational_max = rotationalErrors[oi];
-							}
-						}
-
-						++oi;
-					}
-				}
-				translationalErrors.resize(oi);
-				rotationalErrors.resize(oi);
-				if(oi)
-				{
-					float total = float(oi);
-					float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
-					float translational_mean = sumTranslationalErrors/total;
-					float translational_median = translationalErrors[oi/2];
-					float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
-
-					float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
-					float rotational_mean = sumRotationalErrors/total;
-					float rotational_median = rotationalErrors[oi/2];
-					float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
-
-					UINFO("translational_rmse=%f", translational_rmse);
-					UINFO("translational_mean=%f", translational_mean);
-					UINFO("translational_median=%f", translational_median);
-					UINFO("translational_std=%f", translational_std);
-					UINFO("translational_min=%f", translational_min);
-					UINFO("translational_max=%f", translational_max);
-
-					UINFO("rotational_rmse=%f", rotational_rmse);
-					UINFO("rotational_mean=%f", rotational_mean);
-					UINFO("rotational_median=%f", rotational_median);
-					UINFO("rotational_std=%f", rotational_std);
-					UINFO("rotational_min=%f", rotational_min);
-					UINFO("rotational_max=%f", rotational_max);
-
-					_ui->statsToolBox->updateStat("GT/translational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_rmse, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/translational_mean/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_mean, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/translational_median/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_median, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/translational_std/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_std, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/translational_min/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_min, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/translational_max/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), translational_max, _preferencesDialog->isCacheSavedInFigures());
-
-					_ui->statsToolBox->updateStat("GT/rotational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/rotational_mean/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_mean, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/rotational_median/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_median, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/rotational_std/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_std, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/rotational_min/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_min, _preferencesDialog->isCacheSavedInFigures());
-					_ui->statsToolBox->updateStat("GT/rotational_max/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), rotational_max, _preferencesDialog->isCacheSavedInFigures());
-				}
-			}
-			UDEBUG("time= %d ms", time.restart());
 		}
 
 		if( _ui->graphicsView_graphView->isVisible())
@@ -2990,50 +2906,176 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 
 Transform MainWindow::alignPosesToGroundTruth(
 		std::map<int, Transform> & poses,
-		const std::map<int, Transform> & groundTruth)
+		const std::map<int, Transform> & groundTruth,
+		double stamp,
+		int refId)
 {
 	Transform t = Transform::getIdentity();
-	if(groundTruth.size() && poses.size() && _preferencesDialog->isGroundTruthAligned())
+	if(groundTruth.size() && poses.size())
 	{
-		unsigned int maxSize = poses.size()>groundTruth.size()? (unsigned int)poses.size(): (unsigned int)groundTruth.size();
-		pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
-		cloud1.resize(maxSize);
-		cloud2.resize(maxSize);
-		int oi = 0;
-		int idFirst = 0;
-		for(std::map<int, Transform>::const_iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
+		if(_preferencesDialog->isGroundTruthAligned())
 		{
-			std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
-			if(iter2!=poses.end())
+			unsigned int maxSize = poses.size()>groundTruth.size()? (unsigned int)poses.size(): (unsigned int)groundTruth.size();
+			pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
+			cloud1.resize(maxSize);
+			cloud2.resize(maxSize);
+			int oi = 0;
+			int idFirst = 0;
+			for(std::map<int, Transform>::const_iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
 			{
-				if(oi==0)
+				std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
+				if(iter2!=poses.end())
 				{
-					idFirst = iter->first;
+					if(oi==0)
+					{
+						idFirst = iter->first;
+					}
+					cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+					cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
 				}
-				cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-				cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
 			}
+
+			if(oi>5)
+			{
+				cloud1.resize(oi);
+				cloud2.resize(oi);
+
+				t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
+			}
+			else if(idFirst)
+			{
+				t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
+			}
+			if(!t.isIdentity())
+			{
+				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					iter->second = t * iter->second;
+				}
+			}
+			UDEBUG("t=%s", t.prettyPrint().c_str());
 		}
 
-		if(oi>5)
+		// ground truth live statistics
+		std::vector<float> translationalErrors(poses.size());
+		std::vector<float> rotationalErrors(poses.size());
+		int oi=0;
+		float sumTranslationalErrors = 0.0f;
+		float sumRotationalErrors = 0.0f;
+		float sumSqrdTranslationalErrors = 0.0f;
+		float sumSqrdRotationalErrors = 0.0f;
+		float radToDegree = 180.0f / M_PI;
+		float translational_min = 0.0f;
+		float translational_max = 0.0f;
+		float rotational_min = 0.0f;
+		float rotational_max = 0.0f;
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
-			cloud1.resize(oi);
-			cloud2.resize(oi);
-		
-			t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
-		}
-		else if(idFirst)
-		{
-			t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
-		}
-		if(!t.isIdentity())
-		{
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			std::map<int, Transform>::const_iterator jter = groundTruth.find(iter->first);
+			if(jter!=groundTruth.end())
 			{
-				iter->second = t * iter->second;
+				Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+				Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+				double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+				rotationalErrors[oi] = a*radToDegree;
+				translationalErrors[oi] = iter->second.getDistance(jter->second);
+
+				sumTranslationalErrors+=translationalErrors[oi];
+				sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
+				sumRotationalErrors+=rotationalErrors[oi];
+				sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
+
+				if(oi == 0)
+				{
+					translational_min = translational_max = translationalErrors[oi];
+					rotational_min = rotational_max = rotationalErrors[oi];
+				}
+				else
+				{
+					if(translationalErrors[oi] < translational_min)
+					{
+						translational_min = translationalErrors[oi];
+					}
+					else if(translationalErrors[oi] > translational_max)
+					{
+						translational_max = translationalErrors[oi];
+					}
+
+					if(rotationalErrors[oi] < rotational_min)
+					{
+						rotational_min = rotationalErrors[oi];
+					}
+					else if(rotationalErrors[oi] > rotational_max)
+					{
+						rotational_max = rotationalErrors[oi];
+					}
+				}
+
+				++oi;
 			}
 		}
-		UDEBUG("t=%s", t.prettyPrint().c_str());
+		translationalErrors.resize(oi);
+		rotationalErrors.resize(oi);
+		if(oi)
+		{
+			float total = float(oi);
+			float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
+			float translational_mean = sumTranslationalErrors/total;
+			float translational_median = translationalErrors[oi/2];
+			float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
+
+			float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
+			float rotational_mean = sumRotationalErrors/total;
+			float rotational_median = rotationalErrors[oi/2];
+			float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
+
+			UINFO("translational_rmse=%f", translational_rmse);
+			UINFO("translational_mean=%f", translational_mean);
+			UINFO("translational_median=%f", translational_median);
+			UINFO("translational_std=%f", translational_std);
+			UINFO("translational_min=%f", translational_min);
+			UINFO("translational_max=%f", translational_max);
+
+			UINFO("rotational_rmse=%f", rotational_rmse);
+			UINFO("rotational_mean=%f", rotational_mean);
+			UINFO("rotational_median=%f", rotational_median);
+			UINFO("rotational_std=%f", rotational_std);
+			UINFO("rotational_min=%f", rotational_min);
+			UINFO("rotational_max=%f", rotational_max);
+
+			if((_preferencesDialog->isTimeUsedInFigures() && stamp > 0.0) || (refId && refId>=0))
+			{
+				_ui->statsToolBox->updateStat("GT/translational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_max, _preferencesDialog->isCacheSavedInFigures());
+
+				_ui->statsToolBox->updateStat("GT/rotational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_max, _preferencesDialog->isCacheSavedInFigures());
+			}
+			else
+			{
+				_ui->statsToolBox->updateStat("GT/translational_rmse/", translational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_mean/", translational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_median/", translational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_std/", translational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_min/", translational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational_max/", translational_max, _preferencesDialog->isCacheSavedInFigures());
+
+				_ui->statsToolBox->updateStat("GT/rotational_rmse/", rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_mean/", rotational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_median/", rotational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_std/", rotational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_min/", rotational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational_max/", rotational_max, _preferencesDialog->isCacheSavedInFigures());
+			}
+		}
 	}
 	return t;
 }
@@ -4191,7 +4233,7 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanFromDepthMaxDepth(),
 			_preferencesDialog->getSourceScanVoxelSize(),
 			_preferencesDialog->getSourceScanNormalsK());
-	if(_preferencesDialog->getSourceType() == PreferencesDialog::kSrcRGBD)
+	if(_preferencesDialog->isDepthFilteringAvailable())
 	{
 		if(_preferencesDialog->isBilateralFiltering())
 		{
@@ -4234,7 +4276,12 @@ void MainWindow::startDetection()
 
 			if(!camera->odomProvided() && !_preferencesDialog->isOdomDisabled())
 			{
-				Odometry * odom = Odometry::create(parameters);
+				ParametersMap odomParameters = parameters;
+				if(_preferencesDialog->getOdomRegistrationApproach() < 3)
+				{
+					uInsert(odomParameters, ParametersPair(Parameters::kRegStrategy(), uNumber2Str(_preferencesDialog->getOdomRegistrationApproach())));
+				}
+				Odometry * odom = Odometry::create(odomParameters);
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
@@ -4537,7 +4584,6 @@ void MainWindow::postProcessing()
 	int detectLoopClosureIterations = _postProcessingDialog->iterations();
 	bool sba = _postProcessingDialog->isSBA();
 	int sbaIterations = _postProcessingDialog->sbaIterations();
-	double sbaEpsilon = _postProcessingDialog->sbaEpsilon();
 	double sbaVariance = _postProcessingDialog->sbaVariance();
 	Optimizer::Type sbaType = _postProcessingDialog->sbaType();
 
@@ -4689,7 +4735,7 @@ void MainWindow::postProcessing()
 									UINFO("Added new loop closure between %d and %d.", from, to);
 									addedLinks.insert(from);
 									addedLinks.insert(to);
-									_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.variance, info.variance)));
+									_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
 									++loopClosuresAdded;
 									_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 									QApplication::processEvents();
@@ -4785,7 +4831,7 @@ void MainWindow::postProcessing()
 
 						if(!transform.isNull())
 						{
-							Link newLink(from, to, iter->second.type(), transform, info.variance, info.variance);
+							Link newLink(from, to, iter->second.type(), transform, info.varianceAng, info.varianceLin);
 							iter->second = newLink;
 						}
 						else
@@ -4846,7 +4892,6 @@ void MainWindow::postProcessing()
 
 		ParametersMap parametersSBA = _preferencesDialog->getAllParameters();
 		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerIterations(), uNumber2Str(sbaIterations)));
-		uInsert(parametersSBA, std::make_pair(Parameters::kOptimizerEpsilon(), uNumber2Str(sbaEpsilon)));
 		uInsert(parametersSBA, std::make_pair(Parameters::kg2oPixelVariance(), uNumber2Str(sbaVariance)));
 		Optimizer * sba = Optimizer::create(sbaType, parametersSBA);
 		std::map<int, Transform>  newPoses = sba->optimizeBA(optimizedPoses.begin()->first, optimizedPoses, linksOut, _cachedSignatures.toStdMap());
@@ -6272,7 +6317,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->actionPause_when_a_loop_hypothesis_is_rejected->setEnabled(true);
 		_ui->actionDump_the_memory->setEnabled(true);
 		_ui->actionDump_the_prediction_matrix->setEnabled(true);
-		_ui->actionDelete_memory->setEnabled(true);
+		_ui->actionDelete_memory->setEnabled(_openedDatabasePath.isEmpty());
 		_ui->actionPost_processing->setEnabled(_cachedSignatures.size() >= 2 && _currentPosesMap.size() >= 2 && _currentLinksMap.size() >= 1);
 		_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(!_cachedSignatures.empty() && !_currentPosesMap.empty());
 		_ui->actionGenerate_map->setEnabled(true);

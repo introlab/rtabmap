@@ -568,7 +568,8 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		}
 		if(!lastPose_.isIdentity() &&
 						(odomEvent.pose().isIdentity() ||
-						odomEvent.info().variance>=9999 ||
+						odomEvent.info().varianceLin>=9999 ||
+						odomEvent.info().varianceAng>=9999 ||
 						odomEvent.rotVariance()>=9999 ||
 						odomEvent.transVariance()>=9999))
 		{
@@ -581,13 +582,13 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		double maxRotVar = odomEvent.rotVariance();
 		double maxTransVar = odomEvent.transVariance();
 		// FIXME: should merge the transformations/variances like Link::merge();
-		if(maxRotVar > _rotVariance)
+		if(maxRotVar != 1.0f)
 		{
-			_rotVariance = maxRotVar;
+			_rotVariance += maxRotVar;
 		}
-		if(maxTransVar > _transVariance)
+		if(maxTransVar != 1.0f)
 		{
-			_transVariance = maxTransVar;
+			_transVariance += maxTransVar;
 		}
 
 		if(ignoreFrame && !_createIntermediateNodes)
@@ -617,7 +618,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			// set negative id so rtabmap will detect it as an intermediate node
 			SensorData tmp = odomEvent.data();
 			tmp.setId(-1);
-			tmp.setFeatures(std::vector<cv::KeyPoint>(), cv::Mat());// remove features
+			tmp.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());// remove features
 			_dataBuffer.push_back(OdometryEvent(tmp, odomEvent.pose(), _rotVariance, _transVariance));
 		}
 		else

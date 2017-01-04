@@ -72,7 +72,6 @@ PostProcessingDialog::PostProcessingDialog(QWidget * parent) :
 
 	connect(_ui->sba, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->sba_iterations, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
-	connect(_ui->sba_epsilon, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_sbaType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateVisibility()));
 
@@ -104,7 +103,6 @@ void PostProcessingDialog::saveSettings(QSettings & settings, const QString & gr
 	settings.setValue("refine_lc", this->isRefineLoopClosureLinks());
 	settings.setValue("sba", this->isSBA());
 	settings.setValue("sba_iterations", this->sbaIterations());
-	settings.setValue("sba_epsilon", this->sbaEpsilon());
 	settings.setValue("sba_type", this->sbaType());
 	settings.setValue("sba_variance", this->sbaVariance());
 	if(!group.isEmpty())
@@ -127,7 +125,6 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 	this->setRefineLoopClosureLinks(settings.value("refine_lc", this->isRefineLoopClosureLinks()).toBool());
 	this->setSBA(settings.value("sba", this->isSBA()).toBool());
 	this->setSBAIterations(settings.value("sba_iterations", this->sbaIterations()).toInt());
-	this->setSBAEpsilon(settings.value("sba_epsilon", this->sbaEpsilon()).toDouble());
 	this->setSBAType((Optimizer::Type)settings.value("sba_type", this->sbaType()).toInt());
 	this->setSBAVariance(settings.value("sba_variance", this->sbaVariance()).toDouble());
 	if(!group.isEmpty())
@@ -139,14 +136,13 @@ void PostProcessingDialog::loadSettings(QSettings & settings, const QString & gr
 void PostProcessingDialog::restoreDefaults()
 {
 	setDetectMoreLoopClosures(true);
-	setClusterRadius(0.5);
+	setClusterRadius(1);
 	setClusterAngle(30);
-	setIterations(3);
+	setIterations(5);
 	setRefineNeighborLinks(false);
 	setRefineLoopClosureLinks(false);
 	setSBA(false);
 	setSBAIterations(20);
-	setSBAEpsilon(0.0);
 	setSBAType(!Optimizer::isAvailable(Optimizer::kTypeG2O)&&Optimizer::isAvailable(Optimizer::kTypeCVSBA)?Optimizer::kTypeCVSBA:Optimizer::kTypeG2O);
 	setSBAVariance(1.0);
 }
@@ -196,10 +192,6 @@ int PostProcessingDialog::sbaIterations() const
 {
 	return _ui->sba_iterations->value();
 }
-double PostProcessingDialog::sbaEpsilon() const
-{
-	return _ui->sba_epsilon->value();
-}
 double PostProcessingDialog::sbaVariance() const
 {
 	return _ui->sba_variance->value();
@@ -241,10 +233,6 @@ void PostProcessingDialog::setSBA(bool on)
 void PostProcessingDialog::setSBAIterations(int iterations)
 {
 	_ui->sba_iterations->setValue(iterations);
-}
-void PostProcessingDialog::setSBAEpsilon(double epsilon)
-{
-	_ui->sba_epsilon->setValue(epsilon);
 }
 void PostProcessingDialog::setSBAVariance(double variance)
 {

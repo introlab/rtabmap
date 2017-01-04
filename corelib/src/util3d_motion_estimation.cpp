@@ -151,7 +151,7 @@ Transform estimateMotion3DTo2D(
 						cv::Point3f newPt = util3d::transformPoint(iter->second, transform);
 						errorSqrdDists[oi] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
 						//ignore very very far features (stereo)
-						if(errorSqrdDists[oi] < 100.0f)
+						if(errorSqrdDists[oi] < iter->second.x/100.0f)
 						{
 							++oi;
 						}

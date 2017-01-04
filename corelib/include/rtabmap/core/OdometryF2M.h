@@ -38,6 +38,7 @@ namespace rtabmap {
 
 class Signature;
 class Registration;
+class Optimizer;
 
 class RTABMAP_EXP OdometryF2M : public Odometry
 {
@@ -58,24 +59,25 @@ private:
 	//Parameters
 	int maximumMapSize_;
 	float keyFrameThr_;
+	int visKeyFrameThr_;
 	int maxNewFeatures_;
 	float scanKeyFrameThr_;
 	int scanMaximumMapSize_;
 	float scanSubtractRadius_;
 	int bundleAdjustment_;
-	int	bundleAdjustmentMaxFrames_;
+	int bundleMaxFrames_;
 
 	Registration * regPipeline_;
 	Signature * map_;
 	Signature * lastFrame_;
 	std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
 
-	std::map<int, std::map<int, cv::Point2f> > bundleWordReferences_;
+	std::map<int, std::map<int, cv::Point3f> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
 	std::map<int, Transform> bundlePoses_;
 	std::multimap<int, Link> bundleLinks_;
 	std::map<int, CameraModel> bundleModels_;
 	std::map<int, int> bundlePoseReferences_;
-	ParametersMap bundleParameters_;
+	Optimizer * sba_;
 };
 
 }

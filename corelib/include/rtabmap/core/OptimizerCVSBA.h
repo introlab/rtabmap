@@ -57,7 +57,8 @@ public:
 			const std::multimap<int, Link> & links,
 			const std::map<int, CameraModel> & models,
 			std::map<int, cv::Point3f> & points3DMap,
-			const std::map<int, std::map<int, cv::Point2f> > & wordReferences); // <ID words, IDs frames + keypoint>);
+			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
+			std::set<int> * outliers = 0);
 };
 
 } /* namespace rtabmap */

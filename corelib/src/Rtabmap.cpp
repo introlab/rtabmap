@@ -981,6 +981,9 @@ bool Rtabmap::process(
 	std::list<int> signaturesRemoved;
 	if(_rgbdSlamMode)
 	{
+		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), covariance.empty()?1.0f:(float)covariance.at<double>(0,0));
+		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_ang(), covariance.empty()?1.0f:(float)covariance.at<double>(5,5));
+
 		//Verify if there was a rehearsal
 		int rehearsedId = (int)uValue(statistics_.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
 		if(rehearsedId > 0)
@@ -1029,84 +1032,92 @@ bool Rtabmap::process(
 			const Signature * oldS = _memory->getSignature(oldId);
 			UASSERT(oldS != 0);
 
-			Transform guess = signature->getLinks().begin()->second.transform().inverse();
-
-			if(smallDisplacement)
+			if(signature->getWeight() >= 0 && oldS->getWeight()>=0) // ignore intermediate nodes
 			{
-				if(signature->getLinks().begin()->second.transVariance() == 1)
+				Transform guess = signature->getLinks().begin()->second.transform().inverse();
+
+				if(smallDisplacement)
 				{
-					// set small variance
-					UDEBUG("Set small variance. The robot is not moving.");
-					_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, 0.0001, 0.0001));
+					if(signature->getLinks().begin()->second.transVariance() == 1)
+					{
+						// set small variance
+						UDEBUG("Set small variance. The robot is not moving.");
+						_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, 0.0001, 0.0001));
+					}
+				}
+				else
+				{
+					//============================================================
+					// Refine neighbor links
+					//============================================================
+					if(!signature->sensorData().laserScanCompressed().empty())
+					{
+						UINFO("Odometry refining: guess = %s", guess.prettyPrint().c_str());
+						RegistrationInfo info;
+						Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &info);
+						if(!t.isNull())
+						{
+							UINFO("Odometry refining: update neighbor link (%d->%d, variance:lin=%f, ang=%f) from %s to %s",
+									oldId,
+									signature->id(),
+									info.varianceLin,
+									info.varianceAng,
+									guess.prettyPrint().c_str(),
+									t.prettyPrint().c_str());
+							UASSERT(info.varianceLin > 0.0 && info.varianceAng > 0.0);
+							_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), t, info.varianceAng, info.varianceLin));
+
+							if(_optimizeFromGraphEnd)
+							{
+								// update all previous nodes
+								// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
+								// parameters just changed state, we should put back all poses without map correction.
+								Transform u = guess * t.inverse();
+								std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
+								UASSERT(jter!=_optimizedPoses.end());
+								Transform up = jter->second * u * jter->second.inverse();
+								Transform mapCorrectionInv = _mapCorrection.inverse();
+								for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
+								{
+									iter->second = mapCorrectionInv * up * iter->second;
+								}
+							}
+						}
+						else
+						{
+							UINFO("Odometry refining rejected: %s", info.rejectedMsg.c_str());
+							if(info.varianceLin > 0 && info.varianceAng > 0)
+							{
+								_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, sqrt(info.varianceAng), sqrt(info.varianceLin)));
+							}
+						}
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), info.icpInliersRatio);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
+					}
+				}
+				timeNeighborLinkRefining = timer.ticks();
+				ULOGGER_INFO("timeOdometryRefining=%fs", timeNeighborLinkRefining);
+
+				UASSERT(oldS->hasLink(signature->id()));
+				UASSERT(uContains(_optimizedPoses, oldId));
+
+				statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), oldS->getLinks().at(signature->id()).transVariance());
+
+				newPose = _optimizedPoses.at(oldId) * oldS->getLinks().at(signature->id()).transform();
+				_mapCorrection = newPose * signature->getPose().inverse();
+				if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
+				{
+					UERROR("Map correction should be identity when optimizing from the last node. T=%s NewPose=%s OldPose=%s",
+							_mapCorrection.prettyPrint().c_str(),
+							newPose.prettyPrint().c_str(),
+							signature->getPose().prettyPrint().c_str());
 				}
 			}
 			else
 			{
-				//============================================================
-				// Refine neighbor links
-				//============================================================
-				if(!signature->sensorData().laserScanCompressed().empty())
-				{
-					UINFO("Odometry refining: guess = %s", guess.prettyPrint().c_str());
-					RegistrationInfo info;
-					Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &info);
-					if(!t.isNull())
-					{
-						UINFO("Odometry refining: update neighbor link (%d->%d, variance=%f) from %s to %s",
-								oldId,
-								signature->id(),
-								info.variance,
-								guess.prettyPrint().c_str(),
-								t.prettyPrint().c_str());
-						UASSERT(info.variance > 0.0);
-						_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), t, info.variance, info.variance));
-
-						if(_optimizeFromGraphEnd)
-						{
-							// update all previous nodes
-							// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
-							// parameters just changed state, we should put back all poses without map correction.
-							Transform u = guess * t.inverse();
-							std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
-							UASSERT(jter!=_optimizedPoses.end());
-							Transform up = jter->second * u * jter->second.inverse();
-							Transform mapCorrectionInv = _mapCorrection.inverse();
-							for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
-							{
-								iter->second = mapCorrectionInv * up * iter->second;
-							}
-						}
-					}
-					else
-					{
-						UINFO("Odometry refining rejected: %s", info.rejectedMsg.c_str());
-						if(info.variance > 0)
-						{
-							double sqrtVar = sqrt(info.variance);
-							_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, sqrtVar, sqrtVar));
-						}
-					}
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), info.icpInliersRatio);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningVariance(), info.variance);
-					statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
-				}
-			}
-			timeNeighborLinkRefining = timer.ticks();
-			ULOGGER_INFO("timeOdometryRefining=%fs", timeNeighborLinkRefining);
-
-			UASSERT(oldS->hasLink(signature->id()));
-			UASSERT(uContains(_optimizedPoses, oldId));
-
-			newPose = _optimizedPoses.at(oldId) * oldS->getLinks().at(signature->id()).transform();
-			_mapCorrection = newPose * signature->getPose().inverse();
-			if(_mapCorrection.getNormSquared() > 0.001f && _optimizeFromGraphEnd)
-			{
-				UERROR("Map correction should be identity when optimizing from the last node. T=%s NewPose=%s OldPose=%s",
-						_mapCorrection.prettyPrint().c_str(),
-						newPose.prettyPrint().c_str(),
-						signature->getPose().prettyPrint().c_str());
+				UWARN("Neighbor link refining is activated but there are intermediate nodes, aborting refining...");
 			}
 		}
 		else
@@ -1220,8 +1231,8 @@ bool Rtabmap::process(
 								*iter,
 								transform.prettyPrint().c_str());
 						// Add a loop constraint
-						UASSERT(info.variance > 0.0);
-						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, info.variance, info.variance)))
+						UASSERT(info.varianceLin > 0.0 && info.varianceAng > 0.0);
+						if(_memory->addLink(Link(signature->id(), *iter, Link::kLocalTimeClosure, transform, info.varianceAng, info.varianceLin)))
 						{
 							++proximityDetectionsInTimeFound;
 							UINFO("Local loop closure found between %d and %d with t=%s",
@@ -1763,7 +1774,7 @@ bool Rtabmap::process(
 		//Compute transform if metric data are present
 		Transform transform;
 		RegistrationInfo info;
-		info.variance = 1.0f;
+		info.varianceLin = info.varianceAng = 1.0f;
 		if(_rgbdSlamMode)
 		{
 			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
@@ -1782,8 +1793,8 @@ bool Rtabmap::process(
 		if(!rejectedHypothesis)
 		{
 			// Make the new one the parent of the old one
-			UASSERT(info.variance > 0.0);
-			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, info.variance, info.variance));
+			UASSERT(info.varianceLin > 0.0 && info.varianceAng > 0.0);
+			rejectedHypothesis = !_memory->addLink(Link(signature->id(), _loopClosureHypothesis.first, Link::kGlobalClosure, transform, info.varianceAng, info.varianceLin));
 			if(!rejectedHypothesis)
 			{
 				loopClosureLinksAdded.push_back(std::make_pair(signature->id(), _loopClosureHypothesis.first));
@@ -1877,8 +1888,8 @@ bool Rtabmap::process(
 						{
 							++localVisualPathsChecked;
 							RegistrationInfo info;
-							Transform guess = _optimizedPoses.at(signature->id()).inverse() * _optimizedPoses.at(nearestId);
-							Transform transform = _memory->computeTransform(nearestId, signature->id(), guess, &info);
+							// guess is null to make sure visual correspondences are globally computed
+							Transform transform = _memory->computeTransform(nearestId, signature->id(), Transform(), &info);
 							if(!transform.isNull())
 							{
 								transform = transform.inverse();
@@ -1888,8 +1899,8 @@ bool Rtabmap::process(
 											signature->id(),
 											nearestId,
 											transform.prettyPrint().c_str());
-									UASSERT(info.variance > 0.0);
-									_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, info.variance, info.variance));
+									UASSERT(info.varianceLin > 0.0 && info.varianceAng > 0.0);
+									_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, info.varianceAng, info.varianceLin));
 									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 									if(loopClosureVisualInliers == 0)
@@ -2013,9 +2024,8 @@ bool Rtabmap::process(
 											}
 
 											// set Identify covariance for laser scan matching only
-											UASSERT(info.variance>0.0);
-											double sqrtVar = sqrt(info.variance);
-											_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, sqrtVar, sqrtVar, scanMatchingIds));
+											UASSERT(info.varianceLin>0.0 && info.varianceAng>0.0);
+											_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, sqrt(info.varianceAng), sqrt(info.varianceLin), scanMatchingIds));
 											loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 											++proximityDetectionsAddedByICPOnly;
@@ -3397,6 +3407,19 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 	std::map<int, Signature> signatures;
 	this->getGraph(poses, links, true, true, &signatures);
 
+	//remove all invalid or intermediate nodes
+	for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end();)
+	{
+		if(signatures.at(iter->first).getWeight() < 0)
+		{
+			poses.erase(iter++);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+
 	for(int n=0; n<iterations; ++n)
 	{
 		UINFO("Looking for more loop closures, clustering poses... (iteration=%d/%d, radius=%f m angle=%f rad)",
@@ -3442,8 +3465,8 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 						UINFO("Added new loop closure between %d and %d.", from, to);
 						addedLinks.insert(from);
 						addedLinks.insert(to);
-						links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.variance, info.variance)));
-						loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, info.variance, info.variance));
+						links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin)));
+						loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin));
 						UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
 					}
 				}
@@ -3512,7 +3535,7 @@ int Rtabmap::refineLinks()
 
 		if(!t.isNull())
 		{
-			linksRefined.push_back(Link(from, to, iter->second.type(), t, info.variance, info.variance));
+			linksRefined.push_back(Link(from, to, iter->second.type(), t, info.varianceAng, info.varianceLin));
 			UINFO("Refined link %d->%d! (%d/%d)", from, to, ++i, (int)links.size());
 		}
 	}

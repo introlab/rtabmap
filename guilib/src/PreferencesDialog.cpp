@@ -180,6 +180,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #endif
 
+	_ui->comboBox_cameraImages_odomFormat->setItemData(4, 0, Qt::UserRole - 1);
 	_ui->comboBox_cameraImages_gtFormat->setItemData(4, 0, Qt::UserRole - 1);
 	if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
 	{
@@ -255,6 +256,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
+	// in case we change the ui, we should not forget to change stuff related to this parameter
+	UASSERT(_ui->odom_registration->count() == 4);
+
 	// Default Driver
 	connect(_ui->comboBox_sourceType, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
 	connect(_ui->comboBox_cameraRGBD, SIGNAL(currentIndexChanged(int)), this, SLOT(updateSourceGrpVisibility()));
@@ -291,6 +295,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_posteriorGraphView, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->odom_registration, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_groundTruthAlign, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 
 	// Cloud rendering panel
@@ -474,6 +479,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_cameraRGBDImages_path_rgb, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesPathRGB()));
 	connect(_ui->toolButton_cameraRGBDImages_path_depth, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesPathDepth()));
 	connect(_ui->toolButton_cameraImages_path_scans, SIGNAL(clicked()), this, SLOT(selectSourceImagesPathScans()));
+	connect(_ui->toolButton_cameraImages_odom, SIGNAL(clicked()), this, SLOT(selectSourceImagesPathOdom()));
 	connect(_ui->toolButton_cameraImages_gt, SIGNAL(clicked()), this, SLOT(selectSourceImagesPathGt()));
 	connect(_ui->lineEdit_cameraRGBDImages_path_rgb, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraRGBDImages_path_depth, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -485,6 +491,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_cameraImages_max_scan_pts, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_cameraImages_scanDownsampleStep, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_cameraImages_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_cameraImages_odom, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_cameraImages_odomFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_gt, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraImages_gtFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_depthFromScan, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
@@ -726,6 +734,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_g2o_solver->setObjectName(Parameters::kg2oSolver().c_str());
 	_ui->comboBox_g2o_optimizer->setObjectName(Parameters::kg2oOptimizer().c_str());
 	_ui->doubleSpinBox_g2o_pixelVariance->setObjectName(Parameters::kg2oPixelVariance().c_str());
+	_ui->doubleSpinBox_g2o_robustKernelDelta->setObjectName(Parameters::kg2oRobustKernelDelta().c_str());
+	_ui->doubleSpinBox_g2o_baseline->setObjectName(Parameters::kg2oBaseline().c_str());
 
 	_ui->graphPlan_goalReachedRadius->setObjectName(Parameters::kRGBDGoalReachedRadius().c_str());
 	_ui->graphPlan_goalsSavedInUserData->setObjectName(Parameters::kRGBDGoalsSavedInUserData().c_str());
@@ -833,6 +843,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
 	_ui->odom_dataBufferSize->setObjectName(Parameters::kOdomImageBufferSize().c_str());
 	_ui->odom_flow_keyframeThr->setObjectName(Parameters::kOdomKeyFrameThr().c_str());
+	_ui->odom_VisKeyFrameThr->setObjectName(Parameters::kOdomVisKeyFrameThr().c_str());
 	_ui->odom_flow_scanKeyframeThr->setObjectName(Parameters::kOdomScanKeyFrameThr().c_str());
 	_ui->odom_flow_guessMotion->setObjectName(Parameters::kOdomGuessMotion().c_str());
 	_ui->odom_imageDecimation->setObjectName(Parameters::kOdomImageDecimation().c_str());
@@ -1395,6 +1406,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_cameraImages_max_scan_pts->setValue(0);
 		_ui->spinBox_cameraImages_scanDownsampleStep->setValue(1);
 		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.0f);
+		_ui->lineEdit_cameraImages_odom->setText("");
+		_ui->comboBox_cameraImages_odomFormat->setCurrentIndex(0);
 		_ui->lineEdit_cameraImages_gt->setText("");
 		_ui->comboBox_cameraImages_gtFormat->setCurrentIndex(0);
 
@@ -1476,6 +1489,11 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		if(groupBox->findChild<QLineEdit*>(_ui->lineEdit_kp_roi->objectName()))
 		{
 			this->setupKpRoiPanel();
+		}
+
+		if(groupBox->objectName() == _ui->groupBox_odometry1->objectName())
+		{
+			_ui->odom_registration->setCurrentIndex(3);
 		}
 	}
 }
@@ -1596,6 +1614,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
 	_ui->checkBox_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked()).toBool());
 	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
+	_ui->odom_registration->setCurrentIndex(settings.value("odomRegistration", _ui->odom_registration->currentIndex()).toInt());
 	_ui->checkbox_groundTruthAlign->setChecked(settings.value("gtAlign", _ui->checkbox_groundTruthAlign->isChecked()).toBool());
 
 	for(int i=0; i<2; ++i)
@@ -1766,6 +1785,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->spinBox_cameraImages_max_scan_pts->setValue(settings.value("scan_max_pts", _ui->spinBox_cameraImages_max_scan_pts->value()).toInt());
 	_ui->spinBox_cameraImages_scanDownsampleStep->setValue(settings.value("scan_downsample_step", _ui->spinBox_cameraImages_scanDownsampleStep->value()).toInt());
 	_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(settings.value("scan_voxel_size", _ui->doubleSpinBox_cameraImages_scanVoxelSize->value()).toDouble());
+	_ui->lineEdit_cameraImages_odom->setText(settings.value("odom_path", _ui->lineEdit_cameraImages_odom->text()).toString());
+	_ui->comboBox_cameraImages_odomFormat->setCurrentIndex(settings.value("odom_format", _ui->comboBox_cameraImages_odomFormat->currentIndex()).toInt());
 	_ui->lineEdit_cameraImages_gt->setText(settings.value("gt_path", _ui->lineEdit_cameraImages_gt->text()).toString());
 	_ui->comboBox_cameraImages_gtFormat->setCurrentIndex(settings.value("gt_format", _ui->comboBox_cameraImages_gtFormat->currentIndex()).toInt());
 	settings.endGroup(); // images
@@ -1975,6 +1996,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("odomQualityThr",       _ui->spinBox_odomQualityWarnThr->value());
 	settings.setValue("posteriorGraphView",   _ui->checkBox_posteriorGraphView->isChecked());
 	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
+	settings.setValue("odomRegistration",     _ui->odom_registration->currentIndex());
 	settings.setValue("gtAlign",              _ui->checkbox_groundTruthAlign->isChecked());
 
 	for(int i=0; i<2; ++i)
@@ -2147,6 +2169,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("scan_max_pts",        _ui->spinBox_cameraImages_max_scan_pts->value());
 	settings.setValue("scan_downsample_step", _ui->spinBox_cameraImages_scanDownsampleStep->value());
 	settings.setValue("scan_voxel_size",     _ui->doubleSpinBox_cameraImages_scanVoxelSize->value());
+	settings.setValue("odom_path",           _ui->lineEdit_cameraImages_odom->text());
+	settings.setValue("odom_format",         _ui->comboBox_cameraImages_odomFormat->currentIndex());
 	settings.setValue("gt_path",             _ui->lineEdit_cameraImages_gt->text());
 	settings.setValue("gt_format",           _ui->comboBox_cameraImages_gtFormat->currentIndex());
 	settings.endGroup(); // images
@@ -2305,7 +2329,9 @@ bool PreferencesDialog::validateForm()
 				   "with cvsba. Bundle adjustment is disabled."));
 		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
 	}
-	if(_ui->odom_f2m_bundleStrategy->currentIndex() > 0 && _ui->loopClosure_correspondencesType->currentIndex() == 1)
+	if(_ui->odom_strategy->currentIndex() == 0 && // F2M
+		_ui->odom_f2m_bundleStrategy->currentIndex() > 0 &&
+		_ui->loopClosure_correspondencesType->currentIndex() == 1)
 	{
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Odometry local bundle adjustment optimization cannot be used at the same time than Optical Flow correspondences "
@@ -2916,6 +2942,30 @@ void PreferencesDialog::selectSourceRGBDImagesPathDepth()
 	}
 }
 
+void PreferencesDialog::selectSourceImagesPathOdom()
+{
+	QString dir = _ui->lineEdit_cameraImages_odom->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Odometry (*.txt *.log *.toro *.g2o)"));
+	if(path.size())
+	{
+		QStringList list;
+		for(int i=0; i<_ui->comboBox_cameraImages_odomFormat->count(); ++i)
+		{
+			list.push_back(_ui->comboBox_cameraImages_odomFormat->itemText(i));
+		}
+		QString item = QInputDialog::getItem(this, tr("Odometry Format"), tr("Format:"), list, _ui->comboBox_cameraImages_odomFormat->currentIndex(), false);
+		if(!item.isEmpty())
+		{
+			_ui->lineEdit_cameraImages_odom->setText(path);
+			_ui->comboBox_cameraImages_odomFormat->setCurrentIndex(_ui->comboBox_cameraImages_odomFormat->findText(item));
+		}
+	}
+}
+
 void PreferencesDialog::selectSourceImagesPathGt()
 {
 	QString dir = _ui->lineEdit_cameraImages_gt->text();
@@ -2931,7 +2981,7 @@ void PreferencesDialog::selectSourceImagesPathGt()
 		{
 			list.push_back(_ui->comboBox_cameraImages_gtFormat->itemText(i));
 		}
-		QString item = QInputDialog::getItem(this, tr("Ground Truth Format"), tr("Format:"), list, 0, false);
+		QString item = QInputDialog::getItem(this, tr("Ground Truth Format"), tr("Format:"), list, _ui->comboBox_cameraImages_gtFormat->currentIndex(), false);
 		if(!item.isEmpty())
 		{
 			_ui->lineEdit_cameraImages_gt->setText(path);
@@ -3704,6 +3754,11 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			(_ui->comboBox_sourceType->currentIndex() == 1 && _ui->comboBox_cameraStereo->currentIndex() == kSrcStereoImages-kSrcStereo) ||
 			(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB));
 
+	_ui->groupBox_depthImageFiltering->setEnabled(
+				_ui->comboBox_sourceType->currentIndex() == 0 || // RGBD
+				_ui->comboBox_sourceType->currentIndex() == 3);  // Database
+	_ui->groupBox_depthImageFiltering->setVisible(_ui->groupBox_depthImageFiltering->isEnabled());
+
 	//_ui->groupBox_scan->setVisible(_ui->comboBox_sourceType->currentIndex() != 3);
 
 	_ui->groupBox_depthFromScan->setVisible(_ui->comboBox_sourceType->currentIndex() == 2 && _ui->source_comboBox_image_type->currentIndex() == kSrcImages-kSrcRGB);
@@ -3786,6 +3841,10 @@ bool PreferencesDialog::isPosteriorGraphView() const
 bool PreferencesDialog::isOdomDisabled() const
 {
 	return _ui->checkbox_odomDisabled->isChecked();
+}
+int PreferencesDialog::getOdomRegistrationApproach() const
+{
+	return _ui->odom_registration->currentIndex();
 }
 bool PreferencesDialog::isGroundTruthAligned() const
 {
@@ -4135,6 +4194,10 @@ bool PreferencesDialog::isSourceRGBDColorOnly() const
 {
 	return _ui->checkbox_rgbd_colorOnly->isChecked();
 }
+bool PreferencesDialog::isDepthFilteringAvailable() const
+{
+	return _ui->groupBox_depthImageFiltering->isEnabled();
+}
 QString PreferencesDialog::getSourceDistortionModel() const
 {
 	return _ui->lineEdit_source_distortionModel->text();
@@ -4277,6 +4340,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraRGBDImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
+		((CameraRGBDImages*)camera)->setOdometryPath(_ui->lineEdit_cameraImages_odom->text().toStdString(), _ui->comboBox_cameraImages_odomFormat->currentIndex());
 		((CameraRGBDImages*)camera)->setGroundTruthPath(_ui->lineEdit_cameraImages_gt->text().toStdString(), _ui->comboBox_cameraImages_gtFormat->currentIndex());
 		((CameraRGBDImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
@@ -4321,6 +4385,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 		((CameraStereoImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
+		((CameraStereoImages*)camera)->setOdometryPath(_ui->lineEdit_cameraImages_odom->text().toStdString(), _ui->comboBox_cameraImages_odomFormat->currentIndex());
 		((CameraStereoImages*)camera)->setGroundTruthPath(_ui->lineEdit_cameraImages_gt->text().toStdString(), _ui->comboBox_cameraImages_gtFormat->currentIndex());
 		((CameraStereoImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
@@ -4421,6 +4486,9 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		((CameraImages*)camera)->setImagesRectified(_ui->checkBox_rgbImages_rectify->isChecked() && !useRawImages);
 
 		((CameraImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
+		((CameraImages*)camera)->setOdometryPath(
+				_ui->lineEdit_cameraImages_odom->text().toStdString(),
+				_ui->comboBox_cameraImages_odomFormat->currentIndex());
 		((CameraImages*)camera)->setGroundTruthPath(
 				_ui->lineEdit_cameraImages_gt->text().toStdString(),
 				_ui->comboBox_cameraImages_gtFormat->currentIndex());
@@ -4643,6 +4711,10 @@ void PreferencesDialog::testOdometry()
 	}
 
 	ParametersMap parameters = this->getAllParameters();
+	if(getOdomRegistrationApproach() < 3)
+	{
+		uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), uNumber2Str(getOdomRegistrationApproach())));
+	}
 	Odometry * odometry = Odometry::create(parameters);
 
 	OdometryThread odomThread(
@@ -4672,7 +4744,7 @@ void PreferencesDialog::testOdometry()
 			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 			_ui->spinBox_cameraImages_scanNormalsK->value());
-	if(this->getSourceType() == PreferencesDialog::kSrcRGBD)
+	if(isDepthFilteringAvailable())
 	{
 		if(_ui->groupBox_bilateral->isChecked())
 		{
@@ -4720,7 +4792,7 @@ void PreferencesDialog::testCamera()
 				_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 				_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 				_ui->spinBox_cameraImages_scanNormalsK->value());
-		if(this->getSourceType() == PreferencesDialog::kSrcRGBD)
+		if(isDepthFilteringAvailable())
 		{
 			if(_ui->groupBox_bilateral->isChecked())
 			{

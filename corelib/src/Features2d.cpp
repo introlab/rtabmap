@@ -210,7 +210,14 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKey
 
 void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints)
 {
+	std::vector<cv::Point3f> keypoints3D;
+	limitKeypoints(keypoints, keypoints3D, descriptors, maxKeypoints);
+}
+
+void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints)
+{
 	UASSERT_MSG((int)keypoints.size() == descriptors.rows || descriptors.rows == 0, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors.rows).c_str());
+	UASSERT_MSG((int)keypoints.size() == keypoints3D.size() || keypoints3D.size() == 0, uFormat("keypoints=%d keypoints3D=%d", (int)keypoints.size(), (int)keypoints3D.size()).c_str());
 	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
 	{
 		UTimer timer;
@@ -229,6 +236,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 		int removed = (int)hessianMap.size()-maxKeypoints;
 		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
 		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
+		std::vector<cv::Point3f> kpts3DTmp(maxKeypoints);
 		cv::Mat descriptorsTmp;
 		if(descriptors.rows)
 		{
@@ -237,6 +245,10 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 		for(unsigned int k=0; k < kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
 		{
 			kptsTmp[k] = keypoints[iter->second];
+			if(keypoints3D.size())
+			{
+				kpts3DTmp[k] = keypoints3D[iter->second];
+			}
 			if(descriptors.rows)
 			{
 				if(descriptors.type() == CV_32FC1)
@@ -252,6 +264,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)kptsTmp.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
 		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
 		keypoints = kptsTmp;
+		keypoints3D = kpts3DTmp;
 		if(descriptors.rows)
 		{
 			descriptors = descriptorsTmp;

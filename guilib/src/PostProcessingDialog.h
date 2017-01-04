@@ -59,7 +59,6 @@ public:
 	bool isRefineLoopClosureLinks() const;
 	bool isSBA() const;
 	int sbaIterations() const;
-	double sbaEpsilon() const;
 	double sbaVariance() const;
 	Optimizer::Type sbaType() const;
 
@@ -72,7 +71,6 @@ public:
 	void setRefineLoopClosureLinks(bool on);
 	void setSBA(bool on);
 	void setSBAIterations(int iterations);
-	void setSBAEpsilon(double epsilon);
 	void setSBAVariance(double variance);
 	void setSBAType(Optimizer::Type type);
 
