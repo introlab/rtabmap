@@ -2235,6 +2235,12 @@ Transform Memory::computeTransform(
 					info->rejectedMsg = msg;
 				}
 			}
+			else if(info && !transform.isIdentity())
+			{
+				//normalize variance
+				info->varianceLin *= transform.getNorm();
+				info->varianceAng *= transform.getAngle();
+			}
 		}
 	}
 	return transform;
@@ -2282,6 +2288,13 @@ Transform Memory::computeIcpTransform(
 		// compute transform fromId -> toId
 		std::vector<int> inliersV;
 		t = _registrationIcp->computeTransformation(fromS->sensorData(), toS->sensorData(), guess, info);
+
+		if(!t.isNull() && !t.isIdentity() && info)
+		{
+			// normalize variance
+			info->varianceLin *= t.getNorm();
+			info->varianceAng *= t.getAngle();
+		}
 	}
 	else
 	{

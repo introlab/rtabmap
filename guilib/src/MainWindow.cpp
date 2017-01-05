@@ -4735,6 +4735,12 @@ void MainWindow::postProcessing()
 									UINFO("Added new loop closure between %d and %d.", from, to);
 									addedLinks.insert(from);
 									addedLinks.insert(to);
+									if(!transform.isIdentity())
+									{
+										// normalize variance
+										info.varianceLin *= transform.getNorm();
+										info.varianceAng *= transform.getAngle();
+									}
 									_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
 									++loopClosuresAdded;
 									_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
