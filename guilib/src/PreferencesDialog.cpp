@@ -1282,7 +1282,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_map_erode->setChecked(false);
 		_ui->checkBox_map_incremental->setChecked(false);
 		_ui->doubleSpinBox_map_footprintRadius->setValue(0);
-		_ui->doubleSpinBox_map_opacity->setValue(1);
+		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 
 		_ui->groupBox_octomap->setChecked(false);
 		_ui->spinBox_octomap_treeDepth->setValue(16);

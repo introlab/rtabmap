@@ -4199,6 +4199,8 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 			// normalize variance
 			info.varianceLin *= transform.getNorm();
 			info.varianceAng *= transform.getAngle();
+			info.varianceLin = info.varianceLin>0.0f?info.varianceLin:0.0001f; // epsilon if exact transform
+			info.varianceAng = info.varianceAng>0.0f?info.varianceAng:0.0001f; // epsilon if exact transform
 		}
 		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, info.varianceAng, info.varianceLin);
 
@@ -4303,6 +4305,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 				// normalize variance
 				info.varianceLin *= t.getNorm();
 				info.varianceAng *= t.getAngle();
+				info.varianceLin = info.varianceLin>0.0f?info.varianceLin:0.0001f; // epsilon if exact transform
+				info.varianceAng = info.varianceAng>0.0f?info.varianceAng:0.0001f; // epsilon if exact transform
 			}
 			newLink = Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin);
 		}

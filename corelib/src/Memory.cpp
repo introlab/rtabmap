@@ -2240,6 +2240,8 @@ Transform Memory::computeTransform(
 				//normalize variance
 				info->varianceLin *= transform.getNorm();
 				info->varianceAng *= transform.getAngle();
+				info->varianceLin = info->varianceLin>0.0f?info->varianceLin:0.0001f; // epsilon if exact transform
+				info->varianceAng = info->varianceAng>0.0f?info->varianceAng:0.0001f; // epsilon if exact transform
 			}
 		}
 	}
@@ -2294,6 +2296,8 @@ Transform Memory::computeIcpTransform(
 			// normalize variance
 			info->varianceLin *= t.getNorm();
 			info->varianceAng *= t.getAngle();
+			info->varianceLin = info->varianceLin>0.0f?info->varianceLin:0.0001f; // epsilon if exact transform
+			info->varianceAng = info->varianceAng>0.0f?info->varianceAng:0.0001f; // epsilon if exact transform
 		}
 	}
 	else

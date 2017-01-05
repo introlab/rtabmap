@@ -4740,6 +4740,8 @@ void MainWindow::postProcessing()
 										// normalize variance
 										info.varianceLin *= transform.getNorm();
 										info.varianceAng *= transform.getAngle();
+										info.varianceLin = info.varianceLin>0.0f?info.varianceLin:0.0001f; // epsilon if exact transform
+										info.varianceAng = info.varianceAng>0.0f?info.varianceAng:0.0001f; // epsilon if exact transform
 									}
 									_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
 									++loopClosuresAdded;
