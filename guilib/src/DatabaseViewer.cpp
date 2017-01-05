@@ -4194,9 +4194,12 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 
 	if(!transform.isNull())
 	{
-		// normalize variance
-		info.varianceLin *= transform.getNorm();
-		info.varianceAng *= transform.getAngle();
+		if(!transform.isIdentity())
+		{
+			// normalize variance
+			info.varianceLin *= transform.getNorm();
+			info.varianceAng *= transform.getAngle();
+		}
 		Link newLink(currentLink.from(), currentLink.to(), currentLink.type(), transform, info.varianceAng, info.varianceLin);
 
 		bool updated = false;
@@ -4293,11 +4296,14 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			updateWordsMatching();
 		}
 		
-		if(!t.isNull() && !t.isIdentity())
+		if(!t.isNull())
 		{
-			// normalize variance
-			info.varianceLin *= t.getNorm();
-			info.varianceAng *= t.getAngle();
+			if(!t.isIdentity())
+			{
+				// normalize variance
+				info.varianceLin *= t.getNorm();
+				info.varianceAng *= t.getAngle();
+			}
 			newLink = Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin);
 		}
 		else if(!silent)
