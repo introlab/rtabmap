@@ -158,7 +158,7 @@ int main(int argc, char * argv[])
 	}
 	else
 	{
-		camera = new rtabmap::CameraVideo(device, rate);
+		camera = new rtabmap::CameraVideo(device, false, rate);
 	}
 
 	if(camera)
