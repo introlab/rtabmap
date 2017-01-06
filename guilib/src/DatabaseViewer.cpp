@@ -3672,7 +3672,7 @@ void DatabaseViewer::updateConstraintButtons()
 
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
-	if(from!=to && from && to)
+	if(from!=to && from && to && poses_.find(from) != poses_.end() && poses_.find(to) != poses_.end())
 	{
 		if((!containsLink(links_, from ,to) && !containsLink(linksAdded_, from ,to)) ||
 			containsLink(linksRemoved_, from ,to))
@@ -4348,10 +4348,13 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
+		UASSERT(poses_.find(fromId) != poses_.end());
+		UASSERT_MSG(poses_.find(newLink.from()) != poses_.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)poses.size(), (int)links.size()).c_str());
+		UASSERT_MSG(poses_.find(newLink.to()) != poses_.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)poses.size(), (int)links.size()).c_str());
 		optimizer->getConnectedGraph(fromId, poses_, linksIn, poses, links);
 		UASSERT(poses.find(fromId) != poses.end());
-		UASSERT(poses.find(newLink.from()) != poses.end());
-		UASSERT(poses.find(newLink.to()) != poses.end());
+		UASSERT_MSG(poses.find(newLink.from()) != poses.end(), uFormat("id=%d poses=%d links=%d", newLink.from(), (int)poses.size(), (int)links.size()).c_str());
+		UASSERT_MSG(poses.find(newLink.to()) != poses.end(), uFormat("id=%d poses=%d links=%d", newLink.to(), (int)poses.size(), (int)links.size()).c_str());
 		UASSERT(graph::findLink(links, newLink.from(), newLink.to()) != links.end());
 		poses = optimizer->optimize(fromId, poses, links);
 		std::string msg;
