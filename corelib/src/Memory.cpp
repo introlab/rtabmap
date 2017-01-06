@@ -2146,13 +2146,13 @@ Transform Memory::computeTransform(
 
 	// make sure we have all data needed
 	// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
-	if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && fromS.sensorData().imageCompressed().empty()) ||
+	if(((_reextractLoopClosureFeatures || _registrationPipeline->isImageRequired()) && fromS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().empty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
 		fromS.sensorData() = getNodeData(fromS.id());
 	}
-	if((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired() && toS.sensorData().imageCompressed().empty()) ||
+	if(((_reextractLoopClosureFeatures || _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().empty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
@@ -2161,13 +2161,13 @@ Transform Memory::computeTransform(
 	// uncompress only what we need
 	cv::Mat imgBuf, depthBuf, laserBuf, userBuf;
 	fromS.sensorData().uncompressData(
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			(_reextractLoopClosureFeatures || _registrationPipeline->isImageRequired())?&imgBuf:0,
+			(_reextractLoopClosureFeatures || _registrationPipeline->isImageRequired())?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 	toS.sensorData().uncompressData(
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			(_reextractLoopClosureFeatures || _registrationPipeline->isImageRequired())?&imgBuf:0,
+			(_reextractLoopClosureFeatures || _registrationPipeline->isImageRequired())?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 

@@ -194,23 +194,27 @@ Transform RegistrationVis::computeTransformationImpl(
 	UDEBUG("%s=%d", Parameters::kVisCorFlowMaxLevel().c_str(), _flowMaxLevel);
 	UDEBUG("guess=%s", guess.prettyPrint().c_str());
 
-	UDEBUG("Input(%d): from=%d words, %d 3D words, %d words descriptors,  %d kpts, %d kpts3D, %d descriptors",
+	UDEBUG("Input(%d): from=%d words, %d 3D words, %d words descriptors,  %d kpts, %d kpts3D, %d descriptors, image=%dx%d",
 			fromSignature.id(),
 			(int)fromSignature.getWords().size(),
 			(int)fromSignature.getWords3().size(),
 			(int)fromSignature.getWordsDescriptors().size(),
 			(int)fromSignature.sensorData().keypoints().size(),
 			(int)fromSignature.sensorData().keypoints3D().size(),
-			fromSignature.sensorData().descriptors().rows);
+			fromSignature.sensorData().descriptors().rows,
+			fromSignature.sensorData().imageRaw().cols,
+			fromSignature.sensorData().imageRaw().rows);
 
-	UDEBUG("Input(%d): to=%d words, %d 3D words, %d words descriptors, %d kpts, %d kpts3D, %d descriptors",
+	UDEBUG("Input(%d): to=%d words, %d 3D words, %d words descriptors, %d kpts, %d kpts3D, %d descriptors, image=%dx%d",
 			toSignature.id(),
 			(int)toSignature.getWords().size(),
 			(int)toSignature.getWords3().size(),
 			(int)toSignature.getWordsDescriptors().size(),
 			(int)toSignature.sensorData().keypoints().size(),
 			(int)toSignature.sensorData().keypoints3D().size(),
-			toSignature.sensorData().descriptors().rows);
+			toSignature.sensorData().descriptors().rows,
+			toSignature.sensorData().imageRaw().cols,
+			toSignature.sensorData().imageRaw().rows);
 
 	std::string msg;
 
@@ -1423,8 +1427,10 @@ Transform RegistrationVis::computeTransformationImpl(
 	}
 	else if(toSignature.sensorData().isValid())
 	{
-		UWARN("Missing correspondences for registration (%d->%d). toWords = %d toImageEmpty=%d",
-				fromSignature.id(), toSignature.id(), (int)toSignature.getWords().size(), toSignature.sensorData().imageRaw().empty()?1:0);
+		UWARN("Missing correspondences for registration (%d->%d). fromWords = %d fromImageEmpty=%d toWords = %d toImageEmpty=%d",
+				fromSignature.id(), toSignature.id(),
+				(int)fromSignature.getWords().size(), fromSignature.sensorData().imageRaw().empty()?1:0,
+				(int)toSignature.getWords().size(), toSignature.sensorData().imageRaw().empty()?1:0);
 	}
 
 	info.inliers = inliersCount;
