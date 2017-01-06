@@ -78,15 +78,30 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true)
     {
 		// Assume depth image (float in meters)
 		const float * data = (const float *)image.data;
-		float min=0, max=0;
-		uMinMax(data, image.rows*image.cols, min, max);
+		float min=data[0], max=data[0];
+		for(unsigned int i=1; i<image.total(); ++i)
+		{
+			if(!uIsNan(data[i]) && data[i] > 0)
+			{
+				if((uIsNan(min) && data[i] > 0) ||
+				   (data[i] > 0 && data[i]<min))
+				{
+					min = data[i];
+				}
+				if((uIsNan(max) && data[i] > 0) ||
+				   (data[i] > 0 && data[i]>max))
+				{
+					max = data[i];
+				}
+			}
+		}
 		qtemp = QImage(image.cols, image.rows, QImage::Format_Indexed8);
 		for(int y = 0; y < image.rows; ++y, data += image.cols)
 		{
 			for(int x = 0; x < image.cols; ++x)
 			{
 				uchar * p = qtemp.scanLine (y) + x;
-				if(data[x] < min || data[x] > max || uIsNan(data[x]))
+				if(data[x] < min || data[x] > max || uIsNan(data[x]) || max == min)
 				{
 					*p = 0;
 				}
