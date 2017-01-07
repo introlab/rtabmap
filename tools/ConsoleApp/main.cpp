@@ -344,7 +344,7 @@ int main(int argc, char * argv[])
 			{
 				++countLoopDetected;
 			}
-			for(int i=0; i<=skip; ++i)
+			for(int j=0; j<=skip; ++j)
 			{
 				data = camera->takeImage();
 			}
