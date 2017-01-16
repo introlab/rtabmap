@@ -315,6 +315,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingMinDepth[0] = _ui->doubleSpinBox_minDepth;
 	_3dRenderingMinDepth[1] = _ui->doubleSpinBox_minDepth_odom;
 
+	_3dRenderingRoiRatios.resize(2);
+	_3dRenderingRoiRatios[0] = _ui->lineEdit_roiRatios;
+	_3dRenderingRoiRatios[1] = _ui->lineEdit_roiRatios_odom;
+
 	_3dRenderingOpacity.resize(2);
 	_3dRenderingOpacity[0] = _ui->doubleSpinBox_opacity;
 	_3dRenderingOpacity[1] = _ui->doubleSpinBox_opacity_odom;
@@ -357,6 +361,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingDecimation[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingMaxDepth[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingMinDepth[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingRoiRatios[i], SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingShowScans[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingShowFeatures[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
@@ -1233,6 +1238,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingDecimation[i]->setValue(4);
 			_3dRenderingMaxDepth[i]->setValue(0.0);
 			_3dRenderingMinDepth[i]->setValue(0.0);
+			_3dRenderingRoiRatios[i]->setText("0.0 0.0 0.0 0.0");
 			_3dRenderingShowScans[i]->setChecked(true);
 			_3dRenderingShowFeatures[i]->setChecked(i==0?false:true);
 
@@ -1623,6 +1629,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingDecimation[i]->setValue(settings.value(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value()).toInt());
 		_3dRenderingMaxDepth[i]->setValue(settings.value(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value()).toDouble());
 		_3dRenderingMinDepth[i]->setValue(settings.value(QString("minDepth%1").arg(i), _3dRenderingMinDepth[i]->value()).toDouble());
+		_3dRenderingRoiRatios[i]->setText(settings.value(QString("roiRatios%1").arg(i), _3dRenderingRoiRatios[i]->text()).toString());
 		_3dRenderingShowScans[i]->setChecked(settings.value(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked()).toBool());
 		_3dRenderingShowFeatures[i]->setChecked(settings.value(QString("showFeatures%1").arg(i), _3dRenderingShowFeatures[i]->isChecked()).toBool());
 
@@ -2005,6 +2012,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("decimation%1").arg(i), _3dRenderingDecimation[i]->value());
 		settings.setValue(QString("maxDepth%1").arg(i), _3dRenderingMaxDepth[i]->value());
 		settings.setValue(QString("minDepth%1").arg(i), _3dRenderingMinDepth[i]->value());
+		settings.setValue(QString("roiRatios%1").arg(i), _3dRenderingRoiRatios[i]->text());
 		settings.setValue(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked());
 		settings.setValue(QString("showFeatures%1").arg(i), _3dRenderingShowFeatures[i]->isChecked());
 
@@ -3949,6 +3957,24 @@ double PreferencesDialog::getCloudMinDepth(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingMinDepth[index]->value();
+}
+std::vector<float> PreferencesDialog::getCloudRoiRatios(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	std::vector<float> roiRatios;
+	if(!_3dRenderingRoiRatios[index]->text().isEmpty())
+	{
+		QStringList values = _3dRenderingRoiRatios[index]->text().split(' ');
+		if(values.size() == 4)
+		{
+			roiRatios.resize(4);
+			for(int i=0; i<values.size(); ++i)
+			{
+				roiRatios[i] = uStr2Float(values[i].toStdString().c_str());
+			}
+		}
+	}
+	return roiRatios;
 }
 double PreferencesDialog::getCloudOpacity(int index) const
 {

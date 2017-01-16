@@ -64,8 +64,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>678</width>
-            <height>2632</height>
+            <width>673</width>
+            <height>2649</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>3</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -487,7 +487,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="0">
+                      <item row="6" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxel">
                         <property name="suffix">
                          <string> m</string>
@@ -506,7 +506,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="2">
+                      <item row="7" column="2">
                        <widget class="QLabel" name="label_168">
                         <property name="text">
                          <string>3D cloud noise filtering radius (0=disabled). Done after voxel filtering.</string>
@@ -538,6 +538,88 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
+                      <item row="18" column="2">
+                       <widget class="QLabel" name="label_123">
+                        <property name="text">
+                         <string>Show 3D features.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="13" column="0">
+                       <widget class="QCheckBox" name="checkBox_showScans">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="13" column="1">
+                       <widget class="QCheckBox" name="checkBox_showOdomScans">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="13" column="2">
+                       <widget class="QLabel" name="label_110">
+                        <property name="text">
+                         <string>Show scans.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="8" column="0">
+                       <widget class="QSpinBox" name="spinBox_noiseMinNeighbors">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>1000</number>
+                        </property>
+                        <property name="value">
+                         <number>5</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="3" column="2">
+                       <widget class="QLabel" name="label_132">
+                        <property name="text">
+                         <string>3D cloud maximum depth (0 means no limit).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QCheckBox" name="checkBox_showOdomClouds">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>true</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="4" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_minDepth">
                         <property name="suffix">
@@ -557,7 +639,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="17" column="1">
+                      <item row="18" column="1">
                        <widget class="QCheckBox" name="checkBox_showOdomFeatures">
                         <property name="text">
                          <string/>
@@ -567,53 +649,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="17" column="2">
-                       <widget class="QLabel" name="label_123">
-                        <property name="text">
-                         <string>Show 3D features.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="12" column="0">
-                       <widget class="QCheckBox" name="checkBox_showScans">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="12" column="1">
-                       <widget class="QCheckBox" name="checkBox_showOdomScans">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="12" column="2">
-                       <widget class="QLabel" name="label_110">
-                        <property name="text">
-                         <string>Show scans.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="13" column="0">
+                      <item row="14" column="0">
                        <widget class="QSpinBox" name="spinBox_downsamplingScan">
                         <property name="minimum">
                          <number>1</number>
@@ -623,7 +659,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="2">
+                      <item row="14" column="2">
                        <widget class="QLabel" name="label_273">
                         <property name="text">
                          <string>Scan downsampling step size.</string>
@@ -636,7 +672,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="0">
+                      <item row="15" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan">
                         <property name="suffix">
                          <string> m</string>
@@ -655,7 +691,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="1">
+                      <item row="15" column="1">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSizeScan_odom">
                         <property name="suffix">
                          <string> m</string>
@@ -674,7 +710,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="1">
+                      <item row="16" column="1">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom_scan">
                         <property name="suffix">
                          <string/>
@@ -693,7 +729,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="2">
+                      <item row="8" column="2">
                        <widget class="QLabel" name="label_169">
                         <property name="text">
                          <string>3D cloud noise filtering min neighbors.</string>
@@ -706,7 +742,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="18" column="1">
+                      <item row="19" column="1">
                        <widget class="QSpinBox" name="spinBox_ptsize_odom_features">
                         <property name="minimum">
                          <number>1</number>
@@ -716,7 +752,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="18" column="2">
+                      <item row="19" column="2">
                        <widget class="QLabel" name="label_166">
                         <property name="text">
                          <string>Feature point size.</string>
@@ -729,7 +765,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity">
                         <property name="suffix">
                          <string/>
@@ -748,7 +784,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="0">
+                      <item row="12" column="0">
                        <widget class="QSpinBox" name="spinBox_ptsize">
                         <property name="minimum">
                          <number>1</number>
@@ -761,7 +797,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="2">
+                      <item row="12" column="2">
                        <widget class="QLabel" name="label_157">
                         <property name="text">
                          <string>3D cloud point size (1..64).</string>
@@ -774,7 +810,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="16" column="1">
+                      <item row="17" column="1">
                        <widget class="QSpinBox" name="spinBox_ptsize_odom_scan">
                         <property name="minimum">
                          <number>1</number>
@@ -784,7 +820,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="17" column="0">
+                      <item row="18" column="0">
                        <widget class="QCheckBox" name="checkBox_showFeatures">
                         <property name="text">
                          <string/>
@@ -871,7 +907,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="19" column="2">
+                      <item row="20" column="2">
                        <widget class="QLabel" name="label_213">
                         <property name="text">
                          <string>Show graphs.</string>
@@ -910,7 +946,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="2">
+                      <item row="6" column="2">
                        <widget class="QLabel" name="label_171">
                         <property name="text">
                          <string>3D cloud voxel filtering size (0=disabled).</string>
@@ -923,7 +959,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="7" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_noiseRadius">
                         <property name="suffix">
                          <string> m</string>
@@ -942,33 +978,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
-                       <widget class="QSpinBox" name="spinBox_noiseMinNeighbors">
-                        <property name="minimum">
-                         <number>1</number>
-                        </property>
-                        <property name="maximum">
-                         <number>1000</number>
-                        </property>
-                        <property name="value">
-                         <number>5</number>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="2">
-                       <widget class="QLabel" name="label_132">
-                        <property name="text">
-                         <string>3D cloud maximum depth (0 means no limit).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="18" column="0">
+                      <item row="19" column="0">
                        <widget class="QSpinBox" name="spinBox_ptsize_features">
                         <property name="minimum">
                          <number>1</number>
@@ -978,7 +988,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="2">
+                      <item row="9" column="2">
                        <widget class="QLabel" name="label_210">
                         <property name="text">
                          <string>3D cloud normal K search. If not 0, normals will be computed and added to created cloud for visualization (keys  7, 8 and 9).</string>
@@ -991,7 +1001,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="1">
+                      <item row="14" column="1">
                        <widget class="QSpinBox" name="spinBox_downsamplingScan_odom">
                         <property name="minimum">
                          <number>1</number>
@@ -1001,7 +1011,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="2">
+                      <item row="15" column="2">
                        <widget class="QLabel" name="label_271">
                         <property name="text">
                          <string>Scan voxel size.</string>
@@ -1014,7 +1024,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="0">
+                      <item row="16" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_scan">
                         <property name="suffix">
                          <string/>
@@ -1033,7 +1043,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="2">
+                      <item row="16" column="2">
                        <widget class="QLabel" name="label_156">
                         <property name="text">
                          <string>Scan opacity.</string>
@@ -1046,7 +1056,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QSpinBox" name="spinBox_normalKSearch">
                         <property name="minimum">
                          <number>0</number>
@@ -1059,7 +1069,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
+                      <item row="11" column="1">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom">
                         <property name="suffix">
                          <string/>
@@ -1078,7 +1088,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="2">
+                      <item row="11" column="2">
                        <widget class="QLabel" name="label_155">
                         <property name="text">
                          <string>3D cloud opacity.</string>
@@ -1091,7 +1101,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="1">
+                      <item row="12" column="1">
                        <widget class="QSpinBox" name="spinBox_ptsize_odom">
                         <property name="minimum">
                          <number>1</number>
@@ -1104,7 +1114,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="16" column="0">
+                      <item row="17" column="0">
                        <widget class="QSpinBox" name="spinBox_ptsize_scan">
                         <property name="minimum">
                          <number>1</number>
@@ -1114,7 +1124,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="16" column="2">
+                      <item row="17" column="2">
                        <widget class="QLabel" name="label_158">
                         <property name="text">
                          <string>Scan point size (1..64).</string>
@@ -1140,16 +1150,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
-                       <widget class="QCheckBox" name="checkBox_showOdomClouds">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="1" column="2">
                        <widget class="QLabel" name="label_119">
                         <property name="text">
@@ -1163,7 +1163,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="20" column="2">
+                      <item row="21" column="2">
                        <widget class="QLabel" name="label_243">
                         <property name="text">
                          <string>Show labels.</string>
@@ -1176,7 +1176,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="19" column="0">
+                      <item row="20" column="0">
                        <widget class="QCheckBox" name="checkBox_showGraphs">
                         <property name="text">
                          <string/>
@@ -1186,7 +1186,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="20" column="0">
+                      <item row="21" column="0">
                        <widget class="QCheckBox" name="checkBox_showLabels">
                         <property name="text">
                          <string/>
@@ -1196,7 +1196,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="2">
+                      <item row="10" column="2">
                        <widget class="QLabel" name="label_338">
                         <property name="text">
                          <string>Gain compensation.</string>
@@ -1209,7 +1209,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QCheckBox" name="checkBox_gainCompensation">
                         <property name="text">
                          <string/>
@@ -1218,6 +1218,25 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          <bool>true</bool>
                         </property>
                        </widget>
+                      </item>
+                      <item row="5" column="2">
+                       <widget class="QLabel" name="label_353">
+                        <property name="text">
+                         <string>3D cloud ROI ratios [left, right, top, bottom] between 0 and 1.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QLineEdit" name="lineEdit_roiRatios"/>
+                      </item>
+                      <item row="5" column="1">
+                       <widget class="QLineEdit" name="lineEdit_roiRatios_odom"/>
                       </item>
                      </layout>
                     </item>

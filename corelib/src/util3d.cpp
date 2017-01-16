@@ -556,26 +556,17 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 				pt.r = v;
 			}
 
-			// Ignore pure black pixels, as they are generarly rectification artifacts on the contour. It is okay to 
-			// assume this as normally depth would not be computed on pure black surfaces anyway.
-			if (pt.b > 0 && pt.g > 0 && pt.r > 0)
+			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
+			if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
 			{
-				pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
-				if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
+				pt.x = ptXYZ.x;
+				pt.y = ptXYZ.y;
+				pt.z = ptXYZ.z;
+				if (validIndices)
 				{
-					pt.x = ptXYZ.x;
-					pt.y = ptXYZ.y;
-					pt.z = ptXYZ.z;
-					if (validIndices)
-					{
-						validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
-					}
-					++oi;
+					validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
 				}
-				else
-				{
-					pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
-				}
+				++oi;
 			}
 			else
 			{

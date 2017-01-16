@@ -958,7 +958,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						_preferencesDialog->getCloudMaxDepth(1),
 						_preferencesDialog->getCloudMinDepth(1),
 						indices.get(),
-						_preferencesDialog->getAllParameters());
+						_preferencesDialog->getAllParameters(),
+						_preferencesDialog->getCloudRoiRatios(1));
 				if(indices->size())
 				{
 					cloud = util3d::transformPointCloud(cloud, pose);
@@ -2431,7 +2432,8 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				_preferencesDialog->getCloudMaxDepth(0),
 				_preferencesDialog->getCloudMinDepth(0),
 				indices.get(),
-				_preferencesDialog->getAllParameters());
+				_preferencesDialog->getAllParameters(),
+				_preferencesDialog->getCloudRoiRatios(0));
 
 		// view point
 		Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
@@ -5478,6 +5480,8 @@ void MainWindow::setDefaultViews()
 	_ui->statusbar->setVisible(false);
 	this->setAspectRatio720p();
 	_cloudViewer->resetCamera();
+	_cloudViewer->setCameraLockZ(true);
+	_cloudViewer->setCameraTargetFollow(true);
 }
 
 void MainWindow::selectScreenCaptureFormat(bool checked)

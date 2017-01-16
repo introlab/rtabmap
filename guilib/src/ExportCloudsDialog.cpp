@@ -85,6 +85,9 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_fillDepthHoles, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_fillDepthHolesError, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->lineEdit_roiRatios, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->lineEdit_distortionModel, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(selectDistortionModel()));
 
@@ -129,6 +132,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_transferColorRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_cleanMesh, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateTexturingAvailability()));
 
@@ -199,6 +203,9 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
+	settings.setValue("regenerate_fill_size", _ui->spinBox_fillDepthHoles->value());
+	settings.setValue("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value());
+	settings.setValue("regenerate_roi", _ui->lineEdit_roiRatios->text());
 	settings.setValue("regenerate_distortion_model", _ui->lineEdit_distortionModel->text());
 
 	settings.setValue("bilateral", _ui->groupBox_bilateral->isChecked());
@@ -239,6 +246,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_mu", _ui->doubleSpinBox_gp3Mu->value());
 	settings.setValue("mesh_decimation_factor", _ui->doubleSpinBox_meshDecimationFactor->value());
 	settings.setValue("mesh_color_radius", _ui->doubleSpinBox_transferColorRadius->value());
+	settings.setValue("mesh_clean", _ui->checkBox_cleanMesh->isChecked());
 	settings.setValue("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value());
 
 	settings.setValue("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex());
@@ -280,6 +288,9 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
+	_ui->spinBox_fillDepthHoles->setValue(settings.value("regenerate_fill_size", _ui->spinBox_fillDepthHoles->value()).toInt());
+	_ui->spinBox_fillDepthHolesError->setValue(settings.value("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value()).toInt());
+	_ui->lineEdit_roiRatios->setText(settings.value("regenerate_roi", _ui->lineEdit_roiRatios->text()).toString());
 	_ui->lineEdit_distortionModel->setText(settings.value("regenerate_distortion_model", _ui->lineEdit_distortionModel->text()).toString());
 
 	_ui->groupBox_bilateral->setChecked(settings.value("bilateral", _ui->groupBox_bilateral->isChecked()).toBool());
@@ -320,6 +331,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(settings.value("mesh_decimation_factor",_ui->doubleSpinBox_meshDecimationFactor->value()).toDouble());
 	_ui->doubleSpinBox_transferColorRadius->setValue(settings.value("mesh_color_radius",_ui->doubleSpinBox_transferColorRadius->value()).toDouble());
+	_ui->checkBox_cleanMesh->setChecked(settings.value("mesh_clean",_ui->checkBox_cleanMesh->isChecked()).toBool());
 	_ui->spinBox_mesh_minClusterSize->setValue(settings.value("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value()).toInt());
 
 	_ui->comboBox_meshingApproach->setCurrentIndex(settings.value("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex()).toInt());
@@ -360,6 +372,9 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
+	_ui->spinBox_fillDepthHoles->setValue(0);
+	_ui->spinBox_fillDepthHolesError->setValue(2);
+	_ui->lineEdit_roiRatios->setText("0.0 0.0 0.0 0.0");
 	_ui->lineEdit_distortionModel->setText("");
 
 	_ui->groupBox_bilateral->setChecked(false);
@@ -400,6 +415,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
 	_ui->doubleSpinBox_transferColorRadius->setValue(0.05);
+	_ui->checkBox_cleanMesh->setChecked(true);
 
 	_ui->comboBox_meshingApproach->setCurrentIndex(1);
 
@@ -432,6 +448,8 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 	_ui->groupBox_mls->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->comboBox_meshingApproach->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->label_denseReconstruction->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->label_meshDecimation->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_organized->setVisible(_ui->comboBox_pipeline->currentIndex() == 0);
 	updateDenseReconstruction();
 }
@@ -1065,6 +1083,9 @@ bool ExportCloudsDialog::getExportedClouds(
 
 							if(_ui->spinBox_mesh_minClusterSize->value())
 							{
+								_progressDialog->appendText(tr("Filter small polygon clusters..."));
+								QApplication::processEvents();
+
 								// filter polygons
 								std::vector<std::set<int> > neighbors;
 								std::vector<std::set<int> > vertexToPolygons;
@@ -1085,7 +1106,11 @@ bool ExportCloudsDialog::getExportedClouds(
 									}
 								}
 								filteredPolygons.resize(oi);
+								int before = polygons.size();
 								polygons = filteredPolygons;
+
+								_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-oi));
+								QApplication::processEvents();
 							}
 
 							_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(polygons.size()).arg(++i).arg(clouds.size()));
@@ -1107,63 +1132,10 @@ bool ExportCloudsDialog::getExportedClouds(
 								pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 								pcl::toPCLPointCloud2(*denseCloud, mesh->cloud);
 								mesh->polygons = densePolygons;
-								if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
-								   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
-								{
-									int count = mesh->polygons.size();
-									_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
-									QApplication::processEvents();
 
-									mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-									_progressDialog->appendText(tr("Mesh decimated (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
-									if(count < mesh->polygons.size())
-									{
-										_progressDialog->appendText(tr("Decimated mesh %1 has more polygons than before!").arg(iter->first), Qt::darkYellow);
-										_progressDialog->setAutoClose(false);
-									}
-									QApplication::processEvents();
+								organizedIndices.insert(std::make_pair(iter->first, denseToOrganizedIndices));
+								organizedCloudSizes.insert(std::make_pair(iter->first, cv::Size(iter->second->width, iter->second->height)));
 
-									if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
-										(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
-									{
-										_progressDialog->appendText(tr("Transfering color from point cloud to mesh..."));
-										QApplication::processEvents();
-
-										// transfer color from point cloud to mesh
-										pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
-										tree->setInputCloud(denseCloud);
-										pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-										pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
-										for(unsigned int i=0; i<coloredCloud->size(); ++i)
-										{
-											std::vector<int> kIndices;
-											std::vector<float> kDistances;
-											pcl::PointXYZRGBNormal pt;
-											pt.x = coloredCloud->at(i).x;
-											pt.y = coloredCloud->at(i).y;
-											pt.z = coloredCloud->at(i).z;
-											tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
-											if(kIndices.size())
-											{
-												coloredCloud->at(i).r = denseCloud->at(kIndices[0]).r;
-												coloredCloud->at(i).g = denseCloud->at(kIndices[0]).g;
-												coloredCloud->at(i).b = denseCloud->at(kIndices[0]).b;
-												coloredCloud->at(i).a = denseCloud->at(kIndices[0]).a;
-											}
-											else
-											{
-												//white
-												coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
-											}
-										}
-										pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
-									}
-								}
-								else
-								{
-									organizedIndices.insert(std::make_pair(iter->first, denseToOrganizedIndices));
-									organizedCloudSizes.insert(std::make_pair(iter->first, cv::Size(iter->second->width, iter->second->height)));
-								}
 								meshes.insert(std::make_pair(iter->first, mesh));
 							}
 							else
@@ -1334,31 +1306,6 @@ bool ExportCloudsDialog::getExportedClouds(
 						lostColors = true;
 					}
 
-					if(_ui->spinBox_mesh_minClusterSize->value())
-					{
-						// filter polygons
-						std::vector<std::set<int> > neighbors;
-						std::vector<std::set<int> > vertexToPolygons;
-						util3d::createPolygonIndexes(mesh->polygons,
-								mesh->cloud.height*mesh->cloud.width,
-								neighbors,
-								vertexToPolygons);
-						std::list<std::list<int> > clusters = util3d::clusterPolygons(
-								neighbors,
-								_ui->spinBox_mesh_minClusterSize->value());
-						std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
-						int oi=0;
-						for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
-						{
-							for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
-							{
-								filteredPolygons[oi++] = mesh->polygons.at(*jter);
-							}
-						}
-						filteredPolygons.resize(oi);
-						mesh->polygons = filteredPolygons;
-					}
-
 					_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
 					QApplication::processEvents();
 
@@ -1392,6 +1339,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						tree->setInputCloud(iter->second);
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 						pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
+						std::vector<bool> coloredPts(coloredCloud->size());
 						for(unsigned int i=0; i<coloredCloud->size(); ++i)
 						{
 							std::vector<int> kIndices;
@@ -1407,14 +1355,76 @@ bool ExportCloudsDialog::getExportedClouds(
 								coloredCloud->at(i).g = iter->second->at(kIndices[0]).g;
 								coloredCloud->at(i).b = iter->second->at(kIndices[0]).b;
 								coloredCloud->at(i).a = iter->second->at(kIndices[0]).a;
+								coloredPts.at(i) = true;
 							}
 							else
 							{
 								//white
 								coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
+								coloredPts.at(i) = false;
 							}
 						}
 						pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
+
+						// remove polygons with no color
+						if(_ui->checkBox_cleanMesh->isChecked())
+						{
+							std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
+							int oi=0;
+							for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+							{
+								bool coloredPolygon = true;
+								for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
+								{
+									if(!coloredPts.at(mesh->polygons[i].vertices[j]))
+									{
+										coloredPolygon = false;
+										break;
+									}
+								}
+								if(coloredPolygon)
+								{
+									filteredPolygons[oi++] = mesh->polygons[i];
+								}
+							}
+							filteredPolygons.resize(oi);
+							mesh->polygons = filteredPolygons;
+						}
+					}
+
+					if(_ui->spinBox_mesh_minClusterSize->value() &&
+						!(_ui->checkBox_textureMapping->isEnabled() &&
+						  _ui->checkBox_textureMapping->isChecked() &&
+						  _ui->checkBox_cleanMesh->isChecked()))
+					{
+						_progressDialog->appendText(tr("Filter small polygon clusters..."));
+						QApplication::processEvents();
+
+						// filter polygons
+						std::vector<std::set<int> > neighbors;
+						std::vector<std::set<int> > vertexToPolygons;
+						util3d::createPolygonIndexes(mesh->polygons,
+								mesh->cloud.height*mesh->cloud.width,
+								neighbors,
+								vertexToPolygons);
+						std::list<std::list<int> > clusters = util3d::clusterPolygons(
+								neighbors,
+								_ui->spinBox_mesh_minClusterSize->value());
+						std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
+						int oi=0;
+						for(std::list<std::list<int> >::iterator kter=clusters.begin(); kter!=clusters.end(); ++kter)
+						{
+							for(std::list<int>::iterator jter=kter->begin(); jter!=kter->end(); ++jter)
+							{
+								filteredPolygons[oi++] = mesh->polygons.at(*jter);
+							}
+						}
+						filteredPolygons.resize(oi);
+						int before = mesh->polygons.size();
+						mesh->polygons = filteredPolygons;
+
+						_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-oi));
+						QApplication::processEvents();
 					}
 
 					meshes.insert(std::make_pair(iter->first, mesh));
@@ -1582,32 +1592,128 @@ bool ExportCloudsDialog::getExportedClouds(
 								dir.filePath("tmp_textures").toStdString(),
 								_ui->spinBox_normalKSearch->value());
 
+						// Remove occluded polygons (polygons with no texture)
+						if(_ui->checkBox_cleanMesh->isChecked() &&
+							textureMesh->tex_coordinates.size())
+						{
+							// assume last texture is the occluded texture
+							textureMesh->tex_coordinates.pop_back();
+							textureMesh->tex_polygons.pop_back();
+							textureMesh->tex_materials.pop_back();
+
+							if(_ui->spinBox_mesh_minClusterSize->value())
+							{
+								_progressDialog->appendText(tr("Filter small polygon clusters..."));
+								QApplication::processEvents();
+
+								// concatenate all polygons
+								int totalSize = 0;
+								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
+								{
+									totalSize+=textureMesh->tex_polygons[t].size();
+								}
+								std::vector<pcl::Vertices> allPolygons(totalSize);
+								int oi=0;
+								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
+								{
+									for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
+									{
+										allPolygons[oi++] =  textureMesh->tex_polygons[t][i];
+									}
+								}
+
+								// filter polygons
+								std::vector<std::set<int> > neighbors;
+								std::vector<std::set<int> > vertexToPolygons;
+								util3d::createPolygonIndexes(allPolygons,
+										textureMesh->cloud.data.size()/textureMesh->cloud.point_step,
+										neighbors,
+										vertexToPolygons);
+								std::list<std::list<int> > clusters = util3d::clusterPolygons(
+										neighbors,
+										_ui->spinBox_mesh_minClusterSize->value());
+
+								std::set<int> validPolygons;
+								for(std::list<std::list<int> >::iterator kter=clusters.begin(); kter!=clusters.end(); ++kter)
+								{
+									for(std::list<int>::iterator jter=kter->begin(); jter!=kter->end(); ++jter)
+									{
+										validPolygons.insert(*jter);
+									}
+								}
+
+								// for each texture
+								int allPolygonsIndex = 0;
+								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
+								{
+									UASSERT(allPolygonsIndex < allPolygons.size());
+									std::vector<pcl::Vertices> filteredPolygons(textureMesh->tex_polygons[t].size());
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+									std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > filteredCoordinates(textureMesh->tex_coordinates[t].size());
+#else
+									std::vector<Eigen::Vector2f> filteredCoordinates(textureMesh->tex_coordinates[t].size());
+#endif
+									int oi=0;
+									unsigned int polygonSize = 0;
+									if(textureMesh->tex_polygons[t].size())
+									{
+										polygonSize = textureMesh->tex_polygons[t][0].vertices.size();
+
+										UASSERT(filteredCoordinates.size() == textureMesh->tex_polygons[t].size()*polygonSize);
+										for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
+										{
+											if(validPolygons.find(allPolygonsIndex) != validPolygons.end())
+											{
+												filteredPolygons[oi] = textureMesh->tex_polygons[t].at(i);
+												for(unsigned int j=0; j<polygonSize; ++j)
+												{
+													filteredCoordinates[oi*polygonSize + j] = textureMesh->tex_coordinates[t][i*polygonSize + j];
+												}
+												++oi;
+											}
+											++allPolygonsIndex;
+										}
+										filteredPolygons.resize(oi);
+										filteredCoordinates.resize(oi*polygonSize);
+										textureMesh->tex_polygons[t] = filteredPolygons;
+										textureMesh->tex_coordinates[t] = filteredCoordinates;
+									}
+								}
+
+								_progressDialog->appendText(tr("Filtered %1 polygons.").arg(allPolygons.size()-validPolygons.size()));
+								QApplication::processEvents();
+							}
+						}
+
 						if(!_ui->checkBox_binary->isEnabled() && // not enabled -> we are not exporting to file
-							textureMesh->tex_coordinates.size() &&
-							textureMesh->tex_coordinates[0].size()) // assume first is the texture, second is occluded texture
+							textureMesh->tex_coordinates.size())
 						{
 							UDEBUG("");
-							// When not saving to file, tex_coordinates should be linked to points, not polygon vertices
-							int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
-#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
-							std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > tmpCoordinates = textureMesh->tex_coordinates[0];
-#else
-							std::vector<Eigen::Vector2f> tmpCoordinates = textureMesh->tex_coordinates[0];
-#endif
-							textureMesh->tex_coordinates[0].resize(nPoints);
-
-							int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
-							UASSERT(textureMesh->tex_polygons[0].size() == tmpCoordinates.size()/polygonSize);
-							for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
+							// for each texture
+							for(unsigned int t=0; t<textureMesh->tex_coordinates.size(); ++t)
 							{
-								const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
-								UASSERT(polygonSize == (int)vertices.vertices.size());
-								for(int j=0; j<polygonSize; ++j)
+								// When not saving to file, tex_coordinates should be linked to points, not polygon vertices
+								int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+								std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > tmpCoordinates = textureMesh->tex_coordinates[t];
+#else
+								std::vector<Eigen::Vector2f> tmpCoordinates = textureMesh->tex_coordinates[t];
+#endif
+								textureMesh->tex_coordinates[t].resize(nPoints);
+
+								int polygonSize = textureMesh->tex_polygons[t][0].vertices.size();
+								UASSERT(textureMesh->tex_polygons[t].size() == tmpCoordinates.size()/polygonSize);
+								for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
 								{
-									//uv
-									UASSERT((int)vertices.vertices[j] < nPoints);
-									UASSERT(i*polygonSize+j < tmpCoordinates.size());
-									textureMesh->tex_coordinates[0][vertices.vertices[j]] = tmpCoordinates[i*polygonSize+j];
+									const pcl::Vertices & vertices = textureMesh->tex_polygons[t][i];
+									UASSERT(polygonSize == (int)vertices.vertices.size());
+									for(int j=0; j<polygonSize; ++j)
+									{
+										//uv
+										UASSERT((int)vertices.vertices[j] < nPoints);
+										UASSERT(i*polygonSize+j < tmpCoordinates.size());
+										textureMesh->tex_coordinates[t][vertices.vertices[j]] = tmpCoordinates[i*polygonSize+j];
+									}
 								}
 							}
 						}
@@ -1678,6 +1784,11 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					d.uncompressData(&image, &depth, 0);
 					if(!image.empty() && !depth.empty())
 					{
+						if(_ui->spinBox_fillDepthHoles->value() > 0)
+						{
+							depth = util2d::fillDepthHoles(depth, _ui->spinBox_fillDepthHoles->value(), float(_ui->spinBox_fillDepthHolesError->value())/100.f);
+						}
+
 						if(!_ui->lineEdit_distortionModel->text().isEmpty() &&
 						   QFileInfo(_ui->lineEdit_distortionModel->text()).exists())
 						{
@@ -1699,13 +1810,27 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 						UASSERT(iter->first == d.id());
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+						std::vector<float> roiRatios;
+						if(!_ui->lineEdit_roiRatios->text().isEmpty())
+						{
+							QStringList values = _ui->lineEdit_roiRatios->text().split(' ');
+							if(values.size() == 4)
+							{
+								roiRatios.resize(4);
+								for(int i=0; i<values.size(); ++i)
+								{
+									roiRatios[i] = uStr2Float(values[i].toStdString().c_str());
+								}
+							}
+						}
 						cloudWithoutNormals = util3d::cloudRGBFromSensorData(
 								d,
 								_ui->spinBox_decimation->value() == 0?1:_ui->spinBox_decimation->value(),
 								_ui->doubleSpinBox_maxDepth->value(),
 								_ui->doubleSpinBox_minDepth->value(),
 								indices.get(),
-								parameters);
+								parameters,
+								roiRatios);
 
 						if(cloudWithoutNormals->size())
 						{
