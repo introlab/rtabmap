@@ -675,11 +675,11 @@ pcl::TextureMesh::Ptr createTextureMesh(
 			cv::Mat emptyImage;
 			if(i>0)
 			{
-				emptyImage = cv::Mat::zeros(cameras[i-1].height,cameras[i-1].width, CV_8UC1);
+				emptyImage = cv::Mat::ones(cameras[i-1].height,cameras[i-1].width, CV_8UC1)*255;
 			}
 			else
 			{
-				emptyImage = cv::Mat::zeros(480, 640, CV_8UC1);
+				emptyImage = cv::Mat::ones(480, 640, CV_8UC1)*255;
 			}
 			cv::imwrite(mesh_material.tex_file, emptyImage);
 		}

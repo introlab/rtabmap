@@ -50,6 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/vtk_io.h>
 #include <pcl/io/obj_io.h>
 #include <pcl/pcl_config.h>
+#include <pcl/surface/poisson.h>
 
 #include <QPushButton>
 #include <QDir>
@@ -77,6 +78,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_pipeline, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_pipeline, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SLOT(updateDenseReconstruction()));
 
 	connect(_ui->groupBox_regenerate, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
@@ -125,8 +128,19 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_transferColorRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateTexturingAvailability()));
+
+	connect(_ui->checkBox_poisson_outputPolygons, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_poisson_manifold, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_depth, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_iso, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_solver, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_minDepth, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_poisson_samples, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_poisson_pointWeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_poisson_scale, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
 	_progressDialog = new ProgressDialog(this);
 	_progressDialog->setVisible(false);
@@ -161,8 +175,8 @@ void ExportCloudsDialog::updateTexturingAvailability(bool isExporting)
 {
 	_ui->checkBox_textureMapping->setEnabled(!_ui->checkBox_assemble->isChecked() || isExporting);
 	_ui->label_textureMapping->setEnabled(_ui->checkBox_textureMapping->isEnabled());
-	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked() || _ui->comboBox_pipeline->currentIndex() == 1);
-	_ui->label_meshDecimation->setEnabled(_ui->doubleSpinBox_meshDecimationFactor->isEnabled());
+	_ui->comboBox_meshingApproach->setCurrentIndex(_ui->checkBox_assemble->isChecked()?1:0);
+	_ui->comboBox_meshingApproach->setItemData(1, _ui->checkBox_assemble->isChecked()?1 | 32:0,Qt::UserRole - 1);
 }
 
 void ExportCloudsDialog::cancel()
@@ -224,13 +238,26 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_radius", _ui->doubleSpinBox_gp3Radius->value());
 	settings.setValue("mesh_mu", _ui->doubleSpinBox_gp3Mu->value());
 	settings.setValue("mesh_decimation_factor", _ui->doubleSpinBox_meshDecimationFactor->value());
+	settings.setValue("mesh_color_radius", _ui->doubleSpinBox_transferColorRadius->value());
 	settings.setValue("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value());
+
+	settings.setValue("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex());
 
 	settings.setValue("mesh_texture", _ui->checkBox_textureMapping->isChecked());
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
 	settings.setValue("mesh_quad", _ui->checkBox_mesh_quad->isChecked());
 	settings.setValue("mesh_triangle_size", _ui->spinBox_mesh_triangleSize->value());
+
+	settings.setValue("poisson_outputPolygons", _ui->checkBox_poisson_outputPolygons->isChecked());
+	settings.setValue("poisson_manifold", _ui->checkBox_poisson_manifold->isChecked());
+	settings.setValue("poisson_depth", _ui->spinBox_poisson_depth->value());
+	settings.setValue("poisson_iso", _ui->spinBox_poisson_iso->value());
+	settings.setValue("poisson_solver", _ui->spinBox_poisson_solver->value());
+	settings.setValue("poisson_minDepth", _ui->spinBox_poisson_minDepth->value());
+	settings.setValue("poisson_samples", _ui->doubleSpinBox_poisson_samples->value());
+	settings.setValue("poisson_pointWeight", _ui->doubleSpinBox_poisson_pointWeight->value());
+	settings.setValue("poisson_scale", _ui->doubleSpinBox_poisson_scale->value());
 
 	if(!group.isEmpty())
 	{
@@ -292,13 +319,26 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(settings.value("mesh_decimation_factor",_ui->doubleSpinBox_meshDecimationFactor->value()).toDouble());
+	_ui->doubleSpinBox_transferColorRadius->setValue(settings.value("mesh_color_radius",_ui->doubleSpinBox_transferColorRadius->value()).toDouble());
 	_ui->spinBox_mesh_minClusterSize->setValue(settings.value("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value()).toInt());
+
+	_ui->comboBox_meshingApproach->setCurrentIndex(settings.value("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex()).toInt());
 
 	_ui->checkBox_textureMapping->setChecked(settings.value("mesh_texture", _ui->checkBox_textureMapping->isChecked()).toBool());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
 	_ui->spinBox_mesh_triangleSize->setValue(settings.value("mesh_triangle_size", _ui->spinBox_mesh_triangleSize->value()).toInt());
+
+	_ui->checkBox_poisson_outputPolygons->setChecked(settings.value("poisson_outputPolygons", _ui->checkBox_poisson_outputPolygons->isChecked()).toBool());
+	_ui->checkBox_poisson_manifold->setChecked(settings.value("poisson_manifold", _ui->checkBox_poisson_manifold->isChecked()).toBool());
+	_ui->spinBox_poisson_depth->setValue(settings.value("poisson_depth", _ui->spinBox_poisson_depth->value()).toInt());
+	_ui->spinBox_poisson_iso->setValue(settings.value("poisson_iso", _ui->spinBox_poisson_iso->value()).toInt());
+	_ui->spinBox_poisson_solver->setValue(settings.value("poisson_solver", _ui->spinBox_poisson_solver->value()).toInt());
+	_ui->spinBox_poisson_minDepth->setValue(settings.value("poisson_minDepth", _ui->spinBox_poisson_minDepth->value()).toInt());
+	_ui->doubleSpinBox_poisson_samples->setValue(settings.value("poisson_samples", _ui->doubleSpinBox_poisson_samples->value()).toDouble());
+	_ui->doubleSpinBox_poisson_pointWeight->setValue(settings.value("poisson_pointWeight", _ui->doubleSpinBox_poisson_pointWeight->value()).toDouble());
+	_ui->doubleSpinBox_poisson_scale->setValue(settings.value("poisson_scale", _ui->doubleSpinBox_poisson_scale->value()).toDouble());
 
 	updateReconstructionFlavor();
 	updateTexturingAvailability();
@@ -359,12 +399,25 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_gp3Radius->setValue(0.04);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
+	_ui->doubleSpinBox_transferColorRadius->setValue(0.05);
+
+	_ui->comboBox_meshingApproach->setCurrentIndex(1);
 
 	_ui->checkBox_textureMapping->setChecked(false);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
 	_ui->spinBox_mesh_triangleSize->setValue(1);
+
+	_ui->checkBox_poisson_outputPolygons->setChecked(false);
+	_ui->checkBox_poisson_manifold->setChecked(true);
+	_ui->spinBox_poisson_depth->setValue(9);
+	_ui->spinBox_poisson_iso->setValue(8);
+	_ui->spinBox_poisson_solver->setValue(8);
+	_ui->spinBox_poisson_minDepth->setValue(5);
+	_ui->doubleSpinBox_poisson_samples->setValue(1.0);
+	_ui->doubleSpinBox_poisson_pointWeight->setValue(4.0);
+	_ui->doubleSpinBox_poisson_scale->setValue(1.1);
 
 	updateReconstructionFlavor();
 	updateTexturingAvailability();
@@ -377,8 +430,16 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 {
 	_ui->groupBox_mls->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_mls->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
-	_ui->groupBox_gp3->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->comboBox_meshingApproach->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->label_denseReconstruction->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_organized->setVisible(_ui->comboBox_pipeline->currentIndex() == 0);
+	updateDenseReconstruction();
+}
+
+void ExportCloudsDialog::updateDenseReconstruction()
+{
+	_ui->groupBox_gp3->setVisible(_ui->comboBox_pipeline->currentIndex() == 1 && _ui->comboBox_meshingApproach->currentIndex()==0);
+	_ui->groupBox_poisson->setVisible(_ui->comboBox_pipeline->currentIndex() == 1 && _ui->comboBox_meshingApproach->currentIndex()==1);
 }
 
 void ExportCloudsDialog::selectDistortionModel()
@@ -535,6 +596,8 @@ void ExportCloudsDialog::viewClouds(
 		{
 			viewer->setBackfaceCulling(true, false);
 		}
+		viewer->setLighting(true);
+		viewer->setBackgroundColor(Qt::darkGray);
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
@@ -618,6 +681,7 @@ void ExportCloudsDialog::viewClouds(
 					color = (Qt::GlobalColor)(mapId % 12 + 7 );
 				}
 				viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+				viewer->setCloudPointSize(uFormat("cloud%d",iter->first), 2);
 				_progressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 			}
 		}
@@ -1047,8 +1111,53 @@ bool ExportCloudsDialog::getExportedClouds(
 								   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
 								{
 									int count = mesh->polygons.size();
+									_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
+									QApplication::processEvents();
+
 									mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-									_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+									_progressDialog->appendText(tr("Mesh decimated (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+									if(count < mesh->polygons.size())
+									{
+										_progressDialog->appendText(tr("Decimated mesh %1 has more polygons than before!").arg(iter->first), Qt::darkYellow);
+										_progressDialog->setAutoClose(false);
+									}
+									QApplication::processEvents();
+
+									if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
+										(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
+									{
+										_progressDialog->appendText(tr("Transfering color from point cloud to mesh..."));
+										QApplication::processEvents();
+
+										// transfer color from point cloud to mesh
+										pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+										tree->setInputCloud(denseCloud);
+										pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+										pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
+										for(unsigned int i=0; i<coloredCloud->size(); ++i)
+										{
+											std::vector<int> kIndices;
+											std::vector<float> kDistances;
+											pcl::PointXYZRGBNormal pt;
+											pt.x = coloredCloud->at(i).x;
+											pt.y = coloredCloud->at(i).y;
+											pt.z = coloredCloud->at(i).z;
+											tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+											if(kIndices.size())
+											{
+												coloredCloud->at(i).r = denseCloud->at(kIndices[0]).r;
+												coloredCloud->at(i).g = denseCloud->at(kIndices[0]).g;
+												coloredCloud->at(i).b = denseCloud->at(kIndices[0]).b;
+												coloredCloud->at(i).a = denseCloud->at(kIndices[0]).a;
+											}
+											else
+											{
+												//white
+												coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
+											}
+										}
+										pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
+									}
 								}
 								else
 								{
@@ -1125,8 +1234,53 @@ bool ExportCloudsDialog::getExportedClouds(
 					   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
 					{
 						int count = mesh->polygons.size();
+						_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
+						QApplication::processEvents();
+
 						mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-						_progressDialog->appendText(tr("Assembled mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						_progressDialog->appendText(tr("Mesh decimated (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						if(count < mesh->polygons.size())
+						{
+							_progressDialog->appendText(tr("Decimated mesh has more polygons than before!"), Qt::darkYellow);
+							_progressDialog->setAutoClose(false);
+						}
+						QApplication::processEvents();
+
+						if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
+						   (!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
+						{
+							_progressDialog->appendText(tr("Transfering color from point cloud to mesh..."));
+							QApplication::processEvents();
+
+							// transfer color from point cloud to mesh
+							pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+							tree->setInputCloud(mergedClouds);
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+							pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
+							for(unsigned int i=0; i<coloredCloud->size(); ++i)
+							{
+								std::vector<int> kIndices;
+								std::vector<float> kDistances;
+								pcl::PointXYZRGBNormal pt;
+								pt.x = coloredCloud->at(i).x;
+								pt.y = coloredCloud->at(i).y;
+								pt.z = coloredCloud->at(i).z;
+								tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+								if(kIndices.size())
+								{
+									coloredCloud->at(i).r = mergedClouds->at(kIndices[0]).r;
+									coloredCloud->at(i).g = mergedClouds->at(kIndices[0]).g;
+									coloredCloud->at(i).b = mergedClouds->at(kIndices[0]).b;
+									coloredCloud->at(i).a = mergedClouds->at(kIndices[0]).a;
+								}
+								else
+								{
+									//white
+									coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
+								}
+							}
+							pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
+						}
 					}
 
 					meshes.insert(std::make_pair(0, mesh));
@@ -1137,7 +1291,14 @@ bool ExportCloudsDialog::getExportedClouds(
 			}
 			else
 			{
-				_progressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_ui->doubleSpinBox_gp3Radius->value()));
+				if(_ui->comboBox_meshingApproach->currentIndex() == 0)
+				{
+					_progressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_ui->doubleSpinBox_gp3Radius->value()));
+				}
+				else
+				{
+					_progressDialog->appendText(tr("Poisson surface reconstruction..."));
+				}
 				QApplication::processEvents();
 				QApplication::processEvents();
 
@@ -1146,10 +1307,32 @@ bool ExportCloudsDialog::getExportedClouds(
 					iter!= cloudsWithNormals.end();
 					++iter)
 				{
-					pcl::PolygonMesh::Ptr mesh = util3d::createMesh(
-							iter->second,
-							_ui->doubleSpinBox_gp3Radius->value(),
-							_ui->doubleSpinBox_gp3Mu->value());
+					bool lostColors = false;
+					pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
+					if(_ui->comboBox_meshingApproach->currentIndex() == 0)
+					{
+						mesh = util3d::createMesh(
+								iter->second,
+								_ui->doubleSpinBox_gp3Radius->value(),
+								_ui->doubleSpinBox_gp3Mu->value());
+					}
+					else
+					{
+						pcl::Poisson<pcl::PointXYZRGBNormal> poisson;
+						poisson.setOutputPolygons(_ui->checkBox_poisson_outputPolygons->isChecked());
+						poisson.setManifold(_ui->checkBox_poisson_manifold->isChecked());
+						poisson.setSamplesPerNode(_ui->doubleSpinBox_poisson_samples->value());
+						poisson.setDepth(_ui->spinBox_poisson_depth->value());
+						poisson.setIsoDivide(_ui->spinBox_poisson_iso->value());
+						poisson.setSolverDivide(_ui->spinBox_poisson_solver->value());
+						poisson.setMinDepth(_ui->spinBox_poisson_minDepth->value());
+						poisson.setPointWeight(_ui->doubleSpinBox_poisson_pointWeight->value());
+						poisson.setScale(_ui->doubleSpinBox_poisson_scale->value());
+						poisson.setInputCloud(iter->second);
+						poisson.reconstruct(*mesh);
+
+						lostColors = true;
+					}
 
 					if(_ui->spinBox_mesh_minClusterSize->value())
 					{
@@ -1183,8 +1366,55 @@ bool ExportCloudsDialog::getExportedClouds(
 					   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
 					{
 						int count = mesh->polygons.size();
+						_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
+						QApplication::processEvents();
+
 						mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-						_progressDialog->appendText(tr("Assembled mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						_progressDialog->appendText(tr("Mesh decimated (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						if(count < mesh->polygons.size())
+						{
+							_progressDialog->appendText(tr("Decimated mesh %1 has more polygons than before!").arg(iter->first), Qt::darkYellow);
+							_progressDialog->setAutoClose(false);
+						}
+						QApplication::processEvents();
+						lostColors = true;
+					}
+
+					if(lostColors &&
+						_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
+						(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
+					{
+						_progressDialog->appendText(tr("Transfering color from point cloud to mesh..."));
+						QApplication::processEvents();
+
+						// transfer color from point cloud to mesh
+						pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+						tree->setInputCloud(iter->second);
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+						pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
+						for(unsigned int i=0; i<coloredCloud->size(); ++i)
+						{
+							std::vector<int> kIndices;
+							std::vector<float> kDistances;
+							pcl::PointXYZRGBNormal pt;
+							pt.x = coloredCloud->at(i).x;
+							pt.y = coloredCloud->at(i).y;
+							pt.z = coloredCloud->at(i).z;
+							tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+							if(kIndices.size())
+							{
+								coloredCloud->at(i).r = iter->second->at(kIndices[0]).r;
+								coloredCloud->at(i).g = iter->second->at(kIndices[0]).g;
+								coloredCloud->at(i).b = iter->second->at(kIndices[0]).b;
+								coloredCloud->at(i).a = iter->second->at(kIndices[0]).a;
+							}
+							else
+							{
+								//white
+								coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
+							}
+						}
+						pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
 					}
 
 					meshes.insert(std::make_pair(iter->first, mesh));

@@ -87,6 +87,7 @@ public slots:
 
 private slots:
 	void updateReconstructionFlavor();
+	void updateDenseReconstruction();
 	void selectDistortionModel();
 	void updateMLSGrpVisibility();
 	void updateTexturingAvailability();

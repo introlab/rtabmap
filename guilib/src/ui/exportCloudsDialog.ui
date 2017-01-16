@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>814</width>
-    <height>667</height>
+    <height>680</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1311</y>
+        <y>-1525</y>
         <width>773</width>
-        <height>1902</height>
+        <height>2568</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1052,7 +1052,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
          <layout class="QVBoxLayout" name="verticalLayout_15">
           <item>
            <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
-            <item row="1" column="0">
+            <item row="2" column="0">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_meshDecimationFactor">
               <property name="decimals">
                <number>2</number>
@@ -1071,44 +1071,100 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
               </property>
              </widget>
             </item>
-            <item row="3" column="1">
+            <item row="1" column="1">
+             <widget class="QLabel" name="label_textureMapping">
+              <property name="text">
+               <string>Texture mapping. Images of the cameras will be projected on the mesh(es). Output is a *.obj format. Only available on Export or when clouds are not assembled.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
              <widget class="QLabel" name="label_16">
               <property name="text">
                <string>Min polygon cluster size</string>
               </property>
              </widget>
             </item>
-            <item row="3" column="0">
+            <item row="4" column="0">
              <widget class="QSpinBox" name="spinBox_mesh_minClusterSize">
               <property name="maximum">
                <number>999</number>
               </property>
              </widget>
             </item>
-            <item row="1" column="1">
+            <item row="2" column="1">
              <widget class="QLabel" name="label_meshDecimation">
               <property name="text">
-               <string>Mesh quadric decimation factor (0=no decimation). Used to reduce the number of polygons. Cannot be used if texturing is on and organized mesh flavor is selected.</string>
+               <string>Mesh quadric decimation factor (0=no decimation). Used to reduce the number of polygons. Higher the factor, lower the output resolution (less polygons).</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
               </property>
              </widget>
             </item>
-            <item row="0" column="0">
+            <item row="1" column="0">
              <widget class="QCheckBox" name="checkBox_textureMapping">
               <property name="text">
                <string/>
               </property>
              </widget>
             </item>
+            <item row="0" column="0">
+             <widget class="QComboBox" name="comboBox_meshingApproach">
+              <item>
+               <property name="text">
+                <string>Fast GP3</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Poisson</string>
+               </property>
+              </item>
+             </widget>
+            </item>
             <item row="0" column="1">
-             <widget class="QLabel" name="label_textureMapping">
+             <widget class="QLabel" name="label_denseReconstruction">
               <property name="text">
-               <string>Texture mapping. Images of the cameras will be projected on the mesh(es). Output is a *.obj format.</string>
+               <string>Surface reconstruction approach. Can be used only when dense reconstruction flavor is selected. Poisson is available only when clouds are assembled.</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QLabel" name="label_meshDecimation_2">
+              <property name="text">
+               <string>Radius used to transfer color from original cloud to resampled reconstructed surface (e.g., Poisson or mesh decimation). 0 means disabled.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_transferColorRadius">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="minimum">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>10.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.010000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.050000000000000</double>
               </property>
              </widget>
             </item>
@@ -1182,6 +1238,189 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                </property>
                <property name="value">
                 <double>2.500000000000000</double>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_poisson">
+            <property name="title">
+             <string>Poisson Surface Reconstruction</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_14" columnstretch="0,0">
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_172">
+               <property name="text">
+                <string>Depth. Increasing the depth increase the output mesh size but it would be more precise (also longer to compute).</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="1">
+              <widget class="QLabel" name="label_177">
+               <property name="text">
+                <string>Samples per node. Set the minimum number of sample points that should fall within an octree node as the octree construction is adapted to sampling density. Note for noise-free samples, small values in the range [1.0 - 5.0] can be used. For more noisy samples, larger values in the range [15.0 - 20.0] may be needed to provide a smoother, noise-reduced, reconstruction.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_iso">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="label_176">
+               <property name="text">
+                <string>Manifold flag. Enabling this flag tells the reconstructor to add the polygon barycenter when triangulating polygons with more than three vertices.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="0">
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_poisson_samples">
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="minimum">
+                <double>0.100000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>30.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_poisson_scale">
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="minimum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>2.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLabel" name="label_181">
+               <property name="text">
+                <string>Point weight.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLabel" name="label_182">
+               <property name="text">
+                <string>Min depth.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_depth">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="1">
+              <widget class="QLabel" name="label_178">
+               <property name="text">
+                <string>Iso divide. Set the depth at which a block iso-surface extractor should be used to extract the iso-surface note Using this parameter helps reduce the memory overhead at the cost of a small increase in extraction time. (In practice, we have found that for reconstructions of depth 9 or higher a subdivide depth of 7 or 8 can greatly reduce the memory usage.)</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="1">
+              <widget class="QLabel" name="label_179">
+               <property name="text">
+                <string>Solver divide. Set the the depth at which a block Gauss-Seidel solver is used to solve the Laplacian equation. Note that using this parameter helps reduce the memory overhead at the cost of a small increase in reconstruction time. (In practice, we have found that for reconstructions of depth 9 or higher a subdivide depth of 7 or 8 can greatly reduce the memory usage.)</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QLabel" name="label_180">
+               <property name="text">
+                <string>Scale. Set the ratio between the diameter of the cube used for reconstruction and the diameter of the samples' bounding cube.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QCheckBox" name="checkBox_poisson_manifold">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_solver">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_173">
+               <property name="text">
+                <string>Output polygons flag. Enabling this flag tells the reconstructor to output a polygon mesh (rather than triangulating of the results of Marching Cubes).</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QCheckBox" name="checkBox_poisson_outputPolygons">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_poisson_pointWeight">
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="minimum">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_minDepth">
+               <property name="minimum">
+                <number>1</number>
                </property>
               </widget>
              </item>
