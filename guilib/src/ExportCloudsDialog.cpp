@@ -1205,7 +1205,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
 					   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
 					{
-						int count = mesh->polygons.size();
+						unsigned int count = mesh->polygons.size();
 						_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
 						QApplication::processEvents();
 
@@ -1312,7 +1312,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
 					   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
 					{
-						int count = mesh->polygons.size();
+						unsigned int count = mesh->polygons.size();
 						_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
 						QApplication::processEvents();
 
@@ -1643,7 +1643,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								}
 
 								// for each texture
-								int allPolygonsIndex = 0;
+								unsigned int allPolygonsIndex = 0;
 								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
 								{
 									UASSERT(allPolygonsIndex < allPolygons.size());
