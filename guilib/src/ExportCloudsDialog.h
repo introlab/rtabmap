@@ -46,6 +46,7 @@ class QAbstractButton;
 
 namespace rtabmap {
 class ProgressDialog;
+class GainCompensator;
 
 class ExportCloudsDialog : public QDialog
 {
@@ -112,7 +113,7 @@ private:
 				std::map<int, pcl::TextureMesh::Ptr> & textureMeshes);
 	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
-	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::TextureMesh::Ptr> & meshes);
+	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, std::map<int, pcl::TextureMesh::Ptr> & textureMeshes, const QMap<int, Signature> & cachedSignatures);
 
 	void setSaveButton();
 	void setOkButton();
@@ -124,6 +125,7 @@ private:
 	ProgressDialog * _progressDialog;
 	QString _workingDirectory;
 	bool _canceled;
+	GainCompensator * _compensator;
 };
 
 }

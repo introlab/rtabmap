@@ -1056,6 +1056,7 @@ bool CloudViewer::addTextureMesh (
       coordinates->SetName (this_coordinates_name.c_str ());
 
       for (std::size_t t = 0 ; t < mesh.tex_coordinates.size (); ++t)
+      {
         if (t == tex_id)
           for (std::size_t tc = 0; tc < mesh.tex_coordinates[t].size (); ++tc)
             coordinates->InsertNextTuple2 ((double)mesh.tex_coordinates[t][tc][0],
@@ -1063,7 +1064,7 @@ bool CloudViewer::addTextureMesh (
         else
           for (std::size_t tc = 0; tc < mesh.tex_coordinates[t].size (); ++tc)
             coordinates->InsertNextTuple2 (-1.0, -1.0);
-
+      }
       mapper->MapDataArrayToMultiTextureAttribute(tu,
                                                   this_coordinates_name.c_str (),
                                                   vtkDataObject::FIELD_ASSOCIATION_POINTS);

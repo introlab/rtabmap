@@ -375,7 +375,7 @@ void applyImpl(
 
 void GainCompensator::apply(
 		int id,
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud)
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) const
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	apply(id, cloud, indices);
@@ -383,7 +383,7 @@ void GainCompensator::apply(
 void GainCompensator::apply(
 		int id,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::IndicesPtr & indices)
+		const pcl::IndicesPtr & indices) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
 	applyImpl<pcl::PointXYZRGB>(idToIndex_.at(id), cloud, indices, gains_);
@@ -391,7 +391,7 @@ void GainCompensator::apply(
 void GainCompensator::apply(
 		int id,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices)
+		const pcl::IndicesPtr & indices) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
 	applyImpl<pcl::PointXYZRGBNormal>(idToIndex_.at(id), cloud, indices, gains_);
@@ -399,7 +399,7 @@ void GainCompensator::apply(
 
 void GainCompensator::apply(
 		int id,
-		cv::Mat & image)
+		cv::Mat & image) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
 	cv::multiply(image, gains_(idToIndex_.at(id), 0), image);

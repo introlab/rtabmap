@@ -569,21 +569,16 @@ pcl::PolygonMesh::Ptr createMesh(
 
 pcl::texture_mapping::CameraVector createTextureCameras(
 		const std::map<int, Transform> & poses,
-		const std::map<int, CameraModel> & cameraModels,
-		const std::map<int, cv::Mat> & images,
-		const std::string & tmpDirectory)
+		const std::map<int, CameraModel> & cameraModels)
 {
-	UASSERT(poses.size() == cameraModels.size() && poses.size() == images.size());
-	UASSERT(UDirectory::exists(tmpDirectory));
+	UASSERT(poses.size() == cameraModels.size());
 	pcl::texture_mapping::CameraVector cameras(poses.size());
 	std::map<int, Transform>::const_iterator poseIter=poses.begin();
 	std::map<int, CameraModel>::const_iterator modelIter=cameraModels.begin();
-	std::map<int, cv::Mat>::const_iterator imageIter=images.begin();
 	int oi=0;
-	for(; poseIter!=poses.end(); ++poseIter, ++modelIter, ++imageIter)
+	for(; poseIter!=poses.end(); ++poseIter, ++modelIter)
 	{
 		UASSERT(poseIter->first == modelIter->first);
-		UASSERT(poseIter->first == imageIter->first);
 		pcl::TextureMapping<pcl::PointXYZ>::Camera cam;
 
 		// transform into optical referential
@@ -595,22 +590,17 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 
 		cam.pose = t.toEigen3f();
 
-		UASSERT(modelIter->second.fx()>0 && imageIter->second.rows>0 && imageIter->second.cols>0);
+		if(modelIter->second.imageHeight() <=0 || modelIter->second.imageWidth() <=0)
+		{
+			UERROR("Should have camera models with width/height set to create texture cameras!");
+			return pcl::texture_mapping::CameraVector();
+		}
+
+		UASSERT(modelIter->second.fx()>0 && modelIter->second.imageHeight()>0 && modelIter->second.imageWidth()>0);
 		cam.focal_length=modelIter->second.fx();
-		cam.height=imageIter->second.rows;
-		cam.width=imageIter->second.cols;
-
-
-		std::string fileName = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", poseIter->first);
-		if(!cv::imwrite(fileName, imageIter->second))
-		{
-			UERROR("Cannot save texture of image %d", poseIter->first);
-		}
-		else
-		{
-			UINFO("Saved temporary texture: \"%s\"", fileName.c_str());
-		}
-		cam.texture_file = fileName;
+		cam.height=modelIter->second.imageHeight();
+		cam.width=modelIter->second.imageWidth();
+		cam.texture_file = uFormat("%d.png", poseIter->first);
 		cameras[oi++] = cam;
 	}
 	return cameras;
@@ -620,8 +610,6 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
-		const std::map<int, cv::Mat> & images,
-		const std::string & tmpDirectory,
 		int kNormalSearch)
 {
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
@@ -636,9 +624,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	// create cameras
 	pcl::texture_mapping::CameraVector cameras = createTextureCameras(
 			poses,
-			cameraModels,
-			images,
-			tmpDirectory);
+			cameraModels);
 
 	// Create materials for each texture (and one extra for occluded faces)
 	textureMesh->tex_materials.resize (cameras.size () + 1);
@@ -671,17 +657,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		}
 		else
 		{
-			mesh_material.tex_file = tmpDirectory+UDirectory::separator()+"occluded.png";
-			cv::Mat emptyImage;
-			if(i>0)
-			{
-				emptyImage = cv::Mat::ones(cameras[i-1].height,cameras[i-1].width, CV_8UC1)*255;
-			}
-			else
-			{
-				emptyImage = cv::Mat::ones(480, 640, CV_8UC1)*255;
-			}
-			cv::imwrite(mesh_material.tex_file, emptyImage);
+			mesh_material.tex_file = "occluded.png";
 		}
 
 		textureMesh->tex_materials[i] = mesh_material;

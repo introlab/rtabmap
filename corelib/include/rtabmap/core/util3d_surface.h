@@ -136,8 +136,6 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
-		const std::map<int, cv::Mat> & images,
-		const std::string & tmpDirectory = ".",
 		int kNormalSearch = 20); // if mesh doesn't have normals, compute them with k neighbors
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
