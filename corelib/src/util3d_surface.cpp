@@ -581,12 +581,9 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 		UASSERT(poseIter->first == modelIter->first);
 		pcl::TextureMapping<pcl::PointXYZ>::Camera cam;
 
-		// transform into optical referential
-		Transform rotation(0,-1,0,0,
-						   0,0,-1,0,
-						   1,0,0,0);
-
-		Transform t = poseIter->second*rotation.inverse();
+		// should be in camera frame
+		UASSERT(!modelIter->second.localTransform().isNull() && !poseIter->second.isNull());
+		Transform t = poseIter->second*modelIter->second.localTransform();
 
 		cam.pose = t.toEigen3f();
 
