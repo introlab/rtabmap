@@ -132,10 +132,12 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SLOT(updatePoissonOutputPolygonsAvailability()));
 	connect(_ui->doubleSpinBox_transferColorRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cleanMesh, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateTexturingAvailability()));
+	connect(_ui->comboBox_meshingTextureFormat, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 
 	connect(_ui->checkBox_poisson_outputPolygons, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_poisson_manifold, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -186,6 +188,15 @@ void ExportCloudsDialog::updateTexturingAvailability(bool isExporting)
 {
 	_ui->checkBox_textureMapping->setEnabled(!_ui->checkBox_assemble->isChecked() || isExporting);
 	_ui->label_textureMapping->setEnabled(_ui->checkBox_textureMapping->isEnabled());
+	_ui->comboBox_meshingTextureFormat->setEnabled(_ui->label_textureMapping->isEnabled());
+	_ui->label_meshingTextureFormat->setEnabled(_ui->label_textureMapping->isEnabled());
+	updatePoissonOutputPolygonsAvailability();
+}
+void ExportCloudsDialog::updatePoissonOutputPolygonsAvailability()
+{
+	_ui->checkBox_poisson_outputPolygons->setDisabled(
+			_ui->checkBox_binary->isEnabled() ||
+			_ui->doubleSpinBox_meshDecimationFactor->value()!=0.0);
 }
 
 void ExportCloudsDialog::cancel()
@@ -257,6 +268,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex());
 
 	settings.setValue("mesh_texture", _ui->checkBox_textureMapping->isChecked());
+	settings.setValue("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex());
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
 	settings.setValue("mesh_quad", _ui->checkBox_mesh_quad->isChecked());
@@ -342,6 +354,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->comboBox_meshingApproach->setCurrentIndex(settings.value("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex()).toInt());
 
 	_ui->checkBox_textureMapping->setChecked(settings.value("mesh_texture", _ui->checkBox_textureMapping->isChecked()).toBool());
+	_ui->comboBox_meshingTextureFormat->setCurrentIndex(settings.value("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex()).toInt());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
@@ -425,6 +438,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->comboBox_meshingApproach->setCurrentIndex(1);
 
 	_ui->checkBox_textureMapping->setChecked(false);
+	_ui->comboBox_meshingTextureFormat->setCurrentIndex(0);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
@@ -650,13 +664,12 @@ void ExportCloudsDialog::viewClouds(
 					if(!iter->second->tex_materials[i].tex_file.empty())
 					{
 						// absolute path
-						QString fullPath = workingDirectory+QDir::separator()+prefix+QDir::separator()+QString(iter->second->tex_materials[i].tex_file.c_str());
+						QString fullPath = workingDirectory+QDir::separator()+prefix+QDir::separator()+QString(iter->second->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
 						if(!QFileInfo(fullPath).exists())
 						{
-							std::list<std::string> values = uSplit(iter->second->tex_materials[i].tex_file, '.');
-							if(values.size() == 2 && uIsInteger(*values.begin(), false))
+							if(uIsInteger(iter->second->tex_materials[i].tex_file, false))
 							{
-								int textureId = uStr2Int(*values.begin());
+								int textureId = uStr2Int(iter->second->tex_materials[i].tex_file);
 								UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
 								cv::Mat image;
 								cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
@@ -1354,7 +1367,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					else
 					{
 						pcl::Poisson<pcl::PointXYZRGBNormal> poisson;
-						poisson.setOutputPolygons(_ui->checkBox_poisson_outputPolygons->isChecked());
+						poisson.setOutputPolygons(_ui->checkBox_poisson_outputPolygons->isEnabled()?_ui->checkBox_poisson_outputPolygons->isChecked():false);
 						poisson.setManifold(_ui->checkBox_poisson_manifold->isChecked());
 						poisson.setSamplesPerNode(_ui->doubleSpinBox_poisson_samples->value());
 						poisson.setDepth(_ui->spinBox_poisson_depth->value());
@@ -1612,7 +1625,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							tex_name << "material_" << iter->first;
 							tex_name >> mesh_material.tex_name;
 
-							mesh_material.tex_file = uFormat("%d.png", iter->first);
+							mesh_material.tex_file = uFormat("%d", iter->first);
 							textureMesh->tex_materials.push_back(mesh_material);
 						}
 						else
@@ -1696,7 +1709,7 @@ bool ExportCloudsDialog::getExportedClouds(
 									{
 										polygonSize = textureMesh->tex_polygons[t][0].vertices.size();
 
-										UASSERT(filteredCoordinates.size() == textureMesh->tex_polygons[t].size()*polygonSize);
+										UASSERT_MSG(filteredCoordinates.size() == textureMesh->tex_polygons[t].size()*polygonSize, uFormat("%d vs %d (polygon size=%d)", (int)filteredCoordinates.size(), (int)textureMesh->tex_polygons[t].size(), (int)polygonSize).c_str());
 										for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
 										{
 											if(validPolygons.find(allPolygonsIndex) != validPolygons.end())
@@ -2350,14 +2363,13 @@ void ExportCloudsDialog::saveTextureMeshes(
 					if(!mesh->tex_materials[i].tex_file.empty())
 					{
 						// absolute path
-						QString fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str());
+						QString fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
 
 						if(!QFileInfo(fullPath).exists())
 						{
-							std::list<std::string> values = uSplit(mesh->tex_materials[i].tex_file, '.');
-							if(values.size() == 2 && uIsInteger(*values.begin(), false))
+							if(uIsInteger(mesh->tex_materials[i].tex_file, false))
 							{
-								int textureId = uStr2Int(*values.begin());
+								int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
 								UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
 								cv::Mat image;
 								cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
@@ -2387,7 +2399,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 							}
 						}
 						// relative path
-						mesh->tex_materials[i].tex_file=(QFileInfo(path).baseName()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())).toStdString();
+						mesh->tex_materials[i].tex_file=(QFileInfo(path).baseName()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText()).toStdString();
 					}
 				}
 
@@ -2435,13 +2447,12 @@ void ExportCloudsDialog::saveTextureMeshes(
 							if(!mesh->tex_materials[i].tex_file.empty())
 							{
 								// absolute path
-								QString fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str());
+								QString fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
 								if(!QFileInfo(fullPath).exists())
 								{
-									std::list<std::string> values = uSplit(mesh->tex_materials[i].tex_file, '.');
-									if(values.size() == 2 && uIsInteger(*values.begin(), false))
+									if(uIsInteger(mesh->tex_materials[i].tex_file, false))
 									{
-										int textureId = uStr2Int(*values.begin());
+										int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
 										UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
 										cv::Mat image;
 										cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
@@ -2471,7 +2482,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 									}
 								}
 								// relative path
-								mesh->tex_materials[i].tex_file=(currentPrefix+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())).toStdString();
+								mesh->tex_materials[i].tex_file=(currentPrefix+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText()).toStdString();
 							}
 						}
 						pcl::PointCloud<pcl::PointNormal>::Ptr tmp(new pcl::PointCloud<pcl::PointNormal>);

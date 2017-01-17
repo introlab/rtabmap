@@ -597,7 +597,7 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 		cam.focal_length=modelIter->second.fx();
 		cam.height=modelIter->second.imageHeight();
 		cam.width=modelIter->second.imageWidth();
-		cam.texture_file = uFormat("%d.png", poseIter->first);
+		cam.texture_file = uFormat("%d", poseIter->first);
 		cameras[oi++] = cam;
 	}
 	return cameras;
@@ -654,7 +654,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		}
 		else
 		{
-			mesh_material.tex_file = "occluded.png";
+			mesh_material.tex_file = "occluded";
 		}
 
 		textureMesh->tex_materials[i] = mesh_material;

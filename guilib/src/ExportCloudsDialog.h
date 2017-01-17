@@ -92,6 +92,7 @@ private slots:
 	void selectDistortionModel();
 	void updateMLSGrpVisibility();
 	void updateTexturingAvailability();
+	void updatePoissonOutputPolygonsAvailability();
 	void cancel();
 
 private:
