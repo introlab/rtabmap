@@ -246,6 +246,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP concatenateClouds(
 pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
 		const std::list<pcl::TextureMesh::Ptr> & meshes);
 
+void RTABMAP_EXP concatenateTextureMaterials(
+		pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, float & scale, std::vector<bool> * materialsKept=0);
+
 /**
  * @brief Concatenate a vector of indices to a single vector.
  *

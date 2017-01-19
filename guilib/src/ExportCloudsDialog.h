@@ -88,11 +88,8 @@ public slots:
 
 private slots:
 	void updateReconstructionFlavor();
-	void updateDenseReconstruction();
 	void selectDistortionModel();
 	void updateMLSGrpVisibility();
-	void updateTexturingAvailability();
-	void updatePoissonOutputPolygonsAvailability();
 	void cancel();
 
 private:
@@ -115,11 +112,11 @@ private:
 	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
 	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, std::map<int, pcl::TextureMesh::Ptr> & textureMeshes, const QMap<int, Signature> & cachedSignatures);
+	cv::Mat mergeTextures(pcl::TextureMesh & mesh, const QMap<int, Signature> & cachedSignatures) const;
 
 	void setSaveButton();
 	void setOkButton();
 	void enableRegeneration(bool enabled);
-	void updateTexturingAvailability(bool isExporting);
 
 private:
 	Ui_ExportCloudsDialog * _ui;
