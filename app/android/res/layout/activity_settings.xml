@@ -186,9 +186,25 @@
 	       </PreferenceCategory>
  	</PreferenceScreen>
  	</PreferenceCategory>
- 	
+ 	 	
     <PreferenceCategory
         android:title="@string/pref_title_general">
+        
+        <ListPreference 
+            android:key="@string/pref_key_gain_max_radius"
+    		android:title="@string/pref_title_gain_max_radius"
+    		android:summary="@string/pref_summary_gain_max_radius"
+   			android:entries="@array/pref_gain_max_radius_keys"
+   			android:entryValues="@array/pref_gain_max_radius_values"
+   			android:defaultValue="@string/pref_default_gain_max_radius"/>
+        <ListPreference 
+            android:key="@string/pref_key_min_cluster_size"
+    		android:title="@string/pref_title_min_cluster_size"
+    		android:summary="@string/pref_summary_min_cluster_size"
+   			android:entries="@array/pref_min_cluster_size_values"
+   			android:entryValues="@array/pref_min_cluster_size_values"
+   			android:defaultValue="@string/pref_default_min_cluster_size"/>
+        
 	    <Preference android:title="@string/pref_title_reset_button"
 	                android:key="@string/pref_key_reset_button"/>
     </PreferenceCategory>

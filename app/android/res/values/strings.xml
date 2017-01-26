@@ -57,6 +57,9 @@
     <string name="pref_key_opt_decimation_factor">pref_key_opt_decimation_factor</string><string name="pref_default_opt_decimation_factor">80</string>
     <string name="pref_key_opt_color_radius">pref_key_opt_color_radius</string>			<string name="pref_default_opt_color_radius">0.0</string>
     <string name="pref_key_opt_clean_white">pref_key_opt_clean_white</string>			<string name="pref_default_opt_clean_white">true</string>
+    
+    <string name="pref_key_gain_max_radius">pref_key_gain_max_radius</string>			<string name="pref_default_gain_max_radius">0.02</string>
+    <string name="pref_key_min_cluster_size">pref_key_min_cluster_size</string>			<string name="pref_default_min_cluster_size">200</string>
     <!--  Preference keys: END-->
     
     <string name="pref_title_rendering">Rendering</string>
@@ -413,6 +416,37 @@
 	</string-array>   
 	
 	<string name="pref_title_general">General</string>
+	    
+	<string name="pref_title_gain_max_radius">Color Correction Radius</string>
+    <string name="pref_summary_gain_max_radius">Radius used to find pixel correspondences for color correction.</string>
+    <string name="pref_title_min_cluster_size">Min Cluster Size</string>
+    <string name="pref_summary_min_cluster_size">Minimum number of polygons for a cluster to be kept after Noise Filtering optimization.</string>
+    
+    <string-array name="pref_gain_max_radius_keys">
+	    <item>"0.3 m"</item>
+    	<item>"0.2 m"</item>
+    	<item>"0.1 m"</item>
+    	<item>"0.05 m"</item>
+    	<item>"0.02 m"</item>
+    	<item>"0.01 m"</item>
+	</string-array>
+	<string-array name="pref_gain_max_radius_values">
+	    <item>"0.3"</item>
+    	<item>"0.2"</item>
+    	<item>"0.1"</item>
+    	<item>"0.05"</item>
+    	<item>"0.02"</item>
+    	<item>"0.01"</item>
+	</string-array> 
+	
+	<string-array name="pref_min_cluster_size_values">
+	    <item>"500"</item>
+    	<item>"200"</item>
+    	<item>"100"</item>
+    	<item>"50"</item>
+    	<item>"10"</item>
+	</string-array> 
+
 	<string name="pref_title_reset_button">Restore All Default Settings</string>
 
 </resources>

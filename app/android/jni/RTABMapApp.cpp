@@ -57,7 +57,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
 
-const int g_minPolygonClusterSize = 200;
 const int g_exportedMeshId = -100;
 
 static JavaVM *jvm;
@@ -140,6 +139,8 @@ RTABMapApp::RTABMapApp() :
 		meshDecimation_(1),
 		meshTrianglePix_(1),
 		meshAngleToleranceDeg_(15.0),
+		minClusterSize_(200),
+		maxGainRadius_(0.02f),
 		paused_(false),
 		dataRecorderMode_(false),
 		clearSceneOnNextRender_(false),
@@ -823,7 +824,8 @@ int RTABMapApp::Render()
 				}
 			}
 
-			rtabmap::GainCompensator compensator;
+			UASSERT(maxGainRadius_>0.0f);
+			rtabmap::GainCompensator compensator(maxGainRadius_);
 			if(clouds.size() > 1 && links.size())
 			{
 				compensator.feed(clouds, indices, links);
@@ -866,7 +868,7 @@ int RTABMapApp::Render()
 			notifyDataLoaded = true;
 		}
 
-		if(filterPolygonsOnNextRender_)
+		if(filterPolygonsOnNextRender_ && minClusterSize_>0)
 		{
 			LOGI("Polygon filtering...");
 			filterPolygonsOnNextRender_ = false;
@@ -885,7 +887,7 @@ int RTABMapApp::Render()
 							vertexToPolygons);
 					std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
 							neighbors,
-							g_minPolygonClusterSize);
+							minClusterSize_);
 					std::vector<pcl::Vertices> filteredPolygons(iter->second.polygons.size());
 					int oi=0;
 					for(std::list<std::list<int> >::iterator jter=clusters.begin(); jter!=clusters.end(); ++jter)
@@ -1132,7 +1134,17 @@ void RTABMapApp::setMeshAngleTolerance(float value)
 
 void RTABMapApp::setMeshTriangleSize(int value)
 {
-	 meshTrianglePix_ = value;
+	meshTrianglePix_ = value;
+}
+
+void RTABMapApp::setMinClusterSize(int value)
+{
+	minClusterSize_ = value;
+}
+
+void RTABMapApp::setMaxGainRadius(float value)
+{
+	maxGainRadius_ = value;
 }
 
 int RTABMapApp::setMappingParameter(const std::string & key, const std::string & value)
@@ -1588,7 +1600,7 @@ bool RTABMapApp::exportMesh(
 								textureMesh->tex_polygons.pop_back();
 								textureMesh->tex_materials.pop_back();
 
-								if(g_minPolygonClusterSize>0)
+								if(minClusterSize_>0)
 								{
 									LOGI("Filter small polygon clusters...");
 
@@ -1617,7 +1629,7 @@ bool RTABMapApp::exportMesh(
 											vertexToPolygons);
 									std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
 											neighbors,
-											g_minPolygonClusterSize);
+											minClusterSize_);
 
 									std::set<int> validPolygons;
 									for(std::list<std::list<int> >::iterator kter=clusters.begin(); kter!=clusters.end(); ++kter)

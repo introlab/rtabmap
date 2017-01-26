@@ -131,6 +131,8 @@ class RTABMapApp : public UEventsHandler {
   void setMeshDecimation(int value);
   void setMeshAngleTolerance(float value);
   void setMeshTriangleSize(int value);
+  void setMinClusterSize(int value);
+  void setMaxGainRadius(float value);
   int setMappingParameter(const std::string & key, const std::string & value);
 
   void resetMapping();
@@ -179,6 +181,8 @@ class RTABMapApp : public UEventsHandler {
   int meshDecimation_;
   int meshTrianglePix_;
   float meshAngleToleranceDeg_;
+  int minClusterSize_;
+  float maxGainRadius_;
 
   rtabmap::ParametersMap mappingParameters_;
 

@@ -77,6 +77,8 @@ public class RTABMapLib
     public static native void setMeshDecimation(int value);
     public static native void setMeshAngleTolerance(float value);
     public static native void setMeshTriangleSize(int value);
+    public static native void setMinClusterSize(int value);
+    public static native void setMaxGainRadius(float value);
     public static native int setMappingParameter(String key, String value);
 
     public static native void resetMapping();

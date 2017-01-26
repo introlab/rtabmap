@@ -283,6 +283,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		RTABMapLib.setPointSize(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_point_size), getString(R.string.pref_default_point_size))));
 		RTABMapLib.setMeshAngleTolerance(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_angle), getString(R.string.pref_default_angle))));
 		RTABMapLib.setMeshTriangleSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_triangle), getString(R.string.pref_default_triangle))));
+		
+		RTABMapLib.setMinClusterSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_min_cluster_size), getString(R.string.pref_default_min_cluster_size))));
+		RTABMapLib.setMaxGainRadius(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_gain_max_radius), getString(R.string.pref_default_gain_max_radius))));
 
 		if(mItemRenderingPointCloud != null)
 		{

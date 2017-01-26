@@ -246,6 +246,18 @@ Java_com_introlab_rtabmap_RTABMapLib_setMeshTriangleSize(
 {
 	return app.setMeshTriangleSize(value);
 }
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setMinClusterSize(
+		JNIEnv*, jobject, int value)
+{
+	return app.setMinClusterSize(value);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setMaxGainRadius(
+		JNIEnv*, jobject, float value)
+{
+	return app.setMaxGainRadius(value);
+}
 JNIEXPORT jint JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMappingParameter(
     JNIEnv* env, jobject, jstring key, jstring value)
