@@ -23,7 +23,7 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1356</y>
+        <y>-1534</y>
         <width>773</width>
         <height>2832</height>
        </rect>
@@ -1118,7 +1118,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             <item row="5" column="1">
              <widget class="QLabel" name="label_meshDecimation_2">
               <property name="text">
-               <string>Radius used to transfer color from original cloud to resampled reconstructed surface (e.g., Poisson or mesh decimation). 0 means disabled.</string>
+               <string>Radius used to transfer color from original cloud to resampled reconstructed surface (e.g., Poisson or mesh decimation). Negative means disabled, 0 means take the nearest point.</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
@@ -1228,7 +1228,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                <number>2</number>
               </property>
               <property name="minimum">
-               <double>0.000000000000000</double>
+               <double>-1.000000000000000</double>
               </property>
               <property name="maximum">
                <double>10.000000000000000</double>

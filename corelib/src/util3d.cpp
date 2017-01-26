@@ -1824,7 +1824,7 @@ void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & image
 		UDEBUG("scaledWidth=%f scaledHeight=%f lowerBorderSize=%f", scaledWidth, scaledHeight, lowerBorderSize);
 		if(materialsKept)
 		{
-			materialsKept->resize(mesh.tex_materials.size(), 0);
+			materialsKept->resize(mesh.tex_materials.size(), false);
 		}
 		for(unsigned int t=0; t<mesh.tex_materials.size(); ++t)
 		{

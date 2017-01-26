@@ -415,7 +415,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_gp3Radius->setValue(0.2);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
-	_ui->doubleSpinBox_transferColorRadius->setValue(0.2);
+	_ui->doubleSpinBox_transferColorRadius->setValue(0.0);
 	_ui->checkBox_cleanMesh->setChecked(true);
 
 	_ui->comboBox_meshingApproach->setCurrentIndex(1);
@@ -1356,10 +1356,10 @@ bool ExportCloudsDialog::getExportedClouds(
 						}
 						QApplication::processEvents();
 
-						if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
+						if(_ui->doubleSpinBox_transferColorRadius->value() >= 0.0 &&
 						   (!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
 						{
-							_progressDialog->appendText(tr("Transfering color from point cloud to mesh..."));
+							_progressDialog->appendText(tr("Transferring color from point cloud to mesh..."));
 							QApplication::processEvents();
 
 							// transfer color from point cloud to mesh
@@ -1375,7 +1375,14 @@ bool ExportCloudsDialog::getExportedClouds(
 								pt.x = coloredCloud->at(i).x;
 								pt.y = coloredCloud->at(i).y;
 								pt.z = coloredCloud->at(i).z;
-								tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+								if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0)
+								{
+									tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+								}
+								else
+								{
+									tree->nearestKSearch(pt, 1, kIndices, kDistances);
+								}
 								if(kIndices.size())
 								{
 									coloredCloud->at(i).r = mergedClouds->at(kIndices[0]).r;
@@ -1469,10 +1476,10 @@ bool ExportCloudsDialog::getExportedClouds(
 					}
 
 					if(lostColors &&
-						_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
+						_ui->doubleSpinBox_transferColorRadius->value() >= 0.0 &&
 						(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
 					{
-						_progressDialog->appendText(tr("Transfering color from point cloud to mesh..."));
+						_progressDialog->appendText(tr("Transferring color from point cloud to mesh..."));
 						QApplication::processEvents();
 
 						// transfer color from point cloud to mesh
@@ -1489,7 +1496,14 @@ bool ExportCloudsDialog::getExportedClouds(
 							pt.x = coloredCloud->at(i).x;
 							pt.y = coloredCloud->at(i).y;
 							pt.z = coloredCloud->at(i).z;
-							tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+							if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0)
+							{
+								tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+							}
+							else
+							{
+								tree->nearestKSearch(pt, 1, kIndices, kDistances);
+							}
 							if(kIndices.size())
 							{
 								coloredCloud->at(i).r = iter->second->at(kIndices[0]).r;
@@ -1754,7 +1768,6 @@ bool ExportCloudsDialog::getExportedClouds(
 								unsigned int allPolygonsIndex = 0;
 								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
 								{
-									UASSERT(allPolygonsIndex < allPolygons.size());
 									std::vector<pcl::Vertices> filteredPolygons(textureMesh->tex_polygons[t].size());
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 									std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > filteredCoordinates(textureMesh->tex_coordinates[t].size());
@@ -1764,6 +1777,8 @@ bool ExportCloudsDialog::getExportedClouds(
 
 									if(textureMesh->tex_polygons[t].size())
 									{
+										UASSERT_MSG(allPolygonsIndex < allPolygons.size(), uFormat("%d vs %d", (int)allPolygonsIndex, (int)allPolygons.size()).c_str());
+
 										// make index polygon to coordinate
 										std::vector<unsigned int> polygonToCoord(textureMesh->tex_polygons[t].size());
 										unsigned int totalCoord = 0;
@@ -2420,7 +2435,8 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 		{
 			float scale = 0.0f;
 			UDEBUG("");
-			util3d::concatenateTextureMaterials(mesh, imageSize, textureSize, scale);
+			std::vector<bool> materialsKept;
+			util3d::concatenateTextureMaterials(mesh, imageSize, textureSize, scale, &materialsKept);
 			if(scale && mesh.tex_materials.size()==1)
 			{
 				int cols = float(textureSize)/(scale*imageSize.width);
@@ -2429,31 +2445,36 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 
 				// make a blank texture
 				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(255));
-				for(int i=0; i<(int)textures.size(); ++i)
+				int oi=0;
+				for(int t=0; t<(int)textures.size(); ++t)
 				{
-					int u = i%cols * emptyImage.cols;
-					int v = i/cols * emptyImage.rows;
-					UASSERT(u < textureSize-emptyImage.cols);
-					UASSERT(v < textureSize-emptyImage.rows);
-					if(textures[i]>=0)
+					if(materialsKept.at(t))
 					{
-						QMap<int, Signature>::const_iterator iter = cachedSignatures.find(textures[i]);
-						UASSERT(iter!=cachedSignatures.end() && !iter->sensorData().imageCompressed().empty());
-						cv::Mat image;
-						iter->sensorData().uncompressDataConst(&image, 0);
-						UASSERT(!image.empty());
-						cv::Mat resizedImage;
-						cv::resize(image, resizedImage, emptyImage.size(), 0.0f, 0.0f, cv::INTER_AREA);
-						if(_ui->groupBox_gain->isChecked() && _compensator && _compensator->getIndex(textures[i]) >= 0)
+						int u = oi%cols * emptyImage.cols;
+						int v = oi/cols * emptyImage.rows;
+						UASSERT(u < textureSize-emptyImage.cols);
+						UASSERT(v < textureSize-emptyImage.rows);
+						if(textures[t]>=0)
 						{
-							_compensator->apply(textures[i], resizedImage);
+							QMap<int, Signature>::const_iterator iter = cachedSignatures.find(textures[t]);
+							UASSERT(iter!=cachedSignatures.end() && !iter->sensorData().imageCompressed().empty());
+							cv::Mat image;
+							iter->sensorData().uncompressDataConst(&image, 0);
+							UASSERT(!image.empty());
+							cv::Mat resizedImage;
+							cv::resize(image, resizedImage, emptyImage.size(), 0.0f, 0.0f, cv::INTER_AREA);
+							if(_ui->groupBox_gain->isChecked() && _compensator && _compensator->getIndex(textures[t]) >= 0)
+							{
+								_compensator->apply(textures[t], resizedImage);
+							}
+							UASSERT(resizedImage.type() == globalTexture.type());
+							resizedImage.copyTo(globalTexture(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
 						}
-						UASSERT(resizedImage.type() == globalTexture.type());
-						resizedImage.copyTo(globalTexture(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
-					}
-					else
-					{
-						emptyImage.copyTo(globalTexture(cv::Rect(u, v, emptyImage.cols, emptyImage.rows)));
+						else
+						{
+							emptyImage.copyTo(globalTexture(cv::Rect(u, v, emptyImage.cols, emptyImage.rows)));
+						}
+						++oi;
 					}
 				}
 			}
