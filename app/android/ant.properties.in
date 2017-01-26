@@ -1,5 +1,6 @@
 builddir=@CMAKE_CURRENT_BINARY_DIR@
 srcdir=@CMAKE_CURRENT_SOURCE_DIR@
+android.abi=@ANDROID_ABI@
 
 source.dir=${srcdir}/src
 gen.dir=${builddir}/gen

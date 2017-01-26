@@ -1646,7 +1646,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						}
 					}
 				}
-				if(cameraPoses.size())
+				if(cameraPoses.size() && iter->second->polygons.size())
 				{
 					pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 					std::map<int, std::vector<int> >::iterator oter = organizedIndices.find(iter->first);
@@ -1821,9 +1821,13 @@ bool ExportCloudsDialog::getExportedClouds(
 
 					textureMeshes.insert(std::make_pair(iter->first, textureMesh));
 				}
-				else
+				else if(cameraPoses.size() == 0)
 				{
 					UWARN("No camera poses!?");
+				}
+				else
+				{
+					UWARN("No polygons!");
 				}
 
 				_progressDialog->appendText(tr("TextureMesh %1 created [cameras=%2] (%3/%4).").arg(iter->first).arg(cameraPoses.size()).arg(++i).arg(meshes.size()));

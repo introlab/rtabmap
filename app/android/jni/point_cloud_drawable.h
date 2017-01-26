@@ -61,6 +61,7 @@ class PointCloudDrawable {
   void setVisible(bool visible) {visible_=visible;}
   rtabmap::Transform getPose() const {return glmToTransform(pose_);}
   bool isVisible() const {return visible_;}
+  bool hasMesh() const {return polygons_.size()!=0;}
   bool hasTexture() const {return textures_ != 0;}
 
   // Update current point cloud data.
@@ -69,17 +70,23 @@ class PointCloudDrawable {
   // @param view_mat: view matrix from current render camera.
   // @param model_mat: model matrix for this point cloud frame.
   // @param vertices: all vertices in this point cloud frame.
-  void Render(const glm::mat4 & projectionMatrix, const glm::mat4 & viewMatrix, bool meshRendering = true, float pointSize = 3.0f, bool textureRendering = false);
+  void Render(const glm::mat4 & projectionMatrix,
+		  const glm::mat4 & viewMatrix,
+		  bool meshRendering = true,
+		  float pointSize = 3.0f,
+		  bool textureRendering = false,
+		  bool lighting = true);
 
  private:
   // Vertex buffer of the point cloud geometry.
   GLuint vertex_buffers_;
   GLuint textures_;
-  std::vector<GLushort> polygons_;
+  std::vector<GLuint> polygons_;
   int nPoints_;
   glm::mat4 pose_;
   bool visible_;
-  std::vector<int> organizedToDenseIndices_;
+  bool hasNormals_;
+  std::vector<unsigned int> organizedToDenseIndices_;
 
   GLuint cloud_shader_program_;
   GLuint texture_shader_program_;

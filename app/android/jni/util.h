@@ -143,15 +143,26 @@ inline rtabmap::Transform glmToTransform(const glm::mat4 & mat)
 	return transform;
 }
 
-struct Mesh
+class Mesh
 {
+public:
+	Mesh() :
+		cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+		normals(new pcl::PointCloud<pcl::Normal>),
+		indices(new std::vector<int>),
+		visible(true),
+		gain(1.0f)
+	{}
+
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // organized cloud
+	pcl::PointCloud<pcl::Normal>::Ptr normals;
 	pcl::IndicesPtr indices;
 	std::vector<pcl::Vertices> polygons;
 	rtabmap::Transform pose; // in rtabmap coordinates
 	bool visible;
 	rtabmap::CameraModel cameraModel;
 	float gain;
+	std::vector<Eigen::Vector2f> texCoords;
 };
 
 #endif /* UTIL_H_ */

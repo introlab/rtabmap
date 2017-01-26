@@ -2,7 +2,7 @@
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.introlab.rtabmap"
-        android:versionCode="30"
+        android:versionCode="31"
         android:versionName="@RTABMAP_VERSION@">
 
     <uses-permission android:name="android.permission.CAMERA" />
@@ -10,10 +10,12 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_FRAME_BUFFER" />
     <uses-permission android:name="android.permission.ACCESS_SURFACE_FLINGER" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-feature android:glEsVersion="0x00020000" />
 
     <!-- This is the platform API where NativeActivity was introduced. -->
-    <uses-sdk android:minSdkVersion="17" />
+    <uses-sdk android:minSdkVersion="19" />
 
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 
@@ -36,6 +38,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity android:name="SettingsActivity" android:label="@string/settings"/>
     </application>
 
 </manifest>

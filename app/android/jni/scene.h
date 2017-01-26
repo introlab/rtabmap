@@ -111,6 +111,7 @@ class Scene {
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
   bool hasCloud(int id) const;
+  bool hasMesh(int id) const;
   bool hasTexture(int id) const;
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
@@ -119,9 +120,14 @@ class Scene {
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}
   void setPointSize(float size) {pointSize_ = size;}
+  void setFrustumCulling(bool enabled) {frustumCulling_ = enabled;}
+  void setLighting(bool enabled) {lighting_ = enabled;}
 
   bool isMeshRendering() const {return meshRendering_;}
   bool isMeshTexturing() const {return meshRendering_ && meshRenderingTexture_;}
+  float getPointSize() const {return pointSize_;}
+  bool isFrustumCulling() const {return frustumCulling_;}
+  bool isLighting() const {return lighting_;}
 
  private:
   // Camera object that allows user to use touch input to interact with.
@@ -156,6 +162,8 @@ class Scene {
   bool meshRendering_;
   bool meshRenderingTexture_;
   float pointSize_;
+  bool frustumCulling_;
+  bool lighting_;
 };
 
 #endif  // TANGO_POINT_CLOUD_SCENE_H_

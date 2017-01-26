@@ -22,13 +22,13 @@
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
         android:layout_gravity="top" />
-
+    
    <LinearLayout
         android:id="@+id/debug_layout"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
         android:orientation="vertical"
         android:paddingLeft="5dp" >
 
@@ -203,6 +203,7 @@
                 android:id="@+id/inliers"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
+
         </LinearLayout>
         <LinearLayout
             android:layout_width="wrap_content"
@@ -237,7 +238,20 @@
            
     </LinearLayout>
 
-    <Button
+    <ToggleButton
+        android:id="@+id/light_button"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/first_person_button"
+        android:layout_alignLeft="@+id/first_person_button"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="15dp"
+        android:layout_marginRight="5dp"
+        android:paddingRight="5dp"
+        android:textOff="@string/light_off"
+        android:textOn="@string/light_on" />
+   
+    <ToggleButton
         android:id="@+id/first_person_button"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
@@ -247,19 +261,10 @@
         android:layout_marginBottom="5dp"
         android:layout_marginRight="5dp"
         android:paddingRight="5dp"
-        android:text="@string/first_person" />
-
-    <Button
-        android:id="@+id/top_down_button"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentRight="true"
-        android:layout_marginRight="5dp"
-        android:paddingRight="5dp"
-        android:text="@string/top_down" />
-
-    <Button
+        android:textOff="@string/first_person"
+        android:textOn="@string/first_person" />
+    
+    <ToggleButton
         android:id="@+id/third_person_button"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
@@ -268,6 +273,29 @@
         android:layout_marginBottom="5dp"
         android:layout_marginRight="5dp"
         android:paddingRight="5dp"
-        android:text="@string/third_person" />
+        android:textOff="@string/third_person"
+        android:textOn="@string/third_person" />
 
+    <ToggleButton
+        android:id="@+id/top_down_button"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_marginRight="5dp"
+        android:paddingRight="5dp"
+        android:textOff="@string/top_down"
+        android:textOn="@string/top_down" />
+
+    <ToggleButton
+        android:id="@+id/pause_button"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/first_person_button"
+        android:layout_alignParentTop="true"
+        android:layout_marginTop="61dp"
+        android:paddingRight="5dp"
+        android:textOff="@string/pause"
+        android:textOn="@string/resume" />
+        
 </RelativeLayout>

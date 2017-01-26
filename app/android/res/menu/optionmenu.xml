@@ -1,12 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    
-    <group android:id="@+id/group_pause" android:checkableBehavior="all">
-        <item android:id="@+id/pause" android:checked="false" android:title="Pause"/>
-    </group>
-    
+        
     <group android:id="@+id/group_actions">
-       <item android:id="@+id/post_processing" android:title="Post-Processing...">
+       <group android:checkableBehavior="single">
+	      <item android:id="@+id/point_cloud" android:title="Point Cloud" />
+		  <item android:id="@+id/mesh" android:title="Mesh" />
+		  <item android:id="@+id/texture_mesh" android:checked="true" android:title="Texture Mesh" />
+	   </group>
+	   <item android:id="@+id/save" android:title="Save" android:showAsAction="ifRoom"/>
+       <item android:id="@+id/post_processing" android:title="Optimize" android:showAsAction="ifRoom">
           <menu>
              <item android:id="@+id/post_processing_standard" android:title="Standard Optimization" />
              <item android:id="@+id/post_processing_advanced" android:title="Advanced..." >
@@ -23,35 +25,30 @@
 	         </item>
           </menu>
        </item>
-       <item android:id="@+id/open" android:title="Open"/>
-       <item android:id="@+id/export" android:title="Export...">
+       <item android:id="@+id/export" android:showAsAction="ifRoom" android:title="Export">
           <menu>
-	         <group android:id="@+id/group_export">
-	            <item android:id="@+id/export_ply" android:title="Mesh (.ply)" />
-	            <item android:id="@+id/export_obj" android:title="Mesh with texture (*.obj)" />
-	         </group>   
+              <item android:id="@+id/export_point_cloud" android:title="Point Cloud (*.ply)" />
+              <item android:id="@+id/export_mesh_menu" android:title="Raw Mesh..." >
+	              <menu>
+		              <item android:id="@+id/export_mesh" android:title="Colored Mesh (*.ply)" />
+			          <item android:id="@+id/export_mesh_texture" android:title="Textured Mesh (*.obj)" />
+		          </menu>
+	          </item>
+	          <item android:id="@+id/export_optimized_mesh_menu" android:title="Optimized Mesh..." >
+	              <menu>
+		              <item android:id="@+id/export_optimized_mesh" android:title="Colored Mesh (*.ply)" />
+			          <item android:id="@+id/export_optimized_mesh_texture" android:title="Textured Mesh (*.obj)" />
+		          </menu>
+	          </item>
           </menu>
        </item>
-       <item android:id="@+id/save" android:title="Save"/>
-       <item android:id="@+id/reset" android:title="Reset"/>
        
-       <item android:id="@+id/menu_rendering_settings" android:title="Rendering Options...">
+       <item android:id="@+id/open" android:title="Open" android:showAsAction="ifRoom"/>
+       
+       <item android:id="@+id/menu_rendering_settings" android:title="Visibility...">
         <menu >
         <group android:id="@+id/group_rendering_visibility" android:checkableBehavior="all">
             <item android:id="@+id/debug" android:checked="false" android:title="Debug" />
-            <item android:id="@+id/menu_rendering" android:checkable="false" android:title="Mesh Rendering..." >
-           			<menu>
-           			   <group android:checkableBehavior="single">
-	           			   <item android:id="@+id/point_cloud" android:title="Point Cloud" />
-				           <item android:id="@+id/mesh" android:title="Mesh" />
-				           <item android:id="@+id/texture_mesh" android:checked="true" android:title="Texture Mesh" />
-			           </group>
-			           <item android:id="@+id/mesh_decimation" android:checkable="false" android:title="Mesh Decimation..." />
-			           <item android:id="@+id/mesh_angle_tolerance" android:checkable="false" android:title="Mesh Angle Tolerance..." />
-            		   <item android:id="@+id/mesh_triangle_size" android:checkable="false" android:title="Mesh Triangle Size..." />
-            		   <item android:id="@+id/max_depth" android:checkable="false" android:title="Max Depth..." />
-			       </menu>
-            </item>
             <item android:id="@+id/map_shown" android:checked="true" android:title="Map Visible" />
             <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
             <item android:id="@+id/graph_visible" android:checked="true" android:title="Graph Visible" />
@@ -60,30 +57,17 @@
         </group>   
         </menu>
 	    </item>
-	    <item android:id="@+id/menu_mapping_settings" android:title="Mapping Options...">
+	    <item android:id="@+id/modes" android:title="Modes...">
 	       <menu >
 	       <group android:id="@+id/group_mapping_visibility" android:checkableBehavior="all">
 	           <item android:id="@+id/localization_mode" android:checked="false" android:title="Localization Mode" />
 	           <item android:id="@+id/trajectory_mode" android:checked="false" android:title="Trajectory Mode" />
-	           <item android:id="@+id/append" android:checked="true" android:title="Append Mode" />
-	           <item android:id="@+id/nodes_filtering" android:checked="false" android:title="Nodes Filtering" />
-	           <item android:id="@+id/drift_correction" android:checked="false" android:title="Drift Correction" />
-	           <item android:id="@+id/auto_exposure" android:checked="true" android:title="Auto Exposure" />
-	           <item android:id="@+id/resolution" android:checked="false" android:title="HD Mode" />
 	           <item android:id="@+id/data_recorder" android:checked="false" android:title="Data Recorder Mode" />
-	           <item android:id="@+id/menu_param_settings" android:checkable="false" android:title="Parameters...">
-		           <menu >
-			           <item android:id="@+id/update_rate" android:title="Map Update Rate..." />
-			           <item android:id="@+id/time_threshold" android:title="Time Threshold..." />
-			           <item android:id="@+id/loop_threshold" android:title="Loop Closure Threshold..." />
-			           <item android:id="@+id/optimize_error" android:title="Max Optimization Error..." />
-			           <item android:id="@+id/features" android:title="Max Features Extracted..." />
-			       </menu>
-			    </item>
 	       </group>   
 	       </menu>
 	   </item>
-       
+	   <item android:id="@+id/settings" android:title="Settings"/>
+       <item android:id="@+id/reset" android:title="Reset"/>
        <item android:id="@+id/about" android:title="About"/>
     </group>
 </menu>

@@ -32,6 +32,11 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/ant.properties.in"
   "${CMAKE_CURRENT_BINARY_DIR}/ant.properties"
   @ONLY)
+  
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/custom_rules.xml"
+  "${CMAKE_CURRENT_BINARY_DIR}/custom_rules.xml"
+  COPYONLY)
 
 add_custom_target(NativeRTABMap-ant-configure ALL
   COMMAND "${ANDROID_EXECUTABLE}"

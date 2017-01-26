@@ -3,11 +3,17 @@
     <string name="app_name">RTAB-Map</string>
     <string name="sys_name">RTAB-Map</string>
     <string name="menu_name">Real-Time Appearance-Based Mapping</string>
+    <string name="settings">Settings</string>
+    <string name="dropbox">Dropbox</string>
     <string name="status">"Status: "</string>
     <string name="words">"Words: "</string>
     <string name="first_person">First</string>
     <string name="third_person">Third</string>
     <string name="top_down">Top</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Paused</string>
+    <string name="light_on">Lighting</string>
+    <string name="light_off">Lighting</string>
     <string name="start">Start</string>
     <string name="nodes">"Nodes (WM): "</string>
     <string name="points">"Number of points: "</string>
@@ -21,5 +27,392 @@
     <string name="memory">"Memory (MB): "</string>
     <string name="hypothesis">"Hypothesis: "</string>
     <string name="fps">"FPS (rendering): "</string>
+        
+    <!--  Preference keys: BEGIN -->
+    <string name="pref_key_rendering">pref_key_rendering</string><string name="pref_default_rendering">2</string>
+    <string name="pref_key_reset_button">pref_key_reset_button</string>
     
+    <string name="pref_key_decimation">pref_key_decimation</string>				<string name="pref_default_decimation">0</string>
+    <string name="pref_key_depth">pref_key_depth</string>						<string name="pref_default_depth">0</string>
+    <string name="pref_key_point_size">pref_key_point_size</string>				<string name="pref_default_point_size">5</string>
+    <string name="pref_key_angle">pref_key_angle</string>						<string name="pref_default_angle">15</string>
+    <string name="pref_key_triangle">pref_key_triangle</string>					<string name="pref_default_triangle">2</string>
+    <string name="pref_key_nodes_filtering">pref_key_nodes_filtering</string>	<string name="pref_default_nodes_filtering">false</string>
+    
+    <string name="pref_key_append">pref_key_append</string>						<string name="pref_default_append">true</string>
+	<string name="pref_key_drift_correction">pref_key_drift_correction</string>	<string name="pref_default_drift_correction">false</string>
+	<string name="pref_key_auto_exposure">pref_key_auto_exposure</string>		<string name="pref_default_auto_exposure">true</string>
+	<string name="pref_key_resolution">pref_key_resolution</string>				<string name="pref_default_resolution">false</string>
+    <string name="pref_key_update_rate">pref_key_update_rate</string>			<string name="pref_default_update_rate">1</string>
+    <string name="pref_key_time_thr">pref_key_time_thr</string>					<string name="pref_default_time_thr">800</string>
+    <string name="pref_key_loop_thr">pref_key_loop_thr</string>					<string name="pref_default_loop_thr">0.11</string>
+    <string name="pref_key_opt_error">pref_key_opt_error</string>				<string name="pref_default_opt_error">0.1</string>
+    <string name="pref_key_features">pref_key_features</string>					<string name="pref_default_features">200</string>
+    
+    <string name="pref_key_cloud_voxel">pref_key_cloud_voxel</string>					<string name="pref_default_cloud_voxel">0</string>
+    <string name="pref_key_texture_size">pref_key_texture_size</string>					<string name="pref_default_texture_size">4096</string>
+    <string name="pref_key_normal_k">pref_key_normal_k</string>							<string name="pref_default_normal_k">6</string>
+    <string name="pref_key_block_render">pref_key_block_render</string>					<string name="pref_default_block_render">false</string>
+    <string name="pref_key_opt_depth">pref_key_opt_depth</string>						<string name="pref_default_opt_depth">8</string>
+    <string name="pref_key_opt_decimation_factor">pref_key_opt_decimation_factor</string><string name="pref_default_opt_decimation_factor">80</string>
+    <string name="pref_key_opt_color_radius">pref_key_opt_color_radius</string>			<string name="pref_default_opt_color_radius">0.0</string>
+    <string name="pref_key_opt_clean_white">pref_key_opt_clean_white</string>			<string name="pref_default_opt_clean_white">true</string>
+    <!--  Preference keys: END-->
+    
+    <string name="pref_title_rendering">Rendering</string>
+        
+    <string name="pref_title_decimation">Mesh Decimation</string>
+    <string name="pref_summary_decimation">Decimate the cloud size to reduce rendering time and memory.</string>
+    <string name="pref_title_angle">Mesh Angle Tolerance</string>
+    <string name="pref_summary_angle">Minimum polygon angle.</string>
+    <string name="pref_title_triangle">Mesh Triangle Size</string>
+    <string name="pref_summary_triangle">Size in pixels of the polygons created from the depth image.</string>
+    <string name="pref_title_depth">Max Depth</string>
+    <string name="pref_summary_depth">Points over the maximum depth are not rendered.</string>
+    <string name="pref_title_point_size">Point Size</string>
+    <string name="pref_summary_point_size">Size of the points when rendering only the point cloud.</string>
+    <string name="pref_title_nodes_filtering">Nodes Filtering</string>
+    <string name="pref_summary_nodes_filtering">Hide close point clouds from rendering.</string>
+
+    <string-array name="pref_decimation_keys">
+    	<item>"High"</item>
+    	<item>"Medium"</item>
+    	<item>"Disabled"</item>
+	</string-array>
+    <string-array name="pref_decimation_values">
+    	<item>"2"</item>
+    	<item>"1"</item>
+    	<item>"0"</item>
+	</string-array>
+	
+    <string-array name="pref_depth_keys">
+    	<item>"No Limit"</item>
+    	<item>"5"</item>
+    	<item>"4"</item>
+    	<item>"3"</item>
+    	<item>"2"</item>
+    	<item>"1"</item>
+	</string-array>
+	<string-array name="pref_depth_values">
+    	<item>"0"</item>
+    	<item>"5"</item>
+    	<item>"4"</item>
+    	<item>"3"</item>
+    	<item>"2"</item>
+    	<item>"1"</item>
+	</string-array>
+	
+	<string-array name="pref_point_size_values">
+    	<item>"50"</item>
+    	<item>"30"</item>
+    	<item>"25"</item>
+    	<item>"15"</item>
+    	<item>"5"</item>
+    	<item>"1"</item>
+	</string-array>
+	
+	<string-array name="pref_angle_keys">
+    	<item>"30 deg"</item>
+    	<item>"25 deg"</item>
+    	<item>"20 deg"</item>
+    	<item>"15 deg"</item>
+    	<item>"10 deg"</item>
+    	<item>"5 deg"</item>
+	</string-array>	  
+    <string-array name="pref_angle_values">
+    	<item>"30"</item>
+    	<item>"25"</item>
+    	<item>"20"</item>
+    	<item>"15"</item>
+    	<item>"10"</item>
+    	<item>"5"</item>
+	</string-array>
+	
+    <string-array name="pref_triangle_keys">
+    	<item>"6 pix"</item>
+    	<item>"5 pix"</item>
+    	<item>"4 pix"</item>
+    	<item>"3 pix"</item>
+    	<item>"2 pix"</item>
+	</string-array>
+    <string-array name="pref_triangle_values">
+    	<item>"6"</item>
+    	<item>"5"</item>
+    	<item>"4"</item>
+    	<item>"3"</item>
+    	<item>"2"</item>
+	</string-array>
+        
+    <string name="pref_title_mapping">Mapping</string>
+    <string name="pref_summary_mapping">Advanced mapping parameters for fine tuning.</string>
+    
+    <string name="pref_title_append">Append Mode</string>
+    <string name="pref_summary_append">When resuming mapping, wait for a relocalization on the current map before starting a new map.</string>
+    <string name="pref_title_drift_correction">Drift Correction</string>
+    <string name="pref_summary_drift_correction">Iterative-closest-point (ICP) is done to refine geometrically the links in the map. Use only when environment is highly geometric. Camera should move slowly.</string>
+    <string name="pref_title_auto_exposure">Auto Exposure</string>
+    <string name="pref_summary_auto_exposure">Adjust camera exposure depending on the lighting to get always maximum contrast. This may change texture color between scanned images. Color correction option in Post-Processing can help to uniformize colors. May not work on some devices.</string>
+    <string name="pref_title_resolution">HD Mode</string>
+    <string name="pref_summary_resolution">Save HD images if you want very detailed textures. More memory will be required.</string>
+    
+    <string name="pref_title_update_rate">Update Rate</string>
+    <string name="pref_summary_update_rate">Rate at which a new node is added to map.</string>
+    <string name="pref_title_time_thr">Time Limit</string>
+    <string name="pref_summary_time_thr">Maximum time allowed for map updates. If time to add a new node is above this theshold, some old parts of the map are temporarly forgotten to reduce time of next updates.</string>
+    <string name="pref_title_loop_thr">Loop Closure Threshold</string>
+    <string name="pref_summary_loop_thr">Threshold at which loop closure hypotheses are accepted. Higher means more robust to false loop closures while rejecting more good loop closures.</string>
+    <string name="pref_title_opt_error">Max Optimization Error</string>
+    <string name="pref_summary_opt_error">Reject any loop closures causing error corrections in the map higher than this threshold.</string>
+    <string name="pref_title_features">Max Features Extracted</string>
+    <string name="pref_summary_features">Extracting more features per image would result in better loop closure detection but more processing time required.</string>
+    
+    <string-array name="pref_update_rate_keys">
+    	<item>"Max"</item>
+    	<item>"5 Hz"</item>
+    	<item>"4 Hz"</item>
+    	<item>"3 Hz"</item>
+    	<item>"2 Hz"</item>
+    	<item>"1 Hz"</item>
+    	<item>"0.5 Hz"</item>
+	</string-array>
+    <string-array name="pref_update_rate_values">
+    	<item>"0"</item>
+    	<item>"5"</item>
+    	<item>"4"</item>
+    	<item>"3"</item>
+    	<item>"2"</item>
+    	<item>"1"</item>
+    	<item>"0.5"</item>
+	</string-array>
+	
+    <string-array name="pref_time_thr_keys">
+    	<item>"No Limit"</item>
+    	<item>"1500 ms"</item>
+    	<item>"1400 ms"</item>
+    	<item>"1300 ms"</item>
+    	<item>"1200 ms"</item>
+    	<item>"1100 ms"</item>
+    	<item>"1000 ms"</item>
+    	<item>"900 ms"</item>
+    	<item>"800 ms"</item>
+    	<item>"700 ms"</item>
+    	<item>"600 ms"</item>
+    	<item>"500 ms"</item>
+    	<item>"400"</item>
+	</string-array>
+	<string-array name="pref_time_thr_values">
+    	<item>"0"</item>
+    	<item>"1500"</item>
+    	<item>"1400"</item>
+    	<item>"1300"</item>
+    	<item>"1200"</item>
+    	<item>"1100"</item>
+    	<item>"1000"</item>
+    	<item>"900"</item>
+    	<item>"800"</item>
+    	<item>"700"</item>
+    	<item>"600"</item>
+    	<item>"500"</item>
+    	<item>"400"</item>
+	</string-array>
+	
+	<string-array name="pref_loop_thr_keys">
+    	<item>"0.90"</item>
+    	<item>"0.80"</item>
+    	<item>"0.70"</item>
+    	<item>"0.60"</item>
+    	<item>"0.50"</item>
+    	<item>"0.40"</item>
+    	<item>"0.30"</item>
+    	<item>"0.20"</item>
+    	<item>"0.11"</item>
+	</string-array>
+	<string-array name="pref_loop_thr_values">
+    	<item>"0.90"</item>
+    	<item>"0.80"</item>
+    	<item>"0.70"</item>
+    	<item>"0.60"</item>
+    	<item>"0.50"</item>
+    	<item>"0.40"</item>
+    	<item>"0.30"</item>
+    	<item>"0.20"</item>
+    	<item>"0.11"</item>
+	</string-array>
+	
+	<string-array name="pref_opt_error_keys">
+    	<item>"1.0 m"</item>
+    	<item>"0.5 m"</item>
+    	<item>"0.35 m"</item>
+    	<item>"0.2 m"</item>
+    	<item>"0.1 m"</item>
+    	<item>"0.05 m"</item>
+    	<item>"0.025 m"</item>
+    	<item>"0.01 m"</item>
+    	<item>"Disabled"</item>
+	</string-array>
+	<string-array name="pref_opt_error_values">
+    	<item>"1.0"</item>
+    	<item>"0.5"</item>
+    	<item>"0.35"</item>
+    	<item>"0.2"</item>
+    	<item>"0.1"</item>
+    	<item>"0.05"</item>
+    	<item>"0.025"</item>
+    	<item>"0.01"</item>
+    	<item>"0"</item>
+	</string-array>
+	
+	<string-array name="pref_features_keys">
+    	<item>"No Limit"</item>
+    	<item>"1000"</item>
+    	<item>"900"</item>
+    	<item>"800"</item>
+    	<item>"700"</item>
+    	<item>"600"</item>
+    	<item>"500"</item>
+    	<item>"400"</item>
+    	<item>"300"</item>
+    	<item>"200"</item>
+    	<item>"100"</item>
+    	<item>"Disabled"</item>
+    </string-array>
+	<string-array name="pref_features_values">
+    	<item>"0"</item>
+    	<item>"1000"</item>
+    	<item>"900"</item>
+    	<item>"800"</item>
+    	<item>"700"</item>
+    	<item>"600"</item>
+    	<item>"500"</item>
+    	<item>"400"</item>
+    	<item>"300"</item>
+    	<item>"200"</item>
+    	<item>"100"</item>
+    	<item>"-1"</item>
+	</string-array>    
+	
+	<string name="pref_title_export">Exporting</string>
+	<string name="pref_summary_export">Advanced parameters used when exporting the map.</string>
+    
+    <string name="pref_title_cloud_voxel">Voxel Size</string>
+    <string name="pref_summary_cloud_voxel">If you don\'t need a very precise point cloud, you can set this to reduce the output point cloud size. This is also used for optimized mesh.</string>
+    <string name="pref_title_texture_size">Texture Size</string>
+    <string name="pref_summary_texture_size">If the map is large, you may want to increase this to maximize the texture resolution.</string>
+    <string name="pref_title_normal_k">Normal K</string>
+    <string name="pref_summary_normal_k">K-nearest neighbors used for normal computation when a mesh is created.</string>
+    <string name="pref_title_block_render">Block Rendering Thread While Exporting</string>
+    <string name="pref_summary_block_render">This decreases exporting time, but freezes rendering while exporting.</string>
+    
+    <string-array name="pref_cloud_voxel_keys">
+    	<item>"0.2 m"</item>
+    	<item>"0.1 m"</item>
+    	<item>"0.05 m"</item>
+    	<item>"0.02 m"</item>
+    	<item>"0.01 m"</item>
+    	<item>"Disabled"</item>
+	</string-array>
+    <string-array name="pref_cloud_voxel_values">
+    	<item>"0.2"</item>
+    	<item>"0.1"</item>
+    	<item>"0.05"</item>
+    	<item>"0.02"</item>
+    	<item>"0.01"</item>
+    	<item>"0"</item>
+	</string-array>
+	
+    <string-array name="pref_texture_size_keys">
+    	<item>"16384x16384"</item>
+    	<item>"8192x8192"</item>
+    	<item>"4096x4096"</item>
+    	<item>"2048x2048"</item>
+    	<item>"1024x1024"</item>
+	</string-array>
+    <string-array name="pref_texture_size_values">
+    	<item>"16384"</item>
+    	<item>"8192"</item>
+    	<item>"4096"</item>
+    	<item>"2048"</item>
+    	<item>"1024"</item>
+	</string-array>
+	
+    <string-array name="pref_normal_k_values">
+    	<item>"30"</item>
+    	<item>"24"</item>
+    	<item>"18"</item>
+    	<item>"12"</item>
+    	<item>"6"</item>
+	</string-array>
+    
+    <string name="pref_title_optimized">Optimized</string>
+    
+    <string name="pref_title_opt_voxel">Voxel Size</string>
+    <string name="pref_summary_opt_voxel">Increasing this can reduce reconstruction time at the cost of less geometry precision.</string>
+    <string name="pref_title_opt_depth">Reconstruction Depth</string>
+    <string name="pref_summary_opt_depth">Lowering this parameter decreases reconstruction time, but geometry precision is lower.</string>
+    <string name="pref_title_opt_decimation_factor">Mesh Decimation Factor</string>
+    <string name="pref_summary_opt_decimation_factor">Reduce the number of the output polygons on plane areas by this factor. This also reduces texture projection time.</string>
+    <string name="pref_title_opt_color_radius">Color Radius</string>
+    <string name="pref_summary_opt_color_radius">Radius used to transfer nearest color from the point cloud to reconstructed mesh.</string>
+    <string name="pref_title_opt_clean_white">Clean Mesh</string>
+    <string name="pref_summary_opt_clean_white">Clean mesh from textureless or colorless reconstructed polygons.</string>
+    
+	<string-array name="pref_opt_depth_values">
+    	<item>"12"</item>
+    	<item>"11"</item>
+    	<item>"10"</item>
+    	<item>"9"</item>
+    	<item>"8"</item>
+    	<item>"7"</item>
+    	<item>"6"</item>
+	</string-array>
+	
+	<string-array name="pref_opt_decimation_factor_keys">
+    	<item>"90%"</item>
+    	<item>"80%"</item>
+    	<item>"70%"</item>
+    	<item>"60%"</item>
+    	<item>"50%"</item>
+    	<item>"40%"</item>
+    	<item>"30%"</item>
+    	<item>"20%"</item>
+    	<item>"10%"</item>
+    	<item>"Disabled"</item>
+	</string-array>
+	<string-array name="pref_opt_decimation_factor_values">
+    	<item>"90"</item>
+    	<item>"80"</item>
+    	<item>"70"</item>
+    	<item>"60"</item>
+    	<item>"50"</item>
+    	<item>"40"</item>
+    	<item>"30"</item>
+    	<item>"20"</item>
+    	<item>"20"</item>
+    	<item>"0"</item>
+	</string-array>
+	
+	<string-array name="pref_opt_color_radius_keys">
+	    <item>"Nearest"</item>
+    	<item>"2 m"</item>
+    	<item>"1 m"</item>
+    	<item>"0.5 m"</item>
+    	<item>"0.2 m"</item>
+    	<item>"0.05 m"</item>
+    	<item>"0.01 m"</item>
+    	<item>"Disabled"</item>
+	</string-array>
+	<string-array name="pref_opt_color_radius_values">
+	    <item>"0"</item>
+    	<item>"2"</item>
+    	<item>"1"</item>
+    	<item>"0.5"</item>
+    	<item>"0.2"</item>
+    	<item>"0.05"</item>
+    	<item>"0.01"</item>
+    	<item>"-1"</item>
+	</string-array>   
+	
+	<string name="pref_title_general">General</string>
+	<string name="pref_title_reset_button">Restore All Default Settings</string>
+
 </resources>

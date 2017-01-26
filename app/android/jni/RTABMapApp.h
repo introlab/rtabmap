@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <boost/thread/mutex.hpp>
 #include <pcl/pcl_base.h>
+#include <pcl/TextureMesh.h>
 
 // RTABMapApp handles the application lifecycle and resources.
 class RTABMapApp : public UEventsHandler {
@@ -113,6 +114,8 @@ class RTABMapApp : public UEventsHandler {
   void setMapCloudShown(bool shown);
   void setOdomCloudShown(bool shown);
   void setMeshRendering(bool enabled, bool withTexture);
+  void setPointSize(float value);
+  void setLighting(bool enabled);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
@@ -132,7 +135,22 @@ class RTABMapApp : public UEventsHandler {
 
   void resetMapping();
   void save(const std::string & databasePath);
-  bool exportMesh(const std::string & filePath);
+  cv::Mat mergeTextures(pcl::TextureMesh & mesh, int textureSize) const;
+  bool exportMesh(
+		  const std::string & filePath,
+		  float cloudVoxelSize,
+		  bool meshing,
+		  int textureSize,
+		  int normalK,
+		  bool optimized,
+		  float optimizedVoxelSize,
+		  int optimizedDepth,
+		  float optimizedDecimationFactor,
+		  float optimizedColorRadius,
+		  bool optimizedCleanWhitePolygons,
+		  bool optimizedColorWhitePolygons,
+		  bool blockRendering);
+  bool postExportation(bool visualize);
   int postProcessing(int approach);
 
  protected:
@@ -175,6 +193,11 @@ class RTABMapApp : public UEventsHandler {
   int totalPolygons_;
   int lastDrawnCloudsCount_;
   float renderingTime_;
+
+  bool visualizingMesh_;
+  bool exportedMeshUpdated_;
+  pcl::TextureMesh::Ptr exportedMesh_;
+  cv::Mat exportedTexture_;
 
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.

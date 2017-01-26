@@ -609,6 +609,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const std::map<int, CameraModel> & cameraModels,
 		int kNormalSearch)
 {
+	UASSERT(mesh->polygons.size());
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 	textureMesh->cloud = mesh->cloud;
 	textureMesh->tex_polygons.push_back(mesh->polygons);
@@ -666,24 +667,81 @@ pcl::TextureMesh::Ptr createTextureMesh(
 
 	// compute normals for the mesh if not already here
 	bool hasNormals = false;
+	bool hasColors = false;
 	for(unsigned int i=0; i<textureMesh->cloud.fields.size(); ++i)
 	{
 		if(textureMesh->cloud.fields[i].name.compare("normal_x") == 0)
 		{
 			hasNormals = true;
-			break;
+		}
+		else if(textureMesh->cloud.fields[i].name.compare("rgb") == 0)
+		{
+			hasColors = true;
 		}
 	}
 	if(!hasNormals)
 	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
-		pcl::PointCloud<pcl::Normal>::Ptr normals = computeNormals(cloud, kNormalSearch);
-		// Concatenate the XYZ and normal fields
-		pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-		pcl::concatenateFields (*cloud, *normals, *cloudWithNormals);
-		textureMesh->cloud = pcl::PCLPointCloud2();
-		pcl::toPCLPointCloud2 (*cloudWithNormals, textureMesh->cloud);
+		// use polygons
+		if(hasColors)
+		{
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+			pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
+
+			for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+			{
+				pcl::Vertices & v = mesh->polygons[i];
+				UASSERT(v.vertices.size()>2);
+				Eigen::Vector3f v0(
+						cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
+						cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
+						cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
+				int last = v.vertices.size()-1;
+				Eigen::Vector3f v1(
+						cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
+						cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
+						cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
+				Eigen::Vector3f normal = v0.cross(v1);
+				normal.normalize();
+				// flat normal (per face)
+				for(unsigned int j=0; j<v.vertices.size(); ++j)
+				{
+					cloud->at(v.vertices[j]).normal_x = normal[0];
+					cloud->at(v.vertices[j]).normal_y = normal[1];
+					cloud->at(v.vertices[j]).normal_z = normal[2];
+				}
+			}
+			pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
+		}
+		else
+		{
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointNormal>);
+			pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
+
+			for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+			{
+				pcl::Vertices & v = mesh->polygons[i];
+				UASSERT(v.vertices.size()>2);
+				Eigen::Vector3f v0(
+						cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
+						cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
+						cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
+				int last = v.vertices.size()-1;
+				Eigen::Vector3f v1(
+						cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
+						cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
+						cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
+				Eigen::Vector3f normal = v0.cross(v1);
+				normal.normalize();
+				// flat normal (per face)
+				for(unsigned int j=0; j<v.vertices.size(); ++j)
+				{
+					cloud->at(v.vertices[j]).normal_x = normal[0];
+					cloud->at(v.vertices[j]).normal_y = normal[1];
+					cloud->at(v.vertices[j]).normal_z = normal[2];
+				}
+			}
+			pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
+		}
 	}
 
 	return textureMesh;
@@ -797,18 +855,30 @@ pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 {
 	UASSERT(cloud->isOrganized());
 
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
+	if(indices->size())
+	{
+		tree->setInputCloud(cloud, indices);
+	}
+	else
+	{
+		tree->setInputCloud (cloud);
+	}
+
 	// Normal estimation
 	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
 	pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
 	ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
 	ne.setMaxDepthChangeFactor(maxDepthChangeFactor);
 	ne.setNormalSmoothingSize(normalSmoothingSize);
+	ne.setBorderPolicy(ne.BORDER_POLICY_MIRROR);
 	ne.setInputCloud(cloud);
 	// Commented: Keep the output normals size the same as the input cloud
 	//if(indices->size())
 	//{
 	//	ne.setIndices(indices);
 	//}
+	ne.setSearchMethod(tree);
 	ne.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
 	ne.compute(*normals);
 

@@ -1344,13 +1344,26 @@ bool Rtabmap::process(
 
 			if(_highestHypothesis.first > 0)
 			{
+				float loopThr = _loopThr;
+				if((_startNewMapOnLoopClosure || !_memory->isIncremental()) &&
+					signature->getLinks().size() == 0 &&     // alone in the current map
+					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
+					(int)_memory->getWorkingMem().size()<=_memory->getMaxStMemSize() &&
+					_rgbdSlamMode)
+				{
+					// If the map is very small (under STM size) and we need to find
+					// a loop closure before continuing the map or localizing,
+					// use the best hypothesis directly.
+					loopThr = 0.0f;
+				}
+
 				// Loop closure Threshold
 				// When _loopThr=0, accept loop closure if the hypothesis is over
 				// the virtual (new) place hypothesis.
-				if(_highestHypothesis.second >= _loopThr)
+				if(_highestHypothesis.second >= loopThr)
 				{
 					rejectedHypothesis = true;
-					if(posterior.size() <= 2)
+					if(posterior.size() <= 2 && loopThr>0.0f)
 					{
 						// Ignore loop closure if there is only one loop closure hypothesis
 						UDEBUG("rejected hypothesis: single hypothesis");
@@ -1380,7 +1393,7 @@ bool Rtabmap::process(
 				else if(_highestHypothesis.second < _loopRatio*lastHighestHypothesis.second)
 				{
 					// Used for Precision-Recall computation.
-					// When analysing logs, it's convenient to know
+					// When analyzing logs, it's convenient to know
 					// if the hypothesis would be rejected if T_loop would be lower.
 					rejectedHypothesis = true;
 					UWARN("rejected hypothesis: under loop ratio %f < %f", _highestHypothesis.second, _loopRatio*lastHighestHypothesis.second);
@@ -2410,7 +2423,7 @@ bool Rtabmap::process(
 		if(_startNewMapOnLoopClosure &&
 			_memory->isIncremental() &&              // only in mapping mode
 			signature->getLinks().size() == 0 &&     // alone in the current map
-			_memory->getWorkingMem().size()>1)       // The working memory should not be empty
+			_memory->getWorkingMem().size()>=2)       // The working memory should not be empty (beside virtual signature)
 		{
 			UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
 					signature->id());

@@ -72,6 +72,8 @@ public class RTABMapLib
     public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);
+    public static native void setPointSize(float value);
+    public static native void setLighting(boolean enabled);
     public static native void setMeshDecimation(int value);
     public static native void setMeshAngleTolerance(float value);
     public static native void setMeshTriangleSize(int value);
@@ -79,7 +81,21 @@ public class RTABMapLib
 
     public static native void resetMapping();
     public static native void save(String outputDatabasePath);
-    public static native boolean exportMesh(String filePath);
+    public static native boolean exportMesh(
+    		String filePath,
+    		float cloudVoxelSize,
+    		boolean meshing,
+    		int textureSize,
+    		int normalK,
+    		boolean optimized,
+    		float optimizedVoxelSize,
+    		int optimizedDepth,
+    		float optimizedDecimationFactor,
+    		float optimizedColorRadius,
+    		boolean optimizedCleanWhitePolygons,
+    		boolean optimizedColorWhitePolygons,
+    		boolean blockRendering);
+    public static native boolean postExportation(boolean visualize);
     public static native int postProcessing(int approach);
     
     public static native String getStatus();

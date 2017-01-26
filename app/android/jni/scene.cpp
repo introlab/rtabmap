@@ -42,47 +42,87 @@ const glm::vec3 kFrustumScale = glm::vec3(0.4f, 0.3f, 0.5f);
 const std::string kPointCloudVertexShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
-    "attribute vec3 vertex;\n"
-    "attribute vec3 color;\n"
-    "uniform mat4 mvp;\n"
-    "uniform float point_size;\n"
-    "varying vec3 v_color;\n"
+    "attribute vec3 aVertex;\n"
+	"attribute vec3 aNormal;\n"
+    "attribute vec3 aColor;\n"
+
+    "uniform mat4 uMVP;\n"
+	"uniform mat3 uN;\n"
+	"uniform vec3 uAmbientColor;\n"
+	"uniform vec3 uLightingDirection;\n"
+	"uniform bool uUseLighting;\n"
+
+    "uniform float uPointSize;\n"
+    "varying vec3 vColor;\n"
+    "varying float vLightWeighting;\n"
+
     "void main() {\n"
-    "  gl_Position = mvp*vec4(vertex.x, vertex.y, vertex.z, 1.0);\n"
-    "  gl_PointSize = point_size;\n"
-    "  v_color = color;\n"
+    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
+    "  gl_PointSize = uPointSize;\n"
+	"  if (!uUseLighting) {\n"
+	"    vLightWeighting = vec3(1.0, 1.0, 1.0);\n"
+	"  } else {\n"
+	"    vec3 transformedNormal = uN * aNormal;\n"
+	"    vLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);\n"
+	"    if(vLightWeighting<0.1) vLightWeighting=0.1;\n"
+	"  }\n"
+    "  vColor = aColor;\n"
     "}\n";
 const std::string kPointCloudFragmentShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
-	"uniform float u_gain;\n"
-    "varying vec3 v_color;\n"
+	"uniform float uGain;\n"
+    "varying vec3 vColor;\n"
+	"varying float vLightWeighting;\n"
     "void main() {\n"
-    "  gl_FragColor = vec4(v_color.z*u_gain, v_color.y*u_gain, v_color.x*u_gain, 1.0);\n"
+    "  vec4 textureColor = vec4(vColor.z*uGain, vColor.y*uGain, vColor.x*uGain, 1.0);\n"
+	"  gl_FragColor = vec4(textureColor.rgb * uGain * vLightWeighting, textureColor.a);\n"
     "}\n";
 
 const std::string kTextureMeshVertexShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
-    "attribute vec3 vertex;\n"
-    "attribute vec2 a_TexCoordinate;\n"
-    "uniform mat4 mvp;\n"
-    "varying vec2 v_TexCoordinate;\n"
+    "attribute vec3 aVertex;\n"
+	"attribute vec3 aNormal;\n"
+    "attribute vec2 aTexCoord;\n"
+
+    "uniform mat4 uMVP;\n"
+    "uniform mat3 uN;\n"
+	"uniform vec3 uAmbientColor;\n"
+    "uniform vec3 uLightingDirection;\n"
+    "uniform bool uUseLighting;\n"
+
+    "varying vec2 vTexCoord;\n"
+    "varying float vLightWeighting;\n"
+
     "void main() {\n"
-    "  gl_Position = mvp*vec4(vertex.x, vertex.y, vertex.z, 1.0);\n"
-    "  v_TexCoordinate = a_TexCoordinate;\n"
+    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
+
+	"  if(aTexCoord.x < 0.0) {\n"
+	"    vTexCoord.x = 1.0;\n"
+	"    vTexCoord.y = 1.0;\n" // bottom right corner
+	"  } else {\n"
+    "    vTexCoord = aTexCoord;\n"
+    "  }\n"
+
+	"  if (!uUseLighting) {\n"
+    "    vLightWeighting = vec3(1.0, 1.0, 1.0);\n"
+    "  } else {\n"
+    "    vec3 transformedNormal = uN * aNormal;\n"
+    "    vLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);\n"
+    "    if(vLightWeighting<0.1) vLightWeighting=0.1;\n"
+    "  }\n"
     "}\n";
 const std::string kTextureMeshFragmentShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
-	"uniform sampler2D u_Texture;\n"
-	"uniform float u_gain;\n"
-    "varying vec2 v_TexCoordinate;\n"
+	"uniform sampler2D uTexture;\n"
+	"uniform float uGain;\n"
+    "varying vec2 vTexCoord;\n"
+	"varying float vLightWeighting;\n"
     "void main() {\n"
-    "  gl_FragColor = texture2D(u_Texture, v_TexCoordinate);\n"
-    "  gl_FragColor.x *= u_gain;\n"
-	"  gl_FragColor.y *= u_gain;\n"
-	"  gl_FragColor.z *= u_gain;\n"
+    "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
+	"  gl_FragColor = vec4(textureColor.rgb * uGain * vLightWeighting, textureColor.a);\n"
     "}\n";
 
 const std::string kGraphVertexShader =
@@ -123,21 +163,31 @@ Scene::Scene() :
 		mapRendering_(true),
 		meshRendering_(true),
 		meshRenderingTexture_(true),
-		pointSize_(3.0f) {}
+		pointSize_(5.0f),
+		frustumCulling_(true),
+		lighting_(true)
+{
+	gesture_camera_ = new tango_gl::GestureCamera();
+	gesture_camera_->SetCameraType(
+	      tango_gl::GestureCamera::kFirstPerson);
+}
 
-Scene::~Scene() {DeleteResources();}
+Scene::~Scene() {
+	DeleteResources();
+	delete gesture_camera_;
+}
 
 //Should only be called in OpenGL thread!
 void Scene::InitGLContent()
 {
-	if(gesture_camera_ != 0)
+	if(axis_ != 0)
 	{
 		DeleteResources();
 	}
 
-	UASSERT(gesture_camera_ == 0);
+	UASSERT(axis_ == 0);
 
-  gesture_camera_ = new tango_gl::GestureCamera();
+
   axis_ = new tango_gl::Axis();
   frustum_ = new tango_gl::Frustum();
   trace_ = new tango_gl::Trace();
@@ -151,8 +201,6 @@ void Scene::InitGLContent()
   trace_->SetColor(kTraceColor);
   grid_->SetColor(kGridColor);
   grid_->SetPosition(-kHeightOffset);
-  gesture_camera_->SetCameraType(
-      tango_gl::GestureCamera::kFirstPerson);
 
   if(cloud_shader_program_ == 0)
   {
@@ -175,15 +223,14 @@ void Scene::InitGLContent()
 void Scene::DeleteResources() {
 
 	LOGI("Scene::DeleteResources()");
-	if(gesture_camera_)
+	if(axis_)
 	{
-	  delete gesture_camera_;
 	  delete axis_;
+	  axis_ = 0;
 	  delete frustum_;
 	  delete trace_;
 	  delete grid_;
 	  delete currentPose_;
-	  gesture_camera_ = 0;
 	}
 
 	if (cloud_shader_program_) {
@@ -288,9 +335,8 @@ int Scene::Render() {
   					  gesture_camera_->GetViewMatrix());
   	}
 
-	bool frustumCulling = true;
 	int cloudDrawn=0;
-	if(mapRendering_ && frustumCulling)
+	if(mapRendering_ && frustumCulling_)
 	{
 		//Use camera frustum to cull nodes that don't need to be drawn
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -336,7 +382,7 @@ int Scene::Render() {
 			for(unsigned int i=0; i<indices->size(); ++i)
 			{
 				++cloudDrawn;
-				pointClouds_.find(ids[indices->at(i)])->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_);
+				pointClouds_.find(ids[indices->at(i)])->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
 			}
 		}
 	}
@@ -347,7 +393,7 @@ int Scene::Render() {
 			if((mapRendering_ || iter->first < 0) && iter->second->isVisible())
 			{
 				++cloudDrawn;
-				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_);
+				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
 			}
 		}
 	}
@@ -426,7 +472,7 @@ void Scene::addCloud(
 		const pcl::IndicesPtr & indices,
 		const rtabmap::Transform & pose)
 {
-	LOGI("add cloud %d", id);
+	LOGI("add cloud %d (%d points %d indices)", id, (int)cloud->size(), indices.get()?(int)indices->size():0);
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
 	if(iter != pointClouds_.end())
 	{
@@ -494,6 +540,11 @@ void Scene::setCloudVisible(int id, bool visible)
 bool Scene::hasCloud(int id) const
 {
 	return pointClouds_.find(id) != pointClouds_.end();
+}
+
+bool Scene::hasMesh(int id) const
+{
+	return pointClouds_.find(id) != pointClouds_.end() && pointClouds_.at(id)->hasMesh();
 }
 
 bool Scene::hasTexture(int id) const
