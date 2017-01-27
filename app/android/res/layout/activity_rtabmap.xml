@@ -297,5 +297,15 @@
         android:paddingRight="5dp"
         android:textOff="@string/pause"
         android:textOn="@string/resume" />
+    
+    <Button
+        android:id="@+id/close_visualization_button"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginLeft="5dp"
+        android:paddingLeft="5dp"
+        android:text="@string/close_visualization"/>
         
 </RelativeLayout>

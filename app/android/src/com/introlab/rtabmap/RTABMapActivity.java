@@ -126,6 +126,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private ToggleButton mButtonTop;
 	private ToggleButton mButtonPause;
 	private ToggleButton mButtonLighting;
+	private Button mButtonCloseVisualization;
 
 	private String mOpenedDatabasePath = "";
 	private String mWorkingDirectory = "";
@@ -184,14 +185,17 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonTop = (ToggleButton)findViewById(R.id.top_down_button);
 		mButtonPause = (ToggleButton)findViewById(R.id.pause_button);
 		mButtonLighting = (ToggleButton)findViewById(R.id.light_button);
+		mButtonCloseVisualization = (Button)findViewById(R.id.close_visualization_button);
 		mButtonFirst.setOnClickListener(this);
 		mButtonThird.setOnClickListener(this);
 		mButtonTop.setOnClickListener(this);
 		mButtonPause.setOnClickListener(this);
 		mButtonLighting.setOnClickListener(this);
+		mButtonCloseVisualization.setOnClickListener(this);
 		mButtonFirst.setChecked(true);
 		mButtonLighting.setChecked(true);
 		mButtonLighting.setVisibility(View.INVISIBLE);
+		mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 
 		mToast = Toast.makeText(getApplicationContext(), "", Toast.LENGTH_SHORT);
 
@@ -266,6 +270,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mLoopThr = sharedPref.getString(getString(R.string.pref_key_loop_thr), getString(R.string.pref_default_loop_thr));
 		String optError = sharedPref.getString(getString(R.string.pref_key_opt_error), getString(R.string.pref_default_opt_error));
 		mMaxFeatures = sharedPref.getString(getString(R.string.pref_key_features), getString(R.string.pref_default_features));
+		String featureType = sharedPref.getString(getString(R.string.pref_key_features_type), getString(R.string.pref_default_features_type));
 
 		RTABMapLib.setNodesFiltering(sharedPref.getBoolean(getString(R.string.pref_key_nodes_filtering), Boolean.parseBoolean(getString(R.string.pref_default_nodes_filtering))));
 		RTABMapLib.setDriftCorrection(sharedPref.getBoolean(getString(R.string.pref_key_drift_correction), Boolean.parseBoolean(getString(R.string.pref_default_drift_correction))));
@@ -277,6 +282,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		RTABMapLib.setMappingParameter("Kp/MaxFeatures", mMaxFeatures.compareTo("Disabled")==0?"-1":mMaxFeatures.compareTo("No Limit")==0?"0":mMaxFeatures);
 		RTABMapLib.setMappingParameter("Rtabmap/LoopThr", mLoopThr.compareTo("Disabled")==0?"1":mLoopThr);
 		RTABMapLib.setMappingParameter("RGBD/OptimizeMaxError", optError.compareTo("Disabled")==0?"0":optError);
+		RTABMapLib.setMappingParameter("Kp/DetectorStrategy", featureType);
 
 		RTABMapLib.setMeshDecimation(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_decimation), getString(R.string.pref_default_decimation))));
 		RTABMapLib.setMaxCloudDepth(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_depth), getString(R.string.pref_default_depth))));
@@ -386,6 +392,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			break;
 		case R.id.light_button:
 			RTABMapLib.setLighting(mButtonLighting.isChecked());
+			break;
+		case R.id.close_visualization_button:
+			updateState(State.STATE_IDLE);
 			break;
 		default:
 			return;
@@ -731,6 +740,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		{
 		case STATE_PROCESSING:
 			mButtonLighting.setVisibility(View.INVISIBLE);
+			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 			mItemSave.setEnabled(false);
 			mItemExport.setEnabled(false);
 			mItemOpen.setEnabled(false);
@@ -742,6 +752,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			break;
 		case STATE_VISUALIZING:
 			mButtonLighting.setVisibility(View.VISIBLE);
+			mButtonCloseVisualization.setVisibility(View.VISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
 			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
 			mItemOpen.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
@@ -754,6 +765,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			break;
 		default:
 			mButtonLighting.setVisibility(View.INVISIBLE);
+			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
 			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
 			mItemOpen.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
@@ -762,7 +774,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemReset.setEnabled(true);
 			mItemModes.setEnabled(true);
 			mButtonPause.setEnabled(true);
-			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());		  
+			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
+			RTABMapLib.postExportation(false);
 			break;
 		}
 	}

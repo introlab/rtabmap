@@ -14,6 +14,7 @@
     <string name="resume">Paused</string>
     <string name="light_on">Lighting</string>
     <string name="light_off">Lighting</string>
+    <string name="close_visualization">Close Visualization</string>
     <string name="start">Start</string>
     <string name="nodes">"Nodes (WM): "</string>
     <string name="points">"Number of points: "</string>
@@ -47,7 +48,8 @@
     <string name="pref_key_time_thr">pref_key_time_thr</string>					<string name="pref_default_time_thr">800</string>
     <string name="pref_key_loop_thr">pref_key_loop_thr</string>					<string name="pref_default_loop_thr">0.11</string>
     <string name="pref_key_opt_error">pref_key_opt_error</string>				<string name="pref_default_opt_error">0.1</string>
-    <string name="pref_key_features">pref_key_features</string>					<string name="pref_default_features">200</string>
+    <string name="pref_key_features">pref_key_features</string>					<string name="pref_default_features">400</string>
+    <string name="pref_key_features_type">pref_key_features_type</string>		<string name="pref_default_features_type">5</string>
     
     <string name="pref_key_cloud_voxel">pref_key_cloud_voxel</string>					<string name="pref_default_cloud_voxel">0</string>
     <string name="pref_key_texture_size">pref_key_texture_size</string>					<string name="pref_default_texture_size">4096</string>
@@ -168,6 +170,8 @@
     <string name="pref_summary_opt_error">Reject any loop closures causing error corrections in the map higher than this threshold.</string>
     <string name="pref_title_features">Max Features Extracted</string>
     <string name="pref_summary_features">Extracting more features per image would result in better loop closure detection but more processing time required.</string>
+  	<string name="pref_title_features_type">Feature Type</string>
+    <string name="pref_summary_features_type">BRIEF features are fast to compute but are not rotation invariant like FREAK. Warning: Changing feature type will automatically reset the map!</string>
     
     <string-array name="pref_update_rate_keys">
     	<item>"Max"</item>
@@ -293,6 +297,15 @@
     	<item>"100"</item>
     	<item>"-1"</item>
 	</string-array>    
+	
+	<string-array name="pref_features_type_keys">
+    	<item>"BRIEF"</item>
+    	<item>"FREAK"</item>
+    </string-array>
+	<string-array name="pref_features_type_values">
+    	<item>"6"</item>
+    	<item>"5"</item>
+	</string-array>   
 	
 	<string name="pref_title_export">Exporting</string>
 	<string name="pref_summary_export">Advanced parameters used when exporting the map.</string>

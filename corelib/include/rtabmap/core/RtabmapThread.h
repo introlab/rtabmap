@@ -40,7 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 #include "rtabmap/core/OdometryEvent.h"
 
-#include <stack>
+#include <queue>
 
 class UTimer;
 
@@ -106,8 +106,8 @@ private:
 
 private:
 	UMutex _stateMutex;
-	std::stack<State> _state;
-	std::stack<ParametersMap> _stateParam;
+	std::queue<State> _state;
+	std::queue<ParametersMap> _stateParam;
 
 	std::list<OdometryEvent> _dataBuffer;
 	UMutex _dataMutex;

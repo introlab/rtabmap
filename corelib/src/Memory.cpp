@@ -466,7 +466,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	}
 	if(detectorStrategy!=Feature2D::kFeatureUndef)
 	{
-		UDEBUG("new detector strategy %d", int(detectorStrategy));
+		UWARN("new detector strategy %d", int(detectorStrategy));
 		if(_feature2D)
 		{
 			delete _feature2D;

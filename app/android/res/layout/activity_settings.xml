@@ -108,6 +108,13 @@
    			android:entries="@array/pref_features_keys"
    			android:entryValues="@array/pref_features_values"
    			android:defaultValue="@string/pref_default_features"/>
+        <ListPreference 
+            android:key="@string/pref_key_features_type"
+    		android:title="@string/pref_title_features_type"
+    		android:summary="@string/pref_summary_features_type"
+   			android:entries="@array/pref_features_type_keys"
+   			android:entryValues="@array/pref_features_type_values"
+   			android:defaultValue="@string/pref_default_features_type"/>
     </PreferenceScreen>
     </PreferenceCategory>
     

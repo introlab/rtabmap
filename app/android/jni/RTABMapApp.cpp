@@ -72,11 +72,9 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 
 	parameters.insert(mappingParameters_.begin(), mappingParameters_.end());
 
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), std::string("6"))); // GFTT/BRIEF
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), std::string("200")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGFTTQualityLevel(), std::string("0.0001")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImagePreDecimation(), std::string(fullResolution_?"2":"1")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kFASTThreshold(), std::string("1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), std::string("64")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), std::string("800")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishLikelihood(), std::string("false")));
@@ -157,6 +155,7 @@ RTABMapApp::RTABMapApp() :
 		exportedMesh_(new pcl::TextureMesh)
 
 {
+	mappingParameters_.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), "5")); // GFTT/FREAK
 }
 
 RTABMapApp::~RTABMapApp() {
@@ -995,7 +994,7 @@ void RTABMapApp::setTrajectoryMode(bool enabled)
 void RTABMapApp::setGraphOptimization(bool enabled)
 {
 	graphOptimization_ = enabled;
-	if(!camera_->isRunning())
+	if(!camera_->isRunning() && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
 	{
 		std::map<int, rtabmap::Transform> poses;
 		std::multimap<int, rtabmap::Link> links;
@@ -1090,7 +1089,7 @@ void RTABMapApp::setMaxCloudDepth(float value)
 
 void RTABMapApp::setMeshDecimation(int value)
 {
-	LOGE("Set decimation to level %d", value);
+	LOGW("Set mesh decimation to level %d", value);
 	meshDecimation_ = 1;
 	if(camera_)
 	{
@@ -1180,7 +1179,13 @@ int RTABMapApp::setMappingParameter(const std::string & key, const std::string &
 	if(rtabmap::Parameters::getDefaultParameters().find(compatibleKey) != rtabmap::Parameters::getDefaultParameters().end())
 	{
 		LOGI(uFormat("Setting param \"%s\"  to \"%s\"", compatibleKey.c_str(), value.c_str()).c_str());
-		uInsert(mappingParameters_, rtabmap::ParametersPair(key, value));
+		if(compatibleKey.compare(rtabmap::Parameters::kKpDetectorStrategy()) == 0 &&
+		   mappingParameters_.at(rtabmap::Parameters::kKpDetectorStrategy()).compare(value) != 0)
+		{
+			// Changing feature type should reset mapping!
+			resetMapping();
+		}
+		uInsert(mappingParameters_, rtabmap::ParametersPair(compatibleKey, value));
 		UEventsManager::post(new rtabmap::ParamEvent(mappingParameters_));
 		return 0;
 	}
@@ -2040,6 +2045,7 @@ bool RTABMapApp::postExportation(bool visualize)
 		exportedMesh_.reset(new pcl::TextureMesh);
 		exportedTexture_ = cv::Mat();
 		exportedMeshUpdated_ = false;
+		visualizingMesh_ = false;
 	}
 
 	return visualizingMesh_;

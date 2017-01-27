@@ -195,9 +195,9 @@ void RtabmapThread::mainLoop()
 	{
 		if(!_state.empty() && !_stateParam.empty())
 		{
-			state = _state.top();
+			state = _state.front();
 			_state.pop();
-			parameters = _stateParam.top();
+			parameters = _stateParam.front();
 			_stateParam.pop();
 		}
 	}
