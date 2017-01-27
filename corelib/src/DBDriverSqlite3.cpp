@@ -345,7 +345,8 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	}
 	if(rc != SQLITE_OK)
 	{
-		UFATAL("DB error : %s (path=\"%s\")", sqlite3_errmsg(_ppDb), url.c_str());
+		UFATAL("DB error : %s (path=\"%s\"). Make sure that your user has write " 
+			"permission on the target directory (you may have to change the working directory). ", sqlite3_errmsg(_ppDb), url.c_str());
 		_ppDb = 0;
 		return false;
 	}
@@ -434,7 +435,8 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 			{
 				UINFO("Saving database to %s ...",  outputFile.c_str());
 				rc = loadOrSaveDb(_ppDb, outputFile, 1); // Save memory to file
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s), could not save \"%s\": %s. Make sure that your user has write " 
+					"permission on the target directory (you may have to change the working directory). ", _version.c_str(), outputFile.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 				ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
 			}
 		}
