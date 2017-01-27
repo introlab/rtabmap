@@ -627,7 +627,7 @@ void ExportCloudsDialog::viewClouds(
 			viewer->setBackfaceCulling(true, false);
 		}
 		viewer->setLighting(true);
-		viewer->setBackgroundColor(Qt::darkGray);
+		viewer->setDefaultBackgroundColor(QColor(40, 40, 40, 255));
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
