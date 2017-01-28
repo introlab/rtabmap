@@ -4250,6 +4250,7 @@ void DatabaseViewer::addConstraint()
 
 bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGraph)
 {
+	bool switchedIds = false;
 	if(from == to)
 	{
 		UWARN("Cannot add link to same node");
@@ -4257,6 +4258,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 	}
 	else if(from < to)
 	{
+		switchedIds = true;
 		int tmp = from;
 		from = to;
 		to = tmp;
@@ -4293,8 +4295,16 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 
 		if(!silent)
 		{
-			ui_->graphicsView_A->setFeatures(fromS.getWords(), dataFrom.depthRaw());
-			ui_->graphicsView_B->setFeatures(toS.getWords(), dataTo.depthRaw());
+			if(switchedIds)
+			{
+				ui_->graphicsView_A->setFeatures(toS.getWords(), dataTo.depthRaw());
+				ui_->graphicsView_B->setFeatures(fromS.getWords(), dataFrom.depthRaw());
+			}
+			else
+			{
+				ui_->graphicsView_A->setFeatures(fromS.getWords(), dataFrom.depthRaw());
+				ui_->graphicsView_B->setFeatures(toS.getWords(), dataTo.depthRaw());
+			}
 			updateWordsMatching();
 		}
 		
