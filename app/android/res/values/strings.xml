@@ -49,7 +49,7 @@
     <string name="pref_key_loop_thr">pref_key_loop_thr</string>					<string name="pref_default_loop_thr">0.11</string>
     <string name="pref_key_opt_error">pref_key_opt_error</string>				<string name="pref_default_opt_error">0.1</string>
     <string name="pref_key_features">pref_key_features</string>					<string name="pref_default_features">400</string>
-    <string name="pref_key_features_type">pref_key_features_type</string>		<string name="pref_default_features_type">5</string>
+    <string name="pref_key_features_type">pref_key_features_type</string>		<string name="pref_default_features_type">6</string>
     
     <string name="pref_key_cloud_voxel">pref_key_cloud_voxel</string>					<string name="pref_default_cloud_voxel">0</string>
     <string name="pref_key_texture_size">pref_key_texture_size</string>					<string name="pref_default_texture_size">4096</string>
