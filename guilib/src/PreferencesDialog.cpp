@@ -2828,6 +2828,22 @@ void PreferencesDialog::selectSourceDatabase()
 	{
 		int r = QMessageBox::question(this, tr("Odometry in database..."), tr("Use odometry saved in database (if some saved)?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
 		_ui->source_checkBox_ignoreOdometry->setChecked(r != QMessageBox::Yes);
+		
+		if (_ui->general_doubleSpinBox_detectionRate->value() != 0 && _ui->general_spinBox_imagesBufferSize->value() != 0)
+		{
+			r = QMessageBox::question(this, tr("Detection rate..."), 
+				tr("Do you want to process all frames? \n\nClicking \"Yes\" will set "
+					"RTAB-Map's detection rate (%1 Hz) and buffer size (%2) to 0 to make "
+					"sure that all frames are processed.")
+					.arg(_ui->general_doubleSpinBox_detectionRate->value())
+					.arg(_ui->general_spinBox_imagesBufferSize->value()),
+						QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+			if (r == QMessageBox::Yes)
+			{
+				_ui->general_doubleSpinBox_detectionRate->setValue(0.0);
+				_ui->general_spinBox_imagesBufferSize->setValue(0);
+			}
+		}
 		_ui->source_database_lineEdit_path->setText(paths.size()==1?paths.front():paths.join(";"));
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 		_ui->source_spinBox_database_cameraIndex->setValue(-1);

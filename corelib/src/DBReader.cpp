@@ -323,10 +323,15 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			{
 				std::map<int, Link> links;
 				_dbDriver->loadLinks(*_currentId, links, Link::kNeighbor);
-				if(links.size())
+				if(links.size() && links.begin()->first < *_currentId)
 				{
 					// assume the first is the backward neighbor, take its variance
 					infMatrix = links.begin()->second.infMatrix();
+				}
+				else
+				{
+					// first node, set high variance to make rtabmap trigger a new map
+					infMatrix /= 9999.0;
 				}
 			}
 			else

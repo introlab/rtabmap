@@ -129,7 +129,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_gainLinkedLocationsOnly, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
 	connect(_ui->groupBox_meshing, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
-	connect(_ui->groupBox_meshing, SIGNAL(toggled(bool)), this, SIGNAL(updateReconstructionFlavor()));
+	connect(_ui->groupBox_meshing, SIGNAL(toggled(bool)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
