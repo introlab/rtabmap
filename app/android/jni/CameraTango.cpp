@@ -98,6 +98,7 @@ CameraTango::CameraTango(int decimation, bool autoExposure) :
 		Camera(0),
 		tango_config_(0),
 		firstFrame_(true),
+		stampEpochOffset_(0.0),
 		decimation_(decimation),
 		autoExposure_(autoExposure),
 		cloudStamp_(0),
@@ -337,45 +338,53 @@ void CameraTango::close()
 
 void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
 {
-	if(this->isRunning())
+	if(this->isRunning() && !cloud.empty())
 	{
+		//LOGD("Depth received! %fs (%d points)", timestamp, cloud.cols);
+
 		UASSERT(cloud.type() == CV_32FC4);
 		boost::mutex::scoped_lock  lock(dataMutex_);
 
-		bool notify = cloud_.empty();
-		cloud_ = cloud.clone();
-		cloudStamp_ = timestamp;
-		LOGD("Depth received! (%d points)", cloud.cols);
-		if(!tangoColor_.empty() && notify)
+		// From post: http://stackoverflow.com/questions/29236110/timing-issues-with-tango-image-frames
+		// "In the current version of Project Tango Tablet RGB IR camera
+		//  is used for both depth and color images and it can only do one
+		//  or the other for each frame. So in the stream we get 4 RGB frames
+		//  followed by 1 Depth frame resulting in the pattern you observed. This
+		//  is more of a hardware limitation."
+		//
+		//  So, synchronize with the last RGB frame before the Depth is acquired
+		if(!tangoColor_.empty())
 		{
-			LOGD("Cloud: Release semaphore");
-			dataReady_.release();
+			double dt = fabs(timestamp - tangoColorStamp_);
+
+			//LOGD("Depth: %f vs %f = %f", tangoColorStamp_, timestamp, dt);
+
+			if(dt >= 0.0 && dt < 0.5)
+			{
+				bool notify = cloud_.empty();
+				cloud_ = cloud.clone();
+				cloudStamp_ = timestamp;
+				if(notify)
+				{
+					//LOGD("Cloud: Release semaphore");
+					dataReady_.release();
+				}
+			}
 		}
 	}
 }
 
 void CameraTango::rgbReceived(const cv::Mat & tangoImage, int type, double timestamp)
 {
-	if(this->isRunning())
+	if(this->isRunning() && !tangoImage.empty())
 	{
+		//LOGD("RGB received! %fs", timestamp);
+
 		boost::mutex::scoped_lock  lock(dataMutex_);
 
-		if(!cloud_.empty())
-		{
-			if(!tangoImage.empty())
-			{
-				bool notify = tangoColor_.empty();
-				tangoColor_ = tangoImage.clone();
-				tangoColorStamp_ = timestamp;
-				tangoColorType_ = type;
-				LOGD("RGB received!");
-				if(!cloud_.empty() && notify)
-				{
-					LOGD("RGB: Release semaphore");
-					dataReady_.release();
-				}
-			}
-		}
+		tangoColor_ = tangoImage.clone();
+		tangoColorStamp_ = timestamp;
+		tangoColorType_ = type;
 	}
 }
 
@@ -458,7 +467,7 @@ rtabmap::Transform CameraTango::getPoseAtTimestamp(double timestamp)
 
 SensorData CameraTango::captureImage(CameraInfo * info)
 {
-	LOGI("Capturing image...");
+	//LOGI("Capturing image...");
 
 	SensorData data;
 	if(!dataReady_.acquire(1, 2000))
@@ -567,7 +576,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 		{
 			// The Color Camera frame at timestamp t0 with respect to Depth
 			// Camera frame at timestamp t1.
-			LOGI("colorToDepth=%s", colorToDepth.prettyPrint().c_str());
+			//LOGD("colorToDepth=%s", colorToDepth.prettyPrint().c_str());
 
 			int pixelsSet = 0;
 			depth = cv::Mat::zeros(model_.imageHeight()/8, model_.imageWidth()/8, CV_16UC1); // mm
@@ -607,7 +616,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			{
 				scan = cv::Mat(1, oi, CV_32FC3, scanData.data()).clone();
 			}
-			LOGI("pixels depth set= %d", pixelsSet);
+			//LOGD("pixels depth set= %d", pixelsSet);
 		}
 		else
 		{
@@ -620,15 +629,15 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 			Transform poseDevice = getPoseAtTimestamp(rgbStamp);
 
-			LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
-			LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
-			LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
+			//LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
+			//LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
+			//LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
 
 			//Rotate in RTAB-Map's coordinate
 			Transform odom = rtabmap_world_T_tango_world * poseDevice * tango_device_T_rtabmap_device;
 
-			LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
-			LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
+			//LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
+			//LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
 
 			data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, model.localTransform()), rgb, depth, model, this->getNextSeqID(), rgbStamp);
 			data.setGroundTruth(odom);
@@ -661,6 +670,12 @@ void CameraTango::mainLoop()
 		{
 			rtabmap::Transform pose = data.groundTruth();
 			data.setGroundTruth(Transform());
+			// convert stamp to epoch
+			if(firstFrame_)
+			{
+				stampEpochOffset_ = UTimer::now()-data.stamp();
+			}
+			data.setStamp(stampEpochOffset_ + data.stamp());
 			LOGI("Publish odometry message (variance=%f)", firstFrame_?9999:0.0001);
 			this->post(new OdometryEvent(data, pose, firstFrame_?9999:0.0001, firstFrame_?9999:0.0001));
 			firstFrame_ = false;

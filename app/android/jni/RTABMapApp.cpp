@@ -191,6 +191,7 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 	if(camera_)
 	{
 	  delete camera_;
+	  camera_ = 0;
 	}
 	if(rtabmapThread_)
 	{
@@ -407,6 +408,8 @@ bool RTABMapApp::smoothMesh(int id, Mesh & mesh)
 // OpenGL thread
 int RTABMapApp::Render()
 {
+	UASSERT(camera_!=0 && rtabmap_!=0);
+
 	UTimer fpsTime;
 	boost::mutex::scoped_lock  lock(renderingMutex_);
 
@@ -983,10 +986,6 @@ void RTABMapApp::setLocalizationMode(bool enabled)
 }
 void RTABMapApp::setTrajectoryMode(bool enabled)
 {
-	if(trajectoryMode_ != enabled)
-	{
-		main_scene_.SetCameraType(enabled?tango_gl::GestureCamera::kTopDown:tango_gl::GestureCamera::kThirdPersonFollow);
-	}
 	trajectoryMode_ = enabled;
 	this->post(new rtabmap::ParamEvent(rtabmap::Parameters::kMemBinDataKept(), uBool2Str(!trajectoryMode_)));
 }
@@ -994,6 +993,7 @@ void RTABMapApp::setTrajectoryMode(bool enabled)
 void RTABMapApp::setGraphOptimization(bool enabled)
 {
 	graphOptimization_ = enabled;
+	UASSERT(camera_ != 0 && rtabmap_!=0 && rtabmap_->getMemory()!=0);
 	if(!camera_->isRunning() && rtabmap_->getMemory()->getLastWorkingSignature()!=0)
 	{
 		std::map<int, rtabmap::Transform> poses;

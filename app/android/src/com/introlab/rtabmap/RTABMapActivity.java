@@ -1013,6 +1013,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		{
 			item.setChecked(!item.isChecked());
 			RTABMapLib.setTrajectoryMode(item.isChecked());
+			setCamera(item.isChecked()?2:1);
 		}
 		else if(itemId == R.id.graph_optimization)
 		{

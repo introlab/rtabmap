@@ -100,6 +100,7 @@ private:
 	void * tango_config_;
 	bool firstFrame_;
 	UTimer cameraStartedTime_;
+	double stampEpochOffset_;
 	int decimation_;
 	bool autoExposure_;
 	cv::Mat cloud_;
