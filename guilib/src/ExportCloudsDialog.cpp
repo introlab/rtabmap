@@ -683,7 +683,7 @@ void ExportCloudsDialog::viewClouds(
 					for(unsigned int i=0; i<mesh->tex_polygons[t].size(); ++i)
 					{
 						pcl::Vertices & vertices = mesh->tex_polygons[t][i];
-						for(int j=0; j<vertices.vertices.size(); ++j)
+						for(unsigned int j=0; j<vertices.vertices.size(); ++j)
 						{
 							UASSERT(oi < cloud->size());
 							UASSERT(vertices.vertices[j] < originalCloud->size());
