@@ -134,16 +134,20 @@ public:
 			const pcl::PolygonMesh::Ptr & mesh,
 			const Transform & pose = Transform::getIdentity());
 
+	// Only one texture per mesh is supported!
 	bool addCloudTextureMesh(
 			const std::string & id,
 			const pcl::TextureMesh::Ptr & textureMesh,
+			const cv::Mat & texture,
 			const Transform & pose = Transform::getIdentity());
 
 	bool addOctomap(const OctoMap * octomap, unsigned int treeDepth = 0);
 	void removeOctomap();
 
+	// Only one texture per mesh is supported!
 	bool addTextureMesh (
 		   const pcl::TextureMesh &mesh,
+		   const cv::Mat & texture, 
 		   const std::string &id = "texture",
 		   int viewport = 0);
 	bool addOccupancyGridMap(
@@ -269,8 +273,6 @@ public:
 	void setGridCellCount(unsigned int count);
 	void setGridCellSize(float size);
 
-	void setWorkingDirectory(const QString & path) {_workingDirectory = path;}
-
 public slots:
 	void setDefaultBackgroundColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
@@ -335,7 +337,6 @@ private:
     Transform _lastPose;
     std::list<std::string> _gridLines;
     QSet<Qt::Key> _keysPressed;
-    QString _workingDirectory;
     QColor _defaultBgColor;
     QColor _currentBgColor;
     bool _frontfaceCulling;

@@ -59,6 +59,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkPNGReader.h>
 #include <vtkTIFFReader.h>
 #include <vtkOpenGLRenderWindow.h>
+#include <opencv/vtkImageMatSource.h>
 
 #ifdef RTABMAP_OCTOMAP
 #include <rtabmap/core/OctoMap.h>
@@ -138,7 +139,6 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_gridCellSize(1),
 		_lastCameraOrientation(0,0,0),
 		_lastCameraPose(0,0,0),
-		_workingDirectory("."),
 		_defaultBgColor(Qt::black),
 		_currentBgColor(Qt::black),
 		_frontfaceCulling(false),
@@ -638,6 +638,7 @@ bool CloudViewer::addCloudMesh(
 bool CloudViewer::addCloudTextureMesh(
 	const std::string & id,
 	const pcl::TextureMesh::Ptr & textureMesh,
+	const cv::Mat & texture,
 	const Transform & pose)
 {
 	if(_addedClouds.contains(id))
@@ -646,7 +647,7 @@ bool CloudViewer::addCloudTextureMesh(
 	}
 
 	UDEBUG("Adding %s", id.c_str());
-	if(this->addTextureMesh(*textureMesh, id))
+	if(this->addTextureMesh(*textureMesh, texture, id))
 	{
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
@@ -769,133 +770,13 @@ void CloudViewer::removeOctomap()
 #endif
 }
 
-// Copied from PCL 1.8
-int textureFromTexMaterial (const pcl::TexMaterial& tex_mat,
-                            vtkTexture* vtk_tex)
-{
-  if (tex_mat.tex_file == "")
-  {
-    PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] No texture file given for material %s!\n",
-               tex_mat.tex_name.c_str ());
-    return (-1);
-  }
-
-  boost::filesystem::path full_path (tex_mat.tex_file.c_str ());
-  if (!boost::filesystem::exists (full_path))
-  {
-    boost::filesystem::path parent_dir = full_path.parent_path ();
-    std::string upper_filename = tex_mat.tex_file;
-    boost::to_upper (upper_filename);
-    std::string real_name = "";
-
-    try
-    {
-      if (!boost::filesystem::exists (parent_dir))
-      {
-        PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Parent directory '%s' doesn't exist!\n",
-                   parent_dir.string ().c_str ());
-        return (-1);
-      }
-
-      if (!boost::filesystem::is_directory (parent_dir))
-      {
-        PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Parent '%s' is not a directory !\n",
-                   parent_dir.string ().c_str ());
-        return (-1);
-      }
-
-      typedef std::vector<boost::filesystem::path> paths_vector;
-      paths_vector paths;
-      std::copy (boost::filesystem::directory_iterator (parent_dir),
-                 boost::filesystem::directory_iterator (),
-                 back_inserter (paths));
-
-      for (paths_vector::const_iterator it = paths.begin (); it != paths.end (); ++it)
-      {
-        if (boost::filesystem::is_regular_file (*it))
-        {
-          std::string name = it->string ();
-          boost::to_upper (name);
-          if (name == upper_filename)
-          {
-            real_name = it->string ();
-            break;
-          }
-        }
-      }
-      // Check texture file existence
-      if (real_name == "")
-      {
-        PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Can not find texture file %s!\n",
-                   tex_mat.tex_file.c_str ());
-        return (-1);
-      }
-    }
-    catch (const boost::filesystem::filesystem_error& ex)
-    {
-
-      PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Error %s when looking for file %s\n!",
-                 ex.what (), tex_mat.tex_file.c_str ());
-      return (-1);
-    }
-
-    //Save the real path
-    full_path = real_name.c_str ();
-  }
-
-  std::string extension = full_path.extension ().string ();
-  //!!! nizar 20131206 : The list is far from being exhaustive I am afraid.
-  if ((extension == ".jpg") || (extension == ".JPG"))
-  {
-    vtkSmartPointer<vtkJPEGReader> jpeg_reader = vtkSmartPointer<vtkJPEGReader>::New ();
-    jpeg_reader->SetFileName (full_path.string ().c_str ());
-    jpeg_reader->Update ();
-    vtk_tex->SetInputConnection (jpeg_reader->GetOutputPort ());
-  }
-  else if ((extension == ".bmp") || (extension == ".BMP"))
-  {
-    vtkSmartPointer<vtkBMPReader> bmp_reader = vtkSmartPointer<vtkBMPReader>::New ();
-    bmp_reader->SetFileName (full_path.string ().c_str ());
-    bmp_reader->Update ();
-    vtk_tex->SetInputConnection (bmp_reader->GetOutputPort ());
-  }
-  else if ((extension == ".pnm") || (extension == ".PNM"))
-  {
-    vtkSmartPointer<vtkPNMReader> pnm_reader = vtkSmartPointer<vtkPNMReader>::New ();
-    pnm_reader->SetFileName (full_path.string ().c_str ());
-    pnm_reader->Update ();
-    vtk_tex->SetInputConnection (pnm_reader->GetOutputPort ());
-  }
-  else if ((extension == ".png") || (extension == ".PNG"))
-  {
-    vtkSmartPointer<vtkPNGReader> png_reader = vtkSmartPointer<vtkPNGReader>::New ();
-    png_reader->SetFileName (full_path.string ().c_str ());
-    png_reader->Update ();
-    vtk_tex->SetInputConnection (png_reader->GetOutputPort ());
-  }
-  else if ((extension == ".tiff") || (extension == ".TIFF"))
-  {
-    vtkSmartPointer<vtkTIFFReader> tiff_reader = vtkSmartPointer<vtkTIFFReader>::New ();
-    tiff_reader->SetFileName (full_path.string ().c_str ());
-    tiff_reader->Update ();
-    vtk_tex->SetInputConnection (tiff_reader->GetOutputPort ());
-  }
-  else
-  {
-    PCL_WARN ("[PCLVisualizer::textureFromTexMaterial] Unhandled image %s for material %s!\n",
-               full_path.c_str (), tex_mat.tex_name.c_str ());
-    return (-1);
-  }
-
-  return (0);
-}
-
 bool CloudViewer::addTextureMesh (
 	   const pcl::TextureMesh &mesh,
+	   const cv::Mat & image,
 	   const std::string &id,
 	   int viewport)
 {
-	// Copied from PCL 1.8, modified to ignore vertex color
+	// Copied from PCL 1.8, modified to ignore vertex color and accept only one material (loaded from memory instead of file)
 
   pcl::visualization::CloudActorMap::iterator am_it = _visualizer->getCloudActorMap()->find (id);
   if (am_it != _visualizer->getCloudActorMap()->end ())
@@ -910,6 +791,11 @@ bool CloudViewer::addTextureMesh (
   {
     PCL_ERROR("[PCLVisualizer::addTextureMesh] No textures found!\n");
     return (false);
+  }
+  else if (mesh.tex_materials.size() > 1)
+  {
+	  PCL_ERROR("[PCLVisualizer::addTextureMesh] only one material per mesh is supported!\n");
+	  return (false);
   }
   // polygons are mapped to texture materials
   if (mesh.tex_materials.size () != mesh.tex_polygons.size ())
@@ -951,31 +837,7 @@ bool CloudViewer::addTextureMesh (
   vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New ();
   bool has_color = false;
   vtkSmartPointer<vtkMatrix4x4> transformation = vtkSmartPointer<vtkMatrix4x4>::New ();
-  if (0)//(pcl::getFieldIndex(mesh.cloud, "rgba") != -1) ||
-      //(pcl::getFieldIndex(mesh.cloud, "rgb") != -1))
-  {
-    pcl::PointCloud<pcl::PointXYZRGB> cloud;
-    pcl::fromPCLPointCloud2(mesh.cloud, cloud);
-    if (cloud.points.size () == 0)
-    {
-      PCL_ERROR("[PCLVisualizer::addTextureMesh] Cloud is empty!\n");
-      return (false);
-    }
-    pcl::visualization::PCLVisualizer::convertToVtkMatrix (cloud.sensor_origin_, cloud.sensor_orientation_, transformation);
-    has_color = true;
-    colors->SetNumberOfComponents (3);
-    colors->SetName ("Colors");
-    poly_points->SetNumberOfPoints (cloud.size ());
-    for (std::size_t i = 0; i < cloud.points.size (); ++i)
-    {
-      const pcl::PointXYZRGB &p = cloud.points[i];
-      poly_points->InsertPoint (i, p.x, p.y, p.z);
-      const unsigned char color[3] = {p.r, p.g, p.b};
-      colors->InsertNextTupleValue(color);
-    }
-  }
-  else
-  {
+  
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ> ());
     pcl::fromPCLPointCloud2 (mesh.cloud, *cloud);
     // no points --> exit
@@ -991,7 +853,6 @@ bool CloudViewer::addTextureMesh (
       const pcl::PointXYZ &p = cloud->points[i];
       poly_points->InsertPoint (i, p.x, p.y, p.z);
     }
-  }
 
   //create polys from polyMesh.tex_polygons
   vtkSmartPointer<vtkCellArray> polys = vtkSmartPointer<vtkCellArray>::New ();
@@ -1023,68 +884,13 @@ bool CloudViewer::addTextureMesh (
   vtkTextureUnitManager* tex_manager = vtkOpenGLRenderWindow::SafeDownCast (_visualizer->getRenderWindow())->GetTextureUnitManager ();
   if (!tex_manager)
     return (false);
-  // Check if hardware support multi texture
-  int texture_units = tex_manager->GetNumberOfTextureUnits ();
-  if ((mesh.tex_materials.size () > 1) && (texture_units > 1))
-  {
-    if (texture_units < (int)mesh.tex_materials.size ())
-      PCL_WARN ("[PCLVisualizer::addTextureMesh] GPU texture units %d < mesh textures %d!\n",
-                texture_units, mesh.tex_materials.size ());
-    // Load textures
-    std::size_t last_tex_id = std::min (static_cast<int> (mesh.tex_materials.size ()), texture_units);
-    int tu = vtkProperty::VTK_TEXTURE_UNIT_0;
-    std::size_t tex_id = 0;
-    while (tex_id < last_tex_id)
-    {
-      vtkSmartPointer<vtkTexture> texture = vtkSmartPointer<vtkTexture>::New ();
-      if (textureFromTexMaterial (mesh.tex_materials[tex_id], texture))
-      {
-        PCL_WARN ("[PCLVisualizer::addTextureMesh] Failed to load texture %s, skipping!\n",
-                  mesh.tex_materials[tex_id].tex_name.c_str ());
-        continue;
-      }
-      // the first texture is in REPLACE mode others are in ADD mode
-      if (tex_id == 0)
-        texture->SetBlendingMode(vtkTexture::VTK_TEXTURE_BLENDING_MODE_REPLACE);
-      else
-        texture->SetBlendingMode(vtkTexture::VTK_TEXTURE_BLENDING_MODE_ADD);
-      // add a texture coordinates array per texture
-      vtkSmartPointer<vtkFloatArray> coordinates = vtkSmartPointer<vtkFloatArray>::New ();
-      coordinates->SetNumberOfComponents (2);
-      std::stringstream ss; ss << "TCoords" << tex_id;
-      std::string this_coordinates_name = ss.str ();
-      coordinates->SetName (this_coordinates_name.c_str ());
-
-      for (std::size_t t = 0 ; t < mesh.tex_coordinates.size (); ++t)
-      {
-        if (t == tex_id)
-          for (std::size_t tc = 0; tc < mesh.tex_coordinates[t].size (); ++tc)
-            coordinates->InsertNextTuple2 ((double)mesh.tex_coordinates[t][tc][0],
-            							   (double)mesh.tex_coordinates[t][tc][1]);
-        else
-          for (std::size_t tc = 0; tc < mesh.tex_coordinates[t].size (); ++tc)
-            coordinates->InsertNextTuple2 (-1.0, -1.0);
-      }
-      mapper->MapDataArrayToMultiTextureAttribute(tu,
-                                                  this_coordinates_name.c_str (),
-                                                  vtkDataObject::FIELD_ASSOCIATION_POINTS);
-      polydata->GetPointData ()->AddArray (coordinates);
-      actor->GetProperty ()->SetTexture(tu, texture);
-      ++tex_id;
-      ++tu;
-    }
-  } // end of multi texturing
-  else
-  {
-    if ((mesh.tex_materials.size () > 1) && (texture_units < 2))
-      PCL_WARN ("[PCLVisualizer::addTextureMesh] Your GPU doesn't support multi texturing. "
-                "Will use first one only!\n");
-
+ 
     vtkSmartPointer<vtkTexture> texture = vtkSmartPointer<vtkTexture>::New ();
     // fill vtkTexture from pcl::TexMaterial structure
-    if (textureFromTexMaterial (mesh.tex_materials[0], texture))
-      PCL_WARN ("[PCLVisualizer::addTextureMesh] Failed to create vtkTexture from %s!\n",
-                mesh.tex_materials[0].tex_name.c_str ());
+	vtkSmartPointer<vtkImageMatSource> cvImageToVtk = vtkSmartPointer<vtkImageMatSource>::New();
+	cvImageToVtk->SetImage(image);
+	cvImageToVtk->Update();
+	texture->SetInputConnection(cvImageToVtk->GetOutputPort());
 
     // set texture coordinates
     vtkSmartPointer<vtkFloatArray> coordinates = vtkSmartPointer<vtkFloatArray>::New ();
@@ -1099,7 +905,6 @@ bool CloudViewer::addTextureMesh (
     polydata->GetPointData ()->SetTCoords(coordinates);
     // apply texture
     actor->SetTexture (texture);
-  } // end of one texture
 
   // set mapper
   actor->SetMapper (mapper);
@@ -1175,10 +980,7 @@ bool CloudViewer::addOccupancyGridMap(
 
 		// default texture materials parameters
 		pcl::TexMaterial material;
-		// hack, can we read from memory?
-		std::string tmpPath = (_workingDirectory+"/.tmp_map.png").toStdString();
-		cv::imwrite(tmpPath, map8U);
-		material.tex_file = tmpPath;
+		material.tex_file = "";
 		mesh->tex_materials.push_back(material);
 
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
@@ -1192,11 +994,8 @@ bool CloudViewer::addOccupancyGridMap(
 		coordinates.push_back(Eigen::Vector2f(0,0));
 		mesh->tex_coordinates.push_back(coordinates);
 
-		this->addTextureMesh(*mesh, "map");
+		this->addTextureMesh(*mesh, map8U, "map");
 		setCloudOpacity("map", opacity);
-
-		//removed tmp texture file
-		QFile::remove(tmpPath.c_str());
 	}
 	return true;
 }

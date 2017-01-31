@@ -221,6 +221,7 @@ IF(GTSAM_FOUND)
 			${INCLUDE_DIRS} 
 		)
 	ENDIF()
+	add_definitions("-DGTSAM_IMPORT_STATIC")
 	SET(LIBRARIES
 		${LIBRARIES}
 		gtsam

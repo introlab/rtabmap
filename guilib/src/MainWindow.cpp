@@ -519,7 +519,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->setNewFigureMaxItems(50);
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-	_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_cloudViewer->setBackfaceCulling(true, false);
 	_preferencesDialog->loadWidgetState(_cloudViewer);
 
@@ -1017,25 +1016,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 								mesh_material.tex_illum = 1;
 
 								mesh_material.tex_name = "material_odom";
-
-								QDir dir(_preferencesDialog->getWorkingDirectory());
-								ExportCloudsDialog::removeDirRecursively(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
-								dir.mkdir("tmp_textures");
-
-								std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
-								mesh_material.tex_file = uFormat("%s/%s.png", tmpDirectory.c_str(), "texture_odom");
-								if(!cv::imwrite(mesh_material.tex_file, odom.data().imageRaw()))
-								{
-									UERROR("Cannot save texture of image odom");
-								}
-								else
-								{
-									UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
-								}
-
+								mesh_material.tex_file = "";
 								textureMesh->tex_materials.push_back(mesh_material);
 
-								if(!_cloudViewer->addCloudTextureMesh("cloudOdom", textureMesh, _odometryCorrection))
+								if(!_cloudViewer->addCloudTextureMesh("cloudOdom", textureMesh, odom.data().imageRaw(), _odometryCorrection))
 								{
 									UERROR("Adding cloudOdom to viewer failed!");
 								}
@@ -2613,28 +2597,15 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 						tex_name << "material_" << nodeId;
 						tex_name >> mesh_material.tex_name;
 
-						QDir dir(_preferencesDialog->getWorkingDirectory());
-						ExportCloudsDialog::removeDirRecursively(_preferencesDialog->getWorkingDirectory()+QDir::separator()+"tmp_textures");
-						dir.mkdir("tmp_textures");
-
-						std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
-						mesh_material.tex_file = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", nodeId);
+						mesh_material.tex_file = "";
 						if(_preferencesDialog->gainCompensation() && compensator.getIndex(0) >= 0)
 						{
 							compensator.apply(0, image);
 						}
-						if(!cv::imwrite(mesh_material.tex_file, image))
-						{
-							UERROR("Cannot save texture of image %d", nodeId);
-						}
-						else
-						{
-							UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
-						}
 
 						textureMesh->tex_materials.push_back(mesh_material);
 
-						if(!_cloudViewer->addCloudTextureMesh(cloudName, textureMesh, pose))
+						if(!_cloudViewer->addCloudTextureMesh(cloudName, textureMesh, image, pose))
 						{
 							UERROR("Adding texture mesh %d to viewer failed!", nodeId);
 						}
@@ -3528,7 +3499,6 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 		{
 			_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 			_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
-			_cloudViewer->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 		}
 
 		if(_state != kIdle && parametersModified.size())
