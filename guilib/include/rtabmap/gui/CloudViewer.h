@@ -49,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <set>
 
 #include <pcl/visualization/mouse_event.h>
+#include <pcl/visualization/point_picking_event.h>
 #include <pcl/PCLPointCloud2.h>
 
 namespace pcl {

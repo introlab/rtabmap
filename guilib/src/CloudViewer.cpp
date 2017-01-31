@@ -59,6 +59,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkPNGReader.h>
 #include <vtkTIFFReader.h>
 #include <vtkOpenGLRenderWindow.h>
+#include <vtkPointPicker.h>
 #include <opencv/vtkImageMatSource.h>
 
 #ifdef RTABMAP_OCTOMAP
@@ -107,6 +108,69 @@ public:
 
 		//rwi->Render();
 	}
+
+protected:
+	virtual void OnLeftButtonDown()
+	{
+		// http://www.vtk.org/Wiki/VTK/Examples/Cxx/Interaction/DoubleClick
+		// http://www.vtk.org/Wiki/VTK/Examples/Cxx/Interaction/PointPicker
+
+		this->NumberOfClicks++;
+		int pickPosition[2];
+		this->GetInteractor()->GetEventPosition(pickPosition);
+
+		int xdist = pickPosition[0] - this->PreviousPosition[0];
+		int ydist = pickPosition[1] - this->PreviousPosition[1];
+
+		this->PreviousPosition[0] = pickPosition[0];
+		this->PreviousPosition[1] = pickPosition[1];
+
+		int moveDistance = (int)sqrt((double)(xdist*xdist + ydist*ydist));
+
+		// Reset numClicks - If mouse moved further than resetPixelDistance
+		if(moveDistance > this->ResetPixelDistance)
+		{
+			this->NumberOfClicks = 1;
+		}
+
+		if(this->NumberOfClicks == 2)
+		{
+			this->NumberOfClicks = 0;
+
+			this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
+					0,  // always zero.
+					this->Interactor->GetRenderWindow()->GetRenderers()->GetFirstRenderer());
+			double picked[3];
+			this->Interactor->GetPicker()->GetPickPosition(picked);
+			UINFO("Double clicked! Picked value: %f %f %f", picked[0], picked[1], picked[2]);
+
+			vtkCamera *camera = this->CurrentRenderer->GetActiveCamera();
+			double position[3];
+			double focal[3];
+			camera->GetPosition(position[0], position[1], position[2]);
+			camera->GetFocalPoint(focal[0], focal[1], focal[2]);
+			camera->SetPosition (position[0] + (picked[0]-focal[0]), position[1] + (picked[1]-focal[1]), position[2] + (picked[2]-focal[2]));
+			camera->SetFocalPoint (picked[0], picked[1], picked[2]);
+
+			if (this->AutoAdjustCameraClippingRange)
+			{
+				this->CurrentRenderer->ResetCameraClippingRange();
+			}
+
+			if (this->Interactor->GetLightFollowCamera())
+			{
+				this->CurrentRenderer->UpdateLightsGeometryToFollowCamera();
+			}
+		}
+
+		// Forward events
+		PCLVisualizerInteractorStyle::OnLeftButtonDown();
+	}
+
+private:
+	unsigned int NumberOfClicks;
+	int PreviousPosition[2];
+	int ResetPixelDistance;
 };
 
 
@@ -153,7 +217,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		argc, 
 		0, 
 		"PCLVisualizer", 
-		vtkSmartPointer<MyInteractorStyle>(new MyInteractorStyle()), 
+		vtkSmartPointer<MyInteractorStyle>(new MyInteractorStyle()),
 		false);
 
 	_visualizer->setShowFPS(false);
@@ -164,6 +228,12 @@ CloudViewer::CloudViewer(QWidget *parent) :
 	// the "Invalid drawable" warning when the view is not visible.
 	//_visualizer->setupInteractor(this->GetInteractor(), this->GetRenderWindow());
 	this->GetInteractor()->SetInteractorStyle (_visualizer->getInteractorStyle());
+	// setup a simple point picker
+	vtkSmartPointer<vtkPointPicker> pp = vtkSmartPointer<vtkPointPicker>::New ();
+	UDEBUG("pick tolerance=%f", pp->GetTolerance());
+	pp->SetTolerance (pp->GetTolerance()/2.0);
+	this->GetInteractor()->SetPicker (pp);
+
 	setRenderingRate(_renderingRate);
 
 	_visualizer->setCameraPosition(
