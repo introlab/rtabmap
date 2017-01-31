@@ -104,7 +104,8 @@ public:
 		kFeatureGfttFreak=5,
 		kFeatureGfttBrief=6,
 		kFeatureBrisk=7,
-		kFeatureGfttOrb=8}; //new 0.10.11
+		kFeatureGfttOrb=8,  //new 0.10.11
+		kFeatureFreak=9};   //new 0.11.14
 
 	static Feature2D * create(const ParametersMap & parameters = ParametersMap());
 	static Feature2D * create(Feature2D::Type type, const ParametersMap & parameters = ParametersMap()); // for convenience
@@ -429,6 +430,29 @@ private:
 	float patternScale_;
 
 	cv::Ptr<CV_BRISK> brisk_;
+};
+
+//FREAK
+class RTABMAP_EXP FREAK : public Feature2D
+{
+public:
+	FREAK(const ParametersMap & parameters = ParametersMap());
+	virtual ~FREAK();
+
+	virtual void parseParameters(const ParametersMap & parameters);
+	virtual Feature2D::Type getType() const { return kFeatureFreak; }
+
+private:
+	virtual std::vector<cv::KeyPoint> generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask = cv::Mat()) const;
+	virtual cv::Mat generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const;
+
+private:
+	bool orientationNormalized_;
+	bool scaleNormalized_;
+	float patternScale_;
+	int nOctaves_;
+
+	cv::Ptr<CV_FREAK> _freak;
 };
 
 

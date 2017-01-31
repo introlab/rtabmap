@@ -1418,4 +1418,73 @@ cv::Mat BRISK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Ke
 	return descriptors;
 }
 
+
+//////////////////////////
+//FREAK
+//////////////////////////
+FREAK::FREAK(const ParametersMap & parameters) :
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves())
+{
+	parseParameters(parameters);
+}
+
+FREAK::~FREAK()
+{
+}
+
+void FREAK::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+#if CV_MAJOR_VERSION < 3
+	_freak = cv::Ptr<CV_FREAK>(new CV_FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_));
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak = CV_FREAK::create(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
+}
+
+std::vector<cv::KeyPoint> FREAK::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	std::vector<cv::KeyPoint> keypoints;
+#ifdef HAVE_OPENCV_XFEATURES2D
+	cv::Mat imgRoi(image, roi);
+	cv::Mat maskRoi;
+	if (!mask.empty())
+	{
+		maskRoi = cv::Mat(mask, roi);
+	}
+	_freak->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
+#else
+	UWARN("RTAB-Map is not built with OpenCV3 xfeatures2d module so Freak (for keypoint detection) cannot be used!");
+#endif
+	return keypoints;
+}
+
+cv::Mat FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+#if CV_MAJOR_VERSION < 3
+	_freak->compute(image, keypoints, descriptors);
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak->compute(image, keypoints, descriptors);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
+	return descriptors;
+}
+
 }

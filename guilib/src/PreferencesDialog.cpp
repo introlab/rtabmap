@@ -176,8 +176,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 #endif
 
-#if CV_MAJOR_VERSION == 3
+#if CV_MAJOR_VERSION >= 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
+#else
+	_ui->comboBox_detector_strategy->setItemData(9, 0, Qt::UserRole - 1); // No FREAK (detector+descriptor version)
+	_ui->reextract_type->setItemData(9, 0, Qt::UserRole - 1); // No FREAK (detector+descriptor version)
 #endif
 
 	_ui->comboBox_cameraImages_odomFormat->setItemData(4, 0, Qt::UserRole - 1);
@@ -2250,6 +2253,23 @@ bool PreferencesDialog::validateForm()
 				   "with the nonfree module from OpenCV. Fast/Brief is set instead for the re-extraction "
 				   "of features on loop closure."));
 		_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureFastBrief);
+	}
+#endif
+
+#if CV_MAJOR_VERSION < 3
+	if (_ui->comboBox_detector_strategy->currentIndex() == Feature2D::kFeatureFreak)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+			tr("Selected feature type (FREAK detector) is not available on OpenCV2. ORB is set instead "
+				"for the bag-of-words dictionary."));
+		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
+	}
+	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureFreak)
+	{
+		QMessageBox::warning(this, tr("Parameter warning"),
+			tr("Selected feature type (FREAK detector) is not available on OpenCV2. ORB is set instead "
+				"for the re-extraction of features on loop closure."));
+				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
 	}
 #endif
 
