@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/surface/mls.h>
-#include <pcl/surface/texture_mapping.h>
+#include <pcl18/surface/texture_mapping.h>
 #include <pcl/features/integral_image_normal.h>
 
 #ifndef DISABLE_VTK
@@ -607,7 +607,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
-		int kNormalSearch)
+		float maxDistance)
 {
 	UASSERT(mesh->polygons.size());
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
@@ -663,6 +663,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 
 	// Texture by projection
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
+	tm.setMaxDistance(maxDistance);
 	tm.textureMeshwithMultipleCameras(*textureMesh, cameras);
 
 	// compute normals for the mesh if not already here

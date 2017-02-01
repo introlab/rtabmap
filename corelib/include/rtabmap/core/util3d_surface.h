@@ -136,7 +136,7 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
-		int kNormalSearch = 20); // if mesh doesn't have normals, compute them with k neighbors
+		float maxDistance = 0.0f); // max camera distance to polygon to apply texture
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

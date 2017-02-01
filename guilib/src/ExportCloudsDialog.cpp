@@ -140,6 +140,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->comboBox_meshingTextureFormat, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_meshingTextureSize, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_meshingTextureMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
 	connect(_ui->checkBox_poisson_outputPolygons, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_poisson_manifold, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -252,6 +253,8 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_texture", _ui->checkBox_textureMapping->isChecked());
 	settings.setValue("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex());
 	settings.setValue("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex());
+	settings.setValue("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value());
+
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
 	settings.setValue("mesh_quad", _ui->checkBox_mesh_quad->isChecked());
@@ -339,6 +342,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_textureMapping->setChecked(settings.value("mesh_texture", _ui->checkBox_textureMapping->isChecked()).toBool());
 	_ui->comboBox_meshingTextureFormat->setCurrentIndex(settings.value("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex()).toInt());
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(settings.value("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex()).toInt());
+	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(settings.value("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value()).toDouble());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
@@ -423,6 +427,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->checkBox_textureMapping->setChecked(false);
 	_ui->comboBox_meshingTextureFormat->setCurrentIndex(0);
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(4); // 2048
+	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
@@ -1649,7 +1654,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								iter->second,
 								cameraPoses,
 								cameraModels,
-								_ui->spinBox_normalKSearch->value());
+								_ui->doubleSpinBox_meshingTextureMaxDistance->value());
 
 						// Remove occluded polygons (polygons with no texture)
 						if(_ui->checkBox_cleanMesh->isChecked() &&
@@ -2484,7 +2489,8 @@ void ExportCloudsDialog::saveTextureMeshes(
 						{
 							fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
 						}
-						if(!QFileInfo(fullPath).exists())
+						UDEBUG("Saving %s...", fullPath.toStdString().c_str());
+						if(singleTexture || !QFileInfo(fullPath).exists())
 						{
 							if(uIsInteger(mesh->tex_materials[i].tex_file, false))
 							{
@@ -2525,6 +2531,10 @@ void ExportCloudsDialog::saveTextureMeshes(
 							{
 								UWARN("Ignored texture %s (no image size set yet)", mesh->tex_materials[i].tex_file.c_str());
 							}
+						}
+						else
+						{
+							UWARN("File %s already exists!", fullPath.toStdString().c_str());
 						}
 						// relative path
 						if(singleTexture)
