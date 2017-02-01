@@ -2490,8 +2490,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 						QString fullPath;
 						if(singleTexture)
 						{
-							mesh->tex_materials[i].tex_file = QFileInfo(path).baseName().toStdString();
-							fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
+							fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+_ui->comboBox_meshingTextureFormat->currentText();
 						}
 						else
 						{
@@ -2547,7 +2546,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 						// relative path
 						if(singleTexture)
 						{
-							mesh->tex_materials[i].tex_file=(QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText()).toStdString();
+							mesh->tex_materials[i].tex_file=QFileInfo(path).baseName().toStdString()+_ui->comboBox_meshingTextureFormat->currentText().toStdString();
 						}
 						else
 						{
