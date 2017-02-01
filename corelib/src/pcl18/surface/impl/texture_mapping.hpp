@@ -1131,11 +1131,23 @@ pcl::TextureMapping<PointInT>::checkPointInsideTriangle(const pcl::PointXY &p1, 
 template<typename PointInT> inline bool
 pcl::TextureMapping<PointInT>::isFaceProjected (const Camera &camera, const PointInT &p1, const PointInT &p2, const PointInT &p3, pcl::PointXY &proj1, pcl::PointXY &proj2, pcl::PointXY &proj3)
 {
-  return (getPointUVCoordinates(p1, camera, proj1)
-      &&
-      getPointUVCoordinates(p2, camera, proj2)
-      &&
-      getPointUVCoordinates(p3, camera, proj3)
+	// check if the polygon is facing the camera, assuming counterclockwise normal
+	Eigen::Vector3f v0(
+			p2.x - p1.x,
+			p2.y - p1.y,
+			p2.z - p1.z);
+	Eigen::Vector3f v1(
+			p3.x - p1.x,
+			p3.y - p1.y,
+			p3.z - p1.z);
+	Eigen::Vector3f normal = v0.cross(v1);
+
+  return normal.dot(Eigen::Vector3f(0.0f,0.0f,-1.0f)) > 0.0f && // toward the camera
+		  (getPointUVCoordinates(p1, camera, proj1)
+		  &&
+		  getPointUVCoordinates(p2, camera, proj2)
+		  &&
+		  getPointUVCoordinates(p3, camera, proj3)
   );
 }
 

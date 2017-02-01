@@ -668,33 +668,39 @@ void ExportCloudsDialog::viewClouds(
 				//  be duplicated.
 				for (unsigned int t = 0; t < mesh->tex_coordinates.size(); ++t)
 				{
-					UASSERT(mesh->tex_polygons[t].size());
-
-					pcl::PointCloud<pcl::PointXYZ>::Ptr originalCloud(new pcl::PointCloud<pcl::PointXYZ>);
-					pcl::fromPCLPointCloud2(mesh->cloud, *originalCloud);
-
-					// make a cloud with as many points than polygon vertices
-					unsigned int nPoints = mesh->tex_coordinates[t].size();
-					UASSERT(nPoints == mesh->tex_polygons[t].size()*mesh->tex_polygons[t][0].vertices.size()); // assuming polygon size is constant!
-
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-					cloud->resize(nPoints);
-
-					unsigned int oi = 0;
-					for (unsigned int i = 0; i < mesh->tex_polygons[t].size(); ++i)
+					if(mesh->tex_polygons[t].size())
 					{
-						pcl::Vertices & vertices = mesh->tex_polygons[t][i];
 
-						for(unsigned int j=0; j<vertices.vertices.size(); ++j)
+						pcl::PointCloud<pcl::PointXYZ>::Ptr originalCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::fromPCLPointCloud2(mesh->cloud, *originalCloud);
+
+						// make a cloud with as many points than polygon vertices
+						unsigned int nPoints = mesh->tex_coordinates[t].size();
+						UASSERT(nPoints == mesh->tex_polygons[t].size()*mesh->tex_polygons[t][0].vertices.size()); // assuming polygon size is constant!
+
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+						cloud->resize(nPoints);
+
+						unsigned int oi = 0;
+						for (unsigned int i = 0; i < mesh->tex_polygons[t].size(); ++i)
 						{
-							UASSERT(oi < cloud->size());
-							UASSERT(vertices.vertices[j] < originalCloud->size());
-							cloud->at(oi) = originalCloud->at(vertices.vertices[j]);
-							vertices.vertices[j] = oi; // new vertice index
-							++oi;
+							pcl::Vertices & vertices = mesh->tex_polygons[t][i];
+
+							for(unsigned int j=0; j<vertices.vertices.size(); ++j)
+							{
+								UASSERT(oi < cloud->size());
+								UASSERT(vertices.vertices[j] < originalCloud->size());
+								cloud->at(oi) = originalCloud->at(vertices.vertices[j]);
+								vertices.vertices[j] = oi; // new vertice index
+								++oi;
+							}
 						}
+						pcl::toPCLPointCloud2(*cloud, mesh->cloud);
 					}
-					pcl::toPCLPointCloud2(*cloud, mesh->cloud);
+					else
+					{
+						UWARN("No polygons for texture %d of mesh %d?!", t, iter->first);
+					}
 				}
 
 				if (globalTexture.empty())
@@ -898,6 +904,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				_progressDialog->appendText(tr("Gain compensation of %1 clouds...").arg(clouds.size()));
 			}
 			QApplication::processEvents();
+			uSleep(100);
 			QApplication::processEvents();
 
 			if(!_ui->checkBox_gainLinkedLocationsOnly->isChecked())
@@ -1011,6 +1018,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
 					"[search radius=%1m voxel=%2m]").arg(_ui->doubleSpinBox_mlsRadius->value()).arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
 			QApplication::processEvents();
+			uSleep(100);
 			QApplication::processEvents();
 
 			// Adjust view points with local transforms
