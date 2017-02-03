@@ -1187,7 +1187,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (pcl::TextureMesh
 				vertexToPolygons);
 		std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
 				neighbors,
-				100);
+				10);
 		std::set<int> polygonsKept;
 		for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
 		{
