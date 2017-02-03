@@ -149,8 +149,9 @@ protected:
 			double focal[3];
 			camera->GetPosition(position[0], position[1], position[2]);
 			camera->GetFocalPoint(focal[0], focal[1], focal[2]);
-			camera->SetPosition (position[0] + (picked[0]-focal[0]), position[1] + (picked[1]-focal[1]), position[2] + (picked[2]-focal[2]));
+			//camera->SetPosition (position[0] + (picked[0]-focal[0]), position[1] + (picked[1]-focal[1]), position[2] + (picked[2]-focal[2]));
 			camera->SetFocalPoint (picked[0], picked[1], picked[2]);
+			camera->OrthogonalizeViewUp();
 
 			if (this->AutoAdjustCameraClippingRange)
 			{

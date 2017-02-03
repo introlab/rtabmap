@@ -664,7 +664,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	// Texture by projection
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
 	tm.setMaxDistance(maxDistance);
-	tm.textureMeshwithMultipleCameras(*textureMesh, cameras);
+	tm.textureMeshwithMultipleCameras2(*textureMesh, cameras);
 
 	// compute normals for the mesh if not already here
 	bool hasNormals = false;

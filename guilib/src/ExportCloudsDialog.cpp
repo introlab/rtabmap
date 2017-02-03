@@ -929,20 +929,25 @@ bool ExportCloudsDialog::getExportedClouds(
 				_compensator->feed(clouds, links);
 			}
 
-			_progressDialog->appendText(tr("Applying gain compensation..."));
-			for(std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::iterator jter=clouds.begin();jter!=clouds.end(); ++jter)
+			if(!(_ui->groupBox_meshing->isChecked() &&
+				 _ui->checkBox_textureMapping->isEnabled() &&
+				 _ui->checkBox_textureMapping->isChecked()))
 			{
-				if(jter!=clouds.end())
+				_progressDialog->appendText(tr("Applying gain compensation..."));
+				for(std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::iterator jter=clouds.begin();jter!=clouds.end(); ++jter)
 				{
-					double gain = _compensator->getGain(jter->first);;
-					_compensator->apply(jter->first, jter->second.first, jter->second.second);
-
-					_progressDialog->appendText(tr("Cloud %1 has gain %2").arg(jter->first).arg(gain));
-					_progressDialog->incrementStep();
-					QApplication::processEvents();
-					if(_canceled)
+					if(jter!=clouds.end())
 					{
-						return false;
+						double gain = _compensator->getGain(jter->first);;
+						_compensator->apply(jter->first, jter->second.first, jter->second.second);
+
+						_progressDialog->appendText(tr("Cloud %1 has gain %2").arg(jter->first).arg(gain));
+						_progressDialog->incrementStep();
+						QApplication::processEvents();
+						if(_canceled)
+						{
+							return false;
+						}
 					}
 				}
 			}

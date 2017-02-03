@@ -341,6 +341,9 @@ namespace pcl
       void 
       textureMeshwithMultipleCameras (pcl::TextureMesh &mesh, 
                                       const pcl::texture_mapping::CameraVector &cameras);
+      void
+      textureMeshwithMultipleCameras2 (pcl::TextureMesh &mesh,
+                                      const pcl::texture_mapping::CameraVector &cameras);
 
     protected:
       /** \brief mesh scale control. */
@@ -411,7 +414,7 @@ namespace pcl
       inline bool
       isFaceProjected (const Camera &camera, 
                        const PointInT &p1, const PointInT &p2, const PointInT &p3, 
-                       pcl::PointXY &proj1, pcl::PointXY &proj2, pcl::PointXY &proj3);
+                       pcl::PointXY &proj1, pcl::PointXY &proj2, pcl::PointXY &proj3, float & angle);
 
       /** \brief Returns True if a point lays within a triangle
         * \details see http://www.blackpawn.com/texts/pointinpoly/default.html

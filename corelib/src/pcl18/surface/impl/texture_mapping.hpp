@@ -1008,6 +1008,273 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras (pcl::TextureMesh 
 
 }
 
+class FaceInfo
+{
+public:
+	FaceInfo(float d,
+			const pcl::PointXY & uv1,
+			const pcl::PointXY & uv2,
+			const pcl::PointXY & uv3,
+			const pcl::PointXY & center) :
+				distance(d),
+				uv_coord1(uv1),
+				uv_coord2(uv2),
+				uv_coord3(uv3),
+				uv_center(center)
+	{}
+	float distance;
+	pcl::PointXY uv_coord1;
+	pcl::PointXY uv_coord2;
+	pcl::PointXY uv_coord3;
+	pcl::PointXY uv_center;
+};
+
+bool ptInTriangle(const pcl::PointXY & p0, const pcl::PointXY & p1, const pcl::PointXY & p2, const pcl::PointXY & p) {
+    float A = 1/2 * (-p1.y * p2.x + p0.y * (-p1.x + p2.x) + p0.x * (p1.y - p2.y) + p1.x * p2.y);
+    float sign = A < 0 ? -1 : 1;
+    float s = (p0.y * p2.x - p0.x * p2.y + (p2.y - p0.y) * p.x + (p0.x - p2.x) * p.y) * sign;
+    float t = (p0.x * p1.y - p0.y * p1.x + (p0.y - p1.y) * p.x + (p1.x - p0.x) * p.y) * sign;
+
+    return s > 0 && t > 0 && (s + t) < 2 * A * sign;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////
+template<typename PointInT> void
+pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (pcl::TextureMesh &mesh, const pcl::texture_mapping::CameraVector &cameras)
+{
+
+	if (mesh.tex_polygons.size () != 1)
+		return;
+
+	typename pcl::PointCloud<PointInT>::Ptr mesh_cloud (new pcl::PointCloud<PointInT>);
+
+	pcl::fromPCLPointCloud2 (mesh.cloud, *mesh_cloud);
+
+	std::vector<pcl::Vertices> faces;
+	faces.swap(mesh.tex_polygons[0]);
+
+	mesh.tex_polygons.clear();
+	mesh.tex_polygons.resize(cameras.size()+1);
+	mesh.tex_coordinates.clear();
+	mesh.tex_coordinates.resize(cameras.size()+1);
+
+	// pre compute all cam inverse and visibility
+	std::vector<std::map<int, FaceInfo > > visibleFaces(cameras.size());
+	std::vector<Eigen::Affine3f> invCamTransform(cameras.size());
+	UDEBUG("Precompute visible faces per cam");
+	for (unsigned int current_cam = 0; current_cam < cameras.size(); ++current_cam)
+	{
+		UINFO("Processing camera %d...", current_cam);
+
+		typename pcl::PointCloud<PointInT>::Ptr camera_cloud (new pcl::PointCloud<PointInT>);
+		pcl::transformPointCloud(*mesh_cloud, *camera_cloud, cameras[current_cam].pose.inverse());
+
+		std::vector<int> visibilityIndices;
+		visibilityIndices.resize (faces.size ());
+		pcl::PointCloud<pcl::PointXY>::Ptr projections (new pcl::PointCloud<pcl::PointXY>);
+		int oi=0;
+		for(unsigned int idx_face=0; idx_face<faces.size(); ++idx_face)
+		{
+			pcl::Vertices & face = faces[idx_face];
+			pcl::PointXY uv_coords[3];
+			PointInT & pt0 = camera_cloud->points[face.vertices[0]];
+			PointInT & pt1 = camera_cloud->points[face.vertices[1]];
+			PointInT & pt2 = camera_cloud->points[face.vertices[2]];
+			float angle;
+			if (isFaceProjected (cameras[current_cam],
+					pt0,
+					pt1,
+					pt2,
+					uv_coords[0],
+					uv_coords[1],
+					uv_coords[2],
+					angle))
+			{
+				float distanceToCam = std::min(std::min(pt0.z, pt1.z), pt2.z);
+				pcl::PointXY center;
+				center.x = (uv_coords[0].x+uv_coords[1].x+uv_coords[2].x)/3.0f;
+				center.y = (uv_coords[0].y+uv_coords[1].y+uv_coords[2].y)/3.0f;
+				visibleFaces[current_cam].insert(std::make_pair(idx_face, FaceInfo(distanceToCam, uv_coords[0], uv_coords[1], uv_coords[2], center)));
+				visibilityIndices[oi++] = idx_face;
+				projections->push_back(uv_coords[0]);
+				projections->push_back(uv_coords[1]);
+				projections->push_back(uv_coords[2]);
+			}
+		}
+		visibilityIndices.resize(oi);
+		UASSERT(projections->size() == visibilityIndices.size()*3);
+
+		//filter occluded polygons
+		//create kdtree
+		pcl::KdTreeFLANN<pcl::PointXY> kdtree;
+		kdtree.setInputCloud (projections);
+
+		std::vector<int> idxNeighbors;
+		std::vector<float> neighborsSquaredDistance;
+		// af first (idx_pcan < current_cam), check if some of the faces attached to previous cameras occlude the current faces
+		// then (idx_pcam == current_cam), check for self occlusions. At this stage, we skip faces that were already marked as occluded
+		// project all faces
+		int occludedFaces = 0;
+		for (unsigned int idx_vis = 0; idx_vis <  visibilityIndices.size(); ++idx_vis)
+		{
+			int idx_face = visibilityIndices[idx_vis];
+			std::map<int, FaceInfo>::iterator iter= visibleFaces[current_cam].find(idx_face);
+			if(iter != visibleFaces[current_cam].end())
+			{
+				FaceInfo & info = iter->second;
+
+				// face is in the camera's FOV
+				//get its circumsribed circle
+				double radius;
+				pcl::PointXY center;
+				// getTriangleCircumcenterAndSize (info.uv_coord1, info.uv_coord2, info.uv_coord3, center, radius);
+				getTriangleCircumcscribedCircleCentroid(info.uv_coord1, info.uv_coord2, info.uv_coord3, center, radius); // this function yields faster results than getTriangleCircumcenterAndSize
+
+				// get points inside circ.circle
+				if (kdtree.radiusSearch (center, radius, idxNeighbors, neighborsSquaredDistance) > 0 )
+				{
+					// for each neighbor
+					for (size_t i = 0; i < idxNeighbors.size (); ++i)
+					{
+						int neighborFaceIndex = idxNeighbors[i]/3;
+						//std::map<int, FaceInfo>::iterator jter= visibleFaces[current_cam].find(visibilityIndices[neighborFaceIndex]);
+						//if(jter != visibleFaces[current_cam].end())
+						{
+							if (std::max(camera_cloud->points[faces[idx_face].vertices[0]].z,
+										std::max (camera_cloud->points[faces[idx_face].vertices[1]].z,
+												camera_cloud->points[faces[idx_face].vertices[2]].z))
+								< camera_cloud->points[faces[visibilityIndices[neighborFaceIndex]].vertices[idxNeighbors[i]%3]].z)
+							//if (info.distance < jter->second.distance)
+							{
+								// neighbor is farther than all the face's points. Check if it falls into the triangle
+								if (checkPointInsideTriangle(info.uv_coord1, info.uv_coord2, info.uv_coord3, projections->at(idxNeighbors[i])))
+								{
+									// current neighbor is inside triangle and is closer => the corresponding face
+									if(visibleFaces[current_cam].erase(visibilityIndices[neighborFaceIndex]))
+									{
+										++occludedFaces;
+									}
+
+									//TODO we could remove the projections of this face from the kd-tree cloud, but I fond it slower, and I need the point to keep ordered to querry UV coordinates later
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// filter clusters
+		int clusterFaces = 0;
+		std::vector<pcl::Vertices> polygons(visibleFaces[current_cam].size());
+		std::vector<int> polygon_to_face_index(visibleFaces[current_cam].size());
+		oi =0;
+		for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end(); ++iter)
+		{
+			polygons[oi].vertices.resize(3);
+			polygons[oi].vertices[0] = faces[iter->first].vertices[0];
+			polygons[oi].vertices[1] = faces[iter->first].vertices[1];
+			polygons[oi].vertices[2] = faces[iter->first].vertices[2];
+			polygon_to_face_index[oi] = iter->first;
+			++oi;
+		}
+
+		std::vector<std::set<int> > neighbors;
+		std::vector<std::set<int> > vertexToPolygons;
+		rtabmap::util3d::createPolygonIndexes(polygons,
+				(int)camera_cloud->size(),
+				neighbors,
+				vertexToPolygons);
+		std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
+				neighbors,
+				100);
+		std::set<int> polygonsKept;
+		for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+		{
+			for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+			{
+				polygonsKept.insert(polygon_to_face_index[*jter]);
+			}
+		}
+
+		for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end();)
+		{
+			if(polygonsKept.find(iter->first) == polygonsKept.end())
+			{
+				visibleFaces[current_cam].erase(iter++);
+				++clusterFaces;
+			}
+			else
+			{
+				++iter;
+			}
+		}
+
+		UDEBUG("Filtered %d occluded and %d spurious polygons out of %d...", occludedFaces, clusterFaces, (int)visibilityIndices.size());
+	}
+
+	UDEBUG("Process %d polygons...", (int)faces.size());
+	for(unsigned int idx_face=0; idx_face<faces.size(); ++idx_face)
+	{
+		UDEBUG("face %d", idx_face);
+		pcl::Vertices & face = faces[idx_face];
+
+		int cameraIndex = -1;
+		float closestDistanceToCam = std::numeric_limits<float>::max();
+		pcl::PointXY uv_coords[3];
+		for (unsigned int current_cam = 0; current_cam < cameras.size(); ++current_cam)
+		{
+			std::map<int, FaceInfo>::iterator iter = visibleFaces[current_cam].find(idx_face);
+			if (iter != visibleFaces[current_cam].end())
+			{
+				float distanceToCam = iter->second.distance;
+
+				//UDEBUG("Process polygon %d cam =%d distanceToCam=%f", idx_face, current_cam, distanceToCam);
+
+				if(distanceToCam < closestDistanceToCam)
+				{
+					cameraIndex = current_cam;
+					closestDistanceToCam = distanceToCam;
+					uv_coords[0] = iter->second.uv_coord1;
+					uv_coords[1] = iter->second.uv_coord2;
+					uv_coords[2] = iter->second.uv_coord3;
+				}
+			}
+		}
+
+		if(cameraIndex >= 0)
+		{
+			if(mesh.tex_polygons[cameraIndex].capacity() < mesh.tex_polygons[cameraIndex].size()+1)
+			{
+				mesh.tex_polygons[cameraIndex].reserve(mesh.tex_polygons[cameraIndex].size()+10);
+			}
+			mesh.tex_polygons[cameraIndex].push_back(face);
+			if(mesh.tex_coordinates[cameraIndex].capacity() < mesh.tex_coordinates[cameraIndex].size()+3)
+			{
+				mesh.tex_coordinates[cameraIndex].reserve(mesh.tex_coordinates[cameraIndex].size()+30);
+			}
+			mesh.tex_coordinates[cameraIndex].push_back(Eigen::Vector2f(uv_coords[0].x, uv_coords[0].y));
+			mesh.tex_coordinates[cameraIndex].push_back(Eigen::Vector2f(uv_coords[1].x, uv_coords[1].y));
+			mesh.tex_coordinates[cameraIndex].push_back(Eigen::Vector2f(uv_coords[2].x, uv_coords[2].y));
+		}
+		else
+		{
+			if(mesh.tex_polygons[cameras.size()].capacity() < mesh.tex_polygons[cameras.size()].size()+1)
+			{
+				mesh.tex_polygons[cameras.size()].reserve(mesh.tex_polygons[cameras.size()].size()+10);
+			}
+			mesh.tex_polygons[cameras.size()].push_back(face);
+			if(mesh.tex_coordinates[cameras.size()].capacity() < mesh.tex_coordinates[cameras.size()].size()+3)
+			{
+				mesh.tex_coordinates[cameras.size()].reserve(mesh.tex_coordinates[cameras.size()].size()+30);
+			}
+			mesh.tex_coordinates[cameras.size()].push_back(Eigen::Vector2f(-1.0,-1.0));
+			mesh.tex_coordinates[cameras.size()].push_back(Eigen::Vector2f(-1.0,-1.0));
+			mesh.tex_coordinates[cameras.size()].push_back(Eigen::Vector2f(-1.0,-1.0));
+		}
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointInT> inline void
 pcl::TextureMapping<PointInT>::getTriangleCircumcenterAndSize(const pcl::PointXY &p1, const pcl::PointXY &p2, const pcl::PointXY &p3, pcl::PointXY &circomcenter, double &radius)
@@ -1129,7 +1396,7 @@ pcl::TextureMapping<PointInT>::checkPointInsideTriangle(const pcl::PointXY &p1, 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////
 template<typename PointInT> inline bool
-pcl::TextureMapping<PointInT>::isFaceProjected (const Camera &camera, const PointInT &p1, const PointInT &p2, const PointInT &p3, pcl::PointXY &proj1, pcl::PointXY &proj2, pcl::PointXY &proj3)
+pcl::TextureMapping<PointInT>::isFaceProjected (const Camera &camera, const PointInT &p1, const PointInT &p2, const PointInT &p3, pcl::PointXY &proj1, pcl::PointXY &proj2, pcl::PointXY &proj3, float & angle)
 {
 	// check if the polygon is facing the camera, assuming counterclockwise normal
 	Eigen::Vector3f v0(
@@ -1141,8 +1408,10 @@ pcl::TextureMapping<PointInT>::isFaceProjected (const Camera &camera, const Poin
 			p3.y - p1.y,
 			p3.z - p1.z);
 	Eigen::Vector3f normal = v0.cross(v1);
+	normal.normalize();
+	angle = normal.dot(Eigen::Vector3f(0.0f,0.0f,-1.0f));
 
-  return normal.dot(Eigen::Vector3f(0.0f,0.0f,-1.0f)) > 0.0f && // toward the camera
+  return  angle > 0.0f && // toward the camera
 		  (getPointUVCoordinates(p1, camera, proj1)
 		  &&
 		  getPointUVCoordinates(p2, camera, proj2)
