@@ -247,6 +247,7 @@ public:
 	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
 	void setRenderingRate(double rate);
 	void setLighting(bool on);
+	void setShading(bool on);
 	void setEdgeVisibility(bool visible);
 	double getRenderingRate() const;
 
@@ -318,6 +319,7 @@ private:
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
     QAction * _aSetLighting;
+    QAction * _aSetFlatShading;
     QAction * _aSetEdgeVisibility;
     QAction * _aBackfaceCulling;
     QMenu * _menu;

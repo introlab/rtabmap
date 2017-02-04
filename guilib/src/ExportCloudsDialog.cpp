@@ -136,6 +136,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_transferColorRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cleanMesh, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_mesh_minClusterSize, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->comboBox_meshingTextureFormat, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
@@ -369,7 +370,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 
 void ExportCloudsDialog::restoreDefaults()
 {
-	_ui->comboBox_pipeline->setCurrentIndex(0);
+	_ui->comboBox_pipeline->setCurrentIndex(1);
 	_ui->checkBox_binary->setChecked(true);
 	_ui->spinBox_normalKSearch->setValue(10);
 
@@ -421,12 +422,13 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
 	_ui->doubleSpinBox_transferColorRadius->setValue(0.0);
 	_ui->checkBox_cleanMesh->setChecked(true);
+	_ui->spinBox_mesh_minClusterSize->setValue(0);
 
 	_ui->comboBox_meshingApproach->setCurrentIndex(1);
 
 	_ui->checkBox_textureMapping->setChecked(false);
 	_ui->comboBox_meshingTextureFormat->setCurrentIndex(0);
-	_ui->comboBox_meshingTextureSize->setCurrentIndex(4); // 2048
+	_ui->comboBox_meshingTextureSize->setCurrentIndex(5); // 4096
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
@@ -472,7 +474,7 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 					_ui->doubleSpinBox_meshDecimationFactor->value()!=0.0 ||
 					_ui->checkBox_textureMapping->isChecked());
 
-		_ui->spinBox_mesh_minClusterSize->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+		_ui->checkBox_cleanMesh->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 		_ui->label_meshClean->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	}
 }
@@ -1173,7 +1175,7 @@ bool ExportCloudsDialog::getExportedClouds(
 									_ui->spinBox_mesh_triangleSize->value(),
 									viewpoint);
 
-							if(_ui->spinBox_mesh_minClusterSize->value())
+							if(_ui->spinBox_mesh_minClusterSize->value() != 0)
 							{
 								_progressDialog->appendText(tr("Filter small polygon clusters..."));
 								QApplication::processEvents();
@@ -1187,28 +1189,55 @@ bool ExportCloudsDialog::getExportedClouds(
 										vertexToPolygons);
 								std::list<std::list<int> > clusters = util3d::clusterPolygons(
 										neighbors,
-										_ui->spinBox_mesh_minClusterSize->value());
+										_ui->spinBox_mesh_minClusterSize->value()<0?0:_ui->spinBox_mesh_minClusterSize->value());
+
 								std::vector<pcl::Vertices> filteredPolygons(polygons.size());
-								int oi=0;
-								for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+								if(_ui->spinBox_mesh_minClusterSize->value() < 0)
 								{
-									for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+									// only keep the biggest cluster
+									std::list<std::list<int> >::iterator biggestClusterIndex = clusters.end();
+									unsigned int biggestClusterSize = 0;
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
 									{
-										filteredPolygons[oi++] = polygons.at(*jter);
+										if(iter->size() > biggestClusterSize)
+										{
+											biggestClusterIndex = iter;
+											biggestClusterSize = iter->size();
+										}
+									}
+									if(biggestClusterIndex != clusters.end())
+									{
+										int oi=0;
+										for(std::list<int>::iterator jter=biggestClusterIndex->begin(); jter!=biggestClusterIndex->end(); ++jter)
+										{
+											filteredPolygons[oi++] = polygons.at(*jter);
+										}
+										filteredPolygons.resize(oi);
 									}
 								}
-								filteredPolygons.resize(oi);
+								else
+								{
+									int oi=0;
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+									{
+										for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+										{
+											filteredPolygons[oi++] = polygons.at(*jter);
+										}
+									}
+									filteredPolygons.resize(oi);
+								}
 								int before = (int)polygons.size();
 								polygons = filteredPolygons;
 
-								if(oi == 0)
+								if(polygons.size() == 0)
 								{
 									std::string msg = uFormat("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.", before, _ui->spinBox_mesh_minClusterSize->value());
 									_progressDialog->appendText(msg.c_str());
 									UWARN(msg.c_str());
 								}
 
-								_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-oi));
+								_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-(int)polygons.size()));
 								QApplication::processEvents();
 							}
 
@@ -1525,21 +1554,49 @@ bool ExportCloudsDialog::getExportedClouds(
 								vertexToPolygons);
 						std::list<std::list<int> > clusters = util3d::clusterPolygons(
 								neighbors,
-								_ui->spinBox_mesh_minClusterSize->value());
+								_ui->spinBox_mesh_minClusterSize->value()<0?0:_ui->spinBox_mesh_minClusterSize->value());
+
 						std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
-						int oi=0;
-						for(std::list<std::list<int> >::iterator kter=clusters.begin(); kter!=clusters.end(); ++kter)
+						if(_ui->spinBox_mesh_minClusterSize->value() < 0)
 						{
-							for(std::list<int>::iterator jter=kter->begin(); jter!=kter->end(); ++jter)
+							// only keep the biggest cluster
+							std::list<std::list<int> >::iterator biggestClusterIndex = clusters.end();
+							unsigned int biggestClusterSize = 0;
+							for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
 							{
-								filteredPolygons[oi++] = mesh->polygons.at(*jter);
+								if(iter->size() > biggestClusterSize)
+								{
+									biggestClusterIndex = iter;
+									biggestClusterSize = iter->size();
+								}
+							}
+							if(biggestClusterIndex != clusters.end())
+							{
+								int oi=0;
+								for(std::list<int>::iterator jter=biggestClusterIndex->begin(); jter!=biggestClusterIndex->end(); ++jter)
+								{
+									filteredPolygons[oi++] = mesh->polygons.at(*jter);
+								}
+								filteredPolygons.resize(oi);
 							}
 						}
-						filteredPolygons.resize(oi);
+						else
+						{
+							int oi=0;
+							for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+							{
+								for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+								{
+									filteredPolygons[oi++] = mesh->polygons.at(*jter);
+								}
+							}
+							filteredPolygons.resize(oi);
+						}
+
 						int before = (int)mesh->polygons.size();
 						mesh->polygons = filteredPolygons;
 
-						_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-oi));
+						_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-(int)mesh->polygons.size()));
 						QApplication::processEvents();
 					}
 
@@ -1706,18 +1763,44 @@ bool ExportCloudsDialog::getExportedClouds(
 										(int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step,
 										neighbors,
 										vertexToPolygons);
+
 								std::list<std::list<int> > clusters = util3d::clusterPolygons(
 										neighbors,
-										_ui->spinBox_mesh_minClusterSize->value());
+										_ui->spinBox_mesh_minClusterSize->value()<0?0:_ui->spinBox_mesh_minClusterSize->value());
 
 								std::set<int> validPolygons;
-								for(std::list<std::list<int> >::iterator kter=clusters.begin(); kter!=clusters.end(); ++kter)
+								if(_ui->spinBox_mesh_minClusterSize->value() < 0)
 								{
-									for(std::list<int>::iterator jter=kter->begin(); jter!=kter->end(); ++jter)
+									// only keep the biggest cluster
+									std::list<std::list<int> >::iterator biggestClusterIndex = clusters.end();
+									unsigned int biggestClusterSize = 0;
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
 									{
-										validPolygons.insert(*jter);
+										if(iter->size() > biggestClusterSize)
+										{
+											biggestClusterIndex = iter;
+											biggestClusterSize = iter->size();
+										}
+									}
+									if(biggestClusterIndex != clusters.end())
+									{
+										for(std::list<int>::iterator jter=biggestClusterIndex->begin(); jter!=biggestClusterIndex->end(); ++jter)
+										{
+											validPolygons.insert(*jter);
+										}
 									}
 								}
+								else
+								{
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+									{
+										for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+										{
+											validPolygons.insert(*jter);
+										}
+									}
+								}
+
 								if(validPolygons.size() == 0)
 								{
 									std::string msg = uFormat("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.",totalSize, _ui->spinBox_mesh_minClusterSize->value());

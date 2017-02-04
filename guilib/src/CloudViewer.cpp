@@ -193,6 +193,7 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_aSetBackgroundColor(0),
 		_aSetRenderingRate(0),
 		_aSetLighting(0),
+		_aSetFlatShading(0),
 		_aSetEdgeVisibility(0),
 		_aBackfaceCulling(0),
 		_menu(0),
@@ -314,6 +315,9 @@ void CloudViewer::createMenu()
 	_aSetLighting = new QAction("Lighting", this);
 	_aSetLighting->setCheckable(true);
 	_aSetLighting->setChecked(false);
+	_aSetFlatShading = new QAction("Flat Shading", this);
+	_aSetFlatShading->setCheckable(true);
+	_aSetFlatShading->setChecked(true);
 	_aSetEdgeVisibility = new QAction("Show edges", this);
 	_aSetEdgeVisibility->setCheckable(true);
 	_aSetEdgeVisibility->setChecked(false);
@@ -357,6 +361,7 @@ void CloudViewer::createMenu()
 	_menu->addAction(_aSetBackgroundColor);
 	_menu->addAction(_aSetRenderingRate);
 	_menu->addAction(_aSetLighting);
+	_menu->addAction(_aSetFlatShading);
 	_menu->addAction(_aSetEdgeVisibility);
 	_menu->addAction(_aBackfaceCulling);
 }
@@ -621,6 +626,7 @@ bool CloudViewer::addCloudMesh(
 	if(_visualizer->addPolygonMesh<pcl::PointXYZ>(cloud, polygons, id))
 	{
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetFrontfaceCulling(_frontfaceCulling);
@@ -646,6 +652,7 @@ bool CloudViewer::addCloudMesh(
 	if(_visualizer->addPolygonMesh<pcl::PointXYZRGB>(cloud, polygons, id))
 	{
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetFrontfaceCulling(_frontfaceCulling);
@@ -671,6 +678,7 @@ bool CloudViewer::addCloudMesh(
 	if(_visualizer->addPolygonMesh<pcl::PointXYZRGBNormal>(cloud, polygons, id))
 	{
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetFrontfaceCulling(_frontfaceCulling);
@@ -721,6 +729,7 @@ bool CloudViewer::addCloudTextureMesh(
 	if(this->addTextureMesh(*textureMesh, texture, id))
 	{
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetFrontfaceCulling(_frontfaceCulling);
@@ -1007,6 +1016,7 @@ bool CloudViewer::addTextureMesh (
   (*_visualizer->getCloudActorMap())[id].viewpoint_transformation_ = transformation;
 
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+  _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetFrontfaceCulling(_frontfaceCulling);
@@ -1610,6 +1620,17 @@ void CloudViewer::setLighting(bool on)
 	for(pcl::visualization::CloudActorMap::iterator iter=cloudActorMap->begin(); iter!=cloudActorMap->end(); ++iter)
 	{
 		iter->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+	}
+	this->update();
+}
+
+void CloudViewer::setShading(bool on)
+{
+	_aSetFlatShading->setChecked(on);
+	pcl::visualization::CloudActorMapPtr cloudActorMap = _visualizer->getCloudActorMap();
+	for(pcl::visualization::CloudActorMap::iterator iter=cloudActorMap->begin(); iter!=cloudActorMap->end(); ++iter)
+	{
+		iter->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG); // VTK_FLAT - VTK_GOURAUD - VTK_PHONG
 	}
 	this->update();
 }
@@ -2363,6 +2384,10 @@ void CloudViewer::handleAction(QAction * a)
 	{
 		this->setLighting(_aSetLighting->isChecked());
 	}
+	else if(a == _aSetFlatShading)
+		{
+			this->setShading(_aSetFlatShading->isChecked());
+		}
 	else if(a == _aSetEdgeVisibility)
 	{
 		this->setEdgeVisibility(_aSetEdgeVisibility->isChecked());
