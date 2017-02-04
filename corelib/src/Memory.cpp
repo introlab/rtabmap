@@ -464,9 +464,16 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	{
 		detectorStrategy = (Feature2D::Type)std::atoi((*iter).second.c_str());
 	}
-	if(detectorStrategy!=Feature2D::kFeatureUndef)
+	if(detectorStrategy!=Feature2D::kFeatureUndef && detectorStrategy!=_feature2D->getType())
 	{
-		UWARN("new detector strategy %d", int(detectorStrategy));
+		if(_vwd->getVisualWords().size())
+		{
+			UWARN("new detector strategy %d while the vocabulary is already created. This may give problems if feature descriptors are not the same type than the one used in the current vocabulary (a memory reset would be required if so).", int(detectorStrategy));
+		}
+		else
+		{
+			UINFO("new detector strategy %d.", int(detectorStrategy));
+		}
 		if(_feature2D)
 		{
 			delete _feature2D;
