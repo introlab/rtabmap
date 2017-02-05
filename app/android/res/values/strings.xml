@@ -484,7 +484,7 @@
     <string name="pref_title_opt_depth">Reconstruction Depth</string>
     <string name="pref_summary_opt_depth">Lowering this parameter decreases reconstruction time, but geometry precision is lower.</string>
     <string name="pref_title_opt_decimation_factor">Mesh Decimation Factor</string>
-    <string name="pref_summary_opt_decimation_factor">Reduce the number of the output polygons on plane areas by this factor. This also reduces texture projection time.</string>
+    <string name="pref_summary_opt_decimation_factor">Reduce the number of the output polygons on plane areas by this factor. Only used when exporting with texture. This also reduces texture projection time.</string>
     <string name="pref_title_opt_color_radius">Color Radius</string>
     <string name="pref_summary_opt_color_radius">Radius used to transfer nearest color from the point cloud to reconstructed mesh.</string>
     <string name="pref_title_opt_clean_white">Clean Mesh</string>

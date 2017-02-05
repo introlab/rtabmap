@@ -1578,7 +1578,7 @@ bool RTABMapApp::exportMesh(
 
 						if(mesh->polygons.size())
 						{
-							if(optimizedDecimationFactor > 0.0f)
+							if(textureSize > 0 && optimizedDecimationFactor > 0.0f)
 							{
 	#ifndef DISABLE_VTK
 								unsigned int count = mesh->polygons.size();
