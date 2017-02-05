@@ -56,19 +56,19 @@ Java_com_introlab_rtabmap_RTABMapLib_onCreate(
 }
 
 JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_openEmptyDatabase(
-    JNIEnv* env, jobject)
+Java_com_introlab_rtabmap_RTABMapLib_setScreenRotation(
+    JNIEnv* env, jobject, int displayRotation, int cameraRotation)
 {
-	return app.openDatabase();
+	return app.setScreenRotation(displayRotation, cameraRotation);
 }
 
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_openDatabase(
-    JNIEnv* env, jobject, jstring databasePath)
+    JNIEnv* env, jobject, jstring databasePath, bool databaseInMemory, bool optimize)
 {
 	std::string databasePathC;
 	GetJStringContent(env,databasePath,databasePathC);
-	return app.openDatabase(databasePathC);
+	return app.openDatabase(databasePathC, databaseInMemory, optimize);
 }
 
 JNIEXPORT bool JNICALL
@@ -181,12 +181,6 @@ Java_com_introlab_rtabmap_RTABMapLib_setNodesFiltering(
 	return app.setNodesFiltering(enabled);
 }
 JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_setDriftCorrection(
-		JNIEnv*, jobject, bool enabled)
-{
-	return app.setDriftCorrection(enabled);
-}
-JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setGraphVisible(
 		JNIEnv*, jobject, bool visible)
 {
@@ -203,6 +197,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setAutoExposure(
 		JNIEnv*, jobject, bool enabled)
 {
 	return app.setAutoExposure(enabled);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setRawScanSaved(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setRawScanSaved(enabled);
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setFullResolution(
@@ -292,6 +292,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		bool meshing,
 		int textureSize,
 		int normalK,
+		float maxTextureDistance,
 		bool optimized,
 		float optimizedVoxelSize,
 		int optimizedDepth,
@@ -309,6 +310,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 			meshing,
 			textureSize,
 			normalK,
+			maxTextureDistance,
 			optimized,
 			optimizedVoxelSize,
 			optimizedDepth,

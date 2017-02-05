@@ -57,6 +57,8 @@ class Scene {
   // Setup GL view port.
   void SetupViewPort(int w, int h);
 
+  void setScreenRotation(int displayRotation, int cameraRotation);
+
   void clear(); // removed all point clouds
 
   // Render loop.
@@ -116,12 +118,14 @@ class Scene {
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
   void updateMesh(int id, const Mesh & mesh, const cv::Mat & texture);
+  void updateGain(int id, float gain);
 
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}
   void setPointSize(float size) {pointSize_ = size;}
   void setFrustumCulling(bool enabled) {frustumCulling_ = enabled;}
   void setLighting(bool enabled) {lighting_ = enabled;}
+  void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
 
   bool isMeshRendering() const {return meshRendering_;}
   bool isMeshTexturing() const {return meshRendering_ && meshRenderingTexture_;}
@@ -149,6 +153,8 @@ class Scene {
   bool gridVisible_;
   bool traceVisible_;
 
+  TangoSupportDisplayRotation color_camera_to_display_rotation_;
+
   std::map<int, PointCloudDrawable*> pointClouds_;
 
   rtabmap::Transform * currentPose_;
@@ -164,6 +170,9 @@ class Scene {
   float pointSize_;
   bool frustumCulling_;
   bool lighting_;
+  float r_;
+  float g_;
+  float b_;
 };
 
 #endif  // TANGO_POINT_CLOUD_SCENE_H_

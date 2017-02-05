@@ -305,11 +305,11 @@ void feedImpl(
 
 	gains = cv::Mat_<double>();
 	cv::solve(A, b, gains);
-	if(ULogger::kDebug)
+	//if(ULogger::kDebug)
 	{
 		for(int i=0; i<gains.rows; ++i)
 		{
-			UDEBUG("Gain index=%d (id=%d) = %f", i, indexToId[i], gains.row(i)[0]);
+			UWARN("Gain index=%d (id=%d) = %f", i, indexToId[i], gains(i, 0));
 		}
 	}
 }

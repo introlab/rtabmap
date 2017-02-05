@@ -1186,7 +1186,9 @@ cv::Mat decimate(const cv::Mat & image, int decimation)
 		{
 			if((image.type() == CV_32FC1 || image.type()==CV_16UC1))
 			{
-				UASSERT_MSG(image.rows % decimation == 0 && image.cols % decimation == 0, "Decimation of depth images should be exact!");
+				UASSERT_MSG(image.rows % decimation == 0 && image.cols % decimation == 0,
+						uFormat("Decimation of depth images should be exact! (decimation=%d, size=%dx%d)",
+						decimation, image.cols, image.rows).c_str());
 
 				out = cv::Mat(image.rows/decimation, image.cols/decimation, image.type());
 				if(image.type() == CV_32FC1)

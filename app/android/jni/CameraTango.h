@@ -70,7 +70,7 @@ private:
 
 class CameraTango : public Camera, public UThread, public UEventsSender {
 public:
-	CameraTango(int decimation, bool autoExposure);
+	CameraTango(int decimation, bool autoExposure, bool publishRawScan);
 	virtual ~CameraTango();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -81,6 +81,7 @@ public:
 	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
 	void setDecimation(int value) {decimation_ = value;}
 	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
+	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
 	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
@@ -103,6 +104,7 @@ private:
 	double stampEpochOffset_;
 	int decimation_;
 	bool autoExposure_;
+	bool rawScanPublished_;
 	cv::Mat cloud_;
 	double cloudStamp_;
 	cv::Mat tangoColor_;

@@ -8,6 +8,7 @@
 		  <item android:id="@+id/texture_mesh" android:checked="true" android:title="Texture Mesh" />
 	   </group>
 	   <item android:id="@+id/save" android:title="Save" android:showAsAction="ifRoom"/>
+              
        <item android:id="@+id/post_processing" android:title="Optimize" android:showAsAction="ifRoom">
           <menu>
              <item android:id="@+id/post_processing_standard" android:title="Standard Optimization" />
@@ -15,7 +16,6 @@
 	            <menu>
 	              <item android:id="@+id/global_graph_optimization" android:title="Global Graph Optimization" />
 	              <item android:id="@+id/detect_more_loop_closures" android:title="Detect More Loop Closures" />
-	              <item android:id="@+id/icp_refining" android:title="ICP Refining" />
 	              <item android:id="@+id/gain_compensation_fast" android:title="Adjust Colors (Fast)" />
 	              <item android:id="@+id/gain_compensation_full" android:title="Adjust Colors (Full)" />
 	              <item android:id="@+id/bilateral_filtering" android:title="Mesh Smoothing" />
@@ -25,6 +25,7 @@
 	         </item>
           </menu>
        </item>
+       
        <item android:id="@+id/export" android:showAsAction="ifRoom" android:title="Export">
           <menu>
               <item android:id="@+id/export_point_cloud" android:title="Point Cloud (*.ply)" />

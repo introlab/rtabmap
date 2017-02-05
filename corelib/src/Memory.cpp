@@ -3260,8 +3260,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			if(_imagePreDecimation > 1)
 			{
 				preDecimation = _imagePreDecimation;
+				if(!decimatedData.rightRaw().empty() ||
+					(decimatedData.depthRaw().rows == decimatedData.imageRaw().rows && decimatedData.depthRaw().cols == decimatedData.imageRaw().cols))
+				{
+					decimatedData.setDepthOrRightRaw(util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation));
+				}
 				decimatedData.setImageRaw(util2d::decimate(decimatedData.imageRaw(), _imagePreDecimation));
-				decimatedData.setDepthOrRightRaw(util2d::decimate(decimatedData.depthOrRightRaw(), _imagePreDecimation));
 				std::vector<CameraModel> cameraModels = decimatedData.cameraModels();
 				for(unsigned int i=0; i<cameraModels.size(); ++i)
 				{
@@ -3532,8 +3536,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	// apply decimation?
 	if(_imagePostDecimation > 1 && !isIntermediateNode)
 	{
+		if(!data.rightRaw().empty() ||
+			(data.depthRaw().rows == image.rows && data.depthRaw().cols == image.cols))
+		{
+			depthOrRightImage = util2d::decimate(depthOrRightImage, _imagePostDecimation);
+		}
 		image = util2d::decimate(image, _imagePostDecimation);
-		depthOrRightImage = util2d::decimate(depthOrRightImage, _imagePostDecimation);
 		for(unsigned int i=0; i<cameraModels.size(); ++i)
 		{
 			cameraModels[i] = cameraModels[i].scaled(1.0/double(_imagePostDecimation));

@@ -440,18 +440,22 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 				ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
 			}
 		}
-		else if(save && !outputUrl.empty() && outputUrl.compare(this->getUrl()) != 0)
-		{
-			UWARN("Output database path (%s) is different than the opened database "
-					"path (%s). Exporting to a different path is only available "
-					"when database is in memory (%s=true). Opened database path is overwritten.",
-					outputUrl.c_str(), this->getUrl().c_str(), Parameters::kDbSqlite3InMemory().c_str());
-		}
 
 		// Then close (delete) the database connection
 		UINFO("Disconnecting database %s...", this->getUrl().c_str());
 		sqlite3_close(_ppDb);
 		_ppDb = 0;
+
+		if(save && !_dbInMemory && !outputUrl.empty() && !this->getUrl().empty() && outputUrl.compare(this->getUrl()) != 0)
+		{
+			UWARN("Output database path (%s) is different than the opened database "
+					"path (%s). Opened database path is overwritten then renamed to output path.",
+					outputUrl.c_str(), this->getUrl().c_str());
+			if(UFile::rename(this->getUrl(), outputUrl) != 0)
+			{
+				UERROR("Failed to rename just closed db %s to %s", this->getUrl().c_str(), outputUrl.c_str());
+			}
+		}
 	}
 }
 

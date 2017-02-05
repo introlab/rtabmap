@@ -318,6 +318,7 @@ unsigned int FlannIndex::addPoints(const cv::Mat & features)
 		// Rebuild index if it doubles in size
 		if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 		{
+			UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
 			index->buildIndex();
 		}
 		// if no more removed points, the index has been rebuilt
@@ -334,6 +335,7 @@ unsigned int FlannIndex::addPoints(const cv::Mat & features)
 			// Rebuild index if it doubles in size
 			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 			{
+				UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
 				index->buildIndex();
 			}
 			// if no more removed points, the index has been rebuilt
@@ -347,6 +349,7 @@ unsigned int FlannIndex::addPoints(const cv::Mat & features)
 			// Rebuild index if it doubles in size
 			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 			{
+				UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
 				index->buildIndex();
 			}
 			// if no more removed points, the index has been rebuilt
@@ -360,6 +363,7 @@ unsigned int FlannIndex::addPoints(const cv::Mat & features)
 			// Rebuild index if it doubles in size
 			if(index->sizeAtBuild() * 2 < index->size()+index->removedCount())
 			{
+				UDEBUG("Rebuilding FLANN index: %d -> %d", (int)index->sizeAtBuild(), (int)(index->size()+index->removedCount()));
 				index->buildIndex();
 			}
 			// if no more removed points, the index has been rebuilt

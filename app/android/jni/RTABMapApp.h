@@ -53,7 +53,9 @@ class RTABMapApp : public UEventsHandler {
 
   void onCreate(JNIEnv* env, jobject caller_activity);
 
-  void openDatabase(const std::string & databasePath = "");
+  void setScreenRotation(int displayRotation, int cameraRotation);
+
+  void openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize);
 
   bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
 
@@ -120,10 +122,10 @@ class RTABMapApp : public UEventsHandler {
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
   void setNodesFiltering(bool enabled);
-  void setDriftCorrection(bool enabled);
   void setGraphVisible(bool visible);
   void setGridVisible(bool visible);
   void setAutoExposure(bool enabled);
+  void setRawScanSaved(bool enabled);
   void setFullResolution(bool enabled);
   void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
@@ -144,6 +146,7 @@ class RTABMapApp : public UEventsHandler {
 		  bool meshing,
 		  int textureSize,
 		  int normalK,
+		  float maxTextureDistance,
 		  bool optimized,
 		  float optimizedVoxelSize,
 		  int optimizedDepth,
@@ -171,10 +174,10 @@ class RTABMapApp : public UEventsHandler {
   bool odomCloudShown_;
   bool graphOptimization_;
   bool nodesFiltering_;
-  bool driftCorrection_;
   bool localizationMode_;
   bool trajectoryMode_;
   bool autoExposure_;
+  bool rawScanSaved_;
   bool fullResolution_;
   bool appendMode_;
   float maxCloudDepth_;
@@ -189,6 +192,7 @@ class RTABMapApp : public UEventsHandler {
   bool paused_;
   bool dataRecorderMode_;
   bool clearSceneOnNextRender_;
+  bool optimizeOpenedDatabase_;
   bool filterPolygonsOnNextRender_;
   int gainCompensationOnNextRender_;
   bool bilateralFilteringOnNextRender_;

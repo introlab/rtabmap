@@ -16,8 +16,12 @@
 
 package com.introlab.rtabmap;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.Context;
 import android.opengl.GLSurfaceView;
+import android.util.Log;
+import android.widget.Toast;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -27,6 +31,11 @@ import javax.microedition.khronos.opengles.GL10;
 // device's pose.
 public class Renderer implements GLSurfaceView.Renderer {
 	
+	private static Activity mActivity;
+	  public Renderer(Activity c) {
+		  mActivity = c;
+	  }
+
 	private ProgressDialog mProgressDialog;
 	
 	public void setProgressDialog(ProgressDialog progressDialog)
@@ -34,14 +43,35 @@ public class Renderer implements GLSurfaceView.Renderer {
 		mProgressDialog = progressDialog;
 	}
 	
-  // Render loop of the Gl context.
-  public void onDrawFrame(GL10 gl) {
-    int value = RTABMapLib.render();
-    if(value == 1 && mProgressDialog != null)
-    {
-    	mProgressDialog.dismiss();
-    }
-  }
+	// Render loop of the Gl context.
+	public void onDrawFrame(GL10 gl) {
+		try
+		{
+			final int value = RTABMapLib.render();
+			mActivity.runOnUiThread(new Runnable() {
+				public void run() {
+					if(value != 0 && mProgressDialog != null && mProgressDialog.isShowing())
+					{
+						Log.i("RTABMapActivity", "Renderer: dismiss dialog, value received=" + String.valueOf(value));
+						mProgressDialog.dismiss();
+					}
+					if(value==-1)
+					{
+						Toast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_LONG).show();
+					}
+				} 
+			});
+		}
+		catch(final Exception e)
+		{
+			mActivity.runOnUiThread(new Runnable() {
+				public void run() {
+					Toast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_LONG).show();
+				}
+
+			});
+		}
+	}
 
   // Called when the surface size changes.
   public void onSurfaceChanged(GL10 gl, int width, int height) {

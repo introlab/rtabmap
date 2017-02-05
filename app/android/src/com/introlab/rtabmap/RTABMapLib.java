@@ -25,8 +25,9 @@ public class RTABMapLib
     // The activity object is used for checking if the API version is outdated.
     public static native void onCreate(RTABMapActivity activity);
     
-    public static native void openEmptyDatabase();
-    public static native void openDatabase(String databasePath);
+    public static native void setScreenRotation(int displayRotation, int cameraRotation);
+    
+    public static native void openDatabase(String databasePath, boolean databaseInMemory, boolean optimize);
     
     /*
      * Called when the Tango service is connected.
@@ -64,10 +65,10 @@ public class RTABMapLib
     public static native void setTrajectoryMode(boolean enabled);
     public static native void setGraphOptimization(boolean enabled);
     public static native void setNodesFiltering(boolean enabled);
-    public static native void setDriftCorrection(boolean enabled);
     public static native void setGraphVisible(boolean visible);
     public static native void setGridVisible(boolean visible);
     public static native void setAutoExposure(boolean enabled);
+    public static native void setRawScanSaved(boolean enabled);
     public static native void setFullResolution(boolean enabled);
     public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
@@ -89,6 +90,7 @@ public class RTABMapLib
     		boolean meshing,
     		int textureSize,
     		int normalK,
+    		float maxTextureDistance,
     		boolean optimized,
     		float optimizedVoxelSize,
     		int optimizedDepth,

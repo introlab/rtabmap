@@ -7,6 +7,8 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -15,6 +17,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import android.app.Activity;
+import android.app.ActivityManager;
+import android.app.ActivityManager.MemoryInfo;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.Notification;
@@ -30,8 +34,13 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
+import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.hardware.Camera;
 import android.graphics.Point;
+import android.hardware.display.DisplayManager;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.opengl.GLSurfaceView;
 import android.os.AsyncTask;
@@ -49,6 +58,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MenuInflater;
 import android.view.MotionEvent;
+import android.view.Surface;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
@@ -80,6 +90,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	public static final String EXTRA_VALUE_ADF = "ADF_LOAD_SAVE_PERMISSION";
 
 	public static final int ZIP_BUFFER_SIZE = 1<<20; // 1MB
+	
+	public static final String RTABMAP_TMP_DB = "rtabmap.tmp.db";
 
 	private static final String AUTHORIZE_PATH	= "https://sketchfab.com/oauth2/authorize";
 	private static final String CLIENT_ID		= "RXrIJYAwlTELpySsyM8TrK9r3kOGQ5Qjj9VVDIfV";
@@ -105,6 +117,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	// Screen size for normalizing the touch input for orbiting the render camera.
 	private Point mScreenSize = new Point();
+	private long mOnPauseStamp = 0;
 	private boolean mOnPause = false;
 
 	private MenuItem mItemSave;
@@ -145,19 +158,28 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	//Tango Service connection.
 	ServiceConnection mTangoServiceConnection = new ServiceConnection() {
-		public void onServiceConnected(ComponentName name, IBinder service) {
-			if(!RTABMapLib.onTangoServiceConnected(service))
-			{
-				mToast.makeText(getApplicationContext(), 
-						String.format("Failed to intialize Tango!"), mToast.LENGTH_SHORT).show();
-			}
+		public void onServiceConnected(ComponentName name, final IBinder service) {
+			Thread bindThread = new Thread(new Runnable() {
+				public void run() {
+					if(!RTABMapLib.onTangoServiceConnected(service))
+					{
+						runOnUiThread(new Runnable() {
+							public void run() {
+								mToast.makeText(getApplicationContext(), 
+										String.format("Failed to intialize Tango!"), mToast.LENGTH_LONG).show();
+							} 
+						});
+					}
+				}
+			});
+			bindThread.start();
 		}
 
 		public void onServiceDisconnected(ComponentName name) {
 			// Handle this if you need to gracefully shutdown/retry
 			// in the event that Tango itself crashes/gets upgraded while running.
 			mToast.makeText(getApplicationContext(), 
-					String.format("Tango disconnected!"), mToast.LENGTH_SHORT).show();
+					String.format("Tango disconnected!"), mToast.LENGTH_LONG).show();
 		}
 	};
 
@@ -206,7 +228,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mGLView.setEGLContextClientVersion(2);
 
 		// Configure the OpenGL renderer.
-		mRenderer = new Renderer();
+		mRenderer = new Renderer(this);
 		mGLView.setRenderer(mRenderer);
 
 		mLayoutDebug = (LinearLayout) findViewById(R.id.debug_layout);
@@ -243,7 +265,31 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 
 		RTABMapLib.onCreate(this);
-		RTABMapLib.openEmptyDatabase();
+		String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
+		(new File(tmpDatabase)).delete();
+		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
+		RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
+
+		DisplayManager displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+        if (displayManager != null) {
+            displayManager.registerDisplayListener(new DisplayManager.DisplayListener() {
+                @Override
+                public void onDisplayAdded(int displayId) {
+
+                }
+
+                @Override
+                public void onDisplayChanged(int displayId) {
+                    synchronized (this) {
+                        setAndroidOrientation();
+                    }
+                }
+
+                @Override
+                public void onDisplayRemoved(int displayId) {}
+            }, null);
+        }
 	}
 
 	@Override
@@ -258,78 +304,126 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			}
 		}
 	}
+	
+	@Override
+	protected void onPause() {
+		super.onPause();
+		
+		Log.i(TAG, "onPause()");
+		mOnPause = true;
+		
+		// This deletes OpenGL context!
+		mGLView.onPause();
+
+		RTABMapLib.onPause();
+
+		unbindService(mTangoServiceConnection);
+
+		if(!mButtonPause.isChecked())
+		{
+			mButtonPause.setChecked(true);
+			pauseMapping();
+		}
+		
+		mOnPauseStamp = System.currentTimeMillis()/1000;
+	}
 
 	@Override
 	protected void onResume() {
 		super.onResume();
-
-		// update preferences
-		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-		mUpdateRate = sharedPref.getString(getString(R.string.pref_key_update_rate), getString(R.string.pref_default_update_rate));
-		mTimeThr = sharedPref.getString(getString(R.string.pref_key_time_thr), getString(R.string.pref_default_time_thr));
-		mLoopThr = sharedPref.getString(getString(R.string.pref_key_loop_thr), getString(R.string.pref_default_loop_thr));
-		String optError = sharedPref.getString(getString(R.string.pref_key_opt_error), getString(R.string.pref_default_opt_error));
-		mMaxFeatures = sharedPref.getString(getString(R.string.pref_key_features), getString(R.string.pref_default_features));
-		String featureType = sharedPref.getString(getString(R.string.pref_key_features_type), getString(R.string.pref_default_features_type));
-
-		RTABMapLib.setNodesFiltering(sharedPref.getBoolean(getString(R.string.pref_key_nodes_filtering), Boolean.parseBoolean(getString(R.string.pref_default_nodes_filtering))));
-		RTABMapLib.setDriftCorrection(sharedPref.getBoolean(getString(R.string.pref_key_drift_correction), Boolean.parseBoolean(getString(R.string.pref_default_drift_correction))));
-		RTABMapLib.setAutoExposure(sharedPref.getBoolean(getString(R.string.pref_key_auto_exposure), Boolean.parseBoolean(getString(R.string.pref_default_auto_exposure))));
-		RTABMapLib.setFullResolution(sharedPref.getBoolean(getString(R.string.pref_key_resolution), Boolean.parseBoolean(getString(R.string.pref_default_resolution))));
-		RTABMapLib.setAppendMode(sharedPref.getBoolean(getString(R.string.pref_key_append), Boolean.parseBoolean(getString(R.string.pref_default_append))));
-		RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", mUpdateRate.compareTo("Max")==0?"0":mUpdateRate);
-		RTABMapLib.setMappingParameter("Rtabmap/TimeThr", mTimeThr.compareTo("No Limit") == 0?"0":mTimeThr);
-		RTABMapLib.setMappingParameter("Kp/MaxFeatures", mMaxFeatures.compareTo("Disabled")==0?"-1":mMaxFeatures.compareTo("No Limit")==0?"0":mMaxFeatures);
-		RTABMapLib.setMappingParameter("Rtabmap/LoopThr", mLoopThr.compareTo("Disabled")==0?"1":mLoopThr);
-		RTABMapLib.setMappingParameter("RGBD/OptimizeMaxError", optError.compareTo("Disabled")==0?"0":optError);
-		RTABMapLib.setMappingParameter("Kp/DetectorStrategy", featureType);
-
-		RTABMapLib.setMeshDecimation(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_decimation), getString(R.string.pref_default_decimation))));
-		RTABMapLib.setMaxCloudDepth(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_depth), getString(R.string.pref_default_depth))));
-		RTABMapLib.setPointSize(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_point_size), getString(R.string.pref_default_point_size))));
-		RTABMapLib.setMeshAngleTolerance(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_angle), getString(R.string.pref_default_angle))));
-		RTABMapLib.setMeshTriangleSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_triangle), getString(R.string.pref_default_triangle))));
 		
-		RTABMapLib.setMinClusterSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_min_cluster_size), getString(R.string.pref_default_min_cluster_size))));
-		RTABMapLib.setMaxGainRadius(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_gain_max_radius), getString(R.string.pref_default_gain_max_radius))));
-
-		if(mItemRenderingPointCloud != null)
+		mProgressDialog.setTitle("");
+		if(mOnPause)
 		{
-			int renderingType =  sharedPref.getInt(getString(R.string.pref_key_rendering), Integer.parseInt(getString(R.string.pref_default_rendering)));
-			if(renderingType == 0)
+			if(System.currentTimeMillis()/1000 - mOnPauseStamp < 1)
 			{
-				mItemRenderingPointCloud.setChecked(true);
-			}
-			else if(renderingType == 1)
-			{
-				mItemRenderingMesh.setChecked(true);
+				mProgressDialog.setMessage(String.format("RTAB-Map has been interrupted by another application, Tango should be re-initialized! Set your phone/tablet in Airplane mode if this happens often."));
 			}
 			else
 			{
-				mItemRenderingTextureMesh.setChecked(true);
+				mProgressDialog.setMessage(String.format("Hold Tight! Initializing Tango Service..."));
 			}
-			RTABMapLib.setMeshRendering(
-					mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
-					mItemRenderingTextureMesh.isChecked());
-		}
-
-
-		mProgressDialog.setTitle("");
-		mProgressDialog.setMessage(String.format("Hold Tight! Initializing Tango Service..."));
-		mProgressDialog.show();
-
-		if(mOnPause)
-		{
 			mToast.makeText(this, "Mapping is paused!", mToast.LENGTH_LONG).show();
 		}
 		else
 		{
-			mToast.makeText(this, "Tip: If the camera is still drifting just after the mapping has started, do \"Reset\".", mToast.LENGTH_LONG).show();
+			mProgressDialog.setMessage(String.format("Hold Tight! Initializing Tango Service...\nTip: If the camera is still drifting just after the mapping has started, do \"Reset\"."));
 		}
-
+		mProgressDialog.show();
 		mOnPause = false;
+		
+		setAndroidOrientation();
 
-		TangoInitializationHelper.bindTangoService(this, mTangoServiceConnection);
+		// update preferences
+		try
+		{
+			Log.d(TAG, "update preferences...");
+			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+			mUpdateRate = sharedPref.getString(getString(R.string.pref_key_update_rate), getString(R.string.pref_default_update_rate));
+			mTimeThr = sharedPref.getString(getString(R.string.pref_key_time_thr), getString(R.string.pref_default_time_thr));
+			String memThr = sharedPref.getString(getString(R.string.pref_key_mem_thr), getString(R.string.pref_default_mem_thr));
+			mLoopThr = sharedPref.getString(getString(R.string.pref_key_loop_thr), getString(R.string.pref_default_loop_thr));
+			String simThr = sharedPref.getString(getString(R.string.pref_key_sim_thr), getString(R.string.pref_default_sim_thr));
+			String optError = sharedPref.getString(getString(R.string.pref_key_opt_error), getString(R.string.pref_default_opt_error));
+			mMaxFeatures = sharedPref.getString(getString(R.string.pref_key_features_voc), getString(R.string.pref_default_features_voc));
+			String maxFeaturesLoop = sharedPref.getString(getString(R.string.pref_key_features), getString(R.string.pref_default_features));
+			String featureType = sharedPref.getString(getString(R.string.pref_key_features_type), getString(R.string.pref_default_features_type));
+			boolean keepAllDb = sharedPref.getBoolean(getString(R.string.pref_key_keep_all_db), Boolean.parseBoolean(getString(R.string.pref_default_keep_all_db)));
+	
+			Log.d(TAG, "set mapping parameters");
+			RTABMapLib.setNodesFiltering(sharedPref.getBoolean(getString(R.string.pref_key_nodes_filtering), Boolean.parseBoolean(getString(R.string.pref_default_nodes_filtering))));
+			RTABMapLib.setAutoExposure(sharedPref.getBoolean(getString(R.string.pref_key_auto_exposure), Boolean.parseBoolean(getString(R.string.pref_default_auto_exposure))));
+			RTABMapLib.setRawScanSaved(sharedPref.getBoolean(getString(R.string.pref_key_raw_scan_saved), Boolean.parseBoolean(getString(R.string.pref_default_raw_scan_saved))));
+			RTABMapLib.setFullResolution(sharedPref.getBoolean(getString(R.string.pref_key_resolution), Boolean.parseBoolean(getString(R.string.pref_default_resolution))));
+			RTABMapLib.setAppendMode(sharedPref.getBoolean(getString(R.string.pref_key_append), Boolean.parseBoolean(getString(R.string.pref_default_append))));
+			RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", mUpdateRate);
+			RTABMapLib.setMappingParameter("Rtabmap/TimeThr", mTimeThr);
+			RTABMapLib.setMappingParameter("Rtabmap/MemoryThr", memThr);
+			RTABMapLib.setMappingParameter("Mem/RehearsalSimilarity", simThr);
+			RTABMapLib.setMappingParameter("Kp/MaxFeatures", mMaxFeatures);
+			RTABMapLib.setMappingParameter("Vis/MaxFeatures", maxFeaturesLoop);
+			RTABMapLib.setMappingParameter("Rtabmap/LoopThr", mLoopThr);
+			RTABMapLib.setMappingParameter("RGBD/OptimizeMaxError", optError);
+			RTABMapLib.setMappingParameter("Kp/DetectorStrategy", featureType);
+			RTABMapLib.setMappingParameter("Vis/FeatureType", featureType);
+			RTABMapLib.setMappingParameter("Mem/NotLinkedNodesKept", String.valueOf(keepAllDb));
+	
+			Log.d(TAG, "set exporting parameters...");
+			RTABMapLib.setMeshDecimation(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_density), getString(R.string.pref_default_density))));
+			RTABMapLib.setMaxCloudDepth(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_depth), getString(R.string.pref_default_depth))));
+			RTABMapLib.setPointSize(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_point_size), getString(R.string.pref_default_point_size))));
+			RTABMapLib.setMeshAngleTolerance(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_angle), getString(R.string.pref_default_angle))));
+			RTABMapLib.setMeshTriangleSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_triangle), getString(R.string.pref_default_triangle))));
+			
+			Log.d(TAG, "set rendering parameters...");
+			RTABMapLib.setMinClusterSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_min_cluster_size), getString(R.string.pref_default_min_cluster_size))));
+			RTABMapLib.setMaxGainRadius(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_gain_max_radius), getString(R.string.pref_default_gain_max_radius))));
+	
+			if(mItemRenderingPointCloud != null)
+			{
+				int renderingType =  sharedPref.getInt(getString(R.string.pref_key_rendering), Integer.parseInt(getString(R.string.pref_default_rendering)));
+				if(renderingType == 0)
+				{
+					mItemRenderingPointCloud.setChecked(true);
+				}
+				else if(renderingType == 1)
+				{
+					mItemRenderingMesh.setChecked(true);
+				}
+				else
+				{
+					mItemRenderingTextureMesh.setChecked(true);
+				}
+				RTABMapLib.setMeshRendering(
+						mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
+						mItemRenderingTextureMesh.isChecked());
+			}
+		}
+		catch(Exception e)
+		{
+			Log.e(TAG, "Error parsing preferences: " + e.getMessage());
+			mToast.makeText(this, String.format("Error parsing preferences: "+e.getMessage()), mToast.LENGTH_LONG).show();
+		}
 
 		Log.i(TAG, String.format("onResume()"));
 
@@ -343,28 +437,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					Tango.getRequestPermissionIntent(Tango.PERMISSIONTYPE_MOTION_TRACKING),
 					Tango.TANGO_INTENT_ACTIVITYCODE);
 		}
+		
+		TangoInitializationHelper.bindTangoService(getActivity(), mTangoServiceConnection);
 	}
-
-	@Override
-	protected void onPause() {
-		super.onPause();
-
-		// This deletes OpenGL context!
-		mGLView.onPause();
-
-		mOnPause = true;
-
-		RTABMapLib.onPause();
-
-		unbindService(mTangoServiceConnection);
-
-		if(!mButtonPause.isChecked())
-		{
-			mButtonPause.setChecked(true);
-			pauseMapping();
-		}
-	}
-
+	
 	private void setCamera(int type)
 	{
 		RTABMapLib.setCamera(type);
@@ -400,6 +476,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			return;
 		}
 	}
+	
+	private void setAndroidOrientation() {
+        Display display = getWindowManager().getDefaultDisplay();
+        Camera.CameraInfo colorCameraInfo = new Camera.CameraInfo();
+        Camera.getCameraInfo(0, colorCameraInfo);
+        RTABMapLib.setScreenRotation(display.getRotation(), colorCameraInfo.orientation);
+    }
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
@@ -438,6 +521,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 		MenuInflater inflater = getMenuInflater();
 		inflater.inflate(R.menu.optionmenu, menu);
+		
+		getActionBar().setDisplayShowHomeEnabled(true);
+		getActionBar().setIcon(R.drawable.ic_launcher);
 
 		mItemSave = menu.findItem(R.id.save);
 		mItemOpen = menu.findItem(R.id.open);
@@ -458,27 +544,43 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mItemPostProcessing.setEnabled(false);
 		mItemDataRecorderMode.setEnabled(false);
 
-		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-		int renderingType =  sharedPref.getInt(getString(R.string.pref_key_rendering), Integer.parseInt(getString(R.string.pref_default_rendering)));
-		if(renderingType == 0)
+		try
 		{
-			mItemRenderingPointCloud.setChecked(true);
+			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+			int renderingType =  sharedPref.getInt(getString(R.string.pref_key_rendering), Integer.parseInt(getString(R.string.pref_default_rendering)));
+			if(renderingType == 0)
+			{
+				mItemRenderingPointCloud.setChecked(true);
+			}
+			else if(renderingType == 1)
+			{
+				mItemRenderingMesh.setChecked(true);
+			}
+			else
+			{
+				mItemRenderingTextureMesh.setChecked(true);
+			}
+			RTABMapLib.setMeshRendering(
+					mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
+					mItemRenderingTextureMesh.isChecked());
 		}
-		else if(renderingType == 1)
+		catch(Exception e)
 		{
-			mItemRenderingMesh.setChecked(true);
+			Log.e(TAG, "Error parsing rendering preferences: " + e.getMessage());
+			mToast.makeText(this, String.format("Error parsing rendering preferences: "+e.getMessage()), mToast.LENGTH_LONG).show();
 		}
-		else
-		{
-			mItemRenderingTextureMesh.setChecked(true);
-		}
-		RTABMapLib.setMeshRendering(
-				mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
-				mItemRenderingTextureMesh.isChecked());
 
 		updateState(mState);
 
 		return true;
+	}
+	
+	private long getFreeMemory()
+	{
+		MemoryInfo mi = new MemoryInfo();
+		ActivityManager activityManager = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+		activityManager.getMemoryInfo(mi);
+		return mi.availMem / 0x100000L; // MB
 	}
 
 	private void updateStatsUI(
@@ -495,7 +597,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			float hypothesis,
 			int nodesDrawn,
 			float fps,
-			int rejected)
+			int rejected,
+			float rehearsalValue)
 	{
 		if(mButtonPause!=null)
 		{
@@ -505,7 +608,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			}
 			else
 			{
-				((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?String.format("Localization (%s Hz)", mUpdateRate):mItemDataRecorderMode.isChecked()?String.format("Recording (%s Hz)", mUpdateRate):String.format("Mapping (%s Hz)", mUpdateRate));
+				String updateValue = mUpdateRate.compareTo("0")==0?"Max":mUpdateRate;
+				((TextView)findViewById(R.id.status)).setText(mItemLocalizationMode.isChecked()?String.format("Localization (%s Hz)", updateValue):mItemDataRecorderMode.isChecked()?String.format("Recording (%s Hz)", updateValue):String.format("Mapping (%s Hz)", updateValue));
 			}
 		}
 
@@ -514,10 +618,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		((TextView)findViewById(R.id.nodes)).setText(String.format("%d (%d shown)", nodes, nodesDrawn));
 		((TextView)findViewById(R.id.words)).setText(String.valueOf(words));
 		((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
-		((TextView)findViewById(R.id.db_size)).setText(String.valueOf(databaseMemoryUsed));
+		((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
+		((TextView)findViewById(R.id.database_size)).setText(String.valueOf(databaseMemoryUsed));
 		((TextView)findViewById(R.id.inliers)).setText(String.valueOf(inliers));
-		((TextView)findViewById(R.id.features)).setText(String.format("%d / %s", featuresExtracted, mMaxFeatures));
-		((TextView)findViewById(R.id.update_time)).setText(String.format("%.3f / %s", updateTime, mTimeThr));
+		((TextView)findViewById(R.id.features)).setText(String.format("%d / %s", featuresExtracted, mMaxFeatures.compareTo("0")==0?"No Limit":mMaxFeatures.compareTo("-1")==0?"Disabled":mMaxFeatures));
+		((TextView)findViewById(R.id.rehearsal)).setText(String.format("%.3f", rehearsalValue));
+		((TextView)findViewById(R.id.update_time)).setText(String.format("%.3f / %s", updateTime, mTimeThr.compareTo("0")==0?"No Limit":mTimeThr));
 		((TextView)findViewById(R.id.hypothesis)).setText(String.format("%.3f / %s (%d)", hypothesis, mLoopThr, loopClosureId>0?loopClosureId:highestHypId));
 		((TextView)findViewById(R.id.fps)).setText(String.format("%.3f Hz", fps));
 		if(mButtonPause!=null && !mButtonPause.isChecked())
@@ -553,13 +659,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			final float hypothesis,
 			final int nodesDrawn,
 			final float fps,
-			final int rejected)
+			final int rejected,
+			final float rehearsalValue)
 	{
 		Log.i(TAG, String.format("updateStatsCallback()"));
 
 		runOnUiThread(new Runnable() {
 			public void run() {
-				updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, highestHypId, databaseMemoryUsed, inliers, features, hypothesis, nodesDrawn, fps, rejected);
+				updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, highestHypId, databaseMemoryUsed, inliers, features, hypothesis, nodesDrawn, fps, rejected, rehearsalValue);
 			} 
 		});
 	}
@@ -692,7 +799,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				@Override
 				public boolean accept(File dir, String filename) {
 					File sel = new File(dir, filename);
-					return filename.endsWith(".db");
+					return filename.compareTo(RTABMAP_TMP_DB) != 0 && filename.endsWith(".db");
 				}
 
 			};
@@ -851,33 +958,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							else if(loopDetected < 0)
 							{
 								mToast.makeText(getActivity(), String.format("Detection failed!"), mToast.LENGTH_SHORT).show();
-							}
-							updateState(State.STATE_IDLE);
-						}
-					});
-				} 
-			});
-			workingThread.start();
-		}
-		else if (itemId == R.id.icp_refining)
-		{
-			mProgressDialog.setTitle("Post-Processing");
-			mProgressDialog.setMessage(String.format("Please wait while refining links..."));
-			mProgressDialog.show();
-			updateState(State.STATE_PROCESSING);
-			Thread workingThread = new Thread(new Runnable() {
-				public void run() {
-					final int linksRefined = RTABMapLib.postProcessing(3);
-					runOnUiThread(new Runnable() {
-						public void run() {
-							mProgressDialog.dismiss();
-							if(linksRefined >= 0)
-							{
-								mToast.makeText(getActivity(), String.format("Refining done! %d link(s) refined.", linksRefined), mToast.LENGTH_SHORT).show();
-							}
-							else if(linksRefined < 0)
-							{
-								mToast.makeText(getActivity(), String.format("Refining failed!"), mToast.LENGTH_SHORT).show();
 							}
 							updateState(State.STATE_IDLE);
 						}
@@ -1201,7 +1281,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			((TextView)findViewById(R.id.nodes)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.words)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
-			((TextView)findViewById(R.id.db_size)).setText(String.valueOf(0));
+			((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
 			((TextView)findViewById(R.id.inliers)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.features)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.update_time)).setText(String.valueOf(0));
@@ -1210,19 +1290,18 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mTotalLoopClosures = 0;
 			((TextView)findViewById(R.id.total_loop)).setText(String.valueOf(mTotalLoopClosures));
 
-			if(mOpenedDatabasePath.isEmpty())
-			{
-				RTABMapLib.resetMapping();
-			}
-			else
-			{
-				mOpenedDatabasePath = "";
-				RTABMapLib.openEmptyDatabase();
-			}
+			mOpenedDatabasePath = "";
+			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+			boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
+			String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
+			(new File(tmpDatabase)).delete();
+			RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
+			
 			mMapIsEmpty = true;
 			mItemSave.setEnabled(false);
 			mItemExport.setEnabled(false);
 			mItemPostProcessing.setEnabled(false);
+			updateState(State.STATE_IDLE);
 		}
 		else if(itemId == R.id.data_recorder)
 		{
@@ -1238,7 +1317,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					((TextView)findViewById(R.id.nodes)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.words)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
-					((TextView)findViewById(R.id.db_size)).setText(String.valueOf(0));
+					((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
 					((TextView)findViewById(R.id.inliers)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.features)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.update_time)).setText(String.valueOf(0));
@@ -1251,7 +1330,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					RTABMapLib.setDataRecorderMode(mItemDataRecorderMode.isChecked());
 
 					mOpenedDatabasePath = "";
-					RTABMapLib.openEmptyDatabase();
+					SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+					boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
+					String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
+					(new File(tmpDatabase)).delete();
+					RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
 
 					mItemOpen.setEnabled(!mItemDataRecorderMode.isChecked() && mButtonPause.isChecked());
 					mItemPostProcessing.setEnabled(!mItemDataRecorderMode.isChecked() && mButtonPause.isChecked());
@@ -1295,6 +1378,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			final float cloudVoxelSize = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_cloud_voxel), getString(R.string.pref_default_cloud_voxel)));
 			final int textureSize = isOBJ?Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_texture_size), getString(R.string.pref_default_texture_size))):0;
 			final int normalK = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_normal_k), getString(R.string.pref_default_normal_k)));
+			final float maxTextureDistance = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_max_texture_distance), getString(R.string.pref_default_max_texture_distance)));
 			final float optimizedVoxelSize = cloudVoxelSize;
 			final int optimizedDepth = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_opt_depth), getString(R.string.pref_default_opt_depth)));
 			final float optimizedDecimationFactor = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_opt_decimation_factor), getString(R.string.pref_default_opt_decimation_factor)))/100.0f;
@@ -1353,6 +1437,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 													meshing,
 													textureSize,
 													normalK,
+													maxTextureDistance,
 													optimized,
 													optimizedVoxelSize,
 													optimizedDepth,
@@ -1454,6 +1539,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 											meshing,
 											textureSize,
 											normalK,
+											maxTextureDistance,
 											optimized,
 											optimizedVoxelSize,
 											optimizedDepth,
@@ -1553,18 +1639,24 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				AlertDialog.Builder builder = new AlertDialog.Builder(this);
 				builder.setTitle("Choose Your File (*.db)");
 				builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, int which) {
-						mOpenedDatabasePath = mWorkingDirectory + files[which];
-
-						if(!mItemTrajectoryMode.isChecked())
-						{
-							mProgressDialog.setTitle("Loading");
-							mProgressDialog.setMessage(String.format("Database \"%s\" loaded. Please wait while creating point clouds and meshes...", files[which]));
-							mProgressDialog.show();
-						}
-
-						RTABMapLib.openDatabase(mOpenedDatabasePath);
-						setCamera(1);
+					public void onClick(DialogInterface dialog, final int which) {
+						
+						// Smooth and adjust color now?
+						new AlertDialog.Builder(getActivity())
+						.setTitle("Opening database...")
+						.setMessage("Do you want to smooth and adjust colors now?\nThis can be done later under Optimize menu.")
+						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int whichIn) {
+								openDatabase(files[which], true);
+							}
+						})
+						.setNeutralButton("No", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int whichIn) {
+								openDatabase(files[which], false);
+							}
+						})
+						.show();
+						return;
 					}
 				});
 				builder.show();
@@ -1583,6 +1675,56 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 
 		return true;
+	}
+	
+	private void openDatabase(String fileName, boolean optimize)
+	{
+		mOpenedDatabasePath = mWorkingDirectory + fileName;
+
+		if(!mItemTrajectoryMode.isChecked())
+		{
+			mProgressDialog.setTitle("Loading");
+			mProgressDialog.setMessage(String.format("Database \"%s\" loaded. Please wait while creating point clouds and meshes...", fileName));
+			mProgressDialog.show();
+			updateState(State.STATE_PROCESSING);
+		}
+		
+		String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
+		(new File(tmpDatabase)).delete();
+		try{
+			copy(new File(mOpenedDatabasePath), new File(tmpDatabase));
+		}
+		catch(IOException e)
+		{
+			mToast.makeText(getActivity(), String.format("Failed to create temp database from %s!", mOpenedDatabasePath), mToast.LENGTH_LONG).show();
+		}
+
+		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+		boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));		
+		RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, optimize);
+		setCamera(1);
+		updateState(State.STATE_IDLE);
+	}
+	
+	public void copy(File src, File dst) throws IOException {
+	    InputStream in = new FileInputStream(src);
+	    OutputStream out = new FileOutputStream(dst);
+
+	    // Transfer bytes from in to out
+	    byte[] buf = new byte[1024];
+	    int len;
+	    while ((len = in.read(buf)) > 0) {
+	        out.write(buf, 0, len);
+	    }
+	    in.close();
+	    out.close();
+	}
+	
+	private boolean isNetworkAvailable() {
+	    ConnectivityManager connectivityManager 
+	          = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+	    NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+	    return activeNetworkInfo != null && activeNetworkInfo.isConnected();
 	}
 
 	public static void zip(String file, String zipFile) throws IOException {
@@ -1662,54 +1804,78 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		if(files.length > 0)
 		{
 			final String[] filesToZip = files;
-			// get token the first time
-			if(mAuthToken == null)
-			{
-				Log.i(TAG,"We don't have the token, get it!");
+			authorizeAndPublish(filesToZip, fileName);
+		}
+	}
+	
+	private void authorizeAndPublish(final String[] filesToZip, final String fileName)
+	{
+		if(!isNetworkAvailable())
+		{
+			// Visualize the result?
+			new AlertDialog.Builder(getActivity())
+			.setTitle("Sharing to Sketchfab...")
+			.setMessage("Network is not available. Make sure you have internet before continuing.")
+			.setPositiveButton("Try Again", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					authorizeAndPublish(filesToZip, fileName);
+				}
+			})
+			.setNeutralButton("Abort", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+				}
+			})
+			.show();
+			return;
+		}	
 
-				WebView web;
-				mAuthDialog = new Dialog(this);
-				mAuthDialog.setContentView(R.layout.auth_dialog);
-				web = (WebView)mAuthDialog.findViewById(R.id.webv);
-				web.getSettings().setJavaScriptEnabled(true);
-				String auth_url = AUTHORIZE_PATH+"?redirect_uri="+REDIRECT_URI+"&response_type=token&client_id="+CLIENT_ID;
-				Log.i(TAG, "Auhorize url="+auth_url);
-				web.setWebViewClient(new WebViewClient() {
+		// get token the first time
+		if(mAuthToken == null)
+		{
+			Log.i(TAG,"We don't have the token, get it!");
 
-					boolean authComplete = false;
+			WebView web;
+			mAuthDialog = new Dialog(this);
+			mAuthDialog.setContentView(R.layout.auth_dialog);
+			web = (WebView)mAuthDialog.findViewById(R.id.webv);
+			web.getSettings().setJavaScriptEnabled(true);
+			String auth_url = AUTHORIZE_PATH+"?redirect_uri="+REDIRECT_URI+"&response_type=token&client_id="+CLIENT_ID;
+			Log.i(TAG, "Auhorize url="+auth_url);
+			web.setWebViewClient(new WebViewClient() {
 
-					@Override
-					public void onPageFinished(WebView view, String url) {
-						super.onPageFinished(view, url);
+				boolean authComplete = false;
 
-						//Log.i(TAG,"onPageFinished url="+url);
-						if(url.contains("error=access_denied")){
-							Log.e(TAG, "ACCESS_DENIED_HERE");
-							authComplete = true;
-							Toast.makeText(getApplicationContext(), "Error Occured", Toast.LENGTH_SHORT).show();
-							mAuthDialog.dismiss();
-						}
-						else if (url.startsWith(REDIRECT_URI) && url.contains("access_token") && authComplete != true) {
-							//Log.i(TAG,"onPageFinished received token="+url);
-							String[] sArray = url.split("access_token=");
-							mAuthToken = (sArray[1].split("&token_type=Bearer"))[0];
-							authComplete = true;
+				@Override
+				public void onPageFinished(WebView view, String url) {
+					super.onPageFinished(view, url);
 
-							mAuthDialog.dismiss();
-
-							zipAndPublish(filesToZip, fileName);
-						}
+					//Log.i(TAG,"onPageFinished url="+url);
+					if(url.contains("error=access_denied")){
+						Log.e(TAG, "ACCESS_DENIED_HERE");
+						authComplete = true;
+						Toast.makeText(getApplicationContext(), "Error Occured", Toast.LENGTH_SHORT).show();
+						mAuthDialog.dismiss();
 					}
-				});
-				mAuthDialog.show();
-				mAuthDialog.setTitle("Authorize RTAB-Map");
-				mAuthDialog.setCancelable(true);
-				web.loadUrl(auth_url);
-			}
-			else
-			{
-				zipAndPublish(filesToZip, fileName);
-			}
+					else if (url.startsWith(REDIRECT_URI) && url.contains("access_token") && authComplete != true) {
+						//Log.i(TAG,"onPageFinished received token="+url);
+						String[] sArray = url.split("access_token=");
+						mAuthToken = (sArray[1].split("&token_type=Bearer"))[0];
+						authComplete = true;
+
+						mAuthDialog.dismiss();
+
+						zipAndPublish(filesToZip, fileName);
+					}
+				}
+			});
+			mAuthDialog.show();
+			mAuthDialog.setTitle("Authorize RTAB-Map");
+			mAuthDialog.setCancelable(true);
+			web.loadUrl(auth_url);
+		}
+		else
+		{
+			zipAndPublish(filesToZip, fileName);
 		}
 	}
 

@@ -59,6 +59,7 @@ class PointCloudDrawable {
   void updateMesh(const Mesh & mesh, const cv::Mat & texture);
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
+  void setGain(float gain) {gain_ = gain;}
   rtabmap::Transform getPose() const {return glmToTransform(pose_);}
   bool isVisible() const {return visible_;}
   bool hasMesh() const {return polygons_.size()!=0;}

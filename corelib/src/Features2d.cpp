@@ -369,9 +369,9 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
 	{
 #if CV_MAJOR_VERSION < 3
-		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
+		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
 #else
-		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
+		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
 #endif
 		type = Feature2D::kFeatureOrb;
 	}
@@ -379,12 +379,21 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	if(type == Feature2D::kFeatureFastBrief ||
 	   type == Feature2D::kFeatureFastFreak ||
 	   type == Feature2D::kFeatureGfttBrief ||
-	   type == Feature2D::kFeatureGfttFreak)
+	   type == Feature2D::kFeatureGfttFreak ||
+	   type == Feature2D::kFeatureFreak)
 	{
-		UWARN("BRIEF/FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
+		UWARN("BRIEF and FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
 		type = Feature2D::kFeatureOrb;
 	}
 #endif
+#endif
+
+#if CV_MAJOR_VERSION < 3
+	if(type == Feature2D::kFeatureFreak)
+	{
+		UWARN("FREAK detector/descriptor can be used only with OpenCV3. GFTT/FREAK is used instead.");
+		type = Feature2D::kFeatureGfttFreak;
+	}
 #endif
 
 	Feature2D * feature2D = 0;

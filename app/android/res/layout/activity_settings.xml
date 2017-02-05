@@ -3,12 +3,12 @@
     <PreferenceCategory
         android:title="@string/pref_title_rendering">
         <ListPreference 
-            android:key="@string/pref_key_decimation"
-    		android:title="@string/pref_title_decimation"
-    		android:summary="@string/pref_summary_decimation"
-   			android:entries="@array/pref_decimation_keys"
-   			android:entryValues="@array/pref_decimation_values"
-   			android:defaultValue="@string/pref_default_decimation"/>
+            android:key="@string/pref_key_density"
+    		android:title="@string/pref_title_density"
+    		android:summary="@string/pref_summary_density"
+   			android:entries="@array/pref_density_keys"
+   			android:entryValues="@array/pref_density_values"
+   			android:defaultValue="@string/pref_default_density"/>
         <ListPreference 
             android:key="@string/pref_key_depth"
     		android:title="@string/pref_title_depth"
@@ -43,159 +43,198 @@
             android:summary="@string/pref_summary_nodes_filtering"
             android:defaultValue="@string/pref_default_nodes_filtering"/>
     </PreferenceCategory>
-
-    <PreferenceCategory
-        android:title="@string/pref_title_mapping">
-    <PreferenceScreen
-            android:key="pref_button_mapping"
-            android:title="@string/pref_title_mapping"
-            android:summary="@string/pref_summary_mapping"
-            android:persistent="false">
-        
-	    <SwitchPreference
-            android:key="@string/pref_key_append"
-            android:title="@string/pref_title_append"
-            android:summary="@string/pref_summary_append"
-            android:defaultValue="@string/pref_default_append"/>
-	    <SwitchPreference
-            android:key="@string/pref_key_drift_correction"
-            android:title="@string/pref_title_drift_correction"
-            android:summary="@string/pref_summary_drift_correction"
-            android:defaultValue="@string/pref_default_drift_correction"/>
-	    <SwitchPreference
-            android:key="@string/pref_key_auto_exposure"
-            android:title="@string/pref_title_auto_exposure"
-            android:summary="@string/pref_summary_auto_exposure"
-            android:defaultValue="@string/pref_default_auto_exposure"/>
-	    <SwitchPreference
-            android:key="@string/pref_key_resolution"
-            android:title="@string/pref_title_resolution"
-            android:summary="@string/pref_summary_resolution"
-            android:defaultValue="@string/pref_default_resolution"/>
-  
-        <ListPreference
-            android:key="@string/pref_key_update_rate"
-            android:title="@string/pref_title_update_rate"
-            android:summary="@string/pref_summary_update_rate"
-            android:entries="@array/pref_update_rate_keys"
-   			android:entryValues="@array/pref_update_rate_values"
-   			android:defaultValue="@string/pref_default_update_rate"/>
-        <ListPreference 
-            android:key="@string/pref_key_time_thr"
-    		android:title="@string/pref_title_time_thr"
-    		android:summary="@string/pref_summary_time_thr"
-   			android:entries="@array/pref_time_thr_keys"
-   			android:entryValues="@array/pref_time_thr_values"
-   			android:defaultValue="@string/pref_default_time_thr"/>
-        <ListPreference 
-            android:key="@string/pref_key_loop_thr"
-    		android:title="@string/pref_title_loop_thr"
-    		android:summary="@string/pref_summary_loop_thr"
-   			android:entries="@array/pref_loop_thr_keys"
-   			android:entryValues="@array/pref_loop_thr_values"
-   			android:defaultValue="@string/pref_default_loop_thr"/>
-        <ListPreference 
-            android:key="@string/pref_key_opt_error"
-    		android:title="@string/pref_title_opt_error"
-    		android:summary="@string/pref_summary_opt_error"
-   			android:entries="@array/pref_opt_error_keys"
-   			android:entryValues="@array/pref_opt_error_values"
-   			android:defaultValue="@string/pref_default_opt_error"/>
-        <ListPreference 
-            android:key="@string/pref_key_features"
-    		android:title="@string/pref_title_features"
-    		android:summary="@string/pref_summary_features"
-   			android:entries="@array/pref_features_keys"
-   			android:entryValues="@array/pref_features_values"
-   			android:defaultValue="@string/pref_default_features"/>
-        <ListPreference 
-            android:key="@string/pref_key_features_type"
-    		android:title="@string/pref_title_features_type"
-    		android:summary="@string/pref_summary_features_type"
-   			android:entries="@array/pref_features_type_keys"
-   			android:entryValues="@array/pref_features_type_values"
-   			android:defaultValue="@string/pref_default_features_type"/>
-    </PreferenceScreen>
-    </PreferenceCategory>
-    
-    <PreferenceCategory
-        android:title="@string/pref_title_export">
-    <PreferenceScreen
-            android:key="pref_button_export"
-            android:title="@string/pref_title_export"
-            android:summary="@string/pref_summary_export"
-            android:persistent="false">
-        
-        <ListPreference 
-            android:key="@string/pref_key_cloud_voxel"
-    		android:title="@string/pref_title_cloud_voxel"
-    		android:summary="@string/pref_summary_cloud_voxel"
-   			android:entries="@array/pref_cloud_voxel_keys"
-   			android:entryValues="@array/pref_cloud_voxel_values"
-   			android:defaultValue="@string/pref_default_cloud_voxel"/>
-        
-        <ListPreference 
-            android:key="@string/pref_key_texture_size"
-    		android:title="@string/pref_title_texture_size"
-    		android:summary="@string/pref_summary_texture_size"
-   			android:entries="@array/pref_texture_size_keys"
-   			android:entryValues="@array/pref_texture_size_values"
-   			android:defaultValue="@string/pref_default_texture_size"/>
-        
-        <ListPreference 
-            android:key="@string/pref_key_normal_k"
-    		android:title="@string/pref_title_normal_k"
-    		android:summary="@string/pref_summary_normal_k"
-   			android:entries="@array/pref_normal_k_values"
-   			android:entryValues="@array/pref_normal_k_values"
-   			android:defaultValue="@string/pref_default_normal_k"/>
-        
-	    <SwitchPreference
-            android:key="@string/pref_key_block_render"
-            android:title="@string/pref_title_block_render"
-            android:summary="@string/pref_summary_block_render"
-            android:defaultValue="@string/pref_default_block_render"/>
-	    
-	    <PreferenceCategory
-        android:title="@string/pref_title_optimized">
-        
-        
-	        <ListPreference 
-	            android:key="@string/pref_key_opt_depth"
-	    		android:title="@string/pref_title_opt_depth"
-	    		android:summary="@string/pref_summary_opt_depth"
-	   			android:entries="@array/pref_opt_depth_values"
-	   			android:entryValues="@array/pref_opt_depth_values"
-	   			android:defaultValue="@string/pref_default_opt_depth"/>
-	        
-	        <ListPreference 
-	            android:key="@string/pref_key_opt_decimation_factor"
-	    		android:title="@string/pref_title_opt_decimation_factor"
-	    		android:summary="@string/pref_summary_opt_decimation_factor"
-	   			android:entries="@array/pref_opt_decimation_factor_keys"
-	   			android:entryValues="@array/pref_opt_decimation_factor_values"
-	   			android:defaultValue="@string/pref_default_opt_decimation_factor"/>
-	        
-	        <ListPreference 
-	            android:key="@string/pref_key_opt_color_radius"
-	    		android:title="@string/pref_title_opt_color_radius"
-	    		android:summary="@string/pref_summary_opt_color_radius"
-	   			android:entries="@array/pref_opt_color_radius_keys"
-	   			android:entryValues="@array/pref_opt_color_radius_values"
-	   			android:defaultValue="@string/pref_default_opt_color_radius"/>
-	        
-	        <SwitchPreference
-	            android:key="@string/pref_key_opt_clean_white"
-	            android:title="@string/pref_title_opt_clean_white"
-	            android:summary="@string/pref_summary_opt_clean_white"
-	            android:defaultValue="@string/pref_default_opt_clean_white"/>
-	        
-	       </PreferenceCategory>
- 	</PreferenceScreen>
- 	</PreferenceCategory>
  	 	
     <PreferenceCategory
         android:title="@string/pref_title_general">
+        
+        <PreferenceScreen
+            android:key="pref_button_mapping"
+            android:title="@string/pref_title_mapping_sub"
+            android:summary="@string/pref_summary_mapping"
+            android:persistent="false">
+        
+		    <SwitchPreference
+	            android:key="@string/pref_key_append"
+	            android:title="@string/pref_title_append"
+	            android:summary="@string/pref_summary_append"
+	            android:defaultValue="@string/pref_default_append"/>
+		    <SwitchPreference
+	            android:key="@string/pref_key_auto_exposure"
+	            android:title="@string/pref_title_auto_exposure"
+	            android:summary="@string/pref_summary_auto_exposure"
+	            android:defaultValue="@string/pref_default_auto_exposure"/>
+		    <SwitchPreference
+	            android:key="@string/pref_key_resolution"
+	            android:title="@string/pref_title_resolution"
+	            android:summary="@string/pref_summary_resolution"
+	            android:defaultValue="@string/pref_default_resolution"/>
+	  
+		     <PreferenceCategory
+	        	android:title="@string/pref_title_mapping_core">
+		        <ListPreference
+		            android:key="@string/pref_key_update_rate"
+		            android:title="@string/pref_title_update_rate"
+		            android:summary="@string/pref_summary_update_rate"
+		            android:entries="@array/pref_update_rate_keys"
+		   			android:entryValues="@array/pref_update_rate_values"
+		   			android:defaultValue="@string/pref_default_update_rate"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_time_thr"
+		    		android:title="@string/pref_title_time_thr"
+		    		android:summary="@string/pref_summary_time_thr"
+		   			android:entries="@array/pref_time_thr_keys"
+		   			android:entryValues="@array/pref_time_thr_values"
+		   			android:defaultValue="@string/pref_default_time_thr"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_mem_thr"
+		    		android:title="@string/pref_title_mem_thr"
+		    		android:summary="@string/pref_summary_mem_thr"
+		   			android:entries="@array/pref_mem_thr_keys"
+		   			android:entryValues="@array/pref_mem_thr_values"
+		   			android:defaultValue="@string/pref_default_mem_thr"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_loop_thr"
+		    		android:title="@string/pref_title_loop_thr"
+		    		android:summary="@string/pref_summary_loop_thr"
+		   			android:entries="@array/pref_loop_thr_keys"
+		   			android:entryValues="@array/pref_loop_thr_values"
+		   			android:defaultValue="@string/pref_default_loop_thr"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_sim_thr"
+		    		android:title="@string/pref_title_sim_thr"
+		    		android:summary="@string/pref_summary_sim_thr"
+		   			android:entries="@array/pref_sim_thr_keys"
+		   			android:entryValues="@array/pref_sim_thr_values"
+		   			android:defaultValue="@string/pref_default_sim_thr"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_opt_error"
+		    		android:title="@string/pref_title_opt_error"
+		    		android:summary="@string/pref_summary_opt_error"
+		   			android:entries="@array/pref_opt_error_keys"
+		   			android:entryValues="@array/pref_opt_error_values"
+		   			android:defaultValue="@string/pref_default_opt_error"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_features_voc"
+		    		android:title="@string/pref_title_features_voc"
+		    		android:summary="@string/pref_summary_features_voc"
+		   			android:entries="@array/pref_features_voc_keys"
+		   			android:entryValues="@array/pref_features_voc_values"
+		   			android:defaultValue="@string/pref_default_features_voc"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_features"
+		    		android:title="@string/pref_title_features"
+		    		android:summary="@string/pref_summary_features"
+		   			android:entries="@array/pref_features_keys"
+		   			android:entryValues="@array/pref_features_values"
+		   			android:defaultValue="@string/pref_default_features"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_features_type"
+		    		android:title="@string/pref_title_features_type"
+		    		android:summary="@string/pref_summary_features_type"
+		   			android:entries="@array/pref_features_type_keys"
+		   			android:entryValues="@array/pref_features_type_values"
+		   			android:defaultValue="@string/pref_default_features_type"/>
+		    </PreferenceCategory>
+	        <PreferenceCategory
+	        	android:title="@string/pref_title_mapping_database">
+		        <SwitchPreference
+		            android:key="@string/pref_key_keep_all_db"
+		            android:title="@string/pref_title_keep_all_db"
+		            android:summary="@string/pref_summary_keep_all_db"
+		            android:defaultValue="@string/pref_default_keep_all_db"/>
+		        <SwitchPreference
+		            android:key="@string/pref_key_raw_scan_saved"
+		            android:title="@string/pref_title_raw_scan_saved"
+		            android:summary="@string/pref_summary_raw_scan_saved"
+		            android:defaultValue="@string/pref_default_raw_scan_saved"/>
+		        <SwitchPreference
+		            android:key="@string/pref_key_db_in_memory"
+		            android:title="@string/pref_title_db_in_memory"
+		            android:summary="@string/pref_summary_db_in_memory"
+		            android:defaultValue="@string/pref_default_db_in_memory"/>
+		    </PreferenceCategory>
+	    </PreferenceScreen>
+    
+	    <PreferenceScreen
+	            android:key="pref_button_export"
+	            android:title="@string/pref_title_export_sub"
+	            android:summary="@string/pref_summary_export"
+	            android:persistent="false">
+	        
+	        <ListPreference 
+	            android:key="@string/pref_key_cloud_voxel"
+	    		android:title="@string/pref_title_cloud_voxel"
+	    		android:summary="@string/pref_summary_cloud_voxel"
+	   			android:entries="@array/pref_cloud_voxel_keys"
+	   			android:entryValues="@array/pref_cloud_voxel_values"
+	   			android:defaultValue="@string/pref_default_cloud_voxel"/>
+	        
+	        <ListPreference 
+	            android:key="@string/pref_key_texture_size"
+	    		android:title="@string/pref_title_texture_size"
+	    		android:summary="@string/pref_summary_texture_size"
+	   			android:entries="@array/pref_texture_size_keys"
+	   			android:entryValues="@array/pref_texture_size_values"
+	   			android:defaultValue="@string/pref_default_texture_size"/>
+	        
+	        <ListPreference 
+	            android:key="@string/pref_key_normal_k"
+	    		android:title="@string/pref_title_normal_k"
+	    		android:summary="@string/pref_summary_normal_k"
+	   			android:entries="@array/pref_normal_k_values"
+	   			android:entryValues="@array/pref_normal_k_values"
+	   			android:defaultValue="@string/pref_default_normal_k"/>
+	        
+	        <ListPreference 
+	            android:key="@string/pref_key_max_texture_distance"
+	    		android:title="@string/pref_title_max_texture_distance"
+	    		android:summary="@string/pref_summary_max_texture_distance"
+	   			android:entries="@array/pref_max_texture_distance_keys"
+	   			android:entryValues="@array/pref_max_texture_distance_values"
+	   			android:defaultValue="@string/pref_default_max_texture_distance"/>
+	        
+		    <SwitchPreference
+	            android:key="@string/pref_key_block_render"
+	            android:title="@string/pref_title_block_render"
+	            android:summary="@string/pref_summary_block_render"
+	            android:defaultValue="@string/pref_default_block_render"/>
+		    
+		    <PreferenceCategory
+	        android:title="@string/pref_title_optimized">
+	        
+	        
+		        <ListPreference 
+		            android:key="@string/pref_key_opt_depth"
+		    		android:title="@string/pref_title_opt_depth"
+		    		android:summary="@string/pref_summary_opt_depth"
+		   			android:entries="@array/pref_opt_depth_values"
+		   			android:entryValues="@array/pref_opt_depth_values"
+		   			android:defaultValue="@string/pref_default_opt_depth"/>
+		        
+		        <ListPreference 
+		            android:key="@string/pref_key_opt_decimation_factor"
+		    		android:title="@string/pref_title_opt_decimation_factor"
+		    		android:summary="@string/pref_summary_opt_decimation_factor"
+		   			android:entries="@array/pref_opt_decimation_factor_keys"
+		   			android:entryValues="@array/pref_opt_decimation_factor_values"
+		   			android:defaultValue="@string/pref_default_opt_decimation_factor"/>
+		        
+		        <ListPreference 
+		            android:key="@string/pref_key_opt_color_radius"
+		    		android:title="@string/pref_title_opt_color_radius"
+		    		android:summary="@string/pref_summary_opt_color_radius"
+		   			android:entries="@array/pref_opt_color_radius_keys"
+		   			android:entryValues="@array/pref_opt_color_radius_values"
+		   			android:defaultValue="@string/pref_default_opt_color_radius"/>
+		        
+		        <SwitchPreference
+		            android:key="@string/pref_key_opt_clean_white"
+		            android:title="@string/pref_title_opt_clean_white"
+		            android:summary="@string/pref_summary_opt_clean_white"
+		            android:defaultValue="@string/pref_default_opt_clean_white"/>
+		        
+		       </PreferenceCategory>
+	 	</PreferenceScreen>
         
         <ListPreference 
             android:key="@string/pref_key_gain_max_radius"

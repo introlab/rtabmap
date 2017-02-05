@@ -94,13 +94,14 @@ void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
 //////////////////////////////
 // CameraTango
 //////////////////////////////
-CameraTango::CameraTango(int decimation, bool autoExposure) :
+CameraTango::CameraTango(int decimation, bool autoExposure, bool publishRawScan) :
 		Camera(0),
 		tango_config_(0),
 		firstFrame_(true),
 		stampEpochOffset_(0.0),
 		decimation_(decimation),
 		autoExposure_(autoExposure),
+		rawScanPublished_(publishRawScan),
 		cloudStamp_(0),
 		tangoColorType_(0),
 		tangoColorStamp_(0)
@@ -577,18 +578,19 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			// The Color Camera frame at timestamp t0 with respect to Depth
 			// Camera frame at timestamp t1.
 			//LOGD("colorToDepth=%s", colorToDepth.prettyPrint().c_str());
+			LOGD("rgb=%dx%d cloud size=%d", rgb.cols, rgb.rows, (int)cloud.total());
 
 			int pixelsSet = 0;
 			depth = cv::Mat::zeros(model_.imageHeight()/8, model_.imageWidth()/8, CV_16UC1); // mm
 			CameraModel depthModel = model_.scaled(1.0f/8.0f);
-			std::vector<cv::Point3f> scanData(cloud.total());
+			std::vector<cv::Point3f> scanData(rawScanPublished_?cloud.total():0);
 			int oi=0;
 			for(unsigned int i=0; i<cloud.total(); ++i)
 			{
 				float * p = cloud.ptr<float>(0,i);
 				cv::Point3f pt = util3d::transformPoint(cv::Point3f(p[0], p[1], p[2]), colorToDepth);
 
-				if(pt.z > 0.0f && i%scanDownsampling == 0)
+				if(pt.z > 0.0f && i%scanDownsampling == 0 && rawScanPublished_)
 				{
 					scanData.at(oi++) = pt;
 				}
@@ -639,7 +641,14 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			//LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
 			//LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
 
-			data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, model.localTransform()), rgb, depth, model, this->getNextSeqID(), rgbStamp);
+			if(rawScanPublished_)
+			{
+				data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, model.localTransform()), rgb, depth, model, this->getNextSeqID(), rgbStamp);
+			}
+			else
+			{
+				data = SensorData(rgb, depth, model, this->getNextSeqID(), rgbStamp);
+			}
 			data.setGroundTruth(odom);
 		}
 		else
