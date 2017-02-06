@@ -1761,6 +1761,7 @@ void DatabaseViewer::view3DMap()
 
 				window->show();
 
+				int oi=0;
 				for(std::map<int, Transform>::const_iterator iter = optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
 				{
 					rtabmap::Transform pose = iter->second;
@@ -1772,10 +1773,16 @@ void DatabaseViewer::view3DMap()
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 						UASSERT(data.imageRaw().empty() || data.imageRaw().type()==CV_8UC3 || data.imageRaw().type() == CV_8UC1);
 						UASSERT(data.depthOrRightRaw().empty() || data.depthOrRightRaw().type()==CV_8UC1 || data.depthOrRightRaw().type() == CV_16UC1 || data.depthOrRightRaw().type() == CV_32FC1);
-						cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth, 0, 0, ui_->parameters_toolbox->getParameters());
+						pcl::IndicesPtr indices(new std::vector<int>);
+						cloud = util3d::cloudRGBFromSensorData(data, decimation, maxDepth, 0, indices.get(), ui_->parameters_toolbox->getParameters());
 
+						oi++;
 						if(cloud->size())
 						{
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices);
+							pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+
 							QColor color = Qt::red;
 							int mapId, weight;
 							Transform odomPose, groundTruth;
@@ -1786,10 +1793,20 @@ void DatabaseViewer::view3DMap()
 								color = (Qt::GlobalColor)(mapId % 12 + 7 );
 							}
 
-							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
+							viewer->addCloud(uFormat("cloud%d", iter->first), cloudWithNormals, pose, color);
 
 							UINFO("Generated %d (%d points)", iter->first, cloud->size());
-							progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
+							if(optimizedPoses.size() > 150)
+							{
+								if(oi%50==0)
+								{
+									progressDialog.appendText(QString("Generated %1/%2").arg(oi).arg(optimizedPoses.size()));
+								}
+							}
+							else
+							{
+								progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(cloud->size()));
+							}
 						}
 						else
 						{
