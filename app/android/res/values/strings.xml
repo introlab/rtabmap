@@ -64,7 +64,7 @@
     <string name="pref_key_max_texture_distance">pref_key_max_texture_distance</string>	<string name="pref_default_max_texture_distance">0</string>
     <string name="pref_key_block_render">pref_key_block_render</string>					<string name="pref_default_block_render">false</string>
     <string name="pref_key_opt_depth">pref_key_opt_depth</string>						<string name="pref_default_opt_depth">8</string>
-    <string name="pref_key_opt_decimation_factor">pref_key_opt_decimation_factor</string><string name="pref_default_opt_decimation_factor">80</string>
+    <string name="pref_key_opt_decimation_factor">pref_key_opt_decimation_factor</string><string name="pref_default_opt_decimation_factor">60</string>
     <string name="pref_key_opt_color_radius">pref_key_opt_color_radius</string>			<string name="pref_default_opt_color_radius">0</string>
     <string name="pref_key_opt_clean_white">pref_key_opt_clean_white</string>			<string name="pref_default_opt_clean_white">true</string>
     

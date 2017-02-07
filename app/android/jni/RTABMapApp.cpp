@@ -101,13 +101,10 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 		int featuresLoop = uStr2Int(parameters.at(rtabmap::Parameters::kVisMaxFeatures()));
 		if(featuresVoc==0 || featuresLoop < featuresVoc)
 		{
-			// re-use already extracted descriptors
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRawDescriptorsKept(), std::string("true")));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), std::string("false")));
 		}
 		else
 		{
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemRawDescriptorsKept(), std::string("false")));
 			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), std::string("true")));
 		}
 	}
@@ -2226,8 +2223,15 @@ int RTABMapApp::postProcessing(int approach)
 		// detect more loop closures
 		if(approach == -1 || approach == 2)
 		{
-			// detect more loop closures
+			// detect more loop closures, don't re-extract features for this
+			rtabmap::ParametersMap parameters;
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), std::string("false")));
+			rtabmap_->parseParameters(parameters);
+
 			returnedValue = rtabmap_->detectMoreLoopClosures(1.0f, M_PI/6.0f, approach == -1?5:1);
+
+			// put back re-extraction if it was set
+			rtabmap_->parseParameters(this->getRtabmapParameters());
 		}
 
 		// graph optimization

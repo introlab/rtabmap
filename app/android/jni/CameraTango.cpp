@@ -685,8 +685,8 @@ void CameraTango::mainLoop()
 				stampEpochOffset_ = UTimer::now()-data.stamp();
 			}
 			data.setStamp(stampEpochOffset_ + data.stamp());
-			LOGI("Publish odometry message (variance=%f)", firstFrame_?9999:0.0001);
-			this->post(new OdometryEvent(data, pose, firstFrame_?9999:0.0001, firstFrame_?9999:0.0001));
+			LOGI("Publish odometry message (variance=%f)", firstFrame_?9999:0.000001);
+			this->post(new OdometryEvent(data, pose, firstFrame_?9999:0.000001, firstFrame_?9999:0.000001));
 			firstFrame_ = false;
 		}
 		else if(!this->isKilled())
