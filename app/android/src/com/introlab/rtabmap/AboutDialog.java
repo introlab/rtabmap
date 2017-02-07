@@ -8,11 +8,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Html;
+import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.widget.TextView;
 
@@ -33,8 +35,10 @@ public class AboutDialog extends Dialog{
 		setContentView(R.layout.about);
 		TextView tv = (TextView)findViewById(R.id.info_text);
 		tv.setText(Html.fromHtml(readRawTextFile(R.raw.info)));
+		tv.setMovementMethod(LinkMovementMethod.getInstance());
 		tv.setLinkTextColor(Color.WHITE);
 		Linkify.addLinks(tv, Linkify.ALL);
+		tv.append(Html.fromHtml("<b><a href=http://introlab.github.io/rtabmap/index.html#privacy-policy>Privacy Policy</a></b>"));
 	}
 	
 	public static String readRawTextFile(int id) {
