@@ -1,0 +1,8 @@
+title: RTAB-Map
+description: Real-Time Appearance-Based Mapping
+google_analytics: UA-56986679-1
+show_downloads: true
+theme: jekyll-theme-slate
+
+gems:
+  - jekyll-mentions
