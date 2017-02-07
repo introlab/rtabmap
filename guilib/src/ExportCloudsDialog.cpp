@@ -136,7 +136,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_transferColorRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cleanMesh, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
-	connect(_ui->spinBox_mesh_minClusterSize, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_mesh_minClusterSize, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->comboBox_meshingTextureFormat, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
