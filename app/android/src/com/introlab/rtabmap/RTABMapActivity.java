@@ -1118,7 +1118,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			input.setInputType(InputType.TYPE_CLASS_TEXT); 
 			if(mOpenedDatabasePath.isEmpty())
 			{
-				String timeStamp = new SimpleDateFormat("yyMMdd-hhmmss").format(new Date());
+				String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(new Date());
 				input.setText(timeStamp);
 			}
 			else
@@ -1394,7 +1394,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			builder.setView(input);
 			if(mOpenedDatabasePath.isEmpty())
 			{
-				String timeStamp = new SimpleDateFormat("yyMMdd-hhmmss").format(new Date());
+				String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(new Date());
 				input.setText(timeStamp);
 			}
 			else
