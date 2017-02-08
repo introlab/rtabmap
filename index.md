@@ -4,9 +4,11 @@
 ## Overview 
 <img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" alt="RTAB-Map logo" title="RTAB-Map" align="left" width="120">
 **RTAB-Map** (Real-Time Appearance-Based Mapping) is a RGB-D Graph-Based SLAM approach based on an incremental appearance-based loop closure detector. The loop closure detector uses a bag-of-words approach to determinate how likely a new image comes from a previous location or a new location. When a loop closure hypothesis is accepted, a new constraint is added to the map's graph, then a graph optimizer minimizes the errors in the map. A memory management approach is used to limit the number of locations used for loop closure detection and graph optimization, so that real-time constraints on large-scale environnements are always respected. RTAB-Map can be used alone with a hand-held Kinect or stereo camera for 6DoF RGB-D mapping, or on a robot equipped with a laser rangefinder for 3DoF mapping.
+
  * **RGB-D mapping**
   * M. Labbé and F. Michaud, “[Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf),” in _Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems_, 2014. ([IEEE Xplore](http://ieeexplore.ieee.org/document/6942926/))
    * Results shown in this paper can be reproduced by the [Multi-session mapping](https://github.com/introlab/rtabmap/wiki/Multi-session) tutorial.
+   
  * **Loop closure detection**:
   * M. Labbé and F. Michaud, “[Appearance-Based Loop Closure Detection for Online Large-Scale and Long-Term Operation](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/b/bc/TRO2013.pdf),” in _IEEE Transactions on Robotics_, vol. 29, no. 3, pp. 734-745, 2013. ([IEEE Xplore](http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=6459608))
   * M. Labbé and F. Michaud, “[Memory management for real-time appearance-based loop closure detection](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/f/f0/Labbe11memory.pdf),” in _Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems_, 2011, pp. 1271–1276. ([IEEE Xplore](http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=6094602))
