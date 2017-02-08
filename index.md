@@ -56,6 +56,12 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### February 2017
+ * **Version 0.11.14** : Visit the [release page](https://github.com/introlab/rtabmap/releases/0.11.14) for more info!
+  * Tango app also updated:
+    
+    <a href="https://youtu.be/FvhxdUhsNUk"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/video_screenshots/tango0.11.14.jpg" alt="video" title="video"></a>
+
 ### October 2016
  * Application example: See how RTAB-Map is helping nuclear dismantling with Areva's MANUELA project (Mobile Apparatus for Nuclear Expertise and Localisation Assistance):
 
