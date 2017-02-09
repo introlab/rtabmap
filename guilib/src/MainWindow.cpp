@@ -1935,7 +1935,6 @@ void MainWindow::updateMapCloud(
 			if(update3dCloud)
 			{
 				// update cloud
-				std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createdCloud;
 				if(viewerClouds.contains(cloudName))
 				{
 					// Update only if the pose has changed
@@ -1952,9 +1951,11 @@ void MainWindow::updateMapCloud(
 					_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 					_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 				}
-				else if(_cachedClouds.find(iter->first) == _cachedClouds.end() && _cachedSignatures.contains(iter->first))
+				else if(_cachedEmptyClouds.find(iter->first) == _cachedEmptyClouds.end() &&
+						_cachedClouds.find(iter->first) == _cachedClouds.end() &&
+						_cachedSignatures.contains(iter->first))
 				{
-					createdCloud = this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
+					std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createdCloud = this->createAndAddCloudToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					if(_cloudViewer->getAddedClouds().contains(cloudName))
 					{
 						_cloudViewer->setCloudVisibility(cloudName.c_str(), _cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0));
@@ -2145,36 +2146,100 @@ void MainWindow::updateMapCloud(
 	// update 3D graphes (show all poses)
 	_cloudViewer->removeAllGraphs();
 	_cloudViewer->removeCloud("graph_nodes");
-	if(_preferencesDialog->isGraphsShown() && _currentPosesMap.size())
+	if(!_preferencesDialog->isFrustumsShown())
 	{
+		_cloudViewer->removeAllFrustums(true);
+	}
+	if((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown()) && _currentPosesMap.size())
+	{
+		UTimer timerGraph;
 		// Find all graphs
 		std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > graphs;
 		for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
 		{
 			int mapId = uValue(_currentMapIds, iter->first, -1);
 
-			//edges
-			std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator kter = graphs.find(mapId);
-			if(kter == graphs.end())
+			if(_preferencesDialog->isGraphsShown())
 			{
-				kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
+				//edges
+				std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator kter = graphs.find(mapId);
+				if(kter == graphs.end())
+				{
+					kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
+				}
+				pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
+				kter->second->push_back(pt);
 			}
-			pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
-			kter->second->push_back(pt);
+
+			// get local transforms for frustums on the graph
+			if(_preferencesDialog->isFrustumsShown())
+			{
+				std::string frustumId = uFormat("f_%d_%d", mapId, iter->first);
+				if(_cloudViewer->getAddedFrustums().contains(frustumId))
+				{
+					_cloudViewer->updateFrustumPose(frustumId, iter->second);
+				}
+				else if(_cachedSignatures.contains(iter->first))
+				{
+					const Signature & s = _cachedSignatures.value(iter->first);
+					// Supporting only one frustum per node
+					if(s.sensorData().cameraModels().size() == 1 || s.sensorData().stereoCameraModel().isValidForProjection())
+					{
+						Transform t = s.sensorData().stereoCameraModel().isValidForProjection()?s.sensorData().stereoCameraModel().localTransform():s.sensorData().cameraModels()[0].localTransform();
+						if(!t.isNull())
+						{
+							QColor color = (Qt::GlobalColor)((mapId+3) % 12 + 7 );
+							_cloudViewer->addOrUpdateFrustum(frustumId, iter->second, t, _cloudViewer->getFrustumScale(), color);
+						}
+					}
+				}
+			}
 		}
 
 		//Ground truth graph?
 		for(std::map<int, Transform>::iterator iter=_currentGTPosesMap.begin(); iter!=_currentGTPosesMap.end(); ++iter)
 		{
 			int mapId = -100;
-			//edges
-			std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator kter = graphs.find(mapId);
-			if(kter == graphs.end())
+
+			if(_preferencesDialog->isGraphsShown())
 			{
-				kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
+				//edges
+				std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator kter = graphs.find(mapId);
+				if(kter == graphs.end())
+				{
+					kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
+				}
+				pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
+				kter->second->push_back(pt);
 			}
-			pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
-			kter->second->push_back(pt);
+
+			// get local transforms for frustums on the graph
+			if(_preferencesDialog->isFrustumsShown() && _cachedSignatures.contains(iter->first))
+			{
+				std::string frustumId = uFormat("f_gt_%d", iter->first);
+				QMap<std::string, Transform>::const_iterator jter=_cloudViewer->getAddedFrustums().find(frustumId);
+				if(jter != _cloudViewer->getAddedFrustums().end())
+				{
+					if(jter.value() != iter->second)
+					{
+						_cloudViewer->updateFrustumPose(frustumId, iter->second);
+					}
+				}
+				else if(_cachedSignatures.contains(iter->first))
+				{
+					const Signature & s = _cachedSignatures.value(iter->first);
+					// Supporting only one frustum per node
+					if(s.sensorData().cameraModels().size() == 1 || s.sensorData().stereoCameraModel().isValidForProjection())
+					{
+						Transform t = s.sensorData().stereoCameraModel().isValidForProjection()?s.sensorData().stereoCameraModel().localTransform():s.sensorData().cameraModels()[0].localTransform();
+						if(!t.isNull())
+						{
+							QColor color = Qt::gray;
+							_cloudViewer->addOrUpdateFrustum(frustumId, iter->second, t, _cloudViewer->getFrustumScale(), color);
+						}
+					}
+				}
+			}
 		}
 
 		// add graphs
@@ -2187,6 +2252,8 @@ void MainWindow::updateMapCloud(
 			}
 			_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
 		}
+
+		UDEBUG("timerGraph=%fs", timerGraph.ticks());
 	}
 
 	UDEBUG("labels.size()=%d", (int)labels.size());
@@ -2435,9 +2502,9 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 		}
 
 		// filtering pipeline
-		if(indices->size() && _preferencesDialog->getMapVoxel() > 0.0)
+		if(indices->size() && _preferencesDialog->getVoxel() > 0.0)
 		{
-			cloud = util3d::voxelize(cloud, indices, _preferencesDialog->getMapVoxel());
+			cloud = util3d::voxelize(cloud, indices, _preferencesDialog->getVoxel());
 			//generate indices for all points (they are all valid)
 			indices->resize(cloud->size());
 			for(unsigned int i=0; i<cloud->size(); ++i)
@@ -2446,23 +2513,36 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 			}
 		}
 
+		// Do ceiling/floor filtering
+		if(indices->size() &&
+		   (_preferencesDialog->getFloorFilteringHeight() != 0.0 ||
+		   _preferencesDialog->getCeilingFilteringHeight() != 0.0))
+		{
+			// perform in /map frame
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTransformed = util3d::transformPointCloud(cloud, pose);
+			indices = rtabmap::util3d::passThrough(
+					cloudTransformed,
+					indices,
+					"z",
+					_preferencesDialog->getFloorFilteringHeight()==0.0?(float)std::numeric_limits<int>::min():_preferencesDialog->getFloorFilteringHeight(),
+					_preferencesDialog->getCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getCeilingFilteringHeight());
+		}
+
 		// Do radius filtering after voxel filtering ( a lot faster)
 		if(indices->size() &&
-		   _preferencesDialog->getMapNoiseRadius() > 0.0 &&
-		   _preferencesDialog->getMapNoiseMinNeighbors() > 0)
+		   _preferencesDialog->getNoiseRadius() > 0.0 &&
+		   _preferencesDialog->getNoiseMinNeighbors() > 0)
 		{
 			indices = rtabmap::util3d::radiusFiltering(
 					cloud,
 					indices,
-					_preferencesDialog->getMapNoiseRadius(),
-					_preferencesDialog->getMapNoiseMinNeighbors());
+					_preferencesDialog->getNoiseRadius(),
+					_preferencesDialog->getNoiseMinNeighbors());
 		}
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-		GainCompensator compensator;
-		if((_preferencesDialog->isSubtractFiltering() &&
-		   _preferencesDialog->getSubtractFilteringRadius() > 0.0) ||
-		   _preferencesDialog->gainCompensation())
+		if(_preferencesDialog->isSubtractFiltering() &&
+		   _preferencesDialog->getSubtractFilteringRadius() > 0.0)
 		{
 			pcl::IndicesPtr beforeFiltering = indices;
 			if(	cloud->size() &&
@@ -2479,13 +2559,6 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				//UWARN("saved new.pcd and old.pcd");
 				//pcl::io::savePCDFile("new.pcd", *cloud, *indices);
 				//pcl::io::savePCDFile("old.pcd", *previousCloud, *_previousCloud.second.second);
-
-				if(_preferencesDialog->gainCompensation())
-				{
-					compensator.feed(cloud, indices, _previousCloud.second.first.first, _previousCloud.second.second, t);
-					compensator.apply(0, cloud, indices);
-					UINFO("Time gain compensation = %fs", time.ticks());
-				}
 
 				if(_preferencesDialog->isSubtractFiltering())
 				{
@@ -2598,10 +2671,6 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 						tex_name >> mesh_material.tex_name;
 
 						mesh_material.tex_file = "";
-						if(_preferencesDialog->gainCompensation() && compensator.getIndex(0) >= 0)
-						{
-							compensator.apply(0, image);
-						}
 
 						textureMesh->tex_materials.push_back(mesh_material);
 
@@ -2682,10 +2751,18 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 					_cachedClouds.insert(std::make_pair(nodeId, outputPair));
 					_createdCloudsMemoryUsage += (long)(output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int));
 				}
+				_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
+				_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+			}
+			else
+			{
+				_cachedEmptyClouds.insert(nodeId);
 			}
 		}
-		_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
-		_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
+		else
+		{
+			_cachedEmptyClouds.insert(nodeId);
+		}
 	}
 
 	UDEBUG("");
@@ -2747,6 +2824,9 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 					scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
 				}
 				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
+
+				_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+				_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 			}
 		}
 		else
@@ -2778,10 +2858,11 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 					scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
 				}
 				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
+
+				_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+				_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 			}
 		}
-		_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-		_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 	}
 }
 
@@ -5298,6 +5379,7 @@ void MainWindow::clearTheCache()
 	_cachedMemoryUsage = 0;
 	_cachedClouds.clear();
 	_createdCloudsMemoryUsage = 0;
+	_cachedEmptyClouds.clear();
 	_previousCloud.first = 0;
 	_previousCloud.second.first.first.reset();
 	_previousCloud.second.first.second.reset();
@@ -5725,8 +5807,27 @@ void MainWindow::exportClouds()
 		return;
 	}
 
+	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
+	// Use ground truth poses if current clouds are using them
+	if(_currentGTPosesMap.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
+	{
+		for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			std::map<int, Transform>::iterator gtIter = _currentGTPosesMap.find(iter->first);
+			if(gtIter!=_currentGTPosesMap.end())
+			{
+				iter->second = gtIter->second;
+			}
+			else
+			{
+				UWARN("Not found ground truth pose for node %d", iter->first);
+			}
+		}
+	}
+
 	_exportCloudsDialog->exportClouds(
-			_ui->widget_mapVisibility->getVisiblePoses(),
+			poses,
 			_currentLinksMap,
 			_currentMapIds,
 			_cachedSignatures,
@@ -5742,8 +5843,27 @@ void MainWindow::viewClouds()
 		return;
 	}
 
+	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
+
+	// Use ground truth poses if current clouds are using them
+	if(_currentGTPosesMap.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
+	{
+		for(std::map<int, Transform>::iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			std::map<int, Transform>::iterator gtIter = _currentGTPosesMap.find(iter->first);
+			if(gtIter!=_currentGTPosesMap.end())
+			{
+				iter->second = gtIter->second;
+			}
+			else
+			{
+				UWARN("Not found ground truth pose for node %d", iter->first);
+			}
+		}
+	}
+
 	_exportCloudsDialog->viewClouds(
-			_ui->widget_mapVisibility->getVisiblePoses(),
+			poses,
 			_currentLinksMap,
 			_currentMapIds,
 			_cachedSignatures,
@@ -5961,6 +6081,23 @@ void MainWindow::exportImages()
 void MainWindow::exportBundlerFormat()
 {
 	std::map<int, Transform> posesIn = _ui->widget_mapVisibility->getVisiblePoses();
+
+	// Use ground truth poses if current clouds are using them
+	if(_currentGTPosesMap.size() && _ui->actionAnchor_clouds_to_ground_truth->isChecked())
+	{
+		for(std::map<int, Transform>::iterator iter = posesIn.begin(); iter!=posesIn.end(); ++iter)
+		{
+			std::map<int, Transform>::iterator gtIter = _currentGTPosesMap.find(iter->first);
+			if(gtIter!=_currentGTPosesMap.end())
+			{
+				iter->second = gtIter->second;
+			}
+			else
+			{
+				UWARN("Not found ground truth pose for node %d", iter->first);
+			}
+		}
+	}
 
 	std::map<int, Transform> poses;
 	for(std::map<int, Transform>::iterator iter=posesIn.begin(); iter!=posesIn.end(); ++iter)

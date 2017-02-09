@@ -1208,8 +1208,8 @@ Transform RegistrationVis::computeTransformationImpl(
 					matches[dir] = matchesV;
 					if(transforms[dir].isNull())
 					{
-						msg = uFormat("Not enough inliers %d/%d between %d and %d",
-								(int)inliers[dir].size(), _minInliers, signatureA->id(), signatureB->id());
+						msg = uFormat("Not enough inliers %d/%d (matches=%d) between %d and %d",
+								(int)inliers[dir].size(), _minInliers, (int)matches[dir].size(), signatureA->id(), signatureB->id());
 						UINFO(msg.c_str());
 					}
 				}

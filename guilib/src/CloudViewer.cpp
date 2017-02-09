@@ -1237,6 +1237,7 @@ static const int frustum_indices[] = {
 void CloudViewer::addOrUpdateFrustum(
 			const std::string & id,
 			const Transform & transform,
+			const Transform & localTransform,
 			double scale,
 			const QColor & color)
 {
@@ -1246,46 +1247,55 @@ void CloudViewer::addOrUpdateFrustum(
 		return;
 	}
 
-	removeFrustum(id);
-
 	if(!transform.isNull())
 	{
-		_frustums.insert(id);
-
-		int frustumSize = sizeof(frustum_vertices)/sizeof(float);
-		UASSERT(frustumSize>0 && frustumSize % 3 == 0);
-		frustumSize/=3;
-		pcl::PointCloud<pcl::PointXYZ> frustumPoints;
-		frustumPoints.resize(frustumSize);
-		float scaleX = 0.5f * scale;
-		float scaleY = 0.4f * scale; //4x3 arbitrary ratio
-		float scaleZ = 0.3f * scale;
-		QColor c = Qt::gray;
-		if(color.isValid())
+		if(_frustums.find(id)==_frustums.end())
 		{
-			c = color;
-		}
-		Eigen::Affine3f t = transform.toEigen3f();
-		for(int i=0; i<frustumSize; ++i)
-		{
-			frustumPoints[i].x = frustum_vertices[i*3]*scaleX;
-			frustumPoints[i].y = frustum_vertices[i*3+1]*scaleY;
-			frustumPoints[i].z = frustum_vertices[i*3+2]*scaleZ;
-			frustumPoints[i] = pcl::transformPoint(frustumPoints[i], t);
-		}
+			_frustums.insert(id, Transform());
 
-		pcl::PolygonMesh mesh;
-		pcl::Vertices vertices;
-		vertices.vertices.resize(sizeof(frustum_indices)/sizeof(int));
-		for(unsigned int i=0; i<vertices.vertices.size(); ++i)
-		{
-			vertices.vertices[i] = frustum_indices[i];
-		}
-		pcl::toPCLPointCloud2(frustumPoints, mesh.cloud);
-		mesh.polygons.push_back(vertices);
-		_visualizer->addPolylineFromPolygonMesh(mesh, id);
-		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, c.redF(), c.greenF(), c.blueF(), id);
+			int frustumSize = sizeof(frustum_vertices)/sizeof(float);
+			UASSERT(frustumSize>0 && frustumSize % 3 == 0);
+			frustumSize/=3;
+			pcl::PointCloud<pcl::PointXYZ> frustumPoints;
+			frustumPoints.resize(frustumSize);
+			float scaleX = 0.5f * scale;
+			float scaleY = 0.4f * scale; //4x3 arbitrary ratio
+			float scaleZ = 0.3f * scale;
+			QColor c = Qt::gray;
+			if(color.isValid())
+			{
+				c = color;
+			}
+			Transform opticalRotInv(0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0);
+			Eigen::Affine3f t = (localTransform*opticalRotInv).toEigen3f();
+			for(int i=0; i<frustumSize; ++i)
+			{
+				frustumPoints[i].x = frustum_vertices[i*3]*scaleX;
+				frustumPoints[i].y = frustum_vertices[i*3+1]*scaleY;
+				frustumPoints[i].z = frustum_vertices[i*3+2]*scaleZ;
+				frustumPoints[i] = pcl::transformPoint(frustumPoints[i], t);
+			}
 
+			pcl::PolygonMesh mesh;
+			pcl::Vertices vertices;
+			vertices.vertices.resize(sizeof(frustum_indices)/sizeof(int));
+			for(unsigned int i=0; i<vertices.vertices.size(); ++i)
+			{
+				vertices.vertices[i] = frustum_indices[i];
+			}
+			pcl::toPCLPointCloud2(frustumPoints, mesh.cloud);
+			mesh.polygons.push_back(vertices);
+			_visualizer->addPolylineFromPolygonMesh(mesh, id);
+			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, c.redF(), c.greenF(), c.blueF(), id);
+		}
+		if(!this->updateFrustumPose(id, transform))
+		{
+			UERROR("Failed updating pose of frustum %s!?", id.c_str());
+		}
+	}
+	else
+	{
+		removeFrustum(id);
 	}
 }
 
@@ -1293,10 +1303,37 @@ bool CloudViewer::updateFrustumPose(
 		const std::string & id,
 		const Transform & pose)
 {
-	if(_frustums.find(id) != _frustums.end() && !pose.isNull())
+	QMap<std::string, Transform>::iterator iter=_frustums.find(id);
+	if(iter != _frustums.end() && !pose.isNull())
 	{
-		UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
-		return _visualizer->updateShapePose(id, pose.toEigen3f());
+		if(iter.value() == pose)
+		{
+			// same pose, just return
+			return true;
+		}
+
+		pcl::visualization::ShapeActorMap::iterator am_it = _visualizer->getShapeActorMap()->find (id);
+
+		vtkActor* actor;
+
+		if (am_it == _visualizer->getShapeActorMap()->end ())
+			return (false);
+		else
+			actor = vtkActor::SafeDownCast (am_it->second);
+
+		if (!actor)
+			return (false);
+
+		vtkSmartPointer<vtkMatrix4x4> matrix = vtkSmartPointer<vtkMatrix4x4>::New ();
+
+		pcl::visualization::PCLVisualizer::convertToVtkMatrix (pose.toEigen3f().matrix (), matrix);
+
+		actor->SetUserMatrix (matrix);
+		actor->Modified ();
+
+		iter.value() = pose;
+
+		return true;
 	}
 	return false;
 }
@@ -1312,18 +1349,21 @@ void CloudViewer::removeFrustum(const std::string & id)
 	if(_frustums.find(id) != _frustums.end())
 	{
 		_visualizer->removeShape(id);
-		_frustums.erase(id);
+		_frustums.remove(id);
 	}
 }
 
-void CloudViewer::removeAllFrustums()
+void CloudViewer::removeAllFrustums(bool exceptCameraReference)
 {
-	std::set<std::string> frustums = _frustums;
-	for(std::set<std::string>::iterator iter = frustums.begin(); iter!=frustums.end(); ++iter)
+	QMap<std::string, Transform> frustums = _frustums;
+	for(QMap<std::string, Transform>::iterator iter = frustums.begin(); iter!=frustums.end(); ++iter)
 	{
-		this->removeFrustum(*iter);
+		if(!exceptCameraReference || !uStrContains(iter.key(), "reference_frustum"))
+		{
+			this->removeFrustum(iter.key());
+		}
 	}
-	UASSERT(_frustums.empty());
+	UASSERT(exceptCameraReference || _frustums.empty());
 }
 
 void CloudViewer::addOrUpdateGraph(
@@ -1486,12 +1526,12 @@ void CloudViewer::setFrustumShown(bool shown)
 {
 	if(!shown)
 	{
-		std::set<std::string> frustumsCopy = _frustums;
-		for(std::set<std::string>::iterator iter=frustumsCopy.begin(); iter!=frustumsCopy.end(); ++iter)
+		QMap<std::string, Transform> frustumsCopy = _frustums;
+		for(QMap<std::string, Transform>::iterator iter=frustumsCopy.begin(); iter!=frustumsCopy.end(); ++iter)
 		{
-			if(uStrContains(*iter, "reference_frustum"))
+			if(uStrContains(iter.key(), "reference_frustum"))
 			{
-				this->removeFrustum(*iter);
+				this->removeFrustum(iter.key());
 			}
 		}
 		std::set<std::string> linesCopy = _lines;
@@ -1518,12 +1558,9 @@ void CloudViewer::setFrustumColor(QColor value)
 	{
 		value = Qt::gray;
 	}
-	for(std::set<std::string>::iterator iter=_frustums.begin(); iter!=_frustums.end(); ++iter)
+	for(QMap<std::string, Transform>::iterator iter=_frustums.begin(); iter!=_frustums.end(); ++iter)
 	{
-		if(uStrContains(*iter, "reference_frustum"))
-		{
-			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), *iter);
-		}
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, value.redF(), value.greenF(), value.blueF(), iter.key());
 	}
 	this->update();
 	_frustumColor = value;
@@ -1819,24 +1856,19 @@ void CloudViewer::updateCameraFrustums(const Transform & pose, const std::vector
 {
 	if(!pose.isNull())
 	{
-		// commented: update pose is crashing...
-		/*if(_frustums.find("reference_frustum") != _frustums.end())
-		{
-			this->updateFrustumPose("reference_frustum", pose);
-		}
-		else */ if(_aShowFrustum->isChecked())
+		if(_aShowFrustum->isChecked())
 		{
 			Transform baseToCamera;
-			Transform opticalRot(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-
 			for(unsigned int i=0; i<models.size(); ++i)
 			{
 				baseToCamera = Transform::getIdentity();
 				if(!models[i].localTransform().isNull() && !models[i].localTransform().isIdentity())
 				{
-					baseToCamera = models[i].localTransform()*opticalRot.inverse();
+					baseToCamera = models[i].localTransform();
 				}
-				this->addOrUpdateFrustum(uFormat("reference_frustum_%d", i), pose * baseToCamera, _frustumScale, _frustumColor);
+				std::string id = uFormat("reference_frustum_%d", i);
+				this->removeFrustum(id);
+				this->addOrUpdateFrustum(id, pose, baseToCamera, _frustumScale, _frustumColor);
 				if(!baseToCamera.isIdentity())
 				{
 					this->addOrUpdateLine(uFormat("reference_frustum_line_%d", i), pose, pose * baseToCamera, _frustumColor);

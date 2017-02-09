@@ -296,6 +296,7 @@ private:
 	std::map<int, std::string> _currentLabels; // <nodeId, label>
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > _cachedClouds;
 	long _createdCloudsMemoryUsage;
+	std::set<int> _cachedEmptyClouds;
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 
 	std::map<int, cv::Mat> _createdScans;
