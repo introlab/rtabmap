@@ -1247,6 +1247,10 @@ void CloudViewer::addOrUpdateFrustum(
 		return;
 	}
 
+#if PCL_VERSION_COMPARE(<, 1, 7, 2)
+	this->removeFrustum(id);
+#endif
+
 	if(!transform.isNull())
 	{
 		if(_frustums.find(id)==_frustums.end())
@@ -1267,7 +1271,12 @@ void CloudViewer::addOrUpdateFrustum(
 				c = color;
 			}
 			Transform opticalRotInv(0, -1, 0, 0, 0, 0, -1, 0, 1, 0, 0, 0);
+
+#if PCL_VERSION_COMPARE(<, 1, 7, 2)
+			Eigen::Affine3f t = (transform*localTransform*opticalRotInv).toEigen3f();
+#else
 			Eigen::Affine3f t = (localTransform*opticalRotInv).toEigen3f();
+#endif
 			for(int i=0; i<frustumSize; ++i)
 			{
 				frustumPoints[i].x = frustum_vertices[i*3]*scaleX;
@@ -1288,10 +1297,12 @@ void CloudViewer::addOrUpdateFrustum(
 			_visualizer->addPolylineFromPolygonMesh(mesh, id);
 			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, c.redF(), c.greenF(), c.blueF(), id);
 		}
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		if(!this->updateFrustumPose(id, transform))
 		{
 			UERROR("Failed updating pose of frustum %s!?", id.c_str());
 		}
+#endif
 	}
 	else
 	{
@@ -1303,6 +1314,7 @@ bool CloudViewer::updateFrustumPose(
 		const std::string & id,
 		const Transform & pose)
 {
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 	QMap<std::string, Transform>::iterator iter=_frustums.find(id);
 	if(iter != _frustums.end() && !pose.isNull())
 	{
@@ -1335,6 +1347,9 @@ bool CloudViewer::updateFrustumPose(
 
 		return true;
 	}
+#else
+	UERROR("updateFrustumPose() cannot be used with PCL<1.7.2. Use addOrUpdateFrustum() instead.");
+#endif
 	return false;
 }
 

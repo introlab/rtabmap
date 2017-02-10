@@ -259,6 +259,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
+#if PCL_VERSION_COMPARE(<, 1, 7, 2)
+	_ui->checkBox_showFrustums->setEnabled(false);
+	_ui->checkBox_showFrustums->setChecked(false);
+#endif
+
 	// in case we change the ui, we should not forget to change stuff related to this parameter
 	UASSERT(_ui->odom_registration->count() == 4);
 
@@ -3978,7 +3983,7 @@ bool PreferencesDialog::isGraphsShown() const
 }
 bool PreferencesDialog::isFrustumsShown() const
 {
-	return _ui->checkBox_showFrustums->isChecked();
+	return _ui->checkBox_showFrustums->isEnabled() && _ui->checkBox_showFrustums->isChecked();
 }
 bool PreferencesDialog::isLabelsShown() const
 {
