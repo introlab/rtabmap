@@ -513,6 +513,7 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 		{
 			for(std::set<int>::iterator iter = ids.begin(); iter != ids.end();)
 			{
+				UASSERT(*iter>0);
 				wIter = _trashVisualWords.find(*iter);
 				if(wIter != _trashVisualWords.end())
 				{

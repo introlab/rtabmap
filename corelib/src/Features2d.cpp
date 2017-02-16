@@ -272,6 +272,41 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vecto
 	}
 }
 
+void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints)
+{
+	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
+	{
+		UTimer timer;
+		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+		// Remove words under the new hessian threshold
+
+		// Sort words by hessian
+		std::multimap<float, int> hessianMap; // <hessian,id>
+		for(unsigned int i = 0; i <keypoints.size(); ++i)
+		{
+			//Keep track of the data, to be easier to manage the data in the next step
+			hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
+		}
+
+		// Keep keypoints with highest response
+		int removed = (int)hessianMap.size()-maxKeypoints;
+		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
+		inliers.resize(keypoints.size(), false);
+		float minimumHessian = 0.0f;
+		for(int k=0; k < maxKeypoints && iter!=hessianMap.rend(); ++k, ++iter)
+		{
+			inliers[iter->second] = true;
+			minimumHessian = iter->first;
+		}
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, maxKeypoints, minimumHessian);
+		ULOGGER_DEBUG("filter keypoints time = %f s", timer.ticks());
+	}
+	else
+	{
+		inliers.resize(keypoints.size(), true);
+	}
+}
+
 cv::Rect Feature2D::computeRoi(const cv::Mat & image, const std::string & roiRatios)
 {
 	return util2d::computeRoi(image, roiRatios);

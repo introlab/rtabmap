@@ -81,8 +81,7 @@ CREATE TABLE Map_Node_Word (
 	depth_z FLOAT,
 	descriptor_size INTEGER,
 	descriptor BLOB,
-	FOREIGN KEY (node_id) REFERENCES Node(id),
-	FOREIGN KEY (word_id) REFERENCES Word(id)
+	FOREIGN KEY (node_id) REFERENCES Node(id)
 );
 
 CREATE TABLE Info (

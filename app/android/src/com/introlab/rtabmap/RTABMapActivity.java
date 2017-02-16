@@ -62,6 +62,7 @@ import android.view.Surface;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
@@ -88,14 +89,17 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	public static final String EXTRA_KEY_PERMISSIONTYPE = "PERMISSIONTYPE";
 	public static final String EXTRA_VALUE_ADF = "ADF_LOAD_SAVE_PERMISSION";
-
-	public static final int ZIP_BUFFER_SIZE = 1<<20; // 1MB
 	
 	public static final String RTABMAP_TMP_DB = "rtabmap.tmp.db";
+	public static final String RTABMAP_TMP_DIR = "tmp/";
+	public static final String RTABMAP_TMP_FILENAME = "map";
 
-	private static final String AUTHORIZE_PATH	= "https://sketchfab.com/oauth2/authorize";
-	private static final String CLIENT_ID		= "RXrIJYAwlTELpySsyM8TrK9r3kOGQ5Qjj9VVDIfV";
-	private static final String REDIRECT_URI	= "https://introlab.github.io/rtabmap/oauth2_redirect";
+	public static final String RTABMAP_AUTH_TOKEN_KEY = "com.introlab.rtabmap.AUTH_TOKEN";
+	public static final String RTABMAP_FILENAME_KEY = "com.introlab.rtabmap.FILENAME";
+	public static final String RTABMAP_OPENED_DB_PATH_KEY = "com.introlab.rtabmap.OPENED_DB_PATH";
+	public static final String RTABMAP_EXPORTED_OBJ_KEY = "com.introlab.rtabmap.EXPORTED_OBJ";
+	public static final String RTABMAP_WORKING_DIR_KEY = "com.introlab.rtabmap.WORKING_DIR";
+	public static final int SKETCHFAB_ACTIVITY_CODE = 999;
 	private String mAuthToken;
 
 	// UI states
@@ -113,12 +117,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	ProgressDialog mProgressDialog;
 
-	private Dialog mAuthDialog;
-
 	// Screen size for normalizing the touch input for orbiting the render camera.
 	private Point mScreenSize = new Point();
 	private long mOnPauseStamp = 0;
 	private boolean mOnPause = false;
+	private Date mDateOnPause = new Date();
 
 	private MenuItem mItemSave;
 	private MenuItem mItemOpen;
@@ -139,7 +142,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private ToggleButton mButtonTop;
 	private ToggleButton mButtonPause;
 	private ToggleButton mButtonLighting;
+	private ToggleButton mButtonBackfaceShown;
 	private Button mButtonCloseVisualization;
+	private Button mButtonSaveOnDevice;
+	private Button mButtonShareOnSketchfab;
 
 	private String mOpenedDatabasePath = "";
 	private String mWorkingDirectory = "";
@@ -148,13 +154,18 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private String mTimeThr;
 	private String mMaxFeatures;
 	private String mLoopThr;
+	private String mMinInliers;
+	private String mMaxOptimizationError;
 
 	private LinearLayout mLayoutDebug;
 
 	private int mTotalLoopClosures = 0;
 	private boolean mMapIsEmpty = false;
+	private boolean mExportedOBJ = false;
 
 	private Toast mToast = null;
+	
+	private Thread mMemStatusUpdateThread = null;
 
 	//Tango Service connection.
 	ServiceConnection mTangoServiceConnection = new ServiceConnection() {
@@ -207,17 +218,29 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonTop = (ToggleButton)findViewById(R.id.top_down_button);
 		mButtonPause = (ToggleButton)findViewById(R.id.pause_button);
 		mButtonLighting = (ToggleButton)findViewById(R.id.light_button);
+		mButtonBackfaceShown = (ToggleButton)findViewById(R.id.backface_button);
 		mButtonCloseVisualization = (Button)findViewById(R.id.close_visualization_button);
+		mButtonSaveOnDevice = (Button)findViewById(R.id.button_saveOnDevice);
+		mButtonShareOnSketchfab = (Button)findViewById(R.id.button_shareToSketchfab);
 		mButtonFirst.setOnClickListener(this);
 		mButtonThird.setOnClickListener(this);
 		mButtonTop.setOnClickListener(this);
 		mButtonPause.setOnClickListener(this);
 		mButtonLighting.setOnClickListener(this);
+		mButtonBackfaceShown.setOnClickListener(this);
 		mButtonCloseVisualization.setOnClickListener(this);
+		mButtonSaveOnDevice.setOnClickListener(this);
+		mButtonShareOnSketchfab.setOnClickListener(this);
 		mButtonFirst.setChecked(true);
 		mButtonLighting.setChecked(true);
 		mButtonLighting.setVisibility(View.INVISIBLE);
 		mButtonCloseVisualization.setVisibility(View.INVISIBLE);
+		mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
+		mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
+		if(mItemRenderingMesh != null && mItemRenderingTextureMesh != null)
+		{
+			mButtonBackfaceShown.setVisibility(mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked()?View.VISIBLE:View.INVISIBLE);
+		}
 
 		mToast = Toast.makeText(getApplicationContext(), "", Toast.LENGTH_SHORT);
 
@@ -303,6 +326,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				finish();
 			}
 		}
+		else if (requestCode == SKETCHFAB_ACTIVITY_CODE) {
+			// Make sure the request was successful
+			if (resultCode == RESULT_OK) {
+				mAuthToken = data.getStringExtra(RTABMAP_AUTH_TOKEN_KEY);
+			}
+		}
 	}
 	
 	@Override
@@ -364,12 +393,15 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			String memThr = sharedPref.getString(getString(R.string.pref_key_mem_thr), getString(R.string.pref_default_mem_thr));
 			mLoopThr = sharedPref.getString(getString(R.string.pref_key_loop_thr), getString(R.string.pref_default_loop_thr));
 			String simThr = sharedPref.getString(getString(R.string.pref_key_sim_thr), getString(R.string.pref_default_sim_thr));
-			String optError = sharedPref.getString(getString(R.string.pref_key_opt_error), getString(R.string.pref_default_opt_error));
+			mMinInliers = sharedPref.getString(getString(R.string.pref_key_min_inliers), getString(R.string.pref_default_min_inliers));
+			mMaxOptimizationError = sharedPref.getString(getString(R.string.pref_key_opt_error), getString(R.string.pref_default_opt_error));
 			mMaxFeatures = sharedPref.getString(getString(R.string.pref_key_features_voc), getString(R.string.pref_default_features_voc));
 			String maxFeaturesLoop = sharedPref.getString(getString(R.string.pref_key_features), getString(R.string.pref_default_features));
 			String featureType = sharedPref.getString(getString(R.string.pref_key_features_type), getString(R.string.pref_default_features_type));
 			boolean keepAllDb = sharedPref.getBoolean(getString(R.string.pref_key_keep_all_db), Boolean.parseBoolean(getString(R.string.pref_default_keep_all_db)));
-	
+			boolean optimizeFromGraphEnd = sharedPref.getBoolean(getString(R.string.pref_key_optimize_end), Boolean.parseBoolean(getString(R.string.pref_default_optimize_end)));
+			String optimizer = sharedPref.getString(getString(R.string.pref_key_optimizer), getString(R.string.pref_default_optimizer));
+			
 			Log.d(TAG, "set mapping parameters");
 			RTABMapLib.setNodesFiltering(sharedPref.getBoolean(getString(R.string.pref_key_nodes_filtering), Boolean.parseBoolean(getString(R.string.pref_default_nodes_filtering))));
 			RTABMapLib.setAutoExposure(sharedPref.getBoolean(getString(R.string.pref_key_auto_exposure), Boolean.parseBoolean(getString(R.string.pref_default_auto_exposure))));
@@ -382,11 +414,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			RTABMapLib.setMappingParameter("Mem/RehearsalSimilarity", simThr);
 			RTABMapLib.setMappingParameter("Kp/MaxFeatures", mMaxFeatures);
 			RTABMapLib.setMappingParameter("Vis/MaxFeatures", maxFeaturesLoop);
+			RTABMapLib.setMappingParameter("Vis/MinInliers", mMinInliers);
 			RTABMapLib.setMappingParameter("Rtabmap/LoopThr", mLoopThr);
-			RTABMapLib.setMappingParameter("RGBD/OptimizeMaxError", optError);
+			RTABMapLib.setMappingParameter("RGBD/OptimizeMaxError", mMaxOptimizationError);
 			RTABMapLib.setMappingParameter("Kp/DetectorStrategy", featureType);
 			RTABMapLib.setMappingParameter("Vis/FeatureType", featureType);
 			RTABMapLib.setMappingParameter("Mem/NotLinkedNodesKept", String.valueOf(keepAllDb));
+			RTABMapLib.setMappingParameter("RGBD/OptimizeFromGraphEnd", String.valueOf(optimizeFromGraphEnd));
+			RTABMapLib.setMappingParameter("Optimizer/Strategy", optimizer);
 	
 			Log.d(TAG, "set exporting parameters...");
 			RTABMapLib.setMeshDecimation(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_density), getString(R.string.pref_default_density))));
@@ -417,6 +452,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				RTABMapLib.setMeshRendering(
 						mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
 						mItemRenderingTextureMesh.isChecked());
+				
+				mButtonBackfaceShown.setVisibility(mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked()?View.VISIBLE:View.INVISIBLE);
 			}
 		}
 		catch(Exception e)
@@ -469,8 +506,17 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		case R.id.light_button:
 			RTABMapLib.setLighting(mButtonLighting.isChecked());
 			break;
+		case R.id.backface_button:
+			RTABMapLib.setBackfaceCulling(!mButtonBackfaceShown.isChecked());
+			break;
 		case R.id.close_visualization_button:
 			updateState(State.STATE_IDLE);
+			break;
+		case R.id.button_saveOnDevice:
+			saveOnDevice();
+			break;
+		case R.id.button_shareToSketchfab:
+			shareToSketchfab();
 			break;
 		default:
 			return;
@@ -563,6 +609,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			RTABMapLib.setMeshRendering(
 					mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
 					mItemRenderingTextureMesh.isChecked());
+			
+			if(mButtonBackfaceShown != null)
+			{
+				mButtonBackfaceShown.setVisibility(mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked()?View.VISIBLE:View.INVISIBLE);
+			}
 		}
 		catch(Exception e)
 		{
@@ -593,12 +644,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			int highestHypId,
 			int databaseMemoryUsed,
 			int inliers,
+			int matches,
 			int featuresExtracted,
 			float hypothesis,
 			int nodesDrawn,
 			float fps,
 			int rejected,
-			float rehearsalValue)
+			float rehearsalValue,
+			float optimizationMaxError)
 	{
 		if(mButtonPause!=null)
 		{
@@ -613,12 +666,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			}
 		}
 
+		((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
+		((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
 		((TextView)findViewById(R.id.points)).setText(String.valueOf(points));
 		((TextView)findViewById(R.id.polygons)).setText(String.valueOf(polygons));
 		((TextView)findViewById(R.id.nodes)).setText(String.format("%d (%d shown)", nodes, nodesDrawn));
 		((TextView)findViewById(R.id.words)).setText(String.valueOf(words));
-		((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
-		((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
 		((TextView)findViewById(R.id.database_size)).setText(String.valueOf(databaseMemoryUsed));
 		((TextView)findViewById(R.id.inliers)).setText(String.valueOf(inliers));
 		((TextView)findViewById(R.id.features)).setText(String.format("%d / %s", featuresExtracted, mMaxFeatures.compareTo("0")==0?"No Limit":mMaxFeatures.compareTo("-1")==0?"Disabled":mMaxFeatures));
@@ -632,12 +685,19 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			{
 				++mTotalLoopClosures;
 
-				mToast.setText("Loop closure detected!");
+				mToast.setText(String.format("Loop closure detected! (%d/%d inliers)", inliers, matches));
 				mToast.show();
 			}
-			else if(rejected > 0 && inliers >= 15)
+			else if(rejected > 0)
 			{
-				mToast.setText("Loop closure rejected after graph optimization.");
+				if(inliers >= Integer.parseInt(mMinInliers))
+				{
+					mToast.setText(String.format("Loop closure rejected, too high graph optimization error (%.3fm > %sm).", optimizationMaxError, mMaxOptimizationError));
+				}
+				else
+				{
+					mToast.setText(String.format("Loop closure rejected, not enough inliers (%d/%d < %s).", inliers, matches, mMinInliers));
+				}
 				mToast.show();
 			}
 		}
@@ -655,18 +715,20 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			final int highestHypId,
 			final int databaseMemoryUsed,
 			final int inliers,
+			final int matches,
 			final int features,
 			final float hypothesis,
 			final int nodesDrawn,
 			final float fps,
 			final int rejected,
-			final float rehearsalValue)
+			final float rehearsalValue,
+			final float optimizationMaxError)
 	{
 		Log.i(TAG, String.format("updateStatsCallback()"));
 
 		runOnUiThread(new Runnable() {
 			public void run() {
-				updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, highestHypId, databaseMemoryUsed, inliers, features, hypothesis, nodesDrawn, fps, rejected, rehearsalValue);
+				updateStatsUI(nodes, words, points, polygons, updateTime, loopClosureId, highestHypId, databaseMemoryUsed, inliers, matches, features, hypothesis, nodesDrawn, fps, rejected, rehearsalValue, optimizationMaxError);
 			} 
 		});
 	}
@@ -841,13 +903,15 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	}
 
 	private void updateState(State state)
-	{
+	{	
 		mState = state;
 		switch(state)
 		{
 		case STATE_PROCESSING:
 			mButtonLighting.setVisibility(View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
+			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
+			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
 			mItemSave.setEnabled(false);
 			mItemExport.setEnabled(false);
 			mItemOpen.setEnabled(false);
@@ -855,11 +919,39 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemSettings.setEnabled(false);
 			mItemReset.setEnabled(false);
 			mItemModes.setEnabled(false);
-			mButtonPause.setEnabled(false);
+			mButtonPause.setVisibility(View.INVISIBLE);
+			if(mMemStatusUpdateThread == null)
+			{
+				mMemStatusUpdateThread = new Thread() {
+		
+		        	@Override
+		        	public void run() {
+		        		try {
+		        			while (!isInterrupted()) {
+		        				Thread.sleep(1000);
+		        				if(mState == RTABMapActivity.State.STATE_PROCESSING)
+		        				{
+			        				runOnUiThread(new Runnable() {
+			        					@Override
+			        					public void run() {
+			        						((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
+			        						((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
+			        					}
+			        				});
+		        				}
+		        			}
+		        		} catch (InterruptedException e) {
+		        		}
+		        	}
+		        };
+		        mMemStatusUpdateThread.start();
+			}
 			break;
 		case STATE_VISUALIZING:
 			mButtonLighting.setVisibility(View.VISIBLE);
 			mButtonCloseVisualization.setVisibility(View.VISIBLE);
+			mButtonSaveOnDevice.setVisibility(View.VISIBLE);
+			mButtonShareOnSketchfab.setVisibility(View.VISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
 			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
 			mItemOpen.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
@@ -867,12 +959,20 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemSettings.setEnabled(true);
 			mItemReset.setEnabled(true);
 			mItemModes.setEnabled(true);
-			mButtonPause.setEnabled(true);
+			mButtonPause.setVisibility(View.INVISIBLE);
 			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
+			if(mMemStatusUpdateThread != null)
+			{
+				Thread tmp = mMemStatusUpdateThread;
+				mMemStatusUpdateThread = null;
+				tmp.interrupt();
+			}
 			break;
 		default:
 			mButtonLighting.setVisibility(View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
+			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
+			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
 			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
 			mItemOpen.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
@@ -880,9 +980,15 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemSettings.setEnabled(true);
 			mItemReset.setEnabled(true);
 			mItemModes.setEnabled(true);
-			mButtonPause.setEnabled(true);
+			mButtonPause.setVisibility(View.VISIBLE);
 			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
 			RTABMapLib.postExportation(false);
+			if(mMemStatusUpdateThread != null)
+			{
+				Thread tmp = mMemStatusUpdateThread;
+				mMemStatusUpdateThread = null;
+				tmp.interrupt();
+			}
 			break;
 		}
 	}
@@ -896,6 +1002,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			RTABMapLib.setPausedMapping(true);
 			((TextView)findViewById(R.id.status)).setText("Paused");
 			mMapIsEmpty = false;
+			mDateOnPause = new Date();
 
 			if(!mOnPause && !mItemLocalizationMode.isChecked() && !mItemDataRecorderMode.isChecked())
 			{
@@ -1065,6 +1172,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			RTABMapLib.setMeshRendering(
 					mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
 					mItemRenderingTextureMesh.isChecked());
+			
+			mButtonBackfaceShown.setVisibility(mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked()?View.VISIBLE:View.INVISIBLE);
 
 			// save preference
 			int type = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
@@ -1118,7 +1227,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			input.setInputType(InputType.TYPE_CLASS_TEXT); 
 			if(mOpenedDatabasePath.isEmpty())
 			{
-				String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(new Date());
+				String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(mDateOnPause);
 				input.setText(timeStamp);
 			}
 			else
@@ -1127,6 +1236,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				String name = f.getName();
 				input.setText(name.substring(0,name.lastIndexOf(".")));
 			}
+			input.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
 			input.setSelectAllOnFocus(true);
 			input.selectAll();
 			builder.setView(input);
@@ -1272,7 +1382,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					}
 				}
 			});
-			builder.show();
+			AlertDialog alertToShow = builder.create();
+			alertToShow.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+			alertToShow.show();
 		}
 		else if(itemId == R.id.reset)
 		{
@@ -1280,8 +1392,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			((TextView)findViewById(R.id.polygons)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.nodes)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.words)).setText(String.valueOf(0));
-			((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
-			((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
 			((TextView)findViewById(R.id.inliers)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.features)).setText(String.valueOf(0));
 			((TextView)findViewById(R.id.update_time)).setText(String.valueOf(0));
@@ -1316,8 +1426,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					((TextView)findViewById(R.id.polygons)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.nodes)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.words)).setText(String.valueOf(0));
-					((TextView)findViewById(R.id.memory)).setText(String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024)));
-					((TextView)findViewById(R.id.free_memory)).setText(String.valueOf(getFreeMemory()));
 					((TextView)findViewById(R.id.inliers)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.features)).setText(String.valueOf(0));
 					((TextView)findViewById(R.id.update_time)).setText(String.valueOf(0));
@@ -1387,242 +1495,90 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			final boolean optimizedColorWhitePolygons = false;//sharedPref.getBoolean("pref_key_opt_color_white", false); // not used
 			final boolean blockRendering = sharedPref.getBoolean(getString(R.string.pref_key_block_render), Boolean.parseBoolean(getString(R.string.pref_default_block_render)));
 
-			AlertDialog.Builder builder = new AlertDialog.Builder(this);
-			builder.setTitle(String.format("File Name (*%s):", extension));
-			final EditText input = new EditText(this);
-			input.setInputType(InputType.TYPE_CLASS_TEXT);        
-			builder.setView(input);
-			if(mOpenedDatabasePath.isEmpty())
-			{
-				String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(new Date());
-				input.setText(timeStamp);
-			}
-			else
-			{
-				File f = new File(mOpenedDatabasePath);
-				String name = f.getName();
-				input.setText(name.substring(0,name.lastIndexOf(".")));
-			}
-			input.setSelectAllOnFocus(true);
-			input.selectAll();
-			builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
-				@Override
-				public void onClick(DialogInterface dialog, int which)
-				{
-					final String fileName = input.getText().toString();    
-					dialog.dismiss();
-					if(!fileName.isEmpty())
-					{
-						File newFile = new File(mWorkingDirectory + fileName + extension);
-						if(newFile.exists())
-						{
-							new AlertDialog.Builder(getActivity())
-							.setTitle("File Already Exists")
-							.setMessage("Do you want to overwrite the existing file?")
-							.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog, int which) {
-									final String path = mWorkingDirectory + fileName + extension;
+			mProgressDialog.setTitle("Exporting");
+			mProgressDialog.setMessage(String.format("Please wait while preparing data to export..."));
 
-									mProgressDialog.setTitle("Exporting");
-									mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+extension));
+			mProgressDialog.show();
+			updateState(State.STATE_PROCESSING);
+			final String tmpPath = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension;
+		
+			File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
+			tmpDir.mkdirs();
+			
+			Thread exportThread = new Thread(new Runnable() {
+				public void run() {
 
-									mProgressDialog.show();
-									updateState(State.STATE_PROCESSING);
-									Thread exportThread = new Thread(new Runnable() {
-										public void run() {
-
-											final boolean success = RTABMapLib.exportMesh(
-													path,
-													cloudVoxelSize,
-													meshing,
-													textureSize,
-													normalK,
-													maxTextureDistance,
-													optimized,
-													optimizedVoxelSize,
-													optimizedDepth,
-													optimizedDecimationFactor,
-													optimizedColorRadius,
-													optimizedCleanWhitePolygons,
-													optimizedColorWhitePolygons,
-													blockRendering);
-											runOnUiThread(new Runnable() {
-												public void run() {
-													if(success)
-													{
-														if(isOBJ)
-														{	
-															mToast.makeText(getActivity(), String.format("Mesh \"%s\" (with texture \"%s\" and \"%s\") successfully exported!", path, fileName + ".jpg", fileName + ".mtl"), mToast.LENGTH_LONG).show();
-														}
-														else
-														{
-															mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), mToast.LENGTH_LONG).show();
-														}
-														Intent intent = new Intent(getActivity(), RTABMapActivity.class);
-														// use System.currentTimeMillis() to have a unique ID for the pending intent
-														PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
-
-														// build notification
-														// the addAction re-use the same intent to keep the example short
-														Notification n  = new Notification.Builder(getActivity())
-														.setContentTitle(getString(R.string.app_name))
-														.setContentText(path + " exported!")
-														.setSmallIcon(R.drawable.ic_launcher)
-														.setContentIntent(pIntent)
-														.setAutoCancel(true).build();
-
-
-														NotificationManager notificationManager = 
-																(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-														notificationManager.notify(0, n); 
-
-														// Visualize the result?
-														new AlertDialog.Builder(getActivity())
-														.setTitle("Export Successful!")
-														.setMessage("Do you want to share to Sketchfab and visualize the result?")
-														.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-															public void onClick(DialogInterface dialog, int which) {
-																shareToSketchfab(fileName, extension);
-																updateState(State.STATE_VISUALIZING);
-																RTABMapLib.postExportation(true);
-																setCamera(2);
-															}
-														})
-														.setNeutralButton("Just Show", new DialogInterface.OnClickListener() {
-															public void onClick(DialogInterface dialog, int which) {
-																updateState(State.STATE_VISUALIZING);
-																RTABMapLib.postExportation(true);
-																setCamera(2);
-															}
-														})
-														.setNegativeButton("No", new DialogInterface.OnClickListener() {
-															public void onClick(DialogInterface dialog, int which) {
-																updateState(State.STATE_IDLE);
-																RTABMapLib.postExportation(false);
-															}
-														})
-														.show();
-													}
-													else
-													{
-														updateState(State.STATE_IDLE);
-														mToast.makeText(getActivity(), String.format("Exporting mesh to \"%s\" failed!", path), mToast.LENGTH_LONG).show();
-													}
-													mProgressDialog.dismiss();
-												}
-											});
-										} 
-									});
-									exportThread.start();
-								}
-							})
-							.setNegativeButton("No", new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog, int which) {
-									dialog.dismiss();
-								}
-							})
-							.show();
-						}
-						else
-						{
-							final String path = mWorkingDirectory + fileName + extension;
-							mProgressDialog.setTitle("Exporting");
-							mProgressDialog.setMessage(String.format("Please wait while exporting \"%s\"...", fileName+extension));
-							mProgressDialog.show();
-							updateState(State.STATE_PROCESSING);
-							Thread exportThread = new Thread(new Runnable() {
-								public void run() {
-									final boolean success = RTABMapLib.exportMesh(
-											path,
-											cloudVoxelSize,
-											meshing,
-											textureSize,
-											normalK,
-											maxTextureDistance,
-											optimized,
-											optimizedVoxelSize,
-											optimizedDepth,
-											optimizedDecimationFactor,
-											optimizedColorRadius,
-											optimizedCleanWhitePolygons,
-											optimizedColorWhitePolygons,
-											blockRendering);
-									runOnUiThread(new Runnable() {
-										public void run() {
-											if(success)
-											{
-												if(isOBJ)
-												{	
-													mToast.makeText(getActivity(), String.format("Mesh \"%s\" (with texture \"%s\" and \"%s\") successfully exported!", path, fileName+".jpg", fileName + ".mtl"), mToast.LENGTH_LONG).show();
-												}
-												else
-												{
-													mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", path), mToast.LENGTH_LONG).show();
-												}
-
-												Intent intent = new Intent(getActivity(), RTABMapActivity.class);
-												// use System.currentTimeMillis() to have a unique ID for the pending intent
-												PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
-
-												// build notification
-												// the addAction re-use the same intent to keep the example short
-												Notification n  = new Notification.Builder(getActivity())
-												.setContentTitle(getString(R.string.app_name))
-												.setContentText(path + " exported!")
-												.setSmallIcon(R.drawable.ic_launcher)
-												.setContentIntent(pIntent)
-												.setAutoCancel(true).build();
-
-
-												NotificationManager notificationManager = 
-														(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-												notificationManager.notify(0, n);
-
-												// Visualize the result?
-												new AlertDialog.Builder(getActivity())
-												.setTitle("Export Successful!")
-												.setMessage("Do you want to share to Sketchfab and visualize the result?")
-												.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-													public void onClick(DialogInterface dialog, int which) {
-														shareToSketchfab(fileName, extension);
-														updateState(State.STATE_VISUALIZING);
-														RTABMapLib.postExportation(true);
-														setCamera(2);
-													}
-												})
-												.setNeutralButton("Just Show", new DialogInterface.OnClickListener() {
-													public void onClick(DialogInterface dialog, int which) {
-														updateState(State.STATE_VISUALIZING);
-														RTABMapLib.postExportation(true);
-														setCamera(2);
-													}
-												})
-												.setNegativeButton("No", new DialogInterface.OnClickListener() {
-													public void onClick(DialogInterface dialog, int which) {
-														updateState(State.STATE_IDLE);
-														RTABMapLib.postExportation(false);
-													}
-												})
-												.show();
-											}
-											else
-											{
-												updateState(State.STATE_IDLE);
-												mToast.makeText(getActivity(), String.format("Exporting mesh to \"%s\" failed!", path), mToast.LENGTH_LONG).show();
-											}
-											mProgressDialog.dismiss();
+					final boolean success = RTABMapLib.exportMesh(
+							tmpPath,
+							cloudVoxelSize,
+							meshing,
+							textureSize,
+							normalK,
+							maxTextureDistance,
+							optimized,
+							optimizedVoxelSize,
+							optimizedDepth,
+							optimizedDecimationFactor,
+							optimizedColorRadius,
+							optimizedCleanWhitePolygons,
+							optimizedColorWhitePolygons,
+							blockRendering);
+					runOnUiThread(new Runnable() {
+						public void run() {
+							if(success)
+							{
+								// Visualize the result?
+								new AlertDialog.Builder(getActivity())
+								.setCancelable(false)
+								.setTitle("Export Successful!")
+								.setMessage("Do you want visualize the result before saving to file or sharing to Sketchfab?")
+								.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+									public void onClick(DialogInterface dialog, int which) {
+										mExportedOBJ = isOBJ;
+										updateState(State.STATE_VISUALIZING);
+										RTABMapLib.postExportation(true);
+										if(mButtonFirst.isChecked())
+										{
+											setCamera(2);
 										}
-									});
-								} 
-							});
-							exportThread.start();
+									}
+								})
+								.setNegativeButton("No", new DialogInterface.OnClickListener() {
+									public void onClick(DialogInterface dialog, int which) {
+										mExportedOBJ = isOBJ;
+										updateState(State.STATE_IDLE);
+										RTABMapLib.postExportation(false);
+										
+										new AlertDialog.Builder(getActivity())
+										.setCancelable(false)
+										.setTitle("Save to...")
+										.setMessage("Do you want to share to Sketchfab or save it on the device?")
+										.setPositiveButton("Share to Sketchfab", new DialogInterface.OnClickListener() {
+											public void onClick(DialogInterface dialog, int which) {
+												shareToSketchfab();
+											}
+										})
+										.setNegativeButton("Save on device", new DialogInterface.OnClickListener() {
+											public void onClick(DialogInterface dialog, int which) {
+												saveOnDevice();
+											}
+										})
+										.show();
+									}
+								})
+								.show();
+							}
+							else
+							{
+								updateState(State.STATE_IDLE);
+								mToast.makeText(getActivity(), String.format("Exporting map failed!"), mToast.LENGTH_LONG).show();
+							}
+							mProgressDialog.dismiss();
 						}
-					}
-				}
+					});
+				} 
 			});
-			builder.show();
+			exportThread.start();
 		}
 		else if(itemId == R.id.open)
 		{
@@ -1677,6 +1633,148 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		return true;
 	}
 	
+	private void saveOnDevice()
+	{
+		AlertDialog.Builder builder = new AlertDialog.Builder(this);
+		final String extension  = mExportedOBJ?".obj":".ply";
+		builder.setTitle(String.format("File Name (*%s):", extension));
+		final EditText input = new EditText(this);
+		input.setInputType(InputType.TYPE_CLASS_TEXT);        
+		builder.setView(input);
+		if(mOpenedDatabasePath.isEmpty())
+		{
+			String timeStamp = new SimpleDateFormat("yyMMdd-HHmmss").format(mDateOnPause);
+			input.setText(timeStamp);
+		}
+		else
+		{
+			File f = new File(mOpenedDatabasePath);
+			String name = f.getName();
+			input.setText(name.substring(0,name.lastIndexOf(".")));
+		}
+		input.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+		input.setSelectAllOnFocus(true);
+		input.selectAll();
+		builder.setCancelable(false);
+		builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which)
+			{
+				dialog.dismiss();
+			}
+		});
+		builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialog, int which)
+			{
+				final String fileName = input.getText().toString();    
+				dialog.dismiss();
+				if(!fileName.isEmpty())
+				{
+					File newFile = new File(mWorkingDirectory + fileName + extension);
+					if(newFile.exists())
+					{
+						new AlertDialog.Builder(getActivity())
+						.setTitle("File Already Exists")
+						.setMessage("Do you want to overwrite the existing file?")
+						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								writeExportedFiles(fileName, mExportedOBJ);
+							}
+						})
+						.setNegativeButton("No", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								saveOnDevice();
+							}
+						})
+						.show();
+					}
+					else
+					{
+						writeExportedFiles(fileName, mExportedOBJ);
+					}
+				}
+			}
+		});
+		AlertDialog alertToShow = builder.create();
+		alertToShow.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+		alertToShow.show();
+	}
+	
+	private void writeExportedFiles(String fileName, boolean isOBJ)
+	{
+		final String extension  = mExportedOBJ?".obj":".ply";
+		final String path = mWorkingDirectory + fileName + extension;
+		
+		boolean success = true;
+		if(mExportedOBJ)
+		{	
+			File toOBJFile = new File(mWorkingDirectory + fileName + extension);
+			File toMTLFile = new File(mWorkingDirectory + fileName + ".mtl");
+			File toJPGFile = new File(mWorkingDirectory + fileName + ".jpg");
+			
+			toOBJFile.delete();
+			toMTLFile.delete();
+			toJPGFile.delete();
+			
+			File fromOBJFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension);
+			File fromMTLFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".mtl");
+			File fromJPGFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".jpg");
+			
+			try
+			{
+				copy(fromOBJFile,toOBJFile);
+				copy(fromMTLFile,toMTLFile);
+				copy(fromJPGFile,toJPGFile);
+				mToast.makeText(getActivity(), String.format("Mesh \"%s\" (with texture \"%s\" and \"%s\") successfully exported!", path, fileName + ".jpg", fileName + ".mtl"), mToast.LENGTH_LONG).show();
+			}
+			catch(IOException e)
+			{
+				mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" (with texture \"%s\" and \"%s\") failed! Error=%s", path, fileName + ".jpg", fileName + ".mtl", e.getMessage()), mToast.LENGTH_LONG).show();
+				success = false;
+			}
+		}
+		else
+		{
+			File toPLYFile = new File(mWorkingDirectory + fileName + extension);
+			toPLYFile.delete();
+			File fromPLYFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension);
+			
+			try
+			{
+				copy(fromPLYFile,toPLYFile);
+				mToast.makeText(getActivity(), String.format("Mesh/point cloud \"%s\" successfully exported!", path), mToast.LENGTH_LONG).show();
+			}
+			catch(Exception e)
+			{
+				mToast.makeText(getActivity(), String.format("Exporting mesh/point cloud \"%s\" failed! Error=%s", path, e.getMessage()), mToast.LENGTH_LONG).show();
+				success=false;
+			}
+		}
+		
+		if(success)
+		{
+			Intent intent = new Intent(getActivity(), RTABMapActivity.class);
+			// use System.currentTimeMillis() to have a unique ID for the pending intent
+			PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
+
+			// build notification
+			// the addAction re-use the same intent to keep the example short
+			Notification n  = new Notification.Builder(getActivity())
+			.setContentTitle(getString(R.string.app_name))
+			.setContentText(path + " exported!")
+			.setSmallIcon(R.drawable.ic_launcher)
+			.setContentIntent(pIntent)
+			.setAutoCancel(true).build();
+
+
+			NotificationManager notificationManager = 
+					(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+			notificationManager.notify(0, n); 
+		}
+	}
+	
 	private void openDatabase(String fileName, boolean optimize)
 	{
 		mOpenedDatabasePath = mWorkingDirectory + fileName;
@@ -1701,9 +1799,31 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));		
-		RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, optimize);
+		int status = RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, optimize);
 		setCamera(1);
 		updateState(State.STATE_IDLE);
+		
+		if(status == -1)
+		{
+			new AlertDialog.Builder(getActivity())
+			.setCancelable(false)
+			.setTitle("Error")
+			.setMessage("The map is loaded but optimization of the map's graph has "
+					+ "failed, so the map cannot be shown. Change the Graph Optimizer approach used"
+					+ " or enable/disable if the graph is optimized from graph "
+					+ "end in \"Settings -> Mapping...\" and try opening again.")
+			.setPositiveButton("Open Settings", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+					Intent intent = new Intent(getActivity(), SettingsActivity.class);
+					startActivity(intent);
+				}
+			})
+			.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, int which) {
+				}
+			})
+			.show();
+		}
 	}
 	
 	public void copy(File src, File dst) throws IOException {
@@ -1719,283 +1839,26 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	    in.close();
 	    out.close();
 	}
-	
-	private boolean isNetworkAvailable() {
-	    ConnectivityManager connectivityManager 
-	          = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-	    NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-	    return activeNetworkInfo != null && activeNetworkInfo.isConnected();
-	}
-
-	public static void zip(String file, String zipFile) throws IOException {
-		Log.i(TAG, "Zipping " + file +" to " + zipFile);
-		String[] files = new String[1];
-		files[0] = file;
-		zip(files, zipFile);
-	}
-
-	public static void zip(String[] files, String zipFile) throws IOException {
-		Log.i(TAG, "Zipping " + String.valueOf(files.length) +" files to " + zipFile);
-		BufferedInputStream origin = null;
-		ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile)));
-		try { 
-			byte data[] = new byte[ZIP_BUFFER_SIZE];
-
-			for (int i = 0; i < files.length; i++) {
-				FileInputStream fi = new FileInputStream(files[i]);    
-				origin = new BufferedInputStream(fi, ZIP_BUFFER_SIZE);
-				try {
-					ZipEntry entry = new ZipEntry(files[i].substring(files[i].lastIndexOf("/") + 1));
-					out.putNextEntry(entry);
-					int count;
-					while ((count = origin.read(data, 0, ZIP_BUFFER_SIZE)) != -1) {
-						out.write(data, 0, count);
-					}
-				}
-				finally {
-					origin.close();
-				}
-			}
-		}
-		finally {
-			out.close();
-		}
-	}
-
-	private void shareToSketchfab(final String fileName, final String extension)
+		
+	private void shareToSketchfab()
 	{
-		String[] files = new String[0];
-		// verify if we have all files
-		if(extension.compareTo(".obj") == 0)
+		Intent intent = new Intent(getActivity(), SketchfabActivity.class);
+		
+		intent.putExtra(RTABMAP_AUTH_TOKEN_KEY, mAuthToken);
+		intent.putExtra(RTABMAP_EXPORTED_OBJ_KEY, mExportedOBJ);
+		intent.putExtra(RTABMAP_WORKING_DIR_KEY, mWorkingDirectory);
+		
+		if(mOpenedDatabasePath.isEmpty())
 		{
-			File objFile = new File(mWorkingDirectory + fileName + ".obj");
-			File mltFile = new File(mWorkingDirectory + fileName + ".mtl");
-			File jpgFile = new File(mWorkingDirectory + fileName + ".jpg");
-			if(objFile.exists() && mltFile.exists() && jpgFile.exists())
-			{
-				files = new String[3];
-				files[0] = objFile.getAbsolutePath();
-				files[1] = mltFile.getAbsolutePath();
-				files[2] = jpgFile.getAbsolutePath();
-			}
-			else
-			{
-				mToast.makeText(getActivity(), String.format("Missing OBJ files!"), mToast.LENGTH_LONG).show();
-			}
-		}
-		else if(extension.compareTo(".ply") == 0)
-		{
-			File plyFile = new File(mWorkingDirectory + fileName + extension);
-			if(plyFile.exists())
-			{
-				files = new String[1];
-				files[0] = plyFile.getAbsolutePath();
-			}
-			else
-			{
-				mToast.makeText(getActivity(), String.format("Missing OBJ files!"), mToast.LENGTH_LONG).show();
-			}
+			intent.putExtra(RTABMAP_FILENAME_KEY, new SimpleDateFormat("yyMMdd-HHmmss").format(mDateOnPause));
 		}
 		else
 		{
-			mToast.makeText(getActivity(), String.format("Unknown file extension \"%s\"!", extension), mToast.LENGTH_LONG).show();
+			File f = new File(mOpenedDatabasePath);
+			String name = f.getName();
+			intent.putExtra(RTABMAP_FILENAME_KEY, name.substring(0,name.lastIndexOf(".")));
 		}
-
-		if(files.length > 0)
-		{
-			final String[] filesToZip = files;
-			authorizeAndPublish(filesToZip, fileName);
-		}
+		
+		startActivityForResult(intent, SKETCHFAB_ACTIVITY_CODE);
 	}
-	
-	private void authorizeAndPublish(final String[] filesToZip, final String fileName)
-	{
-		if(!isNetworkAvailable())
-		{
-			// Visualize the result?
-			new AlertDialog.Builder(getActivity())
-			.setTitle("Sharing to Sketchfab...")
-			.setMessage("Network is not available. Make sure you have internet before continuing.")
-			.setPositiveButton("Try Again", new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog, int which) {
-					authorizeAndPublish(filesToZip, fileName);
-				}
-			})
-			.setNeutralButton("Abort", new DialogInterface.OnClickListener() {
-				public void onClick(DialogInterface dialog, int which) {
-				}
-			})
-			.show();
-			return;
-		}	
-
-		// get token the first time
-		if(mAuthToken == null)
-		{
-			Log.i(TAG,"We don't have the token, get it!");
-
-			WebView web;
-			mAuthDialog = new Dialog(this);
-			mAuthDialog.setContentView(R.layout.auth_dialog);
-			web = (WebView)mAuthDialog.findViewById(R.id.webv);
-			web.getSettings().setJavaScriptEnabled(true);
-			String auth_url = AUTHORIZE_PATH+"?redirect_uri="+REDIRECT_URI+"&response_type=token&client_id="+CLIENT_ID;
-			Log.i(TAG, "Auhorize url="+auth_url);
-			web.setWebViewClient(new WebViewClient() {
-
-				boolean authComplete = false;
-
-				@Override
-				public void onPageFinished(WebView view, String url) {
-					super.onPageFinished(view, url);
-
-					//Log.i(TAG,"onPageFinished url="+url);
-					if(url.contains("error=access_denied")){
-						Log.e(TAG, "ACCESS_DENIED_HERE");
-						authComplete = true;
-						Toast.makeText(getApplicationContext(), "Error Occured", Toast.LENGTH_SHORT).show();
-						mAuthDialog.dismiss();
-					}
-					else if (url.startsWith(REDIRECT_URI) && url.contains("access_token") && authComplete != true) {
-						//Log.i(TAG,"onPageFinished received token="+url);
-						String[] sArray = url.split("access_token=");
-						mAuthToken = (sArray[1].split("&token_type=Bearer"))[0];
-						authComplete = true;
-
-						mAuthDialog.dismiss();
-
-						zipAndPublish(filesToZip, fileName);
-					}
-				}
-			});
-			mAuthDialog.show();
-			mAuthDialog.setTitle("Authorize RTAB-Map");
-			mAuthDialog.setCancelable(true);
-			web.loadUrl(auth_url);
-		}
-		else
-		{
-			zipAndPublish(filesToZip, fileName);
-		}
-	}
-
-	private void zipAndPublish(final String[] filesToZip, final String fileName)
-	{		
-		final String zipOutput = mWorkingDirectory+fileName+".zip";
-
-		mProgressDialog.setTitle("Upload to Sketchfab");
-		mProgressDialog.setMessage(String.format("Compressing the files..."));
-		mProgressDialog.show();
-
-		Thread workingThread = new Thread(new Runnable() {
-			public void run() {
-				try{
-					zip(filesToZip, zipOutput);
-					runOnUiThread(new Runnable() {
-						public void run() {
-							mProgressDialog.dismiss();
-
-							File f = new File(zipOutput);
-
-							final int fileSizeMB = (int)f.length()/(1024 * 1024);
-							Log.i(TAG, String.format("Zipped files = %d MB", fileSizeMB));
-
-							// Continue?
-							new AlertDialog.Builder(getActivity())
-							.setTitle("File(s) compressed and ready to upload!")
-							.setMessage(String.format("Total size to upload = %d MB. %sDo you want to continue?\n\n"
-									+ "Tip: To reduce the model size, try \"Optimized Mesh\" export. "
-									+ "You can also look at the Settings->Exporting options to reduce the output size.", fileSizeMB,
-									fileSizeMB>=50?"Note that for size over 50 MB, a Sketchfab PRO account is required, otherwise the upload may fail. ":""))
-									.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-										public void onClick(DialogInterface dialog, int which) {
-											mProgressDialog.setTitle("Upload to Sketchfab");
-											mProgressDialog.setMessage(String.format("Uploading model \"%s\" (%d MB) to Sketchfab...", fileName, fileSizeMB));
-											mProgressDialog.show();
-											new uploadToSketchfabTask().execute(zipOutput);
-										}
-									})
-									.setNegativeButton("No", new DialogInterface.OnClickListener() {
-										public void onClick(DialogInterface dialog, int which) {
-											// do nothing...
-										}
-									})
-									.show();
-						}
-					});
-				}
-				catch(IOException ex) {
-					Log.e(TAG, "Failed to zip", ex);
-				}
-			}
-		});
-
-		workingThread.start();
-	}
-
-	private class uploadToSketchfabTask extends AsyncTask<String, Void, Void>
-	{
-		String mModelUri;
-		String mModelFilePath;
-		String error = "";
-
-		protected void onPreExecute() {
-			//display progress dialog.
-		}
-
-		@Override
-		protected void onPostExecute(Void result) {
-			//Task you want to do on UIThread after completing Network operation
-			//onPostExecute is called after doInBackground finishes its task.
-			if(mModelFilePath!= null)
-			{
-				File f = new File(mModelFilePath);
-				mToast.makeText(getApplicationContext(),"Finished uploading! Model \"" + f.getName() + "\" is now processing on Sketchfab!", Toast.LENGTH_SHORT).show();
-				f.delete(); // cleanup
-			}
-			else
-			{
-				mToast.makeText(getApplicationContext(), String.format("Upload failed! Error=\"%s\"", error), Toast.LENGTH_SHORT).show();
-			}
-			mProgressDialog.dismiss();
-		}
-
-		@Override
-		protected Void doInBackground(String... files) {
-			String charset = "UTF-8";
-			File uploadFile = new File(files[0]);
-			String requestURL = "https://api.sketchfab.com/v3/models";
-
-			Log.i(TAG, "Uploading " + files[0]);
-
-			try {
-				MultipartUtility multipart = new MultipartUtility(requestURL, mAuthToken, charset);
-
-				multipart.addFormField("isPublished", "false");  
-				multipart.addFormField("tags", "rtabmap");
-				multipart.addFilePart("modelFile", uploadFile);
-
-				Log.i(TAG, "Starting multipart request");
-				List<String> response = multipart.finish();
-
-				Log.i(TAG, "SERVER REPLIED:");
-
-				for (String line : response) {
-					Log.i(TAG, line);
-					//{"uri":"https:\/\/api.sketchfab.com\/v3\/models\/XXXXXXXXX","uid":"XXXXXXXXXX"}
-					if(line.contains("\"uid\":\""))
-					{
-						String[] sArray = line.split("\"uid\":\"");
-						mModelUri = (sArray[1].split("\""))[0];
-						mModelFilePath = files[0];
-					}
-				}    		  
-			} catch (IOException ex) {
-				Log.e(TAG, "Error while uploading", ex);
-				error = ex.getMessage();
-			}
-			return null;
-		}
-	}
-
 }

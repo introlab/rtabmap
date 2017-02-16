@@ -27,7 +27,7 @@ public class RTABMapLib
     
     public static native void setScreenRotation(int displayRotation, int cameraRotation);
     
-    public static native void openDatabase(String databasePath, boolean databaseInMemory, boolean optimize);
+    public static native int openDatabase(String databasePath, boolean databaseInMemory, boolean optimize);
     
     /*
      * Called when the Tango service is connected.
@@ -75,6 +75,7 @@ public class RTABMapLib
     public static native void setMaxCloudDepth(float value);
     public static native void setPointSize(float value);
     public static native void setLighting(boolean enabled);
+    public static native void setBackfaceCulling(boolean enabled);
     public static native void setMeshDecimation(int value);
     public static native void setMeshAngleTolerance(float value);
     public static native void setMeshTriangleSize(int value);

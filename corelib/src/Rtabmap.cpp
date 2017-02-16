@@ -1782,6 +1782,7 @@ bool Rtabmap::process(
 	//=============================================================
 	std::list<std::pair<int, int> > loopClosureLinksAdded;
 	int loopClosureVisualInliers = 0; // for statistics
+	int loopClosureVisualMatches = 0;
 	if(_loopClosureHypothesis.first>0)
 	{
 		//Compute transform if metric data are present
@@ -1792,6 +1793,7 @@ bool Rtabmap::process(
 		{
 			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
 			loopClosureVisualInliers = info.inliers;
+			loopClosureVisualMatches = info.matches;
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
@@ -1919,6 +1921,10 @@ bool Rtabmap::process(
 									if(loopClosureVisualInliers == 0)
 									{
 										loopClosureVisualInliers = info.inliers;
+									}
+									if(loopClosureVisualMatches == 0)
+									{
+										loopClosureVisualMatches = info.matches;
 									}
 
 									if(_loopClosureHypothesis.first == 0)
@@ -2314,6 +2320,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopReactivate_id(), retrievalId);
 			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers(), loopClosureVisualInliers);
+			statistics_.addStatistic(Statistics::kLoopVisual_matches(), loopClosureVisualMatches);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxLinearError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);

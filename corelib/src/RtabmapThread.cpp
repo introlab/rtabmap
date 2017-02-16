@@ -573,7 +573,16 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 						odomEvent.rotVariance()>=9999 ||
 						odomEvent.transVariance()>=9999))
 		{
-			UWARN("Odometry is reset (identity pose or high variance >=9999 detected). Increment map id!");
+			if(odomEvent.pose().isIdentity())
+			{
+				UWARN("Odometry is reset (identity pose detected). Increment map id!");
+			}
+			else
+			{
+				UWARN("Odometry is reset (high variance (%f/%f >=9999 detected). Increment map id!",
+						odomEvent.info().varianceLin>odomEvent.transVariance()?odomEvent.info().varianceLin:odomEvent.transVariance(),
+						odomEvent.info().varianceAng>odomEvent.rotVariance()?odomEvent.info().varianceAng:odomEvent.rotVariance());
+			}
 			pushNewState(kStateTriggeringMap);
 			_rotVariance = 0;
 			_transVariance = 0;

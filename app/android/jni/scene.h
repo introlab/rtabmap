@@ -57,7 +57,7 @@ class Scene {
   // Setup GL view port.
   void SetupViewPort(int w, int h);
 
-  void setScreenRotation(int displayRotation, int cameraRotation);
+  void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
 
   void clear(); // removed all point clouds
 
@@ -125,6 +125,7 @@ class Scene {
   void setPointSize(float size) {pointSize_ = size;}
   void setFrustumCulling(bool enabled) {frustumCulling_ = enabled;}
   void setLighting(bool enabled) {lighting_ = enabled;}
+  void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
   void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
 
   bool isMeshRendering() const {return meshRendering_;}
@@ -132,6 +133,7 @@ class Scene {
   float getPointSize() const {return pointSize_;}
   bool isFrustumCulling() const {return frustumCulling_;}
   bool isLighting() const {return lighting_;}
+  bool isBackfaceCulling() const {return backfaceCulling_;}
 
  private:
   // Camera object that allows user to use touch input to interact with.
@@ -153,7 +155,7 @@ class Scene {
   bool gridVisible_;
   bool traceVisible_;
 
-  TangoSupportDisplayRotation color_camera_to_display_rotation_;
+  TangoSupportRotation color_camera_to_display_rotation_;
 
   std::map<int, PointCloudDrawable*> pointClouds_;
 
@@ -170,6 +172,7 @@ class Scene {
   float pointSize_;
   bool frustumCulling_;
   bool lighting_;
+  bool backfaceCulling_;
   float r_;
   float g_;
   float b_;

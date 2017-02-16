@@ -2174,7 +2174,7 @@ void MainWindow::updateMapCloud(
 			// get local transforms for frustums on the graph
 			if(_preferencesDialog->isFrustumsShown())
 			{
-				std::string frustumId = uFormat("f_%d_%d", mapId, iter->first);
+				std::string frustumId = uFormat("f_%d", iter->first);
 				if(_cloudViewer->getAddedFrustums().contains(frustumId))
 				{
 					_cloudViewer->updateFrustumPose(frustumId, iter->second);
@@ -2190,6 +2190,13 @@ void MainWindow::updateMapCloud(
 						{
 							QColor color = (Qt::GlobalColor)((mapId+3) % 12 + 7 );
 							_cloudViewer->addOrUpdateFrustum(frustumId, iter->second, t, _cloudViewer->getFrustumScale(), color);
+
+							if(_currentGTPosesMap.find(iter->first)!=_currentGTPosesMap.end())
+							{
+								std::string gtFrustumId = uFormat("f_gt_%d", iter->first);
+								color = Qt::gray;
+								_cloudViewer->addOrUpdateFrustum(gtFrustumId, _currentGTPosesMap.at(iter->first), t, _cloudViewer->getFrustumScale(), color);
+							}
 						}
 					}
 				}
@@ -2212,34 +2219,6 @@ void MainWindow::updateMapCloud(
 				pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
 				kter->second->push_back(pt);
 			}
-
-			// get local transforms for frustums on the graph
-			if(_preferencesDialog->isFrustumsShown() && _cachedSignatures.contains(iter->first))
-			{
-				std::string frustumId = uFormat("f_gt_%d", iter->first);
-				QMap<std::string, Transform>::const_iterator jter=_cloudViewer->getAddedFrustums().find(frustumId);
-				if(jter != _cloudViewer->getAddedFrustums().end())
-				{
-					if(jter.value() != iter->second)
-					{
-						_cloudViewer->updateFrustumPose(frustumId, iter->second);
-					}
-				}
-				else if(_cachedSignatures.contains(iter->first))
-				{
-					const Signature & s = _cachedSignatures.value(iter->first);
-					// Supporting only one frustum per node
-					if(s.sensorData().cameraModels().size() == 1 || s.sensorData().stereoCameraModel().isValidForProjection())
-					{
-						Transform t = s.sensorData().stereoCameraModel().isValidForProjection()?s.sensorData().stereoCameraModel().localTransform():s.sensorData().cameraModels()[0].localTransform();
-						if(!t.isNull())
-						{
-							QColor color = Qt::gray;
-							_cloudViewer->addOrUpdateFrustum(frustumId, iter->second, t, _cloudViewer->getFrustumScale(), color);
-						}
-					}
-				}
-			}
 		}
 
 		// add graphs
@@ -2251,6 +2230,25 @@ void MainWindow::updateMapCloud(
 				color = (Qt::GlobalColor)((iter->first+3) % 12 + 7 );
 			}
 			_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
+		}
+
+		if(_preferencesDialog->isFrustumsShown())
+		{
+			QMap<std::string, Transform> addedFrustums = _cloudViewer->getAddedFrustums();
+			UDEBUG("remove not used frustums");
+			for(QMap<std::string, Transform>::iterator iter = addedFrustums.begin(); iter!=addedFrustums.end(); ++iter)
+			{
+				std::list<std::string> splitted = uSplitNumChar(iter.key());
+				if(splitted.size() == 2)
+				{
+					int id = std::atoi(splitted.back().c_str());
+					if((splitted.front().compare("f_") == 0 || splitted.front().compare("f_gt_") == 0) &&
+						_currentPosesMap.find(id) == _currentPosesMap.end())
+					{
+						_cloudViewer->removeFrustum(iter.key());
+					}
+				}
+			}
 		}
 
 		UDEBUG("timerGraph=%fs", timerGraph.ticks());

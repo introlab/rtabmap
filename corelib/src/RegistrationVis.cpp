@@ -301,10 +301,21 @@ Transform RegistrationVis::computeTransformationImpl(
 			kptsFrom.resize(fromSignature.getWords().size());
 			orignalWordsFromIds.resize(fromSignature.getWords().size());
 			int i=0;
+			bool allUniques = true;
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=fromSignature.getWords().begin(); iter!=fromSignature.getWords().end(); ++iter)
 			{
 				kptsFrom[i] = iter->second;
-				orignalWordsFromIds[i++] = iter->first;
+				orignalWordsFromIds[i] = iter->first;
+				if(i>0 && iter->first==orignalWordsFromIds[i-1])
+				{
+					allUniques = false;
+				}
+				++i;
+			}
+			if(!allUniques)
+			{
+				UDEBUG("IDs are not unique, IDs will be regenerated!");
+				orignalWordsFromIds.clear();
 			}
 		}
 

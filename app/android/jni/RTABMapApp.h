@@ -55,7 +55,7 @@ class RTABMapApp : public UEventsHandler {
 
   void setScreenRotation(int displayRotation, int cameraRotation);
 
-  void openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize);
+  int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize);
 
   bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
 
@@ -118,6 +118,7 @@ class RTABMapApp : public UEventsHandler {
   void setMeshRendering(bool enabled, bool withTexture);
   void setPointSize(float value);
   void setLighting(bool enabled);
+  void setBackfaceCulling(bool enabled);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
@@ -214,6 +215,8 @@ class RTABMapApp : public UEventsHandler {
 	std::list<rtabmap::Statistics> rtabmapEvents_;
 	std::list<rtabmap::OdometryEvent> odomEvents_;
 	std::list<rtabmap::Transform> poseEvents_;
+
+	rtabmap::Transform mapToOdom_;
 
 	boost::mutex rtabmapMutex_;
 	boost::mutex meshesMutex_;
