@@ -1992,7 +1992,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 		// Prepare the query... Get the map from signature and visual words
 		std::stringstream query2;
-		if(uStrNumCmp(_version, "0.11.2") >= 0)
+		if(uStrNumCmp(_version, "0.11.15") >= 0)
+		{
+			query2 << "SELECT word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor "
+					 "FROM Map_Node_Word "
+					 "WHERE node_id = ? ";
+		}
+		else if(uStrNumCmp(_version, "0.11.2") >= 0)
 		{
 			query2 << "SELECT word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z, descriptor_size, descriptor "
 					 "FROM Map_Node_Word "
@@ -2039,6 +2045,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				kpt.size = sqlite3_column_int(ppStmt, index++);
 				kpt.angle = sqlite3_column_double(ppStmt, index++);
 				kpt.response = sqlite3_column_double(ppStmt, index++);
+				if(uStrNumCmp(_version, "0.11.15") >= 0)
+				{
+					kpt.octave = sqlite3_column_int(ppStmt, index++);
+				}
 				depth.x = sqlite3_column_double(ppStmt, index++);
 				depth.y = sqlite3_column_double(ppStmt, index++);
 				depth.z = sqlite3_column_double(ppStmt, index++);
@@ -3857,7 +3867,11 @@ void DBDriverSqlite3::stepWordsChanged(sqlite3_stmt * ppStmt, int nodeId, int ol
 
 std::string DBDriverSqlite3::queryStepKeypoint() const
 {
-	if(uStrNumCmp(_version, "0.11.2") >= 0)
+	if(uStrNumCmp(_version, "0.11.15") >= 0)
+	{
+		return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.11.2") >= 0)
 	{
 		return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z, descriptor_size, descriptor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -3889,6 +3903,8 @@ void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 	rc = sqlite3_bind_double(ppStmt, index++, kp.angle);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.response);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, kp.octave);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, pt.x);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
