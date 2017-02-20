@@ -54,7 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
 #include <pcl/surface/poisson.h>
-#include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
+//#include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
 
 const int g_exportedMeshId = -100;

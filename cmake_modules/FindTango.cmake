@@ -7,13 +7,14 @@
 #  Tango_LIBRARIES     - The Tango library to link against.
 
 FIND_PATH(Tango_INCLUDE_DIR tango_client_api.h)
+FIND_PATH(Tango_SUPPORT_INCLUDE_DIR tango_support_api.h)
 
 FIND_LIBRARY(Tango_LIBRARY NAMES tango_client_api)
 FIND_LIBRARY(Tango_support_LIBRARY NAMES tango_support_api)
 
 IF (Tango_INCLUDE_DIR AND Tango_LIBRARY AND Tango_support_LIBRARY)
    SET(Tango_FOUND TRUE)
-   SET(Tango_INCLUDE_DIRS ${Tango_INCLUDE_DIR})
+   SET(Tango_INCLUDE_DIRS ${Tango_INCLUDE_DIR} ${Tango_SUPPORT_INCLUDE_DIR})
    SET(Tango_LIBRARIES ${Tango_LIBRARY} ${Tango_support_LIBRARY})
 ENDIF (Tango_INCLUDE_DIR AND Tango_LIBRARY AND Tango_support_LIBRARY)
 
