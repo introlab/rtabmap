@@ -76,13 +76,13 @@ CREATE TABLE Map_Node_Word (
 	size INTEGER NOT NULL,
 	dir FLOAT NOT NULL,
 	response FLOAT NOT NULL,
+	octave INTEGER NOT NULL,
 	depth_x FLOAT,
 	depth_y FLOAT,
 	depth_z FLOAT,
 	descriptor_size INTEGER,
 	descriptor BLOB,
-	FOREIGN KEY (node_id) REFERENCES Node(id),
-	FOREIGN KEY (word_id) REFERENCES Word(id)
+	FOREIGN KEY (node_id) REFERENCES Node(id)
 );
 
 CREATE TABLE Info (
@@ -104,6 +104,7 @@ CREATE TABLE Statistics (
 
 CREATE TABLE Admin (
 	version TEXT,
+	preview_image BLOB,
 	time_enter DATE
 );
 

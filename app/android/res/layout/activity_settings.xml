@@ -107,6 +107,13 @@
 		   			android:entryValues="@array/pref_sim_thr_values"
 		   			android:defaultValue="@string/pref_default_sim_thr"/>
 		        <ListPreference 
+		            android:key="@string/pref_key_min_inliers"
+		    		android:title="@string/pref_title_min_inliers"
+		    		android:summary="@string/pref_summary_min_inliers"
+		   			android:entries="@array/pref_min_inliers_keys"
+		   			android:entryValues="@array/pref_min_inliers_values"
+		   			android:defaultValue="@string/pref_default_min_inliers"/>
+		        <ListPreference 
 		            android:key="@string/pref_key_opt_error"
 		    		android:title="@string/pref_title_opt_error"
 		    		android:summary="@string/pref_summary_opt_error"
@@ -134,6 +141,18 @@
 		   			android:entries="@array/pref_features_type_keys"
 		   			android:entryValues="@array/pref_features_type_values"
 		   			android:defaultValue="@string/pref_default_features_type"/>
+		        <ListPreference 
+		            android:key="@string/pref_key_optimizer"
+		    		android:title="@string/pref_title_optimizer"
+		    		android:summary="@string/pref_summary_optimizer"
+		   			android:entries="@array/pref_optimizer_keys"
+		   			android:entryValues="@array/pref_optimizer_values"
+		   			android:defaultValue="@string/pref_default_optimizer"/>
+		        <SwitchPreference 
+		            android:key="@string/pref_key_optimize_end"
+		    		android:title="@string/pref_title_optimize_end"
+		    		android:summary="@string/pref_summary_optimize_end"
+		   			android:defaultValue="@string/pref_default_optimize_end"/>
 		    </PreferenceCategory>
 	        <PreferenceCategory
 	        	android:title="@string/pref_title_mapping_database">

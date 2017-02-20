@@ -102,10 +102,11 @@ public:
 	void removeAllWords();
 	void removeWord(int wordId);
 	void changeWordsRef(int oldWordId, int activeWordId);
-	void setWords(const std::multimap<int, cv::KeyPoint> & words) {_enabled = false;_words = words;}
+	void setWords(const std::multimap<int, cv::KeyPoint> & words);
 	bool isEnabled() const {return _enabled;}
 	void setEnabled(bool enabled) {_enabled = enabled;}
 	const std::multimap<int, cv::KeyPoint> & getWords() const {return _words;}
+	int getInvalidWordsCount() const {return _invalidWordsCount;}
 	const std::map<int, int> & getWordsChanged() const {return _wordsChanged;}
 	const std::multimap<int, cv::Mat> & getWordsDescriptors() const {return _wordsDescriptors;}
 	void setWordsDescriptors(const std::multimap<int, cv::Mat> & descriptors) {_wordsDescriptors = descriptors;}
@@ -142,6 +143,7 @@ private:
 	std::multimap<int, cv::Mat> _wordsDescriptors;
 	std::map<int, int> _wordsChanged; // <oldId, newId>
 	bool _enabled;
+	int _invalidWordsCount;
 
 	Transform _pose;
 	Transform _groundTruthPose;

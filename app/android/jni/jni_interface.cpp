@@ -62,7 +62,7 @@ Java_com_introlab_rtabmap_RTABMapLib_setScreenRotation(
 	return app.setScreenRotation(displayRotation, cameraRotation);
 }
 
-JNIEXPORT void JNICALL
+JNIEXPORT int JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_openDatabase(
     JNIEnv* env, jobject, jstring databasePath, bool databaseInMemory, bool optimize)
 {
@@ -155,6 +155,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setLighting(
 		JNIEnv*, jobject, bool enabled)
 {
 	return app.setLighting(enabled);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setBackfaceCulling(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setBackfaceCulling(enabled);
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setLocalizationMode(

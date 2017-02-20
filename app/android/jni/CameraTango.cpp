@@ -46,7 +46,10 @@ const int scanDownsampling = 10;
 void onPointCloudAvailableRouter(void* context, const TangoPointCloud* point_cloud)
 {
 	CameraTango* app = static_cast<CameraTango*>(context);
-	app->cloudReceived(cv::Mat(1, point_cloud->num_points, CV_32FC4, point_cloud->points[0]), point_cloud->timestamp);
+	if(point_cloud->num_points>0)
+	{
+		app->cloudReceived(cv::Mat(1, point_cloud->num_points, CV_32FC4, point_cloud->points[0]), point_cloud->timestamp);
+	}
 }
 
 void onFrameAvailableRouter(void* context, TangoCameraId id, const TangoImageBuffer* color)
@@ -104,7 +107,8 @@ CameraTango::CameraTango(int decimation, bool autoExposure, bool publishRawScan)
 		rawScanPublished_(publishRawScan),
 		cloudStamp_(0),
 		tangoColorType_(0),
-		tangoColorStamp_(0)
+		tangoColorStamp_(0),
+		colorCameraToDisplayRotation_(ROTATION_0)
 {
 	UASSERT(decimation >= 1);
 }
@@ -640,6 +644,51 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 			//LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
 			//LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
+
+			// Rotate image depending on the camera orientation
+			if(colorCameraToDisplayRotation_ == ROTATION_90)
+			{
+				cv::Mat rgbt(rgb.cols, rgb.rows, rgb.type());
+				cv::flip(rgb,rgb,1);
+				cv::transpose(rgb,rgbt);
+				rgb = rgbt;
+				cv::Mat deptht(depth.cols, depth.rows, depth.type());
+				cv::flip(depth,depth,1);
+				cv::transpose(depth,deptht);
+				depth = deptht;
+				cv::Size sizet(model.imageHeight(), model.imageWidth());
+				model = CameraModel(model.fy(), model.fx(), model.cy(), model.cx()>0?model.imageWidth()-model.cx():0, model.localTransform()*rtabmap::Transform(0,0,0,0,0,1.57079632679489661923132169163975144));
+				model.setImageSize(sizet);
+			}
+			else if(colorCameraToDisplayRotation_ == ROTATION_180)
+			{
+				cv::flip(rgb,rgb,1);
+				cv::flip(rgb,rgb,0);
+				cv::flip(depth,depth,1);
+				cv::flip(depth,depth,0);
+				cv::Size sizet(model.imageWidth(), model.imageHeight());
+				model = CameraModel(
+						model.fx(),
+						model.fy(),
+						model.cx()>0?model.imageWidth()-model.cx():0,
+						model.cy()>0?model.imageHeight()-model.cy():0,
+						model.localTransform()*rtabmap::Transform(0,0,0,0,0,1.57079632679489661923132169163975144*2.0));
+				model.setImageSize(sizet);
+			}
+			else if(colorCameraToDisplayRotation_ == ROTATION_270)
+			{
+				cv::Mat rgbt(rgb.cols, rgb.rows, rgb.type());
+				cv::transpose(rgb,rgbt);
+				cv::flip(rgbt,rgbt,1);
+				rgb = rgbt;
+				cv::Mat deptht(depth.cols, depth.rows, depth.type());
+				cv::transpose(depth,deptht);
+				cv::flip(deptht,deptht,1);
+				depth = deptht;
+				cv::Size sizet(model.imageHeight(), model.imageWidth());
+				model = CameraModel(model.fy(), model.fx(), model.cy()>0?model.imageHeight()-model.cy():0, model.cx(), model.localTransform()*rtabmap::Transform(0,0,0,0,0,-1.57079632679489661923132169163975144));
+				model.setImageSize(sizet);
+			}
 
 			if(rawScanPublished_)
 			{

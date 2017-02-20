@@ -227,9 +227,9 @@ Transform estimateMotion3DTo3D(
 		*varianceOut = 1.0;
 	}
 
+	std::vector<int> inliers;
 	if((int)inliers1.size() >= minInliers)
 	{
-		std::vector<int> inliers;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		inliers1cloud->resize(inliers1.size());
@@ -257,21 +257,21 @@ Transform estimateMotion3DTo3D(
 		{
 			transform = t;
 		}
+	}
 
-		if(matchesOut)
+	if(matchesOut)
+	{
+		*matchesOut = matches;
+	}
+	if(inliersOut)
+	{
+		inliersOut->resize(inliers.size());
+		for(unsigned int i=0; i<inliers.size(); ++i)
 		{
-			*matchesOut = matches;
-		}
-
-		if(inliersOut)
-		{
-			inliersOut->resize(inliers.size());
-			for(unsigned int i=0; i<inliers.size(); ++i)
-			{
-				inliersOut->at(i) = matches[inliers[i]];
-			}
+			inliersOut->at(i) = matches[inliers[i]];
 		}
 	}
+
 	return transform;
 }
 

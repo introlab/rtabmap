@@ -155,10 +155,14 @@ public:
 	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
+	bool isFrustumsShown() const;
 	bool isLabelsShown() const;
-	double getMapVoxel() const;
-	double getMapNoiseRadius() const;
-	int getMapNoiseMinNeighbors() const;
+	double getVoxel() const;
+	double getNoiseRadius() const;
+	int getNoiseMinNeighbors() const;
+	double getCeilingFilteringHeight() const;
+	double getFloorFilteringHeight() const;
+	int getNormalKSearch() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	bool isOctomapUpdated() const;
 	bool isOctomapShown() const;
@@ -190,8 +194,6 @@ public:
 	int getSubtractFilteringMinPts() const;
 	double getSubtractFilteringRadius() const;
 	double getSubtractFilteringAngle() const;
-	int getNormalKSearch() const;
-	bool gainCompensation() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;;

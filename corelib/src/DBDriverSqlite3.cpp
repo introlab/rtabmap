@@ -1992,7 +1992,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 		// Prepare the query... Get the map from signature and visual words
 		std::stringstream query2;
-		if(uStrNumCmp(_version, "0.11.2") >= 0)
+		if(uStrNumCmp(_version, "0.11.15") >= 0)
+		{
+			query2 << "SELECT word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor "
+					 "FROM Map_Node_Word "
+					 "WHERE node_id = ? ";
+		}
+		else if(uStrNumCmp(_version, "0.11.2") >= 0)
 		{
 			query2 << "SELECT word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z, descriptor_size, descriptor "
 					 "FROM Map_Node_Word "
@@ -2039,6 +2045,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				kpt.size = sqlite3_column_int(ppStmt, index++);
 				kpt.angle = sqlite3_column_double(ppStmt, index++);
 				kpt.response = sqlite3_column_double(ppStmt, index++);
+				if(uStrNumCmp(_version, "0.11.15") >= 0)
+				{
+					kpt.octave = sqlite3_column_int(ppStmt, index++);
+				}
 				depth.x = sqlite3_column_double(ppStmt, index++);
 				depth.y = sqlite3_column_double(ppStmt, index++);
 				depth.z = sqlite3_column_double(ppStmt, index++);
@@ -2322,37 +2332,32 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 		{
 			int index=0;
 			id = sqlite3_column_int(ppStmt, index++); 			// VisualWord Id
-			if(id>0)
+
+			descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
+			descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
+			dRealSize = sqlite3_column_bytes(ppStmt, index++);
+
+			cv::Mat d;
+			if(dRealSize == descriptorSize)
 			{
-				descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
-				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
-				dRealSize = sqlite3_column_bytes(ppStmt, index++);
-
-				cv::Mat d;
-				if(dRealSize == descriptorSize)
-				{
-					// CV_8U binary descriptors
-					d = cv::Mat(1, descriptorSize, CV_8U);
-				}
-				else if(dRealSize/int(sizeof(float)) == descriptorSize)
-				{
-					// CV_32F
-					d = cv::Mat(1, descriptorSize, CV_32F);
-				}
-				else
-				{
-					UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
-				}
-
-				memcpy(d.data, descriptor, dRealSize);
-				VisualWord * vw = new VisualWord(id, d);
-				vw->setSaved(true);
-				dictionary->addWord(vw);
+				// CV_8U binary descriptors
+				d = cv::Mat(1, descriptorSize, CV_8U);
+			}
+			else if(dRealSize/int(sizeof(float)) == descriptorSize)
+			{
+				// CV_32F
+				d = cv::Mat(1, descriptorSize, CV_32F);
 			}
 			else
 			{
-				ULOGGER_ERROR("Wrong word id ?!? (%d)", id);
+				UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
 			}
+
+			memcpy(d.data, descriptor, dRealSize);
+			VisualWord * vw = new VisualWord(id, d);
+			vw->setSaved(true);
+			dictionary->addWord(vw);
+
 			if(++count % 5000 == 0)
 			{
 				ULOGGER_DEBUG("Loaded %d words...", count);
@@ -2888,18 +2893,18 @@ void DBDriverSqlite3::updateQuery(const std::list<VisualWord *> & words, bool up
 		{
 			w = *i;
 			int index = 1;
-			if(w)
-			{
-				rc = sqlite3_bind_int(ppStmt, index++, w->id());
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			UASSERT(w);
 
-				//step
-				rc=sqlite3_step(ppStmt);
-				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_bind_int(ppStmt, index++, w->id());
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-				rc = sqlite3_reset(ppStmt);
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			}
+			//step
+			rc=sqlite3_step(ppStmt);
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			rc = sqlite3_reset(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -3083,7 +3088,8 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 			for(std::list<VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				const VisualWord * w = *iter;
-				if(w && !w->isSaved())
+				UASSERT(w);
+				if(!w->isSaved())
 				{
 					rc = sqlite3_bind_int(ppStmt, 1, w->id());
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -3861,7 +3867,11 @@ void DBDriverSqlite3::stepWordsChanged(sqlite3_stmt * ppStmt, int nodeId, int ol
 
 std::string DBDriverSqlite3::queryStepKeypoint() const
 {
-	if(uStrNumCmp(_version, "0.11.2") >= 0)
+	if(uStrNumCmp(_version, "0.11.15") >= 0)
+	{
+		return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.11.2") >= 0)
 	{
 		return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z, descriptor_size, descriptor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -3893,6 +3903,8 @@ void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 	rc = sqlite3_bind_double(ppStmt, index++, kp.angle);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.response);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, kp.octave);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, pt.x);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());

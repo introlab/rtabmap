@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEvent.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
+#include <tango_support_api.h>
 
 class TangoPoseData;
 
@@ -82,6 +83,7 @@ public:
 	void setDecimation(int value) {decimation_ = value;}
 	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
 	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
+	void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
 	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
@@ -114,6 +116,7 @@ private:
 	USemaphore dataReady_;
 	CameraModel model_;
 	Transform deviceTColorCamera_;
+	TangoSupportRotation colorCameraToDisplayRotation_;
 };
 
 } /* namespace rtabmap */

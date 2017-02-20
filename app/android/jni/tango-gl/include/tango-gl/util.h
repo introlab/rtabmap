@@ -89,7 +89,7 @@ namespace util {
   // available are 0, 90, 180, 270. Followed by Android camera orientation
   // standard:
   // https://developer.android.com/reference/android/hardware/Camera.CameraInfo.html#orientation
-  TangoSupportDisplayRotation GetAndroidRotationFromColorCameraToDisplay(
+  TangoSupportRotation GetAndroidRotationFromColorCameraToDisplay(
       int display_rotation, int color_camera_rotation);
 
   // Get the Android rotation integer value from color camera to display.
@@ -101,8 +101,8 @@ namespace util {
   // available are 0, 90, 180, 270. Followed by Android camera orientation
   // standard:
   // https://developer.android.com/reference/android/hardware/Camera.CameraInfo.html#orientation
-  TangoSupportDisplayRotation GetAndroidRotationFromColorCameraToDisplay(
-      TangoSupportDisplayRotation display_rotation, int color_camera_rotation);
+  TangoSupportRotation GetAndroidRotationFromColorCameraToDisplay(
+      TangoSupportRotation display_rotation, int color_camera_rotation);
 
 }  // namespace util
 }  // namespace tango_gl

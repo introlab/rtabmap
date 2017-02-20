@@ -259,6 +259,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
 
+#if PCL_VERSION_COMPARE(<, 1, 7, 2)
+	_ui->checkBox_showFrustums->setEnabled(false);
+	_ui->checkBox_showFrustums->setChecked(false);
+#endif
+
 	// in case we change the ui, we should not forget to change stuff related to this parameter
 	UASSERT(_ui->odom_registration->count() == 4);
 
@@ -379,8 +384,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_voxel, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_noiseRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_noiseMinNeighbors, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_ceilingFilterHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_floorFilterHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->checkBox_showFrustums, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->radioButton_noFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -391,8 +400,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->spinBox_subtractFilteringMinPts, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_subtractFilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_subtractFilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->checkBox_gainCompensation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1257,11 +1264,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_noiseRadius->setValue(0);
 		_ui->spinBox_noiseMinNeighbors->setValue(5);
 
+		_ui->doubleSpinBox_ceilingFilterHeight->setValue(0);
+		_ui->doubleSpinBox_floorFilterHeight->setValue(0);
+
 		_ui->checkBox_showGraphs->setChecked(true);
+		_ui->checkBox_showFrustums->setChecked(false);
 		_ui->checkBox_showLabels->setChecked(false);
 
 		_ui->spinBox_normalKSearch->setValue(10);
-		_ui->checkBox_gainCompensation->setChecked(false);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 		_ui->groupBox_organized->setChecked(false);
@@ -1647,8 +1657,12 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_voxel->setValue(settings.value("cloudVoxel", _ui->doubleSpinBox_voxel->value()).toDouble());
 	_ui->doubleSpinBox_noiseRadius->setValue(settings.value("cloudNoiseRadius", _ui->doubleSpinBox_noiseRadius->value()).toDouble());
 	_ui->spinBox_noiseMinNeighbors->setValue(settings.value("cloudNoiseMinNeighbors", _ui->spinBox_noiseMinNeighbors->value()).toInt());
+	_ui->doubleSpinBox_ceilingFilterHeight->setValue(settings.value("cloudCeilingHeight", _ui->doubleSpinBox_ceilingFilterHeight->value()).toDouble());
+	_ui->doubleSpinBox_floorFilterHeight->setValue(settings.value("cloudFloorHeight", _ui->doubleSpinBox_floorFilterHeight->value()).toDouble());
+	_ui->spinBox_normalKSearch->setValue(settings.value("normalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
 
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
+	_ui->checkBox_showFrustums->setChecked(settings.value("showFrustums", _ui->checkBox_showFrustums->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 
 	_ui->radioButton_noFiltering->setChecked(settings.value("noFiltering", _ui->radioButton_noFiltering->isChecked()).toBool());
@@ -1659,8 +1673,6 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->spinBox_subtractFilteringMinPts->setValue(settings.value("subtractFilteringMinPts", _ui->spinBox_subtractFilteringMinPts->value()).toInt());
 	_ui->doubleSpinBox_subtractFilteringRadius->setValue(settings.value("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value()).toDouble());
 	_ui->doubleSpinBox_subtractFilteringAngle->setValue(settings.value("subtractFilteringAngle", _ui->doubleSpinBox_subtractFilteringAngle->value()).toDouble());
-	_ui->spinBox_normalKSearch->setValue(settings.value("normalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
-	_ui->checkBox_gainCompensation->setChecked(settings.value("gainCompensation", _ui->checkBox_gainCompensation->isChecked()).toBool());
 
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
 	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
@@ -2030,8 +2042,12 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("cloudVoxel",             _ui->doubleSpinBox_voxel->value());
 	settings.setValue("cloudNoiseRadius",       _ui->doubleSpinBox_noiseRadius->value());
 	settings.setValue("cloudNoiseMinNeighbors", _ui->spinBox_noiseMinNeighbors->value());
+	settings.setValue("cloudCeilingHeight",     _ui->doubleSpinBox_ceilingFilterHeight->value());
+	settings.setValue("cloudFloorHeight",       _ui->doubleSpinBox_floorFilterHeight->value());
+	settings.setValue("normalKSearch",           _ui->spinBox_normalKSearch->value());
 
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
+	settings.setValue("showFrustums", _ui->checkBox_showFrustums->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 
 	settings.setValue("noFiltering",             _ui->radioButton_noFiltering->isChecked());
@@ -2042,8 +2058,6 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("subtractFilteringMinPts", _ui->spinBox_subtractFilteringMinPts->value());
 	settings.setValue("subtractFilteringRadius", _ui->doubleSpinBox_subtractFilteringRadius->value());
 	settings.setValue("subtractFilteringAngle",  _ui->doubleSpinBox_subtractFilteringAngle->value());
-	settings.setValue("normalKSearch",           _ui->spinBox_normalKSearch->value());
-	settings.setValue("gainCompensation",        _ui->checkBox_gainCompensation->isChecked());
 
 	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
 	settings.setValue("gridMapResolution",           _ui->doubleSpinBox_map_resolution->value());
@@ -3938,22 +3952,38 @@ double PreferencesDialog::getOctomapOccupancyThr() const
 	return _ui->doubleSpinBox_octomap_occupancyThr->value();
 }
 
-double PreferencesDialog::getMapVoxel() const
+double PreferencesDialog::getVoxel() const
 {
 	return _ui->doubleSpinBox_voxel->value();
 }
-double PreferencesDialog::getMapNoiseRadius() const
+double PreferencesDialog::getNoiseRadius() const
 {
 	return _ui->doubleSpinBox_noiseRadius->value();
 }
-int PreferencesDialog::getMapNoiseMinNeighbors() const
+int PreferencesDialog::getNoiseMinNeighbors() const
 {
 	return _ui->spinBox_noiseMinNeighbors->value();
+}
+double PreferencesDialog::getCeilingFilteringHeight() const
+{
+	return _ui->doubleSpinBox_ceilingFilterHeight->value();
+}
+double PreferencesDialog::getFloorFilteringHeight() const
+{
+	return _ui->doubleSpinBox_floorFilterHeight->value();
+}
+int PreferencesDialog::getNormalKSearch() const
+{
+	return _ui->spinBox_normalKSearch->value();
 }
 
 bool PreferencesDialog::isGraphsShown() const
 {
 	return _ui->checkBox_showGraphs->isChecked();
+}
+bool PreferencesDialog::isFrustumsShown() const
+{
+	return _ui->checkBox_showFrustums->isEnabled() && _ui->checkBox_showFrustums->isChecked();
 }
 bool PreferencesDialog::isLabelsShown() const
 {
@@ -4087,14 +4117,6 @@ double PreferencesDialog::getSubtractFilteringRadius() const
 double PreferencesDialog::getSubtractFilteringAngle() const
 {
 	return _ui->doubleSpinBox_subtractFilteringAngle->value()*M_PI/180.0;
-}
-int PreferencesDialog::getNormalKSearch() const
-{
-	return _ui->spinBox_normalKSearch->value();
-}
-bool PreferencesDialog::gainCompensation() const
-{
-	return _ui->checkBox_gainCompensation->isChecked();
 }
 bool PreferencesDialog::getGridMapShown() const
 {
