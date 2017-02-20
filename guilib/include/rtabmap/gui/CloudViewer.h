@@ -196,13 +196,15 @@ public:
 	void addOrUpdateFrustum(
 			const std::string & id,
 			const Transform & transform,
+			const Transform & localTransform,
 			double scale,
 			const QColor & color = QColor());
 	bool updateFrustumPose(
 			const std::string & id,
 			const Transform & pose);
 	void removeFrustum(const std::string & id);
-	void removeAllFrustums();
+	void removeAllFrustums(bool exceptCameraReference = false);
+	const QMap<std::string, Transform> & getAddedFrustums() const {return _frustums;}
 
 	void addOrUpdateGraph(
 			const std::string & id,
@@ -327,7 +329,7 @@ private:
     std::set<std::string> _coordinates;
     std::set<std::string> _texts;
     std::set<std::string> _lines;
-    std::set<std::string> _frustums;
+    QMap<std::string, Transform> _frustums;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
     float _frustumScale;

@@ -263,6 +263,7 @@ private:
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useOdometryFeatures;
 	bool _createOccupancyGrid;
+	int _visMaxFeatures;
 
 	int _idCount;
 	int _idMapCount;

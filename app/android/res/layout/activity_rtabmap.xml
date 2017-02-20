@@ -281,6 +281,19 @@
     </LinearLayout>
 
     <ToggleButton
+        android:id="@+id/backface_button"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/light_button"
+        android:layout_alignLeft="@+id/light_button"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="5dp"
+        android:layout_marginRight="5dp"
+        android:paddingRight="5dp"
+        android:textOff="@string/backface_off"
+        android:textOn="@string/backface_on" />
+   
+    <ToggleButton
         android:id="@+id/light_button"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
@@ -336,18 +349,35 @@
         android:layout_alignLeft="@+id/first_person_button"
         android:layout_alignParentTop="true"
         android:layout_marginTop="61dp"
+        android:layout_alignParentRight="true"
         android:paddingRight="5dp"
         android:textOff="@string/pause"
         android:textOn="@string/resume" />
-    
+
+    <Button
+        android:id="@+id/button_shareToSketchfab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_alignRight="@+id/pause_button"
+        android:text="@string/share_to_sketchfab" />
+
+    <Button
+        android:id="@+id/button_saveOnDevice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_toLeftOf="@+id/button_shareToSketchfab"
+        android:text="@string/save_to_file" />
+
     <Button
         android:id="@+id/close_visualization_button"
         android:layout_width="200dp"
         android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginLeft="5dp"
+        android:layout_alignBaseline="@+id/top_down_button"
+        android:layout_alignBottom="@+id/top_down_button"
+        android:layout_centerHorizontal="true"
         android:paddingLeft="5dp"
-        android:text="@string/close_visualization"/>
+        android:text="@string/close_visualization" />
         
 </RelativeLayout>

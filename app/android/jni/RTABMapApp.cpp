@@ -94,18 +94,22 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityPathMaxNeighbors(), std::string("0"))); // disable scan matching to merged nodes
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), std::string("false"))); // just keep loop closure detection
 
-	if(parameters.find(rtabmap::Parameters::kKpMaxFeatures())!=parameters.end() &&
-	   parameters.find(rtabmap::Parameters::kVisMaxFeatures())!=parameters.end())
+	if(parameters.find(rtabmap::Parameters::kOptimizerStrategy()) != parameters.end())
 	{
-		int featuresVoc = uStr2Int(parameters.at(rtabmap::Parameters::kKpMaxFeatures()));
-		int featuresLoop = uStr2Int(parameters.at(rtabmap::Parameters::kVisMaxFeatures()));
-		if(featuresVoc==0 || featuresLoop < featuresVoc)
+		if(parameters.at(rtabmap::Parameters::kOptimizerStrategy()).compare("2") == 0) // GTSAM
 		{
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), std::string("false")));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0.00001"));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
 		}
-		else
+		else if(parameters.at(rtabmap::Parameters::kOptimizerStrategy()).compare("1") == 0) // g2o
 		{
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), std::string("true")));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0.0"));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"10":"0"));
+		}
+		else // TORO
+		{
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerEpsilon(), "0.00001"));
+			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOptimizerIterations(), graphOptimization_?"100":"0"));
 		}
 	}
 
@@ -166,7 +170,8 @@ RTABMapApp::RTABMapApp() :
 		renderingTime_(0.0f),
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
-		exportedMesh_(new pcl::TextureMesh)
+		exportedMesh_(new pcl::TextureMesh),
+		mapToOdom_(rtabmap::Transform::getIdentity())
 
 {
 	mappingParameters_.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpDetectorStrategy(), "5")); // GFTT/FREAK
@@ -227,11 +232,14 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 
 void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
 {
-	LOGI("Set orientation: display=%d camera=%d", displayRotation, cameraRotation);
-	main_scene_.setScreenRotation(displayRotation, cameraRotation);
+	TangoSupportRotation rotation = tango_gl::util::GetAndroidRotationFromColorCameraToDisplay(
+			displayRotation, cameraRotation);
+	LOGI("Set orientation: display=%d camera=%d -> %d", displayRotation, cameraRotation, (int)rotation);
+	main_scene_.setScreenRotation(rotation);
+	camera_->setScreenRotation(rotation);
 }
 
-void RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize)
+int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize)
 {
 	this->unregisterFromEventsManager(); // to ignore published init events when closing rtabmap
 	status_.first = rtabmap::RtabmapEventInit::kInitializing;
@@ -245,6 +253,7 @@ void RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInM
 	}
 
 	//Rtabmap
+	mapToOdom_.setIdentity();
 	rtabmap_ = new rtabmap::Rtabmap();
 	rtabmap::ParametersMap parameters = getRtabmapParameters();
 
@@ -266,6 +275,13 @@ void RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInM
 			links,
 			true,
 			true);
+
+	int status = 0;
+	if(signatures.size() && poses.empty())
+	{
+		LOGE("Failed to optimize the graph!");
+		status = -1;
+	}
 
 	optimizeOpenedDatabase_ = optimize;
 	clearSceneOnNextRender_ = true;
@@ -289,6 +305,8 @@ void RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInM
 	status_.first = rtabmap::RtabmapEventInit::kInitialized;
 	status_.second = "";
 	rtabmapMutex_.unlock();
+
+	return status;
 }
 
 bool RTABMapApp::onTangoServiceConnected(JNIEnv* env, jobject iBinder)
@@ -437,6 +455,11 @@ int RTABMapApp::Render()
 		UTimer fpsTime;
 		boost::mutex::scoped_lock  lock(renderingMutex_);
 
+		if(clearSceneOnNextRender_)
+		{
+			visualizingMesh_ = false;
+		}
+
 		bool notifyCameraStarted = false;
 
 		// process only pose events in vsualization mode
@@ -449,10 +472,19 @@ int RTABMapApp::Render()
 				poseEvents_.clear();
 			}
 		}
+		rtabmap::Transform mapOdom = rtabmap::Transform::getIdentity();
 		if(!pose.isNull())
 		{
 			// update camera pose?
-			main_scene_.SetCameraPose(opengl_world_T_tango_world*pose);
+			if(graphOptimization_ && !visualizingMesh_ && !mapToOdom_.isIdentity())
+			{
+				mapOdom = mapToOdom_;
+				main_scene_.SetCameraPose(opengl_world_T_rtabmap_world*mapOdom*rtabmap_world_T_tango_world*pose);
+			}
+			else
+			{
+				main_scene_.SetCameraPose(opengl_world_T_tango_world*pose);
+			}
 			if(!camera_->isRunning() && cameraJustInitialized_)
 			{
 				notifyCameraStarted = true;
@@ -474,11 +506,6 @@ int RTABMapApp::Render()
 					cameraJustInitialized_ = false;
 				}
 			}
-		}
-
-		if(clearSceneOnNextRender_)
-		{
-			visualizingMesh_ = false;
 		}
 
 		if(visualizingMesh_)
@@ -675,6 +702,10 @@ int RTABMapApp::Render()
 				}
 
 				std::map<int, rtabmap::Transform> poses = rtabmapEvents.back().poses();
+				if(!rtabmapEvents.back().mapCorrection().isNull())
+				{
+					mapToOdom_ = rtabmapEvents.back().mapCorrection();
+				}
 
 				// Transform pose in OpenGL world
 				for(std::map<int, rtabmap::Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
@@ -833,7 +864,7 @@ int RTABMapApp::Render()
 										odomEvent.data().imageRaw().cols, odomEvent.data().imageRaw().rows,
 										odomEvent.data().depthRaw().cols, odomEvent.data().depthRaw().rows,
 									   (int)cloud->width, (int)cloud->height);
-								main_scene_.addCloud(-1, cloud, indices, opengl_world_T_rtabmap_world*odomEvent.pose());
+								main_scene_.addCloud(-1, cloud, indices, opengl_world_T_rtabmap_world*mapOdom*odomEvent.pose());
 								main_scene_.setCloudVisible(-1, true);
 							}
 							else
@@ -1041,6 +1072,10 @@ void RTABMapApp::setPointSize(float value)
 void RTABMapApp::setLighting(bool enabled)
 {
 	main_scene_.setLighting(enabled);
+}
+void RTABMapApp::setBackfaceCulling(bool enabled)
+{
+	main_scene_.setBackfaceCulling(enabled);
 }
 
 void RTABMapApp::setLocalizationMode(bool enabled)
@@ -1286,6 +1321,7 @@ void RTABMapApp::resetMapping()
 	status_.first = rtabmap::RtabmapEventInit::kInitializing;
 	status_.second = "";
 
+	mapToOdom_.setIdentity();
 	clearSceneOnNextRender_ = true;
 
 	UEventsManager::post(new rtabmap::RtabmapEventCmd(rtabmap::RtabmapEventCmd::kCmdResetMemory));
@@ -1557,13 +1593,6 @@ bool RTABMapApp::exportMesh(
 
 					if(mergedClouds->size())
 					{
-						int before = mergedClouds->size();
-						if(optimizedVoxelSize > 0.0f)
-						{
-							mergedClouds = rtabmap::util3d::voxelize(mergedClouds, optimizedVoxelSize);
-							LOGI("Voxelized from %d points to %d points", before, (int)mergedClouds->size());
-						}
-
 						// Mesh reconstruction
 						LOGI("Mesh reconstruction...");
 						pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
@@ -2223,15 +2252,7 @@ int RTABMapApp::postProcessing(int approach)
 		// detect more loop closures
 		if(approach == -1 || approach == 2)
 		{
-			// detect more loop closures, don't re-extract features for this
-			rtabmap::ParametersMap parameters;
-			parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLoopClosureReextractFeatures(), std::string("false")));
-			rtabmap_->parseParameters(parameters);
-
 			returnedValue = rtabmap_->detectMoreLoopClosures(1.0f, M_PI/6.0f, approach == -1?5:1);
-
-			// put back re-extraction if it was set
-			rtabmap_->parseParameters(this->getRtabmapParameters());
 		}
 
 		// graph optimization
@@ -2427,7 +2448,9 @@ void RTABMapApp::handleEvent(UEvent * event)
 		int highestHypId = (int)uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_id(), 0.0f);
 		int databaseMemoryUsed = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryDatabase_memory_used(), 0.0f);
 		int inliers = (int)uValue(stats.data(), rtabmap::Statistics::kLoopVisual_inliers(), 0.0f);
+		int matches = (int)uValue(stats.data(), rtabmap::Statistics::kLoopVisual_matches(), 0.0f);
 		int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
+		float optimizationMaxError = uValue(stats.data(), rtabmap::Statistics::kLoopOptimization_max_error(), 0.0f);
 		float rehearsalValue = uValue(stats.data(), rtabmap::Statistics::kMemoryRehearsal_sim(), 0.0f);
 		int featuresExtracted = stats.getSignatures().size()?stats.getSignatures().rbegin()->second.getWords().size():0;
 		float hypothesis = uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f);
@@ -2444,7 +2467,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIFIFIF)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIFIFIFF)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,
@@ -2457,12 +2480,14 @@ void RTABMapApp::handleEvent(UEvent * event)
 								highestHypId,
 								databaseMemoryUsed,
 								inliers,
+								matches,
 								featuresExtracted,
 								hypothesis,
 								lastDrawnCloudsCount_,
 								renderingTime_>0.0f?1.0f/renderingTime_:0.0f,
 								rejected,
-								rehearsalValue);
+								rehearsalValue,
+								optimizationMaxError);
 						success = true;
 					}
 				}

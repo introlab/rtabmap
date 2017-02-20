@@ -551,7 +551,7 @@ int VWDictionary::getNextId()
 
 void VWDictionary::addWordRef(int wordId, int signatureId)
 {
-	if(signatureId > 0 && wordId > 0)
+	if(signatureId > 0)
 	{
 		VisualWord * vw = 0;
 		vw = uValue(_visualWords, wordId, vw);

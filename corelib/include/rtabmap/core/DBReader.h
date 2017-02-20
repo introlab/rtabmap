@@ -87,6 +87,8 @@ private:
 	UTimer _timer;
 	std::set<int> _ids;
 	std::set<int>::iterator _currentId;
+	int _previousMapId;
+	cv::Mat _previousInfMatrix;
 	double _previousStamp;
 	int _previousMapID;
 	bool _calibrated;

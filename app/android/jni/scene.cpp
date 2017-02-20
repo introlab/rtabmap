@@ -169,6 +169,7 @@ Scene::Scene() :
 		pointSize_(5.0f),
 		frustumCulling_(true),
 		lighting_(true),
+		backfaceCulling_(true),
 		r_(0.0f),
 		g_(0.0f),
 		b_(0.0f)
@@ -255,14 +256,6 @@ void Scene::DeleteResources() {
 	clear();
 }
 
-void Scene::setScreenRotation(int displayOrientation, int cameraOrientation)
-{
-	color_camera_to_display_rotation_ =
-	      tango_gl::util::GetAndroidRotationFromColorCameraToDisplay(
-	    		  displayOrientation, cameraOrientation);
-	LOGI("color_camera_to_display_rotation_=%d", color_camera_to_display_rotation_);
-}
-
 //Should only be called in OpenGL thread!
 void Scene::clear()
 {
@@ -299,32 +292,37 @@ int Scene::Render() {
 	UASSERT(gesture_camera_ != 0);
 
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+	if(backfaceCulling_)
+	{
+		glEnable(GL_CULL_FACE);
+	}
+	else
+	{
+		glDisable(GL_CULL_FACE);
+	}
 
 	glClearColor(r_, g_, b_, 1.0f);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-	glm::mat4 rotateM;
-	if(gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
-	{
-		rotateM = glm::rotate<float>(float(color_camera_to_display_rotation_)*1.57079632679489661923132169163975144, glm::vec3(0.0f, 0.0f, 1.0f));
-	}
 	if(!currentPose_->isNull())
 	{
 		glm::vec3 position(currentPose_->x(), currentPose_->y(), currentPose_->z());
 		Eigen::Quaternionf quat = currentPose_->getQuaternionf();
 		glm::quat rotation(quat.w(), quat.x(), quat.y(), quat.z());
 
+		glm::mat4 rotateM;
+		rotateM = glm::rotate<float>(float(color_camera_to_display_rotation_)*-1.57079632679489661923132169163975144, glm::vec3(0.0f, 0.0f, 1.0f));
+
 		if (gesture_camera_->GetCameraType() == tango_gl::GestureCamera::kFirstPerson)
 		{
 			// In first person mode, we directly control camera's motion.
 			gesture_camera_->SetPosition(position);
-			gesture_camera_->SetRotation(rotation);
+			gesture_camera_->SetRotation(rotation*glm::quat(rotateM));
 		}
 		else
 		{
 			// In third person or top down mode, we follow the camera movement.
-			gesture_camera_->SetAnchorPosition(position, rotation);
+			gesture_camera_->SetAnchorPosition(position, rotation*glm::quat(rotateM));
 
 			frustum_->SetPosition(position);
 			frustum_->SetRotation(rotation);
@@ -332,25 +330,25 @@ int Scene::Render() {
 			// camera's aspect ratio, this is just for visualization purposes.
 			frustum_->SetScale(kFrustumScale);
 			frustum_->Render(gesture_camera_->GetProjectionMatrix(),
-					rotateM*gesture_camera_->GetViewMatrix());
+					gesture_camera_->GetViewMatrix());
 
 			axis_->SetPosition(position);
 			axis_->SetRotation(rotation);
 			axis_->Render(gesture_camera_->GetProjectionMatrix(),
-					rotateM*gesture_camera_->GetViewMatrix());
+					gesture_camera_->GetViewMatrix());
 		}
 
 		trace_->UpdateVertexArray(position);
 		if(traceVisible_)
 		{
 			trace_->Render(gesture_camera_->GetProjectionMatrix(),
-					rotateM*gesture_camera_->GetViewMatrix());
+					gesture_camera_->GetViewMatrix());
 		}
 
 		if(gridVisible_)
 		{
 			grid_->Render(gesture_camera_->GetProjectionMatrix(),
-					rotateM*gesture_camera_->GetViewMatrix());
+					gesture_camera_->GetViewMatrix());
 		}
 	}
 
@@ -401,7 +399,7 @@ int Scene::Render() {
 			for(unsigned int i=0; i<indices->size(); ++i)
 			{
 				++cloudDrawn;
-				pointClouds_.find(ids[indices->at(i)])->second->Render(gesture_camera_->GetProjectionMatrix(), rotateM*gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
+				pointClouds_.find(ids[indices->at(i)])->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
 			}
 		}
 	}
@@ -412,14 +410,14 @@ int Scene::Render() {
 			if((mapRendering_ || iter->first < 0) && iter->second->isVisible())
 			{
 				++cloudDrawn;
-				iter->second->Render(gesture_camera_->GetProjectionMatrix(), rotateM*gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
+				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
 			}
 		}
 	}
 
 	if(graphVisible_ && graph_)
 	{
-		graph_->Render(gesture_camera_->GetProjectionMatrix(), rotateM*gesture_camera_->GetViewMatrix());
+		graph_->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix());
 	}
 
 	return cloudDrawn;

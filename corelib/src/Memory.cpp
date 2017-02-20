@@ -93,6 +93,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
+	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -246,7 +247,13 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			{
 				const std::multimap<int, cv::KeyPoint> & words = i->second->getWords();
 				std::list<int> keys = uUniqueKeys(words);
-				wordIds.insert(keys.begin(), keys.end());
+				for(std::list<int>::iterator iter=keys.begin(); iter!=keys.end();)
+				{
+					if(*iter > 0)
+					{
+						wordIds.insert(*iter);
+					}
+				}
 			}
 			if(wordIds.size())
 			{
@@ -285,7 +292,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 				UDEBUG("node=%d, word references=%d", s->id(), words.size());
 				for(std::multimap<int, cv::KeyPoint>::const_iterator iter = words.begin(); iter!=words.end(); ++iter)
 				{
-					_vwd->addWordRef(iter->first, i->first);
+					if(iter->first > 0)
+					{
+						_vwd->addWordRef(iter->first, i->first);
+					}
 				}
 				s->setEnabled(true);
 			}
@@ -427,6 +437,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
 	Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
 	Parameters::parse(parameters, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
+	Parameters::parse(parameters, Parameters::kVisMaxFeatures(), _visMaxFeatures);
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -1464,10 +1475,12 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 			// Pour chaque mot dans la signature SURF
 			for(std::list<int>::const_iterator i=wordIds.begin(); i!=wordIds.end(); ++i)
 			{
-				// "Inverted index" - Pour chaque endroit contenu dans chaque mot
-				vw = _vwd->getWord(*i);
-				if(vw)
+				if(*i>0)
 				{
+					// "Inverted index" - Pour chaque endroit contenu dans chaque mot
+					vw = _vwd->getWord(*i);
+					UASSERT(vw!=0);
+
 					const std::map<int, int> & refs = vw->getReferences();
 					nw = refs.size();
 					if(nw)
@@ -2229,13 +2242,12 @@ Transform Memory::computeTransform(
 			// verify if it is a 180 degree transform, well verify > 90
 			float x,y,z, roll,pitch,yaw;
 			transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-			if(fabs(roll) > CV_PI/2 ||
-			   fabs(pitch) > CV_PI/2 ||
+			if(fabs(pitch) > CV_PI/2 ||
 			   fabs(yaw) > CV_PI/2)
 			{
 				transform.setNull();
-				std::string msg = uFormat("Too large rotation detected! (roll=%f, pitch=%f, yaw=%f)",
-						roll, pitch, yaw);
+				std::string msg = uFormat("Too large rotation detected! (pitch=%f, yaw=%f) max is %f",
+						roll, pitch, yaw, CV_PI/2);
 				UINFO(msg.c_str());
 				if(info)
 				{
@@ -3302,9 +3314,26 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 				}
 			}
 
+			int oldMaxFeatures = _feature2D->getMaxFeatures();
+			UDEBUG("rawDescriptorsKept=%d, pose=%d, maxFeatures=%d, visMaxFeatures=%d", _rawDescriptorsKept?1:0, pose.isNull()?0:1, _feature2D->getMaxFeatures(), _visMaxFeatures);
+			ParametersMap tmpMaxFeatureParameter;
+			if(_rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures)
+			{
+				// The total extracted features should match the number of features used for transformation estimation
+				UDEBUG("Changing temporary max features from %d to %d", _feature2D->getMaxFeatures(), _visMaxFeatures);
+				tmpMaxFeatureParameter.insert(ParametersPair(Parameters::kKpMaxFeatures(), uNumber2Str(_visMaxFeatures)));
+				_feature2D->parseParameters(tmpMaxFeatureParameter);
+			}
+
 			keypoints = _feature2D->generateKeypoints(
 					imageMono,
 					depthMask);
+
+			if(tmpMaxFeatureParameter.size())
+			{
+				tmpMaxFeatureParameter.at(Parameters::kKpMaxFeatures()) = uNumber2Str(oldMaxFeatures);
+				_feature2D->parseParameters(tmpMaxFeatureParameter); // reset back
+			}
 			t = timer.ticks();
 			if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
 			UDEBUG("time keypoints (%d) = %fs", (int)keypoints.size(), t);
@@ -3351,9 +3380,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		UASSERT(descriptors.empty() || descriptors.rows == (int)keypoints.size());
 		UASSERT(keypoints3D.empty() || keypoints3D.size() == keypoints.size());
 
-		if((int)keypoints.size() > _feature2D->getMaxFeatures())
+		int maxFeatures = _rawDescriptorsKept&&!pose.isNull()&&_feature2D->getMaxFeatures()>0&&_feature2D->getMaxFeatures()<_visMaxFeatures?_visMaxFeatures:_feature2D->getMaxFeatures();
+		if((int)keypoints.size() > maxFeatures)
 		{
-			_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, _feature2D->getMaxFeatures());
+			_feature2D->limitKeypoints(keypoints, keypoints3D, descriptors, maxFeatures);
 		}
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemKeypoints_detection(), t*1000.0f);
@@ -3443,10 +3473,60 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
 		}
 
-		wordIds = _vwd->addNewWords(descriptors, id);
+		// In case the number of features we want to do quantization is lower
+		// than extracted ones (that would be used for transform estimation)
+		std::vector<bool> inliers;
+		cv::Mat descriptorsForQuantization = descriptors;
+		std::vector<int> quantizedToRawIndices;
+		if(_feature2D->getMaxFeatures()>0 && descriptors.rows > _feature2D->getMaxFeatures())
+		{
+			UASSERT((int)keypoints.size() == descriptors.rows);
+			Feature2D::limitKeypoints(keypoints, inliers, _feature2D->getMaxFeatures());
+
+			descriptorsForQuantization = cv::Mat(_feature2D->getMaxFeatures(), descriptors.cols, descriptors.type());
+			quantizedToRawIndices.resize(_feature2D->getMaxFeatures());
+			unsigned int oi=0;
+			UASSERT((int)inliers.size() == descriptors.rows);
+			for(int k=0; k < descriptors.rows; ++k)
+			{
+				if(inliers[k])
+				{
+					UASSERT(oi < quantizedToRawIndices.size());
+					if(descriptors.type() == CV_32FC1)
+					{
+						memcpy(descriptorsForQuantization.ptr<float>(oi), descriptors.ptr<float>(k), descriptors.cols*sizeof(float));
+					}
+					else
+					{
+						memcpy(descriptorsForQuantization.ptr<char>(oi), descriptors.ptr<char>(k), descriptors.cols*sizeof(char));
+					}
+					quantizedToRawIndices[oi] = k;
+					++oi;
+				}
+			}
+			UASSERT((int)oi == _feature2D->getMaxFeatures());
+		}
+
+		// Quantization to vocabulary
+		wordIds = _vwd->addNewWords(descriptorsForQuantization, id);
+
+		// Set ID -1 to features not used for quantization
+		if(wordIds.size() < keypoints.size())
+		{
+			std::vector<int> allWordIds;
+			allWordIds.resize(keypoints.size(),-1);
+			int i=0;
+			for(std::list<int>::iterator iter=wordIds.begin(); iter!=wordIds.end(); ++iter)
+			{
+				allWordIds[quantizedToRawIndices[i]] = *iter;
+				++i;
+			}
+			wordIds = uVectorToList(allWordIds);
+		}
+
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemAdd_new_words(), t*1000.0f);
-		UDEBUG("time addNewWords %fs", t);
+		UDEBUG("time addNewWords %fs indexed=%d not=%d", t, _vwd->getIndexedWordsCount(), _vwd->getNotIndexedWordsCount());
 	}
 	else if(id>0)
 	{
@@ -3805,7 +3885,7 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 			//Find words in the signature which they are not in the current dictionary
 			for(std::list<int>::const_iterator k=uniqueKeys.begin(); k!=uniqueKeys.end(); ++k)
 			{
-				if(_vwd->getWord(*k) == 0 && _vwd->getUnusedWord(*k) == 0)
+				if(*k>0 && _vwd->getWord(*k) == 0 && _vwd->getUnusedWord(*k) == 0)
 				{
 					oldWordIds.insert(oldWordIds.end(), *k);
 				}
@@ -3875,13 +3955,13 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 		const std::vector<int> & keys = uKeys((*j)->getWords());
 		if(keys.size())
 		{
-			const VisualWord * wordFirst = _vwd->getWord(keys.front()); //get descriptor size
-			UASSERT(wordFirst!=0);
-
 			// Add all references
 			for(unsigned int i=0; i<keys.size(); ++i)
 			{
-				_vwd->addWordRef(keys.at(i), (*j)->id());
+				if(keys.at(i)>0)
+				{
+					_vwd->addWordRef(keys.at(i), (*j)->id());
+				}
 			}
 			(*j)->setEnabled(true);
 		}
