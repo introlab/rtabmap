@@ -428,7 +428,7 @@ SensorData::SensorData(
 
 void SensorData::setUserDataRaw(const cv::Mat & userDataRaw)
 {
-	if(!userDataRaw.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
+	if(!userDataRaw.empty() && !_userDataRaw.empty())
 	{
 		UWARN("Cannot write new user data (%d bytes) over existing user "
 			  "data (%d bytes, %d compressed). Set user data of %d to null "
