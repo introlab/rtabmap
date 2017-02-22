@@ -34,9 +34,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tango_client_api.h>  // NOLINT
 #include <tango-gl/util.h>
 
-#include <scene.h>
-#include <CameraTango.h>
-#include <util.h>
+#include "scene.h"
+#include "CameraTango.h"
+#include "util.h"
 
 #include <rtabmap/core/RtabmapThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
@@ -128,6 +128,7 @@ class RTABMapApp : public UEventsHandler {
   void setAutoExposure(bool enabled);
   void setRawScanSaved(bool enabled);
   void setFullResolution(bool enabled);
+  void setSmoothing(bool enabled);
   void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
@@ -144,6 +145,7 @@ class RTABMapApp : public UEventsHandler {
   bool exportMesh(
 		  const std::string & filePath,
 		  float cloudVoxelSize,
+		  bool regenerateCloud,
 		  bool meshing,
 		  int textureSize,
 		  int normalK,
@@ -179,6 +181,7 @@ class RTABMapApp : public UEventsHandler {
   bool trajectoryMode_;
   bool autoExposure_;
   bool rawScanSaved_;
+  bool smoothing_;
   bool fullResolution_;
   bool appendMode_;
   float maxCloudDepth_;
@@ -202,6 +205,8 @@ class RTABMapApp : public UEventsHandler {
   int totalPolygons_;
   int lastDrawnCloudsCount_;
   float renderingTime_;
+  long processMemoryUsedBytes;
+  long processGPUMemoryUsedBytes;
 
   bool visualizingMesh_;
   bool exportedMeshUpdated_;

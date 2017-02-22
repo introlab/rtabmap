@@ -217,6 +217,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setFullResolution(
 	return app.setFullResolution(enabled);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setSmoothing(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setSmoothing(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setAppendMode(
 		JNIEnv*, jobject, bool enabled)
 {
@@ -295,6 +301,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		JNIEnv* env, jobject,
 		jstring filePath,
 		float cloudVoxelSize,
+		bool regenerateCloud,
 		bool meshing,
 		int textureSize,
 		int normalK,
@@ -313,6 +320,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 	return app.exportMesh(
 			filePathC,
 			cloudVoxelSize,
+			regenerateCloud,
 			meshing,
 			textureSize,
 			normalK,

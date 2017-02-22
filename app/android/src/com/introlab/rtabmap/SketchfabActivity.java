@@ -303,8 +303,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 							{
 								Log.i(RTABMapActivity.TAG, String.format("Zipped files = %d MB", fileSizeMB));
 								builder.setMessage(String.format("Total size to upload = %d MB. %sDo you want to continue?\n\n"
-										+ "Tip: To reduce the model size, try \"Optimized Mesh\" export. "
-										+ "You can also look at the Settings->Exporting options to reduce the output size.", fileSizeMB,
+										+ "Tip: To reduce the model size, you can also look at the Settings->Exporting options to reduce the output size.", fileSizeMB,
 										fileSizeMB>=50?"Note that for size over 50 MB, a Sketchfab PRO account is required, otherwise the upload may fail. ":""));
 							}
 
@@ -448,7 +447,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 				multipart.addFormField("description", mDescription.getText().toString());
 				multipart.addFormField("tags", mTags.getText().toString());
 				multipart.addFormField("source", "RTAB-Map");
-				multipart.addFormField("isPublished", mDraft.isChecked()?"true":"false");  				
+				multipart.addFormField("isPublished", mDraft.isChecked()?"false":"true");	
 				multipart.addFilePart("modelFile", uploadFile);
 
 				Log.i(RTABMapActivity.TAG, "Starting multipart request");

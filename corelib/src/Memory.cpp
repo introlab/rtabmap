@@ -2106,6 +2106,7 @@ void Memory::removeLink(int oldId, int newId)
 
 void Memory::removeRawData(int id, bool image, bool scan, bool userData)
 {
+	UDEBUG("id=%d image=%d scan=%d userData=%d", id, image?1:0, scan?1:0, userData?1:0);
 	Signature * s = this->_getSignature(id);
 	if(s)
 	{

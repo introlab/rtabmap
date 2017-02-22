@@ -70,6 +70,7 @@ public class RTABMapLib
     public static native void setAutoExposure(boolean enabled);
     public static native void setRawScanSaved(boolean enabled);
     public static native void setFullResolution(boolean enabled);
+    public static native void setSmoothing(boolean enabled);
     public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);
@@ -88,6 +89,7 @@ public class RTABMapLib
     public static native boolean exportMesh(
     		String filePath,
     		float cloudVoxelSize,
+    		boolean regenerateCloud,
     		boolean meshing,
     		int textureSize,
     		int normalK,

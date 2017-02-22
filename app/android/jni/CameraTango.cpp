@@ -40,7 +40,7 @@ namespace rtabmap {
 const int kVersionStringLength = 128;
 const int holeSize = 5;
 const float maxDepthError = 0.10;
-const int scanDownsampling = 10;
+const int scanDownsampling = 1;
 
 // Callbacks
 void onPointCloudAvailableRouter(void* context, const TangoPointCloud* point_cloud)
@@ -97,7 +97,10 @@ void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
 //////////////////////////////
 // CameraTango
 //////////////////////////////
-CameraTango::CameraTango(int decimation, bool autoExposure, bool publishRawScan) :
+const float CameraTango::bilateralFilteringSigmaS = 2.0f;
+const float CameraTango::bilateralFilteringSigmaR = 0.075f;
+
+CameraTango::CameraTango(int decimation, bool autoExposure, bool publishRawScan, bool smoothing) :
 		Camera(0),
 		tango_config_(0),
 		firstFrame_(true),
@@ -105,6 +108,7 @@ CameraTango::CameraTango(int decimation, bool autoExposure, bool publishRawScan)
 		decimation_(decimation),
 		autoExposure_(autoExposure),
 		rawScanPublished_(publishRawScan),
+		smoothing_(smoothing),
 		cloudStamp_(0),
 		tangoColorType_(0),
 		tangoColorStamp_(0),
@@ -599,22 +603,40 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 					scanData.at(oi++) = pt;
 				}
 
-				int pixel_x, pixel_y;
+				int pixel_x_l, pixel_y_l, pixel_x_h, pixel_y_h;
 				// get the coordinate on image plane.
-				pixel_x = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx());
-				pixel_y = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy());
+				pixel_x_l = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx());
+				pixel_y_l = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy());
+				pixel_x_h = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx() + 0.5f);
+				pixel_y_h = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy() + 0.5f);
 				unsigned short depth_value(pt.z * 1000.0f);
 
-				if(pixel_x>=0 && pixel_x<depth.cols &&
-				   pixel_y>0 && pixel_y<depth.rows &&
+				bool pixelSet = false;
+				if(pixel_x_l>=0 && pixel_x_l<depth.cols &&
+				   pixel_y_l>0 && pixel_y_l<depth.rows &&
 				   depth_value)
 				{
-					unsigned short & depthPixel = depth.at<unsigned short>(pixel_y, pixel_x);
+					unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_l, pixel_x_l);
 					if(depthPixel == 0 || depthPixel > depth_value)
 					{
 						depthPixel = depth_value;
-						pixelsSet += 1;
+						pixelSet = true;
 					}
+				}
+				if(pixel_x_h>=0 && pixel_x_h<depth.cols &&
+				   pixel_y_h>0 && pixel_y_h<depth.rows &&
+				   depth_value)
+				{
+					unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_h, pixel_x_h);
+					if(depthPixel == 0 || depthPixel > depth_value)
+					{
+						depthPixel = depth_value;
+						pixelSet = true;
+					}
+				}
+				if(pixelSet)
+				{
+					pixelsSet += 1;
 				}
 			}
 
@@ -688,6 +710,14 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 				cv::Size sizet(model.imageHeight(), model.imageWidth());
 				model = CameraModel(model.fy(), model.fx(), model.cy()>0?model.imageHeight()-model.cy():0, model.cx(), model.localTransform()*rtabmap::Transform(0,0,0,0,0,-1.57079632679489661923132169163975144));
 				model.setImageSize(sizet);
+			}
+
+			if(smoothing_)
+			{
+				//UTimer t;
+				depth = rtabmap::util2d::fastBilateralFiltering(depth, bilateralFilteringSigmaS, bilateralFilteringSigmaR);
+				data.setDepthOrRightRaw(depth);
+				//LOGD("Bilateral filtering, time=%fs", t.ticks());
 			}
 
 			if(rawScanPublished_)

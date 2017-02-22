@@ -226,7 +226,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 		}
 	}
 
-	LOGD("Creating cloud buffer %d", vertex_buffers_);
+	//LOGD("Creating cloud buffer %d", vertex_buffers_);
 	std::vector<float> vertices;
 	int totalPoints = 0;
 	std::vector<pcl::Vertices> polygons = mesh.polygons;
@@ -238,7 +238,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 		totalPoints = mesh.indices->size();
 		if(textures_ && polygons.size())
 		{
-			LOGD("Organized mesh with texture");
+			//LOGD("Organized mesh with texture");
 			int items = hasNormals_?9:6;
 			vertices = std::vector<float>(mesh.indices->size()*9);
 			for(unsigned int i=0; i<mesh.indices->size(); ++i)
@@ -268,7 +268,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 		}
 		else
 		{
-			LOGD("Organized mesh");
+			//LOGD("Organized mesh");
 			int items = hasNormals_?7:4;
 			vertices = std::vector<float>(mesh.indices->size()*items);
 			for(unsigned int i=0; i<mesh.indices->size(); ++i)
@@ -295,8 +295,8 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 		totalPoints = mesh.cloud->size();
 		if(textures_ && polygons.size() && mesh.normals->size())
 		{
-			LOGD("Dense mesh with texture (%d texCoords %d points %d polygons %dx%d)",
-					(int)mesh.texCoords.size(), (int)mesh.cloud->size(), (int)mesh.polygons.size(), texture.cols, texture.rows);
+			//LOGD("Dense mesh with texture (%d texCoords %d points %d polygons %dx%d)",
+			//		(int)mesh.texCoords.size(), (int)mesh.cloud->size(), (int)mesh.polygons.size(), texture.cols, texture.rows);
 
 			// Texturing issue:
 			//  tex_coordinates should be linked to points, not
@@ -355,7 +355,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 		}
 		else
 		{
-			LOGD("Dense mesh");
+			//LOGD("Dense mesh");
 			int items = hasNormals_?7:4;
 			organizedToDenseIndices_ = std::vector<unsigned int>(mesh.cloud->size(), -1);
 			vertices = std::vector<float>(mesh.cloud->size()*items);
@@ -392,9 +392,12 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 
 	if(textures_ && textureUpdate)
 	{
-		GLint maxTextureSize = 0;
-		glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
-		LOGI("maxTextureSize=%d", maxTextureSize);
+		//GLint maxTextureSize = 0;
+		//glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
+		//LOGI("maxTextureSize=%d", maxTextureSize);
+		//GLint maxTextureUnits = 0;
+		//glGetIntegerv(GL_MAX_TEXTURE_IMAGE_UNITS, &maxTextureUnits);
+		//LOGW("maxTextureUnits=%d", maxTextureUnits);
 
 		// gen texture from image
 		glBindTexture(GL_TEXTURE_2D, textures_);
@@ -402,6 +405,11 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cv::Mat rgbImage;
 		cv::cvtColor(texture, rgbImage, CV_BGR2RGB);
+
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+		//glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
+		//glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, rgbImage.cols, rgbImage.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbImage.data);
 
 		GLint error = glGetError();

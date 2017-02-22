@@ -68,6 +68,11 @@
 	            android:title="@string/pref_title_resolution"
 	            android:summary="@string/pref_summary_resolution"
 	            android:defaultValue="@string/pref_default_resolution"/>
+		    <SwitchPreference
+		        android:key="@string/pref_key_smoothing"
+		        android:title="@string/pref_title_smoothing"
+		        android:summary="@string/pref_summary_smoothing"
+		        android:defaultValue="@string/pref_default_smoothing"/>
 	  
 		     <PreferenceCategory
 	        	android:title="@string/pref_title_mapping_core">

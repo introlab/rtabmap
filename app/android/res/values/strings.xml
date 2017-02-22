@@ -18,7 +18,7 @@
     <string name="light_on">Lighting</string>
     <string name="light_off">Lighting</string>
     <string name="close_visualization">Close Visualization</string>
-    <string name="save_to_file">Save to File&#8230;</string>
+    <string name="save_to_file">Export to File&#8230;</string>
     <string name="share_to_sketchfab">Share to Sketchfab&#8230;</string>
     <string name="start">Start</string>
     <string name="nodes">"Nodes (WM): "</string>
@@ -30,22 +30,22 @@
     <string name="total_loop">"Loop closures: "</string>
     <string name="inliers">"Inliers: "</string>
     <string name="features">"Features: "</string>
-    <string name="rehearsal">"Rehearsal: "</string>
+    <string name="rehearsal">"Rehearsal (%): "</string>
     <string name="polygons">"Polygons: "</string>
     <string name="memory">"Used Memory (MB): "</string>
-    <string name="hypothesis">"Hypothesis: "</string>
+    <string name="hypothesis">"Hypothesis (%): "</string>
     <string name="fps">"FPS (rendering): "</string>
 
     <!-- Preference keys: BEGIN -->
     <string name="pref_key_tags">pref_key_tags</string>
-    <string name="pref_default_tags">rtabmap</string>
+    <string name="pref_default_tags">rtabmap 3dscan</string>
     <string name="pref_key_rendering">pref_key_rendering</string>
     <string name="pref_default_rendering">2</string>
     <string name="pref_key_reset_button">pref_key_reset_button</string>
     <string name="pref_key_density">pref_key_density</string>
     <string name="pref_default_density">1</string>
     <string name="pref_key_depth">pref_key_depth</string>
-    <string name="pref_default_depth">0</string>
+    <string name="pref_default_depth">2.5</string>
     <string name="pref_key_point_size">pref_key_point_size</string>
     <string name="pref_default_point_size">5</string>
     <string name="pref_key_angle">pref_key_angle</string>
@@ -60,6 +60,8 @@
     <string name="pref_default_auto_exposure">true</string>
     <string name="pref_key_resolution">pref_key_resolution</string>
     <string name="pref_default_resolution">false</string>
+    <string name="pref_key_smoothing">pref_key_smoothing</string>
+    <string name="pref_default_smoothing">true</string>
     
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
@@ -93,7 +95,7 @@
     <string name="pref_default_db_in_memory">true</string>
     
     <string name="pref_key_cloud_voxel">pref_key_cloud_voxel</string>
-    <string name="pref_default_cloud_voxel">0.01</string>
+    <string name="pref_default_cloud_voxel">0</string>
     <string name="pref_key_texture_size">pref_key_texture_size</string>
     <string name="pref_default_texture_size">4096</string>
     <string name="pref_key_normal_k">pref_key_normal_k</string>
@@ -145,17 +147,25 @@
     <string-array name="pref_depth_keys">
         <item>"No Limit"</item>
         <item>"5"</item>
+        <item>"4.5"</item>
         <item>"4"</item>
+        <item>"3.5"</item>
         <item>"3"</item>
+        <item>"2.5"</item>
         <item>"2"</item>
+        <item>"1.5"</item>
         <item>"1"</item>
     </string-array>
     <string-array name="pref_depth_values">
         <item>"0"</item>
         <item>"5"</item>
+        <item>"4.5"</item>
         <item>"4"</item>
+        <item>"3.5"</item>
         <item>"3"</item>
+        <item>"2.5"</item>
         <item>"2"</item>
+        <item>"1.5"</item>
         <item>"1"</item>
     </string-array>
     <string-array name="pref_point_size_values">
@@ -208,6 +218,8 @@
     <string name="pref_summary_auto_exposure">Adjust camera exposure depending on the lighting to get always maximum contrast. This may change texture color between scanned images. Color correction option in Post-Processing can help to uniformize colors. May not work on some devices.</string>
     <string name="pref_title_resolution">HD Mode</string>
     <string name="pref_summary_resolution">Save HD images if you want very detailed textures. More memory will be required.</string>
+    <string name="pref_title_smoothing">Smoothing</string>
+    <string name="pref_summary_smoothing">Smooth the point clouds.</string>
     <string name="pref_title_update_rate">Update Rate</string>
     <string name="pref_summary_update_rate">Rate at which a new node is added to map.</string>
     <string name="pref_title_time_thr">Time Limit</string>
@@ -460,7 +472,7 @@
         <item>"0"</item>
     </string-array>
 
-    <string name="pref_title_export_sub">Exporting...</string>
+    <string name="pref_title_export_sub">Exporting&#8230;</string>
     <string name="pref_title_export">Exporting</string>
     <string name="pref_summary_export">Advanced parameters used when exporting the map.</string>
     <string name="pref_title_cloud_voxel">Voxel Size</string>

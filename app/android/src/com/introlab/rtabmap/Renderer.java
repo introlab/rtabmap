@@ -16,10 +16,14 @@
 
 package com.introlab.rtabmap;
 
+import java.util.Vector;
+import java.util.concurrent.locks.ReentrantLock;
+
 import android.app.Activity;
 import android.app.ProgressDialog;
-import android.content.Context;
+import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
+import android.opengl.Matrix;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -30,56 +34,161 @@ import javax.microedition.khronos.opengles.GL10;
 // ground grid, camera frustum, camera axis, and trajectory based on the Tango
 // device's pose.
 public class Renderer implements GLSurfaceView.Renderer {
-	
-	private static Activity mActivity;
-	  public Renderer(Activity c) {
-		  mActivity = c;
-	  }
 
-	private ProgressDialog mProgressDialog;
+	private final float[] mtrxProjection = new float[16];
+	private final float[] mtrxView = new float[16];
+	private final float[] mtrxProjectionAndView = new float[16];
+
+	private TextManager mTextManager = null;
+	private float mSurfaceHeight = 0.0f;
 	
+	private Vector<TextObject> mTexts;
+
+	private static RTABMapActivity mActivity;
+	public Renderer(RTABMapActivity c) {
+		mActivity = c;
+	}
+
+	private ProgressDialog mProgressDialog = null;
+	private Toast mToast = null;
+	
+	private boolean mTextChanged = false;
+	private ReentrantLock mTextLock = new ReentrantLock();
+
 	public void setProgressDialog(ProgressDialog progressDialog)
 	{
 		mProgressDialog = progressDialog;
 	}
-	
+
+	public void setToast(Toast toast)
+	{
+		mToast = toast;
+	}
+
 	// Render loop of the Gl context.
-	public void onDrawFrame(GL10 gl) {
+	public void onDrawFrame(GL10 useGLES20instead) {
+
 		try
 		{
 			final int value = RTABMapLib.render();
+
+			if(mTextManager!=null)
+			{
+				if(mTextChanged)
+				{
+					mTextChanged = false;
+					Vector<TextObject> txtcollection = new Vector<TextObject>();
+					
+					mTextLock.lock();
+				    try {
+				    	if(mTexts.size() > 0)
+				    	{
+				    		txtcollection.addAll(mTexts);
+				    	}
+				    } finally {
+				    	mTextLock.unlock();
+				    }
+				    
+					// Prepare the text for rendering
+					mTextManager.PrepareDraw(txtcollection);
+				}
+				
+				mTextManager.Draw(mtrxProjectionAndView);
+			}
+
 			mActivity.runOnUiThread(new Runnable() {
 				public void run() {
 					if(value != 0 && mProgressDialog != null && mProgressDialog.isShowing())
 					{
 						Log.i("RTABMapActivity", "Renderer: dismiss dialog, value received=" + String.valueOf(value));
 						mProgressDialog.dismiss();
+						mActivity.stopUpdateStatusThread();
 					}
-					if(value==-1)
+					if(value==-1 && mToast!=null)
 					{
-						Toast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_LONG).show();
+						mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_LONG).show();
 					}
 				} 
 			});
 		}
 		catch(final Exception e)
 		{
-			mActivity.runOnUiThread(new Runnable() {
-				public void run() {
-					Toast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_LONG).show();
-				}
+			if(mToast!=null)
+			{
+				mActivity.runOnUiThread(new Runnable() {
+					public void run() {
+						mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_LONG).show();
+					}
 
-			});
+				});
+			}
 		}
 	}
 
-  // Called when the surface size changes.
-  public void onSurfaceChanged(GL10 gl, int width, int height) {
-	  RTABMapLib.setupGraphic(width, height);
-  }
+	// Called when the surface size changes.
+	public void onSurfaceChanged(GL10 useGLES20instead, int width, int height) {
+		
+		RTABMapLib.setupGraphic(width, height);
+		
+		mSurfaceHeight = (float)height;
 
-  // Called when the surface is created or recreated.
-  public void onSurfaceCreated(GL10 gl, EGLConfig config) {
-	  RTABMapLib.initGlContent();
-  }
+		// Clear our matrices
+		for(int i=0;i<16;i++)
+		{
+			mtrxProjection[i] = 0.0f;
+			mtrxView[i] = 0.0f;
+			mtrxProjectionAndView[i] = 0.0f;
+		}
+
+		// Setup our screen width and height for normal sprite translation.
+		Matrix.orthoM(mtrxProjection, 0, 0f, width, 0.0f, height, 0, 50);
+
+		// Set the camera position (View matrix)
+		Matrix.setLookAtM(mtrxView, 0, 0f, 0f, 1f, 0f, 0f, 0f, 0f, 1.0f, 0.0f);
+
+		// Calculate the projection and view transformation
+		Matrix.multiplyMM(mtrxProjectionAndView, 0, mtrxProjection, 0, mtrxView, 0);
+	}
+
+	// Called when the surface is created or recreated.
+	public void onSurfaceCreated(GL10 useGLES20instead, EGLConfig config) {
+
+		RTABMapLib.initGlContent();
+		
+		// Create our text manager
+		mTextManager = new TextManager(mActivity);
+		
+		GLES20.glEnable(GLES20.GL_BLEND);
+	    GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+	}
+	
+	public void updateTexts(String[] texts)
+	{
+		if(mTextManager != null && mSurfaceHeight > 0.0f)
+		{
+			Vector<TextObject> textObjects = new Vector<TextObject>();
+			float offset = mSurfaceHeight-mTextManager.getMaxTextHeight();
+			if(texts != null)
+			{
+				for(int i=0;i<texts.length; ++i)
+				{
+					if(texts[i]!=null && texts[i].length()>0)
+					{
+						TextObject txt = new TextObject(texts[i], 0, offset);
+						textObjects.add(txt);
+					}
+					offset-=mTextManager.getMaxTextHeight();
+				}
+			}
+	
+			mTextLock.lock();
+			try {
+				mTexts = textObjects;
+			} finally {
+				mTextLock.unlock();
+			}
+	
+			mTextChanged = true;
+		}
+	}
 }

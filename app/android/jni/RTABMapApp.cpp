@@ -148,6 +148,7 @@ RTABMapApp::RTABMapApp() :
 		trajectoryMode_(false),
 		autoExposure_(true),
 		rawScanSaved_(false),
+		smoothing_(true),
 		fullResolution_(false),
 		appendMode_(true),
 		maxCloudDepth_(0.0),
@@ -168,6 +169,8 @@ RTABMapApp::RTABMapApp() :
 		totalPolygons_(0),
 		lastDrawnCloudsCount_(0),
 		renderingTime_(0.0f),
+		processMemoryUsedBytes(0),
+		processGPUMemoryUsedBytes(0),
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
 		exportedMesh_(new pcl::TextureMesh),
@@ -206,6 +209,8 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 	totalPolygons_ = 0;
 	lastDrawnCloudsCount_ = 0;
 	renderingTime_ = 0.0f;
+	processMemoryUsedBytes = 0;
+	processGPUMemoryUsedBytes = 0;
 
 	if(camera_)
 	{
@@ -227,7 +232,7 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 
 	this->registerToEventsManager();
 
-	camera_ = new rtabmap::CameraTango(fullResolution_?1:2, autoExposure_, rawScanSaved_);
+	camera_ = new rtabmap::CameraTango(fullResolution_?1:2, autoExposure_, rawScanSaved_, smoothing_);
 }
 
 void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
@@ -563,7 +568,7 @@ int RTABMapApp::Render()
 				renderingTime_ = fpsTime.elapsed();
 			}
 
-			return notifyCameraStarted;
+			return notifyCameraStarted?1:0;
 		}
 		else
 		{
@@ -613,6 +618,8 @@ int RTABMapApp::Render()
 				totalPolygons_ = 0;
 				lastDrawnCloudsCount_ = 0;
 				renderingTime_ = 0.0f;
+				processMemoryUsedBytes = 0;
+				processGPUMemoryUsedBytes = 0;
 			}
 
 			// Did we lose OpenGL context? If so, recreate the context;
@@ -622,6 +629,7 @@ int RTABMapApp::Render()
 				boost::mutex::scoped_lock  lock(meshesMutex_);
 				if(added.size() != createdMeshes_.size())
 				{
+					processGPUMemoryUsedBytes = 0;
 					for(std::map<int, Mesh>::iterator iter=createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 					{
 						if(!main_scene_.hasCloud(iter->first))
@@ -633,10 +641,24 @@ int RTABMapApp::Render()
 							cv::Mat texture;
 							if(main_scene_.isMeshTexturing())
 							{
-								texture = rtabmap::uncompressImage(rtabmap_->getMemory()->getImageCompressed(iter->first));
+								cv::Mat textureRaw;
+								textureRaw = rtabmap::uncompressImage(rtabmap_->getMemory()->getImageCompressed(iter->first));
+								if(!textureRaw.empty())
+								{
+									cv::Size reducedSize(textureRaw.cols/(textureRaw.cols>1000?4:2), textureRaw.rows/(textureRaw.cols>1000?4:2));
+									LOGD("resize image from %dx%d to %dx%d", textureRaw.cols, textureRaw.rows, reducedSize.width, reducedSize.height);
+									cv::resize(textureRaw, texture, reducedSize, 0, 0, CV_INTER_AREA);
+								}
 							}
 							main_scene_.addMesh(iter->first, iter->second, texture, opengl_world_T_rtabmap_world*iter->second.pose);
 							main_scene_.setCloudVisible(iter->first, iter->second.visible);
+
+							long estimateGPUMem = 0;
+							estimateGPUMem += iter->second.cloud->size()*16; // 3*float + 1 float rgb
+							estimateGPUMem += iter->second.indices->size()*4; // int
+							estimateGPUMem += iter->second.polygons.size()*4*3; // 3 indices per polygon
+
+							processGPUMemoryUsedBytes += estimateGPUMem + (texture.empty()?0:iter->second.polygons.size()*3*8+texture.total());
 						}
 					}
 				}
@@ -659,11 +681,16 @@ int RTABMapApp::Render()
 						{
 							for(std::map<int, rtabmap::Signature>::const_iterator jter=iter->getSignatures().begin(); jter!=iter->getSignatures().end(); ++jter)
 							{
+								bool dataDetected = false;
 								if(!jter->second.sensorData().imageRaw().empty() &&
 								   !jter->second.sensorData().depthRaw().empty())
 								{
-									uInsert(bufferedSensorData, std::make_pair(jter->first, jter->second.sensorData()));
-									uInsert(rawPoses_, std::make_pair(jter->first, jter->second.getPose()));
+									if(!localizationMode_)
+									{
+										uInsert(bufferedSensorData, std::make_pair(jter->first, jter->second.sensorData()));
+										uInsert(rawPoses_, std::make_pair(jter->first, jter->second.getPose()));
+										dataDetected = true;
+									}
 								}
 								else if(totalPoints_ == 0 &&
 										!jter->second.sensorData().imageCompressed().empty() &&
@@ -676,6 +703,19 @@ int RTABMapApp::Render()
 										LOGI("Detecting that we are loading a database");
 									}
 									notifyDataLoaded = true;
+									dataDetected = true;
+								}
+								if(dataDetected)
+								{
+									processMemoryUsedBytes += jter->second.sensorData().imageCompressed().total();
+									processMemoryUsedBytes += jter->second.sensorData().depthOrRightCompressed().total();
+									processMemoryUsedBytes += jter->second.sensorData().laserScanCompressed().total();
+									processMemoryUsedBytes += jter->second.getWords().size()*4*8;
+									processMemoryUsedBytes += jter->second.getWords3().size()*4*4;
+									if(!jter->second.getWordsDescriptors().empty())
+									{
+										processMemoryUsedBytes += jter->second.getWordsDescriptors().size()*(4+jter->second.getWordsDescriptors().begin()->second.total());
+									}
 								}
 							}
 						}
@@ -755,15 +795,6 @@ int RTABMapApp::Render()
 								cv::Mat tmpA, depth;
 								data.uncompressData(&tmpA, &depth);
 
-								if(notifyDataLoaded && optimizeOpenedDatabase_)
-								{
-									// do post-processing bilateral filtering now
-									UTimer t;
-									depth = rtabmap::util2d::fastBilateralFiltering(depth, 2.0f, 0.075f);
-									data.setDepthOrRightRaw(depth);
-									LOGI("Bilateral filtering of %d, time=%fs", id, t.ticks());
-								}
-
 								if(!data.imageRaw().empty() && !data.depthRaw().empty())
 								{
 									// Voxelize and filter depending on the previous cloud?
@@ -795,7 +826,22 @@ int RTABMapApp::Render()
 											inserted.first->second.visible = true;
 											inserted.first->second.cameraModel = data.cameraModels()[0];
 											inserted.first->second.gain = 1.0f;
-											main_scene_.addMesh(id, inserted.first->second, main_scene_.isMeshTexturing()?data.imageRaw():cv::Mat(), iter->second);
+											cv::Mat texture;
+											if(main_scene_.isMeshTexturing())
+											{
+												cv::Size reducedSize(data.imageRaw().cols/(data.imageRaw().cols>1000?4:2), data.imageRaw().rows/(data.imageRaw().cols>1000?4:2));
+												LOGD("resize image from %dx%d to %dx%d", data.imageRaw().cols, data.imageRaw().rows, reducedSize.width, reducedSize.height);
+												cv::resize(data.imageRaw(), texture, reducedSize, 0, 0, CV_INTER_AREA);
+											}
+											main_scene_.addMesh(id, inserted.first->second, texture, iter->second);
+
+											long estimateCPUMem = 0;
+											estimateCPUMem += inserted.first->second.cloud->size()*16; // 3*float + 1 float rgb
+											estimateCPUMem += inserted.first->second.indices->size()*4; // int
+											estimateCPUMem += inserted.first->second.polygons.size()*4*3; // 3 indices per polygon
+
+											processMemoryUsedBytes += estimateCPUMem;
+											processGPUMemoryUsedBytes += estimateCPUMem + (texture.empty()?0:inserted.first->second.polygons.size()*3*8+texture.total());
 										}
 										else
 										{
@@ -1166,6 +1212,18 @@ void RTABMapApp::setFullResolution(bool enabled)
 	}
 }
 
+void RTABMapApp::setSmoothing(bool enabled)
+{
+	if(smoothing_ != enabled)
+	{
+		smoothing_ = enabled;
+		if(camera_)
+		{
+			camera_->setSmoothing(smoothing_);
+		}
+	}
+}
+
 void RTABMapApp::setAppendMode(bool enabled)
 {
 	if(appendMode_ != enabled)
@@ -1464,6 +1522,7 @@ cv::Mat RTABMapApp::mergeTextures(pcl::TextureMesh & mesh, int textureSize) cons
 bool RTABMapApp::exportMesh(
 		const std::string & filePath,
 		float cloudVoxelSize,
+		bool regenerateCloud,
 		bool meshing,
 		int textureSize,
 		int normalK,
@@ -2118,18 +2177,34 @@ bool RTABMapApp::exportMesh(
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 				pcl::IndicesPtr indices(new std::vector<int>);
 				float gain = 1.0f;
-				if(jter != createdMeshes_.end())
+				if(regenerateCloud)
 				{
-					cloud = jter->second.cloud;
-					indices = jter->second.indices;
-					gain = jter->second.gain;
-				}
-				else
-				{
+					if(jter != createdMeshes_.end())
+					{
+						gain = jter->second.gain;
+					}
 					rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
 					if(!data.imageRaw().empty() && !data.depthRaw().empty())
 					{
-						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, 0, indices.get());
+						// full resolution
+						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, 0, indices.get());
+					}
+				}
+				else
+				{
+					if(jter != createdMeshes_.end())
+					{
+						cloud = jter->second.cloud;
+						indices = jter->second.indices;
+						gain = jter->second.gain;
+					}
+					else
+					{
+						rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
+						if(!data.imageRaw().empty() && !data.depthRaw().empty())
+						{
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, 0, indices.get());
+						}
 					}
 				}
 				if(cloud->size() && indices->size())
@@ -2317,7 +2392,7 @@ int RTABMapApp::postProcessing(int approach)
 			}
 
 			// bilateral filtering
-			if(approach == -1 || approach == 7)
+			if(approach == 7)
 			{
 				bilateralFilteringOnNextRender_ = true;
 			}
@@ -2467,7 +2542,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIFIFIFF)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIIFIFIFF)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,
@@ -2478,6 +2553,7 @@ void RTABMapApp::handleEvent(UEvent * event)
 								updateTime,
 								loopClosureId,
 								highestHypId,
+								(int)((processMemoryUsedBytes+processGPUMemoryUsedBytes)/(1024*1024)),
 								databaseMemoryUsed,
 								inliers,
 								matches,

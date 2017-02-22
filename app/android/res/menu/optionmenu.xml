@@ -11,7 +11,12 @@
                      
        <item android:id="@+id/export" android:showAsAction="ifRoom" android:title="Export">
           <menu>
-              <item android:id="@+id/export_point_cloud" android:title="Point Cloud" />
+              <item android:id="@+id/export_point_cloud_menu" android:title="Point Cloud">
+                  <menu>
+                  	<item android:id="@+id/export_point_cloud" android:title="Current Density" />
+                  	<item android:id="@+id/export_point_cloud_highrez" android:title="Max Density" />
+                  </menu>
+              </item>
               <item android:id="@+id/export_mesh_menu" android:title="Raw Mesh..." >
 	              <menu>
 		              <item android:id="@+id/export_mesh" android:title="Colored Mesh" />
@@ -49,6 +54,7 @@
        <item android:id="@+id/menu_rendering_settings" android:title="Visibility...">
         <menu >
         <group android:id="@+id/group_rendering_visibility" android:checkableBehavior="all">
+            <item android:id="@+id/status" android:checked="true" android:title="Status" />
             <item android:id="@+id/debug" android:checked="false" android:title="Debug" />
             <item android:id="@+id/map_shown" android:checked="true" android:title="Map Visible" />
             <item android:id="@+id/odom_shown" android:checked="true" android:title="Odom Visible" />
