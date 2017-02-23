@@ -1491,7 +1491,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				"  Yellow = New but Not Unique\n"
 				"  Red = In Vocabulary\n"
 		        "  Blue = In Vocabulary and in Previous Signature\n"
-				"  Pink = In Vocabulary and in Loop Closure Signature");
+				"  Pink = In Vocabulary and in Loop Closure Signature\n"
+				"  Gray = Not Quantized to Vocabulary");
 		}
 		// Set color code as tooltip
 		if(_ui->label_matchId->toolTip().isEmpty())
@@ -1503,7 +1504,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				"  Yellow = Proximity Detection in Space\n"
 				"Feature Color code:\n"
 				"  Red = In Vocabulary\n"
-				"  Pink = In Vocabulary and in Loop Closure Signature");
+				"  Pink = In Vocabulary and in Loop Closure Signature\n"
+				"  Gray = Not Quantized to Vocabulary");
 		}
 
 		UDEBUG("time= %d ms", time.restart());
@@ -3632,7 +3634,12 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	{
 		int id = iter->first;
 		QColor color;
-		if(uContains(loopWords, id))
+		if(id<0)
+		{
+			// GRAY = NOT QUANTIZED
+			color = Qt::gray;
+		}
+		else if(uContains(loopWords, id))
 		{
 			// PINK = FOUND IN LOOP SIGNATURE
 			color = Qt::magenta;
@@ -3672,7 +3679,12 @@ void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords
 	{
 		int id = iter->first;
 		QColor color;
-		if(uContains(refWords, id))
+		if(id<0)
+		{
+			// GRAY = NOT QUANTIZED
+			color = Qt::gray;
+		}
+		else if(uContains(refWords, id))
 		{
 			// PINK = FOUND IN LOOP SIGNATURE
 			color = Qt::magenta;
