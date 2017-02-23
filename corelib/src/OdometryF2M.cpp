@@ -804,8 +804,6 @@ Transform OdometryF2M::computeTransform(
 							UFATAL("invalid camera model!");
 						}
 						bundleModels_.insert(std::make_pair(lastFrame_->id(), model));
-
-						UASSERT_MSG(lastFrame_->id() > 0, uFormat("Input data should have ID greater than 0 when odometry bundle adjustment is enabled!").c_str());
 						bundlePoses_.insert(std::make_pair(lastFrame_->id(), newFramePose));
 					}
 
