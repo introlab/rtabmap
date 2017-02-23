@@ -1483,6 +1483,10 @@ cv::Mat projectCloudToCamera(
 	cv::Mat registered = cv::Mat::zeros(imageSize, CV_32FC1);
 	Transform t = cameraTransform.inverse();
 
+	const cv::Vec2f* vec2Ptr = laserScan.ptr<cv::Vec2f>();
+	const cv::Vec3f* vec3Ptr = laserScan.ptr<cv::Vec3f>();
+	const cv::Vec6f* vec6Ptr = laserScan.ptr<cv::Vec6f>();
+
 	int count = 0;
 	for(int i=0; i<laserScan.cols; ++i)
 	{
@@ -1490,38 +1494,61 @@ cv::Mat projectCloudToCamera(
 		cv::Point3f ptScan;
 		if(laserScan.type() == CV_32FC2)
 		{
-			ptScan.x = laserScan.at<cv::Vec2f>(i)[0];
-			ptScan.y = laserScan.at<cv::Vec2f>(i)[1];
+			ptScan.x = vec2Ptr[i][0];
+			ptScan.y = vec2Ptr[i][1];
 			ptScan.z = 0;
 		}
 		else if(laserScan.type() == CV_32FC3)
 		{
-			ptScan.x = laserScan.at<cv::Vec3f>(i)[0];
-			ptScan.y = laserScan.at<cv::Vec3f>(i)[1];
-			ptScan.z = laserScan.at<cv::Vec3f>(i)[2];
+			ptScan.x = vec3Ptr[i][0];
+			ptScan.y = vec3Ptr[i][1];
+			ptScan.z = vec3Ptr[i][2];
 		}
 		else
 		{
-			ptScan.x = laserScan.at<cv::Vec6f>(i)[0];
-			ptScan.y = laserScan.at<cv::Vec6f>(i)[1];
-			ptScan.z = laserScan.at<cv::Vec6f>(i)[2];
+			ptScan.x = vec6Ptr[i][0];
+			ptScan.y = vec6Ptr[i][1];
+			ptScan.z = vec6Ptr[i][2];
 		}
 		ptScan = util3d::transformPoint(ptScan, t);
 
 		// re-project in camera frame
 		float z = ptScan.z;
-		float invZ = 1.0f/z;
-		int dx = (fx*ptScan.x)*invZ + cx;
-		int dy = (fy*ptScan.y)*invZ + cy;
 
-		if(z > 0.0f && uIsInBounds(dx, 0, registered.cols) && uIsInBounds(dy, 0, registered.rows))
+		bool set = false;
+		if(z > 0.0f)
 		{
-			++count;
-			float &zReg = registered.at<float>(dy, dx);
-			if(zReg == 0 || z < zReg)
+			float invZ = 1.0f/z;
+			float dx = (fx*ptScan.x)*invZ + cx;
+			float dy = (fy*ptScan.y)*invZ + cy;
+			int dx_low = dx;
+			int dy_low = dy;
+			int dx_high = dx + 0.5f;
+			int dy_high = dy + 0.5f;
+
+			if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
 			{
-				zReg = z;
+				float &zReg = registered.at<float>(dy_low, dx_low);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+				set = true;
 			}
+			if((dx_low != dx_high || dy_low != dy_high) &&
+				uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+			{
+				float &zReg = registered.at<float>(dy_high, dx_high);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+				set = true;
+			}
+		}
+		if(set)
+		{
+			count++;
 		}
 	}
 	UDEBUG("Points in camera=%d/%d", count, laserScan.cols);
@@ -1556,26 +1583,170 @@ cv::Mat projectCloudToCamera(
 
 		// re-project in camera frame
 		float z = ptScan.z;
+		bool set = false;
 		if(z > 0.0f)
 		{
 			float invZ = 1.0f/z;
-			int dx = (fx*ptScan.x)*invZ + cx;
-			if(uIsInBounds(dx, 0, registered.cols))
+			float dx = (fx*ptScan.x)*invZ + cx;
+			float dy = (fy*ptScan.y)*invZ + cy;
+			int dx_low = dx;
+			int dy_low = dy;
+			int dx_high = dx + 0.5f;
+			int dy_high = dy + 0.5f;
+			if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
 			{
-				int dy = (fy*ptScan.y)*invZ + cy;
-				if(uIsInBounds(dy, 0, registered.rows))
+				set = true;
+				float &zReg = registered.at<float>(dy_low, dx_low);
+				if(zReg == 0 || z < zReg)
 				{
-					++count;
-					float &zReg = registered.at<float>(dy, dx);
-					if(zReg == 0 || z < zReg)
+					zReg = z;
+				}
+			}
+			if((dx_low != dx_high || dy_low != dy_high) &&
+				uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+			{
+				set = true;
+				float &zReg = registered.at<float>(dy_high, dx_high);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+			}
+		}
+		if(set)
+		{
+			count++;
+		}
+	}
+	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->size());
+
+	return registered;
+}
+
+cv::Mat projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK,
+		const pcl::PCLPointCloud2::Ptr laserScan,  // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform)           // /base_link -> /camera_link
+{
+	UASSERT(!cameraTransform.isNull());
+	UASSERT(!laserScan->data.empty());
+	UASSERT(cameraMatrixK.type() == CV_64FC1 && cameraMatrixK.cols == 3 && cameraMatrixK.cols == 3);
+
+	float fx = cameraMatrixK.at<double>(0,0);
+	float fy = cameraMatrixK.at<double>(1,1);
+	float cx = cameraMatrixK.at<double>(0,2);
+	float cy = cameraMatrixK.at<double>(1,2);
+
+	cv::Mat registered = cv::Mat::zeros(imageSize, CV_32FC1);
+	Transform t = cameraTransform.inverse();
+
+	pcl::MsgFieldMap field_map;
+	pcl::createMapping<pcl::PointXYZ> (laserScan->fields, field_map);
+
+	int count = 0;
+	if(field_map.size() == 1)
+	{
+		for (uint32_t row = 0; row < laserScan->height; ++row)
+		{
+			const uint8_t* row_data = &laserScan->data[row * laserScan->row_step];
+			for (uint32_t col = 0; col < laserScan->width; ++col)
+			{
+				const uint8_t* msg_data = row_data + col * laserScan->point_step;
+				pcl::PointXYZ ptScan;
+				memcpy (&ptScan, msg_data + field_map.front().serialized_offset, field_map.front().size);
+				ptScan = util3d::transformPoint(ptScan, t);
+
+				// re-project in camera frame
+				float z = ptScan.z;
+				bool set = false;
+				if(z > 0.0f)
+				{
+					float invZ = 1.0f/z;
+					float dx = (fx*ptScan.x)*invZ + cx;
+					float dy = (fy*ptScan.y)*invZ + cy;
+					int dx_low = dx;
+					int dy_low = dy;
+					int dx_high = dx + 0.5f;
+					int dy_high = dy + 0.5f;
+					if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
 					{
-						zReg = z;
+						set = true;
+						float &zReg = registered.at<float>(dy_low, dx_low);
+						if(zReg == 0 || z < zReg)
+						{
+							zReg = z;
+						}
 					}
+					if((dx_low != dx_high || dy_low != dy_high) &&
+						uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+					{
+						set = true;
+						float &zReg = registered.at<float>(dy_high, dx_high);
+						if(zReg == 0 || z < zReg)
+						{
+							zReg = z;
+						}
+					}
+				}
+				if(set)
+				{
+					count++;
 				}
 			}
 		}
 	}
-	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->size());
+	else
+	{
+		UERROR("field map pcl::pointXYZ not found!");
+	}
+/*
+	int count = 0;
+	for(int i=0; i<(int)laserScan->size(); ++i)
+	{
+		// Get 3D from laser scan
+		pcl::PointXYZ ptScan = laserScan->at(i);
+		ptScan = util3d::transformPoint(ptScan, t);
+
+		// re-project in camera frame
+		float z = ptScan.z;
+		bool set = false;
+		if(z > 0.0f)
+		{
+			float invZ = 1.0f/z;
+			float dx = (fx*ptScan.x)*invZ + cx;
+			float dy = (fy*ptScan.y)*invZ + cy;
+			int dx_low = dx;
+			int dy_low = dy;
+			int dx_high = dx + 0.5f;
+			int dy_high = dy + 0.5f;
+			if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
+			{
+				set = true;
+				float &zReg = registered.at<float>(dy_low, dx_low);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+			}
+			if((dx_low != dx_high || dy_low != dy_high) &&
+				uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+			{
+				set = true;
+				float &zReg = registered.at<float>(dy_high, dx_high);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+			}
+		}
+		if(set)
+		{
+			count++;
+		}
+	}
+	*/
+	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->data.size());
 
 	return registered;
 }

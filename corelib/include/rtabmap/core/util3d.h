@@ -216,18 +216,25 @@ cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Mat & disparity,
 		const StereoCameraModel & model);
 
-// Register point cloud to camera (return registered depth image)
+// Register point cloud to camera (return registered depth image 32FC1)
 cv::Mat RTABMAP_EXP projectCloudToCamera(
 		const cv::Size & imageSize,
 		const cv::Mat & cameraMatrixK,  
 		const cv::Mat & laserScan,                   // assuming points are already in /base_link coordinate
 		const rtabmap::Transform & cameraTransform); // /base_link -> /camera_link
 
-// Register point cloud to camera (return registered depth image)
+// Register point cloud to camera (return registered depth image 32FC1)
+cv::Mat RTABMAP_EXP projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan, // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform);         // /base_link -> /camera_link
+
+// Register point cloud to camera (return registered depth image 32FC1)
 cv::Mat RTABMAP_EXP projectCloudToCamera(
 		const cv::Size & imageSize,
 		const cv::Mat & cameraMatrixK,                       
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan, // assuming points are already in /base_link coordinate
+		const pcl::PCLPointCloud2::Ptr laserScan, 			 // assuming points are already in /base_link coordinate
 		const rtabmap::Transform & cameraTransform);         // /base_link -> /camera_link
 
 // Direction vertical (>=0), horizontal (<0)

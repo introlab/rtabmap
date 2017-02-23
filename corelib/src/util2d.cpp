@@ -1414,18 +1414,29 @@ cv::Mat registerDepth(
 	return registered;
 }
 
-cv::Mat fillDepthHoles(const cv::Mat & registeredDepth, int maximumHoleSize, float errorRatio)
+cv::Mat fillDepthHoles(const cv::Mat & depth, int maximumHoleSize, float errorRatio)
 {
-	UASSERT(registeredDepth.type() == CV_16UC1);
+	UASSERT(depth.type() == CV_16UC1 || depth.type() == CV_32FC1);
 	UASSERT(maximumHoleSize > 0);
-	cv::Mat output = registeredDepth.clone();
-	for(int y=0; y<registeredDepth.rows-2; ++y)
+	cv::Mat output = depth.clone();
+	bool isMM = depth.type() == CV_16UC1;
+	for(int y=0; y<depth.rows-2; ++y)
 	{
-		for(int x=0; x<registeredDepth.cols-2; ++x)
+		for(int x=0; x<depth.cols-2; ++x)
 		{
-			float a = registeredDepth.at<unsigned short>(y, x);
-			float bRight = registeredDepth.at<unsigned short>(y, x+1);
-			float bDown = registeredDepth.at<unsigned short>(y+1, x);
+			float a, bRight, bDown;
+			if(isMM)
+			{
+				a = depth.at<unsigned short>(y, x);
+				bRight = depth.at<unsigned short>(y, x+1);
+				bDown = depth.at<unsigned short>(y+1, x);
+			}
+			else
+			{
+				a = depth.at<float>(y, x);
+				bRight = depth.at<float>(y, x+1);
+				bDown = depth.at<float>(y+1, x);
+			}
 
 			if(a > 0.0f && (bRight == 0.0f || bDown == 0.0f))
 			{
@@ -1437,13 +1448,13 @@ cv::Mat fillDepthHoles(const cv::Mat & registeredDepth, int maximumHoleSize, flo
 					// horizontal
 					if(!horizontalSet)
 					{
-						if(x+1+h >= registeredDepth.cols)
+						if(x+1+h >= depth.cols)
 						{
 							horizontalSet = true;
 						}
 						else
 						{
-							float c = registeredDepth.at<unsigned short>(y, x+1+h);
+							float c = isMM?depth.at<unsigned short>(y, x+1+h):depth.at<float>(y, x+1+h);
 							if(c == 0)
 							{
 								// ignore this size
@@ -1456,16 +1467,36 @@ cv::Mat fillDepthHoles(const cv::Mat & registeredDepth, int maximumHoleSize, flo
 								{
 									//linear interpolation
 									float slope = (c-a)/float(h+1);
-									for(int z=x+1; z<x+1+h; ++z)
+									if(isMM)
 									{
-										if(output.at<unsigned short>(y, z) == 0)
+										for(int z=x+1; z<x+1+h; ++z)
 										{
-											output.at<unsigned short>(y, z) = (unsigned short)(a+(slope*float(z-x)));
+											unsigned short & value = output.at<unsigned short>(y, z);
+											if(value == 0)
+											{
+												value = (unsigned short)(a+(slope*float(z-x)));
+											}
+											else
+											{
+												// average with the previously set value
+												value = (value+(unsigned short)(a+(slope*float(z-x))))/2;
+											}
 										}
-										else
+									}
+									else
+									{
+										for(int z=x+1; z<x+1+h; ++z)
 										{
-											// average with the previously set value
-											output.at<unsigned short>(y, z) = (output.at<unsigned short>(y, z)+(unsigned short)(a+(slope*float(z-x))))/2;
+											float & value = output.at<float>(y, z);
+											if(value == 0)
+											{
+												value = a+(slope*float(z-x));
+											}
+											else
+											{
+												// average with the previously set value
+												value = (value+(a+(slope*float(z-x))))/2;
+											}
 										}
 									}
 								}
@@ -1478,13 +1509,13 @@ cv::Mat fillDepthHoles(const cv::Mat & registeredDepth, int maximumHoleSize, flo
 					// vertical
 					if(!verticalSet)
 					{
-						if(y+1+h >= registeredDepth.rows)
+						if(y+1+h >= depth.rows)
 						{
 							verticalSet = true;
 						}
 						else
 						{
-							float c = registeredDepth.at<unsigned short>(y+1+h, x);
+							float c = isMM?depth.at<unsigned short>(y+1+h, x):depth.at<float>(y+1+h, x);
 							if(c == 0)
 							{
 								// ignore this size
@@ -1497,16 +1528,36 @@ cv::Mat fillDepthHoles(const cv::Mat & registeredDepth, int maximumHoleSize, flo
 								{
 									//linear interpolation
 									float slope = (c-a)/float(h+1);
-									for(int z=y+1; z<y+1+h; ++z)
+									if(isMM)
 									{
-										if(output.at<unsigned short>(z, x) == 0)
+										for(int z=y+1; z<y+1+h; ++z)
 										{
-											output.at<unsigned short>(z, x) = (unsigned short)(a+(slope*float(z-y)));
+											unsigned short & value = output.at<unsigned short>(z, x);
+											if(value == 0)
+											{
+												value = (unsigned short)(a+(slope*float(z-y)));
+											}
+											else
+											{
+												// average with the previously set value
+												value = (value+(unsigned short)(a+(slope*float(z-y))))/2;
+											}
 										}
-										else
+									}
+									else
+									{
+										for(int z=y+1; z<y+1+h; ++z)
 										{
-											// average with the previously set value
-											output.at<unsigned short>(z, x) = (output.at<unsigned short>(z, x)+(unsigned short)(a+(slope*float(z-y))))/2;
+											float & value = output.at<float>(z, x);
+											if(value == 0)
+											{
+												value = (a+(slope*float(z-y)));
+											}
+											else
+											{
+												// average with the previously set value
+												value = (value+(a+(slope*float(z-y))))/2;
+											}
 										}
 									}
 								}
