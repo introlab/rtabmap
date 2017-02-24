@@ -1109,7 +1109,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
 	{
 		scan.resize(depthImage.cols);
 		int oi = 0;
-		for(int i=0; i<depthImage.cols; ++i)
+		for(int i=depthImage.cols-1; i>=0; --i)
 		{
 			pcl::PointXYZ pt = util3d::projectDepthTo3D(depthImage, i, middle, cx, cy, fx, fy, false);
 			if(pcl::isFinite(pt) && pt.z >= minDepth && (maxDepth == 0 || pt.z < maxDepth))
@@ -1135,7 +1135,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImages(
 	pcl::PointCloud<pcl::PointXYZ> scan;
 	UASSERT(int((depthImages.cols/cameraModels.size())*cameraModels.size()) == depthImages.cols);
 	int subImageWidth = depthImages.cols/cameraModels.size();
-	for(unsigned int i=0; i<cameraModels.size(); ++i)
+	for(int i=(int)cameraModels.size()-1; i>=0; --i)
 	{
 		if(cameraModels[i].isValidForProjection())
 		{

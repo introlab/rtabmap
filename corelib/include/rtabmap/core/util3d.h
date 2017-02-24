@@ -167,6 +167,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		const ParametersMap & stereoParameters = ParametersMap(),
 		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
 
+/**
+ * Simulate a laser scan rotating counterclockwise, using middle line of the depth image.
+ */
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					const cv::Mat & depthImage,
 					float fx,
@@ -176,6 +179,11 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					float maxDepth = 0,
 					float minDepth = 0,
 					const Transform & localTransform = Transform::getIdentity());
+/**
+ * Simulate a laser scan rotating counterclockwise, using middle line of the depth images.
+ * The last value of the scan is the most left value of the first depth image. The first value of the scan is the most right value of the last depth image.
+ *
+ */
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImages(
 		const cv::Mat & depthImages,
 		const std::vector<CameraModel> & cameraModels,
