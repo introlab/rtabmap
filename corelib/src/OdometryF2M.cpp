@@ -69,6 +69,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	bundleMaxFrames_(Parameters::defaultOdomF2MBundleAdjustmentMaxFrames()),
 	map_(new Signature(-1)),
 	lastFrame_(new Signature(1)),
+	bundleSeq_(0),
 	sba_(0)
 {
 	UDEBUG("");
@@ -138,6 +139,7 @@ void OdometryF2M::reset(const Transform & initialPose)
 	bundleLinks_.clear();
 	bundleModels_.clear();
 	bundlePoseReferences_.clear();
+	bundleSeq_ = 0;
 }
 
 // return not null transform if odometry is correctly computed
@@ -158,7 +160,10 @@ Transform OdometryF2M::computeTransform(
 	int nFeatures = 0;
 
 	delete lastFrame_;
+	int id = data.id();
+	data.setId(++bundleSeq_); // generate our own unique ids, to make sure they are correctly set
 	lastFrame_ = new Signature(data);
+	data.setId(id);
 
 	if(bundleAdjustment_ > 0 &&
 	   data.cameraModels().size() > 1)
@@ -241,6 +246,9 @@ Transform OdometryF2M::computeTransform(
 						bundlePoses = bundlePoses_;
 						bundleLinks = bundleLinks_;
 						bundleModels = bundleModels_;
+
+						UASSERT_MSG(bundlePoses.find(lastFrame_->id()) == bundlePoses.end(),
+								uFormat("Frame %d already added! Make sure the input frames have unique IDs!", lastFrame_->id()).c_str());
 
 						bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, regInfo.varianceAng, regInfo.varianceLin)));
 						bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
