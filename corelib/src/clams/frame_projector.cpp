@@ -190,6 +190,11 @@ namespace clams
     pt_lr.x += radius;
     pt_lr.y += radius;
 
+    if(!pcl::isFinite(pt_ul) || !pcl::isFinite(pt_lr))
+    {
+    	return false;
+    }
+
     ppt_ul = reproject(pt_ul);
     ppt_lr = reproject(pt_lr);
     if(ppt_ul.z_ == 0 || !(ppt_ul.u_ >= 0 && ppt_ul.v_ >= 0 && ppt_ul.u_ < imageSize.width && ppt_ul.v_ < imageSize.height))
