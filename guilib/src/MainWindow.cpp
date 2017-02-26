@@ -285,7 +285,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->rawLikelihoodPlot->showLegend(false);
 
 	_initProgressDialog = new ProgressDialog(this);
-	_initProgressDialog->setWindowTitle(tr("Progress dialog"));
 	_initProgressDialog->setMinimumWidth(800);
 	connect(_initProgressDialog, SIGNAL(canceled()), this, SLOT(cancelProgress()));
 

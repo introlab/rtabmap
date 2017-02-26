@@ -607,7 +607,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
-		float maxDistance)
+		float maxDistance,
+		const ProgressState * state)
 {
 	UASSERT(mesh->polygons.size());
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
@@ -664,87 +665,87 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	// Texture by projection
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
 	tm.setMaxDistance(maxDistance);
-	tm.textureMeshwithMultipleCameras2(*textureMesh, cameras);
-
-	// compute normals for the mesh if not already here
-	bool hasNormals = false;
-	bool hasColors = false;
-	for(unsigned int i=0; i<textureMesh->cloud.fields.size(); ++i)
+	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state))
 	{
-		if(textureMesh->cloud.fields[i].name.compare("normal_x") == 0)
+		// compute normals for the mesh if not already here
+		bool hasNormals = false;
+		bool hasColors = false;
+		for(unsigned int i=0; i<textureMesh->cloud.fields.size(); ++i)
 		{
-			hasNormals = true;
+			if(textureMesh->cloud.fields[i].name.compare("normal_x") == 0)
+			{
+				hasNormals = true;
+			}
+			else if(textureMesh->cloud.fields[i].name.compare("rgb") == 0)
+			{
+				hasColors = true;
+			}
 		}
-		else if(textureMesh->cloud.fields[i].name.compare("rgb") == 0)
+		if(!hasNormals)
 		{
-			hasColors = true;
+			// use polygons
+			if(hasColors)
+			{
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+				pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
+
+				for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+				{
+					pcl::Vertices & v = mesh->polygons[i];
+					UASSERT(v.vertices.size()>2);
+					Eigen::Vector3f v0(
+							cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
+					int last = v.vertices.size()-1;
+					Eigen::Vector3f v1(
+							cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
+					Eigen::Vector3f normal = v0.cross(v1);
+					normal.normalize();
+					// flat normal (per face)
+					for(unsigned int j=0; j<v.vertices.size(); ++j)
+					{
+						cloud->at(v.vertices[j]).normal_x = normal[0];
+						cloud->at(v.vertices[j]).normal_y = normal[1];
+						cloud->at(v.vertices[j]).normal_z = normal[2];
+					}
+				}
+				pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
+			}
+			else
+			{
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointNormal>);
+				pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
+
+				for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+				{
+					pcl::Vertices & v = mesh->polygons[i];
+					UASSERT(v.vertices.size()>2);
+					Eigen::Vector3f v0(
+							cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
+					int last = v.vertices.size()-1;
+					Eigen::Vector3f v1(
+							cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
+					Eigen::Vector3f normal = v0.cross(v1);
+					normal.normalize();
+					// flat normal (per face)
+					for(unsigned int j=0; j<v.vertices.size(); ++j)
+					{
+						cloud->at(v.vertices[j]).normal_x = normal[0];
+						cloud->at(v.vertices[j]).normal_y = normal[1];
+						cloud->at(v.vertices[j]).normal_z = normal[2];
+					}
+				}
+				pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
+			}
 		}
 	}
-	if(!hasNormals)
-	{
-		// use polygons
-		if(hasColors)
-		{
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-			pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
-
-			for(unsigned int i=0; i<mesh->polygons.size(); ++i)
-			{
-				pcl::Vertices & v = mesh->polygons[i];
-				UASSERT(v.vertices.size()>2);
-				Eigen::Vector3f v0(
-						cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
-						cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
-						cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
-				int last = v.vertices.size()-1;
-				Eigen::Vector3f v1(
-						cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
-						cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
-						cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
-				Eigen::Vector3f normal = v0.cross(v1);
-				normal.normalize();
-				// flat normal (per face)
-				for(unsigned int j=0; j<v.vertices.size(); ++j)
-				{
-					cloud->at(v.vertices[j]).normal_x = normal[0];
-					cloud->at(v.vertices[j]).normal_y = normal[1];
-					cloud->at(v.vertices[j]).normal_z = normal[2];
-				}
-			}
-			pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
-		}
-		else
-		{
-			pcl::PointCloud<pcl::PointNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointNormal>);
-			pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
-
-			for(unsigned int i=0; i<mesh->polygons.size(); ++i)
-			{
-				pcl::Vertices & v = mesh->polygons[i];
-				UASSERT(v.vertices.size()>2);
-				Eigen::Vector3f v0(
-						cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
-						cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
-						cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
-				int last = v.vertices.size()-1;
-				Eigen::Vector3f v1(
-						cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
-						cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
-						cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
-				Eigen::Vector3f normal = v0.cross(v1);
-				normal.normalize();
-				// flat normal (per face)
-				for(unsigned int j=0; j<v.vertices.size(); ++j)
-				{
-					cloud->at(v.vertices[j]).normal_x = normal[0];
-					cloud->at(v.vertices[j]).normal_y = normal[1];
-					cloud->at(v.vertices[j]).normal_z = normal[2];
-				}
-			}
-			pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
-		}
-	}
-
 	return textureMesh;
 }
 

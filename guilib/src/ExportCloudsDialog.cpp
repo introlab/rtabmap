@@ -28,8 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportCloudsDialog.h"
 #include "ui_exportCloudsDialog.h"
 
-#include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/CloudViewer.h"
+#include "TexturingState.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UThread.h"
@@ -82,7 +82,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
 
-	connect(_ui->groupBox_regenerate, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_regenerate, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_regenerate, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -92,11 +93,13 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->lineEdit_distortionModel, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(selectDistortionModel()));
 
-	connect(_ui->groupBox_bilateral, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_bilateral, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_bilateral, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaR, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_filtering, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_filtering, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_filtering, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_filteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_filteringMinNeighbors, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 
@@ -104,12 +107,14 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_voxelSize_assembled, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_subtraction, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_subtraction, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_subtraction, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_subtractPointFilteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_subtractPointFilteringAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_subtractFilteringMinPts, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_mls, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_smoothing, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_smoothing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_mlsRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_polygonialOrder, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
@@ -121,15 +126,17 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_upsampling, SLOT(setCurrentIndex(int)));
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), this, SLOT(updateMLSGrpVisibility()));
 
-	connect(_ui->groupBox_gain, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_gainCompensation, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_gainCompensation, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_gainRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainOverlap, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainAlpha, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainBeta, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_gainLinkedLocationsOnly, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_meshing, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
-	connect(_ui->groupBox_meshing, SIGNAL(toggled(bool)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -142,6 +149,10 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_meshingTextureFormat, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_meshingTextureSize, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshingTextureMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->doubleSpinBox_cameraFilterRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_cameraFilterAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
 	connect(_ui->checkBox_poisson_outputPolygons, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_poisson_manifold, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -199,7 +210,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("binary", _ui->checkBox_binary->isChecked());
 	settings.setValue("normals_k", _ui->spinBox_normalKSearch->value());
 
-	settings.setValue("regenerate", _ui->groupBox_regenerate->isChecked());
+	settings.setValue("regenerate", _ui->checkBox_regenerate->isChecked());
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
@@ -208,23 +219,23 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("regenerate_roi", _ui->lineEdit_roiRatios->text());
 	settings.setValue("regenerate_distortion_model", _ui->lineEdit_distortionModel->text());
 
-	settings.setValue("bilateral", _ui->groupBox_bilateral->isChecked());
+	settings.setValue("bilateral", _ui->checkBox_bilateral->isChecked());
 	settings.setValue("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value());
 	settings.setValue("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value());
 
-	settings.setValue("filtering", _ui->groupBox_filtering->isChecked());
+	settings.setValue("filtering", _ui->checkBox_filtering->isChecked());
 	settings.setValue("filtering_radius", _ui->doubleSpinBox_filteringRadius->value());
 	settings.setValue("filtering_min_neighbors", _ui->spinBox_filteringMinNeighbors->value());
 
 	settings.setValue("assemble", _ui->checkBox_assemble->isChecked());
 	settings.setValue("assemble_voxel",_ui->doubleSpinBox_voxelSize_assembled->value());
 
-	settings.setValue("subtract",_ui->groupBox_subtraction->isChecked());
+	settings.setValue("subtract",_ui->checkBox_subtraction->isChecked());
 	settings.setValue("subtract_point_radius",_ui->doubleSpinBox_subtractPointFilteringRadius->value());
 	settings.setValue("subtract_point_angle",_ui->doubleSpinBox_subtractPointFilteringAngle->value());
 	settings.setValue("subtract_min_neighbors",_ui->spinBox_subtractFilteringMinPts->value());
 
-	settings.setValue("mls", _ui->groupBox_mls->isChecked());
+	settings.setValue("mls", _ui->checkBox_smoothing->isChecked());
 	settings.setValue("mls_radius", _ui->doubleSpinBox_mlsRadius->value());
 	settings.setValue("mls_polygonial_order", _ui->spinBox_polygonialOrder->value());
 	settings.setValue("mls_upsampling_method", _ui->comboBox_upsamplingMethod->currentIndex());
@@ -234,14 +245,14 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value());
 	settings.setValue("mls_dilation_iterations", _ui->spinBox_dilationSteps->value());
 
-	settings.setValue("gain", _ui->groupBox_gain->isChecked());
+	settings.setValue("gain", _ui->checkBox_gainCompensation->isChecked());
 	settings.setValue("gain_radius", _ui->doubleSpinBox_gainRadius->value());
 	settings.setValue("gain_overlap", _ui->doubleSpinBox_gainOverlap->value());
 	settings.setValue("gain_alpha", _ui->doubleSpinBox_gainAlpha->value());
 	settings.setValue("gain_beta", _ui->doubleSpinBox_gainBeta->value());
 	settings.setValue("gain_linked_locations", _ui->checkBox_gainLinkedLocationsOnly->isChecked());
 
-	settings.setValue("mesh", _ui->groupBox_meshing->isChecked());
+	settings.setValue("mesh", _ui->checkBox_meshing->isChecked());
 	settings.setValue("mesh_radius", _ui->doubleSpinBox_gp3Radius->value());
 	settings.setValue("mesh_mu", _ui->doubleSpinBox_gp3Mu->value());
 	settings.setValue("mesh_decimation_factor", _ui->doubleSpinBox_meshDecimationFactor->value());
@@ -255,6 +266,9 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex());
 	settings.setValue("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex());
 	settings.setValue("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value());
+	settings.setValue("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked());
+	settings.setValue("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value());
+	settings.setValue("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value());
 
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -288,7 +302,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_binary->setChecked(settings.value("binary", _ui->checkBox_binary->isChecked()).toBool());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normals_k", _ui->spinBox_normalKSearch->value()).toInt());
 
-	_ui->groupBox_regenerate->setChecked(settings.value("regenerate", _ui->groupBox_regenerate->isChecked()).toBool());
+	_ui->checkBox_regenerate->setChecked(settings.value("regenerate", _ui->checkBox_regenerate->isChecked()).toBool());
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
@@ -297,23 +311,23 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->lineEdit_roiRatios->setText(settings.value("regenerate_roi", _ui->lineEdit_roiRatios->text()).toString());
 	_ui->lineEdit_distortionModel->setText(settings.value("regenerate_distortion_model", _ui->lineEdit_distortionModel->text()).toString());
 
-	_ui->groupBox_bilateral->setChecked(settings.value("bilateral", _ui->groupBox_bilateral->isChecked()).toBool());
+	_ui->checkBox_bilateral->setChecked(settings.value("bilateral", _ui->checkBox_bilateral->isChecked()).toBool());
 	_ui->doubleSpinBox_bilateral_sigmaS->setValue(settings.value("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value()).toDouble());
 	_ui->doubleSpinBox_bilateral_sigmaR->setValue(settings.value("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value()).toDouble());
 
-	_ui->groupBox_filtering->setChecked(settings.value("filtering", _ui->groupBox_filtering->isChecked()).toBool());
+	_ui->checkBox_filtering->setChecked(settings.value("filtering", _ui->checkBox_filtering->isChecked()).toBool());
 	_ui->doubleSpinBox_filteringRadius->setValue(settings.value("filtering_radius", _ui->doubleSpinBox_filteringRadius->value()).toDouble());
 	_ui->spinBox_filteringMinNeighbors->setValue(settings.value("filtering_min_neighbors", _ui->spinBox_filteringMinNeighbors->value()).toInt());
 
 	_ui->checkBox_assemble->setChecked(settings.value("assemble", _ui->checkBox_assemble->isChecked()).toBool());
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(settings.value("assemble_voxel", _ui->doubleSpinBox_voxelSize_assembled->value()).toDouble());
 
-	_ui->groupBox_subtraction->setChecked(settings.value("subtract",_ui->groupBox_subtraction->isChecked()).toBool());
+	_ui->checkBox_subtraction->setChecked(settings.value("subtract",_ui->checkBox_subtraction->isChecked()).toBool());
 	_ui->doubleSpinBox_subtractPointFilteringRadius->setValue(settings.value("subtract_point_radius",_ui->doubleSpinBox_subtractPointFilteringRadius->value()).toDouble());
 	_ui->doubleSpinBox_subtractPointFilteringAngle->setValue(settings.value("subtract_point_angle",_ui->doubleSpinBox_subtractPointFilteringAngle->value()).toDouble());
 	_ui->spinBox_subtractFilteringMinPts->setValue(settings.value("subtract_min_neighbors",_ui->spinBox_subtractFilteringMinPts->value()).toInt());
 
-	_ui->groupBox_mls->setChecked(settings.value("mls", _ui->groupBox_mls->isChecked()).toBool());
+	_ui->checkBox_smoothing->setChecked(settings.value("mls", _ui->checkBox_smoothing->isChecked()).toBool());
 	_ui->doubleSpinBox_mlsRadius->setValue(settings.value("mls_radius", _ui->doubleSpinBox_mlsRadius->value()).toDouble());
 	_ui->spinBox_polygonialOrder->setValue(settings.value("mls_polygonial_order", _ui->spinBox_polygonialOrder->value()).toInt());
 	_ui->comboBox_upsamplingMethod->setCurrentIndex(settings.value("mls_upsampling_method", _ui->comboBox_upsamplingMethod->currentIndex()).toInt());
@@ -323,14 +337,14 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(settings.value("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value()).toDouble());
 	_ui->spinBox_dilationSteps->setValue(settings.value("mls_dilation_iterations", _ui->spinBox_dilationSteps->value()).toInt());
 
-	_ui->groupBox_gain->setChecked(settings.value("gain", _ui->groupBox_gain->isChecked()).toBool());
+	_ui->checkBox_gainCompensation->setChecked(settings.value("gain", _ui->checkBox_gainCompensation->isChecked()).toBool());
 	_ui->doubleSpinBox_gainRadius->setValue(settings.value("gain_radius", _ui->doubleSpinBox_gainRadius->value()).toDouble());
 	_ui->doubleSpinBox_gainOverlap->setValue(settings.value("gain_overlap", _ui->doubleSpinBox_gainOverlap->value()).toDouble());
 	_ui->doubleSpinBox_gainAlpha->setValue(settings.value("gain_alpha", _ui->doubleSpinBox_gainAlpha->value()).toDouble());
 	_ui->doubleSpinBox_gainBeta->setValue(settings.value("gain_beta", _ui->doubleSpinBox_gainBeta->value()).toDouble());
 	_ui->checkBox_gainLinkedLocationsOnly->setChecked(settings.value("gain_linked_locations", _ui->checkBox_gainLinkedLocationsOnly->isChecked()).toBool());
 
-	_ui->groupBox_meshing->setChecked(settings.value("mesh", _ui->groupBox_meshing->isChecked()).toBool());
+	_ui->checkBox_meshing->setChecked(settings.value("mesh", _ui->checkBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(settings.value("mesh_decimation_factor",_ui->doubleSpinBox_meshDecimationFactor->value()).toDouble());
@@ -344,6 +358,9 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->comboBox_meshingTextureFormat->setCurrentIndex(settings.value("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex()).toInt());
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(settings.value("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex()).toInt());
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(settings.value("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value()).toDouble());
+	_ui->checkBox_cameraFilter->setChecked(settings.value("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked()).toBool());
+	_ui->doubleSpinBox_cameraFilterRadius->setValue(settings.value("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value()).toDouble());
+	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
@@ -374,7 +391,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->checkBox_binary->setChecked(true);
 	_ui->spinBox_normalKSearch->setValue(10);
 
-	_ui->groupBox_regenerate->setChecked(false);
+	_ui->checkBox_regenerate->setChecked(false);
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
@@ -383,23 +400,23 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->lineEdit_roiRatios->setText("0.0 0.0 0.0 0.0");
 	_ui->lineEdit_distortionModel->setText("");
 
-	_ui->groupBox_bilateral->setChecked(false);
+	_ui->checkBox_bilateral->setChecked(false);
 	_ui->doubleSpinBox_bilateral_sigmaS->setValue(10.0);
 	_ui->doubleSpinBox_bilateral_sigmaR->setValue(0.1);
 
-	_ui->groupBox_filtering->setChecked(false);
+	_ui->checkBox_filtering->setChecked(false);
 	_ui->doubleSpinBox_filteringRadius->setValue(0.02);
 	_ui->spinBox_filteringMinNeighbors->setValue(2);
 
 	_ui->checkBox_assemble->setChecked(true);
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.0);
 
-	_ui->groupBox_subtraction->setChecked(false);
+	_ui->checkBox_subtraction->setChecked(false);
 	_ui->doubleSpinBox_subtractPointFilteringRadius->setValue(0.02);
 	_ui->doubleSpinBox_subtractPointFilteringAngle->setValue(0);
 	_ui->spinBox_subtractFilteringMinPts->setValue(5);
 
-	_ui->groupBox_mls->setChecked(false);
+	_ui->checkBox_smoothing->setChecked(false);
 	_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 	_ui->spinBox_polygonialOrder->setValue(2);
 	_ui->comboBox_upsamplingMethod->setCurrentIndex(0);
@@ -409,14 +426,14 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(0.01);
 	_ui->spinBox_dilationSteps->setValue(0);
 
-	_ui->groupBox_gain->setChecked(false);
+	_ui->checkBox_gainCompensation->setChecked(false);
 	_ui->doubleSpinBox_gainRadius->setValue(0.02);
 	_ui->doubleSpinBox_gainOverlap->setValue(0.05);
 	_ui->doubleSpinBox_gainAlpha->setValue(0.01);
 	_ui->doubleSpinBox_gainBeta->setValue(10);
 	_ui->checkBox_gainLinkedLocationsOnly->setChecked(true);
 
-	_ui->groupBox_meshing->setChecked(false);
+	_ui->checkBox_meshing->setChecked(false);
 	_ui->doubleSpinBox_gp3Radius->setValue(0.2);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
@@ -430,6 +447,9 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->comboBox_meshingTextureFormat->setCurrentIndex(0);
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(5); // 4096
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
+	_ui->checkBox_cameraFilter->setChecked(false);
+	_ui->doubleSpinBox_cameraFilterRadius->setValue(0.1);
+	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
@@ -453,21 +473,34 @@ void ExportCloudsDialog::restoreDefaults()
 
 void ExportCloudsDialog::updateReconstructionFlavor()
 {
-	_ui->groupBox_mls->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
-	_ui->groupBox_mls->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->checkBox_smoothing->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->checkBox_smoothing->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->label_denseReconstruction->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->label_meshDecimation->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_organized->setVisible(_ui->comboBox_pipeline->currentIndex() == 0);
 
+	_ui->groupBox_regenerate->setVisible(_ui->checkBox_regenerate->isChecked());
+	_ui->groupBox_bilateral->setVisible(_ui->checkBox_bilateral->isChecked());
+	_ui->groupBox_filtering->setVisible(_ui->checkBox_filtering->isChecked());
+	_ui->groupBox_gain->setVisible(_ui->checkBox_gainCompensation->isChecked());
+	_ui->groupBox_mls->setVisible(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked());
+	_ui->groupBox_meshing->setVisible(_ui->checkBox_meshing->isChecked());
+	_ui->groupBox_subtraction->setVisible(_ui->checkBox_subtraction->isChecked());
+	_ui->groupBox_textureMapping->setVisible(_ui->checkBox_textureMapping->isChecked());
+	_ui->groupBox_cameraFilter->setVisible(_ui->checkBox_cameraFilter->isChecked());
+
 	// dense texturing options
 	_ui->groupBox_gp3->setVisible(_ui->comboBox_pipeline->currentIndex() == 1 && _ui->comboBox_meshingApproach->currentIndex()==0);
 	_ui->groupBox_poisson->setVisible(_ui->comboBox_pipeline->currentIndex() == 1 && _ui->comboBox_meshingApproach->currentIndex()==1);
-	if(_ui->groupBox_meshing->isChecked())
+	if(_ui->checkBox_meshing->isChecked())
 	{
 		_ui->comboBox_meshingApproach->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
-		_ui->comboBox_meshingApproach->setCurrentIndex(_ui->checkBox_assemble->isChecked()?1:0);
 		_ui->comboBox_meshingApproach->setItemData(1, _ui->checkBox_assemble->isChecked()?1 | 32:0,Qt::UserRole - 1);
+		if(!_ui->checkBox_assemble->isChecked())
+		{
+			_ui->comboBox_meshingApproach->setCurrentIndex(0);
+		}
 
 		_ui->checkBox_poisson_outputPolygons->setDisabled(
 					_ui->checkBox_binary->isEnabled() ||
@@ -523,9 +556,9 @@ void ExportCloudsDialog::enableRegeneration(bool enabled)
 {
 	if(!enabled)
 	{
-		_ui->groupBox_regenerate->setChecked(false);
+		_ui->checkBox_regenerate->setChecked(false);
 	}
-	_ui->groupBox_regenerate->setEnabled(enabled);
+	_ui->checkBox_regenerate->setEnabled(enabled);
 }
 
 void ExportCloudsDialog::exportClouds(
@@ -715,7 +748,7 @@ void ExportCloudsDialog::viewClouds(
 					UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
 					cachedSignatures.value(textureId).sensorData().uncompressDataConst(&globalTexture, 0);
 					UASSERT(!globalTexture.empty());
-					if (_ui->groupBox_gain->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+					if (_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
 					{
 						_compensator->apply(textureId, globalTexture);
 					}
@@ -837,7 +870,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		_progressDialog->resetProgress();
 		_progressDialog->show();
 		int mul = 1;
-		if(_ui->groupBox_meshing->isChecked())
+		if(_ui->checkBox_meshing->isChecked())
 		{
 			mul+=1;
 		}
@@ -846,7 +879,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			mul+=1;
 		}
 
-		if(_ui->groupBox_subtraction->isChecked())
+		if(_ui->checkBox_subtraction->isChecked())
 		{
 			mul+=1;
 		}
@@ -855,7 +888,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		{
 			mul+=1;
 		}
-		if(_ui->groupBox_gain->isChecked())
+		if(_ui->checkBox_gainCompensation->isChecked())
 		{
 			mul+=1;
 		}
@@ -879,7 +912,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		if(clouds.empty())
 		{
 			_progressDialog->setAutoClose(false);
-			if(_ui->groupBox_regenerate->isEnabled() && !_ui->groupBox_regenerate->isChecked())
+			if(_ui->checkBox_regenerate->isEnabled() && !_ui->checkBox_regenerate->isChecked())
 			{
 				QMessageBox::warning(this, tr("Creating clouds..."), tr("Could create clouds for %1 node(s). You "
 						"may want to activate clouds regeneration option.").arg(poses.size()));
@@ -892,7 +925,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			return false;
 		}
 
-		if(_ui->groupBox_gain->isChecked() && clouds.size() > 1)
+		if(_ui->checkBox_gainCompensation->isChecked() && clouds.size() > 1)
 		{
 			UASSERT(_compensator == 0);
 			_compensator = new GainCompensator(_ui->doubleSpinBox_gainRadius->value(), _ui->doubleSpinBox_gainOverlap->value(), _ui->doubleSpinBox_gainAlpha->value(), _ui->doubleSpinBox_gainBeta->value());
@@ -931,7 +964,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				_compensator->feed(clouds, links);
 			}
 
-			if(!(_ui->groupBox_meshing->isChecked() &&
+			if(!(_ui->checkBox_meshing->isChecked() &&
 				 _ui->checkBox_textureMapping->isEnabled() &&
 				 _ui->checkBox_textureMapping->isChecked()))
 			{
@@ -958,7 +991,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
 		std::vector<int> rawCameraIndices;
 		if(_ui->checkBox_assemble->isChecked() &&
-		   !(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()))
+		   !(_ui->comboBox_pipeline->currentIndex()==0 && _ui->checkBox_meshing->isChecked()))
 		{
 			_progressDialog->appendText(tr("Assembling %1 clouds...").arg(clouds.size()));
 			QApplication::processEvents();
@@ -1020,7 +1053,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 
 		std::map<int, Transform> viewPoints = poses;
-		if(_ui->groupBox_mls->isEnabled() && _ui->groupBox_mls->isChecked())
+		if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked())
 		{
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
 					"[search radius=%1m voxel=%2m]").arg(_ui->doubleSpinBox_mlsRadius->value()).arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
@@ -1053,7 +1086,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = iter->second.first;
 
-			if(_ui->groupBox_mls->isEnabled() && _ui->groupBox_mls->isChecked())
+			if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZRGB>);
 				if(iter->second.second->size())
@@ -1109,7 +1142,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							cloudWithNormals);
 				}
 			}
-			else if(iter->second.first->isOrganized() && _ui->groupBox_filtering->isChecked())
+			else if(iter->second.first->isOrganized() && _ui->checkBox_filtering->isChecked())
 			{
 				cloudWithNormals = util3d::extractIndices(iter->second.first, iter->second.second, false, true);
 			}
@@ -1129,8 +1162,8 @@ bool ExportCloudsDialog::getExportedClouds(
 		std::map<int, cv::Size> organizedCloudSizes;
 
 		//mesh
-		UDEBUG("Meshing=%d", _ui->groupBox_meshing->isChecked()?1:0);
-		if(_ui->groupBox_meshing->isChecked())
+		UDEBUG("Meshing=%d", _ui->checkBox_meshing->isChecked()?1:0);
+		if(_ui->checkBox_meshing->isChecked())
 		{
 			if(_ui->comboBox_pipeline->currentIndex() == 0)
 			{
@@ -1720,11 +1753,47 @@ bool ExportCloudsDialog::getExportedClouds(
 					else
 					{
 						UDEBUG("Texture by projection");
+
+						if(cameraPoses.size() && _ui->checkBox_cameraFilter->isChecked())
+						{
+							int before = (int)cameraPoses.size();
+							cameraPoses = graph::radiusPosesFiltering(cameraPoses,
+									_ui->doubleSpinBox_cameraFilterRadius->value(),
+									_ui->doubleSpinBox_cameraFilterAngle->value());
+							for(std::map<int, CameraModel>::iterator modelIter = cameraModels.begin(); modelIter!=cameraModels.end();)
+							{
+								if(cameraPoses.find(modelIter->first)==cameraPoses.end())
+								{
+									cameraModels.erase(modelIter++);
+								}
+								else
+								{
+									++modelIter;
+								}
+							}
+							_progressDialog->appendText(tr("Camera filtering: keeping %1/%2 cameras for texturing.").arg(cameraPoses.size()).arg(before));
+							QApplication::processEvents();
+							uSleep(100);
+							QApplication::processEvents();
+						}
+
+						if(_canceled)
+						{
+							return false;
+						}
+
+						TexturingState texturingState(_progressDialog);
 						textureMesh = util3d::createTextureMesh(
 								iter->second,
 								cameraPoses,
 								cameraModels,
-								_ui->doubleSpinBox_meshingTextureMaxDistance->value());
+								_ui->doubleSpinBox_meshingTextureMaxDistance->value(),
+								&texturingState);
+
+						if(_canceled)
+						{
+							return false;
+						}
 
 						// Remove occluded polygons (polygons with no texture)
 						if(_ui->checkBox_cleanMesh->isChecked() &&
@@ -1922,7 +1991,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 			pcl::IndicesPtr indices(new std::vector<int>);
-			if(_ui->groupBox_regenerate->isChecked())
+			if(_ui->checkBox_regenerate->isChecked())
 			{
 				if(cachedSignatures.contains(iter->first))
 				{
@@ -1948,7 +2017,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						}
 
 						// bilateral filtering
-						if(_ui->groupBox_bilateral->isChecked())
+						if(_ui->checkBox_bilateral->isChecked())
 						{
 							depth = util2d::fastBilateralFiltering(depth,
 									_ui->doubleSpinBox_bilateral_sigmaS->value(),
@@ -1983,7 +2052,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						if(cloudWithoutNormals->size())
 						{
 							// Don't voxelize if we create organized mesh
-							if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
+							if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->checkBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
 							{
 								cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _ui->doubleSpinBox_voxelSize_assembled->value());
 								indices->resize(cloudWithoutNormals->size());
@@ -2011,7 +2080,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
 							pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 
-							if(_ui->groupBox_subtraction->isChecked() &&
+							if(_ui->checkBox_subtraction->isChecked() &&
 							   _ui->doubleSpinBox_subtractPointFilteringRadius->value() > 0.0)
 							{
 								pcl::IndicesPtr beforeSubtractionIndices = indices;
@@ -2047,7 +2116,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			else if(uContains(cachedClouds, iter->first))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
-				if(!_ui->groupBox_meshing->isChecked() &&
+				if(!_ui->checkBox_meshing->isChecked() &&
 				   _ui->doubleSpinBox_voxelSize_assembled->value() > 0.0)
 				{
 					cloudWithoutNormals = util3d::voxelize(
@@ -2102,7 +2171,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 			if(indices->size())
 			{
-				if(_ui->groupBox_filtering->isChecked() &&
+				if(_ui->checkBox_filtering->isChecked() &&
 					_ui->doubleSpinBox_filteringRadius->value() > 0.0f &&
 					_ui->spinBox_filteringMinNeighbors->value() > 0)
 				{
@@ -2121,7 +2190,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 		if(points>0)
 		{
-			if(_ui->groupBox_regenerate->isChecked())
+			if(_ui->checkBox_regenerate->isChecked())
 			{
 				_progressDialog->appendText(tr("Generated cloud %1 with %2 points and %3 indices (%4/%5).")
 						.arg(iter->first).arg(points).arg(totalIndices).arg(index).arg(poses.size()));
@@ -2511,7 +2580,7 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 							UASSERT(!image.empty());
 							cv::Mat resizedImage;
 							cv::resize(image, resizedImage, emptyImage.size(), 0.0f, 0.0f, cv::INTER_AREA);
-							if(_ui->groupBox_gain->isChecked() && _compensator && _compensator->getIndex(textures[t]) >= 0)
+							if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textures[t]) >= 0)
 							{
 								_compensator->apply(textures[t], resizedImage);
 							}
@@ -2595,7 +2664,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 								cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
 								UASSERT(!image.empty());
 								imageSize = image.size();
-								if(_ui->groupBox_gain->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+								if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
 								{
 									_compensator->apply(textureId, image);
 								}
@@ -2715,7 +2784,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 									cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
 									UASSERT(!image.empty());
 									imageSize = image.size();
-									if(_ui->groupBox_gain->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+									if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
 									{
 										_compensator->apply(textureId, image);
 									}

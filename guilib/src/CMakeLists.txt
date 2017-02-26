@@ -29,6 +29,7 @@ SET(headers_ui
 	./ParametersToolBox.h
 	./DepthCalibrationDialog.h
 	./3rdParty/QMultiComboBox.h
+	./TexturingState.h
 )
 
 SET(uis
