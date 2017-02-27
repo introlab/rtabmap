@@ -437,7 +437,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_gp3Radius->setValue(0.2);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
-	_ui->doubleSpinBox_transferColorRadius->setValue(0.0);
+	_ui->doubleSpinBox_transferColorRadius->setValue(0.05);
 	_ui->checkBox_cleanMesh->setChecked(true);
 	_ui->spinBox_mesh_minClusterSize->setValue(0);
 
@@ -1568,6 +1568,61 @@ bool ExportCloudsDialog::getExportedClouds(
 							filteredPolygons.resize(oi);
 							mesh->polygons = filteredPolygons;
 						}
+					}
+					else if(lostColors &&
+							_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
+							_ui->checkBox_cleanMesh->isChecked() &&
+							(_ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked()))
+					{
+						_progressDialog->appendText(tr("Removing polygons too far from the cloud..."));
+						QApplication::processEvents();
+
+						// transfer color from point cloud to mesh
+						pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+						tree->setInputCloud(iter->second);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr optimizedCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::fromPCLPointCloud2(mesh->cloud, *optimizedCloud);
+						std::vector<bool> closePts(optimizedCloud->size());
+						for(unsigned int i=0; i<optimizedCloud->size(); ++i)
+						{
+							std::vector<int> kIndices;
+							std::vector<float> kDistances;
+							pcl::PointXYZRGBNormal pt;
+							pt.x = optimizedCloud->at(i).x;
+							pt.y = optimizedCloud->at(i).y;
+							pt.z = optimizedCloud->at(i).z;
+							tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+							if(kIndices.size())
+							{
+								closePts.at(i) = true;
+							}
+							else
+							{
+								closePts.at(i) = false;
+							}
+						}
+
+						// remove far polygons
+						std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
+						int oi=0;
+						for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+						{
+							bool keepPolygon = true;
+							for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
+							{
+								if(!closePts.at(mesh->polygons[i].vertices[j]))
+								{
+									keepPolygon = false;
+									break;
+								}
+							}
+							if(keepPolygon)
+							{
+								filteredPolygons[oi++] = mesh->polygons[i];
+							}
+						}
+						filteredPolygons.resize(oi);
+						mesh->polygons = filteredPolygons;
 					}
 
 					if(_ui->spinBox_mesh_minClusterSize->value() &&
