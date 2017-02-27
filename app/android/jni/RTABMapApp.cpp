@@ -1823,6 +1823,59 @@ bool RTABMapApp::exportMesh(
 							}
 							else
 							{
+								if(optimizedColorRadius > 0.0f && optimizedCleanWhitePolygons)
+								{
+									LOGI("Removing polygons too far from the cloud");
+									// transfer color from point cloud to mesh
+									pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+									tree->setInputCloud(mergedClouds);
+									pcl::PointCloud<pcl::PointXYZ>::Ptr optimizedCloud(new pcl::PointCloud<pcl::PointXYZ>);
+									pcl::fromPCLPointCloud2(mesh->cloud, *optimizedCloud);
+									std::vector<bool> closePts(optimizedCloud->size());
+									for(unsigned int i=0; i<optimizedCloud->size(); ++i)
+									{
+										std::vector<int> kIndices;
+										std::vector<float> kDistances;
+										pcl::PointXYZRGBNormal pt;
+										pt.x = optimizedCloud->at(i).x;
+										pt.y = optimizedCloud->at(i).y;
+										pt.z = optimizedCloud->at(i).z;
+										tree->radiusSearch(pt, optimizedColorRadius, kIndices, kDistances);
+										if(kIndices.size())
+										{
+											closePts.at(i) = true;
+										}
+										else
+										{
+											closePts.at(i) = false;
+										}
+									}
+
+									// remove far polygons
+									std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
+									int oi=0;
+									for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+									{
+										bool keepPolygon = true;
+										for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
+										{
+											if(!closePts.at(mesh->polygons[i].vertices[j]))
+											{
+												keepPolygon = false;
+												break;
+											}
+										}
+										if(keepPolygon)
+										{
+											filteredPolygons[oi++] = mesh->polygons[i];
+										}
+									}
+									filteredPolygons.resize(oi);
+									mesh->polygons = filteredPolygons;
+
+									LOGI("Removing polygons too far from the cloud...done! %fs", timer.ticks());
+								}
+
 								LOGI("Texturing...");
 								textureMesh = rtabmap::util3d::createTextureMesh(
 										mesh,

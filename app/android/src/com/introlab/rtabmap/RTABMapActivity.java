@@ -55,8 +55,12 @@ import android.os.Debug;
 import android.os.IBinder;
 import android.preference.PreferenceManager;
 import android.text.Editable;
+import android.text.Html;
 import android.text.InputType;
+import android.text.SpannableString;
 import android.text.TextPaint;
+import android.text.method.LinkMovementMethod;
+import android.text.util.Linkify;
 import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
@@ -128,6 +132,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private long mOnPauseStamp = 0;
 	private boolean mOnPause = false;
 	private Date mDateOnPause = new Date();
+	private boolean mBlockBack = true;
 
 	private MenuItem mItemSave;
 	private MenuItem mItemOpen;
@@ -341,6 +346,20 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			if (resultCode == RESULT_OK) {
 				mAuthToken = data.getStringExtra(RTABMAP_AUTH_TOKEN_KEY);
 			}
+		}
+	}
+	
+	@Override
+	public void onBackPressed() {
+	   
+		if(mBlockBack)
+		{
+			mToast.makeText(this, "Press Back once more to exit", mToast.LENGTH_LONG).show();
+			mBlockBack = false;
+		}
+		else
+		{
+			super.onBackPressed();
 		}
 	}
 	
@@ -1565,12 +1584,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								{
 									mToast.makeText(getActivity(), String.format("Cloud assembled and voxelized at %s m.", cloudVoxelSizeStr), mToast.LENGTH_LONG).show();
 								}
-								
+
 								// Visualize the result?
-								new AlertDialog.Builder(getActivity())
+								AlertDialog d = new AlertDialog.Builder(getActivity())
 								.setCancelable(false)
 								.setTitle("Export Successful!")
-								.setMessage("Do you want visualize the result before saving to file or sharing to Sketchfab?")
+								.setMessage(Html.fromHtml("Do you want visualize the result before saving to file or sharing to <a href=\"https://sketchfab.com/about\">Sketchfab</a>?"))
 								.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
 										mExportedOBJ = isOBJ;
@@ -1588,10 +1607,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 										updateState(State.STATE_IDLE);
 										RTABMapLib.postExportation(false);
 										
-										new AlertDialog.Builder(getActivity())
+										AlertDialog d2 = new AlertDialog.Builder(getActivity())
 										.setCancelable(false)
 										.setTitle("Save to...")
-										.setMessage("Do you want to share to Sketchfab or save it on the device?")
+										.setMessage(Html.fromHtml("Do you want to share to <a href=\"https://sketchfab.com/about\">Sketchfab</a> or save it on device?"))
 										.setPositiveButton("Share to Sketchfab", new DialogInterface.OnClickListener() {
 											public void onClick(DialogInterface dialog, int which) {
 												shareToSketchfab();
@@ -1606,10 +1625,16 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 											public void onClick(DialogInterface dialog, int which) {
 											}
 										})
-										.show();
+										.create();
+										d2.show();
+										// Make the textview clickable. Must be called after show()
+									    ((TextView)d2.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
 									}
 								})
-								.show();
+								.create();
+								d.show();
+								// Make the textview clickable. Must be called after show()
+							    ((TextView)d.findViewById(android.R.id.message)).setMovementMethod(LinkMovementMethod.getInstance());
 							}
 							else
 							{
@@ -1665,6 +1690,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		{
 			Intent intent = new Intent(getActivity(), SettingsActivity.class);
 			startActivity(intent);
+			mBlockBack = true;
 		}
 		else if(itemId == R.id.about)
 		{
@@ -1926,6 +1952,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								public void onClick(DialogInterface dialog, int which) {
 									Intent intent = new Intent(getActivity(), SettingsActivity.class);
 									startActivity(intent);
+									mBlockBack = true;
 								}
 							})
 							.setNegativeButton("Close", new DialogInterface.OnClickListener() {
@@ -1987,5 +2014,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 		
 		startActivityForResult(intent, SKETCHFAB_ACTIVITY_CODE);
+		mBlockBack = true;
 	}
 }
