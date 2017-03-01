@@ -328,7 +328,6 @@ void OccupancyGrid::createLocalMap(
 					if(projRayTracing_)
 					{
 						cv::Mat laserScan = obstacles;
-						ground = cv::Mat();
 						obstacles = cv::Mat();
 						util3d::occupancy2DFromLaserScan(
 								laserScan,

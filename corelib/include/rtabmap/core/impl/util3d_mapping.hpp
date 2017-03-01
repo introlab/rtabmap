@@ -255,8 +255,9 @@ void occupancy2DFromGroundObstacles(
 		ground = cv::Mat(1, (int)groundCloudProjected->size(), CV_32FC2);
 		for(unsigned int i=0;i<groundCloudProjected->size(); ++i)
 		{
-			ground.at<cv::Vec2f>(i)[0] = groundCloudProjected->at(i).x;
-			ground.at<cv::Vec2f>(i)[1] = groundCloudProjected->at(i).y;
+			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
+			ptr[i][0] = groundCloudProjected->at(i).x;
+			ptr[i][1] = groundCloudProjected->at(i).y;
 		}
 	}
 
@@ -272,8 +273,9 @@ void occupancy2DFromGroundObstacles(
 		obstacles = cv::Mat(1, (int)obstaclesCloudProjected->size(), CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloudProjected->size(); ++i)
 		{
-			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloudProjected->at(i).x;
-			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloudProjected->at(i).y;
+			cv::Vec2f * ptr = obstacles.ptr<cv::Vec2f>();
+			ptr[i][0] = obstaclesCloudProjected->at(i).x;
+			ptr[i][1] = obstaclesCloudProjected->at(i).y;
 		}
 	}
 }

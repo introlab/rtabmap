@@ -70,6 +70,23 @@ void occupancy2DFromLaserScan(
 	float xMin, yMin;
 	cv::Mat map8S = create2DMap(poses, scans, cellSize, unknownSpaceFilled, xMin, yMin, 0.0f, scanMaxRange);
 
+	// If input ground has already values, add them to map
+	if(ground.rows == 1 && ground.cols>0 && ground.type() == CV_32FC2)
+	{
+		for(int i=0; i<ground.cols; ++i)
+		{
+			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
+
+			// cell
+			cv::Point2i cell((ptr[i][0]-xMin)/cellSize, (ptr[i][1]-yMin)/cellSize);
+
+			if(cell.x>=0 && cell.x<map8S.cols && cell.y >= 0 && cell.y < map8S.rows && map8S.at<char>(cell.y, cell.x) == -1)
+			{
+				map8S.at<char>(cell.y, cell.x) = 0;
+			}
+		}
+	}
+
 	// find ground cells
 	std::list<int> groundIndices;
 	for(unsigned int i=0; i< map8S.total(); ++i)
@@ -90,8 +107,9 @@ void occupancy2DFromLaserScan(
 		{
 			int y = *iter / map8S.cols;
 			int x = *iter - y*map8S.cols;
-			ground.at<cv::Vec2f>(i)[0] = (float(x))*cellSize + xMin;
-			ground.at<cv::Vec2f>(i)[1] = (float(y))*cellSize + yMin;
+			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
+			ptr[i][0] = (float(x))*cellSize + xMin;
+			ptr[i][1] = (float(y))*cellSize + yMin;
 			++i;
 		}
 	}
@@ -103,8 +121,9 @@ void occupancy2DFromLaserScan(
 		obstacles = cv::Mat(1, (int)obstaclesCloud->size(), CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
 		{
-			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;
-			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloud->at(i).y;
+			cv::Vec2f * ptr = obstacles.ptr<cv::Vec2f>();
+			ptr[i][0] = obstaclesCloud->at(i).x;
+			ptr[i][1] = obstaclesCloud->at(i).y;
 		}
 	}
 }

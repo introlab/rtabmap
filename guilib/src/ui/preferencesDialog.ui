@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-491</y>
+            <y>-483</y>
             <width>673</width>
             <height>2649</height>
            </rect>
@@ -8860,7 +8860,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="4" column="1">
                           <widget class="QLabel" name="label_363">
                            <property name="text">
-                            <string>If 3D is not checked below, 2D ray tracing is done for each projected obstacle, filling unknown space between the sensor and obstacles.</string>
+                            <string>2D ray tracing is done for each projected obstacle (when 3D is not checked below), filling unknown space between the sensor and obstacles.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
