@@ -235,14 +235,7 @@
 		   			android:entryValues="@array/pref_opt_depth_values"
 		   			android:defaultValue="@string/pref_default_opt_depth"/>
 		        
-		        <ListPreference 
-		            android:key="@string/pref_key_opt_decimation_factor"
-		    		android:title="@string/pref_title_opt_decimation_factor"
-		    		android:summary="@string/pref_summary_opt_decimation_factor"
-		   			android:entries="@array/pref_opt_decimation_factor_keys"
-		   			android:entryValues="@array/pref_opt_decimation_factor_values"
-		   			android:defaultValue="@string/pref_default_opt_decimation_factor"/>
-		        
+
 		        <ListPreference 
 		            android:key="@string/pref_key_opt_color_radius"
 		    		android:title="@string/pref_title_opt_color_radius"

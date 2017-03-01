@@ -3404,7 +3404,7 @@ void Rtabmap::getGraph(
 	}
 }
 
-int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int iterations)
+int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int iterations, const ProgressState * processState)
 {
 	UASSERT(iterations>0);
 
@@ -3492,7 +3492,21 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 				}
 			}
 		}
-		UINFO("Iteration %d/%d: Detected %d loop closures!", n+1, iterations, (int)addedLinks.size()/2);
+
+		if(processState)
+		{
+			std::string msg = uFormat("Iteration %d/%d: Detected %d loop closures!", n+1, iterations, (int)addedLinks.size()/2);
+			UINFO(msg.c_str());
+			if(!processState->callback(msg))
+			{
+				return -1;
+			}
+		}
+		else
+		{
+			UINFO("Iteration %d/%d: Detected %d loop closures!", n+1, iterations, (int)addedLinks.size()/2);
+		}
+
 		if(addedLinks.size() == 0)
 		{
 			break;

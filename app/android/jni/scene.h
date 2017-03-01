@@ -107,7 +107,6 @@ class Scene {
   void addMesh(
   		int id,
   		const Mesh & mesh,
-		const cv::Mat & texture,
   		const rtabmap::Transform & pose);
 
   void setCloudPose(int id, const rtabmap::Transform & pose);
@@ -117,7 +116,7 @@ class Scene {
   bool hasTexture(int id) const;
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
-  void updateMesh(int id, const Mesh & mesh, const cv::Mat & texture);
+  void updateMesh(int id, const Mesh & mesh);
   void updateGain(int id, float gain);
 
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}

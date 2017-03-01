@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Statistics.h"
 #include "rtabmap/core/Link.h"
+#include "rtabmap/core/ProgressState.h"
 
 #include <opencv2/core/core.hpp>
 #include <list>
@@ -141,7 +142,7 @@ public:
 			bool optimized,
 			bool global,
 			std::map<int, Signature> * signatures = 0);
-	int detectMoreLoopClosures(float clusterRadius = 0.5f, float clusterAngle = M_PI/6.0f, int iterations = 1);
+	int detectMoreLoopClosures(float clusterRadius = 0.5f, float clusterAngle = M_PI/6.0f, int iterations = 1, const ProgressState * state = 0);
 	int refineLinks();
 
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success

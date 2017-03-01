@@ -9,6 +9,8 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -77,6 +79,8 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.NumberPicker;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -126,6 +130,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private GLSurfaceView mGLView;
 
 	ProgressDialog mProgressDialog;
+	ProgressDialog mExportProgressDialog;
 
 	// Screen size for normalizing the touch input for orbiting the render camera.
 	private Point mScreenSize = new Point();
@@ -273,6 +278,19 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mProgressDialog.setCanceledOnTouchOutside(false);
 		mRenderer.setProgressDialog(mProgressDialog);
 		mRenderer.setToast(mToast);
+		
+		mExportProgressDialog = new ProgressDialog(this);
+		mExportProgressDialog.setCanceledOnTouchOutside(false);
+		mExportProgressDialog.setCancelable(false);
+		mExportProgressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+		mExportProgressDialog.setProgressNumberFormat(null);
+		mExportProgressDialog.setProgressPercentFormat(null);
+		mExportProgressDialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+		    @Override
+		    public void onClick(DialogInterface dialog, int which) {
+		    	RTABMapLib.cancelProcessing();
+		    }
+		});
 
 		// Check if the Tango Core is out dated.
 		if (!CheckTangoCoreVersion(MIN_TANGO_CORE_VERSION)) {
@@ -738,6 +756,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							mMemoryWarningDialog = null;
 						}
 					})
+					.setNeutralButton("Save", new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int which) {
+							saveOnDevice();
+							mMemoryWarningDialog = null;
+						}
+					})
 					.create();
 					mMemoryWarningDialog.show();
 				}
@@ -903,6 +927,30 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			} 
 		});
 	}
+	
+	private void updateProgressionUI(
+			int count, 
+			int max)
+	{
+		Log.i(TAG, String.format("updateProgressionUI() count=%d max=%s", count, max));
+
+		mExportProgressDialog.setMax(max);
+		mExportProgressDialog.setProgress(count);
+	}
+
+	//called from jni
+	public void updateProgressionCallback(
+			final int count, 
+			final int max)
+	{
+		Log.i(TAG, String.format("updateProgressionCallback()"));
+
+		runOnUiThread(new Runnable() {
+			public void run() {
+				updateProgressionUI(count, max);
+			} 
+		});
+	}
 
 	private void tangoEventUI(
 			int type, 
@@ -1011,24 +1059,35 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	}
 
 	private void standardOptimization() {
-		mProgressDialog.setTitle("Post-Processing");
-		mProgressDialog.setMessage(String.format("Please wait while optimizing..."));
-		mProgressDialog.show();
-
+		mExportProgressDialog.setTitle("Post-Processing");
+		mExportProgressDialog.setMessage(String.format("Please wait while optimizing..."));
+		mExportProgressDialog.setProgress(0);
+		mExportProgressDialog.show();
+		
 		updateState(State.STATE_PROCESSING);
 		Thread workingThread = new Thread(new Runnable() {
 			public void run() {
 				final int loopDetected = RTABMapLib.postProcessing(-1);
 				runOnUiThread(new Runnable() {
 					public void run() {
-						if(loopDetected >= 0)
+						if(mExportProgressDialog.isShowing())
 						{
-							mTotalLoopClosures+=loopDetected;
-							mProgressDialog.setMessage(String.format("Optimization done! Increasing visual appeal..."));
+							mExportProgressDialog.dismiss();
+							if(loopDetected >= 0)
+							{
+								mTotalLoopClosures+=loopDetected;
+								mProgressDialog.setTitle("Post-Processing");
+								mProgressDialog.setMessage(String.format("Optimization done! Increasing visual appeal..."));
+								mProgressDialog.show();
+							}
+							else if(loopDetected < 0)
+							{
+								mToast.makeText(getActivity(), String.format("Optimization failed!"), mToast.LENGTH_LONG).show();
+							}
 						}
-						else if(loopDetected < 0)
+						else
 						{
-							mToast.makeText(getActivity(), String.format("Optimization failed!"), mToast.LENGTH_SHORT).show();
+							mToast.makeText(getActivity(), String.format("Optimization canceled"), mToast.LENGTH_LONG).show();
 						}
 						updateState(State.STATE_IDLE);
 					}
@@ -1521,63 +1580,191 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		else if(itemId == R.id.export_point_cloud ||
 				itemId == R.id.export_point_cloud_highrez ||
 				itemId == R.id.export_mesh ||
-				itemId == R.id.export_mesh_texture ||
-				itemId == R.id.export_optimized_mesh ||
-				itemId == R.id.export_optimized_mesh_texture)
+				itemId == R.id.export_mesh_texture)
 		{
 			final boolean isOBJ = itemId == R.id.export_mesh_texture || itemId == R.id.export_optimized_mesh_texture;
-			final String extension = isOBJ? ".obj" : ".ply";
-
 			final boolean meshing = itemId != R.id.export_point_cloud && itemId != R.id.export_point_cloud_highrez;
 			final boolean regenerateCloud = itemId == R.id.export_point_cloud_highrez;
-			final boolean optimized = itemId == R.id.export_optimized_mesh || itemId == R.id.export_optimized_mesh_texture;
 
-			// get Export settings
-			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-			final String cloudVoxelSizeStr = sharedPref.getString(getString(R.string.pref_key_cloud_voxel), getString(R.string.pref_default_cloud_voxel));
-			final float cloudVoxelSize = Float.parseFloat(cloudVoxelSizeStr);
-			final int textureSize = isOBJ?Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_texture_size), getString(R.string.pref_default_texture_size))):0;
-			final int normalK = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_normal_k), getString(R.string.pref_default_normal_k)));
-			final float maxTextureDistance = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_max_texture_distance), getString(R.string.pref_default_max_texture_distance)));
-			final float optimizedVoxelSize = cloudVoxelSize;
-			final int optimizedDepth = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_opt_depth), getString(R.string.pref_default_opt_depth)));
-			final float optimizedDecimationFactor = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_opt_decimation_factor), getString(R.string.pref_default_opt_decimation_factor)))/100.0f;
-			final float optimizedColorRadius = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_opt_color_radius), getString(R.string.pref_default_opt_color_radius)));
-			final boolean optimizedCleanWhitePolygons = sharedPref.getBoolean(getString(R.string.pref_key_opt_clean_white), Boolean.parseBoolean(getString(R.string.pref_default_opt_clean_white)));
-			final boolean optimizedColorWhitePolygons = false;//sharedPref.getBoolean("pref_key_opt_color_white", false); // not used
-			final boolean blockRendering = sharedPref.getBoolean(getString(R.string.pref_key_block_render), Boolean.parseBoolean(getString(R.string.pref_default_block_render)));
-
-			mProgressDialog.setTitle("Exporting");
-			mProgressDialog.setMessage(String.format("Please wait while preparing data to export..."));
-
-			mProgressDialog.show();
-			updateState(State.STATE_PROCESSING);
-			final String tmpPath = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension;
-		
-			File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
-			tmpDir.mkdirs();
+			export(isOBJ, meshing, regenerateCloud, false, 0);
+		}
+		else if(itemId == R.id.export_optimized_mesh ||
+				itemId == R.id.export_optimized_mesh_texture)
+		{
+			final boolean isOBJ = itemId == R.id.export_optimized_mesh_texture;
 			
-			Thread exportThread = new Thread(new Runnable() {
-				public void run() {
+	        RelativeLayout linearLayout = new RelativeLayout(this);
+	        final NumberPicker aNumberPicker = new NumberPicker(this);
+	        aNumberPicker.setMaxValue(9);
+	        aNumberPicker.setMinValue(0);
+	        aNumberPicker.setWrapSelectorWheel(false);
+	        aNumberPicker.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
+	        aNumberPicker.setFormatter(new NumberPicker.Formatter() {
+	            @Override
+	            public String format(int i) {
+	            	if(i==0)
+	            	{
+	            		return "No Limit";
+	            	}
+	            	return String.format("%d00 000", i);
+	            }
+	        });
+	        aNumberPicker.setValue(1);
 
-					final boolean success = RTABMapLib.exportMesh(
-							tmpPath,
-							cloudVoxelSize,
-							regenerateCloud,
-							meshing,
-							textureSize,
-							normalK,
-							maxTextureDistance,
-							optimized,
-							optimizedVoxelSize,
-							optimizedDepth,
-							optimizedDecimationFactor,
-							optimizedColorRadius,
-							optimizedCleanWhitePolygons,
-							optimizedColorWhitePolygons,
-							blockRendering);
-					runOnUiThread(new Runnable() {
-						public void run() {
+	        // Fix to correctly show value on first render
+	        try {
+	        	Method method = aNumberPicker.getClass().getDeclaredMethod("changeValueByOne", boolean.class);
+	        	method.setAccessible(true);
+	        	method.invoke(aNumberPicker, true);
+	        } catch (NoSuchMethodException e) {
+	        	e.printStackTrace();
+	        } catch (IllegalArgumentException e) {
+	        	e.printStackTrace();
+	        } catch (IllegalAccessException e) {
+	        	e.printStackTrace();
+	        } catch (InvocationTargetException e) {
+	        	e.printStackTrace();
+	        }
+
+
+	        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(50, 50);
+	        RelativeLayout.LayoutParams numPicerParams = new RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+	        numPicerParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
+
+	        linearLayout.setLayoutParams(params);
+	        linearLayout.addView(aNumberPicker,numPicerParams);
+
+	        AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
+	        alertDialogBuilder.setTitle("Maximum polygons");
+	        alertDialogBuilder.setView(linearLayout);
+	        alertDialogBuilder
+	                .setCancelable(false)
+	                .setPositiveButton("Ok",
+	                        new DialogInterface.OnClickListener() {
+	                            public void onClick(DialogInterface dialog,
+	                                                int id) {
+	                                export(isOBJ, true, false, true, aNumberPicker.getValue()*100000);
+	                            }
+	                        })
+	                .setNegativeButton("Cancel",
+	                        new DialogInterface.OnClickListener() {
+	                            public void onClick(DialogInterface dialog,
+	                                                int id) {
+	                                dialog.cancel();
+	                            }
+	                        });
+	        AlertDialog alertDialog = alertDialogBuilder.create();
+	        alertDialog.show();
+		}
+		else if(itemId == R.id.open)
+		{
+			final String[] files = loadFileList(mWorkingDirectory);
+			if(files.length > 0)
+			{
+				String[] filesWithSize = new String[files.length];
+				for(int i = 0; i<filesWithSize.length; ++i)
+				{
+					File filePath = new File(mWorkingDirectory+files[i]);
+					long mb = filePath.length()/(1024*1024);
+					filesWithSize[i] = files[i] + " ("+mb+" MB)";
+				}
+				AlertDialog.Builder builder = new AlertDialog.Builder(this);
+				builder.setTitle("Choose Your File (*.db)");
+				builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
+					public void onClick(DialogInterface dialog, final int which) {
+												
+						// Adjust color now?
+						new AlertDialog.Builder(getActivity())
+						.setTitle("Opening database...")
+						.setMessage("Do you want to adjust colors now?\nThis can be done later under Optimize menu.")
+						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int whichIn) {
+								openDatabase(files[which], true);
+							}
+						})
+						.setNeutralButton("No", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int whichIn) {
+								openDatabase(files[which], false);
+							}
+						})
+						.show();
+						return;
+					}
+				});
+				builder.show();
+			}   	
+		}
+		else if(itemId == R.id.settings)
+		{
+			Intent intent = new Intent(getActivity(), SettingsActivity.class);
+			startActivity(intent);
+			mBlockBack = true;
+		}
+		else if(itemId == R.id.about)
+		{
+			AboutDialog about = new AboutDialog(this);
+			about.setTitle("About RTAB-Map");
+			about.show();
+		}
+
+		return true;
+	}
+	
+	private void export(final boolean isOBJ, final boolean meshing, final boolean regenerateCloud, final boolean optimized, final int optimizedMaxPolygons)
+	{
+		final String extension = isOBJ? ".obj" : ".ply";
+		
+		// get Export settings
+		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+		final String cloudVoxelSizeStr = sharedPref.getString(getString(R.string.pref_key_cloud_voxel), getString(R.string.pref_default_cloud_voxel));
+		final float cloudVoxelSize = Float.parseFloat(cloudVoxelSizeStr);
+		final int textureSize = isOBJ?Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_texture_size), getString(R.string.pref_default_texture_size))):0;
+		final int normalK = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_normal_k), getString(R.string.pref_default_normal_k)));
+		final float maxTextureDistance = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_max_texture_distance), getString(R.string.pref_default_max_texture_distance)));
+		final float optimizedVoxelSize = cloudVoxelSize;
+		final int optimizedDepth = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_opt_depth), getString(R.string.pref_default_opt_depth)));
+		final float optimizedColorRadius = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_opt_color_radius), getString(R.string.pref_default_opt_color_radius)));
+		final boolean optimizedCleanWhitePolygons = sharedPref.getBoolean(getString(R.string.pref_key_opt_clean_white), Boolean.parseBoolean(getString(R.string.pref_default_opt_clean_white)));
+		final boolean optimizedColorWhitePolygons = false;//sharedPref.getBoolean("pref_key_opt_color_white", false); // not used
+		final boolean blockRendering = sharedPref.getBoolean(getString(R.string.pref_key_block_render), Boolean.parseBoolean(getString(R.string.pref_default_block_render)));
+
+		
+		mExportProgressDialog.setTitle("Exporting");
+		mExportProgressDialog.setMessage(String.format("Please wait while preparing data to export..."));
+		mExportProgressDialog.setProgress(0);
+		
+		final State previousState = mState;
+		
+		mExportProgressDialog.show();
+		updateState(State.STATE_PROCESSING);
+		final String tmpPath = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension;
+	
+		File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
+		tmpDir.mkdirs();
+		
+		Thread exportThread = new Thread(new Runnable() {
+			public void run() {
+
+				final boolean success = RTABMapLib.exportMesh(
+						tmpPath,
+						cloudVoxelSize,
+						regenerateCloud,
+						meshing,
+						textureSize,
+						normalK,
+						maxTextureDistance,
+						optimized,
+						optimizedVoxelSize,
+						optimizedDepth,
+						optimizedMaxPolygons,
+						optimizedColorRadius,
+						optimizedCleanWhitePolygons,
+						optimizedColorWhitePolygons,
+						blockRendering);
+				runOnUiThread(new Runnable() {
+					public void run() {
+						if(mExportProgressDialog.isShowing())
+						{
 							if(success)
 							{
 								if(!meshing && cloudVoxelSize>0.0f)
@@ -1641,65 +1828,18 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								updateState(State.STATE_IDLE);
 								mToast.makeText(getActivity(), String.format("Exporting map failed!"), mToast.LENGTH_LONG).show();
 							}
-							mProgressDialog.dismiss();
+							mExportProgressDialog.dismiss();
 						}
-					});
-				} 
-			});
-			exportThread.start();
-		}
-		else if(itemId == R.id.open)
-		{
-			final String[] files = loadFileList(mWorkingDirectory);
-			if(files.length > 0)
-			{
-				String[] filesWithSize = new String[files.length];
-				for(int i = 0; i<filesWithSize.length; ++i)
-				{
-					File filePath = new File(mWorkingDirectory+files[i]);
-					long mb = filePath.length()/(1024*1024);
-					filesWithSize[i] = files[i] + " ("+mb+" MB)";
-				}
-				AlertDialog.Builder builder = new AlertDialog.Builder(this);
-				builder.setTitle("Choose Your File (*.db)");
-				builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, final int which) {
-												
-						// Adjust color now?
-						new AlertDialog.Builder(getActivity())
-						.setTitle("Opening database...")
-						.setMessage("Do you want to adjust colors now?\nThis can be done later under Optimize menu.")
-						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog, int whichIn) {
-								openDatabase(files[which], true);
-							}
-						})
-						.setNeutralButton("No", new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog, int whichIn) {
-								openDatabase(files[which], false);
-							}
-						})
-						.show();
-						return;
+						else
+						{
+							mToast.makeText(getActivity(), String.format("Export canceled"), mToast.LENGTH_LONG).show();
+							updateState(previousState);
+						}
 					}
 				});
-				builder.show();
-			}   	
-		}
-		else if(itemId == R.id.settings)
-		{
-			Intent intent = new Intent(getActivity(), SettingsActivity.class);
-			startActivity(intent);
-			mBlockBack = true;
-		}
-		else if(itemId == R.id.about)
-		{
-			AboutDialog about = new AboutDialog(this);
-			about.setTitle("About RTAB-Map");
-			about.show();
-		}
-
-		return true;
+			} 
+		});
+		exportThread.start();
 	}
 	
 	private void saveDatabase(String fileName)

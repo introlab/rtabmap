@@ -437,7 +437,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_gp3Radius->setValue(0.2);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
-	_ui->doubleSpinBox_transferColorRadius->setValue(0.05);
+	_ui->doubleSpinBox_transferColorRadius->setValue(0.025);
 	_ui->checkBox_cleanMesh->setChecked(true);
 	_ui->spinBox_mesh_minClusterSize->setValue(0);
 
@@ -1408,10 +1408,22 @@ bool ExportCloudsDialog::getExportedClouds(
 								}
 								if(kIndices.size())
 								{
-									coloredCloud->at(i).r = mergedClouds->at(kIndices[0]).r;
-									coloredCloud->at(i).g = mergedClouds->at(kIndices[0]).g;
-									coloredCloud->at(i).b = mergedClouds->at(kIndices[0]).b;
-									coloredCloud->at(i).a = mergedClouds->at(kIndices[0]).a;
+									//compute average color
+									int r=0;
+									int g=0;
+									int b=0;
+									int a=0;
+									for(unsigned int j=0; j<kIndices.size(); ++j)
+									{
+										r+=(int)mergedClouds->at(kIndices[j]).r;
+										g+=(int)mergedClouds->at(kIndices[j]).g;
+										b+=(int)mergedClouds->at(kIndices[j]).b;
+										a+=(int)mergedClouds->at(kIndices[j]).a;
+									}
+									coloredCloud->at(i).r = r/kIndices.size();
+									coloredCloud->at(i).g = g/kIndices.size();
+									coloredCloud->at(i).b = b/kIndices.size();
+									coloredCloud->at(i).a = a/kIndices.size();
 								}
 								else
 								{
@@ -1529,10 +1541,22 @@ bool ExportCloudsDialog::getExportedClouds(
 							}
 							if(kIndices.size())
 							{
-								coloredCloud->at(i).r = iter->second->at(kIndices[0]).r;
-								coloredCloud->at(i).g = iter->second->at(kIndices[0]).g;
-								coloredCloud->at(i).b = iter->second->at(kIndices[0]).b;
-								coloredCloud->at(i).a = iter->second->at(kIndices[0]).a;
+								//compute average color
+								int r=0;
+								int g=0;
+								int b=0;
+								int a=0;
+								for(unsigned int j=0; j<kIndices.size(); ++j)
+								{
+									r+=(int)iter->second->at(kIndices[j]).r;
+									g+=(int)iter->second->at(kIndices[j]).g;
+									b+=(int)iter->second->at(kIndices[j]).b;
+									a+=(int)iter->second->at(kIndices[j]).a;
+								}
+								coloredCloud->at(i).r = r/kIndices.size();
+								coloredCloud->at(i).g = g/kIndices.size();
+								coloredCloud->at(i).b = b/kIndices.size();
+								coloredCloud->at(i).a = a/kIndices.size();
 								coloredPts.at(i) = true;
 							}
 							else

@@ -106,7 +106,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 					}
 					if(value==-1 && mToast!=null)
 					{
-						mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_LONG).show();
+						mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
 					}
 				} 
 			});
@@ -117,7 +117,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 			{
 				mActivity.runOnUiThread(new Runnable() {
 					public void run() {
-						mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_LONG).show();
+						mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_SHORT).show();
 					}
 
 				});

@@ -1256,7 +1256,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 	}
 	for(unsigned int idx_face=0; idx_face<faces.size(); ++idx_face)
 	{
-		if((idx_face+1)%1000 == 0)
+		if((idx_face+1)%10000 == 0)
 		{
 			UDEBUG("face %d/%d", idx_face+1, (int)faces.size());
 			if(state && !state->callback(""))

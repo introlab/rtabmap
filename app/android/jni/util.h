@@ -163,6 +163,7 @@ public:
 	rtabmap::CameraModel cameraModel;
 	float gain;
 	std::vector<Eigen::Vector2f> texCoords;
+	cv::Mat texture;
 };
 
 #endif /* UTIL_H_ */

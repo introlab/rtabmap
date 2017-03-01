@@ -101,15 +101,13 @@
     <string name="pref_key_normal_k">pref_key_normal_k</string>
     <string name="pref_default_normal_k">6</string>
     <string name="pref_key_max_texture_distance">pref_key_max_texture_distance</string>
-    <string name="pref_default_max_texture_distance">0</string>
+    <string name="pref_default_max_texture_distance">3</string>
     <string name="pref_key_block_render">pref_key_block_render</string>
     <string name="pref_default_block_render">false</string>
     <string name="pref_key_opt_depth">pref_key_opt_depth</string>
     <string name="pref_default_opt_depth">8</string>
-    <string name="pref_key_opt_decimation_factor">pref_key_opt_decimation_factor</string>
-    <string name="pref_default_opt_decimation_factor">60</string>
     <string name="pref_key_opt_color_radius">pref_key_opt_color_radius</string>
-    <string name="pref_default_opt_color_radius">0.05</string>
+    <string name="pref_default_opt_color_radius">0.025</string>
     <string name="pref_key_opt_clean_white">pref_key_opt_clean_white</string>
     <string name="pref_default_opt_clean_white">true</string>
     <string name="pref_key_gain_max_radius">pref_key_gain_max_radius</string>
@@ -551,8 +549,6 @@
     <string name="pref_summary_opt_voxel">Increasing this can reduce reconstruction time at the cost of less geometry precision.</string>
     <string name="pref_title_opt_depth">Reconstruction Depth</string>
     <string name="pref_summary_opt_depth">Lowering this parameter decreases reconstruction time, but geometry precision is lower.</string>
-    <string name="pref_title_opt_decimation_factor">Mesh Decimation Factor</string>
-    <string name="pref_summary_opt_decimation_factor">Reduce the number of the output polygons on plane areas by this factor. Only used when exporting with texture. This also reduces texture projection time.</string>
     <string name="pref_title_opt_color_radius">Color Radius</string>
     <string name="pref_summary_opt_color_radius">Radius used to transfer nearest color from the point cloud to reconstructed mesh. When exporting with texture, if Clean Mesh is also enabled, this will limit the number of polygons textured in holes.</string>
     <string name="pref_title_opt_clean_white">Clean Mesh</string>
@@ -566,30 +562,6 @@
         <item>"8"</item>
         <item>"7"</item>
         <item>"6"</item>
-    </string-array>
-    <string-array name="pref_opt_decimation_factor_keys">
-        <item>"90%"</item>
-        <item>"80%"</item>
-        <item>"70%"</item>
-        <item>"60%"</item>
-        <item>"50%"</item>
-        <item>"40%"</item>
-        <item>"30%"</item>
-        <item>"20%"</item>
-        <item>"10%"</item>
-        <item>"Disabled"</item>
-    </string-array>
-    <string-array name="pref_opt_decimation_factor_values">
-        <item>"90"</item>
-        <item>"80"</item>
-        <item>"70"</item>
-        <item>"60"</item>
-        <item>"50"</item>
-        <item>"40"</item>
-        <item>"30"</item>
-        <item>"20"</item>
-        <item>"20"</item>
-        <item>"0"</item>
     </string-array>
     <string-array name="pref_opt_color_radius_keys">
         <item>"Nearest"</item>

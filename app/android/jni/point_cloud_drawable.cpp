@@ -57,8 +57,7 @@ PointCloudDrawable::PointCloudDrawable(
 PointCloudDrawable::PointCloudDrawable(
 		GLuint cloudShaderProgram,
 		GLuint textureShaderProgram,
-		const Mesh & mesh,
-		const cv::Mat & texture) :
+		const Mesh & mesh) :
 		vertex_buffers_(0),
 		textures_(0),
 		nPoints_(0),
@@ -69,7 +68,7 @@ PointCloudDrawable::PointCloudDrawable(
 		texture_shader_program_(textureShaderProgram),
 		gain_(1.0f)
 {
-	updateMesh(mesh, texture);
+	updateMesh(mesh);
 }
 
 PointCloudDrawable::~PointCloudDrawable()
@@ -182,7 +181,7 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 	nPoints_ = totalPoints;
 }
 
-void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
+void PointCloudDrawable::updateMesh(const Mesh & mesh)
 {
 	UASSERT(mesh.cloud.get() && !mesh.cloud->empty());
 	nPoints_ = 0;
@@ -197,7 +196,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 	gain_ = mesh.gain;
 
 	bool textureUpdate = false;
-	if(!texture.empty() && texture.type() == CV_8UC3)
+	if(!mesh.texture.empty() && mesh.texture.type() == CV_8UC3)
 	{
 		if (textures_)
 		{
@@ -404,7 +403,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh, const cv::Mat & texture)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 		cv::Mat rgbImage;
-		cv::cvtColor(texture, rgbImage, CV_BGR2RGB);
+		cv::cvtColor(mesh.texture, rgbImage, CV_BGR2RGB);
 
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);

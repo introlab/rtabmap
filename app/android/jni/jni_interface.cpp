@@ -296,6 +296,13 @@ Java_com_introlab_rtabmap_RTABMapLib_save(
 	return app.save(databasePathC);
 }
 
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_cancelProcessing(
+		JNIEnv* env, jobject)
+{
+	return app.cancelProcessing();
+}
+
 JNIEXPORT bool JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		JNIEnv* env, jobject,
@@ -309,7 +316,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		bool optimized,
 		float optimizedVoxelSize,
 		int optimizedDepth,
-		float optimizedDecimationFactor,
+		int optimizedMaxPolygons,
 		float optimizedColorRadius,
 		bool optimizedCleanWhitePolygons,
 		bool optimizedColorWhitePolygons,
@@ -328,7 +335,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 			optimized,
 			optimizedVoxelSize,
 			optimizedDepth,
-			optimizedDecimationFactor,
+			optimizedMaxPolygons,
 			optimizedColorRadius,
 			optimizedCleanWhitePolygons,
 			optimizedColorWhitePolygons,

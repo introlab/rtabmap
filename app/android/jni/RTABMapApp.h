@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "scene.h"
 #include "CameraTango.h"
 #include "util.h"
+#include "ProgressionStatus.h"
 
 #include <rtabmap/core/RtabmapThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
@@ -142,6 +143,7 @@ class RTABMapApp : public UEventsHandler {
   void resetMapping();
   void save(const std::string & databasePath);
   cv::Mat mergeTextures(pcl::TextureMesh & mesh, int textureSize) const;
+  void cancelProcessing();
   bool exportMesh(
 		  const std::string & filePath,
 		  float cloudVoxelSize,
@@ -153,7 +155,7 @@ class RTABMapApp : public UEventsHandler {
 		  bool optimized,
 		  float optimizedVoxelSize,
 		  int optimizedDepth,
-		  float optimizedDecimationFactor,
+		  int optimizedMaxPolygons,
 		  float optimizedColorRadius,
 		  bool optimizedCleanWhitePolygons,
 		  bool optimizedColorWhitePolygons,
@@ -233,6 +235,8 @@ class RTABMapApp : public UEventsHandler {
 	std::map<int, rtabmap::Transform> rawPoses_;
 
 	std::pair<rtabmap::RtabmapEventInit::Status, std::string> status_;
+
+	rtabmap::ProgressionStatus progressionStatus_;
 };
 
 #endif  // TANGO_POINT_CLOUD_POINT_CLOUD_APP_H_

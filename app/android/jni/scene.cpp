@@ -512,7 +512,6 @@ void Scene::addCloud(
 void Scene::addMesh(
 		int id,
 		const Mesh & mesh,
-		const cv::Mat & texture,
 		const rtabmap::Transform & pose)
 {
 	LOGI("add mesh %d", id);
@@ -528,8 +527,7 @@ void Scene::addMesh(
 	PointCloudDrawable * drawable = new PointCloudDrawable(
 			cloud_shader_program_,
 			texture_mesh_shader_program_,
-			mesh,
-			texture);
+			mesh);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }
@@ -583,12 +581,12 @@ void Scene::updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polyg
 	}
 }
 
-void Scene::updateMesh(int id, const Mesh & mesh, const cv::Mat & texture)
+void Scene::updateMesh(int id, const Mesh & mesh)
 {
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
 	if(iter != pointClouds_.end())
 	{
-		iter->second->updateMesh(mesh, texture);
+		iter->second->updateMesh(mesh);
 	}
 }
 

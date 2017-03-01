@@ -86,6 +86,7 @@ public class RTABMapLib
 
     public static native void resetMapping();
     public static native void save(String outputDatabasePath);
+    public static native void cancelProcessing();
     public static native boolean exportMesh(
     		String filePath,
     		float cloudVoxelSize,
@@ -97,7 +98,7 @@ public class RTABMapLib
     		boolean optimized,
     		float optimizedVoxelSize,
     		int optimizedDepth,
-    		float optimizedDecimationFactor,
+    		int optimizedMaxPolygons,
     		float optimizedColorRadius,
     		boolean optimizedCleanWhitePolygons,
     		boolean optimizedColorWhitePolygons,
