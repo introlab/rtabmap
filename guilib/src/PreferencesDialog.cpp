@@ -823,12 +823,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	// Occupancy grid
 	_ui->groupBox_grid_3d->setObjectName(Parameters::kGrid3D().c_str());
-	_ui->checkBox_grid_groundObstacle->setObjectName(Parameters::kGrid3DGroundIsObstacle().c_str());
+	_ui->checkBox_grid_groundObstacle->setObjectName(Parameters::kGridGroundIsObstacle().c_str());
 	_ui->doubleSpinBox_grid_resolution->setObjectName(Parameters::kGridCellSize().c_str());
 	_ui->spinBox_grid_decimation->setObjectName(Parameters::kGridDepthDecimation().c_str());
 	_ui->doubleSpinBox_grid_maxDepth->setObjectName(Parameters::kGridDepthMax().c_str());
 	_ui->doubleSpinBox_grid_minDepth->setObjectName(Parameters::kGridDepthMin().c_str());
 	_ui->lineEdit_grid_roi->setObjectName(Parameters::kGridDepthRoiRatios().c_str());
+	_ui->checkBox_grid_projRayTracing->setObjectName(Parameters::kGridProjRayTracing().c_str());
 	_ui->doubleSpinBox_grid_footprintLength->setObjectName(Parameters::kGridFootprintLength().c_str());
 	_ui->doubleSpinBox_grid_footprintWidth->setObjectName(Parameters::kGridFootprintWidth().c_str());
 	_ui->doubleSpinBox_grid_footprintHeight->setObjectName(Parameters::kGridFootprintHeight().c_str());

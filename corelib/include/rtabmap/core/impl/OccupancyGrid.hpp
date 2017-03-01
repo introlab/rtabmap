@@ -92,7 +92,7 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 
 	if(indices->size())
 	{
-		if(normalsSegmentation_)
+		if(normalsSegmentation_ && !groundIsObstacle_)
 		{
 			UDEBUG("normalKSearch=%d", normalKSearch_);
 			UDEBUG("maxGroundAngle=%f", maxGroundAngle_);

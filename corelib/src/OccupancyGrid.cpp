@@ -59,11 +59,12 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	maxGroundHeight_(Parameters::defaultGridMaxGroundHeight()),
 	normalsSegmentation_(Parameters::defaultGridNormalsSegmentation()),
 	grid3D_(Parameters::defaultGrid3D()),
-	groundIsObstacle_(Parameters::defaultGrid3DGroundIsObstacle()),
+	groundIsObstacle_(Parameters::defaultGridGroundIsObstacle()),
 	noiseFilteringRadius_(Parameters::defaultGridNoiseFilteringRadius()),
 	noiseFilteringMinNeighbors_(Parameters::defaultGridNoiseFilteringMinNeighbors()),
 	scan2dUnknownSpaceFilled_(Parameters::defaultGridScan2dUnknownSpaceFilled()),
 	scan2dMaxUnknownSpaceFilledRange_(Parameters::defaultGridScan2dMaxFilledRange()),
+	projRayTracing_(Parameters::defaultGridProjRayTracing()),
 	xMin_(0.0f),
 	yMin_(0.0f)
 {
@@ -124,11 +125,12 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridFlatObstacleDetected(), flatObstaclesDetected_);
 	Parameters::parse(parameters, Parameters::kGridNormalsSegmentation(), normalsSegmentation_);
 	Parameters::parse(parameters, Parameters::kGrid3D(), grid3D_);
-	Parameters::parse(parameters, Parameters::kGrid3DGroundIsObstacle(), groundIsObstacle_);
+	Parameters::parse(parameters, Parameters::kGridGroundIsObstacle(), groundIsObstacle_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringRadius(), noiseFilteringRadius_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringMinNeighbors(), noiseFilteringMinNeighbors_);
 	Parameters::parse(parameters, Parameters::kGridScan2dUnknownSpaceFilled(), scan2dUnknownSpaceFilled_);
 	Parameters::parse(parameters, Parameters::kGridScan2dMaxFilledRange(), scan2dMaxUnknownSpaceFilledRange_);
+	Parameters::parse(parameters, Parameters::kGridProjRayTracing(), projRayTracing_);
 
 	// convert ROI from string to vector
 	ParametersMap::const_iterator iter;
@@ -322,6 +324,20 @@ void OccupancyGrid::createLocalMap(
 							ground,
 							obstacles,
 							cellSize_);
+
+					if(projRayTracing_)
+					{
+						cv::Mat laserScan = obstacles;
+						ground = cv::Mat();
+						obstacles = cv::Mat();
+						util3d::occupancy2DFromLaserScan(
+								laserScan,
+								ground,
+								obstacles,
+								cellSize_,
+								false, // don't fill unknown space
+								0);
+					}
 				}
 			}
 		}

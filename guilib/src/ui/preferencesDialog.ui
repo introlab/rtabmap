@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-491</y>
             <width>673</width>
             <height>2649</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>15</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8857,6 +8857,29 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </property>
                           </widget>
                          </item>
+                         <item row="4" column="1">
+                          <widget class="QLabel" name="label_363">
+                           <property name="text">
+                            <string>If 3D is not checked below, 2D ray tracing is done for each projected obstacle, filling unknown space between the sensor and obstacles.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="4" column="0">
+                          <widget class="QCheckBox" name="checkBox_grid_projRayTracing">
+                           <property name="text">
+                            <string/>
+                           </property>
+                           <property name="checked">
+                            <bool>false</bool>
+                           </property>
+                          </widget>
+                         </item>
                         </layout>
                        </item>
                       </layout>
@@ -9060,7 +9083,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          <item row="0" column="1">
                           <widget class="QLabel" name="label_octomap_groundObstacle">
                            <property name="text">
-                            <string>Ground is an obstacle. Use this only if you want an Octomap with ground identified as an obstacle (e.g., with an UAV).</string>
+                            <string>Ground segmentation (Normals Segmentation Approach) is ignored, all points are obstacles. Use this only if you want an Octomap with ground identified as an obstacle (e.g., with an UAV).</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>
