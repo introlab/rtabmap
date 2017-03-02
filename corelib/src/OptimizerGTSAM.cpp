@@ -69,6 +69,12 @@ bool OptimizerGTSAM::available()
 #endif
 }
 
+void OptimizerGTSAM::parseParameters(const ParametersMap & parameters)
+{
+	Optimizer::parseParameters(parameters);
+	Parameters::parse(parameters, Parameters::kGTSAMOptimizer(), optimizer_);
+}
+
 std::map<int, Transform> OptimizerGTSAM::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
@@ -215,18 +221,29 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		}
 
 		UDEBUG("create optimizer");
-		gtsam::GaussNewtonParams parameters;
-		parameters.relativeErrorTol = epsilon();
-		parameters.maxIterations = iterations();
-		gtsam::GaussNewtonOptimizer optimizer(graph, initialEstimate, parameters);
-		//gtsam::LevenbergMarquardtParams parametersLev;
-		//parametersLev.relativeErrorTol = epsilon();
-		//parametersLev.maxIterations = iterations();
-		//gtsam::LevenbergMarquardtOptimizer optimizer(graph, initialEstimate, parametersLev);
-		//gtsam::DoglegParams parametersDogleg;
-		//parametersDogleg.relativeErrorTol = epsilon();
-		//parametersDogleg.maxIterations = iterations();
-		//gtsam::DoglegOptimizer optimizer(graph, initialEstimate, parametersDogleg);
+		gtsam::NonlinearOptimizer * optimizer;
+
+		if(optimizer_ == 2)
+		{
+			gtsam::DoglegParams parameters;
+			parameters.relativeErrorTol = epsilon();
+			parameters.maxIterations = iterations();
+			optimizer = new gtsam::DoglegOptimizer(graph, initialEstimate, parameters);
+		}
+		else if(optimizer_ == 1)
+		{
+			gtsam::GaussNewtonParams parameters;
+			parameters.relativeErrorTol = epsilon();
+			parameters.maxIterations = iterations();
+			optimizer = new gtsam::GaussNewtonOptimizer(graph, initialEstimate, parameters);
+		}
+		else
+		{
+			gtsam::LevenbergMarquardtParams parameters;
+			parameters.relativeErrorTol = epsilon();
+			parameters.maxIterations = iterations();
+			optimizer = new gtsam::LevenbergMarquardtOptimizer(graph, initialEstimate, parameters);
+		}
 
 		UINFO("GTSAM optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		UTimer timer;
@@ -237,7 +254,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			if(intermediateGraphes && i > 0)
 			{
 				std::map<int, Transform> tmpPoses;
-				for(gtsam::Values::const_iterator iter=optimizer.values().begin(); iter!=optimizer.values().end(); ++iter)
+				for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
 				{
 					if(iter->value.dim() > 1)
 					{
@@ -257,17 +274,18 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			}
 			try
 			{
-				optimizer.iterate();
+				optimizer->iterate();
 				++it;
 			}
 			catch(gtsam::IndeterminantLinearSystemException & e)
 			{
 				UERROR("GTSAM exception caught: %s", e.what());
+				delete optimizer;
 				return optimizedPoses;
 			}
 
 			// early stop condition
-			double error = optimizer.error();
+			double error = optimizer->error();
 			UDEBUG("iteration %d error =%f", i+1, error);
 			double errorDelta = lastError - error;
 			if(i>0 && errorDelta < this->epsilon())
@@ -297,9 +315,9 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			*iterationsDone = it;
 		}
-		UINFO("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)", optimizer.iterations(), optimizer.error(), graph.error(initialEstimate), graph.error(optimizer.values()), timer.ticks());
+		UINFO("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)", optimizer->iterations(), optimizer->error(), graph.error(initialEstimate), graph.error(optimizer->values()), timer.ticks());
 
-		for(gtsam::Values::const_iterator iter=optimizer.values().begin(); iter!=optimizer.values().end(); ++iter)
+		for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
 		{
 			if(iter->value.dim() > 1)
 			{
@@ -315,6 +333,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				}
 			}
 		}
+		delete optimizer;
 	}
 	else if(poses.size() == 1 || iterations() <= 0)
 	{

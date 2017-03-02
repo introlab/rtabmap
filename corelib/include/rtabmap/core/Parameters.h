@@ -358,6 +358,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(g2o, RobustKernelDelta,       double, 8,       "Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.");
 	RTABMAP_PARAM(g2o, Baseline,                double, 0.075,   "When doing bundle adjustment with RGB-D data, we can set a fake baseline (m) to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.");
 
+	RTABMAP_PARAM(GTSAM, Optimizer,             int, 1,          "0=Levenberg 1=GaussNewton 2=Dogleg");
+
 	// Odometry
 	RTABMAP_PARAM(Odom, Strategy,           	int, 0, 		"0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F)");
 	RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,         "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");

@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-483</y>
+            <y>0</y>
             <width>673</width>
-            <height>2649</height>
+            <height>2718</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>15</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -12236,6 +12236,44 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <widget class="QLabel" name="label_352">
                          <property name="text">
                           <string>When doing bundle adjustment with RGB-D data, we can set a fake baseline to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_19">
+                      <property name="title">
+                       <string>GTSAM</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_83" columnstretch="0,1">
+                       <item row="0" column="0">
+                        <widget class="QComboBox" name="comboBox_gtsam_optimizer">
+                         <item>
+                          <property name="text">
+                           <string>Levenberg</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Gauss Newton</string>
+                          </property>
+                         </item>
+                         <item>
+                          <property name="text">
+                           <string>Dogleg</string>
+                          </property>
+                         </item>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_364">
+                         <property name="text">
+                          <string>Optimization algorithm.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
