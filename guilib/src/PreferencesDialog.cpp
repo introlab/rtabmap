@@ -5104,7 +5104,7 @@ void PreferencesDialog::calibrate()
 			return;
 		}
 
-		bool freenect2 = this->getSourceType() == kSrcFreenect2;
+		bool freenect2 = driver == kSrcFreenect2;
 		_calibrationDialog->setStereoMode(this->getSourceType() != kSrcRGB, freenect2?"rgb":"left", freenect2?"depth":"right"); // RGB+Depth or left+right
 		_calibrationDialog->setSwitchedImages(freenect2);
 		_calibrationDialog->setSavingDirectory(this->getCameraInfoDir());
