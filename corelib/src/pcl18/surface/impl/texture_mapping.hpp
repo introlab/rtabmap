@@ -1103,17 +1103,16 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			{
 				// check if the polygon is facing the camera, assuming counterclockwise normal
 				Eigen::Vector3f v0(
-						pt1.x - pt0.x,
-						pt1.y - pt0.y,
-						pt1.z - pt0.z);
+						uv_coords2.x - uv_coords1.x,
+						uv_coords2.y - uv_coords1.y,
+						0);
 				Eigen::Vector3f v1(
-						pt2.x - pt0.x,
-						pt2.y - pt0.y,
-						pt2.z - pt0.z);
+						uv_coords3.x - uv_coords1.x,
+						uv_coords3.y - uv_coords1.y,
+						0);
 				Eigen::Vector3f normal = v0.cross(v1);
-				float angle = normal.dot(Eigen::Vector3f(0.0f,0.0f,-1.0f));
+				float angle = normal.dot(Eigen::Vector3f(0.0f,0.0f,1.0f));
 				bool facingTheCam = angle>0.0f;
-
 				float distanceToCam = std::min(std::min(pt0.z, pt1.z), pt2.z);
 				pcl::PointXY center;
 				center.x = (uv_coords1.x+uv_coords2.x+uv_coords3.x)/3.0f;
@@ -1254,12 +1253,13 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		UWARN("Texturing cancelled!");
 		return false;
 	}
+	int textured = 0;
 	for(unsigned int idx_face=0; idx_face<faces.size(); ++idx_face)
 	{
 		if((idx_face+1)%10000 == 0)
 		{
 			UDEBUG("face %d/%d", idx_face+1, (int)faces.size());
-			if(state && !state->callback(uFormat("Textured %d/%d polygons", (int)idx_face+1, (int)faces.size())))
+			if(state && !state->callback(uFormat("Textured %d/%d of %d polygons", textured, idx_face+1, (int)faces.size())))
 			{
 				//cancelled!
 				UWARN("Texturing cancelled!");
@@ -1293,6 +1293,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 
 		if(cameraIndex >= 0)
 		{
+			++textured;
 			mesh.tex_polygons[cameraIndex].push_back(face);
 			mesh.tex_coordinates[cameraIndex].push_back(Eigen::Vector2f(uv_coords[0].x, uv_coords[0].y));
 			mesh.tex_coordinates[cameraIndex].push_back(Eigen::Vector2f(uv_coords[1].x, uv_coords[1].y));
@@ -1306,7 +1307,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			mesh.tex_coordinates[cameras.size()].push_back(Eigen::Vector2f(-1.0,-1.0));
 		}
 	}
-	UINFO("Process %d polygons...done!", (int)faces.size());
+	UINFO("Process %d polygons...done! (%d textured)", (int)faces.size(), textured);
 	return true;
 }
 

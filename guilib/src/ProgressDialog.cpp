@@ -133,14 +133,14 @@ void ProgressDialog::setMaximumSteps(int steps)
 	_progressBar->setMaximum(steps);
 }
 
-void ProgressDialog::incrementStep()
+void ProgressDialog::incrementStep(int steps)
 {
 	//incremental progress bar (if we don't know how many items will be added)
-	if(_progressBar->value() == _progressBar->maximum()-1)
+	if(_progressBar->value() >= _progressBar->maximum()-steps)
 	{
-		_progressBar->setMaximum(_progressBar->maximum()+1);
+		_progressBar->setMaximum(_progressBar->maximum()+steps+1);
 	}
-	_progressBar->setValue(_progressBar->value()+1);
+	_progressBar->setValue(_progressBar->value()+steps);
 }
 
 void ProgressDialog::clear()

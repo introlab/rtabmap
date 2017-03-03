@@ -50,6 +50,7 @@ public:
 		if(!msg.empty())
 		{
 			dialog_->appendText(msg.c_str());
+			dialog_->incrementStep();
 		}
 		QApplication::processEvents();
 		return !canceled_;

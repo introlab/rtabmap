@@ -889,7 +889,6 @@ bool ExportCloudsDialog::getExportedClouds(
 		{
 			mul+=1;
 		}
-		mul+=1; // normals
 		if(_ui->checkBox_textureMapping->isChecked())
 		{
 			mul+=1;
@@ -1720,7 +1719,7 @@ bool ExportCloudsDialog::getExportedClouds(
 
 					meshes.insert(std::make_pair(iter->first, mesh));
 
-					_progressDialog->incrementStep();
+					_progressDialog->incrementStep(_ui->checkBox_assemble->isChecked()?poses.size():1);
 					QApplication::processEvents();
 					if(_canceled)
 					{
@@ -1877,6 +1876,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						}
 
 						TexturingState texturingState(_progressDialog);
+						_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+iter->second->polygons.size()/10000+1);
 						textureMesh = util3d::createTextureMesh(
 								iter->second,
 								cameraPoses,
