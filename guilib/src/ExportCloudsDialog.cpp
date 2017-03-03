@@ -740,17 +740,23 @@ void ExportCloudsDialog::viewClouds(
 
 				if (globalTexture.empty())
 				{
-					UASSERT(mesh->tex_materials.size()==1 &&
+					if(mesh->tex_materials.size()==1 &&
 						!mesh->tex_materials[0].tex_file.empty() &&
-						uIsInteger(mesh->tex_materials[0].tex_file, false));
-
-					int textureId = uStr2Int(mesh->tex_materials[0].tex_file);
-					UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
-					cachedSignatures.value(textureId).sensorData().uncompressDataConst(&globalTexture, 0);
-					UASSERT(!globalTexture.empty());
-					if (_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+						uIsInteger(mesh->tex_materials[0].tex_file, false))
 					{
-						_compensator->apply(textureId, globalTexture);
+						int textureId = uStr2Int(mesh->tex_materials[0].tex_file);
+						UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
+						cachedSignatures.value(textureId).sensorData().uncompressDataConst(&globalTexture, 0);
+						UASSERT(!globalTexture.empty());
+						if (_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+						{
+							_compensator->apply(textureId, globalTexture);
+						}
+					}
+					else
+					{
+						_progressDialog->appendText(tr("No textures added to mesh %1!?").arg(iter->first), Qt::darkRed);
+						_progressDialog->setAutoClose(false);
 					}
 				}
 
@@ -1771,6 +1777,15 @@ bool ExportCloudsDialog::getExportedClouds(
 						}
 						if(!jter->second.isNull() && model.isValidForProjection() && !s.sensorData().imageCompressed().empty())
 						{
+							if(model.imageWidth() == 0 || model.imageHeight() == 0)
+							{
+								// we are using an old database format (image size not saved in calibrations), we should
+								// uncompress images to get their size
+								cv::Mat img;
+								s.sensorData().uncompressDataConst(&img, 0);
+								model.setImageSize(img.size());
+							}
+
 							cameraPoses.insert(std::make_pair(jter->first, jter->second));
 							cameraModels.insert(std::make_pair(jter->first, model));
 						}
@@ -2015,10 +2030,14 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 				else if(cameraPoses.size() == 0)
 				{
+					_progressDialog->appendText(tr("No cameras from %1 poses with valid calibration found!").arg(poses.size()), Qt::darkYellow);
+					_progressDialog->setAutoClose(false);
 					UWARN("No camera poses!?");
 				}
 				else
 				{
+					_progressDialog->appendText(tr("No polygons!?"), Qt::darkYellow);
+					_progressDialog->setAutoClose(false);
 					UWARN("No polygons!");
 				}
 
@@ -2617,6 +2636,10 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 					iter->sensorData().uncompressDataConst(&image, 0);
 					UASSERT(!image.empty());
 					tmpImageSize = image.size();
+					if(imageSize.height == 0 && imageSize.width == 0)
+					{
+						imageType = image.type();
+					}
 				}
 				if(imageSize.width>0 && imageSize.height>0 && imageSize.width != tmpImageSize.width)
 				{

@@ -1259,7 +1259,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		if((idx_face+1)%10000 == 0)
 		{
 			UDEBUG("face %d/%d", idx_face+1, (int)faces.size());
-			if(state && !state->callback(""))
+			if(state && !state->callback(uFormat("Textured %d/%d polygons", (int)idx_face+1, (int)faces.size())))
 			{
 				//cancelled!
 				UWARN("Texturing cancelled!");
