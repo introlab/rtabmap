@@ -4789,6 +4789,11 @@ void MainWindow::postProcessing()
 							{
 								Transform transform;
 								RegistrationInfo info;
+								if(parameters.find(Parameters::kRegStrategy()) != parameters.end() &&
+									parameters.at(Parameters::kRegStrategy()).compare("1") == 0)
+								{
+									uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
+								}
 								Registration * registration = Registration::create(parameters);
 								transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
 								delete registration;

@@ -1068,6 +1068,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 	// pre compute all cam inverse and visibility
 	std::vector<std::map<int, FaceInfo > > visibleFaces(cameras.size());
 	std::vector<Eigen::Affine3f> invCamTransform(cameras.size());
+	std::vector<std::list<int> > faceCameras(faces.size());
 	UINFO("Precompute visible faces per cam (%d faces, %d cams)", (int)faces.size(), (int)cameras.size());
 	for (unsigned int current_cam = 0; current_cam < cameras.size(); ++current_cam)
 	{
@@ -1219,6 +1220,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
 			{
 				polygonsKept.insert(polygon_to_face_index[*jter]);
+				faceCameras[polygon_to_face_index[*jter]].push_back(current_cam);
 			}
 		}
 
@@ -1271,10 +1273,12 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		int cameraIndex = -1;
 		float closestDistanceToCam = std::numeric_limits<float>::max();
 		pcl::PointXY uv_coords[3];
-		for (unsigned int current_cam = 0; current_cam < cameras.size(); ++current_cam)
+		for (std::list<int>::iterator camIter = faceCameras[idx_face].begin(); camIter!=faceCameras[idx_face].end(); ++camIter)
 		{
+			int current_cam = *camIter;
 			std::map<int, FaceInfo>::iterator iter = visibleFaces[current_cam].find(idx_face);
-			if (iter != visibleFaces[current_cam].end() && iter->second.facingTheCam)
+			UASSERT(iter != visibleFaces[current_cam].end());
+			if (iter->second.facingTheCam)
 			{
 				float distanceToCam = iter->second.distance;
 

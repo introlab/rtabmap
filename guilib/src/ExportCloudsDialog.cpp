@@ -685,9 +685,6 @@ void ExportCloudsDialog::viewClouds(
 		{
 			for (std::map<int, pcl::TextureMesh::Ptr>::iterator iter = textureMeshes.begin(); iter != textureMeshes.end(); ++iter)
 			{
-				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->tex_polygons.size() ? iter->second->tex_polygons[0].size() : 0));
-				_progressDialog->incrementStep();
-
 				pcl::TextureMesh::Ptr mesh = iter->second;
 
 				// As CloudViewer is not supporting more than one texture per mesh, merge them all by default
@@ -696,6 +693,9 @@ void ExportCloudsDialog::viewClouds(
 				{
 					globalTexture = mergeTextures(*mesh, cachedSignatures);
 				}
+
+				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(mesh->tex_polygons.size()?mesh->tex_polygons[0].size():0));
+				_progressDialog->incrementStep();
 
 				// VTK issue:
 				//  tex_coordinates should be linked to points, not
