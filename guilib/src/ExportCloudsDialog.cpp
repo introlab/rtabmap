@@ -149,6 +149,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_meshingTextureFormat, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_meshingTextureSize, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshingTextureMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_mesh_minTextureClusterSize, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_cameraFilterRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -266,6 +267,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex());
 	settings.setValue("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex());
 	settings.setValue("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value());
+	settings.setValue("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value());
 	settings.setValue("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked());
 	settings.setValue("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value());
 	settings.setValue("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value());
@@ -358,6 +360,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->comboBox_meshingTextureFormat->setCurrentIndex(settings.value("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex()).toInt());
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(settings.value("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex()).toInt());
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(settings.value("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value()).toDouble());
+	_ui->spinBox_mesh_minTextureClusterSize->setValue(settings.value("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value()).toDouble());
 	_ui->checkBox_cameraFilter->setChecked(settings.value("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked()).toBool());
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(settings.value("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value()).toDouble());
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
@@ -447,6 +450,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->comboBox_meshingTextureFormat->setCurrentIndex(0);
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(5); // 4096
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
+	_ui->spinBox_mesh_minTextureClusterSize->setValue(50);
 	_ui->checkBox_cameraFilter->setChecked(false);
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(0.1);
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
@@ -1882,6 +1886,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								cameraPoses,
 								cameraModels,
 								_ui->doubleSpinBox_meshingTextureMaxDistance->value(),
+								_ui->spinBox_mesh_minTextureClusterSize->value(),
 								&texturingState);
 
 						if(_canceled)

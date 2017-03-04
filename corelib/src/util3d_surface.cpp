@@ -608,6 +608,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
 		float maxDistance,
+		int minClusterSize,
 		const ProgressState * state)
 {
 	UASSERT(mesh->polygons.size());
@@ -665,6 +666,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	// Texture by projection
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
 	tm.setMaxDistance(maxDistance);
+	tm.setMinClusterSize(minClusterSize);
 	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state))
 	{
 		// compute normals for the mesh if not already here

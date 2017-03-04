@@ -119,7 +119,7 @@ namespace pcl
 
       /** \brief Constructor. */
       TextureMapping () :
-        f_ (), vector_field_ (), tex_files_ (), tex_material_ (), max_distance_(0.0f)
+        f_ (), vector_field_ (), tex_files_ (), tex_material_ (), max_distance_(0.0f), min_cluster_size_(50)
       {
       }
 
@@ -172,6 +172,12 @@ namespace pcl
 	  setMaxDistance(float maxDistance)
       {
     	  max_distance_ = maxDistance;
+      }
+
+      inline void
+	  setMinClusterSize(int size)
+      {
+    	  min_cluster_size_ = size;
       }
 
       /** \brief Map texture to a mesh synthesis algorithm
@@ -362,6 +368,9 @@ namespace pcl
 
       /** \brief maximum distance between camera and polygon to apply a texture */
       float max_distance_;
+
+      /** \brief Remove texture from small polygon clusters */
+      int min_cluster_size_;
 
       /** \brief Map texture to a face
         * \param[in] p1 the first point

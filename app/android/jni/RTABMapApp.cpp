@@ -1992,6 +1992,7 @@ bool RTABMapApp::exportMesh(
 										cameraPoses,
 										cameraModels,
 										maxTextureDistance,
+										50,
 										&progressionStatus_);
 								LOGI("Texturing... done! %fs", timer.ticks());
 

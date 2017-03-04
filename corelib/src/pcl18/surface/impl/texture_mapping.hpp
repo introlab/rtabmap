@@ -1138,51 +1138,46 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		// af first (idx_pcan < current_cam), check if some of the faces attached to previous cameras occlude the current faces
 		// then (idx_pcam == current_cam), check for self occlusions. At this stage, we skip faces that were already marked as occluded
 		// project all faces
-		int occludedFaces = 0;
+		std::set<int> occludedFaces;
 		for (std::map<float, int>::iterator jter=sortedVisibleFaces.begin(); jter!=sortedVisibleFaces.end(); ++jter)
 		//for (unsigned int idx = 0; idx<visibilityIndices.size(); ++idx)
 		{
 			int idx_face = jter->second;
 			//int idx_face = visibilityIndices[idx];
 			std::map<int, FaceInfo>::iterator iter= visibleFaces[current_cam].find(idx_face);
-			if(iter != visibleFaces[current_cam].end())
+			UASSERT(iter != visibleFaces[current_cam].end());
+
+			FaceInfo & info = iter->second;
+
+			// face is in the camera's FOV
+			//get its circumsribed circle
+			double radius;
+			pcl::PointXY center;
+			// getTriangleCircumcenterAndSize (info.uv_coord1, info.uv_coord2, info.uv_coord3, center, radius);
+			getTriangleCircumcscribedCircleCentroid(info.uv_coord1, info.uv_coord2, info.uv_coord3, center, radius); // this function yields faster results than getTriangleCircumcenterAndSize
+
+			// get points inside circ.circle
+			if (kdtree.radiusSearch (center, radius, idxNeighbors, neighborsSquaredDistance) > 0 )
 			{
-				FaceInfo & info = iter->second;
-
-				// face is in the camera's FOV
-				//get its circumsribed circle
-				double radius;
-				pcl::PointXY center;
-				// getTriangleCircumcenterAndSize (info.uv_coord1, info.uv_coord2, info.uv_coord3, center, radius);
-				getTriangleCircumcscribedCircleCentroid(info.uv_coord1, info.uv_coord2, info.uv_coord3, center, radius); // this function yields faster results than getTriangleCircumcenterAndSize
-
-				// get points inside circ.circle
-				if (kdtree.radiusSearch (center, radius, idxNeighbors, neighborsSquaredDistance) > 0 )
+				// for each neighbor
+				for (size_t i = 0; i < idxNeighbors.size (); ++i)
 				{
-					// for each neighbor
-					for (size_t i = 0; i < idxNeighbors.size (); ++i)
+					int neighborFaceIndex = idxNeighbors[i]/3;
+					//std::map<int, FaceInfo>::iterator jter= visibleFaces[current_cam].find(visibilityIndices[neighborFaceIndex]);
+					//if(jter != visibleFaces[current_cam].end())
 					{
-						int neighborFaceIndex = idxNeighbors[i]/3;
-						//std::map<int, FaceInfo>::iterator jter= visibleFaces[current_cam].find(visibilityIndices[neighborFaceIndex]);
-						//if(jter != visibleFaces[current_cam].end())
+						if (std::max(camera_cloud->points[faces[idx_face].vertices[0]].z,
+									std::max (camera_cloud->points[faces[idx_face].vertices[1]].z,
+											camera_cloud->points[faces[idx_face].vertices[2]].z))
+							< camera_cloud->points[faces[visibilityIndices[neighborFaceIndex]].vertices[idxNeighbors[i]%3]].z)
+						//if (info.distance < jter->second.distance)
 						{
-							if (std::max(camera_cloud->points[faces[idx_face].vertices[0]].z,
-										std::max (camera_cloud->points[faces[idx_face].vertices[1]].z,
-												camera_cloud->points[faces[idx_face].vertices[2]].z))
-								< camera_cloud->points[faces[visibilityIndices[neighborFaceIndex]].vertices[idxNeighbors[i]%3]].z)
-							//if (info.distance < jter->second.distance)
+							// neighbor is farther than all the face's points. Check if it falls into the triangle
+							if (checkPointInsideTriangle(info.uv_coord1, info.uv_coord2, info.uv_coord3, projections->at(idxNeighbors[i])))
 							{
-								// neighbor is farther than all the face's points. Check if it falls into the triangle
-								if (checkPointInsideTriangle(info.uv_coord1, info.uv_coord2, info.uv_coord3, projections->at(idxNeighbors[i])))
-								{
-									// current neighbor is inside triangle and is closer => the corresponding face
-									if(visibleFaces[current_cam].erase(visibilityIndices[neighborFaceIndex]))
-									{
-										++occludedFaces;
-									}
-
-									//TODO we could remove the projections of this face from the kd-tree cloud, but I fond it slower, and I need the point to keep ordered to querry UV coordinates later
-								}
+								// current neighbor is inside triangle and is closer => the corresponding face
+								occludedFaces.insert(visibilityIndices[neighborFaceIndex]);
+								//TODO we could remove the projections of this face from the kd-tree cloud, but I fond it slower, and I need the point to keep ordered to querry UV coordinates later
 							}
 						}
 					}
@@ -1190,54 +1185,63 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			}
 		}
 
+		// remove occluded faces
+		for(std::set<int>::iterator iter= occludedFaces.begin(); iter!=occludedFaces.end(); ++iter)
+		{
+			visibleFaces[current_cam].erase(*iter);
+		}
+
 		// filter clusters
 		int clusterFaces = 0;
-		std::vector<pcl::Vertices> polygons(visibleFaces[current_cam].size());
-		std::vector<int> polygon_to_face_index(visibleFaces[current_cam].size());
-		oi =0;
-		for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end(); ++iter)
+		if(min_cluster_size_>0)
 		{
-			polygons[oi].vertices.resize(3);
-			polygons[oi].vertices[0] = faces[iter->first].vertices[0];
-			polygons[oi].vertices[1] = faces[iter->first].vertices[1];
-			polygons[oi].vertices[2] = faces[iter->first].vertices[2];
-			polygon_to_face_index[oi] = iter->first;
-			++oi;
-		}
-
-		std::vector<std::set<int> > neighbors;
-		std::vector<std::set<int> > vertexToPolygons;
-		rtabmap::util3d::createPolygonIndexes(polygons,
-				(int)camera_cloud->size(),
-				neighbors,
-				vertexToPolygons);
-		std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
-				neighbors,
-				10);
-		std::set<int> polygonsKept;
-		for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
-		{
-			for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+			std::vector<pcl::Vertices> polygons(visibleFaces[current_cam].size());
+			std::vector<int> polygon_to_face_index(visibleFaces[current_cam].size());
+			oi =0;
+			for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end(); ++iter)
 			{
-				polygonsKept.insert(polygon_to_face_index[*jter]);
-				faceCameras[polygon_to_face_index[*jter]].push_back(current_cam);
+				polygons[oi].vertices.resize(3);
+				polygons[oi].vertices[0] = faces[iter->first].vertices[0];
+				polygons[oi].vertices[1] = faces[iter->first].vertices[1];
+				polygons[oi].vertices[2] = faces[iter->first].vertices[2];
+				polygon_to_face_index[oi] = iter->first;
+				++oi;
+			}
+
+			std::vector<std::set<int> > neighbors;
+			std::vector<std::set<int> > vertexToPolygons;
+			rtabmap::util3d::createPolygonIndexes(polygons,
+					(int)camera_cloud->size(),
+					neighbors,
+					vertexToPolygons);
+			std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
+					neighbors,
+					min_cluster_size_);
+			std::set<int> polygonsKept;
+			for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+			{
+				for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+				{
+					polygonsKept.insert(polygon_to_face_index[*jter]);
+					faceCameras[polygon_to_face_index[*jter]].push_back(current_cam);
+				}
+			}
+
+			for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end();)
+			{
+				if(polygonsKept.find(iter->first) == polygonsKept.end())
+				{
+					visibleFaces[current_cam].erase(iter++);
+					++clusterFaces;
+				}
+				else
+				{
+					++iter;
+				}
 			}
 		}
 
-		for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end();)
-		{
-			if(polygonsKept.find(iter->first) == polygonsKept.end())
-			{
-				visibleFaces[current_cam].erase(iter++);
-				++clusterFaces;
-			}
-			else
-			{
-				++iter;
-			}
-		}
-
-		std::string msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), occludedFaces, clusterFaces, (int)visibilityIndices.size());
+		std::string msg = uFormat("Processed camera %d/%d: %d occluded and %d spurious polygons out of %d", (int)current_cam+1, (int)cameras.size(), (int)occludedFaces.size(), clusterFaces, (int)visibilityIndices.size());
 		UINFO(msg.c_str());
 		if(state && !state->callback(msg))
 		{
