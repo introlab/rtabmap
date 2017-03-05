@@ -151,7 +151,6 @@ class RTABMapApp : public UEventsHandler {
 		  bool meshing,
 		  int textureSize,
 		  int normalK,
-		  float maxTextureDistance,
 		  bool optimized,
 		  float optimizedVoxelSize,
 		  int optimizedDepth,
@@ -159,6 +158,8 @@ class RTABMapApp : public UEventsHandler {
 		  float optimizedColorRadius,
 		  bool optimizedCleanWhitePolygons,
 		  bool optimizedColorWhitePolygons,
+		  float optimizedMaxTextureDistance,
+		  int optimizedMinTextureClusterSize,
 		  bool blockRendering);
   bool postExportation(bool visualize);
   int postProcessing(int approach);

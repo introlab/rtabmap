@@ -1558,7 +1558,6 @@ bool RTABMapApp::exportMesh(
 		bool meshing,
 		int textureSize,
 		int normalK,
-		float maxTextureDistance,
 		bool optimized,
 		float optimizedVoxelSize,
 		int optimizedDepth,
@@ -1566,6 +1565,8 @@ bool RTABMapApp::exportMesh(
 		float optimizedColorRadius,
 		bool optimizedCleanWhitePolygons,
 		bool optimizedColorWhitePolygons, // not yet used
+		float optimizedMaxTextureDistance,
+		int optimizedMinTextureClusterSize,
 		bool blockRendering)
 {
 	// make sure createdMeshes_ is not modified while exporting! We don't
@@ -1991,8 +1992,8 @@ bool RTABMapApp::exportMesh(
 										mesh,
 										cameraPoses,
 										cameraModels,
-										maxTextureDistance,
-										50,
+										optimizedMaxTextureDistance,
+										optimizedMinTextureClusterSize,
 										&progressionStatus_);
 								LOGI("Texturing... done! %fs", timer.ticks());
 

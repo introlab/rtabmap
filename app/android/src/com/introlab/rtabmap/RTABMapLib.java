@@ -94,7 +94,6 @@ public class RTABMapLib
     		boolean meshing,
     		int textureSize,
     		int normalK,
-    		float maxTextureDistance,
     		boolean optimized,
     		float optimizedVoxelSize,
     		int optimizedDepth,
@@ -102,6 +101,8 @@ public class RTABMapLib
     		float optimizedColorRadius,
     		boolean optimizedCleanWhitePolygons,
     		boolean optimizedColorWhitePolygons,
+    		float optimizedMaxTextureDistance,
+    		int optimizedMinTextureClusterSize,
     		boolean blockRendering);
     public static native boolean postExportation(boolean visualize);
     public static native int postProcessing(int approach);

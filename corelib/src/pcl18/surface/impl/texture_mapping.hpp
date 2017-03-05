@@ -1193,51 +1193,49 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 
 		// filter clusters
 		int clusterFaces = 0;
-		if(min_cluster_size_>0)
+
+		std::vector<pcl::Vertices> polygons(visibleFaces[current_cam].size());
+		std::vector<int> polygon_to_face_index(visibleFaces[current_cam].size());
+		oi =0;
+		for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end(); ++iter)
 		{
-			std::vector<pcl::Vertices> polygons(visibleFaces[current_cam].size());
-			std::vector<int> polygon_to_face_index(visibleFaces[current_cam].size());
-			oi =0;
-			for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end(); ++iter)
-			{
-				polygons[oi].vertices.resize(3);
-				polygons[oi].vertices[0] = faces[iter->first].vertices[0];
-				polygons[oi].vertices[1] = faces[iter->first].vertices[1];
-				polygons[oi].vertices[2] = faces[iter->first].vertices[2];
-				polygon_to_face_index[oi] = iter->first;
-				++oi;
-			}
+			polygons[oi].vertices.resize(3);
+			polygons[oi].vertices[0] = faces[iter->first].vertices[0];
+			polygons[oi].vertices[1] = faces[iter->first].vertices[1];
+			polygons[oi].vertices[2] = faces[iter->first].vertices[2];
+			polygon_to_face_index[oi] = iter->first;
+			++oi;
+		}
 
-			std::vector<std::set<int> > neighbors;
-			std::vector<std::set<int> > vertexToPolygons;
-			rtabmap::util3d::createPolygonIndexes(polygons,
-					(int)camera_cloud->size(),
-					neighbors,
-					vertexToPolygons);
-			std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
-					neighbors,
-					min_cluster_size_);
-			std::set<int> polygonsKept;
-			for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+		std::vector<std::set<int> > neighbors;
+		std::vector<std::set<int> > vertexToPolygons;
+		rtabmap::util3d::createPolygonIndexes(polygons,
+				(int)camera_cloud->size(),
+				neighbors,
+				vertexToPolygons);
+		std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
+				neighbors,
+				min_cluster_size_);
+		std::set<int> polygonsKept;
+		for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+		{
+			for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
 			{
-				for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
-				{
-					polygonsKept.insert(polygon_to_face_index[*jter]);
-					faceCameras[polygon_to_face_index[*jter]].push_back(current_cam);
-				}
+				polygonsKept.insert(polygon_to_face_index[*jter]);
+				faceCameras[polygon_to_face_index[*jter]].push_back(current_cam);
 			}
+		}
 
-			for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end();)
+		for(std::map<int, FaceInfo>::iterator iter=visibleFaces[current_cam].begin(); iter!=visibleFaces[current_cam].end();)
+		{
+			if(polygonsKept.find(iter->first) == polygonsKept.end())
 			{
-				if(polygonsKept.find(iter->first) == polygonsKept.end())
-				{
-					visibleFaces[current_cam].erase(iter++);
-					++clusterFaces;
-				}
-				else
-				{
-					++iter;
-				}
+				visibleFaces[current_cam].erase(iter++);
+				++clusterFaces;
+			}
+			else
+			{
+				++iter;
 			}
 		}
 

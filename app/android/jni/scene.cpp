@@ -65,8 +65,8 @@ const std::string kPointCloudVertexShader =
 	"    vLightWeighting = 1.0;\n"
 	"  } else {\n"
 	"    vec3 transformedNormal = uN * aNormal;\n"
-	"    vLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);\n"
-	"    if(vLightWeighting<0.1) vLightWeighting=0.1;\n"
+	"    vLightWeighting = max(dot(transformedNormal, uLightingDirection)*0.5+0.5, 0.0);\n"
+	"    if(vLightWeighting<0.5) vLightWeighting=0.5;\n"
 	"  }\n"
     "  vColor = aColor;\n"
     "}\n";
@@ -111,8 +111,8 @@ const std::string kTextureMeshVertexShader =
     "    vLightWeighting = 1.0;\n"
     "  } else {\n"
     "    vec3 transformedNormal = uN * aNormal;\n"
-    "    vLightWeighting = max(dot(transformedNormal, uLightingDirection), 0.0);\n"
-    "    if(vLightWeighting<0.1) vLightWeighting=0.1;\n"
+    "    vLightWeighting = max(dot(transformedNormal, uLightingDirection)*0.5+0.5, 0.0);\n"
+    "    if(vLightWeighting<0.5) vLightWeighting=0.5;\n"
     "  }\n"
     "}\n";
 const std::string kTextureMeshFragmentShader =

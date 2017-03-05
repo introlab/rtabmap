@@ -312,7 +312,6 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		bool meshing,
 		int textureSize,
 		int normalK,
-		float maxTextureDistance,
 		bool optimized,
 		float optimizedVoxelSize,
 		int optimizedDepth,
@@ -320,6 +319,8 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		float optimizedColorRadius,
 		bool optimizedCleanWhitePolygons,
 		bool optimizedColorWhitePolygons,
+		float optimizedMaxTextureDistance,
+		int optimizedMinTextureClusterSize,
 		bool blockRendering)
 {
 	std::string filePathC;
@@ -331,7 +332,6 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 			meshing,
 			textureSize,
 			normalK,
-			maxTextureDistance,
 			optimized,
 			optimizedVoxelSize,
 			optimizedDepth,
@@ -339,6 +339,8 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 			optimizedColorRadius,
 			optimizedCleanWhitePolygons,
 			optimizedColorWhitePolygons,
+			optimizedMaxTextureDistance,
+			optimizedMinTextureClusterSize,
 			blockRendering);
 }
 

@@ -217,6 +217,14 @@
 	   			android:entryValues="@array/pref_max_texture_distance_values"
 	   			android:defaultValue="@string/pref_default_max_texture_distance"/>
 	        
+	        <ListPreference 
+	            android:key="@string/pref_key_min_texture_cluster_size"
+	    		android:title="@string/pref_title_min_texture_cluster_size"
+	    		android:summary="@string/pref_summary_min_texture_cluster_size"
+	   			android:entries="@array/pref_min_texture_cluster_size_keys"
+	   			android:entryValues="@array/pref_min_texture_cluster_size_values"
+	   			android:defaultValue="@string/pref_default_min_texture_cluster_size"/>
+	        
 		    <SwitchPreference
 	            android:key="@string/pref_key_block_render"
 	            android:title="@string/pref_title_block_render"

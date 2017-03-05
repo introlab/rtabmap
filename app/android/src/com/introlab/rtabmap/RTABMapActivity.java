@@ -1165,8 +1165,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mButtonShareOnSketchfab.setVisibility(View.VISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
 			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
-			mItemOpen.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
-			mItemPostProcessing.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
+			mItemOpen.setEnabled(false);
+			mItemPostProcessing.setEnabled(false);
 			mItemSettings.setEnabled(true);
 			mItemReset.setEnabled(true);
 			mItemModes.setEnabled(true);
@@ -1721,6 +1721,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		final int textureSize = isOBJ?Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_texture_size), getString(R.string.pref_default_texture_size))):0;
 		final int normalK = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_normal_k), getString(R.string.pref_default_normal_k)));
 		final float maxTextureDistance = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_max_texture_distance), getString(R.string.pref_default_max_texture_distance)));
+		final int minTextureClusterSize = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_min_texture_cluster_size), getString(R.string.pref_default_min_texture_cluster_size)));
 		final float optimizedVoxelSize = cloudVoxelSize;
 		final int optimizedDepth = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_opt_depth), getString(R.string.pref_default_opt_depth)));
 		final float optimizedColorRadius = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_opt_color_radius), getString(R.string.pref_default_opt_color_radius)));
@@ -1752,7 +1753,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 						meshing,
 						textureSize,
 						normalK,
-						maxTextureDistance,
 						optimized,
 						optimizedVoxelSize,
 						optimizedDepth,
@@ -1760,6 +1760,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 						optimizedColorRadius,
 						optimizedCleanWhitePolygons,
 						optimizedColorWhitePolygons,
+						maxTextureDistance,
+						minTextureClusterSize,
 						blockRendering);
 				runOnUiThread(new Runnable() {
 					public void run() {

@@ -102,6 +102,8 @@
     <string name="pref_default_normal_k">6</string>
     <string name="pref_key_max_texture_distance">pref_key_max_texture_distance</string>
     <string name="pref_default_max_texture_distance">3</string>
+    <string name="pref_key_min_texture_cluster_size">pref_key_min_texture_cluster_size</string>
+    <string name="pref_default_min_texture_cluster_size">50</string>
     <string name="pref_key_block_render">pref_key_block_render</string>
     <string name="pref_default_block_render">false</string>
     <string name="pref_key_opt_depth">pref_key_opt_depth</string>
@@ -481,6 +483,8 @@
     <string name="pref_summary_normal_k">K-nearest neighbors used for normal computation when a mesh is created.</string>
     <string name="pref_title_max_texture_distance">Max Texture Distance</string>
     <string name="pref_summary_max_texture_distance">Maximum distance from a camera for polygons to be textured by this camera.</string>
+    <string name="pref_title_min_texture_cluster_size">Min Texture Cluster Size</string>
+    <string name="pref_summary_min_texture_cluster_size">Minimum polygon cluster size to be textured by a camera. This helps to filter sparse textured polygons.</string>
     <string name="pref_title_block_render">Block Rendering Thread While Exporting</string>
     <string name="pref_summary_block_render">This decreases exporting time, but freezes rendering while exporting. This also clears temporary the rendered clouds/meshes from memory during exporting, this can be useful to avoid out of memory errors.</string>
 
@@ -543,7 +547,25 @@
         <item>"2.5"</item>
         <item>"2"</item>
     </string-array>
-
+    <string-array name="pref_min_texture_cluster_size_keys">
+        <item>"Disabled"</item>
+        <item>"1000"</item>
+        <item>"500"</item>
+        <item>"200"</item>
+        <item>"100"</item>
+        <item>"50"</item>
+        <item>"10"</item>
+    </string-array>
+    <string-array name="pref_min_texture_cluster_size_values">
+        <item>"0"</item>
+        <item>"1000"</item>
+        <item>"500"</item>
+        <item>"200"</item>
+        <item>"100"</item>
+        <item>"50"</item>
+        <item>"10"</item>
+    </string-array>
+    
     <string name="pref_title_optimized">Optimized</string>
     <string name="pref_title_opt_voxel">Voxel Size</string>
     <string name="pref_summary_opt_voxel">Increasing this can reduce reconstruction time at the cost of less geometry precision.</string>
