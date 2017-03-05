@@ -1,27 +1,8 @@
 package com.introlab.rtabmap;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.SocketTimeoutException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPatch;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -37,7 +18,6 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.SpannableString;
 import android.text.TextWatcher;
 import android.text.method.LinkMovementMethod;
@@ -52,15 +32,12 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.ToggleButton;
 
 public class SketchfabActivity extends Activity implements OnClickListener {
 	
 	private static final String AUTHORIZE_PATH	= "https://sketchfab.com/oauth2/authorize";
 	private static final String CLIENT_ID		= "RXrIJYAwlTELpySsyM8TrK9r3kOGQ5Qjj9VVDIfV";
 	private static final String REDIRECT_URI	= "https://introlab.github.io/rtabmap/oauth2_redirect";
-	
-	public static final int ZIP_BUFFER_SIZE = 1<<20; // 1MB
 	
 	ProgressDialog mProgressDialog;
 	
@@ -199,6 +176,13 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 	
 	}
 	
+	private boolean isNetworkAvailable() {
+	    ConnectivityManager connectivityManager 
+	          = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+	    NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+	    return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+	}
+	
 	private void authorizeAndPublish(final String[] filesToZip, final String fileName)
 	{
 		if(!isNetworkAvailable())
@@ -281,7 +265,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		Thread workingThread = new Thread(new Runnable() {
 			public void run() {
 				try{
-					zip(filesToZip, zipOutput);
+					Util.zip(filesToZip, zipOutput);
 					runOnUiThread(new Runnable() {
 						public void run() {
 							mProgressDialog.dismiss();
@@ -341,48 +325,6 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		workingThread.start();
 	}
 	
-	private boolean isNetworkAvailable() {
-	    ConnectivityManager connectivityManager 
-	          = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-	    NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-	    return activeNetworkInfo != null && activeNetworkInfo.isConnected();
-	}
-
-	public static void zip(String file, String zipFile) throws IOException {
-		Log.i(RTABMapActivity.TAG, "Zipping " + file +" to " + zipFile);
-		String[] files = new String[1];
-		files[0] = file;
-		zip(files, zipFile);
-	}
-
-	public static void zip(String[] files, String zipFile) throws IOException {
-		Log.i(RTABMapActivity.TAG, "Zipping " + String.valueOf(files.length) +" files to " + zipFile);
-		BufferedInputStream origin = null;
-		ZipOutputStream out = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile)));
-		try { 
-			byte data[] = new byte[ZIP_BUFFER_SIZE];
-
-			for (int i = 0; i < files.length; i++) {
-				FileInputStream fi = new FileInputStream(files[i]);    
-				origin = new BufferedInputStream(fi, ZIP_BUFFER_SIZE);
-				try {
-					ZipEntry entry = new ZipEntry(files[i].substring(files[i].lastIndexOf("/") + 1));
-					out.putNextEntry(entry);
-					int count;
-					while ((count = origin.read(data, 0, ZIP_BUFFER_SIZE)) != -1) {
-						out.write(data, 0, count);
-					}
-				}
-				finally {
-					origin.close();
-				}
-			}
-		}
-		finally {
-			out.close();
-		}
-	}
-
 	private class uploadToSketchfabTask extends AsyncTask<String, Void, Void>
 	{
 		String mModelUri;

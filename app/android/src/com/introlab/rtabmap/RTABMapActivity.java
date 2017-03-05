@@ -107,6 +107,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	public static final String RTABMAP_TMP_DIR = "tmp/";
 	public static final String RTABMAP_TMP_FILENAME = "map";
 	public static final String RTABMAP_SDCARD_PATH = "/sdcard/";
+	public static final String RTABMAP_EXPORT_DIR = "Export/";
 
 	public static final String RTABMAP_AUTH_TOKEN_KEY = "com.introlab.rtabmap.AUTH_TOKEN";
 	public static final String RTABMAP_FILENAME_KEY = "com.introlab.rtabmap.FILENAME";
@@ -1742,6 +1743,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	
 		File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
 		tmpDir.mkdirs();
+		File exportDir = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR);
+		exportDir.mkdirs();
 		
 		Thread exportThread = new Thread(new Runnable() {
 			public void run() {
@@ -1943,7 +1946,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				dialog.dismiss();
 				if(!fileName.isEmpty())
 				{
-					File newFile = new File(mWorkingDirectory + fileName + extension);
+					File newFile = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR + fileName + (mExportedOBJ?".zip":".ply"));
 					if(newFile.exists())
 					{
 						new AlertDialog.Builder(getActivity())
@@ -1974,44 +1977,41 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	}
 	
 	private void writeExportedFiles(String fileName, boolean isOBJ)
-	{
-		final String extension  = mExportedOBJ?".obj":".ply";
-		final String path = mWorkingDirectory + fileName + extension;
-		final String pathHuman = mWorkingDirectoryHuman + fileName + extension;
-		
+	{		
+		String pathHuman;
 		boolean success = true;
 		if(mExportedOBJ)
 		{	
-			File toOBJFile = new File(mWorkingDirectory + fileName + extension);
-			File toMTLFile = new File(mWorkingDirectory + fileName + ".mtl");
-			File toJPGFile = new File(mWorkingDirectory + fileName + ".jpg");
-			
-			toOBJFile.delete();
-			toMTLFile.delete();
-			toJPGFile.delete();
-			
-			File fromOBJFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension);
-			File fromMTLFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".mtl");
-			File fromJPGFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".jpg");
+			final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
+			pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".zip";
+
+			String[] filesToZip = new String[3];
+			filesToZip[0] = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".obj";
+			filesToZip[1] = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".mtl";
+			filesToZip[2] = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".jpg";
+
+			File toZIPFile = new File(zipOutput);
+			toZIPFile.delete();			
 			
 			try
 			{
-				copy(fromOBJFile,toOBJFile);
-				copy(fromMTLFile,toMTLFile);
-				copy(fromJPGFile,toJPGFile);
-				mToast.makeText(getActivity(), String.format("Mesh \"%s\" (with texture \"%s\" and \"%s\") successfully exported!", pathHuman, fileName + ".jpg", fileName + ".mtl"), mToast.LENGTH_LONG).show();
+				Util.zip(filesToZip, zipOutput);
+				mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", pathHuman), mToast.LENGTH_LONG).show();
 			}
 			catch(IOException e)
 			{
-				mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" (with texture \"%s\" and \"%s\") failed! Error=%s", pathHuman, fileName + ".jpg", fileName + ".mtl", e.getMessage()), mToast.LENGTH_LONG).show();
+				mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! Error=%s", pathHuman, e.getMessage()), mToast.LENGTH_LONG).show();
 				success = false;
 			}
 		}
 		else
 		{
+			final String path = mWorkingDirectory + RTABMAP_EXPORT_DIR+ fileName + ".ply";
+			pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".ply";
+			
 			File toPLYFile = new File(path);
 			toPLYFile.delete();
-			File fromPLYFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension);
+			File fromPLYFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".ply");
 			
 			try
 			{
