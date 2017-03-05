@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QColorDialog>
 #include <QtSvg/QSvgGenerator>
 #include <QInputDialog>
+#include <QMessageBox>
 
 #include <QtCore/QDir>
 #include <QtCore/QDateTime>
@@ -1391,7 +1392,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 
 			if(_gridCellSize)
 			{
-				_root->setScale(1.0f/_gridCellSize); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
+				_root->setScale(1.0f/(_gridCellSize*100.0f)); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
 			}
 			else
 			{
@@ -1409,7 +1410,16 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 				QPainter painter(&image);
 
 				this->scene()->render(&painter);
-				image.save(targetDir + name);
+				if(!image.isNull())
+				{
+					image.save(targetDir + name);
+				}
+				else
+				{
+					QMessageBox::warning(this,
+							tr("Save PNG"),
+							tr("Could not export in PNG (the scene may be too large %1x%2), try saving in SVG.").arg(sceneSize.width()).arg(sceneSize.height()));
+				}
 			}
 			else
 			{

@@ -594,6 +594,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 		{
 			pathDatabase_ = UDirectory::getDir(path.toStdString()).c_str();
 			databaseFileName_ = UFile::getName(path.toStdString());
+			ui_->graphViewer->setWorkingDirectory(pathDatabase_);
 
 			// look if there are saved parameters
 			ParametersMap parameters = dbDriver_->getLastParameters();
