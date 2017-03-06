@@ -277,6 +277,17 @@ void OccupancyGrid::createLocalMap(
 			}
 		}
 
+		if(projMapFrame_)
+		{
+			//we should rotate viewPoint in /map frame
+			float roll, pitch, yaw;
+			node.getPose().getEulerAngles(roll, pitch, yaw);
+			Transform viewpointRotated = Transform(0,0,0,roll,pitch,0) * Transform(viewPoint.x, viewPoint.y, viewPoint.z, 0,0,0);
+			viewPoint.x = viewpointRotated.x();
+			viewPoint.y = viewpointRotated.y();
+			viewPoint.z = viewpointRotated.z();
+		}
+
 		if(cloud->size())
 		{
 			pcl::IndicesPtr groundIndices(new std::vector<int>);
