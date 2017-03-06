@@ -804,7 +804,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			{
 				if(inliers >= Integer.parseInt(mMinInliers))
 				{
-					mToast.setText(String.format("Loop closure rejected, too high graph optimization error (%.3fm > %sm).", optimizationMaxError, mMaxOptimizationError));
+					if(optimizationMaxError > 0.0f)
+					{
+						mToast.setText(String.format("Loop closure rejected, too high graph optimization error (%.3fm > %sm).", optimizationMaxError, mMaxOptimizationError));
+					}
+					else
+					{
+						mToast.setText(String.format("Loop closure rejected, graph optimization failed! You may try a different Graph Optimizer (see Mapping options)."));
+					}
 				}
 				else
 				{

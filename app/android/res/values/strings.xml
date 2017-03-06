@@ -99,7 +99,7 @@
     <string name="pref_key_texture_size">pref_key_texture_size</string>
     <string name="pref_default_texture_size">4096</string>
     <string name="pref_key_normal_k">pref_key_normal_k</string>
-    <string name="pref_default_normal_k">6</string>
+    <string name="pref_default_normal_k">18</string>
     <string name="pref_key_max_texture_distance">pref_key_max_texture_distance</string>
     <string name="pref_default_max_texture_distance">3</string>
     <string name="pref_key_min_texture_cluster_size">pref_key_min_texture_cluster_size</string>
@@ -173,6 +173,7 @@
         <item>"30"</item>
         <item>"25"</item>
         <item>"15"</item>
+        <item>"10"</item>
         <item>"5"</item>
         <item>"1"</item>
     </string-array>

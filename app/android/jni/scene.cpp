@@ -352,6 +352,14 @@ int Scene::Render() {
 		}
 	}
 
+	float fov = 45.0f;
+	rtabmap::Transform openglCamera = GetOpenGLCameraPose(&fov)*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
+	// transform in same coordinate as frustum filtering
+	openglCamera *= rtabmap::Transform(
+		 0.0f,  0.0f,  1.0f, 0.0f,
+		 0.0f,  1.0f,  0.0f, 0.0f,
+		-1.0f,  0.0f,  0.0f, 0.0f);
+
 	int cloudDrawn=0;
 	if(mapRendering_ && frustumCulling_)
 	{
@@ -375,13 +383,6 @@ int Scene::Render() {
 
 		if(oi)
 		{
-			float fov = 45.0f;
-			rtabmap::Transform openglCamera = GetOpenGLCameraPose(&fov)*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
-			// transform in same coordinate as frustum filtering
-			openglCamera *= rtabmap::Transform(
-				 0.0f,  0.0f,  1.0f, 0.0f,
-				 0.0f,  1.0f,  0.0f, 0.0f,
-				-1.0f,  0.0f,  0.0f, 0.0f);
 			pcl::IndicesPtr indices = rtabmap::util3d::frustumFiltering(
 					cloud,
 					pcl::IndicesPtr(new std::vector<int>),
@@ -399,7 +400,13 @@ int Scene::Render() {
 			for(unsigned int i=0; i<indices->size(); ++i)
 			{
 				++cloudDrawn;
-				pointClouds_.find(ids[indices->at(i)])->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
+				std::map<int, PointCloudDrawable*>::const_iterator iter = pointClouds_.find(ids[indices->at(i)]);
+				Eigen::Vector3f cloudToCamera(
+						iter->second->getPose().x() - openglCamera.x(),
+						iter->second->getPose().y() - openglCamera.y(),
+						iter->second->getPose().z() - openglCamera.z());
+				float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr);
 			}
 		}
 	}
@@ -410,7 +417,12 @@ int Scene::Render() {
 			if((mapRendering_ || iter->first < 0) && iter->second->isVisible())
 			{
 				++cloudDrawn;
-				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_);
+				Eigen::Vector3f cloudToCamera(
+						iter->second->getPose().x() - openglCamera.x(),
+						iter->second->getPose().y() - openglCamera.y(),
+						iter->second->getPose().z() - openglCamera.z());
+				float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr);
 			}
 		}
 	}

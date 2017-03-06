@@ -208,6 +208,7 @@ class RTABMapApp : public UEventsHandler {
   int totalPolygons_;
   int lastDrawnCloudsCount_;
   float renderingTime_;
+  float previousRenderingTime_;
   long processMemoryUsedBytes;
   long processGPUMemoryUsedBytes;
 

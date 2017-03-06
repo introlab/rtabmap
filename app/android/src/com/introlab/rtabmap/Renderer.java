@@ -108,6 +108,10 @@ public class Renderer implements GLSurfaceView.Renderer {
 					{
 						mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
 					}
+					else if(value==-2 && mToast!=null)
+					{
+						mToast.makeText(mActivity, String.format("Rendering Error!"), Toast.LENGTH_SHORT).show();
+					}
 				} 
 			});
 		}
