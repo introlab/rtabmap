@@ -299,6 +299,7 @@ private slots:
 	void updateKpROI();
 	void updateStereoDisparityVisibility();
 	void useOdomFeatures();
+	void useGridProjRayTracing();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void readSettingsEnd();

@@ -201,8 +201,14 @@ void OccupancyGrid::createLocalMap(
 	{
 		UDEBUG("2D laser scan");
 		//2D
+		viewPoint = cv::Point3f(
+				node.sensorData().laserScanInfo().localTransform().x(),
+				node.sensorData().laserScanInfo().localTransform().y(),
+				node.sensorData().laserScanInfo().localTransform().z());
+
 		util3d::occupancy2DFromLaserScan(
 				util3d::transformLaserScan(node.sensorData().laserScanRaw(), node.sensorData().laserScanInfo().localTransform()),
+				viewPoint,
 				ground,
 				obstacles,
 				cellSize_,
@@ -331,6 +337,7 @@ void OccupancyGrid::createLocalMap(
 						obstacles = cv::Mat();
 						util3d::occupancy2DFromLaserScan(
 								laserScan,
+								viewPoint,
 								ground,
 								obstacles,
 								cellSize_,

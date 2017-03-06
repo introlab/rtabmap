@@ -832,6 +832,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_minDepth->setObjectName(Parameters::kGridDepthMin().c_str());
 	_ui->lineEdit_grid_roi->setObjectName(Parameters::kGridDepthRoiRatios().c_str());
 	_ui->checkBox_grid_projRayTracing->setObjectName(Parameters::kGridProjRayTracing().c_str());
+	connect(_ui->checkBox_grid_projRayTracing, SIGNAL(stateChanged(int)), this, SLOT(useGridProjRayTracing()));
 	_ui->doubleSpinBox_grid_footprintLength->setObjectName(Parameters::kGridFootprintLength().c_str());
 	_ui->doubleSpinBox_grid_footprintWidth->setObjectName(Parameters::kGridFootprintWidth().c_str());
 	_ui->doubleSpinBox_grid_footprintHeight->setObjectName(Parameters::kGridFootprintHeight().c_str());
@@ -3746,6 +3747,22 @@ void PreferencesDialog::useOdomFeatures()
 			_ui->subpix_winSize_kp->setValue(_ui->subpix_winSize->value());
 			_ui->subpix_iterations_kp->setValue(_ui->subpix_iterations->value());
 			_ui->subpix_eps_kp->setValue(_ui->subpix_eps->value());
+		}
+	}
+}
+
+
+void PreferencesDialog::useGridProjRayTracing()
+{
+	if(this->isVisible() && _ui->checkBox_grid_projRayTracing->isChecked() && _ui->groupBox_grid_3d->isChecked())
+	{
+		int r = QMessageBox::question(this, tr("Using ray tracing for 2D projection..."),
+				tr("Currently the 3D occupancy grid parameter is checked, but 2D ray tracing "
+				  "only works with 2D occupancy grids. Do you want to uncheck 3D occupancy grid?"), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+
+		if(r == QMessageBox::Yes)
+		{
+			_ui->groupBox_grid_3d->setChecked(false);
 		}
 	}
 }
