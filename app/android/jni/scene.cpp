@@ -77,7 +77,7 @@ const std::string kPointCloudFragmentShader =
     "varying vec3 vColor;\n"
 	"varying float vLightWeighting;\n"
     "void main() {\n"
-    "  vec4 textureColor = vec4(vColor.z*uGain, vColor.y*uGain, vColor.x*uGain, 1.0);\n"
+    "  vec4 textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
 	"  gl_FragColor = vec4(textureColor.rgb * uGain * vLightWeighting, textureColor.a);\n"
     "}\n";
 
