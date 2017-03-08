@@ -2109,21 +2109,6 @@ void MainWindow::updateMapCloud(
 		++i;
 	}
 
-	// activate actions
-	if(_state != kMonitoring && _state != kDetecting)
-	{
-		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
-		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
-		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
-		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty());
-		_ui->actionView_scans->setEnabled(!_createdScans.empty());
-#ifdef RTABMAP_OCTOMAP
-		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
-#else
-		_ui->actionExport_octomap->setEnabled(false);
-#endif
-	}
-
 	//remove not used clouds
 	for(QMap<std::string, Transform>::iterator iter = viewerClouds.begin(); iter!=viewerClouds.end(); ++iter)
 	{
@@ -2283,6 +2268,38 @@ void MainWindow::updateMapCloud(
 
 	UDEBUG("");
 
+#ifdef RTABMAP_OCTOMAP
+	_cloudViewer->removeOctomap();
+	_cloudViewer->removeCloud("octomap_cloud");
+	if(_preferencesDialog->isOctomapUpdated())
+	{
+		UDEBUG("");
+		UTimer time;
+		_octomap->update(poses);
+		UINFO("Octomap update time = %fs", time.ticks());
+	}
+	if(_preferencesDialog->isOctomapShown())
+	{
+		UDEBUG("");
+		UTimer time;
+		if(_preferencesDialog->isOctomapCubeRendering())
+		{
+			_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
+		}
+		else
+		{
+			pcl::IndicesPtr obstacles(new std::vector<int>);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = _octomap->createCloud(_preferencesDialog->getOctomapTreeDepth(), obstacles.get());
+			if(obstacles->size())
+			{
+				_cloudViewer->addCloud("octomap_cloud", cloud);
+			}
+		}
+		UINFO("Octomap show 3d map time = %fs", time.ticks());
+	}
+	UDEBUG("");
+#endif
+
 	// Update occupancy grid map in 3D map view and graph view
 	if(_ui->graphicsView_graphView->isVisible())
 	{
@@ -2348,37 +2365,6 @@ void MainWindow::updateMapCloud(
 		_cloudViewer->removeOccupancyGridMap();
 	}
 
-#ifdef RTABMAP_OCTOMAP
-	_cloudViewer->removeOctomap();
-	_cloudViewer->removeCloud("octomap_cloud");
-	if(_preferencesDialog->isOctomapUpdated())
-	{
-		UDEBUG("");
-		UTimer time;
-		_octomap->update(poses);
-		UINFO("Octomap update time = %fs", time.ticks());
-	}
-	if(_preferencesDialog->isOctomapShown())
-	{
-		UDEBUG("");
-		UTimer time;
-		if(_preferencesDialog->isOctomapCubeRendering())
-		{
-			_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
-		}
-		else
-		{
-			pcl::IndicesPtr obstacles(new std::vector<int>);
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = _octomap->createCloud(_preferencesDialog->getOctomapTreeDepth(), obstacles.get());
-			if(obstacles->size())
-			{
-				_cloudViewer->addCloud("octomap_cloud", cloud);
-			}
-		}
-		UINFO("Octomap show 3d map time = %fs", time.ticks());
-	}
-#endif
-
 	if(viewerClouds.contains("cloudOdom"))
 	{
 		if(!_preferencesDialog->isCloudsShown(1))
@@ -2437,6 +2423,21 @@ void MainWindow::updateMapCloud(
 			_cloudViewer->updateCloudPose("featuresOdom", _odometryCorrection);
 			_cloudViewer->setCloudPointSize("featuresOdom", _preferencesDialog->getFeaturesPointSize(1));
 		}
+	}
+
+	// activate actions
+	if(_state != kMonitoring && _state != kDetecting)
+	{
+		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
+		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
+		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
+		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_gridLocalMaps.empty());
+		_ui->actionView_scans->setEnabled(!_createdScans.empty());
+#ifdef RTABMAP_OCTOMAP
+		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
+#else
+		_ui->actionExport_octomap->setEnabled(false);
+#endif
 	}
 
 	UDEBUG("");
