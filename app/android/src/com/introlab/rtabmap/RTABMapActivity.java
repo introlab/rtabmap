@@ -852,7 +852,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			{
 				statusTexts[0] = getString(R.string.status)+"Paused";
 			}
-			else
+			else if(mItemLocalizationMode!=null && mItemDataRecorderMode!=null)
 			{			
 				String updateValue = mUpdateRate.compareTo("0")==0?"Max":mUpdateRate;
 				statusTexts[0] = getString(R.string.status)+(mItemLocalizationMode.isChecked()?String.format("Localization (%s Hz)", updateValue):mItemDataRecorderMode.isChecked()?String.format("Recording (%s Hz)", updateValue):String.format("Mapping (%s Hz)", updateValue));
