@@ -667,6 +667,8 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			//LOGD("rtabmap  = %s", odom.prettyPrint().c_str());
 			//LOGD("opengl(r)= %s", (opengl_world_T_rtabmap_world * odom * rtabmap_device_T_opengl_device).prettyPrint().c_str());
 
+			Transform scanLocalTransform = model.localTransform();
+
 			// Rotate image depending on the camera orientation
 			if(colorCameraToDisplayRotation_ == ROTATION_90)
 			{
@@ -722,7 +724,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 			if(rawScanPublished_)
 			{
-				data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, model.localTransform()), rgb, depth, model, this->getNextSeqID(), rgbStamp);
+				data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
 			}
 			else
 			{
