@@ -167,7 +167,7 @@ void DataRecorder::closeEvent(QCloseEvent* event)
 	event->accept();
 }
 
-void DataRecorder::handleEvent(UEvent * event)
+bool DataRecorder::handleEvent(UEvent * event)
 {
 	if(memory_)
 	{
@@ -192,6 +192,7 @@ void DataRecorder::handleEvent(UEvent * event)
 			}
 		}
 	}
+	return false;
 }
 
 } /* namespace rtabmap */

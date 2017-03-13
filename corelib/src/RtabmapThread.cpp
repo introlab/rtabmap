@@ -324,7 +324,7 @@ void RtabmapThread::mainLoop()
 }
 
 
-void RtabmapThread::handleEvent(UEvent* event)
+bool RtabmapThread::handleEvent(UEvent* event)
 {
 	if(this->isRunning())
 	{
@@ -517,6 +517,7 @@ void RtabmapThread::handleEvent(UEvent* event)
 			pushNewState(kStateChangingParameters, ((ParamEvent*)event)->getParameters());
 		}
 	}
+	return false;
 }
 
 //============================================================

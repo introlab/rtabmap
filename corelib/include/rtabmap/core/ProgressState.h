@@ -32,11 +32,24 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 class ProgressState
 {
 public:
+	ProgressState():canceled_(false){}
 	virtual bool callback(const std::string & msg) const
 	{
 		return true;
 	}
 	virtual ~ProgressState(){}
+
+	void setCanceled(bool canceled)
+	{
+		canceled_ = canceled;
+	}
+	bool isCanceled() const
+	{
+		return canceled_;
+	}
+
+private:
+	bool canceled_;
 };
 
 

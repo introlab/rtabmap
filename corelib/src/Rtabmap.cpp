@@ -3456,6 +3456,12 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 		std::set<int> addedLinks;
 		for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter, ++i)
 		{
+			if(processState && processState->isCanceled())
+			{
+				return -1;
+				break;
+			}
+
 			int from = iter->first;
 			int to = iter->second;
 			if(iter->first < iter->second)

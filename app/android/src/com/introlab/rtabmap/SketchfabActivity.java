@@ -213,6 +213,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 			mAuthDialog = new Dialog(this);
 			mAuthDialog.setContentView(R.layout.auth_dialog);
 			web = (WebView)mAuthDialog.findViewById(R.id.webv);
+			web.setWebContentsDebuggingEnabled(!RTABMapActivity.DISABLE_LOG);
 			web.getSettings().setJavaScriptEnabled(true);
 			String auth_url = AUTHORIZE_PATH+"?redirect_uri="+REDIRECT_URI+"&response_type=token&client_id="+CLIENT_ID;
 			Log.i(RTABMapActivity.TAG, "Auhorize url="+auth_url);

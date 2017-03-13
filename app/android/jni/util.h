@@ -51,7 +51,7 @@ public:
 		registerToEventsManager();
 	}
 protected:
-	virtual void handleEvent(UEvent * event)
+	virtual bool handleEvent(UEvent * event)
 	{
 		if(event->getClassName().compare("ULogEvent") == 0)
 		{
@@ -74,6 +74,7 @@ protected:
 			}
 
 		}
+		return false;
 	}
 };
 

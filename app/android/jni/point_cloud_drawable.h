@@ -59,10 +59,15 @@ class PointCloudDrawable {
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
   void setGain(float gain) {gain_ = gain;}
-  rtabmap::Transform getPose() const {return glmToTransform(pose_);}
+  rtabmap::Transform getPose() const {return pose_;}
+  const glm::mat4 & getPoseGl() const {return poseGl_;}
   bool isVisible() const {return visible_;}
   bool hasMesh() const {return polygons_.size()!=0;}
   bool hasTexture() const {return textures_ != 0;}
+  const pcl::PointXYZ & aabbMinModel() const {return aabbMinModel_;}
+  const pcl::PointXYZ & aabbMaxModel() const {return aabbMaxModel_;}
+  const pcl::PointXYZ & aabbMinWorld() const {return aabbMinWorld_;}
+  const pcl::PointXYZ & aabbMaxWorld() const {return aabbMaxWorld_;}
 
   // Update current point cloud data.
   //
@@ -79,6 +84,19 @@ class PointCloudDrawable {
 		  float distanceToCamSqr = 0.0f);
 
  private:
+  template<class PointT>
+  void updateAABBMinMax(const PointT & pt, pcl::PointXYZ & min, pcl::PointXYZ & max)
+  {
+	  if(pt.x<min.x) min.x = pt.x;
+	  if(pt.y<min.y) min.y = pt.y;
+	  if(pt.z<min.z) min.z = pt.z;
+	  if(pt.x>max.x) max.x = pt.x;
+	  if(pt.y>max.y) max.y = pt.y;
+	  if(pt.z>max.z) max.z = pt.z;
+  }
+  void updateAABBWorld(const rtabmap::Transform & pose);
+
+ private:
   // Vertex buffer of the point cloud geometry.
   GLuint vertex_buffers_;
   GLuint textures_;
@@ -87,7 +105,8 @@ class PointCloudDrawable {
   std::vector<GLuint> verticesLowRes_;
   std::vector<GLuint> verticesLowLowRes_;
   int nPoints_;
-  glm::mat4 pose_;
+  rtabmap::Transform pose_;
+  glm::mat4 poseGl_;
   bool visible_;
   bool hasNormals_;
   std::vector<unsigned int> organizedToDenseIndices_;
@@ -96,6 +115,11 @@ class PointCloudDrawable {
   GLuint texture_shader_program_;
 
   float gain_;
+
+  pcl::PointXYZ aabbMinModel_;
+  pcl::PointXYZ aabbMaxModel_;
+  pcl::PointXYZ aabbMinWorld_;
+  pcl::PointXYZ aabbMaxWorld_;
 };
 
 #endif  // TANGO_POINT_CLOUD_POINT_CLOUD_DRAWABLE_H_

@@ -66,7 +66,7 @@ public:
 	}
 
 protected:
-	virtual void handleEvent(UEvent * event)
+	virtual bool handleEvent(UEvent * event)
 	{
 		if(event->getClassName().compare("UserDataEvent") == 0)
 		{
@@ -84,7 +84,7 @@ protected:
 				wifiLevels_.insert(std::make_pair(stamp, level));
 			}
 		}
-		MapBuilder::handleEvent(event);
+		return MapBuilder::handleEvent(event);
 	}
 
 protected slots:

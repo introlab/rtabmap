@@ -37,6 +37,13 @@
    			android:entries="@array/pref_triangle_keys"
    			android:entryValues="@array/pref_triangle_values"
    			android:defaultValue="@string/pref_default_triangle"/>
+        <ListPreference 
+            android:key="@string/pref_key_rendering_texture_decimation"
+    		android:title="@string/pref_title_rendering_texture_decimation"
+    		android:summary="@string/pref_summary_rendering_texture_decimation"
+   			android:entries="@array/pref_rendering_texture_decimation_keys"
+   			android:entryValues="@array/pref_rendering_texture_decimation_values"
+   			android:defaultValue="@string/pref_default_rendering_texture_decimation"/>
         <SwitchPreference
             android:key="@string/pref_key_nodes_filtering"
             android:title="@string/pref_title_nodes_filtering"
@@ -269,12 +276,12 @@
    			android:entryValues="@array/pref_gain_max_radius_values"
    			android:defaultValue="@string/pref_default_gain_max_radius"/>
         <ListPreference 
-            android:key="@string/pref_key_min_cluster_size"
-    		android:title="@string/pref_title_min_cluster_size"
-    		android:summary="@string/pref_summary_min_cluster_size"
-   			android:entries="@array/pref_min_cluster_size_values"
-   			android:entryValues="@array/pref_min_cluster_size_values"
-   			android:defaultValue="@string/pref_default_min_cluster_size"/>
+            android:key="@string/pref_key_cluster_ratio"
+    		android:title="@string/pref_title_cluster_ratio"
+    		android:summary="@string/pref_summary_cluster_ratio"
+   			android:entries="@array/pref_cluster_ratio_keys"
+   			android:entryValues="@array/pref_cluster_ratio_values"
+   			android:defaultValue="@string/pref_default_cluster_ratio"/>
         
 	    <Preference android:title="@string/pref_title_reset_button"
 	                android:key="@string/pref_key_reset_button"/>

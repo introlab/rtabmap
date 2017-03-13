@@ -255,6 +255,7 @@ private:
 	bool _mapLabelsAdded;
 	int _imagePreDecimation;
 	int _imagePostDecimation;
+	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
 	int _laserScanNormalK;
 	bool _reextractLoopClosureFeatures;

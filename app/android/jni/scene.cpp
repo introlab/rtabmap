@@ -20,6 +20,7 @@
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/core/util3d_filtering.h>
+#include <pcl/common/transforms.h>
 
 #include <glm/gtx/transform.hpp>
 
@@ -153,6 +154,7 @@ Scene::Scene() :
 		axis_(0),
 		frustum_(0),
 		grid_(0),
+		box_(0),
 		trace_(0),
 		graph_(0),
 		graphVisible_(true),
@@ -168,6 +170,7 @@ Scene::Scene() :
 		meshRenderingTexture_(true),
 		pointSize_(5.0f),
 		frustumCulling_(true),
+		boundingBoxRendering_(false),
 		lighting_(true),
 		backfaceCulling_(true),
 		r_(0.0f),
@@ -199,6 +202,7 @@ void Scene::InitGLContent()
   frustum_ = new tango_gl::Frustum();
   trace_ = new tango_gl::Trace();
   grid_ = new tango_gl::Grid();
+  box_ = new BoundingBoxDrawable();
   currentPose_ = new rtabmap::Transform();
 
 
@@ -208,6 +212,8 @@ void Scene::InitGLContent()
   trace_->SetColor(kTraceColor);
   grid_->SetColor(kGridColor);
   grid_->SetPosition(-kHeightOffset);
+  box_->SetShader();
+  box_->SetColor(1,0,0);
 
   if(cloud_shader_program_ == 0)
   {
@@ -238,6 +244,7 @@ void Scene::DeleteResources() {
 	  delete trace_;
 	  delete grid_;
 	  delete currentPose_;
+	  delete box_;
 	}
 
 	if (cloud_shader_program_) {
@@ -285,6 +292,113 @@ void Scene::SetupViewPort(int w, int h) {
   gesture_camera_->SetAspectRatio(static_cast<float>(w) /
                                   static_cast<float>(h));
   glViewport(0, 0, w, h);
+}
+
+std::vector<glm::vec4> computeFrustumPlanes(const glm::mat4 & mat, bool normalize = true)
+{
+	// http://www.txutxi.com/?p=444
+	std::vector<glm::vec4> planes(6);
+
+	// Left Plane
+	// col4 + col1
+	planes[0].x = mat[0][3] + mat[0][0];
+	planes[0].y = mat[1][3] + mat[1][0];
+	planes[0].z = mat[2][3] + mat[2][0];
+	planes[0].w = mat[3][3] + mat[3][0];
+
+	// Right Plane
+	// col4 - col1
+	planes[1].x = mat[0][3] - mat[0][0];
+	planes[1].y = mat[1][3] - mat[1][0];
+	planes[1].z = mat[2][3] - mat[2][0];
+	planes[1].w = mat[3][3] - mat[3][0];
+
+	// Bottom Plane
+	// col4 + col2
+	planes[2].x = mat[0][3] + mat[0][1];
+	planes[2].y = mat[1][3] + mat[1][1];
+	planes[2].z = mat[2][3] + mat[2][1];
+	planes[2].w = mat[3][3] + mat[3][1];
+
+	// Top Plane
+	// col4 - col2
+	planes[3].x = mat[0][3] - mat[0][1];
+	planes[3].y = mat[1][3] - mat[1][1];
+	planes[3].z = mat[2][3] - mat[2][1];
+	planes[3].w = mat[3][3] - mat[3][1];
+
+	// Near Plane
+	// col4 + col3
+	planes[4].x = mat[0][3] + mat[0][2];
+	planes[4].y = mat[1][3] + mat[1][2];
+	planes[4].z = mat[2][3] + mat[2][2];
+	planes[4].w = mat[3][3] + mat[3][2];
+
+	// Far Plane
+	// col4 - col3
+	planes[5].x = mat[0][3] - mat[0][2];
+	planes[5].y = mat[1][3] - mat[1][2];
+	planes[5].z = mat[2][3] - mat[2][2];
+	planes[5].w = mat[3][3] - mat[3][2];
+
+	//if(normalize)
+	{
+		for(unsigned int i=0;i<planes.size(); ++i)
+		{
+			if(normalize)
+			{
+				float d = std::sqrt(planes[i].x * planes[i].x + planes[i].y * planes[i].y + planes[i].z * planes[i].z); // for normalizing the coordinates
+				planes[i].x/=d;
+				planes[i].y/=d;
+				planes[i].z/=d;
+				planes[i].w/=d;
+			}
+		}
+	}
+
+	return planes;
+}
+
+/**
+ * Tells whether or not b is intersecting f.
+ * http://www.txutxi.com/?p=584
+ * @param f Viewing frustum.
+ * @param b An axis aligned bounding box.
+ * @return True if b intersects f, false otherwise.
+ */
+bool intersectFrustumAABB(
+        const std::vector<glm::vec4> &planes,
+        const pcl::PointXYZ &boxMin,
+		const pcl::PointXYZ &boxMax)
+{
+  // Indexed for the 'index trick' later
+	const pcl::PointXYZ * box[] = {&boxMin, &boxMax};
+
+  // We only need to do 6 point-plane tests
+  for (unsigned int i = 0; i < planes.size(); ++i)
+  {
+    // This is the current plane
+    const glm::vec4 &p = planes[i];
+
+    // p-vertex selection (with the index trick)
+    // According to the plane normal we can know the
+    // indices of the positive vertex
+    const int px = p.x > 0.0f?1:0;
+    const int py = p.y > 0.0f?1:0;
+    const int pz = p.z > 0.0f?1:0;
+
+    // Dot product
+    // project p-vertex on plane normal
+    // (How far is p-vertex from the origin)
+    const float dp =
+        (p.x*box[px]->x) +
+        (p.y*box[py]->y) +
+        (p.z*box[pz]->z) + p.w;
+
+    // Doesn't intersect if it is behind the plane
+    if (dp < 0) {return false; }
+  }
+  return true;
 }
 
 //Should only be called in OpenGL thread!
@@ -353,7 +467,7 @@ int Scene::Render() {
 	}
 
 	float fov = 45.0f;
-	rtabmap::Transform openglCamera = GetOpenGLCameraPose(&fov)*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
+	rtabmap::Transform openglCamera = GetOpenGLCameraPose(&fov);//*rtabmap::Transform(0.0f, 0.0f, 3.0f, 0.0f, 0.0f, 0.0f);
 	// transform in same coordinate as frustum filtering
 	openglCamera *= rtabmap::Transform(
 		 0.0f,  0.0f,  1.0f, 0.0f,
@@ -363,50 +477,30 @@ int Scene::Render() {
 	int cloudDrawn=0;
 	if(mapRendering_ && frustumCulling_)
 	{
-		//Use camera frustum to cull nodes that don't need to be drawn
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-		std::vector<int> ids(pointClouds_.size());
-
-		cloud->resize(pointClouds_.size());
-		ids.resize(pointClouds_.size());
-		int oi=0;
+		std::vector<glm::vec4> planes = computeFrustumPlanes(gesture_camera_->GetProjectionMatrix()*gesture_camera_->GetViewMatrix(), true);
 		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
 		{
-			if(!iter->second->getPose().isNull() && iter->second->isVisible())
+			if(iter->second->isVisible())
 			{
-				(*cloud)[oi] = pcl::PointXYZ(iter->second->getPose().x(), iter->second->getPose().y(), iter->second->getPose().z());
-				ids[oi++] = iter->first;
-			}
-		}
-		cloud->resize(oi);
-		ids.resize(oi);
+				if(intersectFrustumAABB(planes,
+						iter->second->aabbMinWorld(),
+						iter->second->aabbMaxWorld()))
+				{
+					if(boundingBoxRendering_)
+					{
+						box_->updateVertices(iter->second->aabbMinWorld(), iter->second->aabbMaxWorld());
+						box_->Render(gesture_camera_->GetProjectionMatrix(),
+											gesture_camera_->GetViewMatrix());
+					}
 
-		if(oi)
-		{
-			pcl::IndicesPtr indices = rtabmap::util3d::frustumFiltering(
-					cloud,
-					pcl::IndicesPtr(new std::vector<int>),
-					openglCamera,
-					fov*2.0f,
-					fov*2.0f,
-					0.1f,
-					100.0f);
-
-			//LOGI("Frustum poses filtered = %d (showing %d/%d)",
-			//			(int)(pointClouds_.size()-indices->size()),
-			//			(int)indices->size(),
-			//			(int)pointClouds_.size());
-
-			for(unsigned int i=0; i<indices->size(); ++i)
-			{
-				++cloudDrawn;
-				std::map<int, PointCloudDrawable*>::const_iterator iter = pointClouds_.find(ids[indices->at(i)]);
-				Eigen::Vector3f cloudToCamera(
-						iter->second->getPose().x() - openglCamera.x(),
-						iter->second->getPose().y() - openglCamera.y(),
-						iter->second->getPose().z() - openglCamera.z());
-				float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
-				iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr);
+					++cloudDrawn;
+					Eigen::Vector3f cloudToCamera(
+							iter->second->getPose().x() - openglCamera.x(),
+							iter->second->getPose().y() - openglCamera.y(),
+							iter->second->getPose().z() - openglCamera.z());
+					float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+					iter->second->Render(gesture_camera_->GetProjectionMatrix(), gesture_camera_->GetViewMatrix(), meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr);
+				}
 			}
 		}
 	}
@@ -414,8 +508,20 @@ int Scene::Render() {
 	{
 		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
 		{
-			if((mapRendering_ || iter->first < 0) && iter->second->isVisible())
+			if(!mapRendering_ && iter->first > 0)
 			{
+				break;
+			}
+
+			if(iter->second->isVisible())
+			{
+				if(boundingBoxRendering_)
+				{
+					box_->updateVertices(iter->second->aabbMinWorld(), iter->second->aabbMaxWorld());
+					box_->Render(gesture_camera_->GetProjectionMatrix(),
+										gesture_camera_->GetViewMatrix());
+				}
+
 				++cloudDrawn;
 				Eigen::Vector3f cloudToCamera(
 						iter->second->getPose().x() - openglCamera.x(),
@@ -475,8 +581,11 @@ void Scene::updateGraph(
 	}
 
 	//create
-	UASSERT(graph_shader_program_ != 0);
-	graph_ = new GraphDrawable(graph_shader_program_, poses, links);
+	if(graphVisible_)
+	{
+		UASSERT(graph_shader_program_ != 0);
+		graph_ = new GraphDrawable(graph_shader_program_, poses, links);
+	}
 }
 
 void Scene::setGraphVisible(bool visible)

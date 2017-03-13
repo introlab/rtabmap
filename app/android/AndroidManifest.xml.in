@@ -2,7 +2,7 @@
 <!-- BEGIN_INCLUDE(manifest) -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
         package="com.introlab.rtabmap"
-        android:versionCode="44"
+        android:versionCode="45"
         android:versionName="@RTABMAP_VERSION@">
 
     <uses-permission android:name="android.permission.CAMERA" />
@@ -20,7 +20,8 @@
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 
         android:label="@string/app_name" 
-        android:icon="@drawable/ic_launcher">
+        android:icon="@drawable/ic_launcher"
+        android:debuggable="@ANDROID_DEBUGGABLE@">
         
         <uses-library android:name="com.projecttango.libtango_device2" android:required="true" />
 

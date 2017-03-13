@@ -259,16 +259,22 @@ Java_com_introlab_rtabmap_RTABMapLib_setMeshTriangleSize(
 	return app.setMeshTriangleSize(value);
 }
 JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_setMinClusterSize(
-		JNIEnv*, jobject, int value)
+Java_com_introlab_rtabmap_RTABMapLib_setClusterRatio(
+		JNIEnv*, jobject, float value)
 {
-	return app.setMinClusterSize(value);
+	return app.setClusterRatio(value);
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMaxGainRadius(
 		JNIEnv*, jobject, float value)
 {
 	return app.setMaxGainRadius(value);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setRenderingTextureDecimation(
+		JNIEnv*, jobject, int value)
+{
+	return app.setRenderingTextureDecimation(value);
 }
 JNIEXPORT jint JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMappingParameter(

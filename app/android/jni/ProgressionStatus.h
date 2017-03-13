@@ -27,7 +27,7 @@ public:
 class ProgressionStatus: public ProgressState, public UEventsHandler
 {
 public:
-	ProgressionStatus() : count_(0), max_(100), canceled_(false), jvm_(0), rtabmap_(0)
+	ProgressionStatus() : count_(0), max_(100), jvm_(0), rtabmap_(0)
 	{
 		registerToEventsManager();
 	}
@@ -42,7 +42,7 @@ public:
 	{
 		count_=-1;
 		max_ = max;
-		canceled_ = false;
+		setCanceled(false);
 
 		increment();
 	}
@@ -65,27 +65,17 @@ public:
 
 	virtual bool callback(const std::string & msg) const
 	{
-		if(!canceled_)
+		if(!isCanceled())
 		{
 			increment();
 		}
 
-		return !canceled_;
+		return !isCanceled();
 	}
 	virtual ~ProgressionStatus(){}
 
-	void cancel()
-	{
-		canceled_ = true;
-	}
-
-	bool isCanceled() const
-	{
-		return canceled_;
-	}
-
 protected:
-	virtual void handleEvent(UEvent * event)
+	virtual bool handleEvent(UEvent * event)
 	{
 		if(event->getClassName().compare("ProgressEvent") == 0)
 		{
@@ -118,12 +108,12 @@ protected:
 				UERROR("Failed to call rtabmap::updateProgressionCallback");
 			}
 		}
+		return false;
 	}
 
 private:
 	int count_;
 	int max_;
-	bool canceled_;
 	JavaVM *jvm_;
 	jobject rtabmap_;
 };

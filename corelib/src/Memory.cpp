@@ -85,6 +85,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
 	_imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
+	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_laserScanNormalK(Parameters::defaultMemLaserScanNormalK()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
@@ -429,6 +430,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
 	Parameters::parse(parameters, Parameters::kMemImagePreDecimation(), _imagePreDecimation);
 	Parameters::parse(parameters, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
+	Parameters::parse(parameters, Parameters::kMemCompressionParallelized(), _compressionParallelized);
 	Parameters::parse(parameters, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
 	Parameters::parse(parameters, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
 	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
@@ -3679,30 +3681,49 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			depthOrRightImage = util2d::cvtDepthFromFloat(depthOrRightImage);
 		}
 
-		rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
-		rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
-		rtabmap::CompressionThread ctLaserScan(laserScan);
-		rtabmap::CompressionThread ctUserData(data.userDataRaw());
-		if(!image.empty())
+		cv::Mat compressedImage;
+		cv::Mat compressedDepth;
+		cv::Mat compressedScan;
+		cv::Mat compressedUserData;
+		if(_compressionParallelized)
 		{
-			ctImage.start();
+			rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
+			rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
+			rtabmap::CompressionThread ctLaserScan(laserScan);
+			rtabmap::CompressionThread ctUserData(data.userDataRaw());
+			if(!image.empty())
+			{
+				ctImage.start();
+			}
+			if(!depthOrRightImage.empty())
+			{
+				ctDepth.start();
+			}
+			if(!laserScan.empty())
+			{
+				ctLaserScan.start();
+			}
+			if(!data.userDataRaw().empty())
+			{
+				ctUserData.start();
+			}
+			ctImage.join();
+			ctDepth.join();
+			ctLaserScan.join();
+			ctUserData.join();
+
+			compressedImage = ctImage.getCompressedData();
+			compressedDepth = ctDepth.getCompressedData();
+			compressedScan = ctLaserScan.getCompressedData();
+			compressedUserData = ctUserData.getCompressedData();
 		}
-		if(!depthOrRightImage.empty())
+		else
 		{
-			ctDepth.start();
+			compressedImage = compressImage2(image, std::string(".jpg"));
+			compressedDepth = compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?std::string(".png"):std::string(".jpg"));
+			compressedScan = compressData2(laserScan);
+			compressedUserData = compressData2(data.userDataRaw());
 		}
-		if(!laserScan.empty())
-		{
-			ctLaserScan.start();
-		}
-		if(!data.userDataRaw().empty())
-		{
-			ctUserData.start();
-		}
-		ctImage.join();
-		ctDepth.join();
-		ctLaserScan.join();
-		ctUserData.join();
 
 		s = new Signature(id,
 			_idMapCount,
@@ -3713,23 +3734,23 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						ctLaserScan.getCompressedData(),
+						compressedScan,
 						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
-						ctImage.getCompressedData(),
-						ctDepth.getCompressedData(),
+						compressedImage,
+						compressedDepth,
 						stereoCameraModel,
 						id,
 						0,
-						ctUserData.getCompressedData()):
+						compressedUserData):
 				SensorData(
-						ctLaserScan.getCompressedData(),
+						compressedScan,
 						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
-						ctImage.getCompressedData(),
-						ctDepth.getCompressedData(),
+						compressedImage,
+						compressedDepth,
 						cameraModels,
 						id,
 						0,
-						ctUserData.getCompressedData()));
+						compressedUserData));
 	}
 	else
 	{
@@ -3738,18 +3759,31 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						data.userDataRaw().empty()?0:1);
 
 		// just compress user data and laser scan (scans can be used for local scan matching)
-		rtabmap::CompressionThread ctUserData(data.userDataRaw());
-		rtabmap::CompressionThread ctLaserScan(laserScan);
-		if(!data.userDataRaw().empty() && !isIntermediateNode)
+		cv::Mat compressedScan;
+		cv::Mat compressedUserData;
+		if(_compressionParallelized)
 		{
-			ctUserData.start();
+			rtabmap::CompressionThread ctUserData(data.userDataRaw());
+			rtabmap::CompressionThread ctLaserScan(laserScan);
+			if(!data.userDataRaw().empty() && !isIntermediateNode)
+			{
+				ctUserData.start();
+			}
+			if(!laserScan.empty() && !isIntermediateNode)
+			{
+				ctLaserScan.start();
+			}
+			ctUserData.join();
+			ctLaserScan.join();
+
+			compressedScan = ctLaserScan.getCompressedData();
+			compressedUserData = ctUserData.getCompressedData();
 		}
-		if(!laserScan.empty() && !isIntermediateNode)
+		else
 		{
-			ctLaserScan.start();
+			compressedScan = compressData2(laserScan);
+			compressedUserData = compressData2(data.userDataRaw());
 		}
-		ctUserData.join();
-		ctLaserScan.join();
 
 		s = new Signature(id,
 			_idMapCount,
@@ -3760,23 +3794,23 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						ctLaserScan.getCompressedData(),
+						compressedScan,
 						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
 						id,
 						0,
-						ctUserData.getCompressedData()):
+						compressedUserData):
 				SensorData(
-						ctLaserScan.getCompressedData(),
+						compressedScan,
 						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
 						id,
 						0,
-						ctUserData.getCompressedData()));
+						compressedUserData));
 	}
 
 	s->setWords(words);

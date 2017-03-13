@@ -96,36 +96,49 @@ public class Renderer implements GLSurfaceView.Renderer {
 				mTextManager.Draw(mtrxProjectionAndView);
 			}
 
-			mActivity.runOnUiThread(new Runnable() {
-				public void run() {
-					if(value != 0 && mProgressDialog != null && mProgressDialog.isShowing())
-					{
-						Log.i("RTABMapActivity", "Renderer: dismiss dialog, value received=" + String.valueOf(value));
-						mProgressDialog.dismiss();
-						mActivity.stopUpdateStatusThread();
-					}
-					if(value==-1 && mToast!=null)
-					{
-						mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
-					}
-					else if(value==-2 && mToast!=null)
-					{
-						mToast.makeText(mActivity, String.format("Rendering Error!"), Toast.LENGTH_SHORT).show();
-					}
-				} 
-			});
-		}
-		catch(final Exception e)
-		{
-			if(mToast!=null)
+			if(value != 0 && mProgressDialog != null && mProgressDialog.isShowing())
 			{
 				mActivity.runOnUiThread(new Runnable() {
 					public void run() {
-						mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_SHORT).show();
+						if(!RTABMapActivity.DISABLE_LOG) Log.i("RTABMapActivity", "Renderer: dismiss dialog, value received=" + String.valueOf(value));
+						mProgressDialog.dismiss();
 					}
-
 				});
 			}
+			if(value==-1)
+			{
+				mActivity.runOnUiThread(new Runnable() {
+					public void run() {
+						if(mToast!=null)
+						{
+							mToast.makeText(mActivity, String.format("Out of Memory!"), Toast.LENGTH_SHORT).show();
+						}
+					}
+				});
+			}
+			else if(value==-2)
+			{
+				mActivity.runOnUiThread(new Runnable() {
+					public void run() {
+						if(mToast!=null)
+						{
+							mToast.makeText(mActivity, String.format("Rendering Error!"), Toast.LENGTH_SHORT).show();
+						}
+					}
+				});
+			}
+		}
+		catch(final Exception e)
+		{
+			mActivity.runOnUiThread(new Runnable() {
+				public void run() {
+					if(mToast!=null)
+					{
+						mToast.makeText(mActivity, String.format("Rendering error! %s", e.getMessage()), Toast.LENGTH_SHORT).show();
+					}
+				}
+
+			});
 		}
 	}
 

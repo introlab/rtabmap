@@ -40,7 +40,7 @@ class TexturingState : public QObject, public ProgressState
 	Q_OBJECT
 
 public:
-	TexturingState(ProgressDialog * dialog): dialog_(dialog), canceled_(false)
+	TexturingState(ProgressDialog * dialog): dialog_(dialog)
 	{
 		connect(dialog_, SIGNAL(canceled()), this, SLOT(cancel()));
 	}
@@ -53,18 +53,17 @@ public:
 			dialog_->incrementStep();
 		}
 		QApplication::processEvents();
-		return !canceled_;
+		return !isCanceled();
 	}
 
 public slots:
 	void cancel()
 	{
-		canceled_ = true;
+		setCanceled(true);
 	}
 
 private:
 	ProgressDialog * dialog_;
-	bool canceled_;
 };
 
 }

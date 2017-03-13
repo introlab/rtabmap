@@ -114,7 +114,7 @@ public slots:
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);
-	virtual void handleEvent(UEvent* anEvent);
+	virtual bool handleEvent(UEvent* anEvent);
 	virtual void showEvent(QShowEvent* anEvent);
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);

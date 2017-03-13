@@ -175,7 +175,7 @@ private:
     /*
 	 * This method dispatches an event to all handlers.
 	 */
-    virtual void dispatchEvent(UEvent * event, const UEventsSender * sender);
+    virtual bool dispatchEvent(UEvent * event, const UEventsSender * sender);
 
     /*
      * This method is used to add an events 

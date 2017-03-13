@@ -175,7 +175,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Rtabmap, PublishLikelihood, 	         bool, true, "Publishing likelihood.");
 	RTABMAP_PARAM(Rtabmap, TimeThr, 		             float, 0,   "Maximum time allowed for the detector (ms) (0 means infinity).");
 	RTABMAP_PARAM(Rtabmap, MemoryThr, 		             int, 0, 	 "Maximum signatures in the Working Memory (ms) (0 means infinity).");
-	RTABMAP_PARAM(Rtabmap, DetectionRate,                float, 1,   "Detection rate. RTAB-Map will filter input images to satisfy this rate.");
+	RTABMAP_PARAM(Rtabmap, DetectionRate,                float, 1,   "Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.");
 	RTABMAP_PARAM(Rtabmap, ImageBufferSize,              unsigned int, 1, "Data buffer size (0 min inf).");
 	RTABMAP_PARAM(Rtabmap, CreateIntermediateNodes,      bool, false, uFormat("Create intermediate nodes between loop closure detection. Only used when %s>0.", kRtabmapDetectionRate().c_str()));
 	RTABMAP_PARAM_STR(Rtabmap, WorkingDirectory,         "", "Working directory.");
@@ -209,6 +209,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, InitWMWithAllNodes,      bool, false,     "Initialize the Working Memory with all nodes in Long-Term Memory. When false, it is initialized with nodes of the previous session.");
 	RTABMAP_PARAM(Mem, ImagePreDecimation,      int, 1,          "Image decimation (>=1) before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
 	RTABMAP_PARAM(Mem, ImagePostDecimation,     int, 1,          "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
+	RTABMAP_PARAM(Mem, CompressionParallelized, bool, true,      "Compression of sensor data is multi-threaded.");
 	RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,      "If > 1, downsample the laser scans when creating a signature.");
 	RTABMAP_PARAM(Mem, LaserScanNormalK,        int, 0,          "If > 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.");
 	RTABMAP_PARAM(Mem, UseOdomFeatures,         bool, false, "Use odometry features.");

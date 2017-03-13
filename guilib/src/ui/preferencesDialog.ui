@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-182</y>
             <width>673</width>
             <height>2718</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>8</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -6077,7 +6077,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="0">
+                      <item row="15" column="0">
                        <widget class="QSpinBox" name="general_spinBox_laserScanDownsample">
                         <property name="minimumSize">
                          <size>
@@ -6116,7 +6116,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="12" column="1">
+                      <item row="13" column="1">
                        <widget class="QLabel" name="label_retrieved_13">
                         <property name="text">
                          <string>Image pre decimation. This option can be used to reduce image size before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
@@ -6188,7 +6188,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="0">
+                      <item row="14" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePostDecimation">
                         <property name="minimum">
                          <number>-16</number>
@@ -6234,7 +6234,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="1">
+                      <item row="14" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
                          <string>Image post decimation. This option can be used to save images in lower resolution (size/decimation). It is done on the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
@@ -6260,7 +6260,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="1">
+                      <item row="15" column="1">
                        <widget class="QLabel" name="label_retrieved_8">
                         <property name="text">
                          <string>If &gt; 1, downsample the laser scans when creating a location. This feature can be used to save laser scans already downsampled.</string>
@@ -6283,7 +6283,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="12" column="0">
+                      <item row="13" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePreDecimation">
                         <property name="minimum">
                          <number>-16</number>
@@ -6293,20 +6293,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="1">
-                       <widget class="QLabel" name="label_retrieved_14">
-                        <property name="text">
-                         <string>If &gt; 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="15" column="0">
+                      <item row="16" column="0">
                        <widget class="QSpinBox" name="general_spinBox_laserScanNormalK">
                         <property name="minimumSize">
                          <size>
@@ -6322,6 +6309,42 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="value">
                          <number>0</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="16" column="1">
+                       <widget class="QLabel" name="label_retrieved_14">
+                        <property name="text">
+                         <string>If &gt; 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="12" column="1">
+                       <widget class="QLabel" name="label_retrieved_15">
+                        <property name="text">
+                         <string>Multi-threaded compression.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="12" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_compressionParallelized">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>

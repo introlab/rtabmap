@@ -37,6 +37,7 @@
 
 #include <point_cloud_drawable.h>
 #include <graph_drawable.h>
+#include <bounding_box_drawable.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -127,6 +128,7 @@ class Scene {
   void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
   void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
 
+  bool isMapRendering() const {return mapRendering_;}
   bool isMeshRendering() const {return meshRendering_;}
   bool isMeshTexturing() const {return meshRendering_ && meshRenderingTexture_;}
   float getPointSize() const {return pointSize_;}
@@ -146,6 +148,9 @@ class Scene {
 
   // Ground grid.
   tango_gl::Grid* grid_;
+
+  // Bounding box
+  BoundingBoxDrawable * box_;
 
   // Trace of pose data.
   tango_gl::Trace* trace_;
@@ -170,6 +175,7 @@ class Scene {
   bool meshRenderingTexture_;
   float pointSize_;
   bool frustumCulling_;
+  bool boundingBoxRendering_;
   bool lighting_;
   bool backfaceCulling_;
   float r_;

@@ -55,7 +55,7 @@ OdometryThread::~OdometryThread()
 	UDEBUG("");
 }
 
-void OdometryThread::handleEvent(UEvent * event)
+bool OdometryThread::handleEvent(UEvent * event)
 {
 	if(this->isRunning())
 	{
@@ -72,6 +72,7 @@ void OdometryThread::handleEvent(UEvent * event)
 			_resetOdometry = true;
 		}
 	}
+	return false;
 }
 
 void OdometryThread::mainLoopBegin()

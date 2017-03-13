@@ -38,7 +38,7 @@
 
     <!-- Preference keys: BEGIN -->
     <string name="pref_key_tags">pref_key_tags</string>
-    <string name="pref_default_tags">rtabmap 3dscan</string>
+    <string name="pref_default_tags">rtabmap 3dscan tango</string>
     <string name="pref_key_rendering">pref_key_rendering</string>
     <string name="pref_default_rendering">2</string>
     <string name="pref_key_reset_button">pref_key_reset_button</string>
@@ -49,9 +49,11 @@
     <string name="pref_key_point_size">pref_key_point_size</string>
     <string name="pref_default_point_size">5</string>
     <string name="pref_key_angle">pref_key_angle</string>
-    <string name="pref_default_angle">15</string>
+    <string name="pref_default_angle">20</string>
     <string name="pref_key_triangle">pref_key_triangle</string>
     <string name="pref_default_triangle">2</string>
+    <string name="pref_key_rendering_texture_decimation">pref_key_rendering_texture_decimation</string>
+    <string name="pref_default_rendering_texture_decimation">4</string>
     <string name="pref_key_nodes_filtering">pref_key_nodes_filtering</string>
     <string name="pref_default_nodes_filtering">false</string>
     <string name="pref_key_append">pref_key_append</string>
@@ -114,17 +116,19 @@
     <string name="pref_default_opt_clean_white">true</string>
     <string name="pref_key_gain_max_radius">pref_key_gain_max_radius</string>
     <string name="pref_default_gain_max_radius">0.02</string>
-    <string name="pref_key_min_cluster_size">pref_key_min_cluster_size</string>
-    <string name="pref_default_min_cluster_size">200</string>
+    <string name="pref_key_cluster_ratio">pref_key_cluster_ratio</string>
+    <string name="pref_default_cluster_ratio">0.05</string>
     <!-- Preference keys: END -->
 
     <string name="pref_title_rendering">Rendering</string>
     <string name="pref_title_density">Point Cloud Density</string>
     <string name="pref_summary_density">Decrease density to reduce rendering time and memory. Tip: To apply a different density to current map: save the map, change density and re-open the same map to regenerate the point clouds at this density.</string>
     <string name="pref_title_angle">Mesh Angle Tolerance</string>
-    <string name="pref_summary_angle">Minimum polygon angle.</string>
+    <string name="pref_summary_angle">Minimum polygon angle. Increase to force scanning perpendicular to surfaces.</string>
     <string name="pref_title_triangle">Mesh Triangle Size</string>
     <string name="pref_summary_triangle">Size in pixels of the polygons created from the depth image.</string>
+    <string name="pref_title_rendering_texture_decimation">Texture Resolution</string>
+    <string name="pref_summary_rendering_texture_decimation">Resolution of the texture for online rendering. This doesn\'t affect Export results.</string>
     <string name="pref_title_depth">Max Depth</string>
     <string name="pref_summary_depth">Points over the maximum depth are not rendered.</string>
     <string name="pref_title_point_size">Point Size</string>
@@ -178,6 +182,9 @@
         <item>"1"</item>
     </string-array>
     <string-array name="pref_angle_keys">
+        <item>"60 deg"</item>
+        <item>"45 deg"</item>
+        <item>"35 deg"</item>
         <item>"30 deg"</item>
         <item>"25 deg"</item>
         <item>"20 deg"</item>
@@ -186,6 +193,9 @@
         <item>"5 deg"</item>
     </string-array>
     <string-array name="pref_angle_values">
+        <item>"60"</item>
+        <item>"45"</item>
+        <item>"35"</item>
         <item>"30"</item>
         <item>"25"</item>
         <item>"20"</item>
@@ -206,6 +216,18 @@
         <item>"4"</item>
         <item>"3"</item>
         <item>"2"</item>
+    </string-array>
+    <string-array name="pref_rendering_texture_decimation_keys">
+        <item>"Maximum"</item>
+        <item>"High"</item>
+        <item>"Low"</item>
+        <item>"Very Low"</item>
+    </string-array>
+    <string-array name="pref_rendering_texture_decimation_values">
+        <item>"1"</item>
+        <item>"2"</item>
+        <item>"4"</item>
+        <item>"8"</item>
     </string-array>
 
     <string name="pref_title_mapping_sub">Mapping&#8230;</string>
@@ -614,8 +636,8 @@
     <string name="pref_title_general">General</string>
     <string name="pref_title_gain_max_radius">Color Correction Radius</string>
     <string name="pref_summary_gain_max_radius">Radius used to find pixel correspondences for Adjust Colors optimization.</string>
-    <string name="pref_title_min_cluster_size">Min Cluster Size</string>
-    <string name="pref_summary_min_cluster_size">Minimum number of polygons for a cluster to be kept after Noise Filtering optimization.</string>
+    <string name="pref_title_cluster_ratio">Noise Filtering Ratio</string>
+    <string name="pref_summary_cluster_ratio">Polygon clusters with size smaller than this ratio of the largest cluster are removed by the Noise Filtering optimization.</string>
 
     <string-array name="pref_gain_max_radius_keys">
         <item>"0.3 m"</item>
@@ -633,12 +655,33 @@
         <item>"0.02"</item>
         <item>"0.01"</item>
     </string-array>
-    <string-array name="pref_min_cluster_size_values">
-        <item>"500"</item>
-        <item>"200"</item>
-        <item>"100"</item>
-        <item>"50"</item>
-        <item>"10"</item>
+    <string-array name="pref_cluster_ratio_keys">
+        <item>"Keep Largest Only"</item>
+        <item>"0.9"</item>
+        <item>"0.8"</item>
+        <item>"0.7"</item>
+        <item>"0.6"</item>
+        <item>"0.5"</item>
+        <item>"0.4"</item>
+        <item>"0.3"</item>
+        <item>"0.2"</item>
+        <item>"0.1"</item>
+        <item>"0.05"</item>
+        <item>"0.01"</item>
+    </string-array>
+    <string-array name="pref_cluster_ratio_values">
+        <item>"1.0"</item>
+        <item>"0.9"</item>
+        <item>"0.8"</item>
+        <item>"0.7"</item>
+        <item>"0.6"</item>
+        <item>"0.5"</item>
+        <item>"0.4"</item>
+        <item>"0.3"</item>
+        <item>"0.2"</item>
+        <item>"0.1"</item>
+        <item>"0.05"</item>
+        <item>"0.01"</item>
     </string-array>
 
     <string name="pref_title_reset_button">Restore All Default Settings</string>

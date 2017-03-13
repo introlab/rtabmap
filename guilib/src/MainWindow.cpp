@@ -722,7 +722,7 @@ void MainWindow::closeEvent(QCloseEvent* event)
 	UDEBUG("");
 }
 
-void MainWindow::handleEvent(UEvent* anEvent)
+bool MainWindow::handleEvent(UEvent* anEvent)
 {
 	if(anEvent->getClassName().compare("RtabmapEvent") == 0)
 	{
@@ -856,6 +856,7 @@ void MainWindow::handleEvent(UEvent* anEvent)
 			}
 		}
 	}
+	return false;
 }
 
 void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)

@@ -82,6 +82,10 @@ public:
 	void setDataBufferSize(unsigned int bufferSize);
 	void createIntermediateNodes(bool enabled);
 
+	float getDetectorRate() const {return _rate;}
+	unsigned int getDataBufferSize() const {return _dataBufferMaxSize;}
+	bool getCreateIntermediateNodes() const {return _createIntermediateNodes;}
+
 	/**
 	 * Close rtabmap. This will delete rtabmap object if set.
 	 * @param databaseSaved true=database saved, false=database discarded.
@@ -92,7 +96,7 @@ public:
 	void close(bool databaseSaved, const std::string & databasePath = "");
 
 protected:
-	virtual void handleEvent(UEvent * anEvent);
+	virtual bool handleEvent(UEvent * anEvent);
 
 private:
 	virtual void mainLoopBegin();

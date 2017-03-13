@@ -33,7 +33,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         ((Preference)findPreference(getString(R.string.pref_key_point_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_point_size))).getEntry() + ") "+getString(R.string.pref_summary_point_size));
         ((Preference)findPreference(getString(R.string.pref_key_angle))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_angle))).getEntry() + ") "+getString(R.string.pref_summary_angle));
         ((Preference)findPreference(getString(R.string.pref_key_triangle))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_triangle))).getEntry() + ") "+getString(R.string.pref_summary_triangle));
-   
+        ((Preference)findPreference(getString(R.string.pref_key_rendering_texture_decimation))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_rendering_texture_decimation))).getEntry() + ") "+getString(R.string.pref_summary_rendering_texture_decimation));
+          
         ((Preference)findPreference(getString(R.string.pref_key_update_rate))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_update_rate))).getEntry() + ") "+getString(R.string.pref_summary_update_rate));
         ((Preference)findPreference(getString(R.string.pref_key_time_thr))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_time_thr))).getEntry() + ") "+getString(R.string.pref_summary_time_thr));
         ((Preference)findPreference(getString(R.string.pref_key_mem_thr))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_mem_thr))).getEntry() + ") "+getString(R.string.pref_summary_mem_thr));
@@ -55,7 +56,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         ((Preference)findPreference(getString(R.string.pref_key_opt_depth))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_opt_depth))).getEntry() + ") "+getString(R.string.pref_summary_opt_depth));
         ((Preference)findPreference(getString(R.string.pref_key_opt_color_radius))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_opt_color_radius))).getEntry() + ") "+getString(R.string.pref_summary_opt_color_radius));
     
-        ((Preference)findPreference(getString(R.string.pref_key_min_cluster_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_min_cluster_size))).getEntry() + ") "+getString(R.string.pref_summary_min_cluster_size));
+        ((Preference)findPreference(getString(R.string.pref_key_cluster_ratio))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_cluster_ratio))).getEntry() + ") "+getString(R.string.pref_summary_cluster_ratio));
         ((Preference)findPreference(getString(R.string.pref_key_gain_max_radius))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_gain_max_radius))).getEntry() + ") "+getString(R.string.pref_summary_gain_max_radius));
     }
     
@@ -68,6 +69,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	if(key.compareTo(getString(R.string.pref_key_point_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_point_size));
         	if(key.compareTo(getString(R.string.pref_key_angle))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_angle));
         	if(key.compareTo(getString(R.string.pref_key_triangle))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_triangle));
+        	if(key.compareTo(getString(R.string.pref_key_rendering_texture_decimation))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_rendering_texture_decimation));
         	
         	if(key.compareTo(getString(R.string.pref_key_update_rate))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_update_rate));
         	if(key.compareTo(getString(R.string.pref_key_time_thr))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_time_thr));
@@ -90,7 +92,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	if(key.compareTo(getString(R.string.pref_key_opt_depth))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_opt_depth));
         	if(key.compareTo(getString(R.string.pref_key_opt_color_radius))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_opt_color_radius));
         	
-        	if(key.compareTo(getString(R.string.pref_key_min_cluster_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_min_cluster_size));
+        	if(key.compareTo(getString(R.string.pref_key_cluster_ratio))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_cluster_ratio));
         	if(key.compareTo(getString(R.string.pref_key_gain_max_radius))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_gain_max_radius));
         
         }

@@ -6,6 +6,12 @@ add_subdirectory(jni)
 # Packaging
 ######
 
+IF(DISABLE_LOG)
+   SET(ANDROID_DEBUGGABLE false)
+ELSE()
+   SET(ANDROID_DEBUGGABLE true)
+ENDIF()
+
 # find android
 find_host_program(ANDROID_EXECUTABLE
   NAMES android

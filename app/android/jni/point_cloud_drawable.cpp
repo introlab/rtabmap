@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UConversion.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include "util.h"
+#include "pcl/common/transforms.h"
 
 #include <GLES2/gl2.h>
 
@@ -47,7 +48,8 @@ PointCloudDrawable::PointCloudDrawable(
 		vertex_buffers_(0),
 		textures_(0),
 		nPoints_(0),
-		pose_(1.0f),
+		pose_(rtabmap::Transform::getIdentity()),
+		poseGl_(1.0f),
 		visible_(true),
 		hasNormals_(false),
 		cloud_shader_program_(cloudShaderProgram),
@@ -64,7 +66,8 @@ PointCloudDrawable::PointCloudDrawable(
 		vertex_buffers_(0),
 		textures_(0),
 		nPoints_(0),
-		pose_(1.0f),
+		pose_(rtabmap::Transform::getIdentity()),
+		poseGl_(1.0f),
 		visible_(true),
 		hasNormals_(false),
 		cloud_shader_program_(cloudShaderProgram),
@@ -138,6 +141,8 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 	gain_ = gain;
 	verticesLowRes_.clear();
 	verticesLowLowRes_.clear();
+	aabbMinModel_ = aabbMinWorld_ = pcl::PointXYZ(1000,1000,1000);
+	aabbMaxModel_ = aabbMaxWorld_ = pcl::PointXYZ(-1000,-1000,-1000);
 
 	if (vertex_buffers_)
 	{
@@ -173,10 +178,13 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 		int oi_lowlow = 0;
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
-			vertices[i*4] = cloud->at(indices->at(i)).x;
-			vertices[i*4+1] = cloud->at(indices->at(i)).y;
-			vertices[i*4+2] = cloud->at(indices->at(i)).z;
-			vertices[i*4+3] = cloud->at(indices->at(i)).rgb;
+			const pcl::PointXYZRGB & pt = cloud->at(indices->at(i));
+			vertices[i*4] = pt.x;
+			vertices[i*4+1] = pt.y;
+			vertices[i*4+2] = pt.z;
+			vertices[i*4+3] = pt.rgb;
+
+			updateAABBMinMax(pt, aabbMinModel_, aabbMaxModel_);
 
 			if(cloud->isOrganized())
 			{
@@ -203,10 +211,13 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 		int oi_lowlow = 0;
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
-			vertices[i*4] = cloud->at(i).x;
-			vertices[i*4+1] = cloud->at(i).y;
-			vertices[i*4+2] = cloud->at(i).z;
-			vertices[i*4+3] = cloud->at(i).rgb;
+			const pcl::PointXYZRGB & pt = cloud->at(i);
+			vertices[i*4] = pt.x;
+			vertices[i*4+1] = pt.y;
+			vertices[i*4+2] = pt.z;
+			vertices[i*4+3] = pt.rgb;
+
+			updateAABBMinMax(pt, aabbMinModel_, aabbMaxModel_);
 
 			if(cloud->isOrganized())
 			{
@@ -243,6 +254,8 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 {
 	UASSERT(mesh.cloud.get() && !mesh.cloud->empty());
 	nPoints_ = 0;
+	aabbMinModel_ = aabbMinWorld_ = pcl::PointXYZ(1000,1000,1000);
+	aabbMaxModel_ = aabbMaxWorld_ = pcl::PointXYZ(-1000,-1000,-1000);
 
 	if (vertex_buffers_)
 	{
@@ -306,12 +319,15 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 			vertices = std::vector<float>(mesh.indices->size()*9);
 			for(unsigned int i=0; i<mesh.indices->size(); ++i)
 			{
-				vertices[i*items] = mesh.cloud->at(mesh.indices->at(i)).x;
-				vertices[i*items+1] = mesh.cloud->at(mesh.indices->at(i)).y;
-				vertices[i*items+2] = mesh.cloud->at(mesh.indices->at(i)).z;
+				const pcl::PointXYZRGB & pt = mesh.cloud->at(mesh.indices->at(i));
+				vertices[i*items] = pt.x;
+				vertices[i*items+1] = pt.y;
+				vertices[i*items+2] = pt.z;
 
 				// rgb
-				vertices[i*items+3] = mesh.cloud->at(mesh.indices->at(i)).rgb;
+				vertices[i*items+3] = pt.rgb;
+
+				updateAABBMinMax(pt, aabbMinModel_, aabbMaxModel_);
 
 				// texture uv
 				int index = mesh.indices->at(i);
@@ -345,10 +361,13 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 			vertices = std::vector<float>(mesh.indices->size()*items);
 			for(unsigned int i=0; i<mesh.indices->size(); ++i)
 			{
-				vertices[i*items] = mesh.cloud->at(mesh.indices->at(i)).x;
-				vertices[i*items+1] = mesh.cloud->at(mesh.indices->at(i)).y;
-				vertices[i*items+2] = mesh.cloud->at(mesh.indices->at(i)).z;
-				vertices[i*items+3] = mesh.cloud->at(mesh.indices->at(i)).rgb;
+				const pcl::PointXYZRGB & pt = mesh.cloud->at(mesh.indices->at(i));
+				vertices[i*items] = pt.x;
+				vertices[i*items+1] = pt.y;
+				vertices[i*items+2] = pt.z;
+				vertices[i*items+3] = pt.rgb;
+
+				updateAABBMinMax(pt, aabbMinModel_, aabbMaxModel_);
 
 				if(hasNormals_)
 				{
@@ -401,12 +420,16 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 					UASSERT(oi < mesh.texCoords.size());
 					UASSERT(v.vertices[j] < mesh.cloud->size());
 
-					vertices[oi*items] = mesh.cloud->at(v.vertices[j]).x;
-					vertices[oi*items+1] = mesh.cloud->at(v.vertices[j]).y;
-					vertices[oi*items+2] = mesh.cloud->at(v.vertices[j]).z;
+					const pcl::PointXYZRGB & pt =  mesh.cloud->at(v.vertices[j]);
+
+					vertices[oi*items] = pt.x;
+					vertices[oi*items+1] = pt.y;
+					vertices[oi*items+2] = pt.z;
 
 					// rgb
-					vertices[oi*items+3] = mesh.cloud->at(v.vertices[j]).rgb;
+					vertices[oi*items+3] = pt.rgb;
+
+					updateAABBMinMax(pt, aabbMinModel_, aabbMaxModel_);
 
 					// texture uv
 					if(mesh.texCoords[oi][0]>=0.0f)
@@ -444,10 +467,14 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 			vertices = std::vector<float>(mesh.cloud->size()*items);
 			for(unsigned int i=0; i<mesh.cloud->size(); ++i)
 			{
-				vertices[i*items] = mesh.cloud->at(i).x;
-				vertices[i*items+1] = mesh.cloud->at(i).y;
-				vertices[i*items+2] = mesh.cloud->at(i).z;
-				vertices[i*items+3] = mesh.cloud->at(i).rgb;
+				const pcl::PointXYZRGB & pt =  mesh.cloud->at(i);
+
+				vertices[i*items] =pt.x;
+				vertices[i*items+1] = pt.y;
+				vertices[i*items+2] = pt.z;
+				vertices[i*items+3] = pt.rgb;
+
+				updateAABBMinMax(pt, aabbMinModel_, aabbMaxModel_);
 
 				if(hasNormals_)
 				{
@@ -513,14 +540,50 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 	{
 		updatePolygons(polygons, polygonsLowRes);
 	}
+
+	if(!pose_.isNull())
+	{
+		updateAABBWorld(pose_);
+	}
 }
 
 void PointCloudDrawable::setPose(const rtabmap::Transform & pose)
 {
 	UASSERT(!pose.isNull());
 
-	pose_ = glmFromTransform(pose);
+	if(pose_ != pose)
+	{
+		updateAABBWorld(pose);
+	}
+
+	pose_ = pose;
+	poseGl_ = glmFromTransform(pose);
 }
+
+void PointCloudDrawable::updateAABBWorld(const rtabmap::Transform & pose)
+{
+	pcl::PointCloud<pcl::PointXYZ> corners;
+	corners.resize(8);
+	corners.at(0) = pcl::PointXYZ(aabbMinModel_.x, aabbMinModel_.y, aabbMinModel_.z);
+	corners.at(1) = pcl::PointXYZ(aabbMinModel_.x, aabbMinModel_.y, aabbMaxModel_.z);
+	corners.at(2) = pcl::PointXYZ(aabbMinModel_.x, aabbMaxModel_.y, aabbMinModel_.z);
+	corners.at(3) = pcl::PointXYZ(aabbMaxModel_.x, aabbMinModel_.y, aabbMinModel_.z);
+	corners.at(4) = pcl::PointXYZ(aabbMaxModel_.x, aabbMaxModel_.y, aabbMaxModel_.z);
+	corners.at(5) = pcl::PointXYZ(aabbMaxModel_.x, aabbMaxModel_.y, aabbMinModel_.z);
+	corners.at(6) = pcl::PointXYZ(aabbMaxModel_.x, aabbMinModel_.y, aabbMaxModel_.z);
+	corners.at(7) = pcl::PointXYZ(aabbMinModel_.x, aabbMaxModel_.y, aabbMaxModel_.z);
+
+	pcl::PointCloud<pcl::PointXYZ> cornersTransformed;
+	pcl::transformPointCloud(corners, cornersTransformed, pose.toEigen3f());
+
+	aabbMinWorld_ = pcl::PointXYZ(1000,1000,1000);
+	aabbMaxWorld_ = pcl::PointXYZ(-1000,-1000,-1000);
+	for(unsigned int i=0; i<cornersTransformed.size(); ++i)
+	{
+		updateAABBMinMax(cornersTransformed.at(i), aabbMinWorld_, aabbMaxWorld_);
+	}
+}
+
 
 void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 		const glm::mat4 & viewMatrix,
@@ -537,7 +600,7 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			glUseProgram(texture_shader_program_);
 
 			GLuint mvp_handle = glGetUniformLocation(texture_shader_program_, "uMVP");
-			glm::mat4 mv_mat = viewMatrix * pose_;
+			glm::mat4 mv_mat = viewMatrix * poseGl_;
 			glm::mat4 mvp_mat = projectionMatrix * mv_mat;
 			glUniformMatrix4fv(mvp_handle, 1, GL_FALSE, glm::value_ptr(mvp_mat));
 
@@ -611,7 +674,7 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			glUseProgram(cloud_shader_program_);
 
 			GLuint mvp_handle_ = glGetUniformLocation(cloud_shader_program_, "uMVP");
-			glm::mat4 mv_mat = viewMatrix * pose_;
+			glm::mat4 mv_mat = viewMatrix * poseGl_;
 			glm::mat4 mvp_mat = projectionMatrix * mv_mat;
 			glUniformMatrix4fv(mvp_handle_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
 
