@@ -1598,7 +1598,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	            	return String.format("%d00 000", i);
 	            }
 	        });
-	        aNumberPicker.setValue(1);
+	        aNumberPicker.setValue(2);
 
 	        // Fix to correctly show value on first render
 	        try {

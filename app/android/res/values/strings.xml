@@ -620,8 +620,10 @@
         <item>"0.2 m"</item>
         <item>"0.1 m"</item>
         <item>"0.05 m"</item>
-        <item>"0.025 m"</item>
-        <item>"0.01 m"</item>
+        <item>"0.025"</item>
+        <item>"0.02"</item>
+        <item>"0.015"</item>
+        <item>"0.01"</item>
         <item>"Disabled"</item>
     </string-array>
     <string-array name="pref_opt_color_radius_values">
@@ -633,6 +635,8 @@
         <item>"0.1"</item>
         <item>"0.05"</item>
         <item>"0.025"</item>
+        <item>"0.02"</item>
+        <item>"0.015"</item>
         <item>"0.01"</item>
         <item>"-1"</item>
     </string-array>
@@ -648,7 +652,9 @@
         <item>"0.2 m"</item>
         <item>"0.1 m"</item>
         <item>"0.05 m"</item>
+        <item>"0.025 m"</item>
         <item>"0.02 m"</item>
+        <item>"0.015 m"</item>
         <item>"0.01 m"</item>
     </string-array>
     <string-array name="pref_gain_max_radius_values">
@@ -656,7 +662,9 @@
         <item>"0.2"</item>
         <item>"0.1"</item>
         <item>"0.05"</item>
+        <item>"0.025"</item>
         <item>"0.02"</item>
+        <item>"0.015"</item>
         <item>"0.01"</item>
     </string-array>
     <string-array name="pref_cluster_ratio_keys">
