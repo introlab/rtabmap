@@ -128,6 +128,7 @@ class RTABMapApp : public UEventsHandler {
   void setGridVisible(bool visible);
   void setAutoExposure(bool enabled);
   void setRawScanSaved(bool enabled);
+  void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
   void setSmoothing(bool enabled);
   void setAppendMode(bool enabled);
@@ -189,6 +190,7 @@ class RTABMapApp : public UEventsHandler {
   bool autoExposure_;
   bool rawScanSaved_;
   bool smoothing_;
+  bool cameraColor_;
   bool fullResolution_;
   bool appendMode_;
   float maxCloudDepth_;

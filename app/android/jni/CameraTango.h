@@ -75,7 +75,7 @@ public:
 	static const float bilateralFilteringSigmaR;
 
 public:
-	CameraTango(int decimation, bool autoExposure, bool publishRawScan, bool smoothing);
+	CameraTango(bool colorCamera, int decimation, bool autoExposure, bool publishRawScan, bool smoothing);
 	virtual ~CameraTango();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -84,6 +84,7 @@ public:
 	virtual std::string getSerial() const;
 	const CameraModel & getCameraModel() const {return model_;}
 	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
+	void setColorCamera(bool enabled) {if(!this->isRunning()) colorCamera_ = enabled;}
 	void setDecimation(int value) {decimation_ = value;}
 	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
@@ -109,6 +110,7 @@ private:
 	bool firstFrame_;
 	UTimer cameraStartedTime_;
 	double stampEpochOffset_;
+	bool colorCamera_;
 	int decimation_;
 	bool autoExposure_;
 	bool rawScanPublished_;
@@ -123,6 +125,8 @@ private:
 	CameraModel model_;
 	Transform deviceTColorCamera_;
 	TangoSupportRotation colorCameraToDisplayRotation_;
+	cv::Mat fisheyeRectifyMapX_;
+	cv::Mat fisheyeRectifyMapY_;
 };
 
 } /* namespace rtabmap */

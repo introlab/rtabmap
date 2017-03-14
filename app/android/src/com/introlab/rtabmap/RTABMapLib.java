@@ -71,6 +71,7 @@ public class RTABMapLib
     public static native void setRawScanSaved(boolean enabled);
     public static native void setFullResolution(boolean enabled);
     public static native void setSmoothing(boolean enabled);
+    public static native void setCameraColor(boolean enabled);
     public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);

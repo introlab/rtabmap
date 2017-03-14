@@ -223,6 +223,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setSmoothing(
 	return app.setSmoothing(enabled);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setCameraColor(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setCameraColor(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setAppendMode(
 		JNIEnv*, jobject, bool enabled)
 {

@@ -64,6 +64,8 @@
     <string name="pref_default_resolution">false</string>
     <string name="pref_key_smoothing">pref_key_smoothing</string>
     <string name="pref_default_smoothing">true</string>
+    <string name="pref_key_fisheye">pref_key_fisheye</string>
+    <string name="pref_default_fisheye">false</string>
     
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
@@ -240,9 +242,11 @@
     <string name="pref_title_auto_exposure">Auto Exposure</string>
     <string name="pref_summary_auto_exposure">Adjust camera exposure depending on the lighting to get always maximum contrast. This may change texture color between scanned images. Color correction option in Post-Processing can help to uniformize colors. May not work on some devices.</string>
     <string name="pref_title_resolution">HD Mode</string>
-    <string name="pref_summary_resolution">Save HD images if you want very detailed textures. More memory will be required.</string>
+    <string name="pref_summary_resolution">Save HD images of the color camera if you want very detailed textures. More memory will be required.</string>
     <string name="pref_title_smoothing">Smoothing</string>
     <string name="pref_summary_smoothing">Smooth the point clouds.</string>
+    <string name="pref_title_fisheye">Fish Eye Camera</string>
+    <string name="pref_summary_fisheye">Use fish eye camera instead of the color camera. Cannot be used on Yellowstone tablet.</string>
     <string name="pref_title_update_rate">Update Rate</string>
     <string name="pref_summary_update_rate">Rate at which a new node is added to map.</string>
     <string name="pref_title_time_thr">Time Limit</string>

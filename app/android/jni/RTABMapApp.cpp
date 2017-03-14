@@ -76,7 +76,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kKpMaxFeatures(), std::string("200")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGFTTQualityLevel(), std::string("0.0001")));
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImagePreDecimation(), std::string(fullResolution_?"2":"1")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kMemImagePreDecimation(), std::string(cameraColor_&&fullResolution_?"2":"1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kBRIEFBytes(), std::string("64")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapTimeThr(), std::string("800")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapPublishLikelihood(), std::string("false")));
@@ -153,6 +153,7 @@ RTABMapApp::RTABMapApp() :
 		autoExposure_(true),
 		rawScanSaved_(false),
 		smoothing_(true),
+		cameraColor_(true),
 		fullResolution_(false),
 		appendMode_(true),
 		maxCloudDepth_(0.0),
@@ -257,13 +258,12 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 
 	this->registerToEventsManager();
 
-	camera_ = new rtabmap::CameraTango(fullResolution_?1:2, autoExposure_, rawScanSaved_, smoothing_);
+	camera_ = new rtabmap::CameraTango(cameraColor_, !cameraColor_ || fullResolution_?1:2, autoExposure_, rawScanSaved_, smoothing_);
 }
 
 void RTABMapApp::setScreenRotation(int displayRotation, int cameraRotation)
 {
-	TangoSupportRotation rotation = tango_gl::util::GetAndroidRotationFromColorCameraToDisplay(
-			displayRotation, cameraRotation);
+	TangoSupportRotation rotation = tango_gl::util::GetAndroidRotationFromColorCameraToDisplay(displayRotation, cameraRotation);
 	LOGI("Set orientation: display=%d camera=%d -> %d", displayRotation, cameraRotation, (int)rotation);
 	main_scene_.setScreenRotation(rotation);
 	camera_->setScreenRotation(rotation);
@@ -458,6 +458,7 @@ bool RTABMapApp::onTangoServiceConnected(JNIEnv* env, jobject iBinder)
 		    return false;
 		}
 
+		camera_->setColorCamera(cameraColor_);
 		if(camera_->init())
 		{
 			LOGI("Start camera thread");
@@ -524,7 +525,6 @@ std::vector<pcl::Vertices> RTABMapApp::filterOrganizedPolygons(
 		}
 	}
 
-	int biggestCluster = 0;
 	unsigned int biggestClusterSize = 0;
 	for(std::map<int, std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
 	{
@@ -533,12 +533,11 @@ std::vector<pcl::Vertices> RTABMapApp::filterOrganizedPolygons(
 		if(iter->second.size() > biggestClusterSize)
 		{
 			biggestClusterSize = iter->second.size();
-			biggestCluster = iter->first;
 		}
 	}
 	unsigned int minClusterSize = (unsigned int)(float(biggestClusterSize)*clusterRatio_);
-	LOGI("Biggest cluster is %d = %d -> minClusterSize(ratio=%f)=%d",
-			biggestCluster, biggestClusterSize, clusterRatio_, (int)minClusterSize);
+	LOGI("Biggest cluster %d -> minClusterSize(ratio=%f)=%d",
+			biggestClusterSize, clusterRatio_, (int)minClusterSize);
 
 	std::vector<pcl::Vertices> filteredPolygons(polygons.size());
 	int oi = 0;
@@ -1558,6 +1557,14 @@ void RTABMapApp::setRawScanSaved(bool enabled)
 	}
 }
 
+void RTABMapApp::setCameraColor(bool enabled)
+{
+	if(cameraColor_ != enabled)
+	{
+		cameraColor_ = enabled;
+	}
+}
+
 void RTABMapApp::setFullResolution(bool enabled)
 {
 	if(fullResolution_ != enabled)
@@ -1858,6 +1865,12 @@ cv::Mat RTABMapApp::mergeTextures(pcl::TextureMesh & mesh, int textureSize) cons
 							{
 								cv::multiply(resizedImage, createdMeshes_.at(textures[i]).gain, resizedImage);
 							}
+							if(resizedImage.type() == CV_8UC1)
+							{
+								cv::Mat resizedImageColor;
+								cv::cvtColor(resizedImage,resizedImageColor,CV_GRAY2RGB);
+								resizedImage = resizedImageColor;
+							}
 							UASSERT(resizedImage.type() == globalTexture.type());
 							resizedImage.copyTo(globalTexture(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
 						}
@@ -1979,7 +1992,9 @@ bool RTABMapApp::exportMesh(
 
 					UTimer timer;
 					LOGI("Assemble clouds (%d)...", (int)poses.size());
+#ifndef DISABLE_LOG
 					int cloudCount=0;
+#endif
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 					for(std::map<int, rtabmap::Transform>::iterator iter=poses.begin();
 						iter!= poses.end();

@@ -460,6 +460,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			RTABMapLib.setRawScanSaved(sharedPref.getBoolean(getString(R.string.pref_key_raw_scan_saved), Boolean.parseBoolean(getString(R.string.pref_default_raw_scan_saved))));
 			RTABMapLib.setFullResolution(sharedPref.getBoolean(getString(R.string.pref_key_resolution), Boolean.parseBoolean(getString(R.string.pref_default_resolution))));
 			RTABMapLib.setSmoothing(sharedPref.getBoolean(getString(R.string.pref_key_smoothing), Boolean.parseBoolean(getString(R.string.pref_default_smoothing))));
+			RTABMapLib.setCameraColor(!sharedPref.getBoolean(getString(R.string.pref_key_fisheye), Boolean.parseBoolean(getString(R.string.pref_default_fisheye))));
 			RTABMapLib.setAppendMode(sharedPref.getBoolean(getString(R.string.pref_key_append), Boolean.parseBoolean(getString(R.string.pref_default_append))));
 			RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", mUpdateRate);
 			RTABMapLib.setMappingParameter("Rtabmap/TimeThr", mTimeThr);
@@ -585,7 +586,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private void setAndroidOrientation() {
         Display display = getWindowManager().getDefaultDisplay();
         Camera.CameraInfo colorCameraInfo = new Camera.CameraInfo();
-        Camera.getCameraInfo(0, colorCameraInfo);
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+        boolean fisheye = sharedPref.getBoolean(getString(R.string.pref_key_fisheye), Boolean.parseBoolean(getString(R.string.pref_default_fisheye)));
+        Camera.getCameraInfo(fisheye?1:0, colorCameraInfo);
         RTABMapLib.setScreenRotation(display.getRotation(), colorCameraInfo.orientation);
     }
 

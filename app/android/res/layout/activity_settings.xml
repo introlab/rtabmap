@@ -80,6 +80,11 @@
 		        android:title="@string/pref_title_smoothing"
 		        android:summary="@string/pref_summary_smoothing"
 		        android:defaultValue="@string/pref_default_smoothing"/>
+		    <SwitchPreference
+		        android:key="@string/pref_key_fisheye"
+		        android:title="@string/pref_title_fisheye"
+		        android:summary="@string/pref_summary_fisheye"
+		        android:defaultValue="@string/pref_default_fisheye"/>
 	  
 		     <PreferenceCategory
 	        	android:title="@string/pref_title_mapping_core">
