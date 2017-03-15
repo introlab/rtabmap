@@ -134,7 +134,7 @@ class RTABMapApp : public UEventsHandler {
   void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
-  void setMeshDecimation(int value);
+  void setCloudDensityLevel(int value);
   void setMeshAngleTolerance(float value);
   void setMeshTriangleSize(int value);
   void setClusterRatio(float value);
@@ -194,7 +194,7 @@ class RTABMapApp : public UEventsHandler {
   bool fullResolution_;
   bool appendMode_;
   float maxCloudDepth_;
-  int meshDecimation_;
+  int cloudDensityLevel_;
   int meshTrianglePix_;
   float meshAngleToleranceDeg_;
   float clusterRatio_;
@@ -213,6 +213,7 @@ class RTABMapApp : public UEventsHandler {
   int gainCompensationOnNextRender_;
   bool bilateralFilteringOnNextRender_;
   bool cameraJustInitialized_;
+  int meshDecimation_;
   int totalPoints_;
   int totalPolygons_;
   int lastDrawnCloudsCount_;

@@ -78,7 +78,7 @@ public class RTABMapLib
     public static native void setPointSize(float value);
     public static native void setLighting(boolean enabled);
     public static native void setBackfaceCulling(boolean enabled);
-    public static native void setMeshDecimation(int value);
+    public static native void setCloudDensityLevel(int value);
     public static native void setMeshAngleTolerance(float value);
     public static native void setMeshTriangleSize(int value);
     public static native void setClusterRatio(float value);

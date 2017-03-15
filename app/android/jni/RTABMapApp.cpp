@@ -157,7 +157,7 @@ RTABMapApp::RTABMapApp() :
 		fullResolution_(false),
 		appendMode_(true),
 		maxCloudDepth_(0.0),
-		meshDecimation_(1),
+		cloudDensityLevel_(1),
 		meshTrianglePix_(1),
 		meshAngleToleranceDeg_(15.0),
 		clusterRatio_(0.1),
@@ -173,6 +173,7 @@ RTABMapApp::RTABMapApp() :
 		gainCompensationOnNextRender_(0),
 		bilateralFilteringOnNextRender_(false),
 		cameraJustInitialized_(false),
+		meshDecimation_(1),
 		totalPoints_(0),
 		totalPolygons_(0),
 		lastDrawnCloudsCount_(0),
@@ -461,6 +462,72 @@ bool RTABMapApp::onTangoServiceConnected(JNIEnv* env, jobject iBinder)
 		camera_->setColorCamera(cameraColor_);
 		if(camera_->init())
 		{
+			//update mesh decimation based on camera calibration
+			LOGI("Cloud density level %d", cloudDensityLevel_);
+			meshDecimation_ = 1;
+			if(camera_)
+			{
+				// Google Tango Tablet 160x90
+				// Phab2Pro 240x135
+				// FishEye 640x480
+				int width = camera_->getCameraModel().imageWidth()/(cameraColor_?8:1);
+				int height = camera_->getCameraModel().imageHeight()/(cameraColor_?8:1);
+				if(cloudDensityLevel_ == 3) // high
+				{
+					if(height >= 480 && width % 20 == 0 && height % 20 == 0)
+					{
+						meshDecimation_ = 20;
+					}
+					else if(width % 10 == 0 && height % 10 == 0)
+					{
+						meshDecimation_ = 10;
+					}
+					else if(width % 15 == 0 && height % 15 == 0)
+					{
+						meshDecimation_ = 15;
+					}
+					else
+					{
+						UERROR("Could not set decimation to high (size=%dx%d)", width, height);
+					}
+				}
+				else if(cloudDensityLevel_ == 2) // medium
+				{
+					if(height >= 480 && width % 10 == 0 && height % 10 == 0)
+					{
+						meshDecimation_ = 10;
+					}
+					else if(width % 5 == 0 && height % 5 == 0)
+					{
+						meshDecimation_ = 5;
+					}
+					else
+					{
+						UERROR("Could not set decimation to medium (size=%dx%d)", width, height);
+					}
+				}
+				else if(cloudDensityLevel_ == 1) // low
+				{
+					if(height >= 480 && width % 5 == 0 && height % 5 == 0)
+					{
+						meshDecimation_ = 5;
+					}
+					else if(width % 3 == 0 && width % 3 == 0)
+					{
+						meshDecimation_ = 3;
+					}
+					else if(width % 2 == 0 && width % 2 == 0)
+					{
+						meshDecimation_ = 2;
+					}
+					else
+					{
+						UERROR("Could not set decimation to low (size=%dx%d)", width, height);
+					}
+				}
+			}
+			LOGI("Set decimation to %d", meshDecimation_);
+
 			LOGI("Start camera thread");
 			if(!paused_)
 			{
@@ -1616,59 +1683,9 @@ void RTABMapApp::setMaxCloudDepth(float value)
 	maxCloudDepth_ = value;
 }
 
-void RTABMapApp::setMeshDecimation(int value)
+void RTABMapApp::setCloudDensityLevel(int value)
 {
-	LOGW("Set mesh decimation to level %d", value);
-	meshDecimation_ = 1;
-	if(camera_)
-	{
-		// Google Tango Tablet 160x90
-		// Phab2Pro 240x135
-		int width = camera_->getCameraModel().imageWidth()/8;
-		int height = camera_->getCameraModel().imageHeight()/8;
-		if(value == 3) // high
-		{
-			if(width % 10 == 0 && height % 10 == 0)
-			{
-				meshDecimation_ = 10;
-			}
-			else if(width % 15 == 0 && height % 15 == 0)
-			{
-				meshDecimation_ = 15;
-			}
-			else
-			{
-				UERROR("Could not set decimation to high (size=%dx%d)", width, height);
-			}
-		}
-		else if(value == 2) // medium
-		{
-			if(width % 5 == 0 && height % 5 == 0)
-			{
-				meshDecimation_ = 5;
-			}
-			else
-			{
-				UERROR("Could not set decimation to medium (size=%dx%d)", width, height);
-			}
-		}
-		else if(value == 1) // low
-		{
-			if(width % 3 == 0 && width % 3 == 0)
-			{
-				meshDecimation_ = 3;
-			}
-			else if(width % 2 == 0 && width % 2 == 0)
-			{
-				meshDecimation_ = 2;
-			}
-			else
-			{
-				UERROR("Could not set decimation to low (size=%dx%d)", width, height);
-			}
-		}
-	}
-	UINFO("Set decimation to %d", meshDecimation_);
+	cloudDensityLevel_ = value;
 }
 
 void RTABMapApp::setMeshAngleTolerance(float value)

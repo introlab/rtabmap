@@ -247,10 +247,10 @@ Java_com_introlab_rtabmap_RTABMapLib_setMaxCloudDepth(
 	return app.setMaxCloudDepth(value);
 }
 JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_setMeshDecimation(
+Java_com_introlab_rtabmap_RTABMapLib_setCloudDensityLevel(
 		JNIEnv*, jobject, int value)
 {
-	return app.setMeshDecimation(value);
+	return app.setCloudDensityLevel(value);
 }
 JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMeshAngleTolerance(

@@ -736,7 +736,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 				bool pixelSet = false;
 				if(pixel_x_l>=0 && pixel_x_l<depth.cols &&
-				   pixel_y_l>0 && pixel_y_l<depth.rows &&
+				   pixel_y_l>0 && pixel_y_l<depth.rows && // ignore first line
 				   depth_value)
 				{
 					unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_l, pixel_x_l);
@@ -747,7 +747,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 					}
 				}
 				if(pixel_x_h>=0 && pixel_x_h<depth.cols &&
-				   pixel_y_h>0 && pixel_y_h<depth.rows &&
+				   pixel_y_h>0 && pixel_y_h<depth.rows && // ignore first line
 				   depth_value)
 				{
 					unsigned short & depthPixel = depth.at<unsigned short>(pixel_y_h, pixel_x_h);
