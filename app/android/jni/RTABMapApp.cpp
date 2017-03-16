@@ -1962,9 +1962,7 @@ bool RTABMapApp::exportMesh(
 
 	try
 	{
-		std::map<int, rtabmap::Transform> poses;
-		std::multimap<int, rtabmap::Link> links;
-		rtabmap_->getGraph(poses, links, true, true);
+		std::map<int, rtabmap::Transform> poses = rtabmap_->getLocalOptimizedPoses();
 
 		int totalSteps = 0;
 		totalSteps+=poses.size(); // assemble
