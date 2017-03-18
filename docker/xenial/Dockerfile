@@ -15,7 +15,13 @@ WORKDIR /root/
 RUN git clone https://github.com/introlab/rtabmap.git
 
 # Build RTAB-Map project
-WORKDIR /root/rtabmap
-RUN cd build && \
+RUN cd rtabmap/build && \
     cmake .. && \
-    make -j$(nproc)
+    make -j$(nproc) && \
+    make install && \
+    cd ../.. && \
+    rm -rf rtabmap && \
+    ldconfig
+
+WORKDIR /root
+    
