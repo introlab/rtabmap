@@ -8,8 +8,8 @@
 
 FIND_PATH(Tango_INCLUDE_DIR tango_client_api.h)
 
-FIND_LIBRARY(Tango_LIBRARY NAMES tango_client_api)
-FIND_LIBRARY(Tango_support_LIBRARY NAMES tango_support_api)
+FIND_LIBRARY(Tango_LIBRARY NAMES tango_client_api PATH_SUFFIXES ${ANDROID_ABI})
+FIND_LIBRARY(Tango_support_LIBRARY NAMES tango_support_api PATH_SUFFIXES ${ANDROID_ABI})
 
 IF (Tango_INCLUDE_DIR AND Tango_LIBRARY AND Tango_support_LIBRARY)
    SET(Tango_FOUND TRUE)
