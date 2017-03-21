@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y \
       git \
       cmake \
       libproj-dev \
-      libqt5svg5-dev
+      libqt5svg5-dev \
+      software-properties-common
 
 # Clone source code
 WORKDIR /root/
