@@ -1,4 +1,4 @@
-FROM introlab3it:rtabmap-android-deps
+FROM introlab3it/rtabmap-android-deps
 
 WORKDIR /root/
 
