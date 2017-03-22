@@ -54,6 +54,8 @@ class DBDriver;
 class ImageView;
 class SensorData;
 class CloudViewer;
+class OctoMap;
+class ExportCloudsDialog;
 
 class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
 {
@@ -102,6 +104,7 @@ private slots:
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);
 	void updateGrid();
+	void updateOctomapView();
 	void updateGraphView();
 	void refineConstraint();
 	void addConstraint();
@@ -159,6 +162,7 @@ private:
 	CloudViewer * cloudViewerA_;
 	CloudViewer * cloudViewerB_;
 	CloudViewer * stereoViewer_;
+	CloudViewer * occupancyGridViewer_;
 	QList<int> ids_;
 	std::map<int, int> mapIds_;
 	QMap<int, int> idToIndex_;
@@ -176,8 +180,11 @@ private:
 	std::multimap<int, rtabmap::Link> linksAdded_;
 	std::multimap<int, rtabmap::Link> linksRemoved_;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps_; // <ground, obstacles>
+	std::map<int, std::pair<float, cv::Point3f> > localMapsInfo_; // <cell size, viewpoint>
 	std::map<int, std::pair<cv::Mat, cv::Mat> > generatedLocalMaps_; // <ground, obstacles>
 	std::map<int, std::pair<float, cv::Point3f> > generatedLocalMapsInfo_; // <cell size, viewpoint>
+	OctoMap * octomap_;
+	ExportCloudsDialog * exportDialog_;
 
 	bool savedMaximized_;
 	bool firstCall_;

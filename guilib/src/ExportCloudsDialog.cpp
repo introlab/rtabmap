@@ -43,6 +43,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "rtabmap/core/clams/discrete_depth_distortion_model.h"
+#include "rtabmap/core/DBDriver.h"
 
 #include <pcl/conversions.h>
 #include <pcl/io/pcd_io.h>
@@ -65,7 +66,8 @@ namespace rtabmap {
 ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	QDialog(parent),
 	_canceled(false),
-	_compensator(0)
+	_compensator(0),
+	_dbDriver(0)
 {
 	_ui = new Ui_ExportCloudsDialog();
 	_ui->setupUi(this);
@@ -392,9 +394,9 @@ void ExportCloudsDialog::restoreDefaults()
 {
 	_ui->comboBox_pipeline->setCurrentIndex(1);
 	_ui->checkBox_binary->setChecked(true);
-	_ui->spinBox_normalKSearch->setValue(10);
+	_ui->spinBox_normalKSearch->setValue(20);
 
-	_ui->checkBox_regenerate->setChecked(false);
+	_ui->checkBox_regenerate->setChecked(_dbDriver!=0?true:false);
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
@@ -749,8 +751,17 @@ void ExportCloudsDialog::viewClouds(
 						uIsInteger(mesh->tex_materials[0].tex_file, false))
 					{
 						int textureId = uStr2Int(mesh->tex_materials[0].tex_file);
-						UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
-						cachedSignatures.value(textureId).sensorData().uncompressDataConst(&globalTexture, 0);
+						SensorData data;
+						if(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty())
+						{
+							data = cachedSignatures.value(textureId).sensorData();
+						}
+						else if(_dbDriver)
+						{
+							_dbDriver->getNodeData(textureId, data, true, false, false, false);
+						}
+						UASSERT(!data.imageCompressed().empty());
+						data.uncompressDataConst(&globalTexture, 0);
 						UASSERT(!globalTexture.empty());
 						if (_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
 						{
@@ -864,7 +875,11 @@ bool ExportCloudsDialog::getExportedClouds(
 {
 	_canceled = false;
 	_workingDirectory = workingDirectory;
-	enableRegeneration(cachedSignatures.size());
+	enableRegeneration(_dbDriver || cachedSignatures.size());
+	if(cachedSignatures.empty() && _dbDriver)
+	{
+		_ui->checkBox_regenerate->setChecked(true);
+	}
 	if(_compensator)
 	{
 		delete _compensator;
@@ -1073,17 +1088,26 @@ bool ExportCloudsDialog::getExportedClouds(
 			// Adjust view points with local transforms
 			for(std::map<int, Transform>::iterator iter= viewPoints.begin(); iter!=viewPoints.end(); ++iter)
 			{
+				std::vector<CameraModel> models;
+				StereoCameraModel stereoModel;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
-					if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
-					{
-						iter->second *= data.cameraModels()[0].localTransform();
-					}
-					else if(!data.stereoCameraModel().localTransform().isNull())
-					{
-						iter->second *= data.stereoCameraModel().localTransform();
-					}
+					models = data.cameraModels();
+					stereoModel = data.stereoCameraModel();
+				}
+				else if(_dbDriver)
+				{
+					_dbDriver->getCalibration(iter->first, models, stereoModel);
+				}
+
+				if(models.size() && !models[0].localTransform().isNull())
+				{
+					iter->second *= models[0].localTransform();
+				}
+				else if(!stereoModel.localTransform().isNull())
+				{
+					iter->second *= stereoModel.localTransform();
 				}
 			}
 		}
@@ -1194,22 +1218,33 @@ bool ExportCloudsDialog::getExportedClouds(
 						if(iter->second->size())
 						{
 							Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
+
+							std::vector<CameraModel> models;
+							StereoCameraModel stereoModel;
 							if(cachedSignatures.contains(iter->first))
 							{
 								const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
-								if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
-								{
-									viewpoint[0] = data.cameraModels()[0].localTransform().x();
-									viewpoint[1] = data.cameraModels()[0].localTransform().y();
-									viewpoint[2] = data.cameraModels()[0].localTransform().z();
-								}
-								else if(!data.stereoCameraModel().localTransform().isNull())
-								{
-									viewpoint[0] = data.stereoCameraModel().localTransform().x();
-									viewpoint[1] = data.stereoCameraModel().localTransform().y();
-									viewpoint[2] = data.stereoCameraModel().localTransform().z();
-								}
+								models = data.cameraModels();
+								stereoModel = data.stereoCameraModel();
 							}
+							else if(_dbDriver)
+							{
+								_dbDriver->getCalibration(iter->first, models, stereoModel);
+							}
+
+							if(models.size() && !models[0].localTransform().isNull())
+							{
+								viewpoint[0] = models[0].localTransform().x();
+								viewpoint[1] = models[0].localTransform().y();
+								viewpoint[2] = models[0].localTransform().z();
+							}
+							else if(!stereoModel.localTransform().isNull())
+							{
+								viewpoint[0] = stereoModel.localTransform().x();
+								viewpoint[1] = stereoModel.localTransform().y();
+								viewpoint[2] = stereoModel.localTransform().z();
+							}
+
 							std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
 									iter->second,
 									_ui->doubleSpinBox_mesh_angleTolerance->value()*M_PI/180.0,
@@ -1766,29 +1801,52 @@ bool ExportCloudsDialog::getExportedClouds(
 				std::map<int, CameraModel> cameraModels;
 				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
 				{
+					std::vector<CameraModel> models;
+					StereoCameraModel stereoModel;
+					bool cacheHasCompressedImage = false;
 					if(cachedSignatures.contains(jter->first))
 					{
-						const Signature & s = cachedSignatures.value(jter->first);
-						CameraModel model;
-						if(s.sensorData().stereoCameraModel().isValidForProjection())
-						{
-							model = s.sensorData().stereoCameraModel().left();
-						}
-						else if(s.sensorData().cameraModels().size() == 1 && s.sensorData().cameraModels()[0].isValidForProjection())
-						{
-							model = s.sensorData().cameraModels()[0];
-						}
-						if(!jter->second.isNull() && model.isValidForProjection() && !s.sensorData().imageCompressed().empty())
-						{
-							if(model.imageWidth() == 0 || model.imageHeight() == 0)
-							{
-								// we are using an old database format (image size not saved in calibrations), we should
-								// uncompress images to get their size
-								cv::Mat img;
-								s.sensorData().uncompressDataConst(&img, 0);
-								model.setImageSize(img.size());
-							}
+						const SensorData & data = cachedSignatures.find(jter->first)->sensorData();
+						models = data.cameraModels();
+						stereoModel = data.stereoCameraModel();
+						cacheHasCompressedImage = !data.imageCompressed().empty();
+					}
+					else if(_dbDriver)
+					{
+						_dbDriver->getCalibration(jter->first, models, stereoModel);
+					}
 
+					CameraModel model;
+					if(stereoModel.isValidForProjection())
+					{
+						model = stereoModel.left();
+					}
+					else if(models.size() == 1 && models[0].isValidForProjection())
+					{
+						model = models[0];
+					}
+					if(!jter->second.isNull() && model.isValidForProjection())
+					{
+						if(model.imageWidth() == 0 || model.imageHeight() == 0)
+						{
+							// we are using an old database format (image size not saved in calibrations), we should
+							// uncompress images to get their size
+							cv::Mat img;
+							if(cacheHasCompressedImage)
+							{
+								cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(&img, 0);
+							}
+							else if(_dbDriver)
+							{
+								SensorData data;
+								_dbDriver->getNodeData(jter->first, data, true, false, false, false);
+								data.uncompressDataConst(&img, 0);
+							}
+							model.setImageSize(img.size());
+						}
+
+						if(model.imageWidth() != 0 && model.imageHeight() != 0)
+						{
 							cameraPoses.insert(std::make_pair(jter->first, jter->second));
 							cameraModels.insert(std::make_pair(jter->first, model));
 						}
@@ -2096,118 +2154,125 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			pcl::IndicesPtr indices(new std::vector<int>);
 			if(_ui->checkBox_regenerate->isChecked())
 			{
+				SensorData data;
+				cv::Mat image, depth;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = cachedSignatures.find(iter->first).value();
-					SensorData d = s.sensorData();
-					cv::Mat image, depth;
-					d.uncompressData(&image, &depth, 0);
-					if(!image.empty() && !depth.empty())
+					data = s.sensorData();
+					data.uncompressData(&image, &depth, 0);
+				}
+				else if(_dbDriver)
+				{
+					_dbDriver->getNodeData(iter->first, data, true, false, false, false);
+					data.uncompressData(&image, &depth, 0);
+				}
+
+				if(!image.empty() && !depth.empty())
+				{
+					if(_ui->spinBox_fillDepthHoles->value() > 0)
 					{
-						if(_ui->spinBox_fillDepthHoles->value() > 0)
-						{
-							depth = util2d::fillDepthHoles(depth, _ui->spinBox_fillDepthHoles->value(), float(_ui->spinBox_fillDepthHolesError->value())/100.f);
-						}
+						depth = util2d::fillDepthHoles(depth, _ui->spinBox_fillDepthHoles->value(), float(_ui->spinBox_fillDepthHolesError->value())/100.f);
+					}
 
-						if(!_ui->lineEdit_distortionModel->text().isEmpty() &&
-						   QFileInfo(_ui->lineEdit_distortionModel->text()).exists())
-						{
-							clams::DiscreteDepthDistortionModel model;
-							model.load(_ui->lineEdit_distortionModel->text().toStdString());
-							depth = depth.clone();// make sure we are not modifying data in cached signatures.
-							model.undistort(depth);
-							d.setDepthOrRightRaw(depth);
-						}
+					if(!_ui->lineEdit_distortionModel->text().isEmpty() &&
+					   QFileInfo(_ui->lineEdit_distortionModel->text()).exists())
+					{
+						clams::DiscreteDepthDistortionModel model;
+						model.load(_ui->lineEdit_distortionModel->text().toStdString());
+						depth = depth.clone();// make sure we are not modifying data in cached signatures.
+						model.undistort(depth);
+						data.setDepthOrRightRaw(depth);
+					}
 
-						// bilateral filtering
-						if(_ui->checkBox_bilateral->isChecked())
-						{
-							depth = util2d::fastBilateralFiltering(depth,
-									_ui->doubleSpinBox_bilateral_sigmaS->value(),
-									_ui->doubleSpinBox_bilateral_sigmaR->value());
-							d.setDepthOrRightRaw(depth);
-						}
+					// bilateral filtering
+					if(_ui->checkBox_bilateral->isChecked())
+					{
+						depth = util2d::fastBilateralFiltering(depth,
+								_ui->doubleSpinBox_bilateral_sigmaS->value(),
+								_ui->doubleSpinBox_bilateral_sigmaR->value());
+						data.setDepthOrRightRaw(depth);
+					}
 
-						UASSERT(iter->first == d.id());
-						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
-						std::vector<float> roiRatios;
-						if(!_ui->lineEdit_roiRatios->text().isEmpty())
+					UASSERT(iter->first == data.id());
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+					std::vector<float> roiRatios;
+					if(!_ui->lineEdit_roiRatios->text().isEmpty())
+					{
+						QStringList values = _ui->lineEdit_roiRatios->text().split(' ');
+						if(values.size() == 4)
 						{
-							QStringList values = _ui->lineEdit_roiRatios->text().split(' ');
-							if(values.size() == 4)
+							roiRatios.resize(4);
+							for(int i=0; i<values.size(); ++i)
 							{
-								roiRatios.resize(4);
-								for(int i=0; i<values.size(); ++i)
-								{
-									roiRatios[i] = uStr2Float(values[i].toStdString().c_str());
-								}
+								roiRatios[i] = uStr2Float(values[i].toStdString().c_str());
 							}
 						}
-						cloudWithoutNormals = util3d::cloudRGBFromSensorData(
-								d,
-								_ui->spinBox_decimation->value() == 0?1:_ui->spinBox_decimation->value(),
-								_ui->doubleSpinBox_maxDepth->value(),
-								_ui->doubleSpinBox_minDepth->value(),
-								indices.get(),
-								parameters,
-								roiRatios);
+					}
+					cloudWithoutNormals = util3d::cloudRGBFromSensorData(
+							data,
+							_ui->spinBox_decimation->value() == 0?1:_ui->spinBox_decimation->value(),
+							_ui->doubleSpinBox_maxDepth->value(),
+							_ui->doubleSpinBox_minDepth->value(),
+							indices.get(),
+							parameters,
+							roiRatios);
 
-						if(cloudWithoutNormals->size())
+					if(cloudWithoutNormals->size())
+					{
+						// Don't voxelize if we create organized mesh
+						if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->checkBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
 						{
-							// Don't voxelize if we create organized mesh
-							if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->checkBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
+							cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _ui->doubleSpinBox_voxelSize_assembled->value());
+							indices->resize(cloudWithoutNormals->size());
+							for(unsigned int i=0; i<indices->size(); ++i)
 							{
-								cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _ui->doubleSpinBox_voxelSize_assembled->value());
-								indices->resize(cloudWithoutNormals->size());
-								for(unsigned int i=0; i<indices->size(); ++i)
-								{
-									indices->at(i) = i;
-								}
+								indices->at(i) = i;
 							}
+						}
 
-							// view point
-							Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-							if(d.cameraModels().size() && !d.cameraModels()[0].localTransform().isNull())
-							{
-								viewPoint[0] = d.cameraModels()[0].localTransform().x();
-								viewPoint[1] = d.cameraModels()[0].localTransform().y();
-								viewPoint[2] = d.cameraModels()[0].localTransform().z();
-							}
-							else if(!d.stereoCameraModel().localTransform().isNull())
-							{
-								viewPoint[0] = d.stereoCameraModel().localTransform().x();
-								viewPoint[1] = d.stereoCameraModel().localTransform().y();
-								viewPoint[2] = d.stereoCameraModel().localTransform().z();
-							}
+						// view point
+						Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+						if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
+						{
+							viewPoint[0] = data.cameraModels()[0].localTransform().x();
+							viewPoint[1] = data.cameraModels()[0].localTransform().y();
+							viewPoint[2] = data.cameraModels()[0].localTransform().z();
+						}
+						else if(!data.stereoCameraModel().localTransform().isNull())
+						{
+							viewPoint[0] = data.stereoCameraModel().localTransform().x();
+							viewPoint[1] = data.stereoCameraModel().localTransform().y();
+							viewPoint[2] = data.stereoCameraModel().localTransform().z();
+						}
 
-							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
-							pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 
-							if(_ui->checkBox_subtraction->isChecked() &&
-							   _ui->doubleSpinBox_subtractPointFilteringRadius->value() > 0.0)
+						if(_ui->checkBox_subtraction->isChecked() &&
+						   _ui->doubleSpinBox_subtractPointFilteringRadius->value() > 0.0)
+						{
+							pcl::IndicesPtr beforeSubtractionIndices = indices;
+							if(	cloud->size() &&
+								previousCloud.get() != 0 &&
+								previousIndices.get() != 0 &&
+								previousIndices->size() &&
+								!previousPose.isNull())
 							{
-								pcl::IndicesPtr beforeSubtractionIndices = indices;
-								if(	cloud->size() &&
-									previousCloud.get() != 0 &&
-									previousIndices.get() != 0 &&
-									previousIndices->size() &&
-									!previousPose.isNull())
-								{
-									rtabmap::Transform t = iter->second.inverse() * previousPose;
-									pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(previousCloud, t);
-									indices = rtabmap::util3d::subtractFiltering(
-											cloud,
-											indices,
-											transformedCloud,
-											previousIndices,
-											_ui->doubleSpinBox_subtractPointFilteringRadius->value(),
-											_ui->doubleSpinBox_subtractPointFilteringAngle->value(),
-											_ui->spinBox_subtractFilteringMinPts->value());
-								}
-								previousCloud = cloud;
-								previousIndices = beforeSubtractionIndices;
-								previousPose = iter->second;
+								rtabmap::Transform t = iter->second.inverse() * previousPose;
+								pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud = rtabmap::util3d::transformPointCloud(previousCloud, t);
+								indices = rtabmap::util3d::subtractFiltering(
+										cloud,
+										indices,
+										transformedCloud,
+										previousIndices,
+										_ui->doubleSpinBox_subtractPointFilteringRadius->value(),
+										_ui->doubleSpinBox_subtractPointFilteringAngle->value(),
+										_ui->spinBox_subtractFilteringMinPts->value());
 							}
+							previousCloud = cloud;
+							previousIndices = beforeSubtractionIndices;
+							previousPose = iter->second;
 						}
 					}
 				}
@@ -2242,22 +2307,30 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 				// view point
 				Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+				std::vector<CameraModel> models;
+				StereoCameraModel stereoModel;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = cachedSignatures.find(iter->first).value();
-					SensorData d = s.sensorData();
-					if(d.cameraModels().size() && !d.cameraModels()[0].localTransform().isNull())
-					{
-						viewPoint[0] = d.cameraModels()[0].localTransform().x();
-						viewPoint[1] = d.cameraModels()[0].localTransform().y();
-						viewPoint[2] = d.cameraModels()[0].localTransform().z();
-					}
-					else if(!d.stereoCameraModel().localTransform().isNull())
-					{
-						viewPoint[0] = d.stereoCameraModel().localTransform().x();
-						viewPoint[1] = d.stereoCameraModel().localTransform().y();
-						viewPoint[2] = d.stereoCameraModel().localTransform().z();
-					}
+					models = s.sensorData().cameraModels();
+					stereoModel = s.sensorData().stereoCameraModel();
+				}
+				else if(_dbDriver)
+				{
+					_dbDriver->getCalibration(iter->first, models, stereoModel);
+				}
+
+				if(models.size() && !models[0].localTransform().isNull())
+				{
+					viewPoint[0] = models[0].localTransform().x();
+					viewPoint[1] = models[0].localTransform().y();
+					viewPoint[2] = models[0].localTransform().z();
+				}
+				else if(!stereoModel.localTransform().isNull())
+				{
+					viewPoint[0] = stereoModel.localTransform().x();
+					viewPoint[1] = stereoModel.localTransform().y();
+					viewPoint[2] = stereoModel.localTransform().z();
 				}
 				else
 				{
@@ -2605,7 +2678,7 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 	{
 		std::vector<int> textures(mesh.tex_materials.size(), -1);
 		cv::Size imageSize;
-		int imageType=CV_8UC1;
+		const int imageType=CV_8UC3;
 		UDEBUG("");
 		bool mergeTextures = true;
 		for(unsigned int i=0; i<mesh.tex_materials.size(); ++i)
@@ -2617,42 +2690,57 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 				int textureId = uStr2Int(mesh.tex_materials[i].tex_file);
 				textures[i] = textureId;
 
-				QMap<int, Signature>::const_iterator iter = cachedSignatures.find(textureId);
-				UASSERT(iter!=cachedSignatures.end() && !iter->sensorData().imageCompressed().empty());
-
-				cv::Size tmpImageSize;
-				if(iter->sensorData().cameraModels().size()==1 &&
-					iter->sensorData().cameraModels()[0].imageHeight()>0 &&
-					iter->sensorData().cameraModels()[0].imageWidth()>0)
+				if(imageSize.width == 0 || imageSize.height == 0)
 				{
-					tmpImageSize = iter->sensorData().cameraModels()[0].imageSize();
-					if(imageSize.height == 0 && imageSize.width == 0)
+					if(cachedSignatures.find(textureId)!=cachedSignatures.end() && !cachedSignatures.find(textureId)->sensorData().imageCompressed().empty())
 					{
-						// just for the first image, get the type, assuming all others have the same type
-						cv::Mat image;
-						iter->sensorData().uncompressDataConst(&image, 0);
-						UASSERT(!image.empty());
-						imageType = image.type();
+						SensorData data = cachedSignatures.find(textureId).value().sensorData();
+						if(data.cameraModels().size()==1 &&
+							data.cameraModels()[0].imageHeight()>0 &&
+							data.cameraModels()[0].imageWidth()>0)
+						{
+							imageSize = data.cameraModels()[0].imageSize();
+						}
+						else if(data.stereoCameraModel().left().imageHeight() > 0 &&
+								data.stereoCameraModel().left().imageWidth() > 0)
+						{
+							imageSize = data.stereoCameraModel().left().imageSize();
+						}
+						else // backward compatibility for image size not set in CameraModel
+						{
+							cv::Mat image;
+							data.uncompressDataConst(&image, 0);
+							UASSERT(!image.empty());
+							imageSize = image.size();
+						}
+					}
+					else if(_dbDriver)
+					{
+						std::vector<CameraModel> models;
+						StereoCameraModel stereoModel;
+						_dbDriver->getCalibration(textureId, models, stereoModel);
+						if(models.size()==1 &&
+							models[0].imageHeight()>0 &&
+							models[0].imageWidth()>0)
+						{
+							imageSize = models[0].imageSize();
+						}
+						else if(stereoModel.left().imageHeight() > 0 &&
+								stereoModel.left().imageWidth() > 0)
+						{
+							imageSize = stereoModel.left().imageSize();
+						}
+						else // backward compatibility for image size not set in CameraModel
+						{
+							SensorData data;
+							_dbDriver->getNodeData(textureId, data, true, false, false, false);
+							cv::Mat image;
+							data.uncompressDataConst(&image, 0);
+							UASSERT(!image.empty());
+							imageSize = image.size();
+						}
 					}
 				}
-				else // backward compatibility for image size not set in CameraModel
-				{
-					cv::Mat image;
-					iter->sensorData().uncompressDataConst(&image, 0);
-					UASSERT(!image.empty());
-					tmpImageSize = image.size();
-					if(imageSize.height == 0 && imageSize.width == 0)
-					{
-						imageType = image.type();
-					}
-				}
-				if(imageSize.width>0 && imageSize.height>0 && imageSize.width != tmpImageSize.width)
-				{
-					UWARN("All images should have the same dimensions to merge the textures!");
-					mergeTextures = false;
-					break;
-				}
-				imageSize = tmpImageSize;
 			}
 		}
 		if(mergeTextures && textures.size() && imageSize.height>0 && imageSize.width>0)
@@ -2680,13 +2768,30 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 						UASSERT(v < textureSize-emptyImage.rows);
 						if(textures[t]>=0)
 						{
-							QMap<int, Signature>::const_iterator iter = cachedSignatures.find(textures[t]);
-							UASSERT(iter!=cachedSignatures.end() && !iter->sensorData().imageCompressed().empty());
 							cv::Mat image;
-							iter->sensorData().uncompressDataConst(&image, 0);
+
+							if(cachedSignatures.find(textures[t]) != cachedSignatures.end() &&
+							  !cachedSignatures.find(textures[t])->sensorData().imageCompressed().empty())
+							{
+								cachedSignatures.find(textures[t])->sensorData().uncompressDataConst(&image, 0);
+							}
+							else if(_dbDriver)
+							{
+								SensorData data;
+								_dbDriver->getNodeData(textures[t], data, true, false, false, false);
+								data.uncompressDataConst(&image, 0);
+							}
+
 							UASSERT(!image.empty());
 							cv::Mat resizedImage;
 							cv::resize(image, resizedImage, emptyImage.size(), 0.0f, 0.0f, cv::INTER_AREA);
+							UASSERT(resizedImage.type() == CV_8UC1 || resizedImage.type() == CV_8UC3);
+							if(resizedImage.type() == CV_8UC1)
+							{
+								cv::Mat resizedImageColor;
+								cv::cvtColor(resizedImage, resizedImageColor, CV_GRAY2BGR);
+								resizedImage = resizedImageColor;
+							}
 							if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textures[t]) >= 0)
 							{
 								_compensator->apply(textures[t], resizedImage);
@@ -2766,9 +2871,17 @@ void ExportCloudsDialog::saveTextureMeshes(
 							if(uIsInteger(mesh->tex_materials[i].tex_file, false))
 							{
 								int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
-								UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
 								cv::Mat image;
-								cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+								if(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty())
+								{
+									cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+								}
+								else if(_dbDriver)
+								{
+									SensorData data;
+									_dbDriver->getNodeData(textureId, data, true, false, false, false);
+									data.uncompressDataConst(&image, 0);
+								}
 								UASSERT(!image.empty());
 								imageSize = image.size();
 								if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
@@ -2886,9 +2999,18 @@ void ExportCloudsDialog::saveTextureMeshes(
 								if(uIsInteger(mesh->tex_materials[i].tex_file, false))
 								{
 									int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
-									UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
 									cv::Mat image;
-									cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+									if(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty())
+									{
+										cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+									}
+									else if(_dbDriver)
+									{
+										SensorData data;
+										_dbDriver->getNodeData(textureId, data, true, false, false, false);
+										data.uncompressDataConst(&image, 0);
+									}
+
 									UASSERT(!image.empty());
 									imageSize = image.size();
 									if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)

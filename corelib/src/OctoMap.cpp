@@ -456,8 +456,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 				(*cloud)[oi].g = g*255.0f;
 				(*cloud)[oi].b = b*255.0f;
 			}
-			(*cloud)[oi].x = pt.x();
-			(*cloud)[oi].y = pt.y();
+			(*cloud)[oi].x = pt.x()-octree_->getResolution()/2.0;
+			(*cloud)[oi].y = pt.y()-octree_->getResolution()/2.0;
 			(*cloud)[oi].z = pt.z();
 			if(obstacleIndices)
 			{
@@ -469,8 +469,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
 			(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
-			(*cloud)[oi].x = pt.x();
-			(*cloud)[oi].y = pt.y();
+			(*cloud)[oi].x = pt.x()-octree_->getResolution()/2.0f;
+			(*cloud)[oi].y = pt.y()-octree_->getResolution()/2.0f;
 			(*cloud)[oi].z = pt.z();
 			if(emptyIndices)
 			{
@@ -501,23 +501,21 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 	pcl::PointCloud<pcl::PointXYZ>::Ptr ground(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::PointCloud<pcl::PointXYZ>::Ptr obstacles(new pcl::PointCloud<pcl::PointXYZ>);
 
-	ground->resize(occupiedCells_.size());
-	obstacles->resize(occupiedCells_.size());
+	ground->resize(octree_->size());
+	obstacles->resize(octree_->size());
 	int gi=0;
 	int oi=0;
-	for(std::map<octomap::ColorOcTreeNode*, OcTreeNodeInfo>::const_iterator iter = occupiedCells_.begin();
-		iter!=occupiedCells_.end();
-		++iter)
+	for (octomap::ColorOcTree::iterator it = octree_->begin(octree_->getTreeDepth()); it != octree_->end(); ++it)
 	{
-		if(iter->second.isObstacle_ && octree_->isNodeOccupied(iter->first))
+		if(octree_->isNodeOccupied(*it))
 		{
-			octomap::point3d pt = octree_->keyToCoord(iter->second.key_);
-			(*obstacles)[oi++]  = pcl::PointXYZ(pt.x(), pt.y(), 0); // projected on ground
+			octomap::point3d pt = octree_->keyToCoord(it.getKey());
+			(*obstacles)[oi++]  = pcl::PointXYZ(pt.x()-gridCellSize/2.0f, pt.y()-gridCellSize/2.0f, 0); // projected on ground
 		}
-		else if(!iter->second.isObstacle_)
+		else
 		{
-			octomap::point3d pt = octree_->keyToCoord(iter->second.key_);
-			(*ground)[gi++]  = pcl::PointXYZ(pt.x(), pt.y(), 0); // projected on ground
+			octomap::point3d pt = octree_->keyToCoord(it.getKey());
+			(*ground)[gi++]  = pcl::PointXYZ(pt.x()-gridCellSize/2.0f, pt.y()-gridCellSize/2.0f, 0); // projected on ground
 		}
 	}
 	obstacles->resize(oi);
@@ -525,11 +523,11 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 
 	if(obstacles->size())
 	{
-		obstacles = util3d::voxelize(obstacles, gridCellSize);
+		obstacles = util3d::voxelize(obstacles, gridCellSize/2.0f);
 	}
 	if(ground->size())
 	{
-		ground = util3d::voxelize(ground, gridCellSize);
+		ground = util3d::voxelize(ground, gridCellSize/2.0f);
 	}
 
 	cv::Mat obstaclesMat = cv::Mat(1, (int)obstacles->size(), CV_32FC2);

@@ -308,7 +308,9 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		//Get map size
 		float margin = cellSize*10.0f;
 		xMin = minX-margin;
+		xMin -= cellSize/2.0f;
 		yMin = minY-margin;
+		yMin += cellSize/2.0f;
 		float xMax = maxX+margin;
 		float yMax = maxY+margin;
 		if(fabs((yMax - yMin) / cellSize) > 99999 ||
@@ -323,7 +325,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 			UDEBUG("map min=(%f, %f) max=(%f,%f)", xMin, yMin, xMax, yMax);
 
 
-			map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
+			map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
 			for(std::list<std::pair<int, Transform> >::const_iterator kter = poses.begin(); kter!=poses.end(); ++kter)
 			{
 				std::map<int, cv::Mat >::iterator iter = emptyLocalMaps.find(kter->first);
@@ -333,7 +335,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 					for(int i=0; i<iter->second.cols; ++i)
 					{
 						float * ptf = iter->second.ptr<float>(0, i);
-						cv::Point2i pt((ptf[0]-xMin)/cellSize + 0.5f, (ptf[1]-yMin)/cellSize + 0.5f);
+						cv::Point2i pt((ptf[0]-xMin)/cellSize, (ptf[1]-yMin)/cellSize);
 						char & value = map.at<char>(pt.y, pt.x);
 						if(value != -2)
 						{
@@ -345,8 +347,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 				if(footprintRadius >= cellSize*1.5f)
 				{
 					// place free space under the footprint of the robot
-					cv::Point2i ptBegin((kter->second.x()-footprintRadius-xMin)/cellSize + 0.5f, (kter->second.y()-footprintRadius-yMin)/cellSize + 0.5f);
-					cv::Point2i ptEnd((kter->second.x()+footprintRadius-xMin)/cellSize + 0.5f, (kter->second.y()+footprintRadius-yMin)/cellSize + 0.5f);
+					cv::Point2i ptBegin((kter->second.x()-footprintRadius-xMin)/cellSize, (kter->second.y()-footprintRadius-yMin)/cellSize);
+					cv::Point2i ptEnd((kter->second.x()+footprintRadius-xMin)/cellSize, (kter->second.y()+footprintRadius-yMin)/cellSize);
 					if(ptBegin.x < 0)
 						ptBegin.x = 0;
 					if(ptEnd.x >= map.cols)
@@ -370,7 +372,7 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 					for(int i=0; i<jter->second.cols; ++i)
 					{
 						float * ptf = jter->second.ptr<float>(0, i);
-						cv::Point2i pt((ptf[0]-xMin)/cellSize + 0.5f, (ptf[1]-yMin)/cellSize + 0.5f);
+						cv::Point2i pt((ptf[0]-xMin)/cellSize, (ptf[1]-yMin)/cellSize);
 						char & value = map.at<char>(pt.y, pt.x);
 						if(value != -2)
 						{
@@ -595,7 +597,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 
 		UTimer timer;
 
-		map = cv::Mat::ones((yMax - yMin) / cellSize + 0.5f, (xMax - xMin) / cellSize + 0.5f, CV_8S)*-1;
+		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
 		int j=0;
 		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 		{
@@ -606,7 +608,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			{
 				viewpoint = kter->second;
 			}
-			cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize + 0.5f, ((pose.y()+viewpoint.y)-yMin)/cellSize + 0.5f);
+			cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize, ((pose.y()+viewpoint.y)-yMin)/cellSize);
 			for(unsigned int i=0; i<iter->second->size(); ++i)
 			{
 				cv::Point2i end((iter->second->points[i].x-xMin)/cellSize, (iter->second->points[i].y-yMin)/cellSize);
@@ -638,7 +640,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						{
 							viewpoint = kter->second;
 						}
-						cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize + 0.5f, ((pose.y()+viewpoint.y)-yMin)/cellSize + 0.5f);
+						cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize, ((pose.y()+viewpoint.y)-yMin)/cellSize);
 
 						//UWARN("maxLength = %f", maxLength);
 						//rotate counterclockwise from the first point until we pass the last point
@@ -680,7 +682,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						angle = angle<-1.0f?-1.0f:angle>1.0f?1.0f:angle;
 						while(acos(angle) > M_PI_4 || endRotatedVector.cross(endLastVector).at<float>(2) > 0.0f)
 						{
-							cv::Point2i end((endRotated.at<float>(0)-xMin)/cellSize + 0.5f, (endRotated.at<float>(1)-yMin)/cellSize + 0.5f);
+							cv::Point2i end((endRotated.at<float>(0)-xMin)/cellSize, (endRotated.at<float>(1)-yMin)/cellSize);
 							//end must be inside the grid
 							end.x = end.x < 0?0:end.x;
 							end.x = end.x >= map.cols?map.cols-1:end.x;
