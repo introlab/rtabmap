@@ -119,7 +119,7 @@ git clone https://github.com/PointCloudLibrary/pcl.git
 cd pcl
 git checkout tags/pcl-1.8.0
 # patch
-wget -nv https://gist.github.com/matlabbe/41812e50e459b2f27b331a2343569e5d/raw/b97cf6dda9aa9487ee75a3cc4e8826b216a1ad06/pcl_1_8_0_vtk_android_support.patch
+wget -nv https://gist.github.com/matlabbe/41812e50e459b2f27b331a2343569e5d/raw/921bbb90d5115f7aec1640f255aec3036a518553/pcl_1_8_0_vtk_android_support.patch
 git apply pcl_1_8_0_vtk_android_support.patch
 mkdir build
 cd build
