@@ -1,3 +1,5 @@
+# Image: introlab3it/rtabmap:android-deps
+
 FROM introlab3it/rtabmap
 
 ENV ANDROID_HOME=/opt/android-sdk

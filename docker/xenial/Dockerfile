@@ -1,3 +1,5 @@
+# Image: introlab3it/rtabmap:xenial
+
 FROM ubuntu:16.04
 
 # Install build dependencies

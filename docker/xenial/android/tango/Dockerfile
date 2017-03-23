@@ -1,4 +1,6 @@
-FROM introlab3it/rtabmap-android-deps
+# Image: introlab3it/rtabmap:tango
+
+FROM introlab3it/rtabmap:android-deps
 
 WORKDIR /root/
 
