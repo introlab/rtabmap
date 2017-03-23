@@ -5,6 +5,7 @@ apt-get update
 apt-get install -y --no-install-recommends apt-utils
 apt-get install -y unzip wget ant
 apt-get install -y default-jre default-jdk
+apt-get install -y lib32stdc++6 lib32z1
 
 # Setup android sdk
 echo "wget android-sdk..."

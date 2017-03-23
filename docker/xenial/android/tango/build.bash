@@ -1,7 +1,6 @@
 #!/bin/bash
 
-echo $PATH
-env
+apt-get install -y lib32stdc++6 lib32z1
 
 # get rtabmap
 git clone https://github.com/introlab/rtabmap.git rtabmap-tango
