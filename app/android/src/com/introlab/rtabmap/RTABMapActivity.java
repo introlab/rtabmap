@@ -2074,9 +2074,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					public void run() {
 						setCamera(1);
 						updateState(State.STATE_IDLE);
-						mProgressDialog.dismiss();
 						if(status == -1)
 						{
+							mProgressDialog.dismiss();
 							new AlertDialog.Builder(getActivity())
 							.setCancelable(false)
 							.setTitle("Error")
@@ -2104,7 +2104,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							{
 								mProgressDialog.setTitle("Loading");
 								mProgressDialog.setMessage(String.format("Database \"%s\" loaded. Please wait while rendering point clouds and meshes...", fileName));
-								mProgressDialog.show();
 							}
 						}
 					}

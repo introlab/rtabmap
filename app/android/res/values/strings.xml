@@ -113,7 +113,7 @@
     <string name="pref_key_opt_depth">pref_key_opt_depth</string>
     <string name="pref_default_opt_depth">8</string>
     <string name="pref_key_opt_color_radius">pref_key_opt_color_radius</string>
-    <string name="pref_default_opt_color_radius">0.025</string>
+    <string name="pref_default_opt_color_radius">0.05</string>
     <string name="pref_key_opt_clean_white">pref_key_opt_clean_white</string>
     <string name="pref_default_opt_clean_white">true</string>
     <string name="pref_key_gain_max_radius">pref_key_gain_max_radius</string>
