@@ -51,7 +51,9 @@ public:
 		Optimizer(parameters),
 		solver_(Parameters::defaultg2oSolver()),
 		optimizer_(Parameters::defaultg2oOptimizer()),
-        pixelVariance_(Parameters::defaultg2oPixelVariance())
+        pixelVariance_(Parameters::defaultg2oPixelVariance()),
+		robustKernelDelta_(Parameters::defaultg2oRobustKernelDelta()),
+		baseline_(Parameters::defaultg2oBaseline())
 	{
 		parseParameters(parameters);
 	}
@@ -73,12 +75,17 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
-			const std::map<int, Signature> & signatures);
+			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
+			std::map<int, cv::Point3f> & points3DMap,
+			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
+			std::set<int> * outliers = 0);
 
 private:
 	int solver_;
 	int optimizer_;
 	double pixelVariance_;
+	double robustKernelDelta_;
+	double baseline_;
 };
 
 } /* namespace rtabmap */

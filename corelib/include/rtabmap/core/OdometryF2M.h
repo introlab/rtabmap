@@ -32,11 +32,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/pcl_base.h>
+#include <rtabmap/core/Link.h>
 
 namespace rtabmap {
 
 class Signature;
 class Registration;
+class Optimizer;
 
 class RTABMAP_EXP OdometryF2M : public Odometry
 {
@@ -57,16 +59,26 @@ private:
 	//Parameters
 	int maximumMapSize_;
 	float keyFrameThr_;
+	int visKeyFrameThr_;
 	int maxNewFeatures_;
 	float scanKeyFrameThr_;
 	int scanMaximumMapSize_;
 	float scanSubtractRadius_;
-	std::string fixedMapPath_;
+	int bundleAdjustment_;
+	int bundleMaxFrames_;
 
 	Registration * regPipeline_;
 	Signature * map_;
 	Signature * lastFrame_;
 	std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
+
+	std::map<int, std::map<int, cv::Point3f> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
+	std::map<int, Transform> bundlePoses_;
+	std::multimap<int, Link> bundleLinks_;
+	std::map<int, CameraModel> bundleModels_;
+	std::map<int, int> bundlePoseReferences_;
+	int bundleSeq_;
+	Optimizer * sba_;
 };
 
 }

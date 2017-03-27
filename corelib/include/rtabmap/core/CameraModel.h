@@ -107,7 +107,7 @@ public:
 	void setLocalTransform(const Transform & transform) {localTransform_ = transform;}
 	const Transform & localTransform() const {return localTransform_;}
 
-	void setImageSize(const cv::Size & size) {imageSize_ = size;}
+	void setImageSize(const cv::Size & size);
 	const cv::Size & imageSize() const {return imageSize_;}
 	int imageWidth() const {return imageSize_.width;}
 	int imageHeight() const {return imageSize_.height;}

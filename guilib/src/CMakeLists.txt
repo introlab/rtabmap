@@ -28,6 +28,8 @@ SET(headers_ui
 	./CreateSimpleCalibrationDialog.h
 	./ParametersToolBox.h
 	./DepthCalibrationDialog.h
+	./3rdParty/QMultiComboBox.h
+	./TexturingState.h
 )
 
 SET(uis
@@ -94,6 +96,8 @@ SET(SRC_FILES
 	./CreateSimpleCalibrationDialog.cpp
 	./ParametersToolBox.cpp
 	./DepthCalibrationDialog.cpp
+	./3rdParty/QMultiComboBox.cpp
+	./opencv/vtkImageMatSource.cpp
 	
 	${moc_srcs} 
 	${moc_uis} 

@@ -59,6 +59,7 @@ DBReader::DBReader(const std::string & databasePath,
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
+	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
 	_calibrated(false)
@@ -81,6 +82,7 @@ DBReader::DBReader(const std::list<std::string> & databasePaths,
 	_cameraIndex(cameraIndex),
 	_dbDriver(0),
 	_currentId(_ids.end()),
+	_previousMapId(-1),
 	_previousStamp(0),
 	_previousMapID(0),
 	_calibrated(false)
@@ -108,6 +110,8 @@ bool DBReader::init(
 	}
 	_ids.clear();
 	_currentId=_ids.end();
+	_previousMapId = -1;
+	_previousInfMatrix = cv::Mat();
 	_previousStamp = 0;
 	_previousMapID = 0;
 	_calibrated = false;
@@ -162,9 +166,24 @@ bool DBReader::init(
 		StereoCameraModel stereoModel;
 		if(_dbDriver->getCalibration(*_ids.begin(), models, stereoModel))
 		{
-			if(models.size() && models.at(0).isValidForProjection())
+			if(models.size())
 			{
-				_calibrated = true;
+				if(models.at(0).isValidForProjection())
+				{
+					_calibrated = true;
+				}
+				else if(models.at(0).fx() && models.at(0).fy() && models.at(0).imageWidth() == 0)
+				{
+					// backward compatibility for databases not saving cx,cy and imageSize
+					SensorData data;
+					_dbDriver->getNodeData(*_ids.begin(), data, true, false, false, false);
+					cv::Mat rgb;
+					data.uncompressData(&rgb, 0); // this will update camera models if old format
+					if(data.cameraModels().size() && data.cameraModels().at(0).isValidForProjection())
+					{
+						_calibrated = true;
+					}
+				}
 			}
 			else if(stereoModel.isValidForProjection())
 			{
@@ -308,11 +327,28 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			{
 				std::map<int, Link> links;
 				_dbDriver->loadLinks(*_currentId, links, Link::kNeighbor);
-				if(links.size())
+				if(links.size() && links.begin()->first < *_currentId)
 				{
 					// assume the first is the backward neighbor, take its variance
 					infMatrix = links.begin()->second.infMatrix();
+					_previousInfMatrix = infMatrix;
 				}
+				else if(_previousMapId != mapId)
+				{
+					// first node, set high variance to make rtabmap trigger a new map
+					infMatrix /= 9999.0;
+					UDEBUG("First node of map %d, variance set to 9999", mapId);
+				}
+				else
+				{
+					if(_previousInfMatrix.empty())
+					{
+						_previousInfMatrix = cv::Mat::eye(6,6,CV_64FC1);
+					}
+					// we have a node not linked to map, use last variance
+					infMatrix = _previousInfMatrix;
+				}
+				_previousMapId = mapId;
 			}
 			else
 			{
@@ -415,6 +451,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				{
 					info->odomPose = pose;
 					info->odomCovariance = infMatrix.inv();
+					UDEBUG("odom variance = %f/%f", info->odomCovariance.at<double>(0,0), info->odomCovariance.at<double>(5,5));
 				}
 			}
 		}

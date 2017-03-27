@@ -428,28 +428,42 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 	UASSERT(!imageDepthIn.empty() && (imageDepthIn.type() == CV_16UC1 || imageDepthIn.type() == CV_32FC1));
 	if(decimation < 0)
 	{
-		if(imageRgb.rows % decimation != 0)
+		if(imageRgb.rows % decimation != 0 || imageRgb.cols % decimation != 0)
 		{
-			UERROR("Decimation is not valid for current image size (imageRgb.rows=%d decimation=%d). The cloud is not created.", imageRgb.rows, decimation);
-			return cloud;
-		}
-		if(imageRgb.cols % decimation != 0)
-		{
-			UERROR("Decimation is not valid for current image size (imageRgb.cols=%d decimation=%d). The cloud is not created.", imageRgb.cols, decimation);
-			return cloud;
+			int oldDecimation = decimation;
+			while(decimation <= -1)
+			{
+				if(imageRgb.rows % decimation == 0 && imageRgb.cols % decimation == 0)
+				{
+					break;
+				}
+				++decimation;
+			}
+
+			if(imageRgb.rows % oldDecimation != 0 || imageRgb.cols % oldDecimation != 0)
+			{
+				UWARN("Decimation (%d) is not valid for current image size (rgb=%dx%d). Highest compatible decimation used=%d.", oldDecimation, imageRgb.cols, imageRgb.rows, decimation);
+			}
 		}
 	}
 	else
 	{
-		if(imageDepthIn.rows % decimation != 0)
+		if(imageDepthIn.rows % decimation != 0 || imageDepthIn.cols % decimation != 0)
 		{
-			UERROR("Decimation is not valid for current image size (imageDepth.rows=%d decimation=%d). The cloud is not created.", imageDepthIn.rows, decimation);
-			return cloud;
-		}
-		if(imageDepthIn.cols % decimation != 0)
-		{
-			UERROR("Decimation is not valid for current image size (imageDepth.cols=%d decimation=%d). The cloud is not created.", imageDepthIn.cols, decimation);
-			return cloud;
+			int oldDecimation = decimation;
+			while(decimation >= 1)
+			{
+				if(imageDepthIn.rows % decimation == 0 && imageDepthIn.cols % decimation == 0)
+				{
+					break;
+				}
+				--decimation;
+			}
+
+			if(imageDepthIn.rows % oldDecimation != 0 || imageDepthIn.cols % oldDecimation != 0)
+			{
+				UWARN("Decimation (%d) is not valid for current image size (depth=%dx%d). Highest compatible decimation used=%d.", oldDecimation, imageDepthIn.cols, imageDepthIn.rows, decimation);
+			}
 		}
 	}
 
@@ -542,26 +556,17 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDepthRGB(
 				pt.r = v;
 			}
 
-			// Ignore pure black pixels, as they are generarly rectification artifacts on the contour. It is okay to 
-			// assume this as normally depth would not be computed on pure black surfaces anyway.
-			if (pt.b > 0 && pt.g > 0 && pt.r > 0)
+			pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
+			if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
 			{
-				pcl::PointXYZ ptXYZ = projectDepthTo3D(imageDepth, w, h, depthCx, depthCy, depthFx, depthFy, false);
-				if (pcl::isFinite(ptXYZ) && ptXYZ.z >= minDepth && (maxDepth <= 0.0f || ptXYZ.z <= maxDepth))
+				pt.x = ptXYZ.x;
+				pt.y = ptXYZ.y;
+				pt.z = ptXYZ.z;
+				if (validIndices)
 				{
-					pt.x = ptXYZ.x;
-					pt.y = ptXYZ.y;
-					pt.z = ptXYZ.z;
-					if (validIndices)
-					{
-						validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
-					}
-					++oi;
+					validIndices->at(oi) = (h / decimation)*cloud->width + (w / decimation);
 				}
-				else
-				{
-					pt.x = pt.y = pt.z = std::numeric_limits<float>::quiet_NaN();
-				}
+				++oi;
 			}
 			else
 			{
@@ -979,16 +984,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		int subRGBWidth = sensorData.imageRaw().cols/sensorData.cameraModels().size();
 		int subDepthWidth = sensorData.depthRaw().cols/sensorData.cameraModels().size();
 
-		if(subRGBWidth % decimation != 0 || subDepthWidth % decimation != 0)
-		{
-			UWARN("Image size (rgb=%d,%d depth=%d,%d) modulus decimation (%d) is not null "
-				  "for the cloud creation! Setting decimation to 1...",
-				  subRGBWidth, sensorData.imageRaw().rows,
-				  subDepthWidth, sensorData.depthRaw().rows,
-				  decimation);
-			decimation = 1;
-		}
-
 		for(unsigned int i=0; i<sensorData.cameraModels().size(); ++i)
 		{
 			if(sensorData.cameraModels()[i].isValidForProjection())
@@ -1114,7 +1109,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImage(
 	{
 		scan.resize(depthImage.cols);
 		int oi = 0;
-		for(int i=0; i<depthImage.cols; ++i)
+		for(int i=depthImage.cols-1; i>=0; --i)
 		{
 			pcl::PointXYZ pt = util3d::projectDepthTo3D(depthImage, i, middle, cx, cy, fx, fy, false);
 			if(pcl::isFinite(pt) && pt.z >= minDepth && (maxDepth == 0 || pt.z < maxDepth))
@@ -1140,7 +1135,7 @@ pcl::PointCloud<pcl::PointXYZ> laserScanFromDepthImages(
 	pcl::PointCloud<pcl::PointXYZ> scan;
 	UASSERT(int((depthImages.cols/cameraModels.size())*cameraModels.size()) == depthImages.cols);
 	int subImageWidth = depthImages.cols/cameraModels.size();
-	for(unsigned int i=0; i<cameraModels.size(); ++i)
+	for(int i=(int)cameraModels.size()-1; i>=0; --i)
 	{
 		if(cameraModels[i].isValidForProjection())
 		{
@@ -1488,6 +1483,10 @@ cv::Mat projectCloudToCamera(
 	cv::Mat registered = cv::Mat::zeros(imageSize, CV_32FC1);
 	Transform t = cameraTransform.inverse();
 
+	const cv::Vec2f* vec2Ptr = laserScan.ptr<cv::Vec2f>();
+	const cv::Vec3f* vec3Ptr = laserScan.ptr<cv::Vec3f>();
+	const cv::Vec6f* vec6Ptr = laserScan.ptr<cv::Vec6f>();
+
 	int count = 0;
 	for(int i=0; i<laserScan.cols; ++i)
 	{
@@ -1495,38 +1494,61 @@ cv::Mat projectCloudToCamera(
 		cv::Point3f ptScan;
 		if(laserScan.type() == CV_32FC2)
 		{
-			ptScan.x = laserScan.at<cv::Vec2f>(i)[0];
-			ptScan.y = laserScan.at<cv::Vec2f>(i)[1];
+			ptScan.x = vec2Ptr[i][0];
+			ptScan.y = vec2Ptr[i][1];
 			ptScan.z = 0;
 		}
 		else if(laserScan.type() == CV_32FC3)
 		{
-			ptScan.x = laserScan.at<cv::Vec3f>(i)[0];
-			ptScan.y = laserScan.at<cv::Vec3f>(i)[1];
-			ptScan.z = laserScan.at<cv::Vec3f>(i)[2];
+			ptScan.x = vec3Ptr[i][0];
+			ptScan.y = vec3Ptr[i][1];
+			ptScan.z = vec3Ptr[i][2];
 		}
 		else
 		{
-			ptScan.x = laserScan.at<cv::Vec6f>(i)[0];
-			ptScan.y = laserScan.at<cv::Vec6f>(i)[1];
-			ptScan.z = laserScan.at<cv::Vec6f>(i)[2];
+			ptScan.x = vec6Ptr[i][0];
+			ptScan.y = vec6Ptr[i][1];
+			ptScan.z = vec6Ptr[i][2];
 		}
 		ptScan = util3d::transformPoint(ptScan, t);
 
 		// re-project in camera frame
 		float z = ptScan.z;
-		float invZ = 1.0f/z;
-		int dx = (fx*ptScan.x)*invZ + cx;
-		int dy = (fy*ptScan.y)*invZ + cy;
 
-		if(z > 0.0f && uIsInBounds(dx, 0, registered.cols) && uIsInBounds(dy, 0, registered.rows))
+		bool set = false;
+		if(z > 0.0f)
 		{
-			++count;
-			float &zReg = registered.at<float>(dy, dx);
-			if(zReg == 0 || z < zReg)
+			float invZ = 1.0f/z;
+			float dx = (fx*ptScan.x)*invZ + cx;
+			float dy = (fy*ptScan.y)*invZ + cy;
+			int dx_low = dx;
+			int dy_low = dy;
+			int dx_high = dx + 0.5f;
+			int dy_high = dy + 0.5f;
+
+			if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
 			{
-				zReg = z;
+				float &zReg = registered.at<float>(dy_low, dx_low);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+				set = true;
 			}
+			if((dx_low != dx_high || dy_low != dy_high) &&
+				uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+			{
+				float &zReg = registered.at<float>(dy_high, dx_high);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+				set = true;
+			}
+		}
+		if(set)
+		{
+			count++;
 		}
 	}
 	UDEBUG("Points in camera=%d/%d", count, laserScan.cols);
@@ -1561,26 +1583,170 @@ cv::Mat projectCloudToCamera(
 
 		// re-project in camera frame
 		float z = ptScan.z;
+		bool set = false;
 		if(z > 0.0f)
 		{
 			float invZ = 1.0f/z;
-			int dx = (fx*ptScan.x)*invZ + cx;
-			if(uIsInBounds(dx, 0, registered.cols))
+			float dx = (fx*ptScan.x)*invZ + cx;
+			float dy = (fy*ptScan.y)*invZ + cy;
+			int dx_low = dx;
+			int dy_low = dy;
+			int dx_high = dx + 0.5f;
+			int dy_high = dy + 0.5f;
+			if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
 			{
-				int dy = (fy*ptScan.y)*invZ + cy;
-				if(uIsInBounds(dy, 0, registered.rows))
+				set = true;
+				float &zReg = registered.at<float>(dy_low, dx_low);
+				if(zReg == 0 || z < zReg)
 				{
-					++count;
-					float &zReg = registered.at<float>(dy, dx);
-					if(zReg == 0 || z < zReg)
+					zReg = z;
+				}
+			}
+			if((dx_low != dx_high || dy_low != dy_high) &&
+				uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+			{
+				set = true;
+				float &zReg = registered.at<float>(dy_high, dx_high);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+			}
+		}
+		if(set)
+		{
+			count++;
+		}
+	}
+	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->size());
+
+	return registered;
+}
+
+cv::Mat projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK,
+		const pcl::PCLPointCloud2::Ptr laserScan,  // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform)           // /base_link -> /camera_link
+{
+	UASSERT(!cameraTransform.isNull());
+	UASSERT(!laserScan->data.empty());
+	UASSERT(cameraMatrixK.type() == CV_64FC1 && cameraMatrixK.cols == 3 && cameraMatrixK.cols == 3);
+
+	float fx = cameraMatrixK.at<double>(0,0);
+	float fy = cameraMatrixK.at<double>(1,1);
+	float cx = cameraMatrixK.at<double>(0,2);
+	float cy = cameraMatrixK.at<double>(1,2);
+
+	cv::Mat registered = cv::Mat::zeros(imageSize, CV_32FC1);
+	Transform t = cameraTransform.inverse();
+
+	pcl::MsgFieldMap field_map;
+	pcl::createMapping<pcl::PointXYZ> (laserScan->fields, field_map);
+
+	int count = 0;
+	if(field_map.size() == 1)
+	{
+		for (uint32_t row = 0; row < laserScan->height; ++row)
+		{
+			const uint8_t* row_data = &laserScan->data[row * laserScan->row_step];
+			for (uint32_t col = 0; col < laserScan->width; ++col)
+			{
+				const uint8_t* msg_data = row_data + col * laserScan->point_step;
+				pcl::PointXYZ ptScan;
+				memcpy (&ptScan, msg_data + field_map.front().serialized_offset, field_map.front().size);
+				ptScan = util3d::transformPoint(ptScan, t);
+
+				// re-project in camera frame
+				float z = ptScan.z;
+				bool set = false;
+				if(z > 0.0f)
+				{
+					float invZ = 1.0f/z;
+					float dx = (fx*ptScan.x)*invZ + cx;
+					float dy = (fy*ptScan.y)*invZ + cy;
+					int dx_low = dx;
+					int dy_low = dy;
+					int dx_high = dx + 0.5f;
+					int dy_high = dy + 0.5f;
+					if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
 					{
-						zReg = z;
+						set = true;
+						float &zReg = registered.at<float>(dy_low, dx_low);
+						if(zReg == 0 || z < zReg)
+						{
+							zReg = z;
+						}
 					}
+					if((dx_low != dx_high || dy_low != dy_high) &&
+						uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+					{
+						set = true;
+						float &zReg = registered.at<float>(dy_high, dx_high);
+						if(zReg == 0 || z < zReg)
+						{
+							zReg = z;
+						}
+					}
+				}
+				if(set)
+				{
+					count++;
 				}
 			}
 		}
 	}
-	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->size());
+	else
+	{
+		UERROR("field map pcl::pointXYZ not found!");
+	}
+/*
+	int count = 0;
+	for(int i=0; i<(int)laserScan->size(); ++i)
+	{
+		// Get 3D from laser scan
+		pcl::PointXYZ ptScan = laserScan->at(i);
+		ptScan = util3d::transformPoint(ptScan, t);
+
+		// re-project in camera frame
+		float z = ptScan.z;
+		bool set = false;
+		if(z > 0.0f)
+		{
+			float invZ = 1.0f/z;
+			float dx = (fx*ptScan.x)*invZ + cx;
+			float dy = (fy*ptScan.y)*invZ + cy;
+			int dx_low = dx;
+			int dy_low = dy;
+			int dx_high = dx + 0.5f;
+			int dy_high = dy + 0.5f;
+			if(uIsInBounds(dx_low, 0, registered.cols) && uIsInBounds(dy_low, 0, registered.rows))
+			{
+				set = true;
+				float &zReg = registered.at<float>(dy_low, dx_low);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+			}
+			if((dx_low != dx_high || dy_low != dy_high) &&
+				uIsInBounds(dx_high, 0, registered.cols) && uIsInBounds(dy_high, 0, registered.rows))
+			{
+				set = true;
+				float &zReg = registered.at<float>(dy_high, dx_high);
+				if(zReg == 0 || z < zReg)
+				{
+					zReg = z;
+				}
+			}
+		}
+		if(set)
+		{
+			count++;
+		}
+	}
+	*/
+	UDEBUG("Points in camera=%d/%d", count, (int)laserScan->data.size());
 
 	return registered;
 }
@@ -1699,57 +1865,184 @@ pcl::TextureMesh::Ptr concatenateTextureMeshes(const std::list<pcl::TextureMesh:
 	std::map<std::string, int> addedMaterials; //<file, index>
 	for(std::list<pcl::TextureMesh::Ptr>::const_iterator iter = meshes.begin(); iter!=meshes.end(); ++iter)
 	{
-		// append point cloud
-		int polygonStep = output->cloud.height * output->cloud.width;
-		pcl::PCLPointCloud2 tmp;
-		pcl::concatenatePointCloud(output->cloud, iter->get()->cloud, tmp);
-		output->cloud = tmp;
-
-		UASSERT((*iter)->tex_polygons.size() == (*iter)->tex_coordinates.size() &&
-				(*iter)->tex_polygons.size() == (*iter)->tex_materials.size());
-
-		int materialCount = (*iter)->tex_polygons.size();
-		for(int i=0; i<materialCount; ++i)
+		if((*iter)->cloud.point_step &&
+		   (*iter)->cloud.data.size()/(*iter)->cloud.point_step &&
+		   (*iter)->tex_polygons.size() &&
+		   (*iter)->tex_coordinates.size())
 		{
-			std::map<std::string, int>::iterator jter = addedMaterials.find((*iter)->tex_materials[i].tex_file);
-			int index;
-			if(jter != addedMaterials.end())
-			{
-				index = jter->second;
-			}
-			else
-			{
-				addedMaterials.insert(std::make_pair((*iter)->tex_materials[i].tex_file, output->tex_materials.size()));
-				index = output->tex_materials.size();
-				output->tex_materials.push_back((*iter)->tex_materials[i]);
-				output->tex_materials.back().tex_name = uFormat("material_%d", index);
-				output->tex_polygons.resize(output->tex_polygons.size() + 1);
-				output->tex_coordinates.resize(output->tex_coordinates.size() + 1);
-			}
+			// append point cloud
+			int polygonStep = output->cloud.height * output->cloud.width;
+			pcl::PCLPointCloud2 tmp;
+			pcl::concatenatePointCloud(output->cloud, iter->get()->cloud, tmp);
+			output->cloud = tmp;
 
-			// update and append polygon indices
-			int oi = output->tex_polygons[index].size();
-			output->tex_polygons[index].resize(output->tex_polygons[index].size() + (*iter)->tex_polygons[i].size());
-			for(unsigned int j=0; j<(*iter)->tex_polygons[i].size(); ++j)
+			UASSERT((*iter)->tex_polygons.size() == (*iter)->tex_coordinates.size() &&
+					(*iter)->tex_polygons.size() == (*iter)->tex_materials.size());
+
+			int materialCount = (*iter)->tex_polygons.size();
+			for(int i=0; i<materialCount; ++i)
 			{
-				pcl::Vertices polygon = (*iter)->tex_polygons[i][j];
-				for(unsigned int k=0; k<polygon.vertices.size(); ++k)
+				std::map<std::string, int>::iterator jter = addedMaterials.find((*iter)->tex_materials[i].tex_file);
+				int index;
+				if(jter != addedMaterials.end())
 				{
-					polygon.vertices[k] += polygonStep;
+					index = jter->second;
 				}
-				output->tex_polygons[index][oi+j] = polygon;
-			}
+				else
+				{
+					addedMaterials.insert(std::make_pair((*iter)->tex_materials[i].tex_file, output->tex_materials.size()));
+					index = output->tex_materials.size();
+					output->tex_materials.push_back((*iter)->tex_materials[i]);
+					output->tex_materials.back().tex_name = uFormat("material_%d", index);
+					output->tex_polygons.resize(output->tex_polygons.size() + 1);
+					output->tex_coordinates.resize(output->tex_coordinates.size() + 1);
+				}
 
-			// append uv coordinates
-			oi = output->tex_coordinates[index].size();
-			output->tex_coordinates[index].resize(output->tex_coordinates[index].size() + (*iter)->tex_coordinates[i].size());
-			for(unsigned int j=0; j<(*iter)->tex_coordinates[i].size(); ++j)
-			{
-				output->tex_coordinates[index][oi+j] = (*iter)->tex_coordinates[i][j];
+				// update and append polygon indices
+				int oi = output->tex_polygons[index].size();
+				output->tex_polygons[index].resize(output->tex_polygons[index].size() + (*iter)->tex_polygons[i].size());
+				for(unsigned int j=0; j<(*iter)->tex_polygons[i].size(); ++j)
+				{
+					pcl::Vertices polygon = (*iter)->tex_polygons[i][j];
+					for(unsigned int k=0; k<polygon.vertices.size(); ++k)
+					{
+						polygon.vertices[k] += polygonStep;
+					}
+					output->tex_polygons[index][oi+j] = polygon;
+				}
+
+				// append uv coordinates
+				oi = output->tex_coordinates[index].size();
+				output->tex_coordinates[index].resize(output->tex_coordinates[index].size() + (*iter)->tex_coordinates[i].size());
+				for(unsigned int j=0; j<(*iter)->tex_coordinates[i].size(); ++j)
+				{
+					output->tex_coordinates[index][oi+j] = (*iter)->tex_coordinates[i][j];
+				}
 			}
 		}
 	}
 	return output;
+}
+
+int gcd(int a, int b) {
+    return b == 0 ? a : gcd(b, a % b);
+}
+
+void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, float & scale, std::vector<bool> * materialsKept)
+{
+	UASSERT(textureSize>0 && imageSize.width>0 && imageSize.height>0);
+	int materials = 0;
+	for(unsigned int i=0; i<mesh.tex_materials.size(); ++i)
+	{
+		if(mesh.tex_polygons.size())
+		{
+			++materials;
+		}
+	}
+	if(materials)
+	{
+		int w = imageSize.width; // 640
+		int h = imageSize.height; // 480
+		int g = gcd(w,h); // 160
+		int a = w/g; // 4=640/160
+		int b = h/g; // 3=480/160
+		UDEBUG("w=%d h=%d g=%d a=%d b=%d", w, h, g, a, b);
+		int colCount = 0;
+		int rowCount = 0;
+		float factor = 0.1f;
+		float epsilon = 0.001f;
+		scale = 1.0f;
+		while(colCount*rowCount < materials || (factor == 0.1f || scale > 1.0f))
+		{
+			// first run try scale = 1 (no scaling)
+			if(factor!=0.1f)
+			{
+				scale = float(textureSize)/float(w*b*factor);
+			}
+			colCount = float(textureSize)/(scale*float(w));
+			rowCount = float(textureSize)/(scale*float(h));
+			factor+=epsilon; // search the maximum perfect fit
+		}
+		UDEBUG("materials=%d col=%d row=%d factor=%f scale=%f", materials, colCount, rowCount, factor-epsilon, scale);
+
+		UASSERT(mesh.tex_coordinates.size() == mesh.tex_materials.size() && mesh.tex_polygons.size() == mesh.tex_materials.size());
+
+		// prepare size
+		int totalPolygons = 0;
+		int totalCoordinates = 0;
+		for(unsigned int i=0; i<mesh.tex_materials.size(); ++i)
+		{
+			if(mesh.tex_polygons[i].size())
+			{
+				totalPolygons+=mesh.tex_polygons[i].size();
+				totalCoordinates+=mesh.tex_coordinates[i].size();
+			}
+		}
+
+		std::vector<pcl::Vertices> newPolygons(totalPolygons);
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+		std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > newCoordinates(totalCoordinates); // UV coordinates
+#else
+		std::vector<Eigen::Vector2f> newCoordinates(totalCoordinates); // UV coordinates
+#endif
+
+		int pi = 0;
+		int ci = 0;
+		int ti=0;
+		float scaledHeight = float(int(scale*float(h)))/float(textureSize);
+		float scaledWidth = float(int(scale*float(w)))/float(textureSize);
+		float lowerBorderSize = 1.0f - scaledHeight*float(rowCount);
+		UDEBUG("scaledWidth=%f scaledHeight=%f lowerBorderSize=%f", scaledWidth, scaledHeight, lowerBorderSize);
+		if(materialsKept)
+		{
+			materialsKept->resize(mesh.tex_materials.size(), false);
+		}
+		for(unsigned int t=0; t<mesh.tex_materials.size(); ++t)
+		{
+			if(mesh.tex_polygons[t].size())
+			{
+				int row = ti/colCount;
+				int col = ti%colCount;
+				float offsetU = scaledWidth * float(col);
+				float offsetV = scaledHeight * float((rowCount - 1) - row) + lowerBorderSize;
+				// Texture coords have lower-left origin
+
+				for(unsigned int i=0; i<mesh.tex_polygons[t].size(); ++i)
+				{
+					newPolygons[pi++] = mesh.tex_polygons[t].at(i);
+				}
+
+				for(unsigned int i=0; i<mesh.tex_coordinates[t].size(); ++i)
+				{
+					const Eigen::Vector2f & v = mesh.tex_coordinates[t].at(i);
+					if(v[0] >= 0 && v[1] >=0)
+					{
+						newCoordinates[ci][0] = v[0]*scaledWidth + offsetU;
+						newCoordinates[ci][1] = v[1]*scaledHeight + offsetV;
+					}
+					else
+					{
+						newCoordinates[ci] = v;
+					}
+					++ci;
+				}
+				++ti;
+				if(materialsKept)
+				{
+					materialsKept->at(t) = true;
+				}
+			}
+		}
+		pcl::TexMaterial m = mesh.tex_materials.front();
+		mesh.tex_materials.clear();
+		m.tex_file = "texture";
+		m.tex_name = "material";
+		mesh.tex_materials.push_back(m);
+		mesh.tex_coordinates.clear();
+		mesh.tex_coordinates.push_back(newCoordinates);
+		mesh.tex_polygons.clear();
+		mesh.tex_polygons.push_back(newPolygons);
+	}
 }
 
 pcl::IndicesPtr concatenate(const std::vector<pcl::IndicesPtr> & indices)

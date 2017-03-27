@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_base.h>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
+#include <rtabmap/core/ProgressState.h>
 #include <set>
 #include <list>
 
@@ -65,6 +66,12 @@ std::list<std::list<int> > RTABMAP_EXP clusterPolygons(
 		const std::vector<std::set<int> > & neighborPolygons,
 		int minClusterSize = 0);
 
+std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		double angleTolerance,
+		bool quad,
+		int trianglePixelSize,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0));
 std::vector<pcl::Vertices> RTABMAP_EXP organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance = M_PI/16,
@@ -130,9 +137,9 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
-		const std::map<int, cv::Mat> & images,
-		const std::string & tmpDirectory = ".",
-		int kNormalSearch = 20); // if mesh doesn't have normals, compute them with k neighbors
+		float maxDistance = 0.0f, // max camera distance to polygon to apply texture
+		int minClusterSize = 50, // minimum size of polygons clusters textured
+		const ProgressState * state = 0);
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

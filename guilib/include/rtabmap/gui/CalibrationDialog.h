@@ -86,7 +86,7 @@ private slots:
 
 protected:
 	virtual void closeEvent(QCloseEvent* event);
-	virtual void handleEvent(UEvent * event);
+	virtual bool handleEvent(UEvent * event);
 
 private:
 	float getArea(const std::vector<cv::Point2f> & corners, const cv::Size & boardSize);

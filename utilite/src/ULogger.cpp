@@ -63,6 +63,8 @@ UMutex ULogger::loggerMutex_;
 const std::string ULogger::kDefaultLogFileName = "./ULog.txt";
 std::string ULogger::logFileName_;
 std::string ULogger::bufferedMsgs_;
+std::set<unsigned long> ULogger::threadIdFilter_;
+std::map<std::string, unsigned long> ULogger::registeredThreads_;
 
 /**
  * This class is used to write logs in the console. This class cannot
@@ -199,6 +201,57 @@ void ULogger::setType(Type type, const std::string &fileName, bool append)
     loggerMutex_.unlock();
 }
 
+void ULogger::setTreadIdFilter(const std::vector<std::string> & ids)
+{
+	loggerMutex_.lock();
+	threadIdFilter_.clear();
+	for(unsigned int i=0;i<ids.size();++i)
+	{
+		if(registeredThreads_.find(ids[i]) != registeredThreads_.end())
+		{
+			threadIdFilter_.insert(registeredThreads_.at(ids[i]));
+		}
+	}
+	loggerMutex_.unlock();
+}
+
+void ULogger::registerCurrentThread(const std::string & name)
+{
+	loggerMutex_.lock();
+	UASSERT(!name.empty());
+	uInsert(registeredThreads_, std::make_pair(name, UThread::currentThreadId()));
+	loggerMutex_.unlock();
+}
+
+void ULogger::unregisterCurrentThread()
+{
+	loggerMutex_.lock();
+
+	unsigned long id = UThread::currentThreadId();
+	for(std::map<std::string, unsigned long>::iterator iter=registeredThreads_.begin(); iter!=registeredThreads_.end();)
+	{
+		if(iter->second == id)
+		{
+			registeredThreads_.erase(iter++);
+			threadIdFilter_.erase(id);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+
+	loggerMutex_.unlock();
+}
+
+std::map<std::string, unsigned long> ULogger::getRegisteredThreads()
+{
+	loggerMutex_.lock();
+	std::map<std::string, unsigned long> out = registeredThreads_;
+	loggerMutex_.unlock();
+	return out;
+}
+
 void ULogger::reset()
 {
 	ULogger::setType(ULogger::kTypeNoLog);
@@ -321,6 +374,13 @@ void ULogger::write(ULogger::Level level,
 	{
 		loggerMutex_.unlock();
 		// No need to show an empty message if we don't print where.
+		return;
+	}
+	if(level < kFatal &&
+		threadIdFilter_.size() &&
+		threadIdFilter_.find(UThread::currentThreadId()) == threadIdFilter_.end())
+	{
+		loggerMutex_.unlock();
 		return;
 	}
 

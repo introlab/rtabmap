@@ -52,7 +52,7 @@ public:
 public:
 	OptimizerTORO(
 			int iterations         = Parameters::defaultOptimizerIterations(),
-			bool slam2d            = Parameters::defaultOptimizerSlam2D(),
+			bool slam2d            = Parameters::defaultRegForce3DoF(),
 			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
 			double epsilon         = Parameters::defaultOptimizerEpsilon()) :
 		Optimizer(iterations, slam2d, covarianceIgnored, epsilon) {}

@@ -117,6 +117,11 @@ void CameraThread::enableBilateralFiltering(float sigmaS, float sigmaR)
 	_bilateralSigmaR = sigmaR;
 }
 
+void CameraThread::mainLoopBegin()
+{
+	ULogger::registerCurrentThread("Camera");
+}
+
 void CameraThread::mainLoop()
 {
 	UTimer totalTime;
@@ -223,7 +228,15 @@ void CameraThread::mainLoop()
 					_stereoDense->computeDisparity(data.imageRaw(), data.rightRaw()),
 					data.stereoCameraModel().left().fx(),
 					data.stereoCameraModel().baseline());
-			data.setCameraModel(data.stereoCameraModel().left());
+			// set Tx for stereo bundle adjustment (when used)
+			CameraModel model = CameraModel(
+					data.stereoCameraModel().left().fx(),
+					data.stereoCameraModel().left().fy(),
+					data.stereoCameraModel().left().cx(),
+					data.stereoCameraModel().left().cy(),
+					data.stereoCameraModel().localTransform(),
+					-data.stereoCameraModel().baseline()*data.stereoCameraModel().left().fx());
+			data.setCameraModel(model);
 			data.setDepthOrRightRaw(depth);
 			data.setStereoCameraModel(StereoCameraModel());
 			info.timeDisparity = timer.ticks();

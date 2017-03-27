@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Camera.h"
 #include "rtabmap/core/CameraRGB.h"
+#include "rtabmap/core/Version.h"
 
 #include <pcl/pcl_config.h>
 
@@ -173,12 +174,13 @@ public:
 	bool setExposure(int value);
 	bool setGain(int value);
 	bool setMirroring(bool enabled);
-	void setOpenNI2StampsAndIDsUsed(bool used) {_openNI2StampsAndIDsUsed = used;}
+	void setOpenNI2StampsAndIDsUsed(bool used);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+#ifdef RTABMAP_OPENNI2
 	Type _type;
 	openni::Device * _device;
 	openni::VideoStream * _color;
@@ -188,6 +190,7 @@ private:
 	std::string _deviceId;
 	bool _openNI2StampsAndIDsUsed;
 	StereoCameraModel _stereoModel;
+#endif
 };
 
 
@@ -219,11 +222,13 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+#ifdef RTABMAP_FREENECT
 	int deviceId_;
 	Type type_;
 	freenect_context * ctx_;
 	FreenectDevice * freenectDevice_;
 	StereoCameraModel stereoModel_;
+#endif
 };
 
 /////////////////////////
@@ -266,6 +271,7 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+#ifdef RTABMAP_FREENECT2
 	int deviceId_;
 	Type type_;
 	StereoCameraModel stereoModel_;
@@ -278,6 +284,7 @@ private:
 	bool bilateralFiltering_;
 	bool edgeAwareFiltering_;
 	bool noiseFiltering_;
+#endif
 };
 
 /////////////////////////
@@ -307,11 +314,13 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+#ifdef RTABMAP_REALSENSE
 	rs::context * ctx_;
 	rs::device * dev_;
 	int deviceId_;
 	int presetRGB_;
 	int presetDepth_;
+#endif
 };
 
 

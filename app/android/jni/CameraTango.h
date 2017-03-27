@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UEvent.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <boost/thread/mutex.hpp>
+#include <tango_support_api.h>
 
 class TangoPoseData;
 
@@ -70,16 +71,25 @@ private:
 
 class CameraTango : public Camera, public UThread, public UEventsSender {
 public:
-	CameraTango(int decimation, bool autoExposure);
+	static const float bilateralFilteringSigmaS;
+	static const float bilateralFilteringSigmaR;
+
+public:
+	CameraTango(bool colorCamera, int decimation, bool autoExposure, bool publishRawScan, bool smoothing);
 	virtual ~CameraTango();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	void close(); // close Tango connection
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
-	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose, bool inOpenGLFrame) const;
+	const CameraModel & getCameraModel() const {return model_;}
+	rtabmap::Transform tangoPoseToTransform(const TangoPoseData * tangoPose) const;
+	void setColorCamera(bool enabled) {if(!this->isRunning()) colorCamera_ = enabled;}
 	void setDecimation(int value) {decimation_ = value;}
+	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
+	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
+	void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
 	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
@@ -90,7 +100,7 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
-	rtabmap::Transform getPoseAtTimestamp(double timestamp, bool inOpenGLFrame);
+	rtabmap::Transform getPoseAtTimestamp(double timestamp);
 
 	virtual void mainLoopBegin();
 	virtual void mainLoop();
@@ -99,8 +109,12 @@ private:
 	void * tango_config_;
 	bool firstFrame_;
 	UTimer cameraStartedTime_;
+	double stampEpochOffset_;
+	bool colorCamera_;
 	int decimation_;
 	bool autoExposure_;
+	bool rawScanPublished_;
+	bool smoothing_;
 	cv::Mat cloud_;
 	double cloudStamp_;
 	cv::Mat tangoColor_;
@@ -108,10 +122,11 @@ private:
 	double tangoColorStamp_;
 	boost::mutex dataMutex_;
 	USemaphore dataReady_;
-	rtabmap::Transform imuTDevice_;
-	rtabmap::Transform imuTDepthCamera_;
-	rtabmap::Transform deviceTDepth_;
 	CameraModel model_;
+	Transform deviceTColorCamera_;
+	TangoSupportRotation colorCameraToDisplayRotation_;
+	cv::Mat fisheyeRectifyMapX_;
+	cv::Mat fisheyeRectifyMapY_;
 };
 
 } /* namespace rtabmap */

@@ -52,8 +52,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>194</width>
-           <height>196</height>
+           <width>253</width>
+           <height>208</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -210,8 +210,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>194</width>
-           <height>196</height>
+           <width>253</width>
+           <height>208</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -484,7 +484,7 @@
      <x>0</x>
      <y>0</y>
      <width>1285</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -994,8 +994,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>424</width>
-          <height>186</height>
+          <width>324</width>
+          <height>188</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1130,8 +1130,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>424</width>
-          <height>535</height>
+          <width>280</width>
+          <height>584</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1447,8 +1447,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>437</width>
-          <height>162</height>
+          <width>201</width>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1547,8 +1547,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>424</width>
-          <height>198</height>
+          <width>333</width>
+          <height>256</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2014,12 +2014,12 @@
   </action>
   <action name="actionView_3D_laser_scans">
    <property name="text">
-    <string>View 3D laser scans...</string>
+    <string>View 2D-3D laser scans...</string>
    </property>
   </action>
   <action name="actionExport_3D_laser_scans_ply_pcd">
    <property name="text">
-    <string>Export 3D laser scans (*.ply *.pcd) ...</string>
+    <string>Export 2D-3D laser scans (*.ply *.pcd) ...</string>
    </property>
   </action>
   <action name="actionRegenerate_local_grid_maps">

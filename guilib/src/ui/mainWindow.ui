@@ -1141,7 +1141,7 @@
   </action>
   <action name="actionExport_2D_scans_ply_pcd">
    <property name="text">
-    <string>Export 2D scans (*.ply *.pcd)...</string>
+    <string>Export 2D-3D scans (*.ply *.pcd)...</string>
    </property>
   </action>
   <action name="actionView_scans">

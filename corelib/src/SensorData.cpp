@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/utilite/ULogger.h"
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/UConversion.h>
 
 namespace rtabmap
 {
@@ -427,7 +428,7 @@ SensorData::SensorData(
 
 void SensorData::setUserDataRaw(const cv::Mat & userDataRaw)
 {
-	if(!userDataRaw.empty() && (!_userDataCompressed.empty() || !_userDataRaw.empty()))
+	if(!userDataRaw.empty() && !_userDataRaw.empty())
 	{
 		UWARN("Cannot write new user data (%d bytes) over existing user "
 			  "data (%d bytes, %d compressed). Set user data of %d to null "
@@ -553,7 +554,16 @@ void SensorData::uncompressData(
 		cv::Mat * groundCellsRaw,
 		cv::Mat * obstacleCellsRaw)
 {
-	UDEBUG("%d", this->id());
+	UDEBUG("%d data(%d,%d,%d,%d,%d)", this->id(), imageRaw?1:0, depthRaw?1:0, laserScanRaw?1:0, userDataRaw?1:0, groundCellsRaw?1:0, obstacleCellsRaw?1:0);
+	if(imageRaw == 0 &&
+		depthRaw == 0 &&
+		laserScanRaw == 0 &&
+		userDataRaw == 0 &&
+		groundCellsRaw == 0 &&
+		obstacleCellsRaw == 0)
+	{
+		return;
+	}
 	uncompressDataConst(
 			imageRaw,
 			depthRaw,
@@ -571,7 +581,7 @@ void SensorData::uncompressData(
 			cv::Size size(_imageRaw.cols/_cameraModels.size(), _imageRaw.rows);
 			for(unsigned int i=0; i<_cameraModels.size(); ++i)
 			{
-				if(_cameraModels[i].isValidForProjection() && _cameraModels[i].imageWidth() == 0)
+				if(_cameraModels[i].fx() && _cameraModels[i].fy() && _cameraModels[i].imageWidth() == 0)
 				{
 					_cameraModels[i].setImageSize(size);
 				}
@@ -725,6 +735,15 @@ void SensorData::uncompressDataConst(
 			*obstacleCellsRaw = ctObstacleCells.getUncompressedData();
 		}
 	}
+}
+
+void SensorData::setFeatures(const std::vector<cv::KeyPoint> & keypoints, const std::vector<cv::Point3f> & keypoints3D, const cv::Mat & descriptors)
+{
+	UASSERT_MSG(keypoints3D.empty() || keypoints.size() == keypoints3D.size(), uFormat("keypoints=%d keypoints3D=%d", (int)keypoints.size(), (int)keypoints3D.size()).c_str());
+	UASSERT_MSG(descriptors.empty() || (int)keypoints.size() == descriptors.rows, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors.rows).c_str());
+	_keypoints = keypoints;
+	_keypoints3D = keypoints3D;
+	_descriptors = descriptors;
 }
 
 long SensorData::getMemoryUsed() const // Return memory usage in Bytes

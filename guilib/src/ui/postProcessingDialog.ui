@@ -115,7 +115,7 @@
       <item>
        <widget class="QLabel" name="label">
         <property name="text">
-         <string>See &quot;RTAB-Map settings/RGB-D SLAM/Loop closure constraint&quot; to tune the parameters used.</string>
+         <string>See &quot;RTAB-Map settings/Motion Estimation&quot; to tune the parameters used.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -128,7 +128,7 @@
    <item>
     <widget class="QGroupBox" name="groupBox_3">
      <property name="title">
-      <string>Refine links with ICP 3D</string>
+      <string>Refine links with ICP</string>
      </property>
      <property name="checkable">
       <bool>false</bool>
@@ -137,7 +137,7 @@
       <item>
        <widget class="QLabel" name="label_2">
         <property name="text">
-         <string>See &quot;RTAB-Map settings/RGB-D SLAM/ICP&quot; to tune the parameters used.</string>
+         <string>Laser scans are required. See &quot;RTAB-Map settings/Motion Estimation/ICP&quot; to tune the parameters used.</string>
         </property>
         <property name="wordWrap">
          <bool>true</bool>
@@ -194,42 +194,6 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="0">
-         <widget class="QComboBox" name="comboBox_sbaType">
-          <item>
-           <property name="text">
-            <string>g2o</string>
-           </property>
-          </item>
-          <item>
-           <property name="text">
-            <string>cvsba</string>
-           </property>
-          </item>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QDoubleSpinBox" name="sba_epsilon">
-          <property name="suffix">
-           <string/>
-          </property>
-          <property name="decimals">
-           <number>4</number>
-          </property>
-          <property name="minimum">
-           <double>0.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>1.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>0.000100000000000</double>
-          </property>
-          <property name="value">
-           <double>0.000100000000000</double>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="1">
          <widget class="QLabel" name="label_8">
           <property name="text">
@@ -241,12 +205,34 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QLabel" name="label_9">
+         <widget class="QLabel" name="label_variance">
           <property name="text">
-           <string>Stop optimizing when the error improvement is less than this value.</string>
+           <string>Pixel variance used by g2o.</string>
           </property>
           <property name="wordWrap">
            <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QDoubleSpinBox" name="sba_variance">
+          <property name="suffix">
+           <string/>
+          </property>
+          <property name="decimals">
+           <number>2</number>
+          </property>
+          <property name="minimum">
+           <double>0.010000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>999.000000000000000</double>
+          </property>
+          <property name="singleStep">
+           <double>0.010000000000000</double>
+          </property>
+          <property name="value">
+           <double>1.000000000000000</double>
           </property>
          </widget>
         </item>
@@ -260,36 +246,18 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="1">
-         <widget class="QLabel" name="label_variance">
-          <property name="text">
-           <string>Pixel variance used by g2o.</string>
-          </property>
-          <property name="wordWrap">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QDoubleSpinBox" name="sba_variance">
-          <property name="suffix">
-           <string/>
-          </property>
-          <property name="decimals">
-           <number>4</number>
-          </property>
-          <property name="minimum">
-           <double>0.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>10.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>0.010000000000000</double>
-          </property>
-          <property name="value">
-           <double>1.000000000000000</double>
-          </property>
+        <item row="0" column="0">
+         <widget class="QComboBox" name="comboBox_sbaType">
+          <item>
+           <property name="text">
+            <string>g2o</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>cvsba</string>
+           </property>
+          </item>
          </widget>
         </item>
        </layout>

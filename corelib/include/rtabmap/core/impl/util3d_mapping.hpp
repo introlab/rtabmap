@@ -83,7 +83,9 @@ void segmentObstaclesFromGround(
 				normalKSearch,
 				viewPoint);
 
-		if(segmentFlatObstacles)
+		UDEBUG("cloud=%d, indices=%d flatSurfaces=%d", (int)cloud->size(), (int)indices->size(), (int)flatSurfaces->size());
+
+		if(segmentFlatObstacles && flatSurfaces->size())
 		{
 			int biggestFlatSurfaceIndex;
 			std::vector<pcl::IndicesPtr> clusteredFlatSurfaces = extractClusters(
@@ -93,7 +95,7 @@ void segmentObstaclesFromGround(
 					minClusterSize,
 					std::numeric_limits<int>::max(),
 					&biggestFlatSurfaceIndex);
-
+			UDEBUG("clusteredFlatSurfaces=%d", (int)clusteredFlatSurfaces.size());
 
 			// cluster all surfaces for which the centroid is in the Z-range of the bigger surface
 			if(clusteredFlatSurfaces.size())
@@ -137,6 +139,8 @@ void segmentObstaclesFromGround(
 		{
 			ground = flatSurfaces;
 		}
+
+		UDEBUG("ground=%d", (int)ground->size());
 
 		if(ground->size() != cloud->size())
 		{
@@ -251,8 +255,9 @@ void occupancy2DFromGroundObstacles(
 		ground = cv::Mat(1, (int)groundCloudProjected->size(), CV_32FC2);
 		for(unsigned int i=0;i<groundCloudProjected->size(); ++i)
 		{
-			ground.at<cv::Vec2f>(i)[0] = groundCloudProjected->at(i).x;
-			ground.at<cv::Vec2f>(i)[1] = groundCloudProjected->at(i).y;
+			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
+			ptr[i][0] = groundCloudProjected->at(i).x;
+			ptr[i][1] = groundCloudProjected->at(i).y;
 		}
 	}
 
@@ -268,8 +273,9 @@ void occupancy2DFromGroundObstacles(
 		obstacles = cv::Mat(1, (int)obstaclesCloudProjected->size(), CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloudProjected->size(); ++i)
 		{
-			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloudProjected->at(i).x;
-			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloudProjected->at(i).y;
+			cv::Vec2f * ptr = obstacles.ptr<cv::Vec2f>();
+			ptr[i][0] = obstaclesCloudProjected->at(i).x;
+			ptr[i][1] = obstaclesCloudProjected->at(i).y;
 		}
 	}
 }

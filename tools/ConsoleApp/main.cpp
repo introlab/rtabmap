@@ -55,6 +55,7 @@ void showUsage()
 			"  -createGT                       Generate a ground truth file\n"
 			"  -start_at #                     When \"path\" is a directory of images, set this parameter\n"
 			"                                   to start processing at image # (default 0).\n"
+			"  -skip #                         Skip X images while reading directory (default 0).\n"
 			"  -v                              Get version of RTAB-Map\n"
 			"  -input \"path\"                 Load previous database if it exists.\n"
 			"%s\n",
@@ -100,6 +101,7 @@ int main(int argc, char * argv[])
 	bool createGT = false;
 	std::string inputDbPath;
 	int startAt = 0;
+	int skip = 0;
 
 	for(int i=1; i<argc; ++i)
 	{
@@ -187,6 +189,23 @@ int main(int argc, char * argv[])
 			}
 			continue;
 		}
+		if (strcmp(argv[i], "-skip") == 0)
+		{
+			++i;
+			if (i < argc)
+			{
+				skip = std::atoi(argv[i]);
+				if (skip < 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
 		if(strcmp(argv[i], "-createGT") == 0)
 		{
 			createGT = true;
@@ -259,6 +278,15 @@ int main(int argc, char * argv[])
 	uInsert(pm, ParametersPair(Parameters::kRtabmapPublishStats(), "false"));
 	uInsert(pm, ParametersPair(Parameters::kRGBDEnabled(), "false"));
 
+	// Process an empty image to make sure every libraries are loaded.
+	ULogger::Level level = ULogger::level();
+	ULogger::setLevel(ULogger::kError);
+	cv::Mat tmp = cv::Mat::zeros(640,480,CV_8UC1);
+	rtabmap.init(pm);
+	rtabmap.process(tmp);
+	rtabmap.close(false);
+	ULogger::setLevel(level);
+
 	rtabmap.init(pm, inputDbPath);
 
 	printf("rtabmap init time = %fs\n", timer.ticks());
@@ -273,7 +301,8 @@ int main(int argc, char * argv[])
 	printf(" Time threshold = %1.2f ms\n", rtabmap.getTimeThreshold());
 	printf(" Image rate = %1.2f s (%1.2f Hz)\n", rate, 1/rate);
 	printf(" Repeating data set = %s\n", repeat?"true":"false");
-	printf(" Camera starts at image %d (default 1)\n", startAt);
+	printf(" Camera starts at image %d (default 0)\n", startAt);
+	printf(" Skip image = %d\n", skip);
 	if(createGT)
 	{
 		printf(" Creating the ground truth matrix.\n");
@@ -315,7 +344,10 @@ int main(int argc, char * argv[])
 			{
 				++countLoopDetected;
 			}
-			data = camera->takeImage();
+			for(int j=0; j<=skip; ++j)
+			{
+				data = camera->takeImage();
+			}
 			if(++count % 100 == 0)
 			{
 				printf(" count = %d, loop closures = %d, max time (at %d) = %fs\n",

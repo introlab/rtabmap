@@ -34,14 +34,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <tango_client_api.h>  // NOLINT
 #include <tango-gl/util.h>
 
-#include <scene.h>
-#include <CameraTango.h>
-#include <util.h>
+#include "scene.h"
+#include "CameraTango.h"
+#include "util.h"
+#include "ProgressionStatus.h"
 
 #include <rtabmap/core/RtabmapThread.h>
 #include <rtabmap/utilite/UEventsHandler.h>
 #include <boost/thread/mutex.hpp>
 #include <pcl/pcl_base.h>
+#include <pcl/TextureMesh.h>
 
 // RTABMapApp handles the application lifecycle and resources.
 class RTABMapApp : public UEventsHandler {
@@ -52,7 +54,9 @@ class RTABMapApp : public UEventsHandler {
 
   void onCreate(JNIEnv* env, jobject caller_activity);
 
-  void openDatabase(const std::string & databasePath);
+  void setScreenRotation(int displayRotation, int cameraRotation);
+
+  int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize);
 
   bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
 
@@ -113,32 +117,64 @@ class RTABMapApp : public UEventsHandler {
   void setMapCloudShown(bool shown);
   void setOdomCloudShown(bool shown);
   void setMeshRendering(bool enabled, bool withTexture);
+  void setPointSize(float value);
+  void setLighting(bool enabled);
+  void setBackfaceCulling(bool enabled);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);
   void setNodesFiltering(bool enabled);
-  void setDriftCorrection(bool enabled);
   void setGraphVisible(bool visible);
   void setGridVisible(bool visible);
   void setAutoExposure(bool enabled);
+  void setRawScanSaved(bool enabled);
+  void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
+  void setSmoothing(bool enabled);
+  void setAppendMode(bool enabled);
   void setDataRecorderMode(bool enabled);
   void setMaxCloudDepth(float value);
+  void setCloudDensityLevel(int value);
   void setMeshAngleTolerance(float value);
   void setMeshTriangleSize(int value);
+  void setClusterRatio(float value);
+  void setMaxGainRadius(float value);
+  void setRenderingTextureDecimation(int value);
   int setMappingParameter(const std::string & key, const std::string & value);
 
   void resetMapping();
-  void save();
-  bool exportMesh(const std::string & filePath);
+  void save(const std::string & databasePath);
+  cv::Mat mergeTextures(pcl::TextureMesh & mesh, int textureSize) const;
+  void cancelProcessing();
+  bool exportMesh(
+		  const std::string & filePath,
+		  float cloudVoxelSize,
+		  bool regenerateCloud,
+		  bool meshing,
+		  int textureSize,
+		  int normalK,
+		  bool optimized,
+		  float optimizedVoxelSize,
+		  int optimizedDepth,
+		  int optimizedMaxPolygons,
+		  float optimizedColorRadius,
+		  bool optimizedCleanWhitePolygons,
+		  bool optimizedColorWhitePolygons,
+		  float optimizedMaxTextureDistance,
+		  int optimizedMinTextureClusterSize,
+		  bool blockRendering);
+  bool postExportation(bool visualize);
   int postProcessing(int approach);
 
  protected:
-  virtual void handleEvent(UEvent * event);
+  virtual bool handleEvent(UEvent * event);
 
  private:
   rtabmap::ParametersMap getRtabmapParameters();
   bool smoothMesh(int id, Mesh & mesh);
+  void gainCompensation(bool full = false);
+  std::vector<pcl::Vertices> filterOrganizedPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
+  std::vector<pcl::Vertices> filterPolygons(const std::vector<pcl::Vertices> & polygons, int cloudSize) const;
 
  private:
   rtabmap::CameraTango * camera_;
@@ -149,36 +185,58 @@ class RTABMapApp : public UEventsHandler {
   bool odomCloudShown_;
   bool graphOptimization_;
   bool nodesFiltering_;
-  bool driftCorrection_;
   bool localizationMode_;
   bool trajectoryMode_;
   bool autoExposure_;
+  bool rawScanSaved_;
+  bool smoothing_;
+  bool cameraColor_;
   bool fullResolution_;
+  bool appendMode_;
   float maxCloudDepth_;
+  int cloudDensityLevel_;
   int meshTrianglePix_;
   float meshAngleToleranceDeg_;
+  float clusterRatio_;
+  float maxGainRadius_;
+  int renderingTextureDecimation_;
 
   rtabmap::ParametersMap mappingParameters_;
 
   bool paused_;
   bool dataRecorderMode_;
   bool clearSceneOnNextRender_;
+  bool openingDatabase_;
+  bool exporting_;
+  bool postProcessing_;
   bool filterPolygonsOnNextRender_;
   int gainCompensationOnNextRender_;
   bool bilateralFilteringOnNextRender_;
   bool cameraJustInitialized_;
+  int meshDecimation_;
   int totalPoints_;
   int totalPolygons_;
   int lastDrawnCloudsCount_;
   float renderingTime_;
+  double lastPostRenderEventTime_;
+  long processMemoryUsedBytes;
+  long processGPUMemoryUsedBytes;
+  std::map<std::string, float> bufferedStatsData_;
+
+  bool visualizingMesh_;
+  bool exportedMeshUpdated_;
+  pcl::TextureMesh::Ptr exportedMesh_;
+  cv::Mat exportedTexture_;
 
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.
   Scene main_scene_;
 
-	std::list<rtabmap::Statistics> rtabmapEvents_;
+	std::list<rtabmap::RtabmapEvent*> rtabmapEvents_;
 	std::list<rtabmap::OdometryEvent> odomEvents_;
 	std::list<rtabmap::Transform> poseEvents_;
+
+	rtabmap::Transform mapToOdom_;
 
 	boost::mutex rtabmapMutex_;
 	boost::mutex meshesMutex_;
@@ -190,6 +248,8 @@ class RTABMapApp : public UEventsHandler {
 	std::map<int, rtabmap::Transform> rawPoses_;
 
 	std::pair<rtabmap::RtabmapEventInit::Status, std::string> status_;
+
+	rtabmap::ProgressionStatus progressionStatus_;
 };
 
 #endif  // TANGO_POINT_CLOUD_POINT_CLOUD_APP_H_

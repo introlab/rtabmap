@@ -55,6 +55,7 @@ public:
 	std::vector<float> xValues() const {return _x;}
 	std::vector<float> yValues() const {return _y;}
 	void setCacheOn(bool on);
+	void clearCache();
 
 public slots:
 	void updateMenu(const QMenu * menu);
@@ -97,6 +98,7 @@ public:
 	void getFiguresSetup(QList<int> & curvesPerFigure, QStringList & curveNames);
 	void addCurve(const QString & name, bool newFigure = true, bool cacheOn = false);
 	void setWorkingDirectory(const QString & workingDirectory);
+	void setNewFigureMaxItems(int value) {_newFigureMaxItems = value;}
 	void closeFigures();
 	void setCacheOn(bool on);
 
@@ -105,6 +107,7 @@ public slots:
 	void updateStat(const QString & statFullName, float y, bool cacheOn);
 	void updateStat(const QString & statFullName, float x, float y, bool cacheOn);
 	void updateStat(const QString & statFullName, const std::vector<float> & x, const std::vector<float> & y, bool cacheOn);
+	void clear();
 
 signals:
 	void menuChanged(const QMenu *);
@@ -121,6 +124,7 @@ private:
 	QMenu * _plotMenu;
 	QToolBox * _statBox;
 	QString _workingDirectory;
+	int _newFigureMaxItems;
 	QMap<QString, QWidget*> _figures;
 };
 

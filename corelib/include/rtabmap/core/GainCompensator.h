@@ -73,18 +73,18 @@ public:
 
 	void apply(
 			int id,
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) const;
 	void apply(
 			int id,
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-			const pcl::IndicesPtr & indices);
+			const pcl::IndicesPtr & indices) const;
 	void apply(
 			int id,
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-			const pcl::IndicesPtr & indices);
+			const pcl::IndicesPtr & indices) const;
 	void apply(
 			int id,
-			cv::Mat & image);
+			cv::Mat & image) const;
 
 	double getGain(int id) const;
 	int getIndex(int id) const;

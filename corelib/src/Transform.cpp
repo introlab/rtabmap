@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 
 #include <pcl/common/eigen.h>
+#include <pcl/common/common.h>
 #include <rtabmap/core/util3d.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
@@ -206,6 +207,13 @@ void Transform::getTranslation(float & x, float & y, float & z) const
 	x = this->x();
 	y = this->y();
 	z = this->z();
+}
+
+float Transform::getAngle(float x, float y, float z) const
+{
+	Eigen::Vector3f vA(x,y,z);
+	Eigen::Vector3f vB = this->toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+	return pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 }
 
 float Transform::getNorm() const

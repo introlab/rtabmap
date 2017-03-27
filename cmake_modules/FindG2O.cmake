@@ -18,8 +18,7 @@ FIND_PATH(G2O_INCLUDE_DIR g2o/core/base_vertex.h
   PATHS "C:\\Program Files\\g2o\\include")
 
 # Macro to unify finding both the debug and release versions of the
-# libraries; this is adapted from the OpenSceneGraph FIND_LIBRARY
-# macro.
+# libraries; this is adapted from the rtabmap config
 
 MACRO(FIND_G2O_LIBRARY MYLIBRARY MYLIBRARYNAME)
 
@@ -31,11 +30,14 @@ MACRO(FIND_G2O_LIBRARY MYLIBRARY MYLIBRARYNAME)
     NAMES "g2o_${MYLIBRARYNAME}"
 	PATHS "C:\\Program Files\\g2o\\lib")
   
-  IF(NOT ${MYLIBRARY}_DEBUG)
-    IF(MYLIBRARY)
-      SET(${MYLIBRARY}_DEBUG ${MYLIBRARY})
-    ENDIF(MYLIBRARY)
-  ENDIF( NOT ${MYLIBRARY}_DEBUG)
+  IF(${MYLIBRARY}_DEBUG AND ${MYLIBRARY})
+    SET(${MYLIBRARY}
+      debug ${${MYLIBRARY}_DEBUG}
+      optimized ${${MYLIBRARY}}
+    )
+  ELSEIF(${MYLIBRARY}_DEBUG)
+    SET(${MYLIBRARY} ${${MYLIBRARY}_DEBUG})
+  ENDIF()  
   
 ENDMACRO(FIND_G2O_LIBRARY LIBRARY LIBRARYNAME)
 

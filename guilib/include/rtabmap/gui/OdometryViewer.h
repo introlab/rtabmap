@@ -64,7 +64,7 @@ public slots:
 	virtual void clear();
 
 protected:
-	virtual void handleEvent(UEvent * event);
+	virtual bool handleEvent(UEvent * event);
 
 private slots:
 	void reset();

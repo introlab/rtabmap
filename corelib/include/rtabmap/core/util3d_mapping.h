@@ -43,8 +43,17 @@ namespace rtabmap
 namespace util3d
 {
 
+RTABMAP_DEPRECATED(void RTABMAP_EXP occupancy2DFromLaserScan(
+		const cv::Mat & scan, // in /base_link frame
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize,
+		bool unknownSpaceFilled = false,
+		float scanMaxRange = 0.0f), "Use interface with \"viewpoint\" parameter to make sure the ray tracing origin is from the sensor and not the base.");
+
 void RTABMAP_EXP occupancy2DFromLaserScan(
-		const cv::Mat & scan,
+		const cv::Mat & scan, // in /base_link frame
+		const cv::Point3f & viewpoint, // /base_link -> /base_scan
 		cv::Mat & ground,
 		cv::Mat & obstacles,
 		float cellSize,
@@ -61,8 +70,18 @@ cv::Mat RTABMAP_EXP create2DMapFromOccupancyLocalMaps(
 		bool erode = false,
 		float footprintRadius = 0.0f);
 
+RTABMAP_DEPRECATED(cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
+		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans, // in /base_link frame
+		float cellSize,
+		bool unknownSpaceFilled,
+		float & xMin,
+		float & yMin,
+		float minMapSize = 0.0f,
+		float scanMaxRange = 0.0f), "Use interface with \"viewpoints\" parameter to make sure the ray tracing origin is from the sensor and not the base.");
+
 cv::Mat RTABMAP_EXP create2DMap(const std::map<int, Transform> & poses,
-		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
+		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans, // in /base_link frame
+		const std::map<int, cv::Point3f > & viewpoints, // /base_link -> /base_scan
 		float cellSize,
 		bool unknownSpaceFilled,
 		float & xMin,

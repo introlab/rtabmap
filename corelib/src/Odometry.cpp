@@ -203,59 +203,68 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 
 Transform Odometry::process(SensorData & data, const Transform & guessIn, OdometryInfo * info)
 {
+	UASSERT_MSG(data.id() >= 0, uFormat("Input data should have ID greater or equal than 0 (id=%d)!", data.id()).c_str());
+
 	// Ground alignment
 	if(_pose.isIdentity() && _alignWithGround)
 	{
-		UTimer alignTimer;
-		pcl::IndicesPtr indices(new std::vector<int>);
-		pcl::IndicesPtr ground, obstacles;
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, 1, 0, 0, indices.get());
-		cloud = util3d::voxelize(cloud, indices, 0.01);
-		bool success = false;
-		if(cloud->size())
+		if(data.depthOrRightRaw().empty())
 		{
-			util3d::segmentObstaclesFromGround<pcl::PointXYZ>(cloud, ground, obstacles, 20, M_PI/4.0f, 0.02, 200, true);
-			if(ground->size())
-			{
-				pcl::ModelCoefficients coefficients;
-				util3d::extractPlane(cloud, ground, 0.02, 100, &coefficients);
-				if(coefficients.values.at(3) >= 0)
-				{
-					UWARN("Ground detected! coefficients=(%f, %f, %f, %f) time=%fs",
-							coefficients.values.at(0),
-							coefficients.values.at(1),
-							coefficients.values.at(2),
-							coefficients.values.at(3),
-							alignTimer.ticks());
-				}
-				else
-				{
-					UWARN("Ceiling detected! coefficients=(%f, %f, %f, %f) time=%fs",
-							coefficients.values.at(0),
-							coefficients.values.at(1),
-							coefficients.values.at(2),
-							coefficients.values.at(3),
-							alignTimer.ticks());
-				}
-				Eigen::Vector3f n(coefficients.values.at(0), coefficients.values.at(1), coefficients.values.at(2));
-				Eigen::Vector3f z(0,0,1);
-				//get rotation from z to n;
-				Eigen::Matrix3f R;
-				R = Eigen::Quaternionf().setFromTwoVectors(n,z);
-				Transform rotation(
-						R(0,0), R(0,1), R(0,2), 0,
-						R(1,0), R(1,1), R(1,2), 0,
-						R(2,0), R(2,1), R(2,2), coefficients.values.at(3));
-				_pose *= rotation;
-				success = true;
-			}
+			UWARN("\"%s\" is true but the input has no depth information, ignoring alignment with ground...", Parameters::kOdomAlignWithGround().c_str());
 		}
-		if(!success)
+		else
 		{
-			UERROR("Odometry failed to detect the ground. You have this "
-					"error because parameter \"Odom/AlignWithGround\" is true. "
-					"Make sure the camera is seeing the ground (e.g., tilt ~30 "
-					"degrees toward the ground).");
+			UTimer alignTimer;
+			pcl::IndicesPtr indices(new std::vector<int>);
+			pcl::IndicesPtr ground, obstacles;
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, 1, 0, 0, indices.get());
+			cloud = util3d::voxelize(cloud, indices, 0.01);
+			bool success = false;
+			if(cloud->size())
+			{
+				util3d::segmentObstaclesFromGround<pcl::PointXYZ>(cloud, ground, obstacles, 20, M_PI/4.0f, 0.02, 200, true);
+				if(ground->size())
+				{
+					pcl::ModelCoefficients coefficients;
+					util3d::extractPlane(cloud, ground, 0.02, 100, &coefficients);
+					if(coefficients.values.at(3) >= 0)
+					{
+						UWARN("Ground detected! coefficients=(%f, %f, %f, %f) time=%fs",
+								coefficients.values.at(0),
+								coefficients.values.at(1),
+								coefficients.values.at(2),
+								coefficients.values.at(3),
+								alignTimer.ticks());
+					}
+					else
+					{
+						UWARN("Ceiling detected! coefficients=(%f, %f, %f, %f) time=%fs",
+								coefficients.values.at(0),
+								coefficients.values.at(1),
+								coefficients.values.at(2),
+								coefficients.values.at(3),
+								alignTimer.ticks());
+					}
+					Eigen::Vector3f n(coefficients.values.at(0), coefficients.values.at(1), coefficients.values.at(2));
+					Eigen::Vector3f z(0,0,1);
+					//get rotation from z to n;
+					Eigen::Matrix3f R;
+					R = Eigen::Quaternionf().setFromTwoVectors(n,z);
+					Transform rotation(
+							R(0,0), R(0,1), R(0,2), 0,
+							R(1,0), R(1,1), R(1,2), 0,
+							R(2,0), R(2,1), R(2,2), coefficients.values.at(3));
+					_pose *= rotation;
+					success = true;
+				}
+			}
+			if(!success)
+			{
+				UERROR("Odometry failed to detect the ground. You have this "
+						"error because parameter \"%s\" is true. "
+						"Make sure the camera is seeing the ground (e.g., tilt ~30 "
+						"degrees toward the ground).", Parameters::kOdomAlignWithGround().c_str());
+			}
 		}
 	}
 
@@ -325,7 +334,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			kpts[i].size *= _imageDecimation;
 			kpts[i].octave += log2value;
 		}
-		data.setFeatures(kpts, decimatedData.descriptors());
+		data.setFeatures(kpts, decimatedData.keypoints3D(), decimatedData.descriptors());
 
 		if(info)
 		{
@@ -489,8 +498,14 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 		}
 
+		if(data.stamp() == 0)
+		{
+			UWARN("Null stamp detected");
+		}
+
 		previousStamp_ = data.stamp();
 		previousVelocityTransform_.setNull();
+
 		if(dt)
 		{
 			previousVelocityTransform_ = Transform(vx, vy, vz, vroll, vpitch, vyaw);
@@ -501,6 +516,11 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			distanceTravelled_ += t.getNorm();
 			info->distanceTravelled = distanceTravelled_;
 		}
+
+		info->varianceLin *= t.getNorm();
+		info->varianceAng *= t.getAngle();
+		info->varianceLin = info->varianceLin>0.0f?info->varianceLin:0.0001f; // epsilon if exact transform
+		info->varianceAng = info->varianceAng>0.0f?info->varianceAng:0.0001f; // epsilon if exact transform
 
 		return _pose *= t; // update
 	}

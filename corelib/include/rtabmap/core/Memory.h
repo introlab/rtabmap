@@ -80,7 +80,7 @@ public:
 			bool dbOverwritten = false,
 			const ParametersMap & parameters = ParametersMap(),
 			bool postInitClosingEvents = false);
-	void close(bool databaseSaved = true, bool postInitClosingEvents = false);
+	void close(bool databaseSaved = true, bool postInitClosingEvents = false, const std::string & ouputDatabasePath = "");
 	std::map<int, float> computeLikelihood(const Signature * signature,
 			const std::list<int> & ids);
 	int incrementMapId(std::map<int, int> * reducedIds = 0);
@@ -193,8 +193,8 @@ public:
 			std::multimap<int, Link> & links,
 			bool lookInDatabase = false);
 
-	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0) const;
-	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
+	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false) const;
+	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false);
 	Transform computeIcpTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransformMulti(
 			int newId,
@@ -206,6 +206,7 @@ private:
 	void preUpdate();
 	void addSignatureToStm(Signature * signature, const cv::Mat & covariance);
 	void clear();
+	void loadDataFromDb(bool postInitClosingEvents);
 	void moveToTrash(Signature * s, bool keepLinkedToGraph = true, std::list<int> * deletedWords = 0);
 
 	void moveSignatureToWMFromSTM(int id, int * reducedTo = 0);
@@ -254,6 +255,7 @@ private:
 	bool _mapLabelsAdded;
 	int _imagePreDecimation;
 	int _imagePostDecimation;
+	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
 	int _laserScanNormalK;
 	bool _reextractLoopClosureFeatures;
@@ -262,6 +264,7 @@ private:
 	bool _rehearsalWeightIgnoredWhileMoving;
 	bool _useOdometryFeatures;
 	bool _createOccupancyGrid;
+	int _visMaxFeatures;
 
 	int _idCount;
 	int _idMapCount;

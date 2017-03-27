@@ -102,7 +102,7 @@ public:
 	// Mutex-protected methods of abstract versions below
 
 	bool openConnection(const std::string & url, bool overwritten = false);
-	void closeConnection(bool save = true);
+	void closeConnection(bool save = true, const std::string & outputUrl = "");
 	bool isConnected() const;
 	long getMemoryUsed() const; // In bytes
 	std::string getDatabaseVersion() const;
@@ -146,7 +146,7 @@ protected:
 
 private:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false) = 0;
-	virtual void disconnectDatabaseQuery(bool save = true) = 0;
+	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "") = 0;
 	virtual bool isConnectedQuery() const = 0;
 	virtual long getMemoryUsedQuery() const = 0; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const = 0;

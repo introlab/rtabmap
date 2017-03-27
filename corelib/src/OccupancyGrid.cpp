@@ -59,11 +59,12 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	maxGroundHeight_(Parameters::defaultGridMaxGroundHeight()),
 	normalsSegmentation_(Parameters::defaultGridNormalsSegmentation()),
 	grid3D_(Parameters::defaultGrid3D()),
-	groundIsObstacle_(Parameters::defaultGrid3DGroundIsObstacle()),
+	groundIsObstacle_(Parameters::defaultGridGroundIsObstacle()),
 	noiseFilteringRadius_(Parameters::defaultGridNoiseFilteringRadius()),
 	noiseFilteringMinNeighbors_(Parameters::defaultGridNoiseFilteringMinNeighbors()),
 	scan2dUnknownSpaceFilled_(Parameters::defaultGridScan2dUnknownSpaceFilled()),
 	scan2dMaxUnknownSpaceFilledRange_(Parameters::defaultGridScan2dMaxFilledRange()),
+	projRayTracing_(Parameters::defaultGridProjRayTracing()),
 	xMin_(0.0f),
 	yMin_(0.0f)
 {
@@ -124,11 +125,12 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridFlatObstacleDetected(), flatObstaclesDetected_);
 	Parameters::parse(parameters, Parameters::kGridNormalsSegmentation(), normalsSegmentation_);
 	Parameters::parse(parameters, Parameters::kGrid3D(), grid3D_);
-	Parameters::parse(parameters, Parameters::kGrid3DGroundIsObstacle(), groundIsObstacle_);
+	Parameters::parse(parameters, Parameters::kGridGroundIsObstacle(), groundIsObstacle_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringRadius(), noiseFilteringRadius_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringMinNeighbors(), noiseFilteringMinNeighbors_);
 	Parameters::parse(parameters, Parameters::kGridScan2dUnknownSpaceFilled(), scan2dUnknownSpaceFilled_);
 	Parameters::parse(parameters, Parameters::kGridScan2dMaxFilledRange(), scan2dMaxUnknownSpaceFilledRange_);
+	Parameters::parse(parameters, Parameters::kGridProjRayTracing(), projRayTracing_);
 
 	// convert ROI from string to vector
 	ParametersMap::const_iterator iter;
@@ -199,8 +201,14 @@ void OccupancyGrid::createLocalMap(
 	{
 		UDEBUG("2D laser scan");
 		//2D
+		viewPoint = cv::Point3f(
+				node.sensorData().laserScanInfo().localTransform().x(),
+				node.sensorData().laserScanInfo().localTransform().y(),
+				node.sensorData().laserScanInfo().localTransform().z());
+
 		util3d::occupancy2DFromLaserScan(
 				util3d::transformLaserScan(node.sensorData().laserScanRaw(), node.sensorData().laserScanInfo().localTransform()),
+				viewPoint,
 				ground,
 				obstacles,
 				cellSize_,
@@ -269,6 +277,17 @@ void OccupancyGrid::createLocalMap(
 			}
 		}
 
+		if(projMapFrame_)
+		{
+			//we should rotate viewPoint in /map frame
+			float roll, pitch, yaw;
+			node.getPose().getEulerAngles(roll, pitch, yaw);
+			Transform viewpointRotated = Transform(0,0,0,roll,pitch,0) * Transform(viewPoint.x, viewPoint.y, viewPoint.z, 0,0,0);
+			viewPoint.x = viewpointRotated.x();
+			viewPoint.y = viewpointRotated.y();
+			viewPoint.z = viewpointRotated.z();
+		}
+
 		if(cloud->size())
 		{
 			pcl::IndicesPtr groundIndices(new std::vector<int>);
@@ -322,6 +341,20 @@ void OccupancyGrid::createLocalMap(
 							ground,
 							obstacles,
 							cellSize_);
+
+					if(projRayTracing_)
+					{
+						cv::Mat laserScan = obstacles;
+						obstacles = cv::Mat();
+						util3d::occupancy2DFromLaserScan(
+								laserScan,
+								viewPoint,
+								ground,
+								obstacles,
+								cellSize_,
+								false, // don't fill unknown space
+								0);
+					}
 				}
 			}
 		}

@@ -1,4 +1,15 @@
 
+option(DISABLE_LOG        "Disable Android logging (should be true in release)"    ON)
+IF(DISABLE_LOG)
+  ADD_DEFINITIONS(-DDISABLE_LOG)
+ENDIF(DISABLE_LOG)
+
+IF(DISABLE_LOG)
+   SET(ANDROID_DEBUGGABLE false)
+ELSE()
+   SET(ANDROID_DEBUGGABLE true)
+ENDIF()
+
 add_subdirectory(jni)
 
 
@@ -32,6 +43,11 @@ configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/ant.properties.in"
   "${CMAKE_CURRENT_BINARY_DIR}/ant.properties"
   @ONLY)
+  
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/custom_rules.xml"
+  "${CMAKE_CURRENT_BINARY_DIR}/custom_rules.xml"
+  COPYONLY)
 
 add_custom_target(NativeRTABMap-ant-configure ALL
   COMMAND "${ANDROID_EXECUTABLE}"

@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/Vertices.h>
+#include <pcl/pcl_base.h>
 
 class LogHandler : public UEventsHandler
 {
@@ -50,7 +51,7 @@ public:
 		registerToEventsManager();
 	}
 protected:
-	virtual void handleEvent(UEvent * event)
+	virtual bool handleEvent(UEvent * event)
 	{
 		if(event->getClassName().compare("ULogEvent") == 0)
 		{
@@ -73,25 +74,31 @@ protected:
 			}
 
 		}
+		return false;
 	}
 };
 
 static const rtabmap::Transform opengl_world_T_tango_world(
-		1.0f, 0.0f,  0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
+		1.0f,  0.0f,  0.0f, 0.0f,
+		0.0f,  0.0f,  1.0f, 0.0f,
 		0.0f, -1.0f,  0.0f, 0.0f);
 
-static const rtabmap::Transform depth_camera_T_opengl_camera(
-		1.0f, 0.0f, 0.0f, 0.0f,
-		0.0f, -1.0f, 0.0f, 0.0f,
-		0.0f, 0.0f, -1.0f, 0.0f);
+static const rtabmap::Transform rtabmap_world_T_tango_world(
+		 0.0f, 1.0f, 0.0f, 0.0f,
+	    -1.0f, 0.0f, 0.0f, 0.0f,
+		 0.0f, 0.0f, 1.0f, 0.0f);
+
+static const rtabmap::Transform tango_device_T_rtabmap_device(
+		 0.0f, -1.0f, 0.0f, 0.0f,
+	     0.0f,  0.0f, 1.0f, 0.0f,
+		-1.0f,  0.0f, 0.0f, 0.0f);
 
 static const rtabmap::Transform opengl_world_T_rtabmap_world(
-		0.0f, -1.0f,  0.0f, 0.0f,
-		0.0f, 0.0f, 1.0f, 0.0f,
-		-1.0f, 0.0f,  0.0f, 0.0f);
+		 0.0f, -1.0f, 0.0f, 0.0f,
+		 0.0f,  0.0f, 1.0f, 0.0f,
+		-1.0f,  0.0f, 0.0f, 0.0f);
 
-static const rtabmap::Transform rtabmap_world_T_opengl_world(
+static const rtabmap::Transform rtabmap_device_T_opengl_device(
 		 0.0f, 0.0f, -1.0f, 0.0f,
 		-1.0f, 0.0f,  0.0f, 0.0f,
 		 0.0f, 1.0f,  0.0f, 0.0f);
@@ -137,17 +144,32 @@ inline rtabmap::Transform glmToTransform(const glm::mat4 & mat)
 	return transform;
 }
 
-struct Mesh
+class Mesh
 {
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // dense or organized cloud
+public:
+	Mesh() :
+		cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
+		normals(new pcl::PointCloud<pcl::Normal>),
+		indices(new std::vector<int>),
+		visible(true),
+		gain(1.0f)
+	{}
+
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // organized cloud
+	pcl::PointCloud<pcl::Normal>::Ptr normals;
+	pcl::IndicesPtr indices;
 	std::vector<pcl::Vertices> polygons;
-	std::vector<int> denseToOrganizedIndices; // should be set if cloud is dense, used for texturing
-	unsigned int width;  // width of the organized cloud
-	unsigned int height; // height of the organized cloud
+	std::vector<pcl::Vertices> polygonsLowRes;
 	rtabmap::Transform pose; // in rtabmap coordinates
 	bool visible;
-	cv::Mat texture;
 	rtabmap::CameraModel cameraModel;
+	float gain;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+    	std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > texCoords;
+#else
+    	std::vector<Eigen::Vector2f> texCoords;
+#endif
+	cv::Mat texture;
 };
 
 #endif /* UTIL_H_ */

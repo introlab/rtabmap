@@ -651,8 +651,7 @@ void ImageView::updateOpacity()
 
 void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const cv::Mat & depth, const QColor & color)
 {
-	qDeleteAll(_features);
-	_features.clear();
+	clearFeatures();
 
 	float xRatio = 0;
 	float yRatio = 0;
@@ -684,8 +683,7 @@ void ImageView::setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, c
 
 void ImageView::setFeatures(const std::vector<cv::KeyPoint> & features, const cv::Mat & depth, const QColor & color)
 {
-	qDeleteAll(_features);
-	_features.clear();
+	clearFeatures();
 
 	float xRatio = 0;
 	float yRatio = 0;
@@ -774,6 +772,8 @@ void ImageView::setImage(const QImage & image)
 void ImageView::setImageDepth(const QImage & imageDepth)
 {
 	_imageDepth = QPixmap::fromImage(imageDepth);
+
+	UASSERT(_imageDepth.width() && _imageDepth.height());
 
 	if( _image.width() > 0 &&
 		_image.width() > _imageDepth.width() &&
@@ -899,10 +899,20 @@ void ImageView::clearLines()
 	}
 }
 
-void ImageView::clear()
+void ImageView::clearFeatures()
 {
 	qDeleteAll(_features);
 	_features.clear();
+
+	if(!_graphicsView->isVisible())
+	{
+		this->update();
+	}
+}
+
+void ImageView::clear()
+{
+	clearFeatures();
 
 	qDeleteAll(_lines);
 	_lines.clear();

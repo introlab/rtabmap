@@ -44,20 +44,30 @@ class PointCloudDrawable {
   PointCloudDrawable(
 		  GLuint cloudShaderProgram,
 		  GLuint textureShaderProgram,
-  		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
+  		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		  const pcl::IndicesPtr & indices,
+		  float gain);
   PointCloudDrawable(
   		  GLuint cloudShaderProgram,
   		  GLuint textureShaderProgram,
     	  const Mesh & mesh);
   virtual ~PointCloudDrawable();
 
-  void updatePolygons(const std::vector<pcl::Vertices> & polygons);
-  void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud);
+  void updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes = std::vector<pcl::Vertices>());
+  void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices, float gain);
   void updateMesh(const Mesh & mesh);
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
-  rtabmap::Transform getPose() const {return glmToTransform(pose_);}
+  void setGain(float gain) {gain_ = gain;}
+  rtabmap::Transform getPose() const {return pose_;}
+  const glm::mat4 & getPoseGl() const {return poseGl_;}
   bool isVisible() const {return visible_;}
+  bool hasMesh() const {return polygons_.size()!=0;}
+  bool hasTexture() const {return textures_ != 0;}
+  const pcl::PointXYZ & aabbMinModel() const {return aabbMinModel_;}
+  const pcl::PointXYZ & aabbMaxModel() const {return aabbMaxModel_;}
+  const pcl::PointXYZ & aabbMinWorld() const {return aabbMinWorld_;}
+  const pcl::PointXYZ & aabbMaxWorld() const {return aabbMaxWorld_;}
 
   // Update current point cloud data.
   //
@@ -65,19 +75,51 @@ class PointCloudDrawable {
   // @param view_mat: view matrix from current render camera.
   // @param model_mat: model matrix for this point cloud frame.
   // @param vertices: all vertices in this point cloud frame.
-  void Render(const glm::mat4 & projectionMatrix, const glm::mat4 & viewMatrix, bool meshRendering = true, float pointSize = 3.0f, bool textureRendering = false);
+  void Render(const glm::mat4 & projectionMatrix,
+		  const glm::mat4 & viewMatrix,
+		  bool meshRendering = true,
+		  float pointSize = 3.0f,
+		  bool textureRendering = false,
+		  bool lighting = true,
+		  float distanceToCamSqr = 0.0f);
+
+ private:
+  template<class PointT>
+  void updateAABBMinMax(const PointT & pt, pcl::PointXYZ & min, pcl::PointXYZ & max)
+  {
+	  if(pt.x<min.x) min.x = pt.x;
+	  if(pt.y<min.y) min.y = pt.y;
+	  if(pt.z<min.z) min.z = pt.z;
+	  if(pt.x>max.x) max.x = pt.x;
+	  if(pt.y>max.y) max.y = pt.y;
+	  if(pt.z>max.z) max.z = pt.z;
+  }
+  void updateAABBWorld(const rtabmap::Transform & pose);
 
  private:
   // Vertex buffer of the point cloud geometry.
   GLuint vertex_buffers_;
   GLuint textures_;
-  std::vector<GLushort> polygons_;
+  std::vector<GLuint> polygons_;
+  std::vector<GLuint> polygonsLowRes_;
+  std::vector<GLuint> verticesLowRes_;
+  std::vector<GLuint> verticesLowLowRes_;
   int nPoints_;
-  glm::mat4 pose_;
+  rtabmap::Transform pose_;
+  glm::mat4 poseGl_;
   bool visible_;
+  bool hasNormals_;
+  std::vector<unsigned int> organizedToDenseIndices_;
 
   GLuint cloud_shader_program_;
   GLuint texture_shader_program_;
+
+  float gain_;
+
+  pcl::PointXYZ aabbMinModel_;
+  pcl::PointXYZ aabbMaxModel_;
+  pcl::PointXYZ aabbMinWorld_;
+  pcl::PointXYZ aabbMaxWorld_;
 };
 
 #endif  // TANGO_POINT_CLOUD_POINT_CLOUD_DRAWABLE_H_

@@ -56,7 +56,7 @@ public:
 public slots:
 	void showImage(const rtabmap::SensorData & data);
 protected:
-	virtual void handleEvent(UEvent * event);
+	virtual bool handleEvent(UEvent * event);
 
 private:
 	ImageView* imageView_;

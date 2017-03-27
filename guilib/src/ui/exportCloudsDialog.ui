@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>814</width>
-    <height>667</height>
+    <height>680</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -23,24 +23,14 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1311</y>
+        <y>-1800</y>
         <width>773</width>
-        <height>1902</height>
+        <height>3200</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
        <item>
         <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,1">
-         <item row="3" column="0">
-          <widget class="QSpinBox" name="spinBox_normalKSearch">
-           <property name="minimum">
-            <number>3</number>
-           </property>
-           <property name="value">
-            <number>20</number>
-           </property>
-          </widget>
-         </item>
          <item row="2" column="0">
           <widget class="QCheckBox" name="checkBox_assemble">
            <property name="text">
@@ -68,6 +58,94 @@
            </property>
           </widget>
          </item>
+         <item row="3" column="1">
+          <widget class="QLabel" name="label_normal">
+           <property name="text">
+            <string>Set the number of k nearest neighbors to use for the normal estimation.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="0">
+          <widget class="QCheckBox" name="checkBox_gainCompensation">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="5" column="1">
+          <widget class="QLabel" name="label_binaryFile_8">
+           <property name="text">
+            <string>Regenerate clouds. This can be used to regenerate the point clouds at higher density than those used for online visualization.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="8" column="1">
+          <widget class="QLabel" name="label_binaryFile_11">
+           <property name="text">
+            <string>Gain compensation. Normalize brightness of images.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QSpinBox" name="spinBox_normalKSearch">
+           <property name="minimum">
+            <number>3</number>
+           </property>
+           <property name="value">
+            <number>20</number>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QLabel" name="label_voxel">
+           <property name="text">
+            <string>Voxel size. Set 0 to disable. When organized meshes are assembled, this is the radius in which the vertices of the polygons are merged.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLabel" name="label_binaryFile">
+           <property name="text">
+            <string>Binary file.</string>
+           </property>
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QComboBox" name="comboBox_pipeline">
+           <item>
+            <property name="text">
+             <string>Organized Point Cloud</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>Dense Point Cloud</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLabel" name="label_12">
+           <property name="text">
+            <string>Reconstruction flavor.</string>
+           </property>
+          </widget>
+         </item>
          <item row="4" column="0">
           <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize_assembled">
            <property name="suffix">
@@ -87,54 +165,61 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
-          <widget class="QLabel" name="label_normal">
+         <item row="7" column="1">
+          <widget class="QLabel" name="label_binaryFile_10">
            <property name="text">
-            <string>Set the number of k nearest neighbors to use for the normal estimation.</string>
+            <string>Cloud smoothing using Moving Least Squares algorithm (MLS).</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
-          <widget class="QLabel" name="label_12">
+         <item row="5" column="0">
+          <widget class="QCheckBox" name="checkBox_regenerate">
            <property name="text">
-            <string>Reconstruction flavor.</string>
+            <string/>
            </property>
           </widget>
          </item>
-         <item row="0" column="0">
-          <widget class="QComboBox" name="comboBox_pipeline">
-           <item>
-            <property name="text">
-             <string>Organized Point Cloud</string>
-            </property>
-           </item>
-           <item>
-            <property name="text">
-             <string>Dense Point Cloud</string>
-            </property>
-           </item>
+         <item row="6" column="0">
+          <widget class="QCheckBox" name="checkBox_filtering">
+           <property name="text">
+            <string/>
+           </property>
           </widget>
          </item>
-         <item row="1" column="1">
-          <widget class="QLabel" name="label_binaryFile">
+         <item row="7" column="0">
+          <widget class="QCheckBox" name="checkBox_smoothing">
            <property name="text">
-            <string>Binary file.</string>
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="6" column="1">
+          <widget class="QLabel" name="label_binaryFile_9">
+           <property name="text">
+            <string>Cloud filtering. Remove sparse points that are far from surfaces.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
-          <widget class="QLabel" name="label_voxel">
+         <item row="9" column="1">
+          <widget class="QLabel" name="label_binaryFile_12">
            <property name="text">
-            <string>Voxel size. Set 0 to disable. When organized meshes are assembled, this is the radius in which the vertices of the polygons are merged.</string>
+            <string>Meshing.</string>
            </property>
            <property name="wordWrap">
             <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="9" column="0">
+          <widget class="QCheckBox" name="checkBox_meshing">
+           <property name="text">
+            <string/>
            </property>
           </widget>
          </item>
@@ -146,37 +231,22 @@
           <string>Regenerate Clouds</string>
          </property>
          <property name="checkable">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_14">
           <item>
            <layout class="QGridLayout" name="gridLayout" columnstretch="0,0,1">
-            <item row="1" column="1">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_maxDepth">
-              <property name="suffix">
-               <string> m</string>
-              </property>
-              <property name="decimals">
-               <number>1</number>
-              </property>
-              <property name="maximum">
-               <double>100.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.100000000000000</double>
-              </property>
-              <property name="value">
-               <double>4.000000000000000</double>
+            <item row="6" column="0">
+             <widget class="QToolButton" name="toolButton_distortionModel">
+              <property name="text">
+               <string>...</string>
               </property>
              </widget>
             </item>
-            <item row="0" column="2">
-             <widget class="QLabel" name="label_108">
-              <property name="text">
-               <string>3D cloud decimation (1-2-4-8-...). Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
+            <item row="4" column="1">
+             <widget class="QSpinBox" name="spinBox_fillDepthHoles">
+              <property name="suffix">
+               <string> pixels</string>
               </property>
              </widget>
             </item>
@@ -193,13 +263,42 @@
               </property>
              </widget>
             </item>
-            <item row="3" column="2">
-             <widget class="QLabel" name="label_134">
+            <item row="2" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_minDepth">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>1</number>
+              </property>
+              <property name="maximum">
+               <double>100.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.100000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QLabel" name="label_108">
               <property name="text">
-               <string>Path to a depth distortion model to apply (output from depth calibration).</string>
+               <string>3D cloud decimation (1-2-4-8-...). Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="1">
+             <widget class="QLineEdit" name="lineEdit_distortionModel"/>
+            </item>
+            <item row="5" column="1">
+             <widget class="QSpinBox" name="spinBox_fillDepthHolesError">
+              <property name="suffix">
+               <string> %</string>
               </property>
              </widget>
             </item>
@@ -223,8 +322,21 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_minDepth">
+            <item row="4" column="2">
+             <widget class="QLabel" name="label_197">
+              <property name="text">
+               <string>Fill depth hole size (0 means no fill).</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_maxDepth">
               <property name="suffix">
                <string> m</string>
               </property>
@@ -238,17 +350,77 @@
                <double>0.100000000000000</double>
               </property>
               <property name="value">
-               <double>0.000000000000000</double>
+               <double>4.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="2">
+             <widget class="QLabel" name="label_134">
+              <property name="text">
+               <string>Path to a depth distortion model to apply (output from depth calibration).</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="2">
+             <widget class="QLabel" name="label_198">
+              <property name="text">
+               <string>Fill depth hole error.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="textInteractionFlags">
+               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="2">
+             <widget class="QLabel" name="label_135">
+              <property name="text">
+               <string>ROI ratios [left, right, top, bottom] between 0 and 1. Only generate 3D points for pixels inside the region of interest (RGB image).</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
               </property>
              </widget>
             </item>
             <item row="3" column="1">
-             <widget class="QLineEdit" name="lineEdit_distortionModel"/>
+             <widget class="QLineEdit" name="lineEdit_roiRatios"/>
             </item>
-            <item row="3" column="0">
-             <widget class="QToolButton" name="toolButton_distortionModel">
+            <item row="7" column="1">
+             <widget class="QCheckBox" name="checkBox_bilateral">
               <property name="text">
-               <string>...</string>
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="2">
+             <widget class="QLabel" name="label_136">
+              <property name="text">
+               <string>Bilateral filtering of the depth image. Reduce noise in depth images.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="2">
+             <widget class="QLabel" name="label_137">
+              <property name="text">
+               <string>Cloud subtraction. Superposed points from different nodes are filtered.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="8" column="1">
+             <widget class="QCheckBox" name="checkBox_subtraction">
+              <property name="text">
+               <string/>
               </property>
              </widget>
             </item>
@@ -260,7 +432,7 @@
              <string>Bilateral Filtering of the Depth Image</string>
             </property>
             <property name="checkable">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
             <layout class="QGridLayout" name="gridLayout_13" columnstretch="0,1">
              <item row="1" column="0">
@@ -342,7 +514,7 @@
              <string>Cloud Subtraction</string>
             </property>
             <property name="checkable">
-             <bool>true</bool>
+             <bool>false</bool>
             </property>
             <layout class="QGridLayout" name="gridLayout_11" columnstretch="0,1">
              <item row="2" column="1">
@@ -435,10 +607,10 @@
        <item>
         <widget class="QGroupBox" name="groupBox_filtering">
          <property name="title">
-          <string>Cloud Filtering (remove noisy points)</string>
+          <string>Cloud Filtering</string>
          </property>
          <property name="checkable">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,1">
           <item row="0" column="0">
@@ -502,13 +674,13 @@
        <item>
         <widget class="QGroupBox" name="groupBox_mls">
          <property name="title">
-          <string>Cloud Smoothing using Moving Least Squares algorithm (MLS)</string>
+          <string>Cloud Smoothing</string>
          </property>
          <property name="checkable">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <property name="checked">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout">
           <item>
@@ -890,7 +1062,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
           <string>Gain Compensation</string>
          </property>
          <property name="checkable">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_12" columnstretch="0,1">
           <item row="2" column="1">
@@ -1047,11 +1219,108 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
           <string>Meshing</string>
          </property>
          <property name="checkable">
-          <bool>true</bool>
+          <bool>false</bool>
          </property>
          <layout class="QVBoxLayout" name="verticalLayout_15">
           <item>
            <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
+            <item row="3" column="1">
+             <widget class="QLabel" name="label_textureMapping">
+              <property name="text">
+               <string>Texture mapping. Images of the cameras will be projected on the mesh(es). Output is a *.obj format. Available on Export or when clouds are not assembled.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QComboBox" name="comboBox_meshingApproach">
+              <item>
+               <property name="text">
+                <string>Fast GP3</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Poisson</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QCheckBox" name="checkBox_textureMapping">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_transferColorRadius">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="minimum">
+               <double>-1.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>10.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.010000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.050000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QLabel" name="label_meshClean">
+              <property name="text">
+               <string>Clean mesh from polygons without color or texture.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QSpinBox" name="spinBox_mesh_minClusterSize">
+              <property name="minimum">
+               <number>-1</number>
+              </property>
+              <property name="maximum">
+               <number>99999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QCheckBox" name="checkBox_cleanMesh">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QLabel" name="label_16">
+              <property name="text">
+               <string>Minimum polygon cluster size (-1 means that only the biggest cluster is kept).</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QLabel" name="label_denseReconstruction">
+              <property name="text">
+               <string>Surface reconstruction approach. Can be used only when dense reconstruction flavor is selected. Poisson is available when clouds are assembled.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
             <item row="1" column="0">
              <widget class="QDoubleSpinBox" name="doubleSpinBox_meshDecimationFactor">
               <property name="decimals">
@@ -1071,41 +1340,20 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
               </property>
              </widget>
             </item>
-            <item row="3" column="1">
-             <widget class="QLabel" name="label_16">
+            <item row="2" column="1">
+             <widget class="QLabel" name="label_meshDecimation_2">
               <property name="text">
-               <string>Min polygon cluster size</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QSpinBox" name="spinBox_mesh_minClusterSize">
-              <property name="maximum">
-               <number>999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="1" column="1">
-             <widget class="QLabel" name="label_meshDecimation">
-              <property name="text">
-               <string>Mesh quadric decimation factor (0=no decimation). Used to reduce the number of polygons. Cannot be used if texturing is on and organized mesh flavor is selected.</string>
+               <string>Transferring color radius. Radius used to transfer color from original cloud to resampled reconstructed surface (e.g., Poisson or mesh decimation). Negative means disabled, 0 means take the nearest point.</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
               </property>
              </widget>
             </item>
-            <item row="0" column="0">
-             <widget class="QCheckBox" name="checkBox_textureMapping">
+            <item row="1" column="1">
+             <widget class="QLabel" name="label_meshDecimation">
               <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="1">
-             <widget class="QLabel" name="label_textureMapping">
-              <property name="text">
-               <string>Texture mapping. Images of the cameras will be projected on the mesh(es). Output is a *.obj format.</string>
+               <string>Mesh quadric decimation factor (0=no decimation). Used to reduce the number of polygons. Higher the factor, lower the output resolution (less polygons). Can be used when dense reconstruction flavor is selected. Can reduce a lot texturing time.</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
@@ -1113,6 +1361,241 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
              </widget>
             </item>
            </layout>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_textureMapping">
+            <property name="title">
+             <string>Texturing</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+            <layout class="QVBoxLayout" name="verticalLayout_16">
+             <item>
+              <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
+               <item row="0" column="1">
+                <widget class="QLabel" name="label_meshingTextureFormat">
+                 <property name="text">
+                  <string>Texture format.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="0">
+                <widget class="QComboBox" name="comboBox_meshingTextureFormat">
+                 <item>
+                  <property name="text">
+                   <string>.jpg</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>.png</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QComboBox" name="comboBox_meshingTextureSize">
+                 <item>
+                  <property name="text">
+                   <string>Disabled</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>256x256</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>512x512</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>1024x1024</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>2048x2048</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>4096x4096</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>8192x8192</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>16384x16384</string>
+                  </property>
+                 </item>
+                 <item>
+                  <property name="text">
+                   <string>32768x32768</string>
+                  </property>
+                 </item>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize">
+                 <property name="text">
+                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QDoubleSpinBox" name="doubleSpinBox_meshingTextureMaxDistance">
+                 <property name="suffix">
+                  <string> m</string>
+                 </property>
+                 <property name="decimals">
+                  <number>1</number>
+                 </property>
+                 <property name="minimum">
+                  <double>0.000000000000000</double>
+                 </property>
+                 <property name="maximum">
+                  <double>99.000000000000000</double>
+                 </property>
+                 <property name="singleStep">
+                  <double>1.000000000000000</double>
+                 </property>
+                 <property name="value">
+                  <double>3.000000000000000</double>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_2">
+                 <property name="text">
+                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QCheckBox" name="checkBox_cameraFilter">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_3">
+                 <property name="text">
+                  <string>Camera filtering. By comparing poses in the same area, only one camera in a fixed radius and angle is used for texturing.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_4">
+                 <property name="text">
+                  <string>Minimum polygon cluster size for texturing. This removes textures applied on sparse polygons. Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QSpinBox" name="spinBox_mesh_minTextureClusterSize">
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>99999</number>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <widget class="QGroupBox" name="groupBox_cameraFilter">
+               <property name="title">
+                <string>Camera Filtering</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_16" columnstretch="0,1">
+                <item row="0" column="0">
+                 <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraFilterRadius">
+                  <property name="suffix">
+                   <string> m</string>
+                  </property>
+                  <property name="minimum">
+                   <double>0.010000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.100000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QLabel" name="label_37">
+                  <property name="text">
+                   <string>Radius.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                  <property name="textInteractionFlags">
+                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraFilterAngle">
+                  <property name="suffix">
+                   <string> deg</string>
+                  </property>
+                  <property name="decimals">
+                   <number>0</number>
+                  </property>
+                  <property name="maximum">
+                   <double>180.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>30.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QLabel" name="label_48">
+                  <property name="text">
+                   <string>Angle.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                  <property name="textInteractionFlags">
+                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
           </item>
           <item>
            <widget class="QGroupBox" name="groupBox_gp3">
@@ -1182,6 +1665,189 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                </property>
                <property name="value">
                 <double>2.500000000000000</double>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBox_poisson">
+            <property name="title">
+             <string>Poisson Surface Reconstruction</string>
+            </property>
+            <property name="checkable">
+             <bool>false</bool>
+            </property>
+            <property name="checked">
+             <bool>false</bool>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_14" columnstretch="0,1">
+             <item row="0" column="1">
+              <widget class="QLabel" name="label_172">
+               <property name="text">
+                <string>Depth. Increasing the depth increase the output mesh size but it would be more precise (also longer to compute).</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="1">
+              <widget class="QLabel" name="label_177">
+               <property name="text">
+                <string>Samples per node. Set the minimum number of sample points that should fall within an octree node as the octree construction is adapted to sampling density. Note for noise-free samples, small values in the range [1.0 - 5.0] can be used. For more noisy samples, larger values in the range [15.0 - 20.0] may be needed to provide a smoother, noise-reduced, reconstruction.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_iso">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="label_176">
+               <property name="text">
+                <string>Manifold flag. Enabling this flag tells the reconstructor to add the polygon barycenter when triangulating polygons with more than three vertices.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="0">
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_poisson_samples">
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="minimum">
+                <double>0.100000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>30.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0">
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_poisson_scale">
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="minimum">
+                <double>1.000000000000000</double>
+               </property>
+               <property name="maximum">
+                <double>2.000000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLabel" name="label_181">
+               <property name="text">
+                <string>Point weight.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="1">
+              <widget class="QLabel" name="label_182">
+               <property name="text">
+                <string>Min depth.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_depth">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="1">
+              <widget class="QLabel" name="label_178">
+               <property name="text">
+                <string>Iso divide. Set the depth at which a block iso-surface extractor should be used to extract the iso-surface note Using this parameter helps reduce the memory overhead at the cost of a small increase in extraction time. (In practice, we have found that for reconstructions of depth 9 or higher a subdivide depth of 7 or 8 can greatly reduce the memory usage.)</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="1">
+              <widget class="QLabel" name="label_179">
+               <property name="text">
+                <string>Solver divide. Set the the depth at which a block Gauss-Seidel solver is used to solve the Laplacian equation. Note that using this parameter helps reduce the memory overhead at the cost of a small increase in reconstruction time. (In practice, we have found that for reconstructions of depth 9 or higher a subdivide depth of 7 or 8 can greatly reduce the memory usage.)</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="1">
+              <widget class="QLabel" name="label_180">
+               <property name="text">
+                <string>Scale. Set the ratio between the diameter of the cube used for reconstruction and the diameter of the samples' bounding cube.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QCheckBox" name="checkBox_poisson_manifold">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_solver">
+               <property name="minimum">
+                <number>1</number>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="label_outputPolygons">
+               <property name="text">
+                <string>Output polygons flag. Enabling this flag tells the reconstructor to output a polygon mesh (rather than triangulating of the results of Marching Cubes). Disabled when exporting to file, if mesh decimation is set or when texturing.</string>
+               </property>
+               <property name="wordWrap">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QCheckBox" name="checkBox_poisson_outputPolygons">
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QDoubleSpinBox" name="doubleSpinBox_poisson_pointWeight">
+               <property name="decimals">
+                <number>1</number>
+               </property>
+               <property name="minimum">
+                <double>0.100000000000000</double>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_minDepth">
+               <property name="minimum">
+                <number>1</number>
                </property>
               </widget>
              </item>

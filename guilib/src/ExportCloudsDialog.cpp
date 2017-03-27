@@ -28,8 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportCloudsDialog.h"
 #include "ui_exportCloudsDialog.h"
 
-#include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/CloudViewer.h"
+#include "TexturingState.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UThread.h"
@@ -50,6 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/vtk_io.h>
 #include <pcl/io/obj_io.h>
 #include <pcl/pcl_config.h>
+#include <pcl/surface/poisson.h>
 
 #include <QPushButton>
 #include <QDir>
@@ -57,12 +58,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QInputDialog>
+#include <QDesktopWidget>
 
 namespace rtabmap {
 
 ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	QDialog(parent),
-	_canceled(false)
+	_canceled(false),
+	_compensator(0)
 {
 	_ui = new Ui_ExportCloudsDialog();
 	_ui->setupUi(this);
@@ -76,32 +79,42 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_pipeline, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_pipeline, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
 
-	connect(_ui->groupBox_regenerate, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_regenerate, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_regenerate, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->spinBox_decimation, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_maxDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_minDepth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_fillDepthHoles, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_fillDepthHolesError, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->lineEdit_roiRatios, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->lineEdit_distortionModel, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->toolButton_distortionModel, SIGNAL(clicked()), this, SLOT(selectDistortionModel()));
 
-	connect(_ui->groupBox_bilateral, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_bilateral, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_bilateral, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaS, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_bilateral_sigmaR, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_filtering, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_filtering, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_filtering, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_filteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_filteringMinNeighbors, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
-	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SLOT(updateTexturingAvailability()));
+	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_voxelSize_assembled, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_subtraction, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_subtraction, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_subtraction, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_subtractPointFilteringRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_subtractPointFilteringAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_subtractFilteringMinPts, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_mls, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_smoothing, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_smoothing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_mlsRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_polygonialOrder, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
@@ -113,19 +126,44 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_upsampling, SLOT(setCurrentIndex(int)));
 	connect(_ui->comboBox_upsamplingMethod, SIGNAL(currentIndexChanged(int)), this, SLOT(updateMLSGrpVisibility()));
 
-	connect(_ui->groupBox_gain, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_gainCompensation, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_gainCompensation, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_gainRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainOverlap, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainAlpha, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gainBeta, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_gainLinkedLocationsOnly, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
-	connect(_ui->groupBox_meshing, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_gp3Radius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_gp3Mu, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_meshDecimationFactor, SIGNAL(valueChanged(double)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->doubleSpinBox_transferColorRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_cleanMesh, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_mesh_minClusterSize, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
-	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateTexturingAvailability()));
+	connect(_ui->checkBox_textureMapping, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->comboBox_meshingTextureFormat, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_meshingTextureSize, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_meshingTextureMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_mesh_minTextureClusterSize, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
+	connect(_ui->doubleSpinBox_cameraFilterRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_cameraFilterAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+
+	connect(_ui->checkBox_poisson_outputPolygons, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_poisson_manifold, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_depth, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_iso, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_solver, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_poisson_minDepth, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_poisson_samples, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_poisson_pointWeight, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_poisson_scale, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
 	_progressDialog = new ProgressDialog(this);
 	_progressDialog->setVisible(false);
@@ -142,6 +180,10 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 ExportCloudsDialog::~ExportCloudsDialog()
 {
 	delete _ui;
+	if(_compensator)
+	{
+		delete _compensator;
+	}
 }
 
 void ExportCloudsDialog::updateMLSGrpVisibility()
@@ -151,17 +193,6 @@ void ExportCloudsDialog::updateMLSGrpVisibility()
 	_ui->groupBox_3->setVisible(_ui->comboBox_upsamplingMethod->currentIndex() == 2);
 	_ui->groupBox_4->setVisible(_ui->comboBox_upsamplingMethod->currentIndex() == 3);
 	_ui->groupBox_5->setVisible(_ui->comboBox_upsamplingMethod->currentIndex() == 4);
-}
-void ExportCloudsDialog::updateTexturingAvailability()
-{
-	updateTexturingAvailability(_ui->checkBox_binary->isEnabled());
-}
-void ExportCloudsDialog::updateTexturingAvailability(bool isExporting)
-{
-	_ui->checkBox_textureMapping->setEnabled(!_ui->checkBox_assemble->isChecked() || isExporting);
-	_ui->label_textureMapping->setEnabled(_ui->checkBox_textureMapping->isEnabled());
-	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked() || _ui->comboBox_pipeline->currentIndex() == 1);
-	_ui->label_meshDecimation->setEnabled(_ui->doubleSpinBox_meshDecimationFactor->isEnabled());
 }
 
 void ExportCloudsDialog::cancel()
@@ -180,29 +211,32 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("binary", _ui->checkBox_binary->isChecked());
 	settings.setValue("normals_k", _ui->spinBox_normalKSearch->value());
 
-	settings.setValue("regenerate", _ui->groupBox_regenerate->isChecked());
+	settings.setValue("regenerate", _ui->checkBox_regenerate->isChecked());
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
 	settings.setValue("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value());
 	settings.setValue("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value());
+	settings.setValue("regenerate_fill_size", _ui->spinBox_fillDepthHoles->value());
+	settings.setValue("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value());
+	settings.setValue("regenerate_roi", _ui->lineEdit_roiRatios->text());
 	settings.setValue("regenerate_distortion_model", _ui->lineEdit_distortionModel->text());
 
-	settings.setValue("bilateral", _ui->groupBox_bilateral->isChecked());
+	settings.setValue("bilateral", _ui->checkBox_bilateral->isChecked());
 	settings.setValue("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value());
 	settings.setValue("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value());
 
-	settings.setValue("filtering", _ui->groupBox_filtering->isChecked());
+	settings.setValue("filtering", _ui->checkBox_filtering->isChecked());
 	settings.setValue("filtering_radius", _ui->doubleSpinBox_filteringRadius->value());
 	settings.setValue("filtering_min_neighbors", _ui->spinBox_filteringMinNeighbors->value());
 
 	settings.setValue("assemble", _ui->checkBox_assemble->isChecked());
 	settings.setValue("assemble_voxel",_ui->doubleSpinBox_voxelSize_assembled->value());
 
-	settings.setValue("subtract",_ui->groupBox_subtraction->isChecked());
+	settings.setValue("subtract",_ui->checkBox_subtraction->isChecked());
 	settings.setValue("subtract_point_radius",_ui->doubleSpinBox_subtractPointFilteringRadius->value());
 	settings.setValue("subtract_point_angle",_ui->doubleSpinBox_subtractPointFilteringAngle->value());
 	settings.setValue("subtract_min_neighbors",_ui->spinBox_subtractFilteringMinPts->value());
 
-	settings.setValue("mls", _ui->groupBox_mls->isChecked());
+	settings.setValue("mls", _ui->checkBox_smoothing->isChecked());
 	settings.setValue("mls_radius", _ui->doubleSpinBox_mlsRadius->value());
 	settings.setValue("mls_polygonial_order", _ui->spinBox_polygonialOrder->value());
 	settings.setValue("mls_upsampling_method", _ui->comboBox_upsamplingMethod->currentIndex());
@@ -212,24 +246,46 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value());
 	settings.setValue("mls_dilation_iterations", _ui->spinBox_dilationSteps->value());
 
-	settings.setValue("gain", _ui->groupBox_gain->isChecked());
+	settings.setValue("gain", _ui->checkBox_gainCompensation->isChecked());
 	settings.setValue("gain_radius", _ui->doubleSpinBox_gainRadius->value());
 	settings.setValue("gain_overlap", _ui->doubleSpinBox_gainOverlap->value());
 	settings.setValue("gain_alpha", _ui->doubleSpinBox_gainAlpha->value());
 	settings.setValue("gain_beta", _ui->doubleSpinBox_gainBeta->value());
 	settings.setValue("gain_linked_locations", _ui->checkBox_gainLinkedLocationsOnly->isChecked());
 
-	settings.setValue("mesh", _ui->groupBox_meshing->isChecked());
+	settings.setValue("mesh", _ui->checkBox_meshing->isChecked());
 	settings.setValue("mesh_radius", _ui->doubleSpinBox_gp3Radius->value());
 	settings.setValue("mesh_mu", _ui->doubleSpinBox_gp3Mu->value());
 	settings.setValue("mesh_decimation_factor", _ui->doubleSpinBox_meshDecimationFactor->value());
+	settings.setValue("mesh_color_radius", _ui->doubleSpinBox_transferColorRadius->value());
+	settings.setValue("mesh_clean", _ui->checkBox_cleanMesh->isChecked());
 	settings.setValue("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value());
 
+	settings.setValue("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex());
+
 	settings.setValue("mesh_texture", _ui->checkBox_textureMapping->isChecked());
+	settings.setValue("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex());
+	settings.setValue("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex());
+	settings.setValue("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value());
+	settings.setValue("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value());
+	settings.setValue("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked());
+	settings.setValue("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value());
+	settings.setValue("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value());
+
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
 	settings.setValue("mesh_quad", _ui->checkBox_mesh_quad->isChecked());
 	settings.setValue("mesh_triangle_size", _ui->spinBox_mesh_triangleSize->value());
+
+	settings.setValue("poisson_outputPolygons", _ui->checkBox_poisson_outputPolygons->isChecked());
+	settings.setValue("poisson_manifold", _ui->checkBox_poisson_manifold->isChecked());
+	settings.setValue("poisson_depth", _ui->spinBox_poisson_depth->value());
+	settings.setValue("poisson_iso", _ui->spinBox_poisson_iso->value());
+	settings.setValue("poisson_solver", _ui->spinBox_poisson_solver->value());
+	settings.setValue("poisson_minDepth", _ui->spinBox_poisson_minDepth->value());
+	settings.setValue("poisson_samples", _ui->doubleSpinBox_poisson_samples->value());
+	settings.setValue("poisson_pointWeight", _ui->doubleSpinBox_poisson_pointWeight->value());
+	settings.setValue("poisson_scale", _ui->doubleSpinBox_poisson_scale->value());
 
 	if(!group.isEmpty())
 	{
@@ -248,29 +304,32 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_binary->setChecked(settings.value("binary", _ui->checkBox_binary->isChecked()).toBool());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normals_k", _ui->spinBox_normalKSearch->value()).toInt());
 
-	_ui->groupBox_regenerate->setChecked(settings.value("regenerate", _ui->groupBox_regenerate->isChecked()).toBool());
+	_ui->checkBox_regenerate->setChecked(settings.value("regenerate", _ui->checkBox_regenerate->isChecked()).toBool());
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
 	_ui->doubleSpinBox_maxDepth->setValue(settings.value("regenerate_max_depth", _ui->doubleSpinBox_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_minDepth->setValue(settings.value("regenerate_min_depth", _ui->doubleSpinBox_minDepth->value()).toDouble());
+	_ui->spinBox_fillDepthHoles->setValue(settings.value("regenerate_fill_size", _ui->spinBox_fillDepthHoles->value()).toInt());
+	_ui->spinBox_fillDepthHolesError->setValue(settings.value("regenerate_fill_error", _ui->spinBox_fillDepthHolesError->value()).toInt());
+	_ui->lineEdit_roiRatios->setText(settings.value("regenerate_roi", _ui->lineEdit_roiRatios->text()).toString());
 	_ui->lineEdit_distortionModel->setText(settings.value("regenerate_distortion_model", _ui->lineEdit_distortionModel->text()).toString());
 
-	_ui->groupBox_bilateral->setChecked(settings.value("bilateral", _ui->groupBox_bilateral->isChecked()).toBool());
+	_ui->checkBox_bilateral->setChecked(settings.value("bilateral", _ui->checkBox_bilateral->isChecked()).toBool());
 	_ui->doubleSpinBox_bilateral_sigmaS->setValue(settings.value("bilateral_sigma_s", _ui->doubleSpinBox_bilateral_sigmaS->value()).toDouble());
 	_ui->doubleSpinBox_bilateral_sigmaR->setValue(settings.value("bilateral_sigma_r", _ui->doubleSpinBox_bilateral_sigmaR->value()).toDouble());
 
-	_ui->groupBox_filtering->setChecked(settings.value("filtering", _ui->groupBox_filtering->isChecked()).toBool());
+	_ui->checkBox_filtering->setChecked(settings.value("filtering", _ui->checkBox_filtering->isChecked()).toBool());
 	_ui->doubleSpinBox_filteringRadius->setValue(settings.value("filtering_radius", _ui->doubleSpinBox_filteringRadius->value()).toDouble());
 	_ui->spinBox_filteringMinNeighbors->setValue(settings.value("filtering_min_neighbors", _ui->spinBox_filteringMinNeighbors->value()).toInt());
 
 	_ui->checkBox_assemble->setChecked(settings.value("assemble", _ui->checkBox_assemble->isChecked()).toBool());
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(settings.value("assemble_voxel", _ui->doubleSpinBox_voxelSize_assembled->value()).toDouble());
 
-	_ui->groupBox_subtraction->setChecked(settings.value("subtract",_ui->groupBox_subtraction->isChecked()).toBool());
+	_ui->checkBox_subtraction->setChecked(settings.value("subtract",_ui->checkBox_subtraction->isChecked()).toBool());
 	_ui->doubleSpinBox_subtractPointFilteringRadius->setValue(settings.value("subtract_point_radius",_ui->doubleSpinBox_subtractPointFilteringRadius->value()).toDouble());
 	_ui->doubleSpinBox_subtractPointFilteringAngle->setValue(settings.value("subtract_point_angle",_ui->doubleSpinBox_subtractPointFilteringAngle->value()).toDouble());
 	_ui->spinBox_subtractFilteringMinPts->setValue(settings.value("subtract_min_neighbors",_ui->spinBox_subtractFilteringMinPts->value()).toInt());
 
-	_ui->groupBox_mls->setChecked(settings.value("mls", _ui->groupBox_mls->isChecked()).toBool());
+	_ui->checkBox_smoothing->setChecked(settings.value("mls", _ui->checkBox_smoothing->isChecked()).toBool());
 	_ui->doubleSpinBox_mlsRadius->setValue(settings.value("mls_radius", _ui->doubleSpinBox_mlsRadius->value()).toDouble());
 	_ui->spinBox_polygonialOrder->setValue(settings.value("mls_polygonial_order", _ui->spinBox_polygonialOrder->value()).toInt());
 	_ui->comboBox_upsamplingMethod->setCurrentIndex(settings.value("mls_upsampling_method", _ui->comboBox_upsamplingMethod->currentIndex()).toInt());
@@ -280,27 +339,47 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(settings.value("mls_dilation_voxel_size", _ui->doubleSpinBox_dilationVoxelSize->value()).toDouble());
 	_ui->spinBox_dilationSteps->setValue(settings.value("mls_dilation_iterations", _ui->spinBox_dilationSteps->value()).toInt());
 
-	_ui->groupBox_gain->setChecked(settings.value("gain", _ui->groupBox_gain->isChecked()).toBool());
+	_ui->checkBox_gainCompensation->setChecked(settings.value("gain", _ui->checkBox_gainCompensation->isChecked()).toBool());
 	_ui->doubleSpinBox_gainRadius->setValue(settings.value("gain_radius", _ui->doubleSpinBox_gainRadius->value()).toDouble());
 	_ui->doubleSpinBox_gainOverlap->setValue(settings.value("gain_overlap", _ui->doubleSpinBox_gainOverlap->value()).toDouble());
 	_ui->doubleSpinBox_gainAlpha->setValue(settings.value("gain_alpha", _ui->doubleSpinBox_gainAlpha->value()).toDouble());
 	_ui->doubleSpinBox_gainBeta->setValue(settings.value("gain_beta", _ui->doubleSpinBox_gainBeta->value()).toDouble());
 	_ui->checkBox_gainLinkedLocationsOnly->setChecked(settings.value("gain_linked_locations", _ui->checkBox_gainLinkedLocationsOnly->isChecked()).toBool());
 
-	_ui->groupBox_meshing->setChecked(settings.value("mesh", _ui->groupBox_meshing->isChecked()).toBool());
+	_ui->checkBox_meshing->setChecked(settings.value("mesh", _ui->checkBox_meshing->isChecked()).toBool());
 	_ui->doubleSpinBox_gp3Radius->setValue(settings.value("mesh_radius", _ui->doubleSpinBox_gp3Radius->value()).toDouble());
 	_ui->doubleSpinBox_gp3Mu->setValue(settings.value("mesh_mu", _ui->doubleSpinBox_gp3Mu->value()).toDouble());
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(settings.value("mesh_decimation_factor",_ui->doubleSpinBox_meshDecimationFactor->value()).toDouble());
+	_ui->doubleSpinBox_transferColorRadius->setValue(settings.value("mesh_color_radius",_ui->doubleSpinBox_transferColorRadius->value()).toDouble());
+	_ui->checkBox_cleanMesh->setChecked(settings.value("mesh_clean",_ui->checkBox_cleanMesh->isChecked()).toBool());
 	_ui->spinBox_mesh_minClusterSize->setValue(settings.value("mesh_min_cluster_size", _ui->spinBox_mesh_minClusterSize->value()).toInt());
 
+	_ui->comboBox_meshingApproach->setCurrentIndex(settings.value("mesh_dense_strategy", _ui->comboBox_meshingApproach->currentIndex()).toInt());
+
 	_ui->checkBox_textureMapping->setChecked(settings.value("mesh_texture", _ui->checkBox_textureMapping->isChecked()).toBool());
+	_ui->comboBox_meshingTextureFormat->setCurrentIndex(settings.value("mesh_textureFormat", _ui->comboBox_meshingTextureFormat->currentIndex()).toInt());
+	_ui->comboBox_meshingTextureSize->setCurrentIndex(settings.value("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex()).toInt());
+	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(settings.value("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value()).toDouble());
+	_ui->spinBox_mesh_minTextureClusterSize->setValue(settings.value("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value()).toDouble());
+	_ui->checkBox_cameraFilter->setChecked(settings.value("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked()).toBool());
+	_ui->doubleSpinBox_cameraFilterRadius->setValue(settings.value("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value()).toDouble());
+	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
 	_ui->spinBox_mesh_triangleSize->setValue(settings.value("mesh_triangle_size", _ui->spinBox_mesh_triangleSize->value()).toInt());
 
+	_ui->checkBox_poisson_outputPolygons->setChecked(settings.value("poisson_outputPolygons", _ui->checkBox_poisson_outputPolygons->isChecked()).toBool());
+	_ui->checkBox_poisson_manifold->setChecked(settings.value("poisson_manifold", _ui->checkBox_poisson_manifold->isChecked()).toBool());
+	_ui->spinBox_poisson_depth->setValue(settings.value("poisson_depth", _ui->spinBox_poisson_depth->value()).toInt());
+	_ui->spinBox_poisson_iso->setValue(settings.value("poisson_iso", _ui->spinBox_poisson_iso->value()).toInt());
+	_ui->spinBox_poisson_solver->setValue(settings.value("poisson_solver", _ui->spinBox_poisson_solver->value()).toInt());
+	_ui->spinBox_poisson_minDepth->setValue(settings.value("poisson_minDepth", _ui->spinBox_poisson_minDepth->value()).toInt());
+	_ui->doubleSpinBox_poisson_samples->setValue(settings.value("poisson_samples", _ui->doubleSpinBox_poisson_samples->value()).toDouble());
+	_ui->doubleSpinBox_poisson_pointWeight->setValue(settings.value("poisson_pointWeight", _ui->doubleSpinBox_poisson_pointWeight->value()).toDouble());
+	_ui->doubleSpinBox_poisson_scale->setValue(settings.value("poisson_scale", _ui->doubleSpinBox_poisson_scale->value()).toDouble());
+
 	updateReconstructionFlavor();
-	updateTexturingAvailability();
 	updateMLSGrpVisibility();
 
 	if(!group.isEmpty())
@@ -311,33 +390,36 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 
 void ExportCloudsDialog::restoreDefaults()
 {
-	_ui->comboBox_pipeline->setCurrentIndex(0);
+	_ui->comboBox_pipeline->setCurrentIndex(1);
 	_ui->checkBox_binary->setChecked(true);
 	_ui->spinBox_normalKSearch->setValue(10);
 
-	_ui->groupBox_regenerate->setChecked(false);
+	_ui->checkBox_regenerate->setChecked(false);
 	_ui->spinBox_decimation->setValue(1);
 	_ui->doubleSpinBox_maxDepth->setValue(4);
 	_ui->doubleSpinBox_minDepth->setValue(0);
+	_ui->spinBox_fillDepthHoles->setValue(0);
+	_ui->spinBox_fillDepthHolesError->setValue(2);
+	_ui->lineEdit_roiRatios->setText("0.0 0.0 0.0 0.0");
 	_ui->lineEdit_distortionModel->setText("");
 
-	_ui->groupBox_bilateral->setChecked(false);
+	_ui->checkBox_bilateral->setChecked(false);
 	_ui->doubleSpinBox_bilateral_sigmaS->setValue(10.0);
 	_ui->doubleSpinBox_bilateral_sigmaR->setValue(0.1);
 
-	_ui->groupBox_filtering->setChecked(false);
+	_ui->checkBox_filtering->setChecked(false);
 	_ui->doubleSpinBox_filteringRadius->setValue(0.02);
 	_ui->spinBox_filteringMinNeighbors->setValue(2);
 
 	_ui->checkBox_assemble->setChecked(true);
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.0);
 
-	_ui->groupBox_subtraction->setChecked(false);
+	_ui->checkBox_subtraction->setChecked(false);
 	_ui->doubleSpinBox_subtractPointFilteringRadius->setValue(0.02);
 	_ui->doubleSpinBox_subtractPointFilteringAngle->setValue(0);
 	_ui->spinBox_subtractFilteringMinPts->setValue(5);
 
-	_ui->groupBox_mls->setChecked(false);
+	_ui->checkBox_smoothing->setChecked(false);
 	_ui->doubleSpinBox_mlsRadius->setValue(0.04);
 	_ui->spinBox_polygonialOrder->setValue(2);
 	_ui->comboBox_upsamplingMethod->setCurrentIndex(0);
@@ -347,26 +429,47 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_dilationVoxelSize->setValue(0.01);
 	_ui->spinBox_dilationSteps->setValue(0);
 
-	_ui->groupBox_gain->setChecked(false);
+	_ui->checkBox_gainCompensation->setChecked(false);
 	_ui->doubleSpinBox_gainRadius->setValue(0.02);
 	_ui->doubleSpinBox_gainOverlap->setValue(0.05);
 	_ui->doubleSpinBox_gainAlpha->setValue(0.01);
 	_ui->doubleSpinBox_gainBeta->setValue(10);
 	_ui->checkBox_gainLinkedLocationsOnly->setChecked(true);
 
-	_ui->groupBox_meshing->setChecked(false);
-	_ui->doubleSpinBox_gp3Radius->setValue(0.04);
+	_ui->checkBox_meshing->setChecked(false);
+	_ui->doubleSpinBox_gp3Radius->setValue(0.2);
 	_ui->doubleSpinBox_gp3Mu->setValue(2.5);
 	_ui->doubleSpinBox_meshDecimationFactor->setValue(0.0);
+	_ui->doubleSpinBox_transferColorRadius->setValue(0.025);
+	_ui->checkBox_cleanMesh->setChecked(true);
+	_ui->spinBox_mesh_minClusterSize->setValue(0);
+
+	_ui->comboBox_meshingApproach->setCurrentIndex(1);
 
 	_ui->checkBox_textureMapping->setChecked(false);
+	_ui->comboBox_meshingTextureFormat->setCurrentIndex(0);
+	_ui->comboBox_meshingTextureSize->setCurrentIndex(5); // 4096
+	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
+	_ui->spinBox_mesh_minTextureClusterSize->setValue(50);
+	_ui->checkBox_cameraFilter->setChecked(false);
+	_ui->doubleSpinBox_cameraFilterRadius->setValue(0.1);
+	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
 	_ui->spinBox_mesh_triangleSize->setValue(1);
 
+	_ui->checkBox_poisson_outputPolygons->setChecked(false);
+	_ui->checkBox_poisson_manifold->setChecked(true);
+	_ui->spinBox_poisson_depth->setValue(9);
+	_ui->spinBox_poisson_iso->setValue(8);
+	_ui->spinBox_poisson_solver->setValue(8);
+	_ui->spinBox_poisson_minDepth->setValue(5);
+	_ui->doubleSpinBox_poisson_samples->setValue(1.0);
+	_ui->doubleSpinBox_poisson_pointWeight->setValue(4.0);
+	_ui->doubleSpinBox_poisson_scale->setValue(1.1);
+
 	updateReconstructionFlavor();
-	updateTexturingAvailability();
 	updateMLSGrpVisibility();
 
 	this->update();
@@ -374,10 +477,43 @@ void ExportCloudsDialog::restoreDefaults()
 
 void ExportCloudsDialog::updateReconstructionFlavor()
 {
-	_ui->groupBox_mls->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
-	_ui->groupBox_mls->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
-	_ui->groupBox_gp3->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->checkBox_smoothing->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->checkBox_smoothing->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->label_denseReconstruction->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->doubleSpinBox_meshDecimationFactor->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	_ui->label_meshDecimation->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->groupBox_organized->setVisible(_ui->comboBox_pipeline->currentIndex() == 0);
+
+	_ui->groupBox_regenerate->setVisible(_ui->checkBox_regenerate->isChecked());
+	_ui->groupBox_bilateral->setVisible(_ui->checkBox_bilateral->isChecked());
+	_ui->groupBox_filtering->setVisible(_ui->checkBox_filtering->isChecked());
+	_ui->groupBox_gain->setVisible(_ui->checkBox_gainCompensation->isChecked());
+	_ui->groupBox_mls->setVisible(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked());
+	_ui->groupBox_meshing->setVisible(_ui->checkBox_meshing->isChecked());
+	_ui->groupBox_subtraction->setVisible(_ui->checkBox_subtraction->isChecked());
+	_ui->groupBox_textureMapping->setVisible(_ui->checkBox_textureMapping->isChecked());
+	_ui->groupBox_cameraFilter->setVisible(_ui->checkBox_cameraFilter->isChecked());
+
+	// dense texturing options
+	_ui->groupBox_gp3->setVisible(_ui->comboBox_pipeline->currentIndex() == 1 && _ui->comboBox_meshingApproach->currentIndex()==0);
+	_ui->groupBox_poisson->setVisible(_ui->comboBox_pipeline->currentIndex() == 1 && _ui->comboBox_meshingApproach->currentIndex()==1);
+	if(_ui->checkBox_meshing->isChecked())
+	{
+		_ui->comboBox_meshingApproach->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+		_ui->comboBox_meshingApproach->setItemData(1, _ui->checkBox_assemble->isChecked()?1 | 32:0,Qt::UserRole - 1);
+		if(!_ui->checkBox_assemble->isChecked())
+		{
+			_ui->comboBox_meshingApproach->setCurrentIndex(0);
+		}
+
+		_ui->checkBox_poisson_outputPolygons->setDisabled(
+					_ui->checkBox_binary->isEnabled() ||
+					_ui->doubleSpinBox_meshDecimationFactor->value()!=0.0 ||
+					_ui->checkBox_textureMapping->isChecked());
+
+		_ui->checkBox_cleanMesh->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+		_ui->label_meshClean->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
+	}
 }
 
 void ExportCloudsDialog::selectDistortionModel()
@@ -404,7 +540,7 @@ void ExportCloudsDialog::setSaveButton()
 	_ui->checkBox_mesh_quad->setVisible(false);
 	_ui->checkBox_mesh_quad->setEnabled(false);
 	_ui->label_quad->setVisible(false);
-	updateTexturingAvailability(true);
+	updateReconstructionFlavor();
 }
 
 void ExportCloudsDialog::setOkButton()
@@ -417,16 +553,16 @@ void ExportCloudsDialog::setOkButton()
 	_ui->checkBox_mesh_quad->setVisible(true);
 	_ui->checkBox_mesh_quad->setEnabled(true);
 	_ui->label_quad->setVisible(true);
-	updateTexturingAvailability(false);
+	updateReconstructionFlavor();
 }
 
 void ExportCloudsDialog::enableRegeneration(bool enabled)
 {
 	if(!enabled)
 	{
-		_ui->groupBox_regenerate->setChecked(false);
+		_ui->checkBox_regenerate->setChecked(false);
 	}
-	_ui->groupBox_regenerate->setEnabled(enabled);
+	_ui->checkBox_regenerate->setEnabled(enabled);
 }
 
 void ExportCloudsDialog::exportClouds(
@@ -458,7 +594,7 @@ void ExportCloudsDialog::exportClouds(
 	{
 		if(textureMeshes.size())
 		{
-			saveTextureMeshes(workingDirectory, poses, textureMeshes);
+			saveTextureMeshes(workingDirectory, poses, textureMeshes, cachedSignatures);
 		}
 		else if(meshes.size())
 		{
@@ -524,49 +660,112 @@ void ExportCloudsDialog::viewClouds(
 		{
 			window->setWindowTitle(tr("Clouds (%1 nodes)").arg(clouds.size()));
 		}
-		window->setMinimumWidth(800);
-		window->setMinimumHeight(600);
+		window->setMinimumWidth(120);
+		window->setMinimumHeight(90);
+		window->resize(QDesktopWidget().availableGeometry(this).size() * 0.7);
 
 		CloudViewer * viewer = new CloudViewer(window);
-		viewer->setCameraLockZ(false);
 		if(_ui->comboBox_pipeline->currentIndex() == 0)
 		{
 			viewer->setBackfaceCulling(true, false);
 		}
+		viewer->setLighting(true);
+		viewer->setDefaultBackgroundColor(QColor(40, 40, 40, 255));
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
+		layout->setContentsMargins(0,0,0,0);
 		window->setLayout(layout);
 		connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
 
 		window->show();
 
+		_progressDialog->appendText(tr("Opening visualizer..."));
+		QApplication::processEvents();
 		uSleep(500);
+		QApplication::processEvents();
 
 		if(textureMeshes.size())
 		{
-			for(std::map<int, pcl::TextureMesh::Ptr>::iterator iter = textureMeshes.begin(); iter!=textureMeshes.end(); ++iter)
+			for (std::map<int, pcl::TextureMesh::Ptr>::iterator iter = textureMeshes.begin(); iter != textureMeshes.end(); ++iter)
 			{
-				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->tex_polygons.size()?iter->second->tex_polygons[0].size():0));
-				_progressDialog->incrementStep();
-				bool isRGB = false;
-				for(unsigned int i=0; i<iter->second->cloud.fields.size(); ++i)
+				pcl::TextureMesh::Ptr mesh = iter->second;
+
+				// As CloudViewer is not supporting more than one texture per mesh, merge them all by default
+				cv::Mat globalTexture;
+				if (mesh->tex_materials.size() > 1)
 				{
-					if(iter->second->cloud.fields[i].name.compare("rgb") == 0)
+					globalTexture = mergeTextures(*mesh, cachedSignatures);
+				}
+
+				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(mesh->tex_polygons.size()?mesh->tex_polygons[0].size():0));
+				_progressDialog->incrementStep();
+
+				// VTK issue:
+				//  tex_coordinates should be linked to points, not
+				//  polygon vertices. Points linked to multiple different TCoords (different textures) should
+				//  be duplicated.
+				for (unsigned int t = 0; t < mesh->tex_coordinates.size(); ++t)
+				{
+					if(mesh->tex_polygons[t].size())
 					{
-						isRGB=true;
-						break;
+
+						pcl::PointCloud<pcl::PointXYZ>::Ptr originalCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::fromPCLPointCloud2(mesh->cloud, *originalCloud);
+
+						// make a cloud with as many points than polygon vertices
+						unsigned int nPoints = mesh->tex_coordinates[t].size();
+						UASSERT(nPoints == mesh->tex_polygons[t].size()*mesh->tex_polygons[t][0].vertices.size()); // assuming polygon size is constant!
+
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+						cloud->resize(nPoints);
+
+						unsigned int oi = 0;
+						for (unsigned int i = 0; i < mesh->tex_polygons[t].size(); ++i)
+						{
+							pcl::Vertices & vertices = mesh->tex_polygons[t][i];
+
+							for(unsigned int j=0; j<vertices.vertices.size(); ++j)
+							{
+								UASSERT(oi < cloud->size());
+								UASSERT(vertices.vertices[j] < originalCloud->size());
+								cloud->at(oi) = originalCloud->at(vertices.vertices[j]);
+								vertices.vertices[j] = oi; // new vertice index
+								++oi;
+							}
+						}
+						pcl::toPCLPointCloud2(*cloud, mesh->cloud);
+					}
+					else
+					{
+						UWARN("No polygons for texture %d of mesh %d?!", t, iter->first);
 					}
 				}
-				if(isRGB)
+
+				if (globalTexture.empty())
 				{
-					viewer->addCloudTextureMesh(uFormat("mesh%d",iter->first), iter->second, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+					if(mesh->tex_materials.size()==1 &&
+						!mesh->tex_materials[0].tex_file.empty() &&
+						uIsInteger(mesh->tex_materials[0].tex_file, false))
+					{
+						int textureId = uStr2Int(mesh->tex_materials[0].tex_file);
+						UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
+						cachedSignatures.value(textureId).sensorData().uncompressDataConst(&globalTexture, 0);
+						UASSERT(!globalTexture.empty());
+						if (_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+						{
+							_compensator->apply(textureId, globalTexture);
+						}
+					}
+					else
+					{
+						_progressDialog->appendText(tr("No textures added to mesh %1!?").arg(iter->first), Qt::darkRed);
+						_progressDialog->setAutoClose(false);
+					}
 				}
-				else
-				{
-					viewer->addCloudTextureMesh(uFormat("mesh%d",iter->first), iter->second, iter->first>0?poses.at(iter->first):Transform::getIdentity());
-				}
-				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(iter->second->tex_polygons.size()?iter->second->tex_polygons[0].size():0));
+
+				viewer->addCloudTextureMesh(uFormat("mesh%d",iter->first), mesh, globalTexture, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)... done.").arg(iter->first).arg(mesh->tex_polygons.size()?mesh->tex_polygons[0].size():0));
 				QApplication::processEvents();
 			}
 		}
@@ -615,6 +814,7 @@ void ExportCloudsDialog::viewClouds(
 					color = (Qt::GlobalColor)(mapId % 12 + 7 );
 				}
 				viewer->addCloud(uFormat("cloud%d",iter->first), iter->second, iter->first>0?poses.at(iter->first):Transform::getIdentity());
+				viewer->setCloudPointSize(uFormat("cloud%d",iter->first), 2);
 				_progressDialog->appendText(tr("Viewing the cloud %1 (%2 points)... done.").arg(iter->first).arg(iter->second->size()));
 			}
 		}
@@ -665,6 +865,11 @@ bool ExportCloudsDialog::getExportedClouds(
 	_canceled = false;
 	_workingDirectory = workingDirectory;
 	enableRegeneration(cachedSignatures.size());
+	if(_compensator)
+	{
+		delete _compensator;
+		_compensator = 0;
+	}
 	if(this->exec() == QDialog::Accepted)
 	{
 		if(poses.empty())
@@ -675,7 +880,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		_progressDialog->resetProgress();
 		_progressDialog->show();
 		int mul = 1;
-		if(_ui->groupBox_meshing->isChecked())
+		if(_ui->checkBox_meshing->isChecked())
 		{
 			mul+=1;
 		}
@@ -684,16 +889,15 @@ bool ExportCloudsDialog::getExportedClouds(
 			mul+=1;
 		}
 
-		if(_ui->groupBox_subtraction->isChecked())
+		if(_ui->checkBox_subtraction->isChecked())
 		{
 			mul+=1;
 		}
-		mul+=1; // normals
 		if(_ui->checkBox_textureMapping->isChecked())
 		{
 			mul+=1;
 		}
-		if(_ui->groupBox_gain->isChecked())
+		if(_ui->checkBox_gainCompensation->isChecked())
 		{
 			mul+=1;
 		}
@@ -717,7 +921,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		if(clouds.empty())
 		{
 			_progressDialog->setAutoClose(false);
-			if(_ui->groupBox_regenerate->isEnabled() && !_ui->groupBox_regenerate->isChecked())
+			if(_ui->checkBox_regenerate->isEnabled() && !_ui->checkBox_regenerate->isChecked())
 			{
 				QMessageBox::warning(this, tr("Creating clouds..."), tr("Could create clouds for %1 node(s). You "
 						"may want to activate clouds regeneration option.").arg(poses.size()));
@@ -730,9 +934,11 @@ bool ExportCloudsDialog::getExportedClouds(
 			return false;
 		}
 
-		GainCompensator compensator(_ui->doubleSpinBox_gainRadius->value(), _ui->doubleSpinBox_gainOverlap->value(), _ui->doubleSpinBox_gainAlpha->value(), _ui->doubleSpinBox_gainBeta->value());
-		if(_ui->groupBox_gain->isChecked() && clouds.size() > 1)
+		if(_ui->checkBox_gainCompensation->isChecked() && clouds.size() > 1)
 		{
+			UASSERT(_compensator == 0);
+			_compensator = new GainCompensator(_ui->doubleSpinBox_gainRadius->value(), _ui->doubleSpinBox_gainOverlap->value(), _ui->doubleSpinBox_gainAlpha->value(), _ui->doubleSpinBox_gainBeta->value());
+
 			if(!_ui->checkBox_gainLinkedLocationsOnly->isChecked())
 			{
 				_progressDialog->appendText(tr("Full gain compensation of %1 clouds...").arg(clouds.size()));
@@ -742,6 +948,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				_progressDialog->appendText(tr("Gain compensation of %1 clouds...").arg(clouds.size()));
 			}
 			QApplication::processEvents();
+			uSleep(100);
 			QApplication::processEvents();
 
 			if(!_ui->checkBox_gainLinkedLocationsOnly->isChecked())
@@ -759,27 +966,32 @@ bool ExportCloudsDialog::getExportedClouds(
 					}
 				}
 
-				compensator.feed(clouds, allLinks);
+				_compensator->feed(clouds, allLinks);
 			}
 			else
 			{
-				compensator.feed(clouds, links);
+				_compensator->feed(clouds, links);
 			}
 
-			_progressDialog->appendText(tr("Applying gain compensation..."));
-			for(std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::iterator jter=clouds.begin();jter!=clouds.end(); ++jter)
+			if(!(_ui->checkBox_meshing->isChecked() &&
+				 _ui->checkBox_textureMapping->isEnabled() &&
+				 _ui->checkBox_textureMapping->isChecked()))
 			{
-				if(jter!=clouds.end())
+				_progressDialog->appendText(tr("Applying gain compensation..."));
+				for(std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::iterator jter=clouds.begin();jter!=clouds.end(); ++jter)
 				{
-					double gain = compensator.getGain(jter->first);;
-					compensator.apply(jter->first, jter->second.first, jter->second.second);
-
-					_progressDialog->appendText(tr("Cloud %1 has gain %2").arg(jter->first).arg(gain));
-					_progressDialog->incrementStep();
-					QApplication::processEvents();
-					if(_canceled)
+					if(jter!=clouds.end())
 					{
-						return false;
+						double gain = _compensator->getGain(jter->first);;
+						_compensator->apply(jter->first, jter->second.first, jter->second.second);
+
+						_progressDialog->appendText(tr("Cloud %1 has gain %2").arg(jter->first).arg(gain));
+						_progressDialog->incrementStep();
+						QApplication::processEvents();
+						if(_canceled)
+						{
+							return false;
+						}
 					}
 				}
 			}
@@ -788,7 +1000,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
 		std::vector<int> rawCameraIndices;
 		if(_ui->checkBox_assemble->isChecked() &&
-		   !(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()))
+		   !(_ui->comboBox_pipeline->currentIndex()==0 && _ui->checkBox_meshing->isChecked()))
 		{
 			_progressDialog->appendText(tr("Assembling %1 clouds...").arg(clouds.size()));
 			QApplication::processEvents();
@@ -830,9 +1042,14 @@ bool ExportCloudsDialog::getExportedClouds(
 						.arg(assembledCloud->size())
 						.arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
 				QApplication::processEvents();
+				unsigned int before = assembledCloud->size();
 				assembledCloud = util3d::voxelize(
 						assembledCloud,
 						_ui->doubleSpinBox_voxelSize_assembled->value());
+				_progressDialog->appendText(tr("Voxelize cloud (%1 points, voxel size = %2 m)...done! (%3 points)")
+						.arg(before)
+						.arg(_ui->doubleSpinBox_voxelSize_assembled->value())
+						.arg(assembledCloud->size()));
 			}
 
 			clouds.clear();
@@ -845,11 +1062,12 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 
 		std::map<int, Transform> viewPoints = poses;
-		if(_ui->groupBox_mls->isEnabled() && _ui->groupBox_mls->isChecked())
+		if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked())
 		{
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
 					"[search radius=%1m voxel=%2m]").arg(_ui->doubleSpinBox_mlsRadius->value()).arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
 			QApplication::processEvents();
+			uSleep(100);
 			QApplication::processEvents();
 
 			// Adjust view points with local transforms
@@ -877,7 +1095,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = iter->second.first;
 
-			if(_ui->groupBox_mls->isEnabled() && _ui->groupBox_mls->isChecked())
+			if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked())
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZRGB>);
 				if(iter->second.second->size())
@@ -890,6 +1108,8 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 
 				_progressDialog->appendText(tr("Smoothing (MLS) the cloud (%1 points)...").arg(cloudWithNormals->size()));
+				QApplication::processEvents();
+				uSleep(100);
 				QApplication::processEvents();
 				if(_canceled)
 				{
@@ -931,7 +1151,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							cloudWithNormals);
 				}
 			}
-			else if(iter->second.first->isOrganized() && _ui->groupBox_filtering->isChecked())
+			else if(iter->second.first->isOrganized() && _ui->checkBox_filtering->isChecked())
 			{
 				cloudWithNormals = util3d::extractIndices(iter->second.first, iter->second.second, false, true);
 			}
@@ -951,13 +1171,14 @@ bool ExportCloudsDialog::getExportedClouds(
 		std::map<int, cv::Size> organizedCloudSizes;
 
 		//mesh
-		UDEBUG("Meshing=%d", _ui->groupBox_meshing->isChecked()?1:0);
-		if(_ui->groupBox_meshing->isChecked())
+		UDEBUG("Meshing=%d", _ui->checkBox_meshing->isChecked()?1:0);
+		if(_ui->checkBox_meshing->isChecked())
 		{
 			if(_ui->comboBox_pipeline->currentIndex() == 0)
 			{
 				_progressDialog->appendText(tr("Organized fast mesh... "));
 				QApplication::processEvents();
+				uSleep(100);
 				QApplication::processEvents();
 
 				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mergedClouds(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
@@ -996,29 +1217,70 @@ bool ExportCloudsDialog::getExportedClouds(
 									_ui->spinBox_mesh_triangleSize->value(),
 									viewpoint);
 
-							if(_ui->spinBox_mesh_minClusterSize->value())
+							if(_ui->spinBox_mesh_minClusterSize->value() != 0)
 							{
+								_progressDialog->appendText(tr("Filter small polygon clusters..."));
+								QApplication::processEvents();
+
 								// filter polygons
 								std::vector<std::set<int> > neighbors;
 								std::vector<std::set<int> > vertexToPolygons;
 								util3d::createPolygonIndexes(polygons,
-										iter->second->size(),
+										(int)iter->second->size(),
 										neighbors,
 										vertexToPolygons);
 								std::list<std::list<int> > clusters = util3d::clusterPolygons(
 										neighbors,
-										_ui->spinBox_mesh_minClusterSize->value());
+										_ui->spinBox_mesh_minClusterSize->value()<0?0:_ui->spinBox_mesh_minClusterSize->value());
+
 								std::vector<pcl::Vertices> filteredPolygons(polygons.size());
-								int oi=0;
-								for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+								if(_ui->spinBox_mesh_minClusterSize->value() < 0)
 								{
-									for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+									// only keep the biggest cluster
+									std::list<std::list<int> >::iterator biggestClusterIndex = clusters.end();
+									unsigned int biggestClusterSize = 0;
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
 									{
-										filteredPolygons[oi++] = polygons.at(*jter);
+										if(iter->size() > biggestClusterSize)
+										{
+											biggestClusterIndex = iter;
+											biggestClusterSize = iter->size();
+										}
+									}
+									if(biggestClusterIndex != clusters.end())
+									{
+										int oi=0;
+										for(std::list<int>::iterator jter=biggestClusterIndex->begin(); jter!=biggestClusterIndex->end(); ++jter)
+										{
+											filteredPolygons[oi++] = polygons.at(*jter);
+										}
+										filteredPolygons.resize(oi);
 									}
 								}
-								filteredPolygons.resize(oi);
+								else
+								{
+									int oi=0;
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+									{
+										for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+										{
+											filteredPolygons[oi++] = polygons.at(*jter);
+										}
+									}
+									filteredPolygons.resize(oi);
+								}
+								int before = (int)polygons.size();
 								polygons = filteredPolygons;
+
+								if(polygons.size() == 0)
+								{
+									std::string msg = uFormat("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.", before, _ui->spinBox_mesh_minClusterSize->value());
+									_progressDialog->appendText(msg.c_str());
+									UWARN(msg.c_str());
+								}
+
+								_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-(int)polygons.size()));
+								QApplication::processEvents();
 							}
 
 							_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(polygons.size()).arg(++i).arg(clouds.size()));
@@ -1040,18 +1302,10 @@ bool ExportCloudsDialog::getExportedClouds(
 								pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 								pcl::toPCLPointCloud2(*denseCloud, mesh->cloud);
 								mesh->polygons = densePolygons;
-								if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
-								   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
-								{
-									int count = mesh->polygons.size();
-									mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-									_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
-								}
-								else
-								{
-									organizedIndices.insert(std::make_pair(iter->first, denseToOrganizedIndices));
-									organizedCloudSizes.insert(std::make_pair(iter->first, cv::Size(iter->second->width, iter->second->height)));
-								}
+
+								organizedIndices.insert(std::make_pair(iter->first, denseToOrganizedIndices));
+								organizedCloudSizes.insert(std::make_pair(iter->first, cv::Size(iter->second->width, iter->second->height)));
+
 								meshes.insert(std::make_pair(iter->first, mesh));
 							}
 							else
@@ -1121,9 +1375,73 @@ bool ExportCloudsDialog::getExportedClouds(
 					if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
 					   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
 					{
-						int count = mesh->polygons.size();
+						unsigned int count = mesh->polygons.size();
+						_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
+						QApplication::processEvents();
+
 						mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-						_progressDialog->appendText(tr("Assembled mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						_progressDialog->appendText(tr("Mesh decimated (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						if(count < mesh->polygons.size())
+						{
+							_progressDialog->appendText(tr("Decimated mesh has more polygons than before!"), Qt::darkYellow);
+							_progressDialog->setAutoClose(false);
+						}
+						QApplication::processEvents();
+
+						if(_ui->doubleSpinBox_transferColorRadius->value() >= 0.0 &&
+						   (!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
+						{
+							_progressDialog->appendText(tr("Transferring color from point cloud to mesh..."));
+							QApplication::processEvents();
+
+							// transfer color from point cloud to mesh
+							pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+							tree->setInputCloud(mergedClouds);
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+							pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
+							for(unsigned int i=0; i<coloredCloud->size(); ++i)
+							{
+								std::vector<int> kIndices;
+								std::vector<float> kDistances;
+								pcl::PointXYZRGBNormal pt;
+								pt.x = coloredCloud->at(i).x;
+								pt.y = coloredCloud->at(i).y;
+								pt.z = coloredCloud->at(i).z;
+								if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0)
+								{
+									tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+								}
+								else
+								{
+									tree->nearestKSearch(pt, 1, kIndices, kDistances);
+								}
+								if(kIndices.size())
+								{
+									//compute average color
+									int r=0;
+									int g=0;
+									int b=0;
+									int a=0;
+									for(unsigned int j=0; j<kIndices.size(); ++j)
+									{
+										r+=(int)mergedClouds->at(kIndices[j]).r;
+										g+=(int)mergedClouds->at(kIndices[j]).g;
+										b+=(int)mergedClouds->at(kIndices[j]).b;
+										a+=(int)mergedClouds->at(kIndices[j]).a;
+									}
+									coloredCloud->at(i).r = r/kIndices.size();
+									coloredCloud->at(i).g = g/kIndices.size();
+									coloredCloud->at(i).b = b/kIndices.size();
+									coloredCloud->at(i).a = a/kIndices.size();
+								}
+								else
+								{
+									//white
+									coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
+								}
+							}
+							pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
+						}
 					}
 
 					meshes.insert(std::make_pair(0, mesh));
@@ -1134,8 +1452,16 @@ bool ExportCloudsDialog::getExportedClouds(
 			}
 			else
 			{
-				_progressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_ui->doubleSpinBox_gp3Radius->value()));
+				if(_ui->comboBox_meshingApproach->currentIndex() == 0)
+				{
+					_progressDialog->appendText(tr("Greedy projection triangulation... [radius=%1m]").arg(_ui->doubleSpinBox_gp3Radius->value()));
+				}
+				else
+				{
+					_progressDialog->appendText(tr("Poisson surface reconstruction..."));
+				}
 				QApplication::processEvents();
+				uSleep(100);
 				QApplication::processEvents();
 
 				int i=0;
@@ -1143,13 +1469,203 @@ bool ExportCloudsDialog::getExportedClouds(
 					iter!= cloudsWithNormals.end();
 					++iter)
 				{
-					pcl::PolygonMesh::Ptr mesh = util3d::createMesh(
-							iter->second,
-							_ui->doubleSpinBox_gp3Radius->value(),
-							_ui->doubleSpinBox_gp3Mu->value());
-
-					if(_ui->spinBox_mesh_minClusterSize->value())
+					bool lostColors = false;
+					pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
+					if(_ui->comboBox_meshingApproach->currentIndex() == 0)
 					{
+						mesh = util3d::createMesh(
+								iter->second,
+								_ui->doubleSpinBox_gp3Radius->value(),
+								_ui->doubleSpinBox_gp3Mu->value());
+					}
+					else
+					{
+						pcl::Poisson<pcl::PointXYZRGBNormal> poisson;
+						poisson.setOutputPolygons(_ui->checkBox_poisson_outputPolygons->isEnabled()?_ui->checkBox_poisson_outputPolygons->isChecked():false);
+						poisson.setManifold(_ui->checkBox_poisson_manifold->isChecked());
+						poisson.setSamplesPerNode(_ui->doubleSpinBox_poisson_samples->value());
+						poisson.setDepth(_ui->spinBox_poisson_depth->value());
+						poisson.setIsoDivide(_ui->spinBox_poisson_iso->value());
+						poisson.setSolverDivide(_ui->spinBox_poisson_solver->value());
+						poisson.setMinDepth(_ui->spinBox_poisson_minDepth->value());
+						poisson.setPointWeight(_ui->doubleSpinBox_poisson_pointWeight->value());
+						poisson.setScale(_ui->doubleSpinBox_poisson_scale->value());
+						poisson.setInputCloud(iter->second);
+						poisson.reconstruct(*mesh);
+
+						lostColors = true;
+					}
+
+					_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
+					QApplication::processEvents();
+
+					if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
+					   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
+					{
+						unsigned int count = mesh->polygons.size();
+						_progressDialog->appendText(tr("Mesh decimation (factor=%1) from %2 polygons...").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count));
+						QApplication::processEvents();
+						uSleep(100);
+						QApplication::processEvents();
+
+						mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
+						_progressDialog->appendText(tr("Mesh decimated (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						if(count < mesh->polygons.size())
+						{
+							_progressDialog->appendText(tr("Decimated mesh %1 has more polygons than before!").arg(iter->first), Qt::darkYellow);
+							_progressDialog->setAutoClose(false);
+						}
+						QApplication::processEvents();
+						lostColors = true;
+					}
+
+					if(lostColors &&
+						_ui->doubleSpinBox_transferColorRadius->value() >= 0.0 &&
+						(!_ui->checkBox_textureMapping->isEnabled() || !_ui->checkBox_textureMapping->isChecked()))
+					{
+						_progressDialog->appendText(tr("Transferring color from point cloud to mesh..."));
+						QApplication::processEvents();
+
+						// transfer color from point cloud to mesh
+						pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+						tree->setInputCloud(iter->second);
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+						pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
+						std::vector<bool> coloredPts(coloredCloud->size());
+						for(unsigned int i=0; i<coloredCloud->size(); ++i)
+						{
+							std::vector<int> kIndices;
+							std::vector<float> kDistances;
+							pcl::PointXYZRGBNormal pt;
+							pt.x = coloredCloud->at(i).x;
+							pt.y = coloredCloud->at(i).y;
+							pt.z = coloredCloud->at(i).z;
+							if(_ui->doubleSpinBox_transferColorRadius->value() > 0.0)
+							{
+								tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+							}
+							else
+							{
+								tree->nearestKSearch(pt, 1, kIndices, kDistances);
+							}
+							if(kIndices.size())
+							{
+								//compute average color
+								int r=0;
+								int g=0;
+								int b=0;
+								int a=0;
+								for(unsigned int j=0; j<kIndices.size(); ++j)
+								{
+									r+=(int)iter->second->at(kIndices[j]).r;
+									g+=(int)iter->second->at(kIndices[j]).g;
+									b+=(int)iter->second->at(kIndices[j]).b;
+									a+=(int)iter->second->at(kIndices[j]).a;
+								}
+								coloredCloud->at(i).r = r/kIndices.size();
+								coloredCloud->at(i).g = g/kIndices.size();
+								coloredCloud->at(i).b = b/kIndices.size();
+								coloredCloud->at(i).a = a/kIndices.size();
+								coloredPts.at(i) = true;
+							}
+							else
+							{
+								//white
+								coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
+								coloredPts.at(i) = false;
+							}
+						}
+						pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
+
+						// remove polygons with no color
+						if(_ui->checkBox_cleanMesh->isChecked())
+						{
+							std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
+							int oi=0;
+							for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+							{
+								bool coloredPolygon = true;
+								for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
+								{
+									if(!coloredPts.at(mesh->polygons[i].vertices[j]))
+									{
+										coloredPolygon = false;
+										break;
+									}
+								}
+								if(coloredPolygon)
+								{
+									filteredPolygons[oi++] = mesh->polygons[i];
+								}
+							}
+							filteredPolygons.resize(oi);
+							mesh->polygons = filteredPolygons;
+						}
+					}
+					else if(lostColors &&
+							_ui->doubleSpinBox_transferColorRadius->value() > 0.0 &&
+							_ui->checkBox_cleanMesh->isChecked() &&
+							(_ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked()))
+					{
+						_progressDialog->appendText(tr("Removing polygons too far from the cloud..."));
+						QApplication::processEvents();
+
+						// transfer color from point cloud to mesh
+						pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
+						tree->setInputCloud(iter->second);
+						pcl::PointCloud<pcl::PointXYZ>::Ptr optimizedCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::fromPCLPointCloud2(mesh->cloud, *optimizedCloud);
+						std::vector<bool> closePts(optimizedCloud->size());
+						for(unsigned int i=0; i<optimizedCloud->size(); ++i)
+						{
+							std::vector<int> kIndices;
+							std::vector<float> kDistances;
+							pcl::PointXYZRGBNormal pt;
+							pt.x = optimizedCloud->at(i).x;
+							pt.y = optimizedCloud->at(i).y;
+							pt.z = optimizedCloud->at(i).z;
+							tree->radiusSearch(pt, _ui->doubleSpinBox_transferColorRadius->value(), kIndices, kDistances);
+							if(kIndices.size())
+							{
+								closePts.at(i) = true;
+							}
+							else
+							{
+								closePts.at(i) = false;
+							}
+						}
+
+						// remove far polygons
+						std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
+						int oi=0;
+						for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+						{
+							bool keepPolygon = true;
+							for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
+							{
+								if(!closePts.at(mesh->polygons[i].vertices[j]))
+								{
+									keepPolygon = false;
+									break;
+								}
+							}
+							if(keepPolygon)
+							{
+								filteredPolygons[oi++] = mesh->polygons[i];
+							}
+						}
+						filteredPolygons.resize(oi);
+						mesh->polygons = filteredPolygons;
+					}
+
+					if(_ui->spinBox_mesh_minClusterSize->value() &&
+						!(_ui->checkBox_textureMapping->isEnabled() &&
+						  _ui->checkBox_textureMapping->isChecked() &&
+						  _ui->checkBox_cleanMesh->isChecked()))
+					{
+						_progressDialog->appendText(tr("Filter small polygon clusters..."));
+						QApplication::processEvents();
+
 						// filter polygons
 						std::vector<std::set<int> > neighbors;
 						std::vector<std::set<int> > vertexToPolygons;
@@ -1159,34 +1675,55 @@ bool ExportCloudsDialog::getExportedClouds(
 								vertexToPolygons);
 						std::list<std::list<int> > clusters = util3d::clusterPolygons(
 								neighbors,
-								_ui->spinBox_mesh_minClusterSize->value());
+								_ui->spinBox_mesh_minClusterSize->value()<0?0:_ui->spinBox_mesh_minClusterSize->value());
+
 						std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
-						int oi=0;
-						for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+						if(_ui->spinBox_mesh_minClusterSize->value() < 0)
 						{
-							for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+							// only keep the biggest cluster
+							std::list<std::list<int> >::iterator biggestClusterIndex = clusters.end();
+							unsigned int biggestClusterSize = 0;
+							for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
 							{
-								filteredPolygons[oi++] = mesh->polygons.at(*jter);
+								if(iter->size() > biggestClusterSize)
+								{
+									biggestClusterIndex = iter;
+									biggestClusterSize = iter->size();
+								}
+							}
+							if(biggestClusterIndex != clusters.end())
+							{
+								int oi=0;
+								for(std::list<int>::iterator jter=biggestClusterIndex->begin(); jter!=biggestClusterIndex->end(); ++jter)
+								{
+									filteredPolygons[oi++] = mesh->polygons.at(*jter);
+								}
+								filteredPolygons.resize(oi);
 							}
 						}
-						filteredPolygons.resize(oi);
+						else
+						{
+							int oi=0;
+							for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+							{
+								for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+								{
+									filteredPolygons[oi++] = mesh->polygons.at(*jter);
+								}
+							}
+							filteredPolygons.resize(oi);
+						}
+
+						int before = (int)mesh->polygons.size();
 						mesh->polygons = filteredPolygons;
-					}
 
-					_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
-					QApplication::processEvents();
-
-					if(_ui->doubleSpinBox_meshDecimationFactor->isEnabled() &&
-					   _ui->doubleSpinBox_meshDecimationFactor->value() > 0.0)
-					{
-						int count = mesh->polygons.size();
-						mesh = util3d::meshDecimation(mesh, (float)_ui->doubleSpinBox_meshDecimationFactor->value());
-						_progressDialog->appendText(tr("Assembled mesh decimation (factor=%1) from %2 to %3 polygons").arg(_ui->doubleSpinBox_meshDecimationFactor->value()).arg(count).arg(mesh->polygons.size()));
+						_progressDialog->appendText(tr("Filtered %1 polygons.").arg(before-(int)mesh->polygons.size()));
+						QApplication::processEvents();
 					}
 
 					meshes.insert(std::make_pair(iter->first, mesh));
 
-					_progressDialog->incrementStep();
+					_progressDialog->incrementStep(_ui->checkBox_assemble->isChecked()?poses.size():1);
 					QApplication::processEvents();
 					if(_canceled)
 					{
@@ -1205,9 +1742,11 @@ bool ExportCloudsDialog::getExportedClouds(
 		UDEBUG("texture mapping=%d", _ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked()?1:0);
 		if(_ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
 		{
-			QDir dir(workingDirectory);
-			removeDirRecursively(workingDirectory+QDir::separator()+"tmp_textures");
-			dir.mkdir("tmp_textures");
+			_progressDialog->appendText(tr("Texturing..."));
+			QApplication::processEvents();
+			uSleep(100);
+			QApplication::processEvents();
+
 			int i=0;
 			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter=meshes.begin();
 				iter!= meshes.end();
@@ -1225,7 +1764,6 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 				std::map<int, Transform> cameraPoses;
 				std::map<int, CameraModel> cameraModels;
-				std::map<int, cv::Mat> images;
 				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
 				{
 					if(cachedSignatures.contains(jter->first))
@@ -1240,24 +1778,23 @@ bool ExportCloudsDialog::getExportedClouds(
 						{
 							model = s.sensorData().cameraModels()[0];
 						}
-						cv::Mat image = s.sensorData().imageRaw();
-						if(image.empty() && !s.sensorData().imageCompressed().empty())
+						if(!jter->second.isNull() && model.isValidForProjection() && !s.sensorData().imageCompressed().empty())
 						{
-							s.sensorData().uncompressDataConst(&image, 0, 0, 0);
-						}
-						if(!jter->second.isNull() && model.isValidForProjection() && !image.empty())
-						{
+							if(model.imageWidth() == 0 || model.imageHeight() == 0)
+							{
+								// we are using an old database format (image size not saved in calibrations), we should
+								// uncompress images to get their size
+								cv::Mat img;
+								s.sensorData().uncompressDataConst(&img, 0);
+								model.setImageSize(img.size());
+							}
+
 							cameraPoses.insert(std::make_pair(jter->first, jter->second));
 							cameraModels.insert(std::make_pair(jter->first, model));
-							if(_ui->groupBox_gain->isChecked() && compensator.getIndex(jter->first) >= 0)
-							{
-								compensator.apply(jter->first, image);
-							}
-							images.insert(std::make_pair(jter->first, image));
 						}
 					}
 				}
-				if(cameraPoses.size())
+				if(cameraPoses.size() && iter->second->polygons.size())
 				{
 					pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 					std::map<int, std::vector<int> >::iterator oter = organizedIndices.find(iter->first);
@@ -1274,38 +1811,20 @@ bool ExportCloudsDialog::getExportedClouds(
 						if(textureMesh->tex_polygons.size() && textureMesh->tex_polygons[0].size())
 						{
 							textureMesh->tex_coordinates.resize(1);
-							if(!_ui->checkBox_mesh_quad->isEnabled()) // disabled -> we are exporting to file
+
+							//tex_coordinates should be linked to polygon vertices
+							int polygonSize = (int)textureMesh->tex_polygons[0][0].vertices.size();
+							textureMesh->tex_coordinates[0].resize(polygonSize*textureMesh->tex_polygons[0].size());
+							for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
 							{
-								UDEBUG("");
-								// When saving to file, tex_coordinates should be linked to polygon vertices, not points
-								int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
-								textureMesh->tex_coordinates[0].resize(polygonSize*textureMesh->tex_polygons[0].size());
-								for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
-								{
-									const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
-									UASSERT(polygonSize == (int)vertices.vertices.size());
-									for(int k=0; k<polygonSize; ++k)
-									{
-										//uv
-										UASSERT(vertices.vertices[k] < oter->second.size());
-										int originalVertex = oter->second[vertices.vertices[k]];
-										textureMesh->tex_coordinates[0][i*polygonSize+k] = Eigen::Vector2f(
-												float(originalVertex % w) / float(w),      // u
-												float(h - originalVertex / w) / float(h)); // v
-									}
-								}
-							}
-							else
-							{
-								UDEBUG("");
-								int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
-								textureMesh->tex_coordinates[0].resize(nPoints);
-								for(int i=0; i<nPoints; ++i)
+								const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
+								UASSERT(polygonSize == (int)vertices.vertices.size());
+								for(int k=0; k<polygonSize; ++k)
 								{
 									//uv
-									UASSERT(i < (int)oter->second.size());
-									int originalVertex = oter->second[i];
-									textureMesh->tex_coordinates[0][i] = Eigen::Vector2f(
+									UASSERT(vertices.vertices[k] < oter->second.size());
+									int originalVertex = oter->second[vertices.vertices[k]];
+									textureMesh->tex_coordinates[0][i*polygonSize+k] = Eigen::Vector2f(
 											float(originalVertex % w) / float(w),      // u
 											float(h - originalVertex / w) / float(h)); // v
 								}
@@ -1320,17 +1839,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							tex_name << "material_" << iter->first;
 							tex_name >> mesh_material.tex_name;
 
-							std::string tmpDirectory = dir.filePath("tmp_textures").toStdString();
-							mesh_material.tex_file = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", iter->first);
-							if(!cv::imwrite(mesh_material.tex_file, images.at(iter->first)))
-							{
-								UERROR("Cannot save texture of image %d", iter->first);
-							}
-							else
-							{
-								UINFO("Saved temporary texture: \"%s\"", mesh_material.tex_file.c_str());
-							}
-
+							mesh_material.tex_file = uFormat("%d", iter->first);
 							textureMesh->tex_materials.push_back(mesh_material);
 						}
 						else
@@ -1341,50 +1850,200 @@ bool ExportCloudsDialog::getExportedClouds(
 					else
 					{
 						UDEBUG("Texture by projection");
+
+						if(cameraPoses.size() && _ui->checkBox_cameraFilter->isChecked())
+						{
+							int before = (int)cameraPoses.size();
+							cameraPoses = graph::radiusPosesFiltering(cameraPoses,
+									_ui->doubleSpinBox_cameraFilterRadius->value(),
+									_ui->doubleSpinBox_cameraFilterAngle->value());
+							for(std::map<int, CameraModel>::iterator modelIter = cameraModels.begin(); modelIter!=cameraModels.end();)
+							{
+								if(cameraPoses.find(modelIter->first)==cameraPoses.end())
+								{
+									cameraModels.erase(modelIter++);
+								}
+								else
+								{
+									++modelIter;
+								}
+							}
+							_progressDialog->appendText(tr("Camera filtering: keeping %1/%2 cameras for texturing.").arg(cameraPoses.size()).arg(before));
+							QApplication::processEvents();
+							uSleep(100);
+							QApplication::processEvents();
+						}
+
+						if(_canceled)
+						{
+							return false;
+						}
+
+						TexturingState texturingState(_progressDialog);
+						_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+iter->second->polygons.size()/10000+1);
 						textureMesh = util3d::createTextureMesh(
 								iter->second,
 								cameraPoses,
 								cameraModels,
-								images,
-								dir.filePath("tmp_textures").toStdString(),
-								_ui->spinBox_normalKSearch->value());
+								_ui->doubleSpinBox_meshingTextureMaxDistance->value(),
+								_ui->spinBox_mesh_minTextureClusterSize->value(),
+								&texturingState);
 
-						if(!_ui->checkBox_binary->isEnabled() && // not enabled -> we are not exporting to file
-							textureMesh->tex_coordinates.size() &&
-							textureMesh->tex_coordinates[0].size()) // assume first is the texture, second is occluded texture
+						if(_canceled)
 						{
-							UDEBUG("");
-							// When not saving to file, tex_coordinates should be linked to points, not polygon vertices
-							int nPoints = textureMesh->cloud.data.size()/textureMesh->cloud.point_step;
-#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
-							std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > tmpCoordinates = textureMesh->tex_coordinates[0];
-#else
-							std::vector<Eigen::Vector2f> tmpCoordinates = textureMesh->tex_coordinates[0];
-#endif
-							textureMesh->tex_coordinates[0].resize(nPoints);
+							return false;
+						}
 
-							int polygonSize = textureMesh->tex_polygons[0][0].vertices.size();
-							UASSERT(textureMesh->tex_polygons[0].size() == tmpCoordinates.size()/polygonSize);
-							for(unsigned int i=0; i<textureMesh->tex_polygons[0].size(); ++i)
+						// Remove occluded polygons (polygons with no texture)
+						if(_ui->checkBox_cleanMesh->isChecked() &&
+							textureMesh->tex_coordinates.size())
+						{
+							// assume last texture is the occluded texture
+							textureMesh->tex_coordinates.pop_back();
+							textureMesh->tex_polygons.pop_back();
+							textureMesh->tex_materials.pop_back();
+
+							if(_ui->spinBox_mesh_minClusterSize->value())
 							{
-								const pcl::Vertices & vertices = textureMesh->tex_polygons[0][i];
-								UASSERT(polygonSize == (int)vertices.vertices.size());
-								for(int j=0; j<polygonSize; ++j)
+								_progressDialog->appendText(tr("Filter small polygon clusters..."));
+								QApplication::processEvents();
+
+								// concatenate all polygons
+								unsigned int totalSize = 0;
+								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
 								{
-									//uv
-									UASSERT((int)vertices.vertices[j] < nPoints);
-									UASSERT(i*polygonSize+j < tmpCoordinates.size());
-									textureMesh->tex_coordinates[0][vertices.vertices[j]] = tmpCoordinates[i*polygonSize+j];
+									totalSize+=textureMesh->tex_polygons[t].size();
 								}
+								std::vector<pcl::Vertices> allPolygons(totalSize);
+								int oi=0;
+								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
+								{
+									for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
+									{
+										allPolygons[oi++] =  textureMesh->tex_polygons[t][i];
+									}
+								}
+
+								// filter polygons
+								std::vector<std::set<int> > neighbors;
+								std::vector<std::set<int> > vertexToPolygons;
+								util3d::createPolygonIndexes(allPolygons,
+										(int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step,
+										neighbors,
+										vertexToPolygons);
+
+								std::list<std::list<int> > clusters = util3d::clusterPolygons(
+										neighbors,
+										_ui->spinBox_mesh_minClusterSize->value()<0?0:_ui->spinBox_mesh_minClusterSize->value());
+
+								std::set<int> validPolygons;
+								if(_ui->spinBox_mesh_minClusterSize->value() < 0)
+								{
+									// only keep the biggest cluster
+									std::list<std::list<int> >::iterator biggestClusterIndex = clusters.end();
+									unsigned int biggestClusterSize = 0;
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+									{
+										if(iter->size() > biggestClusterSize)
+										{
+											biggestClusterIndex = iter;
+											biggestClusterSize = iter->size();
+										}
+									}
+									if(biggestClusterIndex != clusters.end())
+									{
+										for(std::list<int>::iterator jter=biggestClusterIndex->begin(); jter!=biggestClusterIndex->end(); ++jter)
+										{
+											validPolygons.insert(*jter);
+										}
+									}
+								}
+								else
+								{
+									for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+									{
+										for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+										{
+											validPolygons.insert(*jter);
+										}
+									}
+								}
+
+								if(validPolygons.size() == 0)
+								{
+									std::string msg = uFormat("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.",totalSize, _ui->spinBox_mesh_minClusterSize->value());
+									_progressDialog->appendText(msg.c_str());
+									UWARN(msg.c_str());
+								}
+
+								// for each texture
+								unsigned int allPolygonsIndex = 0;
+								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
+								{
+									std::vector<pcl::Vertices> filteredPolygons(textureMesh->tex_polygons[t].size());
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+									std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > filteredCoordinates(textureMesh->tex_coordinates[t].size());
+#else
+									std::vector<Eigen::Vector2f> filteredCoordinates(textureMesh->tex_coordinates[t].size());
+#endif
+
+									if(textureMesh->tex_polygons[t].size())
+									{
+										UASSERT_MSG(allPolygonsIndex < allPolygons.size(), uFormat("%d vs %d", (int)allPolygonsIndex, (int)allPolygons.size()).c_str());
+
+										// make index polygon to coordinate
+										std::vector<unsigned int> polygonToCoord(textureMesh->tex_polygons[t].size());
+										unsigned int totalCoord = 0;
+										for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
+										{
+											polygonToCoord[i] = totalCoord;
+											totalCoord+=textureMesh->tex_polygons[t][i].vertices.size();
+										}
+										UASSERT_MSG(totalCoord == textureMesh->tex_coordinates[t].size(), uFormat("%d vs %d", totalCoord, (int)textureMesh->tex_coordinates[t].size()).c_str());
+
+										int oi=0;
+										int ci=0;
+										for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
+										{
+											if(validPolygons.find(allPolygonsIndex) != validPolygons.end())
+											{
+												filteredPolygons[oi] = textureMesh->tex_polygons[t].at(i);
+												for(unsigned int j=0; j<filteredPolygons[oi].vertices.size(); ++j)
+												{
+													UASSERT(polygonToCoord[i] < textureMesh->tex_coordinates[t].size());
+													filteredCoordinates[ci] = textureMesh->tex_coordinates[t][polygonToCoord[i]+j];
+													++ci;
+												}
+												++oi;
+											}
+											++allPolygonsIndex;
+										}
+										filteredPolygons.resize(oi);
+										filteredCoordinates.resize(ci);
+										textureMesh->tex_polygons[t] = filteredPolygons;
+										textureMesh->tex_coordinates[t] = filteredCoordinates;
+									}
+								}
+
+								_progressDialog->appendText(tr("Filtered %1 polygons.").arg(allPolygons.size()-validPolygons.size()));
+								QApplication::processEvents();
 							}
 						}
 					}
 
 					textureMeshes.insert(std::make_pair(iter->first, textureMesh));
 				}
+				else if(cameraPoses.size() == 0)
+				{
+					_progressDialog->appendText(tr("No cameras from %1 poses with valid calibration found!").arg(poses.size()), Qt::darkYellow);
+					_progressDialog->setAutoClose(false);
+					UWARN("No camera poses!?");
+				}
 				else
 				{
-					UWARN("No camera poses!?");
+					_progressDialog->appendText(tr("No polygons!?"), Qt::darkYellow);
+					_progressDialog->setAutoClose(false);
+					UWARN("No polygons!");
 				}
 
 				_progressDialog->appendText(tr("TextureMesh %1 created [cameras=%2] (%3/%4).").arg(iter->first).arg(cameraPoses.size()).arg(++i).arg(meshes.size()));
@@ -1435,7 +2094,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 			pcl::IndicesPtr indices(new std::vector<int>);
-			if(_ui->groupBox_regenerate->isChecked())
+			if(_ui->checkBox_regenerate->isChecked())
 			{
 				if(cachedSignatures.contains(iter->first))
 				{
@@ -1445,6 +2104,11 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					d.uncompressData(&image, &depth, 0);
 					if(!image.empty() && !depth.empty())
 					{
+						if(_ui->spinBox_fillDepthHoles->value() > 0)
+						{
+							depth = util2d::fillDepthHoles(depth, _ui->spinBox_fillDepthHoles->value(), float(_ui->spinBox_fillDepthHolesError->value())/100.f);
+						}
+
 						if(!_ui->lineEdit_distortionModel->text().isEmpty() &&
 						   QFileInfo(_ui->lineEdit_distortionModel->text()).exists())
 						{
@@ -1456,7 +2120,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						}
 
 						// bilateral filtering
-						if(_ui->groupBox_bilateral->isChecked())
+						if(_ui->checkBox_bilateral->isChecked())
 						{
 							depth = util2d::fastBilateralFiltering(depth,
 									_ui->doubleSpinBox_bilateral_sigmaS->value(),
@@ -1466,18 +2130,32 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 						UASSERT(iter->first == d.id());
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+						std::vector<float> roiRatios;
+						if(!_ui->lineEdit_roiRatios->text().isEmpty())
+						{
+							QStringList values = _ui->lineEdit_roiRatios->text().split(' ');
+							if(values.size() == 4)
+							{
+								roiRatios.resize(4);
+								for(int i=0; i<values.size(); ++i)
+								{
+									roiRatios[i] = uStr2Float(values[i].toStdString().c_str());
+								}
+							}
+						}
 						cloudWithoutNormals = util3d::cloudRGBFromSensorData(
 								d,
 								_ui->spinBox_decimation->value() == 0?1:_ui->spinBox_decimation->value(),
 								_ui->doubleSpinBox_maxDepth->value(),
 								_ui->doubleSpinBox_minDepth->value(),
 								indices.get(),
-								parameters);
+								parameters,
+								roiRatios);
 
 						if(cloudWithoutNormals->size())
 						{
 							// Don't voxelize if we create organized mesh
-							if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->groupBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
+							if(!(_ui->comboBox_pipeline->currentIndex()==0 && _ui->checkBox_meshing->isChecked()) && _ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
 							{
 								cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, indices, _ui->doubleSpinBox_voxelSize_assembled->value());
 								indices->resize(cloudWithoutNormals->size());
@@ -1505,7 +2183,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
 							pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 
-							if(_ui->groupBox_subtraction->isChecked() &&
+							if(_ui->checkBox_subtraction->isChecked() &&
 							   _ui->doubleSpinBox_subtractPointFilteringRadius->value() > 0.0)
 							{
 								pcl::IndicesPtr beforeSubtractionIndices = indices;
@@ -1541,7 +2219,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			else if(uContains(cachedClouds, iter->first))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
-				if(!_ui->groupBox_meshing->isChecked() &&
+				if(!_ui->checkBox_meshing->isChecked() &&
 				   _ui->doubleSpinBox_voxelSize_assembled->value() > 0.0)
 				{
 					cloudWithoutNormals = util3d::voxelize(
@@ -1596,7 +2274,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 			if(indices->size())
 			{
-				if(_ui->groupBox_filtering->isChecked() &&
+				if(_ui->checkBox_filtering->isChecked() &&
 					_ui->doubleSpinBox_filteringRadius->value() > 0.0f &&
 					_ui->spinBox_filteringMinNeighbors->value() > 0)
 				{
@@ -1604,8 +2282,8 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				}
 
 				clouds.insert(std::make_pair(iter->first, std::make_pair(cloud, indices)));
-				points = cloud->size();
-				totalIndices = indices->size();
+				points = (int)cloud->size();
+				totalIndices = (int)indices->size();
 			}
 		}
 		else
@@ -1615,7 +2293,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 		if(points>0)
 		{
-			if(_ui->groupBox_regenerate->isChecked())
+			if(_ui->checkBox_regenerate->isChecked())
 			{
 				_progressDialog->appendText(tr("Generated cloud %1 with %2 points and %3 indices (%4/%5).")
 						.arg(iter->first).arg(points).arg(totalIndices).arg(index).arg(poses.size()));
@@ -1913,10 +2591,127 @@ void ExportCloudsDialog::saveMeshes(
 	}
 }
 
+cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<int, Signature> & cachedSignatures) const
+{
+	//get texture size, if disabled use default 1024
+	int textureSize = 1024;
+	if(_ui->comboBox_meshingTextureSize->currentIndex() > 0)
+	{
+		textureSize = 128 << _ui->comboBox_meshingTextureSize->currentIndex(); // start at 256
+	}
+	UDEBUG("textureSize = %d", textureSize);
+	cv::Mat globalTexture;
+	if(mesh.tex_materials.size() > 1)
+	{
+		std::vector<int> textures(mesh.tex_materials.size(), -1);
+		cv::Size imageSize;
+		int imageType=CV_8UC1;
+		UDEBUG("");
+		bool mergeTextures = true;
+		for(unsigned int i=0; i<mesh.tex_materials.size(); ++i)
+		{
+			if(!mesh.tex_materials[i].tex_file.empty() &&
+				mesh.tex_polygons[i].size() &&
+			   uIsInteger(mesh.tex_materials[i].tex_file, false))
+			{
+				int textureId = uStr2Int(mesh.tex_materials[i].tex_file);
+				textures[i] = textureId;
+
+				QMap<int, Signature>::const_iterator iter = cachedSignatures.find(textureId);
+				UASSERT(iter!=cachedSignatures.end() && !iter->sensorData().imageCompressed().empty());
+
+				cv::Size tmpImageSize;
+				if(iter->sensorData().cameraModels().size()==1 &&
+					iter->sensorData().cameraModels()[0].imageHeight()>0 &&
+					iter->sensorData().cameraModels()[0].imageWidth()>0)
+				{
+					tmpImageSize = iter->sensorData().cameraModels()[0].imageSize();
+					if(imageSize.height == 0 && imageSize.width == 0)
+					{
+						// just for the first image, get the type, assuming all others have the same type
+						cv::Mat image;
+						iter->sensorData().uncompressDataConst(&image, 0);
+						UASSERT(!image.empty());
+						imageType = image.type();
+					}
+				}
+				else // backward compatibility for image size not set in CameraModel
+				{
+					cv::Mat image;
+					iter->sensorData().uncompressDataConst(&image, 0);
+					UASSERT(!image.empty());
+					tmpImageSize = image.size();
+					if(imageSize.height == 0 && imageSize.width == 0)
+					{
+						imageType = image.type();
+					}
+				}
+				if(imageSize.width>0 && imageSize.height>0 && imageSize.width != tmpImageSize.width)
+				{
+					UWARN("All images should have the same dimensions to merge the textures!");
+					mergeTextures = false;
+					break;
+				}
+				imageSize = tmpImageSize;
+			}
+		}
+		if(mergeTextures && textures.size() && imageSize.height>0 && imageSize.width>0)
+		{
+			float scale = 0.0f;
+			UDEBUG("");
+			std::vector<bool> materialsKept;
+			util3d::concatenateTextureMaterials(mesh, imageSize, textureSize, scale, &materialsKept);
+			if(scale && mesh.tex_materials.size()==1)
+			{
+				int cols = float(textureSize)/(scale*imageSize.width);
+
+				globalTexture = cv::Mat(textureSize, textureSize, imageType, cv::Scalar::all(255));
+
+				// make a blank texture
+				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(255));
+				int oi=0;
+				for(int t=0; t<(int)textures.size(); ++t)
+				{
+					if(materialsKept.at(t))
+					{
+						int u = oi%cols * emptyImage.cols;
+						int v = oi/cols * emptyImage.rows;
+						UASSERT(u < textureSize-emptyImage.cols);
+						UASSERT(v < textureSize-emptyImage.rows);
+						if(textures[t]>=0)
+						{
+							QMap<int, Signature>::const_iterator iter = cachedSignatures.find(textures[t]);
+							UASSERT(iter!=cachedSignatures.end() && !iter->sensorData().imageCompressed().empty());
+							cv::Mat image;
+							iter->sensorData().uncompressDataConst(&image, 0);
+							UASSERT(!image.empty());
+							cv::Mat resizedImage;
+							cv::resize(image, resizedImage, emptyImage.size(), 0.0f, 0.0f, cv::INTER_AREA);
+							if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textures[t]) >= 0)
+							{
+								_compensator->apply(textures[t], resizedImage);
+							}
+							UASSERT(resizedImage.type() == globalTexture.type());
+							resizedImage.copyTo(globalTexture(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
+						}
+						else
+						{
+							emptyImage.copyTo(globalTexture(cv::Rect(u, v, emptyImage.cols, emptyImage.rows)));
+						}
+						++oi;
+					}
+				}
+			}
+		}
+	}
+	return globalTexture;
+}
+
 void ExportCloudsDialog::saveTextureMeshes(
 		const QString & workingDirectory,
 		const std::map<int, Transform> & poses,
-		const std::map<int, pcl::TextureMesh::Ptr> & meshes)
+		std::map<int, pcl::TextureMesh::Ptr> & meshes,
+		const QMap<int, Signature> & cachedSignatures)
 {
 	if(meshes.size() == 1)
 	{
@@ -1936,32 +2731,99 @@ void ExportCloudsDialog::saveTextureMeshes(
 					path += ".obj";
 				}
 
-				pcl::TextureMesh mesh;
-				mesh.tex_coordinates = meshes.begin()->second->tex_coordinates;
-				mesh.tex_materials = meshes.begin()->second->tex_materials;
-				removeDirRecursively(QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName());
-				QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(QFileInfo(path).baseName());
-				for(unsigned int i=0;i<meshes.begin()->second->tex_materials.size(); ++i)
+				pcl::TextureMesh::Ptr mesh = meshes.begin()->second;
+
+				cv::Mat globalTexture;
+				bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
+				if(texturesMerged && mesh->tex_materials.size()>1)
 				{
-					QFileInfo info(mesh.tex_materials[i].tex_file.c_str());
-					QString fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+QDir::separator()+info.fileName();
-					// relative path
-					mesh.tex_materials[i].tex_file=(QFileInfo(path).baseName()+QDir::separator()+info.fileName()).toStdString();
-					if(!QFile::copy(meshes.begin()->second->tex_materials[i].tex_file.c_str(), fullPath))
+					globalTexture = mergeTextures(*mesh, cachedSignatures);
+				}
+				bool singleTexture = mesh->tex_materials.size() == 1;
+				if(!singleTexture)
+				{
+					removeDirRecursively(QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName());
+					QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(QFileInfo(path).baseName());
+				}
+				cv::Size imageSize;
+				for(unsigned int i=0; i<mesh->tex_materials.size(); ++i)
+				{
+					if(!mesh->tex_materials[i].tex_file.empty())
 					{
-						_progressDialog->appendText(tr("Failed copying texture \"%1\" to \"%2\".")
-								.arg(meshes.begin()->second->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
-						_progressDialog->setAutoClose(false);
+						// absolute path
+						QString fullPath;
+						if(singleTexture)
+						{
+							fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+_ui->comboBox_meshingTextureFormat->currentText();
+						}
+						else
+						{
+							fullPath = QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
+						}
+						UDEBUG("Saving %s...", fullPath.toStdString().c_str());
+						if(singleTexture || !QFileInfo(fullPath).exists())
+						{
+							if(uIsInteger(mesh->tex_materials[i].tex_file, false))
+							{
+								int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
+								UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
+								cv::Mat image;
+								cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+								UASSERT(!image.empty());
+								imageSize = image.size();
+								if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+								{
+									_compensator->apply(textureId, image);
+								}
+
+								if(!cv::imwrite(fullPath.toStdString(), image))
+								{
+									_progressDialog->appendText(tr("Failed saving texture \"%1\" to \"%2\".")
+											.arg(mesh->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
+									_progressDialog->setAutoClose(false);
+								}
+							}
+							else if(imageSize.height && imageSize.width)
+							{
+								// make a blank texture
+								cv::Mat image = cv::Mat::ones(imageSize, CV_8UC1)*255;
+								cv::imwrite(fullPath.toStdString(), image);
+							}
+							else if(!globalTexture.empty())
+							{
+								if(!cv::imwrite(fullPath.toStdString(), globalTexture))
+								{
+									_progressDialog->appendText(tr("Failed saving texture \"%1\" to \"%2\".")
+											.arg(mesh->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
+									_progressDialog->setAutoClose(false);
+								}
+							}
+							else
+							{
+								UWARN("Ignored texture %s (no image size set yet)", mesh->tex_materials[i].tex_file.c_str());
+							}
+						}
+						else
+						{
+							UWARN("File %s already exists!", fullPath.toStdString().c_str());
+						}
+						// relative path
+						if(singleTexture)
+						{
+							mesh->tex_materials[i].tex_file=QFileInfo(path).baseName().toStdString()+_ui->comboBox_meshingTextureFormat->currentText().toStdString();
+						}
+						else
+						{
+							mesh->tex_materials[i].tex_file=(QFileInfo(path).baseName()+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText()).toStdString();
+						}
 					}
 				}
-				mesh.tex_polygons = meshes.begin()->second->tex_polygons;
-				mesh.cloud = meshes.begin()->second->cloud;
 
-				success = pcl::io::saveOBJFile(path.toStdString(), mesh) == 0;
+				success = pcl::io::saveOBJFile(path.toStdString(), *mesh) == 0;
 				if(success)
 				{
 					_progressDialog->incrementStep();
-					_progressDialog->appendText(tr("Saving the mesh (with %1 textures)... done.").arg(mesh.tex_materials.size()));
+					_progressDialog->appendText(tr("Saving the mesh (with %1 textures)... done.").arg(mesh->tex_materials.size()));
 
 					QMessageBox::information(this, tr("Save successful!"), tr("Mesh saved to \"%1\"").arg(path));
 				}
@@ -1987,41 +2849,100 @@ void ExportCloudsDialog::saveTextureMeshes(
 
 			if(ok)
 			{
-				for(std::map<int, pcl::TextureMesh::Ptr>::const_iterator iter=meshes.begin(); iter!=meshes.end(); ++iter)
+				for(std::map<int, pcl::TextureMesh::Ptr>::iterator iter=meshes.begin(); iter!=meshes.end(); ++iter)
 				{
 					QString currentPrefix=prefix+QString::number(iter->first);
 					if(iter->second->tex_materials.size())
 					{
-						pcl::TextureMesh mesh;
-						mesh.tex_coordinates = iter->second->tex_coordinates;
-						mesh.tex_materials = iter->second->tex_materials;
-						QDir(path).rmdir(currentPrefix);
-						QDir(path).mkdir(currentPrefix);
-						for(unsigned int i=0;i<iter->second->tex_materials.size(); ++i)
+						pcl::TextureMesh::Ptr mesh = iter->second;
+						cv::Mat globalTexture;
+						bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
+						if(texturesMerged && mesh->tex_materials.size()>1)
 						{
-							QFileInfo info(mesh.tex_materials[i].tex_file.c_str());
-							QString fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+info.fileName();
-							// relative path
-							mesh.tex_materials[i].tex_file=(currentPrefix+QDir::separator()+info.fileName()).toStdString();
-							if(!QFile::copy(iter->second->tex_materials[i].tex_file.c_str(), fullPath) &&
-									info.fileName().compare("occluded.png") != 0)
+							globalTexture = mergeTextures(*mesh, cachedSignatures);
+						}
+						bool singleTexture = mesh->tex_materials.size() == 1;
+						if(!singleTexture)
+						{
+							removeDirRecursively(path+QDir::separator()+currentPrefix);
+							QDir(path).mkdir(currentPrefix);
+						}
+						cv::Size imageSize;
+						for(unsigned int i=0;i<mesh->tex_materials.size(); ++i)
+						{
+							if(!mesh->tex_materials[i].tex_file.empty())
 							{
-								_progressDialog->appendText(tr("Failed copying texture \"%1\" to \"%2\".")
-										.arg(iter->second->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
-								_progressDialog->setAutoClose(false);
+								// absolute path
+								QString fullPath;
+								if(singleTexture)
+								{
+									mesh->tex_materials[i].tex_file = uNumber2Str(iter->first);
+									fullPath = path+QDir::separator()+prefix + QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
+								}
+								else
+								{
+									fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
+								}
+								if(uIsInteger(mesh->tex_materials[i].tex_file, false))
+								{
+									int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
+									UASSERT(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty());
+									cv::Mat image;
+									cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+									UASSERT(!image.empty());
+									imageSize = image.size();
+									if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
+									{
+										_compensator->apply(textureId, image);
+									}
+
+									if(!cv::imwrite(fullPath.toStdString(), image))
+									{
+										_progressDialog->appendText(tr("Failed saving texture \"%1\" to \"%2\".")
+												.arg(mesh->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
+										_progressDialog->setAutoClose(false);
+									}
+								}
+								else if(imageSize.height && imageSize.width)
+								{
+									// make a blank texture
+									cv::Mat image = cv::Mat::ones(imageSize, CV_8UC1)*255;
+									cv::imwrite(fullPath.toStdString(), image);
+								}
+								else if(!globalTexture.empty())
+								{
+									if(!cv::imwrite(fullPath.toStdString(), globalTexture))
+									{
+										_progressDialog->appendText(tr("Failed saving texture \"%1\" to \"%2\".")
+												.arg(mesh->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
+										_progressDialog->setAutoClose(false);
+									}
+								}
+								else
+								{
+									UWARN("Ignored texture %s (no image size set yet)", mesh->tex_materials[i].tex_file.c_str());
+								}
+								// relative path
+								if(singleTexture)
+								{
+									mesh->tex_materials[i].tex_file=(prefix+ QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText()).toStdString();
+								}
+								else
+								{
+									mesh->tex_materials[i].tex_file=(currentPrefix+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText()).toStdString();
+								}
 							}
 						}
-						mesh.tex_polygons = iter->second->tex_polygons;
 						pcl::PointCloud<pcl::PointNormal>::Ptr tmp(new pcl::PointCloud<pcl::PointNormal>);
-						pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
+						pcl::fromPCLPointCloud2(mesh->cloud, *tmp);
 						tmp = util3d::transformPointCloud(tmp, poses.at(iter->first));
-						pcl::toPCLPointCloud2(*tmp, mesh.cloud);
+						pcl::toPCLPointCloud2(*tmp, mesh->cloud);
 
 						QString pathFile = path+QDir::separator()+QString("%1.%3").arg(currentPrefix).arg(suffix);
 						bool success =false;
 						if(suffix == "obj")
 						{
-							success = pcl::io::saveOBJFile(pathFile.toStdString(), mesh) == 0;
+							success = pcl::io::saveOBJFile(pathFile.toStdString(), *mesh) == 0;
 						}
 						else
 						{
@@ -2030,12 +2951,12 @@ void ExportCloudsDialog::saveTextureMeshes(
 						if(success)
 						{
 							_progressDialog->appendText(tr("Saved mesh %1 (%2 textures) to %3.")
-									.arg(iter->first).arg(iter->second->tex_materials.size()-1).arg(pathFile));
+									.arg(iter->first).arg(mesh->tex_materials.size()).arg(pathFile));
 						}
 						else
 						{
 							_progressDialog->appendText(tr("Failed saving mesh %1 (%2 textures) to %3.")
-									.arg(iter->first).arg(iter->second->tex_materials.size()-1).arg(pathFile), Qt::darkRed);
+									.arg(iter->first).arg(mesh->tex_materials.size()).arg(pathFile), Qt::darkRed);
 							_progressDialog->setAutoClose(false);
 						}
 					}

@@ -59,6 +59,7 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+	virtual bool odomProvided() const { return odometry_.size() > 0; }
 	std::string getPath() const {return _path;}
 	unsigned int imagesCount() const;
 	std::vector<std::string> filenames() const;
@@ -75,8 +76,8 @@ public:
 	void setTimestamps(bool fileNamesAreStamps, const std::string & filePath = "", bool syncImageRateWithStamps=true)
 	{
 		_filenamesAreTimestamps = fileNamesAreStamps;
-		timestampsPath_=filePath;
-		syncImageRateWithStamps_ = syncImageRateWithStamps;
+		_timestampsPath=filePath;
+		_syncImageRateWithStamps = syncImageRateWithStamps;
 	}
 
 	void setScanPath(
@@ -106,9 +107,15 @@ public:
 		_depthFromScanFillHolesFromBorder = fillHolesFromBorder;
 	}
 
+	void setOdometryPath(const std::string & filePath, int format = 0)
+	{
+		_odometryPath = filePath;
+		_odometryFormat = format;
+	}
+
 	void setGroundTruthPath(const std::string & filePath, int format = 0)
 	{
-		groundTruthPath_ = filePath;
+		_groundTruthPath = filePath;
 		_groundTruthFormat = format;
 	}
 
@@ -120,6 +127,7 @@ public:
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
+	bool readPoses(std::list<Transform> & outputPoses, std::list<double> & stamps, const std::string & filePath, int format) const;
 
 private:
 	std::string _path;
@@ -150,13 +158,17 @@ private:
 	bool _depthFromScanFillHolesFromBorder;
 
 	bool _filenamesAreTimestamps;
-	std::string timestampsPath_;
-	bool syncImageRateWithStamps_;
+	std::string _timestampsPath;
+	bool _syncImageRateWithStamps;
 
-	std::string groundTruthPath_;
+	std::string _odometryPath;
+	int _odometryFormat;
+
+	std::string _groundTruthPath;
 	int _groundTruthFormat;
 
-	std::list<double> stamps_;
+	std::list<double> _stamps;
+	std::list<Transform> odometry_;
 	std::list<Transform> groundTruth_;
 	CameraModel _model;
 

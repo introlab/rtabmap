@@ -61,7 +61,7 @@ public slots:
 	void showImage(const cv::Mat & image, const cv::Mat & depth);
 protected:
 	virtual void closeEvent(QCloseEvent* event);
-	void handleEvent(UEvent * event);
+	bool handleEvent(UEvent * event);
 
 private:
 	UMutex memoryMutex_;

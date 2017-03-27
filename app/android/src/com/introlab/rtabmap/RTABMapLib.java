@@ -25,7 +25,9 @@ public class RTABMapLib
     // The activity object is used for checking if the API version is outdated.
     public static native void onCreate(RTABMapActivity activity);
     
-    public static native void openDatabase(String databasePath);
+    public static native void setScreenRotation(int displayRotation, int cameraRotation);
+    
+    public static native int openDatabase(String databasePath, boolean databaseInMemory, boolean optimize);
     
     /*
      * Called when the Tango service is connected.
@@ -63,20 +65,48 @@ public class RTABMapLib
     public static native void setTrajectoryMode(boolean enabled);
     public static native void setGraphOptimization(boolean enabled);
     public static native void setNodesFiltering(boolean enabled);
-    public static native void setDriftCorrection(boolean enabled);
     public static native void setGraphVisible(boolean visible);
     public static native void setGridVisible(boolean visible);
     public static native void setAutoExposure(boolean enabled);
+    public static native void setRawScanSaved(boolean enabled);
     public static native void setFullResolution(boolean enabled);
+    public static native void setSmoothing(boolean enabled);
+    public static native void setCameraColor(boolean enabled);
+    public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);
+    public static native void setPointSize(float value);
+    public static native void setLighting(boolean enabled);
+    public static native void setBackfaceCulling(boolean enabled);
+    public static native void setCloudDensityLevel(int value);
     public static native void setMeshAngleTolerance(float value);
     public static native void setMeshTriangleSize(int value);
+    public static native void setClusterRatio(float value);
+    public static native void setMaxGainRadius(float value);
+    public static native void setRenderingTextureDecimation(int value);
     public static native int setMappingParameter(String key, String value);
 
     public static native void resetMapping();
-    public static native void save();
-    public static native boolean exportMesh(String filePath);
+    public static native void save(String outputDatabasePath);
+    public static native void cancelProcessing();
+    public static native boolean exportMesh(
+    		String filePath,
+    		float cloudVoxelSize,
+    		boolean regenerateCloud,
+    		boolean meshing,
+    		int textureSize,
+    		int normalK,
+    		boolean optimized,
+    		float optimizedVoxelSize,
+    		int optimizedDepth,
+    		int optimizedMaxPolygons,
+    		float optimizedColorRadius,
+    		boolean optimizedCleanWhitePolygons,
+    		boolean optimizedColorWhitePolygons,
+    		float optimizedMaxTextureDistance,
+    		int optimizedMinTextureClusterSize,
+    		boolean blockRendering);
+    public static native boolean postExportation(boolean visualize);
     public static native int postProcessing(int approach);
     
     public static native String getStatus();

@@ -355,11 +355,10 @@ void DepthCalibrationDialog::calibrate(
 				_progressDialog->appendText(tr("Viewing the cloud (%1 points and %2 poses)...").arg(map->size()).arg(sequence.size()));
 				_progressDialog->incrementStep();
 				viewer->addCloud("map", map);
-				Transform opticalRot(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 				for(std::map<int, SensorData>::iterator iter=sequence.begin(); iter!=sequence.end(); ++iter)
 				{
-					Transform baseToCamera = iter->second.cameraModels()[0].localTransform()*opticalRot.inverse();
-					viewer->addOrUpdateFrustum(uFormat("frustum%d",iter->first), poses.at(iter->first) * baseToCamera, 0.2);
+					Transform baseToCamera = iter->second.cameraModels()[0].localTransform();
+					viewer->addOrUpdateFrustum(uFormat("frustum%d",iter->first), poses.at(iter->first), baseToCamera, 0.2);
 				}
 				_progressDialog->appendText(tr("Viewing the cloud (%1 points and %2 poses)... done.").arg(map->size()).arg(sequence.size()));
 

@@ -130,6 +130,7 @@ public:
 	QString loadCustomConfig(const QString & section, const QString & key);
 
 	rtabmap::ParametersMap getAllParameters() const;
+	std::string getParameter(const std::string & key) const;
 	void updateParameters(const ParametersMap & parameters);
 
 	//General panel
@@ -139,6 +140,7 @@ public:
 	int getGeneralLoggerType() const;
 	bool getGeneralLoggerPrintTime() const;
 	bool getGeneralLoggerPrintThreadId() const;
+	std::vector<std::string> getGeneralLoggerThreads() const;
 	bool isVerticalLayoutUsed() const;
 	bool imageRejectedShown() const;
 	bool imageHighestHypShown() const;
@@ -148,12 +150,19 @@ public:
 	bool notifyWhenNewGlobalPathIsReceived() const;
 	int getOdomQualityWarnThr() const;
 	bool isPosteriorGraphView() const;
+	int getOdomRegistrationApproach() const;
+	bool isOdomDisabled() const;
+	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
+	bool isFrustumsShown() const;
 	bool isLabelsShown() const;
-	double getMapVoxel() const;
-	double getMapNoiseRadius() const;
-	int getMapNoiseMinNeighbors() const;
+	double getVoxel() const;
+	double getNoiseRadius() const;
+	int getNoiseMinNeighbors() const;
+	double getCeilingFilteringHeight() const;
+	double getFloorFilteringHeight() const;
+	int getNormalKSearch() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	bool isOctomapUpdated() const;
 	bool isOctomapShown() const;
@@ -165,6 +174,7 @@ public:
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
 	double getCloudMinDepth(int index) const;  // 0=map, 1=odom
+	std::vector<float> getCloudRoiRatios(int index) const; // 0=map, 1=odom
 	double getCloudOpacity(int index) const;   // 0=map, 1=odom
 	int getCloudPointSize(int index) const;    // 0=map, 1=odom
 
@@ -184,8 +194,6 @@ public:
 	int getSubtractFilteringMinPts() const;
 	double getSubtractFilteringRadius() const;
 	double getSubtractFilteringAngle() const;
-	int getNormalKSearch() const;
-	bool gainCompensation() const;
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;;
@@ -219,6 +227,7 @@ public:
 
 	bool isSourceDatabaseStampsUsed() const;
 	bool isSourceRGBDColorOnly() const;
+	bool isDepthFilteringAvailable() const;
 	QString getSourceDistortionModel() const;
 	bool isBilateralFiltering() const;
 	double getBilateralSigmaS() const;
@@ -288,12 +297,11 @@ private slots:
 	void addParameter(const QString & value);
 	void updatePredictionPlot();
 	void updateKpROI();
-	void updateG2oVisibility();
 	void updateStereoDisparityVisibility();
 	void useOdomFeatures();
+	void useGridProjRayTracing();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
-	void changeOdomBowFixedLocalMapPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();
@@ -305,6 +313,7 @@ private slots:
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
 	void selectSourceImagesPathScans();
+	void selectSourceImagesPathOdom();
 	void selectSourceImagesPathGt();
 	void selectSourceStereoImagesPathLeft();
 	void selectSourceStereoImagesPathRight();
@@ -375,6 +384,7 @@ private:
 	QVector<QSpinBox*> _3dRenderingDecimation;
 	QVector<QDoubleSpinBox*> _3dRenderingMaxDepth;
 	QVector<QDoubleSpinBox*> _3dRenderingMinDepth;
+	QVector<QLineEdit*> _3dRenderingRoiRatios;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacity;
 	QVector<QSpinBox*> _3dRenderingPtSize;
 	QVector<QCheckBox*> _3dRenderingShowScans;

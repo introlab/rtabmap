@@ -81,8 +81,10 @@ private:
 	int _flowMaxLevel;
 	float _nndr;
 	int _guessWinSize;
+	int _bundleAdjustment;
 
 	ParametersMap _featureParameters;
+	ParametersMap _bundleParameters;
 };
 
 }

@@ -37,6 +37,7 @@
 
 #include <point_cloud_drawable.h>
 #include <graph_drawable.h>
+#include <bounding_box_drawable.h>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -56,6 +57,8 @@ class Scene {
 
   // Setup GL view port.
   void SetupViewPort(int w, int h);
+
+  void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
 
   void clear(); // removed all point clouds
 
@@ -100,6 +103,7 @@ class Scene {
   void addCloud(
   		  int id,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		  const pcl::IndicesPtr & indices,
   		  const rtabmap::Transform & pose);
   void addMesh(
   		int id,
@@ -109,13 +113,28 @@ class Scene {
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
   bool hasCloud(int id) const;
+  bool hasMesh(int id) const;
+  bool hasTexture(int id) const;
   std::set<int> getAddedClouds() const;
   void updateCloudPolygons(int id, const std::vector<pcl::Vertices> & polygons);
   void updateMesh(int id, const Mesh & mesh);
+  void updateGain(int id, float gain);
 
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}
   void setPointSize(float size) {pointSize_ = size;}
+  void setFrustumCulling(bool enabled) {frustumCulling_ = enabled;}
+  void setLighting(bool enabled) {lighting_ = enabled;}
+  void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
+  void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
+
+  bool isMapRendering() const {return mapRendering_;}
+  bool isMeshRendering() const {return meshRendering_;}
+  bool isMeshTexturing() const {return meshRendering_ && meshRenderingTexture_;}
+  float getPointSize() const {return pointSize_;}
+  bool isFrustumCulling() const {return frustumCulling_;}
+  bool isLighting() const {return lighting_;}
+  bool isBackfaceCulling() const {return backfaceCulling_;}
 
  private:
   // Camera object that allows user to use touch input to interact with.
@@ -130,12 +149,17 @@ class Scene {
   // Ground grid.
   tango_gl::Grid* grid_;
 
+  // Bounding box
+  BoundingBoxDrawable * box_;
+
   // Trace of pose data.
   tango_gl::Trace* trace_;
   GraphDrawable * graph_;
   bool graphVisible_;
   bool gridVisible_;
   bool traceVisible_;
+
+  TangoSupportRotation color_camera_to_display_rotation_;
 
   std::map<int, PointCloudDrawable*> pointClouds_;
 
@@ -150,6 +174,13 @@ class Scene {
   bool meshRendering_;
   bool meshRenderingTexture_;
   float pointSize_;
+  bool frustumCulling_;
+  bool boundingBoxRendering_;
+  bool lighting_;
+  bool backfaceCulling_;
+  float r_;
+  float g_;
+  float b_;
 };
 
 #endif  // TANGO_POINT_CLOUD_SCENE_H_

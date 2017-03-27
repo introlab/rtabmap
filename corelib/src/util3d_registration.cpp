@@ -353,13 +353,6 @@ Transform icpPointToPlane(
 	icp.setInputTarget (cloud_target);
 	icp.setInputSource (cloud_source);
 
-	if(icp2D)
-	{
-		pcl::registration::TransformationEstimation2D<pcl::PointNormal, pcl::PointNormal>::Ptr est;
-		est.reset(new pcl::registration::TransformationEstimation2D<pcl::PointNormal, pcl::PointNormal>);
-		icp.setTransformationEstimation(est);
-	}
-
 	pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointNormal, pcl::PointNormal>::Ptr est;
 	est.reset(new pcl::registration::TransformationEstimationPointToPlaneLLS<pcl::PointNormal, pcl::PointNormal>);
 	icp.setTransformationEstimation(est);
@@ -377,7 +370,15 @@ Transform icpPointToPlane(
 	// Perform the alignment
 	icp.align (cloud_source_registered);
 	hasConverged = icp.hasConverged();
-	return Transform::fromEigen4f(icp.getFinalTransformation());
+	Transform t = Transform::fromEigen4f(icp.getFinalTransformation());
+
+	if(icp2D)
+	{
+		// FIXME probably an estimation approach already 2D like in icp() version above exists.
+		t = t.to3DoF();
+	}
+
+	return t;
 }
 
 }

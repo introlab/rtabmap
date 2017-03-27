@@ -79,6 +79,75 @@ public:
 
     typedef bool needs_kdtree_distance;
 
+private:
+	 /*--------------------- Internal Data Structures --------------------------*/
+	struct Node
+	{
+		/**
+		 * Dimension used for subdivision.
+		 */
+		int divfeat;
+		/**
+		 * The values used for subdivision.
+		 */
+		DistanceType divval;
+		/**
+		 * Point data
+		 */
+		ElementType* point;
+		/**
+		* The child nodes.
+		*/
+		Node* child1, *child2;
+		Node(){
+			child1 = NULL;
+			child2 = NULL;
+		}
+		~Node() {
+			if (child1 != NULL) { child1->~Node(); child1 = NULL; }
+
+			if (child2 != NULL) { child2->~Node(); child2 = NULL; }
+		}
+
+	private:
+		template<typename Archive>
+		void serialize(Archive& ar)
+		{
+			typedef KDTreeIndex<Distance> Index;
+			Index* obj = static_cast<Index*>(ar.getObject());
+
+			ar & divfeat;
+			ar & divval;
+
+			bool leaf_node = false;
+			if (Archive::is_saving::value) {
+				leaf_node = ((child1==NULL) && (child2==NULL));
+			}
+			ar & leaf_node;
+
+			if (leaf_node) {
+				if (Archive::is_loading::value) {
+					point = obj->points_[divfeat];
+				}
+			}
+
+			if (!leaf_node) {
+				if (Archive::is_loading::value) {
+					child1 = new(obj->pool_) Node();
+					child2 = new(obj->pool_) Node();
+				}
+				ar & *child1;
+				ar & *child2;
+			}
+		}
+		friend struct serialization::access;
+	};
+
+	typedef Node* NodePtr;
+	typedef BranchStruct<NodePtr, DistanceType> BranchSt;
+	typedef BranchSt* Branch;
+
+public:
 
     /**
      * KDTree constructor
@@ -245,6 +314,349 @@ public:
         }
     }
 
+#ifdef ANDROID
+
+    /**
+	 * Find set of nearest neighbors to vec. Their indices are stored inside
+	 * the result object.
+	 *
+	 * Params:
+	 *     result = the result object in which the indices of the nearest-neighbors are stored
+	 *     vec = the vector for which to search the nearest neighbors
+	 *     maxCheck = the maximum number of restarts (in a best-bin-first manner)
+	 */
+	void findNeighbors(ResultSet<DistanceType>& result, const ElementType* vec, const SearchParams& searchParams, Heap<BranchSt>* heap) const
+	{
+		int maxChecks = searchParams.checks;
+		float epsError = 1+searchParams.eps;
+
+		if (maxChecks==FLANN_CHECKS_UNLIMITED) {
+			if (removed_) {
+				getExactNeighbors<true>(result, vec, epsError);
+			}
+			else {
+				getExactNeighbors<false>(result, vec, epsError);
+			}
+		}
+		else {
+			if (removed_) {
+				getNeighbors<true>(result, vec, maxChecks, epsError, heap);
+			}
+			else {
+				getNeighbors<false>(result, vec, maxChecks, epsError, heap);
+			}
+		}
+	}
+
+	/**
+	 * @brief Perform k-nearest neighbor search
+	 * @param[in] queries The query points for which to find the nearest neighbors
+	 * @param[out] indices The indices of the nearest neighbors found
+	 * @param[out] dists Distances to the nearest neighbors found
+	 * @param[in] knn Number of nearest neighbors to return
+	 * @param[in] params Search parameters
+	 */
+	virtual int knnSearch(const Matrix<ElementType>& queries,
+			Matrix<size_t>& indices,
+			Matrix<DistanceType>& dists,
+			size_t knn,
+			const SearchParams& params) const
+	{
+		assert(queries.cols == veclen());
+		assert(indices.rows >= queries.rows);
+		assert(dists.rows >= queries.rows);
+		assert(indices.cols >= knn);
+		assert(dists.cols >= knn);
+		bool use_heap;
+
+		if (params.use_heap==FLANN_Undefined) {
+			use_heap = (knn>KNN_HEAP_THRESHOLD)?true:false;
+		}
+		else {
+			use_heap = (params.use_heap==FLANN_True)?true:false;
+		}
+		int count = 0;
+
+		Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);
+
+		if (use_heap) {
+	//#pragma omp parallel num_threads(params.cores)
+			{
+				KNNResultSet2<DistanceType> resultSet(knn);
+	//#pragma omp for schedule(static) reduction(+:count)
+				for (int i = 0; i < (int)queries.rows; i++) {
+					resultSet.clear();
+					findNeighbors(resultSet, queries[i], params, heap);
+					size_t n = std::min(resultSet.size(), knn);
+					resultSet.copy(indices[i], dists[i], n, params.sorted);
+					indices_to_ids(indices[i], indices[i], n);
+					count += n;
+				}
+			}
+		}
+		else {
+			std::vector<double> times(queries.rows);
+	//#pragma omp parallel num_threads(params.cores)
+			{
+				KNNSimpleResultSet<DistanceType> resultSet(knn);
+	//#pragma omp for schedule(static) reduction(+:count)
+				for (int i = 0; i < (int)queries.rows; i++) {
+					resultSet.clear();
+					findNeighbors(resultSet, queries[i], params, heap);
+					size_t n = std::min(resultSet.size(), knn);
+					resultSet.copy(indices[i], dists[i], n, params.sorted);
+					indices_to_ids(indices[i], indices[i], n);
+					count += n;
+				}
+			}
+			std::sort(times.begin(), times.end());
+		}
+		delete heap;
+		return count;
+	}
+
+
+	/**
+	 * @brief Perform k-nearest neighbor search
+	 * @param[in] queries The query points for which to find the nearest neighbors
+	 * @param[out] indices The indices of the nearest neighbors found
+	 * @param[out] dists Distances to the nearest neighbors found
+	 * @param[in] knn Number of nearest neighbors to return
+	 * @param[in] params Search parameters
+	 */
+	virtual int knnSearch(const Matrix<ElementType>& queries,
+					std::vector< std::vector<size_t> >& indices,
+					std::vector<std::vector<DistanceType> >& dists,
+					size_t knn,
+					const SearchParams& params) const
+	{
+		assert(queries.cols == veclen());
+		bool use_heap;
+		if (params.use_heap==FLANN_Undefined) {
+			use_heap = (knn>KNN_HEAP_THRESHOLD)?true:false;
+		}
+		else {
+			use_heap = (params.use_heap==FLANN_True)?true:false;
+		}
+
+		if (indices.size() < queries.rows ) indices.resize(queries.rows);
+		if (dists.size() < queries.rows ) dists.resize(queries.rows);
+
+		Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);
+
+		int count = 0;
+		if (use_heap) {
+	//#pragma omp parallel num_threads(params.cores)
+			{
+				KNNResultSet2<DistanceType> resultSet(knn);
+	//#pragma omp for schedule(static) reduction(+:count)
+				for (int i = 0; i < (int)queries.rows; i++) {
+					resultSet.clear();
+					findNeighbors(resultSet, queries[i], params, heap);
+					size_t n = std::min(resultSet.size(), knn);
+					indices[i].resize(n);
+					dists[i].resize(n);
+					if (n>0) {
+						resultSet.copy(&indices[i][0], &dists[i][0], n, params.sorted);
+						indices_to_ids(&indices[i][0], &indices[i][0], n);
+					}
+					count += n;
+				}
+			}
+		}
+		else {
+	//#pragma omp parallel num_threads(params.cores)
+			{
+				KNNSimpleResultSet<DistanceType> resultSet(knn);
+	//#pragma omp for schedule(static) reduction(+:count)
+				for (int i = 0; i < (int)queries.rows; i++) {
+					resultSet.clear();
+					findNeighbors(resultSet, queries[i], params, heap);
+					size_t n = std::min(resultSet.size(), knn);
+					indices[i].resize(n);
+					dists[i].resize(n);
+					if (n>0) {
+						resultSet.copy(&indices[i][0], &dists[i][0], n, params.sorted);
+						indices_to_ids(&indices[i][0], &indices[i][0], n);
+					}
+					count += n;
+				}
+			}
+		}
+		delete heap;
+
+		return count;
+	}
+
+	/**
+	 * @brief Perform radius search
+	 * @param[in] query The query point
+	 * @param[out] indices The indices of the neighbors found within the given radius
+	 * @param[out] dists The distances to the nearest neighbors found
+	 * @param[in] radius The radius used for search
+	 * @param[in] params Search parameters
+	 * @return Number of neighbors found
+	 */
+	virtual int radiusSearch(const Matrix<ElementType>& queries,
+			Matrix<size_t>& indices,
+			Matrix<DistanceType>& dists,
+			float radius,
+			const SearchParams& params) const
+	{
+		assert(queries.cols == veclen());
+		int count = 0;
+		size_t num_neighbors = std::min(indices.cols, dists.cols);
+		int max_neighbors = params.max_neighbors;
+		if (max_neighbors<0) max_neighbors = num_neighbors;
+		else max_neighbors = std::min(max_neighbors,(int)num_neighbors);
+
+		Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);
+
+		if (max_neighbors==0) {
+	//#pragma omp parallel num_threads(params.cores)
+			{
+				CountRadiusResultSet<DistanceType> resultSet(radius);
+	//#pragma omp for schedule(static) reduction(+:count)
+				for (int i = 0; i < (int)queries.rows; i++) {
+					resultSet.clear();
+					findNeighbors(resultSet, queries[i], params, heap);
+					count += resultSet.size();
+				}
+			}
+		}
+		else {
+			// explicitly indicated to use unbounded radius result set
+			// and we know there'll be enough room for resulting indices and dists
+			if (params.max_neighbors<0 && (num_neighbors>=this->size())) {
+	//#pragma omp parallel num_threads(params.cores)
+				{
+					RadiusResultSet<DistanceType> resultSet(radius);
+	//#pragma omp for schedule(static) reduction(+:count)
+					for (int i = 0; i < (int)queries.rows; i++) {
+						resultSet.clear();
+						findNeighbors(resultSet, queries[i], params, heap);
+						size_t n = resultSet.size();
+						count += n;
+						if (n>num_neighbors) n = num_neighbors;
+						resultSet.copy(indices[i], dists[i], n, params.sorted);
+
+						// mark the next element in the output buffers as unused
+						if (n<indices.cols) indices[i][n] = size_t(-1);
+						if (n<dists.cols) dists[i][n] = std::numeric_limits<DistanceType>::infinity();
+						indices_to_ids(indices[i], indices[i], n);
+					}
+				}
+			}
+			else {
+				// number of neighbors limited to max_neighbors
+	//#pragma omp parallel num_threads(params.cores)
+				{
+					KNNRadiusResultSet<DistanceType> resultSet(radius, max_neighbors);
+	//#pragma omp for schedule(static) reduction(+:count)
+					for (int i = 0; i < (int)queries.rows; i++) {
+						resultSet.clear();
+						findNeighbors(resultSet, queries[i], params, heap);
+						size_t n = resultSet.size();
+						count += n;
+						if ((int)n>max_neighbors) n = max_neighbors;
+						resultSet.copy(indices[i], dists[i], n, params.sorted);
+
+						// mark the next element in the output buffers as unused
+						if (n<indices.cols) indices[i][n] = size_t(-1);
+						if (n<dists.cols) dists[i][n] = std::numeric_limits<DistanceType>::infinity();
+						indices_to_ids(indices[i], indices[i], n);
+					}
+				}
+			}
+		}
+		delete heap;
+		return count;
+	}
+
+	/**
+	 * @brief Perform radius search
+	 * @param[in] query The query point
+	 * @param[out] indices The indices of the neighbors found within the given radius
+	 * @param[out] dists The distances to the nearest neighbors found
+	 * @param[in] radius The radius used for search
+	 * @param[in] params Search parameters
+	 * @return Number of neighbors found
+	 */
+	virtual int radiusSearch(const Matrix<ElementType>& queries,
+			std::vector< std::vector<size_t> >& indices,
+			std::vector<std::vector<DistanceType> >& dists,
+			float radius,
+			const SearchParams& params) const
+	{
+		assert(queries.cols == veclen());
+		int count = 0;
+
+		Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);
+
+		// just count neighbors
+		if (params.max_neighbors==0) {
+	//#pragma omp parallel num_threads(params.cores)
+			{
+				CountRadiusResultSet<DistanceType> resultSet(radius);
+	//#pragma omp for schedule(static) reduction(+:count)
+				for (int i = 0; i < (int)queries.rows; i++) {
+					resultSet.clear();
+					findNeighbors(resultSet, queries[i], params, heap);
+					count += resultSet.size();
+				}
+			}
+		}
+		else {
+			if (indices.size() < queries.rows ) indices.resize(queries.rows);
+			if (dists.size() < queries.rows ) dists.resize(queries.rows);
+
+			if (params.max_neighbors<0) {
+				// search for all neighbors
+	//#pragma omp parallel num_threads(params.cores)
+				{
+					RadiusResultSet<DistanceType> resultSet(radius);
+	//#pragma omp for schedule(static) reduction(+:count)
+					for (int i = 0; i < (int)queries.rows; i++) {
+						resultSet.clear();
+						findNeighbors(resultSet, queries[i], params, heap);
+						size_t n = resultSet.size();
+						count += n;
+						indices[i].resize(n);
+						dists[i].resize(n);
+						if (n > 0) {
+							resultSet.copy(&indices[i][0], &dists[i][0], n, params.sorted);
+							indices_to_ids(&indices[i][0], &indices[i][0], n);
+						}
+					}
+				}
+			}
+			else {
+				// number of neighbors limited to max_neighbors
+	//#pragma omp parallel num_threads(params.cores)
+				{
+					KNNRadiusResultSet<DistanceType> resultSet(radius, params.max_neighbors);
+	//#pragma omp for schedule(static) reduction(+:count)
+					for (int i = 0; i < (int)queries.rows; i++) {
+						resultSet.clear();
+						findNeighbors(resultSet, queries[i], params, heap);
+						size_t n = resultSet.size();
+						count += n;
+						if ((int)n>params.max_neighbors) n = params.max_neighbors;
+						indices[i].resize(n);
+						dists[i].resize(n);
+						if (n > 0) {
+							resultSet.copy(&indices[i][0], &dists[i][0], n, params.sorted);
+							indices_to_ids(&indices[i][0], &indices[i][0], n);
+						}
+					}
+				}
+			}
+		}
+		delete heap;
+		return count;
+	}
+#endif
+
 protected:
 
     /**
@@ -283,73 +695,6 @@ protected:
 
 
 private:
-
-    /*--------------------- Internal Data Structures --------------------------*/
-    struct Node
-    {
-    	/**
-         * Dimension used for subdivision.
-         */
-        int divfeat;
-        /**
-         * The values used for subdivision.
-         */
-        DistanceType divval;
-        /**
-         * Point data
-         */
-        ElementType* point;
-		/**
-		* The child nodes.
-		*/
-		Node* child1, *child2;
-		Node(){
-			child1 = NULL;
-			child2 = NULL;
-		}
-		~Node() {
-			if (child1 != NULL) { child1->~Node(); child1 = NULL; }
-
-			if (child2 != NULL) { child2->~Node(); child2 = NULL; }
-		}
-
-    private:
-    	template<typename Archive>
-    	void serialize(Archive& ar)
-    	{
-    		typedef KDTreeIndex<Distance> Index;
-    		Index* obj = static_cast<Index*>(ar.getObject());
-
-    		ar & divfeat;
-    		ar & divval;
-
-    		bool leaf_node = false;
-    		if (Archive::is_saving::value) {
-    			leaf_node = ((child1==NULL) && (child2==NULL));
-    		}
-    		ar & leaf_node;
-
-    		if (leaf_node) {
-    			if (Archive::is_loading::value) {
-    				point = obj->points_[divfeat];
-    			}
-    		}
-
-    		if (!leaf_node) {
-				if (Archive::is_loading::value) {
-					child1 = new(obj->pool_) Node();
-					child2 = new(obj->pool_) Node();
-				}
-    			ar & *child1;
-    			ar & *child2;
-    		}
-    	}
-    	friend struct serialization::access;
-    };
-    typedef Node* NodePtr;
-    typedef BranchStruct<NodePtr, DistanceType> BranchSt;
-    typedef BranchSt* Branch;
-
 
     void copyTree(NodePtr& dst, const NodePtr& src)
     {
@@ -562,6 +907,35 @@ private:
         delete heap;
 
     }
+
+#ifdef ANDROID
+    /**
+	 * Performs the approximate nearest-neighbor search. The search is approximate
+	 * because the tree traversal is abandoned after a given number of descends in
+	 * the tree.
+	 */
+	template<bool with_removed>
+	void getNeighbors(ResultSet<DistanceType>& result, const ElementType* vec, int maxCheck, float epsError, Heap<BranchSt>* heap) const
+	{
+		int i;
+		BranchSt branch;
+
+		int checkCount = 0;
+		DynamicBitset checked(size_);
+		heap->clear();
+
+		/* Search once through each tree down to root. */
+		for (i = 0; i < trees_; ++i) {
+			searchLevel<with_removed>(result, vec, tree_roots_[i], 0, checkCount, maxCheck, epsError, heap, checked);
+		}
+
+		/* Keep searching other branches from heap until finished. */
+		while ( heap->popMin(branch) && (checkCount < maxCheck || !result.full() )) {
+			searchLevel<with_removed>(result, vec, branch.node, branch.mindist, checkCount, maxCheck, epsError, heap, checked);
+		}
+	}
+#endif
+
 
     /**
      *  Search starting from a given node of the tree.  Based on any mismatches at

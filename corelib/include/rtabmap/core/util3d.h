@@ -167,6 +167,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		const ParametersMap & stereoParameters = ParametersMap(),
 		const std::vector<float> & roiRatios = std::vector<float>()); // ignored for stereo
 
+/**
+ * Simulate a laser scan rotating counterclockwise, using middle line of the depth image.
+ */
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					const cv::Mat & depthImage,
 					float fx,
@@ -176,6 +179,11 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImage(
 					float maxDepth = 0,
 					float minDepth = 0,
 					const Transform & localTransform = Transform::getIdentity());
+/**
+ * Simulate a laser scan rotating counterclockwise, using middle line of the depth images.
+ * The last value of the scan is the most left value of the first depth image. The first value of the scan is the most right value of the last depth image.
+ *
+ */
 pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImages(
 		const cv::Mat & depthImages,
 		const std::vector<CameraModel> & cameraModels,
@@ -216,18 +224,25 @@ cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Mat & disparity,
 		const StereoCameraModel & model);
 
-// Register point cloud to camera (return registered depth image)
+// Register point cloud to camera (return registered depth image 32FC1)
 cv::Mat RTABMAP_EXP projectCloudToCamera(
 		const cv::Size & imageSize,
 		const cv::Mat & cameraMatrixK,  
 		const cv::Mat & laserScan,                   // assuming points are already in /base_link coordinate
 		const rtabmap::Transform & cameraTransform); // /base_link -> /camera_link
 
-// Register point cloud to camera (return registered depth image)
+// Register point cloud to camera (return registered depth image 32FC1)
+cv::Mat RTABMAP_EXP projectCloudToCamera(
+		const cv::Size & imageSize,
+		const cv::Mat & cameraMatrixK,
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan, // assuming points are already in /base_link coordinate
+		const rtabmap::Transform & cameraTransform);         // /base_link -> /camera_link
+
+// Register point cloud to camera (return registered depth image 32FC1)
 cv::Mat RTABMAP_EXP projectCloudToCamera(
 		const cv::Size & imageSize,
 		const cv::Mat & cameraMatrixK,                       
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr laserScan, // assuming points are already in /base_link coordinate
+		const pcl::PCLPointCloud2::Ptr laserScan, 			 // assuming points are already in /base_link coordinate
 		const rtabmap::Transform & cameraTransform);         // /base_link -> /camera_link
 
 // Direction vertical (>=0), horizontal (<0)
@@ -245,6 +260,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP concatenateClouds(
 
 pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
 		const std::list<pcl::TextureMesh::Ptr> & meshes);
+
+void RTABMAP_EXP concatenateTextureMaterials(
+		pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, float & scale, std::vector<bool> * materialsKept=0);
 
 /**
  * @brief Concatenate a vector of indices to a single vector.

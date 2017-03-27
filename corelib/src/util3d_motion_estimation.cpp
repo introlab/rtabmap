@@ -35,8 +35,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d.h"
 
-#include "rtabmap/core/OptimizerG2O.h"
-
 #if CV_MAJOR_VERSION < 3
 #include "opencv/solvepnp.h"
 #endif
@@ -153,7 +151,7 @@ Transform estimateMotion3DTo2D(
 						cv::Point3f newPt = util3d::transformPoint(iter->second, transform);
 						errorSqrdDists[oi] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
 						//ignore very very far features (stereo)
-						if(errorSqrdDists[oi] < 100.0f)
+						if(errorSqrdDists[oi] < iter->second.x/100.0f)
 						{
 							++oi;
 						}
@@ -229,9 +227,9 @@ Transform estimateMotion3DTo3D(
 		*varianceOut = 1.0;
 	}
 
+	std::vector<int> inliers;
 	if((int)inliers1.size() >= minInliers)
 	{
-		std::vector<int> inliers;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr inliers1cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointXYZ>::Ptr inliers2cloud(new pcl::PointCloud<pcl::PointXYZ>);
 		inliers1cloud->resize(inliers1.size());
@@ -259,21 +257,21 @@ Transform estimateMotion3DTo3D(
 		{
 			transform = t;
 		}
+	}
 
-		if(matchesOut)
+	if(matchesOut)
+	{
+		*matchesOut = matches;
+	}
+	if(inliersOut)
+	{
+		inliersOut->resize(inliers.size());
+		for(unsigned int i=0; i<inliers.size(); ++i)
 		{
-			*matchesOut = matches;
-		}
-
-		if(inliersOut)
-		{
-			inliersOut->resize(inliers.size());
-			for(unsigned int i=0; i<inliers.size(); ++i)
-			{
-				inliersOut->at(i) = matches[inliers[i]];
-			}
+			inliersOut->at(i) = matches[inliers[i]];
 		}
 	}
+
 	return transform;
 }
 

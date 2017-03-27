@@ -76,15 +76,15 @@ CameraModel::CameraModel(
 {
 	UASSERT_MSG(fx > 0.0, uFormat("fx=%f", fx).c_str());
 	UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
-	UASSERT_MSG(cx > 0.0 || imageSize.width>0, uFormat("cx=%f imageSize.width=%d", cx, imageSize.width).c_str());
-	UASSERT_MSG(cy > 0.0 || imageSize.height>0, uFormat("cy=%f imageSize.height=%d", cy, imageSize.height).c_str());
+	UASSERT_MSG(cx >= 0.0 && imageSize.width>=0, uFormat("cx=%f imageSize.width=%d", cx, imageSize.width).c_str());
+	UASSERT_MSG(cy >= 0.0 && imageSize.height>=0, uFormat("cy=%f imageSize.height=%d", cy, imageSize.height).c_str());
 	UASSERT(!localTransform.isNull());
 
-	if(cx<=0.0)
+	if(cx==0.0 && imageSize.width > 0)
 	{
 		cx = double(imageSize.width)/2.0-0.5;
 	}
-	if(cy<=0.0)
+	if(cy==0.0 && imageSize.height > 0)
 	{
 		cy = double(imageSize.height)/2.0-0.5;
 	}
@@ -121,15 +121,15 @@ CameraModel::CameraModel(
 {
 	UASSERT_MSG(fx > 0.0, uFormat("fx=%f", fx).c_str());
 	UASSERT_MSG(fy > 0.0, uFormat("fy=%f", fy).c_str());
-	UASSERT_MSG(cx > 0.0 || imageSize.width>0, uFormat("cx=%f imageSize.width=%d", cx, imageSize.width).c_str());
-	UASSERT_MSG(cy > 0.0 || imageSize.height>0, uFormat("cy=%f imageSize.height=%d", cy, imageSize.height).c_str());
+	UASSERT_MSG(cx >= 0.0 && imageSize.width>=0, uFormat("cx=%f imageSize.width=%d", cx, imageSize.width).c_str());
+	UASSERT_MSG(cy >= 0.0 && imageSize.height>=0, uFormat("cy=%f imageSize.height=%d", cy, imageSize.height).c_str());
 	UASSERT(!localTransform.isNull());
 
-	if(cx<=0.0)
+	if(cx==0.0 && imageSize.width > 0)
 	{
 		cx = double(imageSize.width)/2.0-0.5;
 	}
-	if(cy<=0.0)
+	if(cy==0.0 && imageSize.height > 0)
 	{
 		cy = double(imageSize.height)/2.0-0.5;
 	}
@@ -159,6 +159,32 @@ void CameraModel::initRectificationMap()
 	// init rectification map
 	UINFO("Initialize rectify map");
 	cv::initUndistortRectifyMap(K_, D_, R_, P_, imageSize_, CV_32FC1, mapX_, mapY_);
+}
+
+void CameraModel::setImageSize(const cv::Size & size)
+{
+	UASSERT((size.height > 0 && size.width > 0) || (size.height == 0 && size.width == 0));
+	imageSize_ = size;
+	double ncx = cx();
+	double ncy = cy();
+	if(ncx==0.0 && imageSize_.width > 0)
+	{
+		ncx = double(imageSize_.width)/2.0-0.5;
+	}
+	if(ncy==0.0 && imageSize_.height > 0)
+	{
+		ncy = double(imageSize_.height)/2.0-0.5;
+	}
+	if(!P_.empty())
+	{
+		P_.at<double>(0,2) = ncx;
+		P_.at<double>(1,2) = ncy;
+	}
+	if(!K_.empty())
+	{
+		K_.at<double>(0,2) = ncx;
+		K_.at<double>(1,2) = ncy;
+	}
 }
 
 bool CameraModel::load(const std::string & directory, const std::string & cameraName)

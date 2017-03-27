@@ -430,8 +430,8 @@ void UPlotCurve::addValue(UPlotItem * data)
 void UPlotCurve::addValue(float x, float y)
 {
 	if(_items.size() &&
-		dynamic_cast<UPlotItem*>(_items.back()) &&
-		x < ((UPlotItem*)_items.back())->data().x())
+		_minMax[0] != _minMax[1] &&
+		x < _minMax[1])
 	{
 		UWARN("New value (%f) added to curve \"%s\" is smaller "
 			  "than the last added (%f). Clearing the curve.",

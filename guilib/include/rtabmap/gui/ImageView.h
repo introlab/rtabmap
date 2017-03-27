@@ -89,6 +89,7 @@ public:
 	const QMultiMap<int, rtabmap::KeypointItem *> & getFeatures() const {return _features;}
 
 	void clearLines();
+	void clearFeatures();
 	void clear();
 
 	virtual QSize sizeHint() const;

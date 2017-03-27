@@ -42,10 +42,16 @@ public:
 		matches(0),
 		inliers(0),
 		icpInliersRatio(0.0f),
-		variance(0.0f),
+		varianceLin(0.0f),
+		varianceAng(0.0f),
 		features(0),
 		localMapSize(0),
 		localScanMapSize(0),
+		localKeyFrames(0),
+		localBundleOutliers(0),
+		localBundleConstraints(0),
+		localBundleTime(0),
+		keyFrameAdded(false),
 		timeEstimation(0.0f),
 		timeParticleFiltering(0.0f),
 		stamp(0),
@@ -61,10 +67,16 @@ public:
 		output.matches = matches;
 		output.inliers = inliers;
 		output.icpInliersRatio = icpInliersRatio;
-		output.variance = variance;
+		output.varianceLin = varianceLin;
+		output.varianceAng = varianceAng;
 		output.features = features;
 		output.localMapSize = localMapSize;
 		output.localScanMapSize = localScanMapSize;
+		output.localKeyFrames = localKeyFrames;
+		output.localBundleOutliers = localBundleOutliers;
+		output.localBundleConstraints = localBundleConstraints;
+		output.localBundleTime = localBundleTime;
+		output.keyFrameAdded = keyFrameAdded;
 		output.timeEstimation = timeEstimation;
 		output.timeParticleFiltering = timeParticleFiltering;
 		output.stamp = stamp;
@@ -80,10 +92,16 @@ public:
 	int matches;
 	int inliers;
 	float icpInliersRatio;
-	float variance;
+	float varianceLin;
+	float varianceAng;
 	int features;
 	int localMapSize;
 	int localScanMapSize;
+	int localKeyFrames;
+	int localBundleOutliers;
+	int localBundleConstraints;
+	float localBundleTime;
+	bool keyFrameAdded;
 	float timeEstimation;
 	float timeParticleFiltering;
 	double stamp;

@@ -55,7 +55,7 @@ OdometryThread::~OdometryThread()
 	UDEBUG("");
 }
 
-void OdometryThread::handleEvent(UEvent * event)
+bool OdometryThread::handleEvent(UEvent * event)
 {
 	if(this->isRunning())
 	{
@@ -72,6 +72,12 @@ void OdometryThread::handleEvent(UEvent * event)
 			_resetOdometry = true;
 		}
 	}
+	return false;
+}
+
+void OdometryThread::mainLoopBegin()
+{
+	ULogger::registerCurrentThread("Odometry");
 }
 
 void OdometryThread::mainLoopKill()
@@ -96,15 +102,16 @@ void OdometryThread::mainLoop()
 		OdometryInfo info;
 		Transform pose = _odometry->process(data, &info);
 		// a null pose notify that odometry could not be computed
-		double variance = info.variance>0?info.variance:1;
+		double varianceLin = info.varianceLin>0?info.varianceLin:1;
+		double varianceAng = info.varianceAng>0?info.varianceAng:1;
 		UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
-		this->post(new OdometryEvent(data, pose, variance, variance, info));
+		this->post(new OdometryEvent(data, pose, varianceAng, varianceLin, info));
 	}
 }
 
 void OdometryThread::addData(const SensorData & data)
 {
-	if(dynamic_cast<OdometryMono*>(_odometry) == 0 && dynamic_cast<OdometryF2M*>(_odometry) == 0)
+	if(dynamic_cast<OdometryMono*>(_odometry) == 0)
 	{
 		if(data.imageRaw().empty() || data.depthOrRightRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
 		{
@@ -114,7 +121,7 @@ void OdometryThread::addData(const SensorData & data)
 	}
 	else
 	{
-		// Mono and BOW can accept RGB only
+		// Mono can accept RGB only
 		if(data.imageRaw().empty() || (data.cameraModels().size()==0 && !data.stereoCameraModel().isValidForProjection()))
 		{
 			ULOGGER_ERROR("Missing some information (image empty or missing calibration)!?");

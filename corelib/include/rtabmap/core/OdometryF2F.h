@@ -53,6 +53,7 @@ private:
 private:
 	//Parameters:
 	float keyFrameThr_;
+	int visKeyFrameThr_;
 	float scanKeyFrameThr_;
 
 	Registration * registrationPipeline_;

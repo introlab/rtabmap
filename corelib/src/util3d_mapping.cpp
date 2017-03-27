@@ -45,8 +45,29 @@ namespace rtabmap
 
 namespace util3d
 {
+
 void occupancy2DFromLaserScan(
 		const cv::Mat & scan,
+		cv::Mat & ground,
+		cv::Mat & obstacles,
+		float cellSize,
+		bool unknownSpaceFilled,
+		float scanMaxRange)
+{
+	cv::Point3f viewpoint(0,0,0);
+	occupancy2DFromLaserScan(
+			scan,
+			viewpoint,
+			ground,
+			obstacles,
+			cellSize,
+			unknownSpaceFilled,
+			scanMaxRange);
+}
+
+void occupancy2DFromLaserScan(
+		const cv::Mat & scan,
+		const cv::Point3f & viewpoint,
 		cv::Mat & ground,
 		cv::Mat & obstacles,
 		float cellSize,
@@ -67,8 +88,28 @@ void occupancy2DFromLaserScan(
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr> scans;
 	scans.insert(std::make_pair(1, obstaclesCloud));
 
+	std::map<int, cv::Point3f> viewpoints;
+	viewpoints.insert(std::make_pair(1, viewpoint));
+
 	float xMin, yMin;
-	cv::Mat map8S = create2DMap(poses, scans, cellSize, unknownSpaceFilled, xMin, yMin, 0.0f, scanMaxRange);
+	cv::Mat map8S = create2DMap(poses, scans, viewpoints, cellSize, unknownSpaceFilled, xMin, yMin, 0.0f, scanMaxRange);
+
+	// If input ground has already values, add them to map
+	if(ground.rows == 1 && ground.cols>0 && ground.type() == CV_32FC2)
+	{
+		for(int i=0; i<ground.cols; ++i)
+		{
+			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
+
+			// cell
+			cv::Point2i cell((ptr[i][0]-xMin)/cellSize, (ptr[i][1]-yMin)/cellSize);
+
+			if(cell.x>=0 && cell.x<map8S.cols && cell.y >= 0 && cell.y < map8S.rows && map8S.at<char>(cell.y, cell.x) == -1)
+			{
+				map8S.at<char>(cell.y, cell.x) = 0;
+			}
+		}
+	}
 
 	// find ground cells
 	std::list<int> groundIndices;
@@ -90,8 +131,9 @@ void occupancy2DFromLaserScan(
 		{
 			int y = *iter / map8S.cols;
 			int x = *iter - y*map8S.cols;
-			ground.at<cv::Vec2f>(i)[0] = (float(x))*cellSize + xMin;
-			ground.at<cv::Vec2f>(i)[1] = (float(y))*cellSize + yMin;
+			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
+			ptr[i][0] = (float(x))*cellSize + xMin;
+			ptr[i][1] = (float(y))*cellSize + yMin;
 			++i;
 		}
 	}
@@ -103,8 +145,9 @@ void occupancy2DFromLaserScan(
 		obstacles = cv::Mat(1, (int)obstaclesCloud->size(), CV_32FC2);
 		for(unsigned int i=0;i<obstaclesCloud->size(); ++i)
 		{
-			obstacles.at<cv::Vec2f>(i)[0] = obstaclesCloud->at(i).x;
-			obstacles.at<cv::Vec2f>(i)[1] = obstaclesCloud->at(i).y;
+			cv::Vec2f * ptr = obstacles.ptr<cv::Vec2f>();
+			ptr[i][0] = obstaclesCloud->at(i).x;
+			ptr[i][1] = obstaclesCloud->at(i).y;
 		}
 	}
 }
@@ -464,6 +507,43 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float minMapSize,
 		float scanMaxRange)
 {
+	std::map<int, cv::Point3f > viewpoints;
+	return create2DMap(poses,
+			scans,
+			viewpoints,
+			cellSize,
+			unknownSpaceFilled,
+			xMin,
+			yMin,
+			minMapSize,
+			scanMaxRange);
+}
+
+/**
+ * Create 2d Occupancy grid (CV_8S)
+ * -1 = unknown
+ * 0 = empty space
+ * 100 = obstacle
+ * @param poses
+ * @param scans
+ * @param viewpoints
+ * @param cellSize m
+ * @param unknownSpaceFilled if false no fill, otherwise a virtual laser sweeps the unknown space from each pose (stopping on detected obstacle)
+ * @param xMin
+ * @param yMin
+ * @param minMapSize minimum map size in meters
+ * @param scanMaxRange laser scan maximum range, would be set if unknownSpaceFilled=true
+ */
+cv::Mat create2DMap(const std::map<int, Transform> & poses,
+		const std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > & scans,
+		const std::map<int, cv::Point3f > & viewpoints,
+		float cellSize,
+		bool unknownSpaceFilled,
+		float & xMin,
+		float & yMin,
+		float minMapSize,
+		float scanMaxRange)
+{
 	UDEBUG("poses=%d, scans = %d scanMaxRange=%f", poses.size(), scans.size(), scanMaxRange);
 	std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr > localScans;
 
@@ -475,15 +555,23 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 	}
 	for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 	{
-		if(uContains(scans, iter->first) && scans.at(iter->first)->size())
+		std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::const_iterator jter=scans.find(iter->first);
+		if(jter!=scans.end() && jter->second->size())
 		{
 			UASSERT(!iter->second.isNull());
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::transformPointCloud(scans.at(iter->first), iter->second);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::transformPointCloud(jter->second, iter->second);
 			pcl::PointXYZ min, max;
 			pcl::getMinMax3D(*cloud, min, max);
 			minMax.push_back(min);
 			minMax.push_back(max);
 			minMax.push_back(pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z()));
+
+			std::map<int, cv::Point3f>::const_iterator kter=viewpoints.find(iter->first);
+			if(kter!=viewpoints.end())
+			{
+				minMax.push_back(pcl::PointXYZ(iter->second.x()+kter->second.x, iter->second.y()+kter->second.y, iter->second.z()+kter->second.z));
+			}
+
 			localScans.insert(std::make_pair(iter->first, cloud));
 		}
 	}
@@ -512,7 +600,13 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		for(std::map<int, pcl::PointCloud<pcl::PointXYZ>::Ptr >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 		{
 			const Transform & pose = poses.at(iter->first);
-			cv::Point2i start((pose.x()-xMin)/cellSize + 0.5f, (pose.y()-yMin)/cellSize + 0.5f);
+			cv::Point3f viewpoint(0,0,0);
+			std::map<int, cv::Point3f>::const_iterator kter=viewpoints.find(iter->first);
+			if(kter!=viewpoints.end())
+			{
+				viewpoint = kter->second;
+			}
+			cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize + 0.5f, ((pose.y()+viewpoint.y)-yMin)/cellSize + 0.5f);
 			for(unsigned int i=0; i<iter->second->size(); ++i)
 			{
 				cv::Point2i end((iter->second->points[i].x-xMin)/cellSize, (iter->second->points[i].y-yMin)/cellSize);
@@ -538,7 +632,13 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 					if(scanMaxRange > cellSize)
 					{
 						const Transform & pose = poses.at(iter->first);
-						cv::Point2i start((pose.x()-xMin)/cellSize + 0.5f, (pose.y()-yMin)/cellSize + 0.5f);
+						cv::Point3f viewpoint(0,0,0);
+						std::map<int, cv::Point3f>::const_iterator kter=viewpoints.find(iter->first);
+						if(kter!=viewpoints.end())
+						{
+							viewpoint = kter->second;
+						}
+						cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize + 0.5f, ((pose.y()+viewpoint.y)-yMin)/cellSize + 0.5f);
 
 						//UWARN("maxLength = %f", maxLength);
 						//rotate counterclockwise from the first point until we pass the last point
@@ -546,8 +646,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						cv::Mat rotation = (cv::Mat_<float>(2,2) << cos(a), -sin(a),
 																	 sin(a), cos(a));
 						cv::Mat origin(2,1,CV_32F), endFirst(2,1,CV_32F), endLast(2,1,CV_32F);
-						origin.at<float>(0) = pose.x();
-						origin.at<float>(1) = pose.y();
+						origin.at<float>(0) = pose.x()+viewpoint.x;
+						origin.at<float>(1) = pose.y()+viewpoint.y;
 						pcl::PointXYZ ptFirst = iter->second->points[0];
 						pcl::PointXYZ ptLast = iter->second->points[iter->second->points.size()-1];
 						//if(ptFirst.y > ptLast.y)

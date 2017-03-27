@@ -34,7 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/surface/mls.h>
-#include <pcl/surface/texture_mapping.h>
+#include <pcl18/surface/texture_mapping.h>
 #include <pcl/features/integral_image_normal.h>
 
 #ifndef DISABLE_VTK
@@ -54,7 +54,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 PCL_INSTANTIATE(OrganizedFastMesh, (pcl::PointXYZRGBNormal))
 
 #include <pcl/features/impl/normal_3d_omp.hpp>
+#if PCL_VERSION_COMPARE(<=, 1, 8, 0)
+#ifdef PCL_ONLY_CORE_POINT_TYPES
 PCL_INSTANTIATE_PRODUCT(NormalEstimationOMP, ((pcl::PointXYZRGB))((pcl::Normal)))
+#endif
+#endif
 #endif
 
 namespace rtabmap
@@ -137,6 +141,44 @@ std::list<std::list<int> > clusterPolygons(
 	return clusters;
 }
 
+std::vector<pcl::Vertices> organizedFastMesh(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		double angleTolerance,
+		bool quad,
+		int trianglePixelSize,
+		const Eigen::Vector3f & viewpoint)
+{
+	UDEBUG("size=%d angle=%f quad=%d triangleSize=%d", (int)cloud->size(), angleTolerance, quad?1:0, trianglePixelSize);
+	UASSERT(cloud->is_dense == false);
+	UASSERT(cloud->width > 1 && cloud->height > 1);
+
+	pcl::OrganizedFastMesh<pcl::PointXYZ> ofm;
+	ofm.setTrianglePixelSize (trianglePixelSize);
+	ofm.setTriangulationType (quad?pcl::OrganizedFastMesh<pcl::PointXYZ>::QUAD_MESH:pcl::OrganizedFastMesh<pcl::PointXYZ>::TRIANGLE_RIGHT_CUT);
+	ofm.setInputCloud (cloud);
+	ofm.setAngleTolerance(angleTolerance);
+	ofm.setViewpoint(viewpoint);
+
+	std::vector<pcl::Vertices> vertices;
+	ofm.reconstruct (vertices);
+
+	if(quad)
+	{
+		//flip all polygons (right handed)
+		std::vector<pcl::Vertices> output(vertices.size());
+		for(unsigned int i=0; i<vertices.size(); ++i)
+		{
+			output[i].vertices.resize(4);
+			output[i].vertices[0] = vertices[i].vertices[0];
+			output[i].vertices[3] = vertices[i].vertices[1];
+			output[i].vertices[2] = vertices[i].vertices[2];
+			output[i].vertices[1] = vertices[i].vertices[3];
+		}
+		return output;
+	}
+
+	return vertices;
+}
 std::vector<pcl::Vertices> organizedFastMesh(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		double angleTolerance,
@@ -531,48 +573,35 @@ pcl::PolygonMesh::Ptr createMesh(
 
 pcl::texture_mapping::CameraVector createTextureCameras(
 		const std::map<int, Transform> & poses,
-		const std::map<int, CameraModel> & cameraModels,
-		const std::map<int, cv::Mat> & images,
-		const std::string & tmpDirectory)
+		const std::map<int, CameraModel> & cameraModels)
 {
-	UASSERT(poses.size() == cameraModels.size() && poses.size() == images.size());
-	UASSERT(UDirectory::exists(tmpDirectory));
+	UASSERT(poses.size() == cameraModels.size());
 	pcl::texture_mapping::CameraVector cameras(poses.size());
 	std::map<int, Transform>::const_iterator poseIter=poses.begin();
 	std::map<int, CameraModel>::const_iterator modelIter=cameraModels.begin();
-	std::map<int, cv::Mat>::const_iterator imageIter=images.begin();
 	int oi=0;
-	for(; poseIter!=poses.end(); ++poseIter, ++modelIter, ++imageIter)
+	for(; poseIter!=poses.end(); ++poseIter, ++modelIter)
 	{
 		UASSERT(poseIter->first == modelIter->first);
-		UASSERT(poseIter->first == imageIter->first);
 		pcl::TextureMapping<pcl::PointXYZ>::Camera cam;
 
-		// transform into optical referential
-		Transform rotation(0,-1,0,0,
-						   0,0,-1,0,
-						   1,0,0,0);
-
-		Transform t = poseIter->second*rotation.inverse();
+		// should be in camera frame
+		UASSERT(!modelIter->second.localTransform().isNull() && !poseIter->second.isNull());
+		Transform t = poseIter->second*modelIter->second.localTransform();
 
 		cam.pose = t.toEigen3f();
 
-		UASSERT(modelIter->second.fx()>0 && imageIter->second.rows>0 && imageIter->second.cols>0);
+		if(modelIter->second.imageHeight() <=0 || modelIter->second.imageWidth() <=0)
+		{
+			UERROR("Should have camera models with width/height set to create texture cameras!");
+			return pcl::texture_mapping::CameraVector();
+		}
+
+		UASSERT(modelIter->second.fx()>0 && modelIter->second.imageHeight()>0 && modelIter->second.imageWidth()>0);
 		cam.focal_length=modelIter->second.fx();
-		cam.height=imageIter->second.rows;
-		cam.width=imageIter->second.cols;
-
-
-		std::string fileName = uFormat("%s/%s%d.png", tmpDirectory.c_str(), "texture_", poseIter->first);
-		if(!cv::imwrite(fileName, imageIter->second))
-		{
-			UERROR("Cannot save texture of image %d", poseIter->first);
-		}
-		else
-		{
-			UINFO("Saved temporary texture: \"%s\"", fileName.c_str());
-		}
-		cam.texture_file = fileName;
+		cam.height=modelIter->second.imageHeight();
+		cam.width=modelIter->second.imageWidth();
+		cam.texture_file = uFormat("%d", poseIter->first);
 		cameras[oi++] = cam;
 	}
 	return cameras;
@@ -582,10 +611,11 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
-		const std::map<int, cv::Mat> & images,
-		const std::string & tmpDirectory,
-		int kNormalSearch)
+		float maxDistance,
+		int minClusterSize,
+		const ProgressState * state)
 {
+	UASSERT(mesh->polygons.size());
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 	textureMesh->cloud = mesh->cloud;
 	textureMesh->tex_polygons.push_back(mesh->polygons);
@@ -598,9 +628,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	// create cameras
 	pcl::texture_mapping::CameraVector cameras = createTextureCameras(
 			poses,
-			cameraModels,
-			images,
-			tmpDirectory);
+			cameraModels);
 
 	// Create materials for each texture (and one extra for occluded faces)
 	textureMesh->tex_materials.resize (cameras.size () + 1);
@@ -633,17 +661,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		}
 		else
 		{
-			mesh_material.tex_file = tmpDirectory+UDirectory::separator()+"occluded.png";
-			cv::Mat emptyImage;
-			if(i>0)
-			{
-				emptyImage = cv::Mat::zeros(cameras[i-1].height,cameras[i-1].width, CV_8UC1);
-			}
-			else
-			{
-				emptyImage = cv::Mat::zeros(480, 640, CV_8UC1);
-			}
-			cv::imwrite(mesh_material.tex_file, emptyImage);
+			mesh_material.tex_file = "occluded";
 		}
 
 		textureMesh->tex_materials[i] = mesh_material;
@@ -651,30 +669,89 @@ pcl::TextureMesh::Ptr createTextureMesh(
 
 	// Texture by projection
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
-	tm.textureMeshwithMultipleCameras(*textureMesh, cameras);
-
-	// compute normals for the mesh if not already here
-	bool hasNormals = false;
-	for(unsigned int i=0; i<textureMesh->cloud.fields.size(); ++i)
+	tm.setMaxDistance(maxDistance);
+	tm.setMinClusterSize(minClusterSize);
+	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state))
 	{
-		if(textureMesh->cloud.fields[i].name.compare("normal_x") == 0)
+		// compute normals for the mesh if not already here
+		bool hasNormals = false;
+		bool hasColors = false;
+		for(unsigned int i=0; i<textureMesh->cloud.fields.size(); ++i)
 		{
-			hasNormals = true;
-			break;
+			if(textureMesh->cloud.fields[i].name.compare("normal_x") == 0)
+			{
+				hasNormals = true;
+			}
+			else if(textureMesh->cloud.fields[i].name.compare("rgb") == 0)
+			{
+				hasColors = true;
+			}
+		}
+		if(!hasNormals)
+		{
+			// use polygons
+			if(hasColors)
+			{
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+				pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
+
+				for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+				{
+					pcl::Vertices & v = mesh->polygons[i];
+					UASSERT(v.vertices.size()>2);
+					Eigen::Vector3f v0(
+							cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
+					int last = v.vertices.size()-1;
+					Eigen::Vector3f v1(
+							cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
+					Eigen::Vector3f normal = v0.cross(v1);
+					normal.normalize();
+					// flat normal (per face)
+					for(unsigned int j=0; j<v.vertices.size(); ++j)
+					{
+						cloud->at(v.vertices[j]).normal_x = normal[0];
+						cloud->at(v.vertices[j]).normal_y = normal[1];
+						cloud->at(v.vertices[j]).normal_z = normal[2];
+					}
+				}
+				pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
+			}
+			else
+			{
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointNormal>);
+				pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
+
+				for(unsigned int i=0; i<mesh->polygons.size(); ++i)
+				{
+					pcl::Vertices & v = mesh->polygons[i];
+					UASSERT(v.vertices.size()>2);
+					Eigen::Vector3f v0(
+							cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
+					int last = v.vertices.size()-1;
+					Eigen::Vector3f v1(
+							cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
+							cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
+							cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
+					Eigen::Vector3f normal = v0.cross(v1);
+					normal.normalize();
+					// flat normal (per face)
+					for(unsigned int j=0; j<v.vertices.size(); ++j)
+					{
+						cloud->at(v.vertices[j]).normal_x = normal[0];
+						cloud->at(v.vertices[j]).normal_y = normal[1];
+						cloud->at(v.vertices[j]).normal_z = normal[2];
+					}
+				}
+				pcl::toPCLPointCloud2 (*cloud, textureMesh->cloud);
+			}
 		}
 	}
-	if(!hasNormals)
-	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZ>);
-		pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
-		pcl::PointCloud<pcl::Normal>::Ptr normals = computeNormals(cloud, kNormalSearch);
-		// Concatenate the XYZ and normal fields
-		pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointNormal>);
-		pcl::concatenateFields (*cloud, *normals, *cloudWithNormals);
-		textureMesh->cloud = pcl::PCLPointCloud2();
-		pcl::toPCLPointCloud2 (*cloudWithNormals, textureMesh->cloud);
-	}
-
 	return textureMesh;
 }
 
@@ -786,18 +863,30 @@ pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 {
 	UASSERT(cloud->isOrganized());
 
+	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
+	if(indices->size())
+	{
+		tree->setInputCloud(cloud, indices);
+	}
+	else
+	{
+		tree->setInputCloud (cloud);
+	}
+
 	// Normal estimation
 	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
 	pcl::IntegralImageNormalEstimation<pcl::PointXYZRGB, pcl::Normal> ne;
 	ne.setNormalEstimationMethod (ne.AVERAGE_3D_GRADIENT);
 	ne.setMaxDepthChangeFactor(maxDepthChangeFactor);
 	ne.setNormalSmoothingSize(normalSmoothingSize);
+	ne.setBorderPolicy(ne.BORDER_POLICY_MIRROR);
 	ne.setInputCloud(cloud);
 	// Commented: Keep the output normals size the same as the input cloud
 	//if(indices->size())
 	//{
 	//	ne.setIndices(indices);
 	//}
+	ne.setSearchMethod(tree);
 	ne.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
 	ne.compute(*normals);
 

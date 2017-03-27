@@ -307,31 +307,35 @@ bool DBDriverSqlite3::getDatabaseVersionQuery(std::string & version) const
 	return false;
 }
 
-
 bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwritten)
 {
 	this->disconnectDatabaseQuery();
 	// Open a database connection
 	_ppDb = 0;
 
-	if(url.empty())
-	{
-		UERROR("url is empty...");
-		return false;
-	}
-
 	int rc = SQLITE_OK;
-	bool dbFileExist = UFile::exists(url.c_str());
-	if(dbFileExist && overwritten)
+	bool dbFileExist = false;
+	if(!url.empty())
 	{
-		UINFO("Deleting database %s...", url.c_str());
-		UASSERT(UFile::erase(url.c_str()) == 0);
-		dbFileExist = false;
+		dbFileExist = UFile::exists(url.c_str());
+		if(dbFileExist && overwritten)
+		{
+			UINFO("Deleting database %s...", url.c_str());
+			UASSERT(UFile::erase(url.c_str()) == 0);
+			dbFileExist = false;
+		}
 	}
 
-	if(_dbInMemory)
+	if(_dbInMemory || url.empty())
 	{
-		ULOGGER_INFO("Using database \"%s\" in the memory.", url.c_str());
+		if(!url.empty())
+		{
+			ULOGGER_INFO("Using database \"%s\" in the memory.", url.c_str());
+		}
+		else
+		{
+			ULOGGER_INFO("Using empty database in the memory.");
+		}
 		rc = sqlite3_open_v2(":memory:", &_ppDb, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, 0);
 	}
 	else
@@ -341,7 +345,8 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	}
 	if(rc != SQLITE_OK)
 	{
-		UFATAL("DB error : %s (path=\"%s\")", sqlite3_errmsg(_ppDb), url.c_str());
+		UFATAL("DB error : %s (path=\"%s\"). Make sure that your user has write " 
+			"permission on the target directory (you may have to change the working directory). ", sqlite3_errmsg(_ppDb), url.c_str());
 		_ppDb = 0;
 		return false;
 	}
@@ -364,7 +369,10 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 
 	if(!dbFileExist)
 	{
-		ULOGGER_INFO("Database \"%s\" doesn't exist, creating a new one...", url.c_str());
+		if(!url.empty())
+		{
+			ULOGGER_INFO("Database \"%s\" doesn't exist, creating a new one...", url.c_str());
+		}
 		// Create the database
 		std::string schema = DATABASESCHEMA_SQL;
 		schema = uHex2Str(schema);
@@ -373,13 +381,15 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	UASSERT(this->getDatabaseVersionQuery(_version)); // must be true!
 	UINFO("Database version = %s", _version.c_str());
 
-	if(uStrNumCmp(_version, RTABMAP_VERSION) > 0)
+	// From 0.11.13, compare only with minor version (patch will be used for non-database structural changes)
+	if((uStrNumCmp(_version, "0.11.12") <= 0 && uStrNumCmp(_version, RTABMAP_VERSION) > 0) ||
+	   (uStrNumCmp(_version, "0.11.12") > 0 && uStrNumCmp(RTABMAP_VERSION, "0.11.12") > 0 && uStrNumCmp(_version, uFormat("%d.%d.99", RTABMAP_VERSION_MAJOR, RTABMAP_VERSION_MINOR)) > 0))
 	{
-		UERROR("Opened database version (%s) is more recent than rtabmap "
-			   "installed version (%s). Please update rtabmap to new version!",
-			   _version.c_str(), RTABMAP_VERSION);
-		this->disconnectDatabaseQuery(false);
-		return false;
+			UERROR("Opened database version (%s) is more recent than rtabmap "
+				   "installed version (%s). Please update rtabmap to new version!",
+				   _version.c_str(), RTABMAP_VERSION);
+			this->disconnectDatabaseQuery(false);
+			return false;
 	}
 
 	//Set database optimizations
@@ -390,7 +400,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 
 	return true;
 }
-void DBDriverSqlite3::disconnectDatabaseQuery(bool save)
+void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & outputUrl)
 {
 	UDEBUG("");
 	if(_ppDb)
@@ -407,20 +417,45 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save)
 			}
 		}
 
-		if(save && _dbInMemory)
+		if(save && (_dbInMemory || this->getUrl().empty()))
 		{
 			UTimer timer;
 			timer.start();
-			UINFO("Saving database to %s ...",  this->getUrl().c_str());
-			rc = loadOrSaveDb(_ppDb, this->getUrl(), 1); // Save memory to file
-			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
+			std::string outputFile = this->getUrl();
+			if(!outputUrl.empty())
+			{
+				outputFile = outputUrl;
+			}
+			if(outputFile.empty())
+			{
+				UERROR("Database was initialized with an empty url (in memory). To save it "
+						"the output url should not be empty. The database is thus closed without being saved!");
+			}
+			else
+			{
+				UINFO("Saving database to %s ...",  outputFile.c_str());
+				rc = loadOrSaveDb(_ppDb, outputFile, 1); // Save memory to file
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s), could not save \"%s\": %s. Make sure that your user has write " 
+					"permission on the target directory (you may have to change the working directory). ", _version.c_str(), outputFile.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				ULOGGER_DEBUG("Saving DB time = %fs", timer.ticks());
+			}
 		}
 
 		// Then close (delete) the database connection
 		UINFO("Disconnecting database %s...", this->getUrl().c_str());
 		sqlite3_close(_ppDb);
 		_ppDb = 0;
+
+		if(save && !_dbInMemory && !outputUrl.empty() && !this->getUrl().empty() && outputUrl.compare(this->getUrl()) != 0)
+		{
+			UWARN("Output database path (%s) is different than the opened database "
+					"path (%s). Opened database path is overwritten then renamed to output path.",
+					outputUrl.c_str(), this->getUrl().c_str());
+			if(UFile::rename(this->getUrl(), outputUrl) != 0)
+			{
+				UERROR("Failed to rename just closed db %s to %s", this->getUrl().c_str(), outputUrl.c_str());
+			}
+		}
 	}
 }
 
@@ -1062,6 +1097,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					}
 					else if(uStrNumCmp(_version, "0.7.0") >= 0)
 					{
+						UDEBUG("Loading calibration version >= 0.7.0");
 						double fx = sqlite3_column_double(ppStmt, index++);
 						double fyOrBaseline = sqlite3_column_double(ppStmt, index++);
 						double cx = sqlite3_column_double(ppStmt, index++);
@@ -1078,6 +1114,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					}
 					else
 					{
+						UDEBUG("Loading calibration version < 0.7.0");
 						float depthConstant = sqlite3_column_double(ppStmt, index++);
 						float fx = 1.0f/depthConstant;
 						float fy = 1.0f/depthConstant;
@@ -1269,7 +1306,7 @@ bool DBDriverSqlite3::getCalibrationQuery(
 
 		const void * data = 0;
 		int dataSize = 0;
-		Transform localTransform;
+		Transform localTransform = Transform::getIdentity();
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
@@ -1279,6 +1316,16 @@ bool DBDriverSqlite3::getCalibrationQuery(
 			int index = 0;
 
 			// calibration
+			if(uStrNumCmp(_version, "0.10.0") < 0)
+			{
+				data = sqlite3_column_blob(ppStmt, index); // local transform
+				dataSize = sqlite3_column_bytes(ppStmt, index++);
+				if((unsigned int)dataSize == localTransform.size()*sizeof(float) && data)
+				{
+					memcpy(localTransform.data(), data, dataSize);
+				}
+			}
+
 			if(uStrNumCmp(_version, "0.10.0") >= 0)
 			{
 				data = sqlite3_column_blob(ppStmt, index);
@@ -1351,10 +1398,12 @@ bool DBDriverSqlite3::getCalibrationQuery(
 			}
 			else if(uStrNumCmp(_version, "0.7.0") >= 0)
 			{
+				UDEBUG("Loading calibration version >= 0.7.0");
 				double fx = sqlite3_column_double(ppStmt, index++);
 				double fyOrBaseline = sqlite3_column_double(ppStmt, index++);
 				double cx = sqlite3_column_double(ppStmt, index++);
 				double cy = sqlite3_column_double(ppStmt, index++);
+				UDEBUG("fx=%f fyOrBaseline=%f cx=%f cy=%f", fx, fyOrBaseline, cx, cy);
 				if(fyOrBaseline < 1.0)
 				{
 					//it is a baseline
@@ -1367,6 +1416,7 @@ bool DBDriverSqlite3::getCalibrationQuery(
 			}
 			else
 			{
+				UDEBUG("Loading calibration version < 0.7.0");
 				float depthConstant = sqlite3_column_double(ppStmt, index++);
 				float fx = 1.0f/depthConstant;
 				float fy = 1.0f/depthConstant;
@@ -1942,7 +1992,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 
 		// Prepare the query... Get the map from signature and visual words
 		std::stringstream query2;
-		if(uStrNumCmp(_version, "0.11.2") >= 0)
+		if(uStrNumCmp(_version, "0.12.0") >= 0)
+		{
+			query2 << "SELECT word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor "
+					 "FROM Map_Node_Word "
+					 "WHERE node_id = ? ";
+		}
+		else if(uStrNumCmp(_version, "0.11.2") >= 0)
 		{
 			query2 << "SELECT word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z, descriptor_size, descriptor "
 					 "FROM Map_Node_Word "
@@ -1989,6 +2045,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				kpt.size = sqlite3_column_int(ppStmt, index++);
 				kpt.angle = sqlite3_column_double(ppStmt, index++);
 				kpt.response = sqlite3_column_double(ppStmt, index++);
+				if(uStrNumCmp(_version, "0.12.0") >= 0)
+				{
+					kpt.octave = sqlite3_column_int(ppStmt, index++);
+				}
 				depth.x = sqlite3_column_double(ppStmt, index++);
 				depth.y = sqlite3_column_double(ppStmt, index++);
 				depth.z = sqlite3_column_double(ppStmt, index++);
@@ -2272,37 +2332,32 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 		{
 			int index=0;
 			id = sqlite3_column_int(ppStmt, index++); 			// VisualWord Id
-			if(id>0)
+
+			descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
+			descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
+			dRealSize = sqlite3_column_bytes(ppStmt, index++);
+
+			cv::Mat d;
+			if(dRealSize == descriptorSize)
 			{
-				descriptorSize = sqlite3_column_int(ppStmt, index++); // VisualWord descriptor size
-				descriptor = sqlite3_column_blob(ppStmt, index); 	// VisualWord descriptor array
-				dRealSize = sqlite3_column_bytes(ppStmt, index++);
-
-				cv::Mat d;
-				if(dRealSize == descriptorSize)
-				{
-					// CV_8U binary descriptors
-					d = cv::Mat(1, descriptorSize, CV_8U);
-				}
-				else if(dRealSize/int(sizeof(float)) == descriptorSize)
-				{
-					// CV_32F
-					d = cv::Mat(1, descriptorSize, CV_32F);
-				}
-				else
-				{
-					UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
-				}
-
-				memcpy(d.data, descriptor, dRealSize);
-				VisualWord * vw = new VisualWord(id, d);
-				vw->setSaved(true);
-				dictionary->addWord(vw);
+				// CV_8U binary descriptors
+				d = cv::Mat(1, descriptorSize, CV_8U);
+			}
+			else if(dRealSize/int(sizeof(float)) == descriptorSize)
+			{
+				// CV_32F
+				d = cv::Mat(1, descriptorSize, CV_32F);
 			}
 			else
 			{
-				ULOGGER_ERROR("Wrong word id ?!? (%d)", id);
+				UFATAL("Saved buffer size (%d bytes) is not the same as descriptor size (%d)", dRealSize, descriptorSize);
 			}
+
+			memcpy(d.data, descriptor, dRealSize);
+			VisualWord * vw = new VisualWord(id, d);
+			vw->setSaved(true);
+			dictionary->addWord(vw);
+
 			if(++count % 5000 == 0)
 			{
 				ULOGGER_DEBUG("Loaded %d words...", count);
@@ -2838,18 +2893,18 @@ void DBDriverSqlite3::updateQuery(const std::list<VisualWord *> & words, bool up
 		{
 			w = *i;
 			int index = 1;
-			if(w)
-			{
-				rc = sqlite3_bind_int(ppStmt, index++, w->id());
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			UASSERT(w);
 
-				//step
-				rc=sqlite3_step(ppStmt);
-				UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_bind_int(ppStmt, index++, w->id());
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-				rc = sqlite3_reset(ppStmt);
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			}
+			//step
+			rc=sqlite3_step(ppStmt);
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			rc = sqlite3_reset(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
 		}
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -3033,7 +3088,8 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 			for(std::list<VisualWord *>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				const VisualWord * w = *iter;
-				if(w && !w->isSaved())
+				UASSERT(w);
+				if(!w->isSaved())
 				{
 					rc = sqlite3_bind_int(ppStmt, 1, w->id());
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -3811,7 +3867,11 @@ void DBDriverSqlite3::stepWordsChanged(sqlite3_stmt * ppStmt, int nodeId, int ol
 
 std::string DBDriverSqlite3::queryStepKeypoint() const
 {
-	if(uStrNumCmp(_version, "0.11.2") >= 0)
+	if(uStrNumCmp(_version, "0.12.0") >= 0)
+	{
+		return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response, octave, depth_x, depth_y, depth_z, descriptor_size, descriptor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.11.2") >= 0)
 	{
 		return "INSERT INTO Map_Node_Word(node_id, word_id, pos_x, pos_y, size, dir, response, depth_x, depth_y, depth_z, descriptor_size, descriptor) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -3843,6 +3903,8 @@ void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 	rc = sqlite3_bind_double(ppStmt, index++, kp.angle);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.response);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	rc = sqlite3_bind_int(ppStmt, index++, kp.octave);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, pt.x);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());

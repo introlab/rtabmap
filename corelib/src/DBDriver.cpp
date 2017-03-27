@@ -61,7 +61,7 @@ void DBDriver::parseParameters(const ParametersMap & parameters)
 {
 }
 
-void DBDriver::closeConnection(bool save)
+void DBDriver::closeConnection(bool save, const std::string & outputUrl)
 {
 	UDEBUG("isRunning=%d", this->isRunning());
 	this->join(true);
@@ -78,7 +78,7 @@ void DBDriver::closeConnection(bool save)
 		_trashesMutex.unlock();
 	}
 	_dbSafeAccessMutex.lock();
-	this->disconnectDatabaseQuery(save);
+	this->disconnectDatabaseQuery(save, outputUrl);
 	_dbSafeAccessMutex.unlock();
 	UDEBUG("");
 }
@@ -513,6 +513,7 @@ void DBDriver::loadWords(const std::set<int> & wordIds, std::list<VisualWord *> 
 		{
 			for(std::set<int>::iterator iter = ids.begin(); iter != ids.end();)
 			{
+				UASSERT(*iter>0);
 				wIter = _trashVisualWords.find(*iter);
 				if(wIter != _trashVisualWords.end())
 				{
@@ -602,6 +603,7 @@ bool DBDriver::getCalibration(
 		std::vector<CameraModel> & models,
 		StereoCameraModel & stereoModel) const
 {
+	UDEBUG("");
 	bool found = false;
 	// look in the trash
 	_trashesMutex.lock();

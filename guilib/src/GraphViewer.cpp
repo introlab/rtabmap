@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QColorDialog>
 #include <QtSvg/QSvgGenerator>
 #include <QInputDialog>
+#include <QMessageBox>
 
 #include <QtCore/QDir>
 #include <QtCore/QDateTime>
@@ -48,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UCv2Qt.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
 
 namespace rtabmap {
 
@@ -277,6 +279,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				 const std::multimap<int, Link> & constraints,
 				 const std::map<int, int> & mapIds)
 {
+	UTimer timer;
 	bool wasVisible = _graphRoot->isVisible();
 	_graphRoot->show();
 
@@ -488,11 +491,12 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 
 	_graphRoot->setVisible(wasVisible);
 
-	UDEBUG("_nodeItems=%d, _linkItems=%d", _nodeItems.size(), _linkItems.size());
+	UDEBUG("_nodeItems=%d, _linkItems=%d, timer=%fs", _nodeItems.size(), _linkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 {
+	UTimer timer;
 	bool wasVisible = _gtGraphRoot->isVisible();
 	_gtGraphRoot->show();
 	bool wasEmpty = _gtNodeItems.size() == 0 && _gtLinkItems.size() == 0;
@@ -613,7 +617,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 
 	_gtGraphRoot->setVisible(wasVisible);
 
-	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d", _gtNodeItems.size(), _gtLinkItems.size());
+	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", _gtNodeItems.size(), _gtLinkItems.size(), timer.ticks());
 }
 
 void GraphViewer::updateReferentialPosition(const Transform & t)
@@ -1388,7 +1392,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 
 			if(_gridCellSize)
 			{
-				_root->setScale(1.0f/_gridCellSize); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
+				_root->setScale(1.0f/(_gridCellSize*100.0f)); // grid map precision (for 5cm grid cell, x20 to have 1pix/5cm)
 			}
 			else
 			{
@@ -1406,7 +1410,16 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 				QPainter painter(&image);
 
 				this->scene()->render(&painter);
-				image.save(targetDir + name);
+				if(!image.isNull())
+				{
+					image.save(targetDir + name);
+				}
+				else
+				{
+					QMessageBox::warning(this,
+							tr("Save PNG"),
+							tr("Could not export in PNG (the scene may be too large %1x%2), try saving in SVG.").arg(sceneSize.width()).arg(sceneSize.height()));
+				}
 			}
 			else
 			{

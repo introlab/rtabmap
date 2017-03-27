@@ -50,7 +50,7 @@ public:
 	ParametersToolBox(QWidget *parent = 0);
 	virtual ~ParametersToolBox();
 
-	void setupUi(const QSet<QString> & ignoredGroups);
+	void setupUi(const ParametersMap & parameters);
 	QWidget * getParameterWidget(const QString & key);
 	void updateParameter(const std::string & key, const std::string & value);
 	const ParametersMap & getParameters() const {return parameters_;}
@@ -81,7 +81,6 @@ private:
 	QComboBox * comboBox_;
 	QStackedWidget * stackedWidget_;
 	ParametersMap parameters_;
-	QSet<QString> ignoredGroups_;
 };
 
 } // namespace find_object

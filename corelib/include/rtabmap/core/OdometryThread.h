@@ -45,15 +45,16 @@ public:
 	virtual ~OdometryThread();
 
 protected:
-	virtual void handleEvent(UEvent * event);
+	virtual bool handleEvent(UEvent * event);
 
 private:
-	void mainLoopKill();
+	virtual void mainLoopBegin();
+	virtual void mainLoopKill();
 
 	//============================================================
 	// MAIN LOOP
 	//============================================================
-	void mainLoop();
+	virtual void mainLoop();
 	void addData(const SensorData & data);
 	bool getData(SensorData & data);
 

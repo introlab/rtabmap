@@ -103,6 +103,7 @@ private:
 	int noiseFilteringMinNeighbors_;
 	bool scan2dUnknownSpaceFilled_;
 	double scan2dMaxUnknownSpaceFilledRange_;
+	bool projRayTracing_;
 
 	std::map<int, std::pair<cv::Mat, cv::Mat> > cache_;
 	cv::Mat map_;

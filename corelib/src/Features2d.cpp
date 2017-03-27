@@ -210,7 +210,14 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, int maxKey
 
 void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & descriptors, int maxKeypoints)
 {
+	std::vector<cv::Point3f> keypoints3D;
+	limitKeypoints(keypoints, keypoints3D, descriptors, maxKeypoints);
+}
+
+void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, std::vector<cv::Point3f> & keypoints3D, cv::Mat & descriptors, int maxKeypoints)
+{
 	UASSERT_MSG((int)keypoints.size() == descriptors.rows || descriptors.rows == 0, uFormat("keypoints=%d descriptors=%d", (int)keypoints.size(), descriptors.rows).c_str());
+	UASSERT_MSG(keypoints.size() == keypoints3D.size() || keypoints3D.size() == 0, uFormat("keypoints=%d keypoints3D=%d", (int)keypoints.size(), (int)keypoints3D.size()).c_str());
 	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
 	{
 		UTimer timer;
@@ -229,6 +236,7 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 		int removed = (int)hessianMap.size()-maxKeypoints;
 		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
 		std::vector<cv::KeyPoint> kptsTmp(maxKeypoints);
+		std::vector<cv::Point3f> kpts3DTmp(maxKeypoints);
 		cv::Mat descriptorsTmp;
 		if(descriptors.rows)
 		{
@@ -237,6 +245,10 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 		for(unsigned int k=0; k < kptsTmp.size() && iter!=hessianMap.rend(); ++k, ++iter)
 		{
 			kptsTmp[k] = keypoints[iter->second];
+			if(keypoints3D.size())
+			{
+				kpts3DTmp[k] = keypoints3D[iter->second];
+			}
 			if(descriptors.rows)
 			{
 				if(descriptors.type() == CV_32FC1)
@@ -252,10 +264,46 @@ void Feature2D::limitKeypoints(std::vector<cv::KeyPoint> & keypoints, cv::Mat & 
 		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, (int)kptsTmp.size(), kptsTmp.size()?kptsTmp.back().response:0.0f);
 		ULOGGER_DEBUG("removing words time = %f s", timer.ticks());
 		keypoints = kptsTmp;
+		keypoints3D = kpts3DTmp;
 		if(descriptors.rows)
 		{
 			descriptors = descriptorsTmp;
 		}
+	}
+}
+
+void Feature2D::limitKeypoints(const std::vector<cv::KeyPoint> & keypoints, std::vector<bool> & inliers, int maxKeypoints)
+{
+	if(maxKeypoints > 0 && (int)keypoints.size() > maxKeypoints)
+	{
+		UTimer timer;
+		ULOGGER_DEBUG("too much words (%d), removing words with the hessian threshold", keypoints.size());
+		// Remove words under the new hessian threshold
+
+		// Sort words by hessian
+		std::multimap<float, int> hessianMap; // <hessian,id>
+		for(unsigned int i = 0; i <keypoints.size(); ++i)
+		{
+			//Keep track of the data, to be easier to manage the data in the next step
+			hessianMap.insert(std::pair<float, int>(fabs(keypoints[i].response), i));
+		}
+
+		// Keep keypoints with highest response
+		int removed = (int)hessianMap.size()-maxKeypoints;
+		std::multimap<float, int>::reverse_iterator iter = hessianMap.rbegin();
+		inliers.resize(keypoints.size(), false);
+		float minimumHessian = 0.0f;
+		for(int k=0; k < maxKeypoints && iter!=hessianMap.rend(); ++k, ++iter)
+		{
+			inliers[iter->second] = true;
+			minimumHessian = iter->first;
+		}
+		ULOGGER_DEBUG("%d keypoints removed, (kept %d), minimum response=%f", removed, maxKeypoints, minimumHessian);
+		ULOGGER_DEBUG("filter keypoints time = %f s", timer.ticks());
+	}
+	else
+	{
+		inliers.resize(keypoints.size(), true);
 	}
 }
 
@@ -356,9 +404,9 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	if(type == Feature2D::kFeatureSurf || type == Feature2D::kFeatureSift)
 	{
 #if CV_MAJOR_VERSION < 3
-		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
+		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with nonfree module. ORB is used instead.");
 #else
-		UWARN("SURF/SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
+		UWARN("SURF and SIFT features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
 #endif
 		type = Feature2D::kFeatureOrb;
 	}
@@ -366,12 +414,21 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	if(type == Feature2D::kFeatureFastBrief ||
 	   type == Feature2D::kFeatureFastFreak ||
 	   type == Feature2D::kFeatureGfttBrief ||
-	   type == Feature2D::kFeatureGfttFreak)
+	   type == Feature2D::kFeatureGfttFreak ||
+	   type == Feature2D::kFeatureFreak)
 	{
-		UWARN("BRIEF/FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
+		UWARN("BRIEF and FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
 		type = Feature2D::kFeatureOrb;
 	}
 #endif
+#endif
+
+#if CV_MAJOR_VERSION < 3
+	if(type == Feature2D::kFeatureFreak)
+	{
+		UWARN("FREAK detector/descriptor can be used only with OpenCV3. GFTT/FREAK is used instead.");
+		type = Feature2D::kFeatureGfttFreak;
+	}
 #endif
 
 	Feature2D * feature2D = 0;
@@ -1402,6 +1459,75 @@ cv::Mat BRISK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Ke
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
 	brisk_->compute(image, keypoints, descriptors);
+	return descriptors;
+}
+
+
+//////////////////////////
+//FREAK
+//////////////////////////
+FREAK::FREAK(const ParametersMap & parameters) :
+	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
+	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
+	patternScale_(Parameters::defaultFREAKPatternScale()),
+	nOctaves_(Parameters::defaultFREAKNOctaves())
+{
+	parseParameters(parameters);
+}
+
+FREAK::~FREAK()
+{
+}
+
+void FREAK::parseParameters(const ParametersMap & parameters)
+{
+	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
+	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
+	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+
+#if CV_MAJOR_VERSION < 3
+	_freak = cv::Ptr<CV_FREAK>(new CV_FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_));
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak = CV_FREAK::create(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
+}
+
+std::vector<cv::KeyPoint> FREAK::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	std::vector<cv::KeyPoint> keypoints;
+#ifdef HAVE_OPENCV_XFEATURES2D
+	cv::Mat imgRoi(image, roi);
+	cv::Mat maskRoi;
+	if (!mask.empty())
+	{
+		maskRoi = cv::Mat(mask, roi);
+	}
+	_freak->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
+#else
+	UWARN("RTAB-Map is not built with OpenCV3 xfeatures2d module so Freak (for keypoint detection) cannot be used!");
+#endif
+	return keypoints;
+}
+
+cv::Mat FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+{
+	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
+	cv::Mat descriptors;
+#if CV_MAJOR_VERSION < 3
+	_freak->compute(image, keypoints, descriptors);
+#else
+#ifdef HAVE_OPENCV_XFEATURES2D
+	_freak->compute(image, keypoints, descriptors);
+#else
+	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
+#endif
+#endif
 	return descriptors;
 }
 

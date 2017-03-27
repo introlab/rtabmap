@@ -19,6 +19,27 @@
 
 namespace tango_gl {
 
+namespace {
+int NormalizedColorCameraRotation(int camera_rotation) {
+  int camera_n = 0;
+  switch (camera_rotation) {
+    case 90:
+      camera_n = 1;
+      break;
+    case 180:
+      camera_n = 2;
+      break;
+    case 270:
+      camera_n = 3;
+      break;
+    default:
+      camera_n = 0;
+      break;
+  }
+  return camera_n;
+}
+}  // annonymous namespace
+
 void util::CheckGlError(const char* operation) {
   for (GLint error = glGetError(); error; error = glGetError()) {
     LOGE("after %s() glError (0x%x)\n", operation, error);
@@ -215,6 +236,25 @@ bool util::SegmentAABBIntersect(const glm::vec3& aabb_min,
 
 glm::vec3 util::ApplyTransform(const glm::mat4& mat, const glm::vec3& vec) {
   return glm::vec3(mat * glm::vec4(vec, 1.0f));
+}
+
+TangoSupportRotation util::GetAndroidRotationFromColorCameraToDisplay(
+    int display_rotation, int color_camera_rotation) {
+  TangoSupportRotation r =
+      static_cast<TangoSupportRotation>(display_rotation);
+  return util::GetAndroidRotationFromColorCameraToDisplay(
+      r, color_camera_rotation);
+}
+
+TangoSupportRotation util::GetAndroidRotationFromColorCameraToDisplay(
+    TangoSupportRotation display_rotation, int color_camera_rotation) {
+  int color_camera_n = NormalizedColorCameraRotation(color_camera_rotation);
+
+  int ret = static_cast<int>(display_rotation) - color_camera_n;
+  if (ret < 0) {
+    ret += 4;
+  }
+  return static_cast<TangoSupportRotation>(ret % 4);
 }
 
 }  // namespace tango_gl

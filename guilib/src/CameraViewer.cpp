@@ -184,7 +184,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 	processingImages_ = false;
 }
 
-void CameraViewer::handleEvent(UEvent * event)
+bool CameraViewer::handleEvent(UEvent * event)
 {
 	if(!pause_->isChecked())
 	{
@@ -205,6 +205,7 @@ void CameraViewer::handleEvent(UEvent * event)
 			}
 		}
 	}
+	return false;
 }
 
 } /* namespace rtabmap */

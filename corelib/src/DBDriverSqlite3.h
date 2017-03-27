@@ -49,7 +49,7 @@ public:
 
 private:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false);
-	virtual void disconnectDatabaseQuery(bool save = true);
+	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "");
 	virtual bool isConnectedQuery() const;
 	virtual long getMemoryUsedQuery() const; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const;

@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ui_aboutDialog.h"
 #include <opencv2/core/version.hpp>
 #include <pcl/pcl_config.h>
+#include <vtkVersion.h>
 
 namespace rtabmap {
 
@@ -54,6 +55,7 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_version->setText(version);
 	_ui->label_opencv_version->setText(cv_version);
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
+	_ui->label_vtk_version->setText(vtkVersion::GetVTKVersion());
 #ifdef RTABMAP_OCTOMAP
 	_ui->label_octomap->setText("Yes");
 #else

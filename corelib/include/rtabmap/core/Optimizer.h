@@ -83,6 +83,8 @@ public:
 	void setEpsilon(double epsilon) {epsilon_ = epsilon;}
 	void setRobust(bool enabled) {robust_ = enabled;}
 
+	virtual void parseParameters(const ParametersMap & parameters);
+
 	// inherited classes should implement one of these methods
 	virtual std::map<int, Transform> optimize(
 			int rootId,
@@ -92,24 +94,38 @@ public:
 			double * finalError = 0,
 			int * iterationsDone = 0);
 	virtual std::map<int, Transform> optimizeBA(
+			int rootId, // if negative, all other poses are fixed
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, CameraModel> & models, // in case of stereo, Tx should be set
+			std::map<int, cv::Point3f> & points3DMap,
+			const std::map<int, std::map<int, cv::Point3f> > & wordReferences, // <ID words, IDs frames + keypoint(x,y,depth)>
+			std::set<int> * outliers = 0);
+
+	std::map<int, Transform> optimizeBA(
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures);
 
-	virtual void parseParameters(const ParametersMap & parameters);
+	Transform optimizeBA(
+			const Link & link,
+			const CameraModel & model,
+			std::map<int, cv::Point3f> & points3DMap,
+			const std::map<int, std::map<int, cv::Point3f> > & wordReferences,
+			std::set<int> * outliers = 0);
 
 	void computeBACorrespondences(
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & links,
 			const std::map<int, Signature> & signatures,
 			std::map<int, cv::Point3f> & points3DMap,
-			std::map<int, std::map<int, cv::Point2f> > & wordReferences); // <ID words, IDs frames + keypoint>
+			std::map<int, std::map<int, cv::Point3f> > & wordReferences); // <ID words, IDs frames + keypoint/depth>
 
 protected:
 	Optimizer(
 			int iterations         = Parameters::defaultOptimizerIterations(),
-			bool slam2d            = Parameters::defaultOptimizerSlam2D(),
+			bool slam2d            = Parameters::defaultRegForce3DoF(),
 			bool covarianceIgnored = Parameters::defaultOptimizerVarianceIgnored(),
 			double epsilon         = Parameters::defaultOptimizerEpsilon(),
 			bool robust            = Parameters::defaultOptimizerRobust());

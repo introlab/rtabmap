@@ -63,7 +63,7 @@ protected:
 
 public slots:
 	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep();
+	void incrementStep(int steps = 1);
 	void clear();
 	void resetProgress();
 

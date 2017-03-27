@@ -470,7 +470,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 	processingData_ = false;
 }
 
-void OdometryViewer::handleEvent(UEvent * event)
+bool OdometryViewer::handleEvent(UEvent * event)
 {
 	if(!processingData_ && this->isVisible())
 	{
@@ -485,6 +485,7 @@ void OdometryViewer::handleEvent(UEvent * event)
 			}
 		}
 	}
+	return false;
 }
 
 } /* namespace rtabmap */

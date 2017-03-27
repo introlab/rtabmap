@@ -25,6 +25,7 @@
 #include <android/log.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#include <tango_support_api.h>
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -33,10 +34,17 @@
 #include "glm/gtx/matrix_decompose.hpp"
 
 #define LOG_TAG "rtabmap"
+#ifdef DISABLE_LOG
+#define LOGD(...) ;
+#define LOGI(...) ;
+#define LOGW(...) ;
+#define LOGE(...) ;
+#else
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,LOG_TAG,__VA_ARGS__)
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,LOG_TAG,__VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN,LOG_TAG,__VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR,LOG_TAG,__VA_ARGS__)
+#endif
 
 #ifndef M_PI
 #define M_PI 3.1415926f
@@ -76,6 +84,33 @@ namespace util {
                         const glm::vec3& start, const glm::vec3& end);
 
   glm::vec3 ApplyTransform(const glm::mat4& mat, const glm::vec3& vec);
+
+  // Get the Android rotation integer value from color camera to display.
+  // This function is used to compute the orientation difference to handle
+  // the portrait and landscape mode for color camera display.
+  //
+  // @param display: integer value of display orientation, values available
+  // are 0, 1, 2 ,3. Followed by Android display orientation standard:
+  // https://developer.android.com/reference/android/view/Display.html#getRotation()
+  // @param color_camera: integer value of color camera oreintation, values
+  // available are 0, 90, 180, 270. Followed by Android camera orientation
+  // standard:
+  // https://developer.android.com/reference/android/hardware/Camera.CameraInfo.html#orientation
+  TangoSupportRotation GetAndroidRotationFromColorCameraToDisplay(
+      int display_rotation, int color_camera_rotation);
+
+  // Get the Android rotation integer value from color camera to display.
+  // This function is used to compute the orientation difference to handle
+  // the portrait and landscape mode for color camera display.
+  //
+  // @param display: the device display orientation.
+  // @param color_camera: integer value of color camera oreintation, values
+  // available are 0, 90, 180, 270. Followed by Android camera orientation
+  // standard:
+  // https://developer.android.com/reference/android/hardware/Camera.CameraInfo.html#orientation
+  TangoSupportRotation GetAndroidRotationFromColorCameraToDisplay(
+      TangoSupportRotation display_rotation, int color_camera_rotation);
+
 }  // namespace util
 }  // namespace tango_gl
 #endif  // TANGO_GL_RENDERER_GL_UTIL
