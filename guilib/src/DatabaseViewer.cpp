@@ -2139,6 +2139,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
 	progressDialog->setMaximumSteps(1);
 	progressDialog->setCancelButtonVisible(true);
+	progressDialog->setMinimumWidth(800);
 	progressDialog->show();
 
 	int iterations = ui_->spinBox_detectMore_iterations->value();
@@ -2188,8 +2189,8 @@ void DatabaseViewer::detectMoreLoopClosures()
 						addedLinks.insert(to);
 
 						progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+						QApplication::processEvents();
 					}
-					QApplication::processEvents();
 				}
 			}
 			progressDialog->incrementStep();
