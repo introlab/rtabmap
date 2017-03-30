@@ -84,6 +84,10 @@ private:
 			float cellSize,
 			const cv::Point3f & viewpoint) const;
 
+	virtual void updateDepthImageQuery(
+				int nodeId,
+				const cv::Mat & image) const;
+
 	virtual void addStatisticsQuery(const Statistics & statistics) const;
 
 	// Load objects
@@ -107,6 +111,7 @@ private:
 	std::string queryStepNode() const;
 	std::string queryStepImage() const;
 	std::string queryStepDepth() const;
+	std::string queryStepDepthUpdate() const;
 	std::string queryStepSensorData() const;
 	std::string queryStepLinkUpdate() const;
 	std::string queryStepLink() const;
@@ -119,11 +124,12 @@ private:
 			int id,
 			const cv::Mat & imageBytes) const;
 	void stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
+	void stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & imageCompressed) const;
 	void stepSensorData(sqlite3_stmt * ppStmt, const SensorData & sensorData) const;
 	void stepLink(sqlite3_stmt * ppStmt, const Link & link) const;
 	void stepWordsChanged(sqlite3_stmt * ppStmt, int signatureId, int oldWordId, int newWordId) const;
 	void stepKeypoint(sqlite3_stmt * ppStmt, int signatureId, int wordId, const cv::KeyPoint & kp, const cv::Point3f & pt, const cv::Mat & descriptor) const;
-	void stepOccupancyGrid(sqlite3_stmt * ppStmt,
+	void stepOccupancyGridUpdate(sqlite3_stmt * ppStmt,
 			int nodeId,
 			const cv::Mat & ground,
 			const cv::Mat & obstacles,

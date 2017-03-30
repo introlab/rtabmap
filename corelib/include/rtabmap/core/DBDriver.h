@@ -93,6 +93,7 @@ public:
 				const cv::Mat & obstacles,
 				float cellSize,
 				const cv::Point3f & viewpoint);
+	void updateDepthImage(int nodeId, const cv::Mat & image);
 
 public:
 	void addInfoAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
@@ -180,6 +181,10 @@ private:
 				const cv::Mat & obstacles,
 				float cellSize,
 				const cv::Point3f & viewpoint) const = 0;
+
+	virtual void updateDepthImageQuery(
+					int nodeId,
+					const cv::Mat & image) const = 0;
 
 	virtual void addStatisticsQuery(const Statistics & statistics) const = 0;
 

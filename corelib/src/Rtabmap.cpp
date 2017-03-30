@@ -49,6 +49,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/crop_box.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/common/common.h>
 
 #include <stdlib.h>
 #include <set>
@@ -3488,12 +3489,120 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 
 					if(!t.isNull())
 					{
-						UINFO("Added new loop closure between %d and %d.", from, to);
-						addedLinks.insert(from);
-						addedLinks.insert(to);
-						links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin)));
-						loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin));
-						UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
+						bool updateConstraints = true;
+						if(_optimizationMaxLinearError > 0.0f)
+						{
+							//optimize the graph to see if the new constraint is globally valid
+
+							int fromId = from;
+							int mapId = signatures.at(from).mapId();
+							// use first node of the map containing from
+							for(std::map<int, Signature>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+							{
+								if(iter->second.mapId() == mapId)
+								{
+									fromId = iter->first;
+									break;
+								}
+							}
+							std::multimap<int, Link> linksIn = links;
+							linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin)));
+							const Link * maxLinearLink = 0;
+							const Link * maxAngularLink = 0;
+							float maxLinearError = 0.0f;
+							float maxAngularError = 0.0f;
+							std::map<int, Transform> optimizedPoses;
+							std::multimap<int, Link> links;
+							UASSERT(poses.find(fromId) != poses.end());
+							UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+							UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+							_graphOptimizer->getConnectedGraph(fromId, poses, linksIn, optimizedPoses, links);
+							UASSERT(optimizedPoses.find(fromId) != optimizedPoses.end());
+							UASSERT_MSG(optimizedPoses.find(from) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)optimizedPoses.size(), (int)links.size()).c_str());
+							UASSERT_MSG(optimizedPoses.find(to) != optimizedPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)optimizedPoses.size(), (int)links.size()).c_str());
+							UASSERT(graph::findLink(links, from, to) != links.end());
+							optimizedPoses = _graphOptimizer->optimize(fromId, optimizedPoses, links);
+							std::string msg;
+							if(optimizedPoses.size())
+							{
+								for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+								{
+									// ignore links with high variance
+									if(iter->second.transVariance() <= 1.0)
+									{
+										UASSERT(optimizedPoses.find(iter->second.from())!=optimizedPoses.end());
+										UASSERT(optimizedPoses.find(iter->second.to())!=optimizedPoses.end());
+										Transform t1 = optimizedPoses.at(iter->second.from());
+										Transform t2 = optimizedPoses.at(iter->second.to());
+										UASSERT(!t1.isNull() && !t2.isNull());
+										Transform t = t1.inverse()*t2;
+										float linearError = uMax3(
+												fabs(iter->second.transform().x() - t.x()),
+												fabs(iter->second.transform().y() - t.y()),
+												fabs(iter->second.transform().z() - t.z()));
+										Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+										Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+										float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+										if(linearError > maxLinearError)
+										{
+											maxLinearError = linearError;
+											maxLinearLink = &iter->second;
+										}
+										if(angularError > maxAngularError)
+										{
+											maxAngularError = angularError;
+											maxAngularLink = &iter->second;
+										}
+									}
+								}
+								if(maxLinearLink)
+								{
+									UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+								}
+								if(maxAngularLink)
+								{
+									UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+								}
+
+								if(maxLinearError > _optimizationMaxLinearError)
+								{
+									msg = uFormat("Rejecting edge %d->%d because "
+											  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
+											  "\"%s\" is %f m.",
+											  from,
+											  to,
+											  maxLinearError,
+											  maxLinearLink->from(),
+											  maxLinearLink->to(),
+											  maxAngularError*180.0f/M_PI,
+											  maxAngularLink?maxAngularLink->from():0,
+											  maxAngularLink?maxAngularLink->to():0,
+											  Parameters::kRGBDOptimizeMaxError().c_str(),
+											  _optimizationMaxLinearError);
+								}
+							}
+							else
+							{
+								msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
+										  from,
+										  to);
+							}
+							if(!msg.empty())
+							{
+								UWARN("%s", msg.c_str());
+								updateConstraints = false;
+							}
+						}
+
+						if(updateConstraints)
+						{
+							UINFO("Added new loop closure between %d and %d.", from, to);
+							addedLinks.insert(from);
+							addedLinks.insert(to);
+							links.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin)));
+							loopClosuresAdded.push_back(Link(from, to, Link::kUserClosure, t, info.varianceAng, info.varianceLin));
+							UINFO("Detected loop closure %d->%d! (%d/%d)", from, to, i+1, (int)clusters.size());
+						}
 					}
 				}
 			}

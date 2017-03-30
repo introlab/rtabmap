@@ -30,6 +30,7 @@ SET(headers_ui
 	./DepthCalibrationDialog.h
 	./3rdParty/QMultiComboBox.h
 	./TexturingState.h
+	./EditDepthArea.h
 )
 
 SET(uis
@@ -93,6 +94,7 @@ SET(SRC_FILES
 	./ExportScansDialog.cpp
 	./MapVisibilityWidget.cpp
 	./GraphViewer.cpp
+	./EditDepthArea.cpp
 	./CreateSimpleCalibrationDialog.cpp
 	./ParametersToolBox.cpp
 	./DepthCalibrationDialog.cpp

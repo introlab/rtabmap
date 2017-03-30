@@ -142,6 +142,12 @@ cv::Mat RTABMAP_EXP fastBilateralFiltering(
 		float sigmaR = 0.05f,
 		bool earlyDivision = false);
 
+cv::Mat RTABMAP_EXP brightnessAndContrastAuto(
+		const cv::Mat & src,
+		const cv::Mat & mask,
+		float clipLowHistPercent=0,
+		float clipHighHistPercent=0);
+
 } // namespace util3d
 } // namespace rtabmap
 

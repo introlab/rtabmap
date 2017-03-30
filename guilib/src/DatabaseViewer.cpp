@@ -70,12 +70,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OccupancyGrid.h"
 #include "rtabmap/gui/DataRecorder.h"
 #include "ExportCloudsDialog.h"
+#include "EditDepthArea.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/GainCompensator.h"
 #include "ExportDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
 #include "ParametersToolBox.h"
-
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/filters/voxel_grid.h>
@@ -93,6 +93,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	dbDriver_(0),
 	octomap_(0),
 	exportDialog_(new ExportCloudsDialog(this)),
+	editDepthDialog_(new QDialog(this)),
 	savedMaximized_(false),
 	firstCall_(true),
 	iniFilePath_(ini)
@@ -113,6 +114,20 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->label_logger_level->setVisible(parent==0);
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(updateLoggerLevel()));
 	connect(ui_->checkBox_verticalLayout, SIGNAL(stateChanged(int)), this, SLOT(setupMainLayout(int)));
+
+	editDepthDialog_->resize(640, 480);
+	QVBoxLayout * vLayout = new QVBoxLayout(editDepthDialog_);
+	editDepthArea_ = new EditDepthArea(editDepthDialog_);
+	vLayout->setContentsMargins(0,0,0,0);
+	vLayout->setSpacing(0);
+	vLayout->addWidget(editDepthArea_, 1);
+	QDialogButtonBox * buttonBox = new QDialogButtonBox(QDialogButtonBox::Save | QDialogButtonBox::Cancel | QDialogButtonBox::Reset, Qt::Horizontal, editDepthDialog_);
+	vLayout->addWidget(buttonBox);
+	connect(buttonBox, SIGNAL(accepted()), editDepthDialog_, SLOT(accept()));
+	connect(buttonBox, SIGNAL(rejected()), editDepthDialog_, SLOT(reject()));
+	connect(buttonBox->button(QDialogButtonBox::Reset), SIGNAL(clicked()), editDepthArea_, SLOT(resetChanges()));
+	editDepthDialog_->setLayout(vLayout);
+	editDepthDialog_->setWindowTitle(tr("Edit Depth Image"));
 
 	QString title("RTAB-Map Database Viewer[*]");
 	this->setWindowTitle(title);
@@ -173,6 +188,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	uInsert(parameters, Parameters::getDefaultParameters("StereoBM"));
 	uInsert(parameters, Parameters::getDefaultParameters("Grid"));
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDOptimizeMaxError()));
+	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopClosureReextractFeatures()));
 	ui_->parameters_toolbox->setupUi(parameters);
 	exportDialog_->setObjectName("ExportCloudsDialog");
 	this->readSettings();
@@ -192,6 +208,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->menuView->addAction(ui_->dockWidget_statistics->toggleViewAction());
 	connect(ui_->dockWidget_graphView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
 	connect(ui_->dockWidget_occupancyGridView->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateGraphView()));
+	connect(ui_->dockWidget_statistics->toggleViewAction(), SIGNAL(triggered()), this, SLOT(updateStatistics()));
+
 
 	connect(ui_->parameters_toolbox, SIGNAL(parametersChanged(const QStringList &)), this, SLOT(notifyParametersChanged(const QStringList &)));
 
@@ -203,6 +221,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionOpen_database, SIGNAL(triggered()), this, SLOT(openDatabase()));
 	connect(ui_->actionExport, SIGNAL(triggered()), this, SLOT(exportDatabase()));
 	connect(ui_->actionExtract_images, SIGNAL(triggered()), this, SLOT(extractImages()));
+	connect(ui_->actionEdit_depth_image, SIGNAL(triggered()), this, SLOT(editDepthImage()));
 	connect(ui_->actionGenerate_graph_dot, SIGNAL(triggered()), this, SLOT(generateGraph()));
 	connect(ui_->actionGenerate_local_graph_dot, SIGNAL(triggered()), this, SLOT(generateLocalGraph()));
 	connect(ui_->actionGenerate_TORO_graph_graph, SIGNAL(triggered()), this, SLOT(generateTOROGraph()));
@@ -474,16 +493,19 @@ void DatabaseViewer::readSettings()
 	ui_->doubleSpinBox_icp_minDepth->setValue(settings.value("minDepth", ui_->doubleSpinBox_icp_minDepth->value()).toDouble());
 	ui_->checkBox_icp_from_depth->setChecked(settings.value("icpFromDepth", ui_->checkBox_icp_from_depth->isChecked()).toBool());
 	settings.endGroup();
-	// Visual parameters
-	settings.beginGroup("visual");
-	ui_->doubleSpinBox_detectMore_radius->setValue(settings.value("detectMoreRadius", ui_->doubleSpinBox_detectMore_radius->value()).toDouble());
-	ui_->doubleSpinBox_detectMore_angle->setValue(settings.value("detectMoreAngle", ui_->doubleSpinBox_detectMore_angle->value()).toDouble());
-	ui_->spinBox_detectMore_iterations->setValue(settings.value("detectMoreIterations", ui_->spinBox_detectMore_iterations->value()).toInt());
-	settings.endGroup();
 
 	settings.endGroup(); // DatabaseViewer
 
+	// Use same parameters used by RTAB-Map
+	settings.beginGroup("Gui");
 	exportDialog_->loadSettings(settings);
+	settings.beginGroup("PostProcessingDialog");
+	ui_->doubleSpinBox_detectMore_radius->setValue(settings.value("cluster_radius", ui_->doubleSpinBox_detectMore_radius->value()).toDouble());
+	ui_->doubleSpinBox_detectMore_angle->setValue(settings.value("cluster_angle", ui_->doubleSpinBox_detectMore_angle->value()).toDouble());
+	ui_->spinBox_detectMore_iterations->setValue(settings.value("iterations", ui_->spinBox_detectMore_iterations->value()).toInt());
+	settings.endGroup();
+	settings.endGroup();
+
 
 	ParametersMap parameters;
 	Parameters::readINI(path.toStdString(), parameters);
@@ -561,16 +583,17 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("icpFromDepth", ui_->checkBox_icp_from_depth->isChecked());
 	settings.endGroup();
 	
-	// save Visual parameters
-	settings.beginGroup("visual");
-	settings.setValue("detectMoreRadius", ui_->doubleSpinBox_detectMore_radius->value());
-	settings.setValue("detectMoreAngle", ui_->doubleSpinBox_detectMore_angle->value());
-	settings.setValue("detectMoreIterations", ui_->spinBox_detectMore_iterations->value());
-	settings.endGroup();
-
 	settings.endGroup(); // DatabaseViewer
 
-	exportDialog_->saveSettings(settings);
+	// Use same parameters used by RTAB-Map
+	settings.beginGroup("Gui");
+	exportDialog_->saveSettings(settings, exportDialog_->objectName());
+	settings.beginGroup("PostProcessingDialog");
+	settings.setValue("cluster_radius",  ui_->doubleSpinBox_detectMore_radius->value());
+	settings.setValue("cluster_angle", ui_->doubleSpinBox_detectMore_angle->value());
+	settings.setValue("iterations", ui_->spinBox_detectMore_iterations->value());
+	settings.endGroup();
+	settings.endGroup();
 
 	ParametersMap parameters = ui_->parameters_toolbox->getParameters();
 	for(ParametersMap::iterator iter=parameters.begin(); iter!=parameters.end();)
@@ -629,6 +652,7 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			ui_->actionGenerate_TORO_graph_graph->setEnabled(false);
 			ui_->actionGenerate_g2o_graph_g2o->setEnabled(false);
 			ui_->checkBox_showOptimized->setEnabled(false);
+			ui_->toolBox_statistics->clear();
 			databaseFileName_.clear();
 		}
 
@@ -1201,6 +1225,7 @@ void DatabaseViewer::updateIds()
 	linksAdded_.clear();
 	linksRefined_.clear();
 	linksRemoved_.clear();
+	ui_->toolBox_statistics->clear();
 	ui_->label_optimizeFrom->setText(tr("Optimize from"));
 	std::multimap<int, Link> links;
 	dbDriver_->getAllLinks(links, true);
@@ -1214,7 +1239,6 @@ void DatabaseViewer::updateIds()
 	dbDriver_->getAllNodeIds(idsWithoutBad, false, true);
 	int badcountInLTM = 0;
 	int badCountInGraph = 0;
-	double firstStamp = 0.0;
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1226,17 +1250,6 @@ void DatabaseViewer::updateIds()
 		int mapId;
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
-
-		double stamp=0.0;
-		std::map<std::string, float> statistics = dbDriver_->getStatistics(ids_[i], stamp);
-		if(firstStamp==0.0)
-		{
-			firstStamp = stamp;
-		}
-		for(std::map<std::string, float>::iterator iter=statistics.begin(); iter!=statistics.end(); ++iter)
-		{
-			ui_->toolBox_statistics->updateStat(iter->first.c_str(), float(stamp-firstStamp), iter->second, true);
-		}
 
 		if(i>0)
 		{
@@ -1308,6 +1321,12 @@ void DatabaseViewer::updateIds()
 		}
 	}
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)poses_.size(), (int)links_.size());
+
+	if(ids_.size() && ui_->toolBox_statistics->isVisible())
+	{
+		UINFO("Update statistics...");
+		updateStatistics();
+	}
 
 	UINFO("Update database info...");
 	ui_->textEdit_info->clear();
@@ -1446,6 +1465,52 @@ void DatabaseViewer::updateIds()
 		if(ui_->graphViewer->isVisible() || ui_->dockWidget_occupancyGridView->isVisible())
 		{
 			updateGraphView();
+		}
+	}
+}
+
+void DatabaseViewer::updateStatistics()
+{
+	if(dbDriver_)
+	{
+		ui_->toolBox_statistics->clear();
+		double firstStamp = 0.0;
+		for(int i=0; i<ids_.size(); ++i)
+		{
+			double stamp=0.0;
+			std::map<std::string, float> statistics = dbDriver_->getStatistics(ids_[i], stamp);
+			if(firstStamp==0.0)
+			{
+				firstStamp = stamp;
+			}
+			for(std::map<std::string, float>::iterator iter=statistics.begin(); iter!=statistics.end(); ++iter)
+			{
+				ui_->toolBox_statistics->updateStat(iter->first.c_str(), float(stamp-firstStamp), iter->second, true);
+			}
+		}
+	}
+}
+
+void DatabaseViewer::editDepthImage()
+{
+	if(dbDriver_ && ids_.size())
+	{
+		int id = ids_.at(ui_->horizontalSlider_A->value());
+		SensorData data;
+		dbDriver_->getNodeData(id, data, true, false, false, false);
+		data.uncompressData();
+		if(!data.depthRaw().empty())
+		{
+			editDepthArea_->setImage(data.depthRaw(), data.imageRaw());
+			if(editDepthDialog_->exec() == QDialog::Accepted && editDepthArea_->isModified())
+			{
+				cv::Mat depth = editDepthArea_->getModifiedImage();
+				UASSERT(data.depthRaw().type() == depth.type());
+				UASSERT(data.depthRaw().cols == depth.cols);
+				UASSERT(data.depthRaw().rows == depth.rows);
+				dbDriver_->updateDepthImage(id, depth);
+				this->update3dView();
+			}
 		}
 	}
 }
@@ -2070,6 +2135,12 @@ void DatabaseViewer::detectMoreLoopClosures()
 
 	const std::map<int, Transform> & optimizedPoses = graphes_.back();
 
+	rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+	progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+	progressDialog->setMaximumSteps(1);
+	progressDialog->setCancelButtonVisible(true);
+	progressDialog->show();
+
 	int iterations = ui_->spinBox_detectMore_iterations->value();
 	UASSERT(iterations > 0);
 	int added = 0;
@@ -2081,8 +2152,18 @@ void DatabaseViewer::detectMoreLoopClosures()
 				optimizedPoses,
 				ui_->doubleSpinBox_detectMore_radius->value(),
 				ui_->doubleSpinBox_detectMore_angle->value()*CV_PI/180.0);
+
+		progressDialog->setMaximumSteps(progressDialog->maximumSteps()+(int)clusters.size());
+		progressDialog->appendText(tr("Looking for more loop closures, clusters found %1 clusters.").arg(clusters.size()));
+		QApplication::processEvents();
+		if(progressDialog->isCanceled())
+		{
+			break;
+		}
+
 		std::set<int> addedLinks;
-		for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end(); ++iter)
+		int i=0;
+		for(std::multimap<int, int>::iterator iter=clusters.begin(); iter!= clusters.end() && !progressDialog->isCanceled(); ++iter, ++i)
 		{
 			int from = iter->first;
 			int to = iter->second;
@@ -2099,27 +2180,36 @@ void DatabaseViewer::detectMoreLoopClosures()
 				   addedLinks.find(from) == addedLinks.end() && addedLinks.find(to) == addedLinks.end())
 				{
 					checkedLoopClosures.insert(std::make_pair(from, to));
-					if(addConstraint(from, to, true, false))
+					if(addConstraint(from, to, true))
 					{
 						UINFO("Added new loop closure between %d and %d.", from, to);
 						++added;
 						addedLinks.insert(from);
 						addedLinks.insert(to);
+
+						progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 					}
+					QApplication::processEvents();
 				}
 			}
+			progressDialog->incrementStep();
 		}
 		UINFO("Iteration %d/%d: added %d loop closures.", n+1, iterations, (int)addedLinks.size()/2);
+		progressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(iterations).arg(addedLinks.size()/2));
 		if(addedLinks.size() == 0)
 		{
 			break;
 		}
 	}
+
 	if(added)
 	{
 		this->updateGraphView();
 	}
 	UINFO("Total added %d loop closures.", added);
+
+	progressDialog->appendText(tr("Total new loop closures detected=%1").arg(added));
+	progressDialog->setValue(progressDialog->maximumSteps());
 }
 
 void DatabaseViewer::refineAllNeighborLinks()
@@ -2134,7 +2224,7 @@ void DatabaseViewer::refineAllNeighborLinks()
 		{
 			int from = neighborLinks_[i].from();
 			int to = neighborLinks_[i].to();
-			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to(), true, false);
+			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to(), true);
 
 			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
 			progressDialog.incrementStep();
@@ -2159,7 +2249,7 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 		{
 			int from = loopLinks_[i].from();
 			int to = loopLinks_[i].to();
-			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), true, false);
+			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), true);
 
 			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
 			progressDialog.incrementStep();
@@ -4218,10 +4308,10 @@ void DatabaseViewer::refineConstraint()
 {
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
-	refineConstraint(from, to, false, true);
+	refineConstraint(from, to, false);
 }
 
-void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool updateGraph)
+void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 {
 	if(from == to)
 	{
@@ -4370,13 +4460,13 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent, bool update
 		{
 			linksRefined_.insert(std::make_pair(newLink.from(), newLink));
 
-			if(updateGraph)
+			if(!silent)
 			{
 				this->updateGraphView();
 			}
 		}
 
-		if(ui_->dockWidget_constraints->isVisible())
+		if(!silent && ui_->dockWidget_constraints->isVisible())
 		{
 			this->updateConstraintView(newLink, true);
 		}
@@ -4394,10 +4484,10 @@ void DatabaseViewer::addConstraint()
 {
 	int from = ids_.at(ui_->horizontalSlider_A->value());
 	int to = ids_.at(ui_->horizontalSlider_B->value());
-	addConstraint(from, to, false, true);
+	addConstraint(from, to, false);
 }
 
-bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGraph)
+bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 {
 	bool switchedIds = false;
 	if(from == to)
@@ -4421,24 +4511,40 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		UASSERT(!containsLink(linksRefined_, from, to));
 
 		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
+		Registration * reg = Registration::create(parameters);
 
 		Transform t;
 		RegistrationInfo info;
 
-		// Add sensor data to generate features
-		SensorData dataFrom;
-		dbDriver_->getNodeData(from, dataFrom);
-		dataFrom.uncompressData();
-		SensorData dataTo;
-		dbDriver_->getNodeData(to, dataTo);
-		dataTo.uncompressData();
+		std::list<int> ids;
+		ids.push_back(from);
+		ids.push_back(to);
+		std::list<Signature*> signatures;
+		dbDriver_->loadSignatures(ids, signatures);
+		if(signatures.size() != 2)
+		{
+			for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+			{
+				delete *iter;
+				return false;
+			}
+		}
+		Signature * fromS = *signatures.begin();
+		Signature * toS = *signatures.rbegin();
 
+		bool reextractVisualFeatures = uStr2Bool(parameters.at(Parameters::kRGBDLoopClosureReextractFeatures()));
+		if(reg->isScanRequired() ||
+			reg->isUserDataRequired() ||
+			reextractVisualFeatures)
+		{
+			// Add sensor data to generate features
+			dbDriver_->getNodeData(from, fromS->sensorData(), reextractVisualFeatures, reg->isScanRequired(), reg->isUserDataRequired(), false);
+			fromS->sensorData().uncompressData();
+			dbDriver_->getNodeData(to, toS->sensorData());
+			toS->sensorData().uncompressData();
+		}
 
-		UDEBUG("");
-		Registration * reg = Registration::create(parameters);
-		Signature fromS(dataFrom);
-		Signature toS(dataTo);
-		t = reg->computeTransformationMod(fromS, toS, Transform(), &info);
+		t = reg->computeTransformationMod(*fromS, *toS, Transform(), &info);
 		delete reg;
 		UDEBUG("");
 
@@ -4446,13 +4552,13 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		{
 			if(switchedIds)
 			{
-				ui_->graphicsView_A->setFeatures(toS.getWords(), dataTo.depthRaw());
-				ui_->graphicsView_B->setFeatures(fromS.getWords(), dataFrom.depthRaw());
+				ui_->graphicsView_A->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
+				ui_->graphicsView_B->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
 			}
 			else
 			{
-				ui_->graphicsView_A->setFeatures(fromS.getWords(), dataFrom.depthRaw());
-				ui_->graphicsView_B->setFeatures(toS.getWords(), dataTo.depthRaw());
+				ui_->graphicsView_A->setFeatures(fromS->getWords(), fromS->sensorData().depthRaw());
+				ui_->graphicsView_B->setFeatures(toS->getWords(), toS->sensorData().depthRaw());
 			}
 			updateWordsMatching();
 		}
@@ -4474,6 +4580,11 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			QMessageBox::warning(this,
 					tr("Add link"),
 					tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
+		}
+
+		for(std::list<Signature*>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+		{
+			delete *iter;
 		}
 	}
 	else if(containsLink(linksRemoved_, from, to))
@@ -4553,7 +4664,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 			{
 				UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
 			}
-			if(maxLinearLink)
+			if(maxAngularLink)
 			{
 				UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
 			}
@@ -4569,8 +4680,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 						  maxLinearLink->from(),
 						  maxLinearLink->to(),
 						  maxAngularError*180.0f/M_PI,
-						  maxAngularLink->from(),
-						  maxAngularLink->to(),
+						  maxAngularLink?maxAngularLink->from():0,
+						  maxAngularLink?maxAngularLink->to():0,
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 			}
@@ -4606,9 +4717,9 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent, bool updateGra
 		{
 			linksAdded_.insert(std::make_pair(newLink.from(), newLink));
 		}
-		updateLoopClosuresSlider(from, to);
-		if(updateGraph)
+		if(!silent)
 		{
+			updateLoopClosuresSlider(from, to);
 			this->updateGraphView();
 		}
 	}

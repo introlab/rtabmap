@@ -4164,6 +4164,21 @@ void MainWindow::editDatabase()
 	QString path = QFileDialog::getOpenFileName(this, tr("Edit database..."), _preferencesDialog->getWorkingDirectory(), tr("RTAB-Map database files (*.db)"));
 	if(!path.isEmpty())
 	{
+		{
+			// copy database settings to tmp ini file
+			QSettings dbSettingsIn(_preferencesDialog->getIniFilePath(), QSettings::IniFormat);
+			QSettings dbSettingsOut(_preferencesDialog->getTmpIniFilePath(), QSettings::IniFormat);
+			dbSettingsIn.beginGroup("DatabaseViewer");
+			dbSettingsOut.beginGroup("DatabaseViewer");
+			QStringList keys = dbSettingsIn.childKeys();
+			for(QStringList::iterator iter = keys.begin(); iter!=keys.end(); ++iter)
+			{
+				dbSettingsOut.setValue(*iter, dbSettingsIn.value(*iter));
+			}
+			dbSettingsIn.endGroup();
+			dbSettingsOut.endGroup();
+		}
+
 		DatabaseViewer * viewer = new DatabaseViewer(_preferencesDialog->getTmpIniFilePath(), this);
 		viewer->setWindowModality(Qt::WindowModal);
 		viewer->setAttribute(Qt::WA_DeleteOnClose, true);
@@ -4718,7 +4733,11 @@ void MainWindow::postProcessing()
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
 	Optimizer * optimizer = Optimizer::create(parameters);
 	bool optimizeFromGraphEnd =  Parameters::defaultRGBDOptimizeFromGraphEnd();
+	float optimizeMaxError =  Parameters::defaultRGBDOptimizeMaxError();
+	int optimizeIterations =  Parameters::defaultOptimizerIterations();
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
+	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), optimizeMaxError);
+	Parameters::parse(parameters, Parameters::kOptimizerIterations(), optimizeIterations);
 
 	bool warn = false;
 	int loopClosuresAdded = 0;
@@ -4801,9 +4820,6 @@ void MainWindow::postProcessing()
 								delete registration;
 								if(!transform.isNull())
 								{
-									UINFO("Added new loop closure between %d and %d.", from, to);
-									addedLinks.insert(from);
-									addedLinks.insert(to);
 									if(!transform.isIdentity())
 									{
 										// normalize variance
@@ -4812,10 +4828,124 @@ void MainWindow::postProcessing()
 										info.varianceLin = info.varianceLin>0.0f?info.varianceLin:0.0001f; // epsilon if exact transform
 										info.varianceAng = info.varianceAng>0.0f?info.varianceAng:0.0001f; // epsilon if exact transform
 									}
-									_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
-									++loopClosuresAdded;
-									_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
-									QApplication::processEvents();
+
+									//optimize the graph to see if the new constraint is globally valid
+									bool updateConstraint = true;
+									if(optimizeMaxError > 0.0f && optimizeIterations > 0)
+									{
+										int fromId = from;
+										int mapId = _currentMapIds.at(from);
+										// use first node of the map containing from
+										for(std::map<int, int>::iterator iter=_currentMapIds.begin(); iter!=_currentMapIds.end(); ++iter)
+										{
+											if(iter->second == mapId && odomPoses.find(iter->first)!=odomPoses.end())
+											{
+												fromId = iter->first;
+												break;
+											}
+										}
+										std::multimap<int, Link> linksIn = _currentLinksMap;
+										linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
+										const Link * maxLinearLink = 0;
+										const Link * maxAngularLink = 0;
+										float maxLinearError = 0.0f;
+										float maxAngularError = 0.0f;
+										std::map<int, Transform> poses;
+										std::multimap<int, Link> links;
+										UASSERT(odomPoses.find(fromId) != odomPoses.end());
+										UASSERT_MSG(odomPoses.find(from) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+										UASSERT_MSG(odomPoses.find(to) != odomPoses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+										optimizer->getConnectedGraph(fromId, odomPoses, linksIn, poses, links);
+										UASSERT(poses.find(fromId) != poses.end());
+										UASSERT_MSG(poses.find(from) != poses.end(), uFormat("id=%d poses=%d links=%d", from, (int)poses.size(), (int)links.size()).c_str());
+										UASSERT_MSG(poses.find(to) != poses.end(), uFormat("id=%d poses=%d links=%d", to, (int)poses.size(), (int)links.size()).c_str());
+										UASSERT(graph::findLink(links, from, to) != links.end());
+										poses = optimizer->optimize(fromId, poses, links);
+										std::string msg;
+										if(poses.size())
+										{
+											for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+											{
+												// ignore links with high variance
+												if(iter->second.transVariance() <= 1.0)
+												{
+													UASSERT(poses.find(iter->second.from())!=poses.end());
+													UASSERT(poses.find(iter->second.to())!=poses.end());
+													Transform t1 = poses.at(iter->second.from());
+													Transform t2 = poses.at(iter->second.to());
+													UASSERT(!t1.isNull() && !t2.isNull());
+													Transform t = t1.inverse()*t2;
+													float linearError = uMax3(
+															fabs(iter->second.transform().x() - t.x()),
+															fabs(iter->second.transform().y() - t.y()),
+															fabs(iter->second.transform().z() - t.z()));
+													Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+													Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+													float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+													if(linearError > maxLinearError)
+													{
+														maxLinearError = linearError;
+														maxLinearLink = &iter->second;
+													}
+													if(angularError > maxAngularError)
+													{
+														maxAngularError = angularError;
+														maxAngularLink = &iter->second;
+													}
+												}
+											}
+											if(maxLinearLink)
+											{
+												UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+											}
+											if(maxAngularLink)
+											{
+												UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+											}
+
+											if(maxLinearError > optimizeMaxError)
+											{
+												msg = uFormat("Rejecting edge %d->%d because "
+														  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
+														  "\"%s\" is %f m.",
+														  from,
+														  to,
+														  maxLinearError,
+														  maxLinearLink->from(),
+														  maxLinearLink->to(),
+														  maxAngularError*180.0f/M_PI,
+														  maxAngularLink?maxAngularLink->from():0,
+														  maxAngularLink?maxAngularLink->to():0,
+														  Parameters::kRGBDOptimizeMaxError().c_str(),
+														  optimizeMaxError);
+											}
+										}
+										else
+										{
+											msg = uFormat("Rejecting edge %d->%d because graph optimization has failed!",
+													  from,
+													  to);
+										}
+										if(!msg.empty())
+										{
+											UWARN("%s", msg.c_str());
+											_initProgressDialog->appendText(tr("%s").arg(msg.c_str()));
+											QApplication::processEvents();
+											updateConstraint = false;
+										}
+									}
+
+									if(updateConstraint)
+									{
+										UINFO("Added new loop closure between %d and %d.", from, to);
+										addedLinks.insert(from);
+										addedLinks.insert(to);
+
+										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
+										++loopClosuresAdded;
+										_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+										QApplication::processEvents();
+									}
 								}
 							}
 						}
@@ -4823,8 +4953,7 @@ void MainWindow::postProcessing()
 				}
 				_initProgressDialog->incrementStep();
 			}
-			_initProgressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!")
-					.arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
+			_initProgressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
 			if(addedLinks.size() == 0)
 			{
 				break;

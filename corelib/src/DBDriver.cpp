@@ -434,6 +434,15 @@ void DBDriver::updateOccupancyGrid(
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::updateDepthImage(int nodeId, const cv::Mat & image)
+{
+	_dbSafeAccessMutex.lock();
+	this->updateDepthImageQuery(
+			nodeId,
+			image);
+	_dbSafeAccessMutex.unlock();
+}
+
 void DBDriver::load(VWDictionary * dictionary) const
 {
 	_dbSafeAccessMutex.lock();
@@ -455,7 +464,6 @@ void DBDriver::loadSignatures(const std::list<int> & signIds,
 	UDEBUG("");
 	// look up in the trash before the database
 	std::list<int> ids = signIds;
-	std::list<Signature*>::iterator sIter;
 	bool valueFound = false;
 	_trashesMutex.lock();
 	{

@@ -518,6 +518,8 @@
     <addaction name="actionRegenerate_local_grid_maps"/>
     <addaction name="actionRegenerate_local_grid_maps_selected"/>
     <addaction name="separator"/>
+    <addaction name="actionEdit_depth_image"/>
+    <addaction name="separator"/>
     <addaction name="actionReset_all_changes"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
@@ -583,7 +585,7 @@
           <string>Odom Frame</string>
          </property>
          <property name="checked">
-          <bool>false</bool>
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -987,7 +989,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>2</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -995,7 +997,7 @@
           <x>0</x>
           <y>0</y>
           <width>324</width>
-          <height>188</height>
+          <height>207</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1461,8 +1463,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
-          <height>126</height>
+          <width>283</width>
+          <height>222</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1484,7 +1486,7 @@
             <double>0.100000000000000</double>
            </property>
            <property name="value">
-            <double>0.300000000000000</double>
+            <double>1.000000000000000</double>
            </property>
           </widget>
          </item>
@@ -1530,7 +1532,7 @@
             <number>100</number>
            </property>
            <property name="value">
-            <number>1</number>
+            <number>5</number>
            </property>
           </widget>
          </item>
@@ -1561,8 +1563,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>186</width>
-          <height>496</height>
+          <width>268</width>
+          <height>304</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1845,7 +1847,7 @@
           <string>Odom Frame</string>
          </property>
          <property name="checked">
-          <bool>false</bool>
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -2132,6 +2134,11 @@
   <action name="actionRegenerate_local_grid_maps_selected">
    <property name="text">
     <string>Regenerate local grid maps (selected)...</string>
+   </property>
+  </action>
+  <action name="actionEdit_depth_image">
+   <property name="text">
+    <string>Edit depth image...</string>
    </property>
   </action>
  </widget>
