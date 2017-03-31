@@ -136,6 +136,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_gainFull, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_textureBrightnessContrastRatioLow, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_textureBrightnessContrastRatioHigh, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_exposureFusion, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
@@ -281,6 +282,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value());
 	settings.setValue("mesh_textureBrightnessConstrastRatioLow", _ui->spinBox_textureBrightnessContrastRatioLow->value());
 	settings.setValue("mesh_textureBrightnessConstrastRatioHigh", _ui->spinBox_textureBrightnessContrastRatioHigh->value());
+	settings.setValue("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked());
 
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -376,6 +378,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
 	_ui->spinBox_textureBrightnessContrastRatioLow->setValue(settings.value("mesh_textureBrightnessConstrastRatioLow", _ui->spinBox_textureBrightnessContrastRatioLow->value()).toDouble());
 	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(settings.value("mesh_textureBrightnessConstrastRatioHigh", _ui->spinBox_textureBrightnessContrastRatioHigh->value()).toDouble());
+	_ui->checkBox_exposureFusion->setChecked(settings.value("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked()).toBool());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
@@ -468,6 +471,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
 	_ui->spinBox_textureBrightnessContrastRatioLow->setValue(0);
 	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(0);
+	_ui->checkBox_exposureFusion->setChecked(false);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
@@ -2777,7 +2781,37 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 				}
 				if(_ui->spinBox_textureBrightnessContrastRatioLow->value() > 0 || _ui->spinBox_textureBrightnessContrastRatioHigh->value() > 0)
 				{
-					globalTexture = util2d::brightnessAndContrastAuto(globalTexture, globalTextureMask, (float)_ui->spinBox_textureBrightnessContrastRatioLow->value(), (float)_ui->spinBox_textureBrightnessContrastRatioHigh->value());
+					if(_ui->checkBox_exposureFusion->isChecked())
+					{
+						std::vector<cv::Mat> images;
+						images.push_back(globalTexture);
+						if (_ui->spinBox_textureBrightnessContrastRatioLow->value() > 0)
+						{
+							images.push_back(util2d::brightnessAndContrastAuto(
+								globalTexture,
+								globalTextureMask,
+								(float)_ui->spinBox_textureBrightnessContrastRatioLow->value(),
+								0.0f));
+						}
+						if (_ui->spinBox_textureBrightnessContrastRatioHigh->value() > 0)
+						{
+							images.push_back(util2d::brightnessAndContrastAuto(
+								globalTexture,
+								globalTextureMask,
+								0.0f,
+								(float)_ui->spinBox_textureBrightnessContrastRatioHigh->value()));
+						}
+
+						globalTexture = util2d::exposureFusion(images);
+					}
+					else
+					{
+						globalTexture = util2d::brightnessAndContrastAuto(
+							globalTexture,
+							globalTextureMask,
+							(float)_ui->spinBox_textureBrightnessContrastRatioLow->value(),
+							(float)_ui->spinBox_textureBrightnessContrastRatioHigh->value());
+					}
 				}
 			}
 		}

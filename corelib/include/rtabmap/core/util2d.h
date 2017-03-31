@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/Parameters.h>
+#include <vector>
 
 namespace rtabmap
 {
@@ -147,6 +148,9 @@ cv::Mat RTABMAP_EXP brightnessAndContrastAuto(
 		const cv::Mat & mask,
 		float clipLowHistPercent=0,
 		float clipHighHistPercent=0);
+
+cv::Mat RTABMAP_EXP exposureFusion(
+	const std::vector<cv::Mat> & images);
 
 } // namespace util3d
 } // namespace rtabmap

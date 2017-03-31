@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1454</y>
-        <width>773</width>
-        <height>3289</height>
+        <y>-1293</y>
+        <width>777</width>
+        <height>2373</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1407,6 +1407,23 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </item>
                 </widget>
                </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize">
+                 <property name="text">
+                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QCheckBox" name="checkBox_cameraFilter">
+                 <property name="text">
+                  <string/>
+                 </property>
+                </widget>
+               </item>
                <item row="1" column="0">
                 <widget class="QComboBox" name="comboBox_meshingTextureSize">
                  <item>
@@ -1456,23 +1473,26 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </item>
                 </widget>
                </item>
-               <item row="1" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize">
+               <item row="5" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_5">
                  <property name="text">
-                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
+                  <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_2">
-                 <property name="text">
-                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
+               <item row="6" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
+                 <property name="suffix">
+                  <string> %</string>
                  </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>49</number>
                  </property>
                 </widget>
                </item>
@@ -1493,6 +1513,29 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                  <property name="maximum">
                   <number>99999</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
+                 <property name="suffix">
+                  <string> %</string>
+                 </property>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>49</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_2">
+                 <property name="text">
+                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
                  </property>
                 </widget>
                </item>
@@ -1518,36 +1561,6 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="4" column="0">
-                <widget class="QCheckBox" name="checkBox_cameraFilter">
-                 <property name="text">
-                  <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_5">
-                 <property name="text">
-                  <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="5" column="0">
-                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
-                 <property name="suffix">
-                  <string> %</string>
-                 </property>
-                 <property name="minimum">
-                  <number>0</number>
-                 </property>
-                 <property name="maximum">
-                  <number>49</number>
-                 </property>
-                </widget>
-               </item>
                <item row="6" column="1">
                 <widget class="QLabel" name="label_meshingTextureSize_6">
                  <property name="text">
@@ -1558,16 +1571,20 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="6" column="0">
-                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
-                 <property name="suffix">
-                  <string> %</string>
+               <item row="7" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_7">
+                 <property name="text">
+                  <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
                  </property>
-                 <property name="minimum">
-                  <number>0</number>
+                 <property name="wordWrap">
+                  <bool>true</bool>
                  </property>
-                 <property name="maximum">
-                  <number>49</number>
+                </widget>
+               </item>
+               <item row="7" column="0">
+                <widget class="QCheckBox" name="checkBox_exposureFusion">
+                 <property name="text">
+                  <string/>
                  </property>
                 </widget>
                </item>

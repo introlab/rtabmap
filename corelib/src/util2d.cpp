@@ -41,6 +41,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <Eigen/Core>
 
+#if CV_MAJOR_VERSION >= 3
+#include <opencv2/photo/photo.hpp>
+#endif
+
 namespace rtabmap
 {
 
@@ -1990,6 +1994,26 @@ cv::Mat brightnessAndContrastAuto(const cv::Mat &src, const cv::Mat & mask, floa
         cv::mixChannels(&src, 4, &dst,1, from_to, 1);
     }
     return dst;
+}
+
+cv::Mat exposureFusion(const std::vector<cv::Mat> & images)
+{
+	UASSERT(images.size());
+	cv::Mat fusion;
+#if CV_MAJOR_VERSION >= 3
+	cv::createMergeMertens()->process(images, fusion);
+	cv::Mat rgb8;
+	UASSERT(fusion.channels() == 3);
+	fusion.convertTo(rgb8, CV_8UC3, 255.0);
+	fusion = rgb8;
+#else
+	UWARN("Exposure fusion is only avaiable when rtabmap is built with OpenCV3.");
+	if (images.size())
+	{
+		fusion = images[0].clone();
+	}
+#endif
+	return fusion;
 }
 
 }
