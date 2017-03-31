@@ -117,6 +117,8 @@ void CreateSimpleCalibrationDialog::updateSaveStatus()
 	if(ui_->comboBox_advanced->currentIndex() == 0 &&
 	   ui_->doubleSpinBox_fx->value() > 0.0 &&
 	   ui_->doubleSpinBox_fy->value() > 0.0 &&
+	   ui_->spinBox_width->value() > 0 &&
+	   ui_->spinBox_height->value() > 0 &&
 	   (!ui_->checkBox_stereo->isChecked() || ui_->doubleSpinBox_baseline->value() != 0.0))
 	{
 		// basic
