@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1293</y>
-        <width>777</width>
-        <height>2373</height>
+        <y>-1929</y>
+        <width>773</width>
+        <height>3342</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1572,7 +1572,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                 </widget>
                </item>
                <item row="7" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_7">
+                <widget class="QLabel" name="label_exposureFusion">
                  <property name="text">
                   <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
                  </property>

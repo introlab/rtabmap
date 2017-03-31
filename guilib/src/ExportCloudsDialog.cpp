@@ -184,6 +184,12 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	_ui->label_meshDecimation->setEnabled(false);
 	_ui->label_meshMaxPolygons->setEnabled(false);
 #endif
+
+#if CV_MAJOR_VERSION < 3
+	_ui->checkBox_exposureFusion->setEnabled(false);
+	_ui->checkBox_exposureFusion->setChecked(false);
+	_ui->label_exposureFusion->setEnabled(false);
+#endif
 }
 
 ExportCloudsDialog::~ExportCloudsDialog()
@@ -378,7 +384,10 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
 	_ui->spinBox_textureBrightnessContrastRatioLow->setValue(settings.value("mesh_textureBrightnessConstrastRatioLow", _ui->spinBox_textureBrightnessContrastRatioLow->value()).toDouble());
 	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(settings.value("mesh_textureBrightnessConstrastRatioHigh", _ui->spinBox_textureBrightnessContrastRatioHigh->value()).toDouble());
-	_ui->checkBox_exposureFusion->setChecked(settings.value("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked()).toBool());
+	if(_ui->checkBox_exposureFusion->isEnabled())
+	{
+		_ui->checkBox_exposureFusion->setChecked(settings.value("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked()).toBool());
+	}
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
@@ -2781,7 +2790,7 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 				}
 				if(_ui->spinBox_textureBrightnessContrastRatioLow->value() > 0 || _ui->spinBox_textureBrightnessContrastRatioHigh->value() > 0)
 				{
-					if(_ui->checkBox_exposureFusion->isChecked())
+					if(_ui->checkBox_exposureFusion->isEnabled() && _ui->checkBox_exposureFusion->isChecked())
 					{
 						std::vector<cv::Mat> images;
 						images.push_back(globalTexture);
