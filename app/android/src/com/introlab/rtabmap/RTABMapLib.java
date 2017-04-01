@@ -75,6 +75,7 @@ public class RTABMapLib
     public static native void setAppendMode(boolean enabled);
     public static native void setDataRecorderMode(boolean enabled);
     public static native void setMaxCloudDepth(float value);
+    public static native void setMinCloudDepth(float value);
     public static native void setPointSize(float value);
     public static native void setLighting(boolean enabled);
     public static native void setBackfaceCulling(boolean enabled);

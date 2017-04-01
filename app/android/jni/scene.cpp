@@ -74,12 +74,14 @@ const std::string kPointCloudVertexShader =
 const std::string kPointCloudFragmentShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
-	"uniform float uGain;\n"
+	"uniform float uGainR;\n"
+	"uniform float uGainG;\n"
+	"uniform float uGainB;\n"
     "varying vec3 vColor;\n"
 	"varying float vLightWeighting;\n"
     "void main() {\n"
     "  vec4 textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
-	"  gl_FragColor = vec4(textureColor.rgb * uGain * vLightWeighting, textureColor.a);\n"
+	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, textureColor.a);\n"
     "}\n";
 
 const std::string kTextureMeshVertexShader =
@@ -120,12 +122,14 @@ const std::string kTextureMeshFragmentShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
 	"uniform sampler2D uTexture;\n"
-	"uniform float uGain;\n"
+	"uniform float uGainR;\n"
+	"uniform float uGainG;\n"
+	"uniform float uGainB;\n"
     "varying vec2 vTexCoord;\n"
 	"varying float vLightWeighting;\n"
     "void main() {\n"
     "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
-	"  gl_FragColor = vec4(textureColor.rgb * uGain * vLightWeighting, textureColor.a);\n"
+	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, textureColor.a);\n"
     "}\n";
 
 const std::string kGraphVertexShader =
@@ -624,8 +628,7 @@ void Scene::addCloud(
 			cloud_shader_program_,
 			texture_mesh_shader_program_,
 			cloud,
-			indices,
-			1.0f);
+			indices);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }
@@ -711,11 +714,11 @@ void Scene::updateMesh(int id, const Mesh & mesh)
 	}
 }
 
-void Scene::updateGain(int id, float gain)
+void Scene::updateGains(int id, float gainR, float gainG, float gainB)
 {
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
 	if(iter != pointClouds_.end())
 	{
-		iter->second->setGain(gain);
+		iter->second->setGains(gainR, gainG, gainB);
 	}
 }

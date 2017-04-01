@@ -468,9 +468,23 @@ void GainCompensator::apply(
 	}
 }
 
-double GainCompensator::getGain(int id) const
+double GainCompensator::getGain(int id, double * r, double * g, double * b) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
+
+	if(r)
+	{
+		*r = gains_(idToIndex_.at(id), 1);
+	}
+	if(g)
+	{
+		*g = gains_(idToIndex_.at(id), 2);
+	}
+	if(b)
+	{
+		*b = gains_(idToIndex_.at(id), 3);
+	}
+
 	return gains_(idToIndex_.at(id), 0);
 }
 

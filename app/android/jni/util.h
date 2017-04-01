@@ -151,9 +151,10 @@ public:
 		cloud(new pcl::PointCloud<pcl::PointXYZRGB>),
 		normals(new pcl::PointCloud<pcl::Normal>),
 		indices(new std::vector<int>),
-		visible(true),
-		gain(1.0f)
-	{}
+		visible(true)
+	{
+		gains[0] = gains[1] = gains[2] = 1.0f;
+	}
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud; // organized cloud
 	pcl::PointCloud<pcl::Normal>::Ptr normals;
@@ -163,7 +164,7 @@ public:
 	rtabmap::Transform pose; // in rtabmap coordinates
 	bool visible;
 	rtabmap::CameraModel cameraModel;
-	float gain;
+	double gains[3]; // RGB gains
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
     	std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > texCoords;
 #else

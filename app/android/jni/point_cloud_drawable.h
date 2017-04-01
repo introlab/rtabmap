@@ -46,7 +46,9 @@ class PointCloudDrawable {
 		  GLuint textureShaderProgram,
   		  const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		  const pcl::IndicesPtr & indices,
-		  float gain);
+		  float gainR = 1.0f,
+		  float gainG = 1.0f,
+		  float gainB = 1.0f);
   PointCloudDrawable(
   		  GLuint cloudShaderProgram,
   		  GLuint textureShaderProgram,
@@ -54,11 +56,11 @@ class PointCloudDrawable {
   virtual ~PointCloudDrawable();
 
   void updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes = std::vector<pcl::Vertices>());
-  void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices, float gain);
+  void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices);
   void updateMesh(const Mesh & mesh);
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
-  void setGain(float gain) {gain_ = gain;}
+  void setGains(float gainR, float gainG, float gainB) {gainR_ = gainR; gainG_ = gainG; gainB_ = gainB;}
   rtabmap::Transform getPose() const {return pose_;}
   const glm::mat4 & getPoseGl() const {return poseGl_;}
   bool isVisible() const {return visible_;}
@@ -114,7 +116,9 @@ class PointCloudDrawable {
   GLuint cloud_shader_program_;
   GLuint texture_shader_program_;
 
-  float gain_;
+  float gainR_;
+  float gainG_;
+  float gainB_;
 
   pcl::PointXYZ aabbMinModel_;
   pcl::PointXYZ aabbMaxModel_;

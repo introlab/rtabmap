@@ -30,6 +30,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         
         ((Preference)findPreference(getString(R.string.pref_key_density))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_density))).getEntry() + ") "+getString(R.string.pref_summary_density));
         ((Preference)findPreference(getString(R.string.pref_key_depth))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_depth))).getEntry() + ") "+getString(R.string.pref_summary_depth));
+        ((Preference)findPreference(getString(R.string.pref_key_min_depth))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_min_depth))).getEntry() + ") "+getString(R.string.pref_summary_min_depth));
         ((Preference)findPreference(getString(R.string.pref_key_point_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_point_size))).getEntry() + ") "+getString(R.string.pref_summary_point_size));
         ((Preference)findPreference(getString(R.string.pref_key_angle))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_angle))).getEntry() + ") "+getString(R.string.pref_summary_angle));
         ((Preference)findPreference(getString(R.string.pref_key_triangle))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_triangle))).getEntry() + ") "+getString(R.string.pref_summary_triangle));
@@ -65,7 +66,26 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
         if (pref instanceof ListPreference) {
         	if(key.compareTo(getString(R.string.pref_key_density))==0) pref.setSummary("("+ ((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_density));
-        	if(key.compareTo(getString(R.string.pref_key_depth))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_depth));
+        	if(key.compareTo(getString(R.string.pref_key_depth))==0) 
+    		{
+    			pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_depth));
+    			float maxDepth = Float.parseFloat(((ListPreference)pref).getValue());
+    			float minDepth = Float.parseFloat(((ListPreference)findPreference(getString(R.string.pref_key_min_depth))).getValue());
+    			if(maxDepth > 0.0f && maxDepth <= minDepth)
+    			{
+    				((ListPreference)findPreference(getString(R.string.pref_key_min_depth))).setValueIndex(0);
+    			}
+    		}
+        	if(key.compareTo(getString(R.string.pref_key_min_depth))==0) 
+        	{
+        		pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_min_depth));
+        		float maxDepth = Float.parseFloat(((ListPreference)findPreference(getString(R.string.pref_key_depth))).getValue());
+        		float minDepth = Float.parseFloat(((ListPreference)pref).getValue());
+        		if(minDepth >= maxDepth)
+        		{
+        			((ListPreference)findPreference(getString(R.string.pref_key_depth))).setValueIndex(0);
+        		}
+        	}
         	if(key.compareTo(getString(R.string.pref_key_point_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_point_size));
         	if(key.compareTo(getString(R.string.pref_key_angle))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_angle));
         	if(key.compareTo(getString(R.string.pref_key_triangle))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_triangle));

@@ -480,6 +480,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			if(!DISABLE_LOG) Log.d(TAG, "set exporting parameters...");
 			RTABMapLib.setCloudDensityLevel(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_density), getString(R.string.pref_default_density))));
 			RTABMapLib.setMaxCloudDepth(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_depth), getString(R.string.pref_default_depth))));
+			RTABMapLib.setMinCloudDepth(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_min_depth), getString(R.string.pref_default_min_depth))));
 			RTABMapLib.setPointSize(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_point_size), getString(R.string.pref_default_point_size))));
 			RTABMapLib.setMeshAngleTolerance(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_angle), getString(R.string.pref_default_angle))));
 			RTABMapLib.setMeshTriangleSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_triangle), getString(R.string.pref_default_triangle))));
@@ -1309,14 +1310,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		else if (itemId == R.id.gain_compensation_fast)
 		{		
 			mProgressDialog.setTitle("Post-Processing");
-			mProgressDialog.setMessage(String.format("Fast gain compensation..."));
+			mProgressDialog.setMessage(String.format("Adjusting Colors (Fast)..."));
 			mProgressDialog.show();
 			RTABMapLib.postProcessing(5);
 		}
 		else if (itemId == R.id.gain_compensation_full)
 		{		
 			mProgressDialog.setTitle("Post-Processing");
-			mProgressDialog.setMessage(String.format("Full gain compensation..."));
+			mProgressDialog.setMessage(String.format("Adjusting Colors (Full)..."));
 			mProgressDialog.show();
 			RTABMapLib.postProcessing(6);
 		}
