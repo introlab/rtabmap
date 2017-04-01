@@ -60,8 +60,11 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ### March 2017
 * New tutorial: [Multi-Session Mapping with RTAB-Map Tango](https://github.com/introlab/rtabmap/wiki/Multi-Session-Mapping-with-RTAB-Map-Tango)
+
     <a href="https://youtu.be/71eRxTc1DaU" target="_blank"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/youtube.jpg"
  alt="video" title="video"/></a>
+ 
+    <img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/cloudSessionColor.jpg" alt="Cloud" width="200"><img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Tutorials/MultiSessionTango/mesh.jpg" alt="Mesh" width="200">
 
 ### February 2017
 * **Version 0.11.14** : Visit the [release page](https://github.com/introlab/rtabmap/releases/0.11.14) for more info!
