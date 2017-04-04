@@ -3202,12 +3202,43 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 		// Save occupancy grid
-		stepOccupancyGrid(ppStmt,
+		stepOccupancyGridUpdate(ppStmt,
 				nodeId,
 				ground,
 				obstacles,
 				cellSize,
 				viewpoint);
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+void DBDriverSqlite3::updateDepthImageQuery(
+				int nodeId,
+				const cv::Mat & image) const
+{
+	UDEBUG("");
+	if(_ppDb)
+	{
+		std::string type;
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+
+		// Create query
+		std::string query = queryStepDepthUpdate();
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Save depth
+		stepDepthUpdate(ppStmt,
+				nodeId,
+				image);
 
 		// Finalize (delete) the statement
 		rc = sqlite3_finalize(ppStmt);
@@ -3493,6 +3524,59 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanInfo().maxPoints());
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
+
+	//step
+	rc=sqlite3_step(ppStmt);
+	UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	rc = sqlite3_reset(ppStmt);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+}
+
+std::string DBDriverSqlite3::queryStepDepthUpdate() const
+{
+	if(uStrNumCmp(_version, "0.10.0") < 0)
+	{
+		return "UPDATE Depth SET data=? WHERE id=?;";
+	}
+	else
+	{
+		return "UPDATE Data SET depth=? WHERE id=?;";
+	}
+}
+void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const cv::Mat & image) const
+{
+	if(!ppStmt)
+	{
+		UFATAL("");
+	}
+
+	int rc = SQLITE_OK;
+	int index = 1;
+
+	cv::Mat imageCompressed;
+	if(!image.empty() && (image.type()!=CV_8UC1 || image.rows > 1))
+	{
+		// compress
+		imageCompressed = compressImage2(image, ".png");
+	}
+	else
+	{
+		imageCompressed = image;
+	}
+	if(!imageCompressed.empty())
+	{
+		rc = sqlite3_bind_blob(ppStmt, index++, imageCompressed.data, (int)imageCompressed.cols, SQLITE_STATIC);
+	}
+	else
+	{
+		rc = sqlite3_bind_zeroblob(ppStmt, index++, 4);
+	}
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+	//id
+	rc = sqlite3_bind_int(ppStmt, index++, nodeId);
+	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 	//step
 	rc=sqlite3_step(ppStmt);
@@ -3951,7 +4035,7 @@ std::string DBDriverSqlite3::queryStepOccupancyGridUpdate() const
 	UASSERT(uStrNumCmp(_version, "0.11.10") >= 0);
 	return "UPDATE Data SET ground_cells=?, obstacle_cells=?, cell_size=?, view_point_x=?, view_point_y=?, view_point_z=? WHERE id=?;";
 }
-void DBDriverSqlite3::stepOccupancyGrid(sqlite3_stmt * ppStmt,
+void DBDriverSqlite3::stepOccupancyGridUpdate(sqlite3_stmt * ppStmt,
 		int nodeId,
 		const cv::Mat & ground,
 		const cv::Mat & obstacles,

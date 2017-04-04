@@ -753,11 +753,15 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth)
 
 	pcl::IndicesPtr obstacles(new std::vector<int>);
 
-	if(treeDepth > octomap->octree()->getTreeDepth())
+	if(treeDepth == 0 || treeDepth > octomap->octree()->getTreeDepth())
 	{
-		UWARN("Tree depth requested (%d) is deeper than the "
-			  "actual maximum tree depth of %d. Using maximum depth.",
-			  (int)treeDepth, (int)octomap->octree()->getTreeDepth());
+		if(treeDepth>0)
+		{
+			UWARN("Tree depth requested (%d) is deeper than the "
+				  "actual maximum tree depth of %d. Using maximum depth.",
+				  (int)treeDepth, (int)octomap->octree()->getTreeDepth());
+		}
+		treeDepth = octomap->octree()->getTreeDepth();
 	}
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get());

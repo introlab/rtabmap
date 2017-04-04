@@ -47,6 +47,7 @@ class QAbstractButton;
 namespace rtabmap {
 class ProgressDialog;
 class GainCompensator;
+class DBDriver;
 
 class ExportCloudsDialog : public QDialog
 {
@@ -59,6 +60,8 @@ public:
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
 	void loadSettings(QSettings & settings, const QString & group = "");
+
+	void setDBDriver(const DBDriver * dbDriver) {_dbDriver = dbDriver;}
 
 	void exportClouds(
 			const std::map<int, Transform> & poses,
@@ -124,6 +127,7 @@ private:
 	QString _workingDirectory;
 	bool _canceled;
 	GainCompensator * _compensator;
+	const DBDriver * _dbDriver;
 };
 
 }

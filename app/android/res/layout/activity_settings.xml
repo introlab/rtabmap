@@ -16,6 +16,13 @@
    			android:entries="@array/pref_depth_keys"
    			android:entryValues="@array/pref_depth_values"
    			android:defaultValue="@string/pref_default_depth"/>
+        <ListPreference 
+            android:key="@string/pref_key_min_depth"
+    		android:title="@string/pref_title_min_depth"
+    		android:summary="@string/pref_summary_min_depth"
+   			android:entries="@array/pref_min_depth_keys"
+   			android:entryValues="@array/pref_min_depth_values"
+   			android:defaultValue="@string/pref_default_min_depth"/>
         <ListPreference
             android:key="@string/pref_key_point_size"
     		android:title="@string/pref_title_point_size"

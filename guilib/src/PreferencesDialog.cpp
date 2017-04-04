@@ -772,7 +772,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_localSpacePathOdomPosesUsed->setObjectName(Parameters::kRGBDProximityPathRawPosesUsed().c_str());
 	_ui->rgdb_localImmunizationRatio->setObjectName(Parameters::kRGBDLocalImmunizationRatio().c_str());
 	_ui->loopClosure_reextract->setObjectName(Parameters::kRGBDLoopClosureReextractFeatures().c_str());
-	_ui->checkbox_rgbd_createOccupancyGRid->setObjectName(Parameters::kRGBDCreateOccupancyGrid().c_str());
+	_ui->checkbox_rgbd_createOccupancyGrid->setObjectName(Parameters::kRGBDCreateOccupancyGrid().c_str());
 
 	// Registration
 	_ui->loopClosure_bowVarianceFromInliersCount->setObjectName(Parameters::kRegVarianceFromInliersCount().c_str());
@@ -2571,6 +2571,13 @@ void PreferencesDialog::saveWindowGeometry(const QWidget * window)
 		settings.setValue("geometry", window->saveGeometry());
 		settings.endGroup(); // "windowName"
 		settings.endGroup(); // rtabmap
+
+		QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+		settingsTmp.beginGroup("Gui");
+		settingsTmp.beginGroup(window->objectName());
+		settingsTmp.setValue("geometry", window->saveGeometry());
+		settingsTmp.endGroup(); // "windowName"
+		settingsTmp.endGroup(); // rtabmap
 	}
 }
 
@@ -2589,6 +2596,13 @@ void PreferencesDialog::loadWindowGeometry(QWidget * window)
 		}
 		settings.endGroup(); // "windowName"
 		settings.endGroup(); // rtabmap
+
+		QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+		settingsTmp.beginGroup("Gui");
+		settingsTmp.beginGroup(window->objectName());
+		settingsTmp.setValue("geometry", window->saveGeometry());
+		settingsTmp.endGroup(); // "windowName"
+		settingsTmp.endGroup(); // rtabmap
 	}
 }
 
@@ -2606,6 +2620,15 @@ void PreferencesDialog::saveMainWindowState(const QMainWindow * mainWindow)
 		settings.setValue("status_bar", mainWindow->statusBar()->isVisible());
 		settings.endGroup(); // "MainWindow"
 		settings.endGroup(); // rtabmap
+
+		QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+		settingsTmp.beginGroup("Gui");
+		settingsTmp.beginGroup(mainWindow->objectName());
+		settingsTmp.setValue("state", mainWindow->saveState());
+		settingsTmp.setValue("maximized", mainWindow->isMaximized());
+		settingsTmp.setValue("status_bar", mainWindow->statusBar()->isVisible());
+		settingsTmp.endGroup(); // "MainWindow"
+		settingsTmp.endGroup(); // rtabmap
 	}
 }
 
@@ -2629,6 +2652,15 @@ void PreferencesDialog::loadMainWindowState(QMainWindow * mainWindow,  bool & ma
 		mainWindow->statusBar()->setVisible(statusBarShown);
 		settings.endGroup(); // "MainWindow"
 		settings.endGroup(); // rtabmap
+
+		QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+		settingsTmp.beginGroup("Gui");
+		settingsTmp.beginGroup(mainWindow->objectName());
+		settingsTmp.setValue("state", mainWindow->saveState());
+		settingsTmp.setValue("maximized", maximized);
+		settingsTmp.setValue("status_bar", statusBarShown);
+		settingsTmp.endGroup(); // "MainWindow"
+		settingsTmp.endGroup(); // rtabmap
 	}
 }
 
@@ -2639,6 +2671,10 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		QSettings settings(getIniFilePath(), QSettings::IniFormat);
 		settings.beginGroup("Gui");
 		settings.beginGroup(widget->objectName());
+
+		QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+		settingsTmp.beginGroup("Gui");
+		settingsTmp.beginGroup(widget->objectName());
 
 		const CloudViewer * cloudViewer = qobject_cast<const CloudViewer*>(widget);
 		const ImageView * imageView = qobject_cast<const ImageView*>(widget);
@@ -2652,34 +2688,42 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		if(cloudViewer)
 		{
 			cloudViewer->saveSettings(settings);
+			cloudViewer->saveSettings(settingsTmp);
 		}
 		else if(imageView)
 		{
 			imageView->saveSettings(settings);
+			imageView->saveSettings(settingsTmp);
 		}
 		else if(exportCloudsDialog)
 		{
 			exportCloudsDialog->saveSettings(settings);
+			exportCloudsDialog->saveSettings(settingsTmp);
 		}
 		else if(exportScansDialog)
 		{
 			exportScansDialog->saveSettings(settings);
+			exportScansDialog->saveSettings(settingsTmp);
 		}
 		else if(postProcessingDialog)
 		{
 			postProcessingDialog->saveSettings(settings);
+			postProcessingDialog->saveSettings(settingsTmp);
 		}
 		else if(graphViewer)
 		{
 			graphViewer->saveSettings(settings);
+			graphViewer->saveSettings(settingsTmp);
 		}
 		else if(calibrationDialog)
 		{
 			calibrationDialog->saveSettings(settings);
+			calibrationDialog->saveSettings(settingsTmp);
 		}
 		else if(depthCalibrationDialog)
 		{
 			depthCalibrationDialog->saveSettings(settings);
+			depthCalibrationDialog->saveSettings(settingsTmp);
 		}
 		else
 		{
@@ -2688,6 +2732,8 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 
 		settings.endGroup(); // "name"
 		settings.endGroup(); // Gui
+		settingsTmp.endGroup();
+		settingsTmp.endGroup();
 	}
 }
 
@@ -2699,6 +2745,10 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		QSettings settings(getIniFilePath(), QSettings::IniFormat);
 		settings.beginGroup("Gui");
 		settings.beginGroup(widget->objectName());
+
+		QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+		settingsTmp.beginGroup("Gui");
+		settingsTmp.beginGroup(widget->objectName());
 
 		CloudViewer * cloudViewer = qobject_cast<CloudViewer*>(widget);
 		ImageView * imageView = qobject_cast<ImageView*>(widget);
@@ -2712,34 +2762,42 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		if(cloudViewer)
 		{
 			cloudViewer->loadSettings(settings);
+			cloudViewer->saveSettings(settingsTmp);
 		}
 		else if(imageView)
 		{
 			imageView->loadSettings(settings);
+			imageView->saveSettings(settingsTmp);
 		}
 		else if(exportCloudsDialog)
 		{
 			exportCloudsDialog->loadSettings(settings);
+			exportCloudsDialog->saveSettings(settingsTmp);
 		}
 		else if(exportScansDialog)
 		{
 			exportScansDialog->loadSettings(settings);
+			exportScansDialog->saveSettings(settingsTmp);
 		}
 		else if(postProcessingDialog)
 		{
 			postProcessingDialog->loadSettings(settings);
+			postProcessingDialog->saveSettings(settingsTmp);
 		}
 		else if(graphViewer)
 		{
 			graphViewer->loadSettings(settings);
+			graphViewer->saveSettings(settingsTmp);
 		}
 		else if(calibrationDialog)
 		{
 			calibrationDialog->loadSettings(settings);
+			calibrationDialog->saveSettings(settingsTmp);
 		}
 		else if(depthCalibrationDialog)
 		{
 			depthCalibrationDialog->loadSettings(settings);
+			depthCalibrationDialog->saveSettings(settingsTmp);
 		}
 		else
 		{
@@ -2748,6 +2806,8 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 
 		settings.endGroup(); //"name"
 		settings.endGroup(); // Gui
+		settingsTmp.endGroup(); //"name"
+		settingsTmp.endGroup(); // Gui
 	}
 }
 
@@ -2760,6 +2820,13 @@ void PreferencesDialog::saveCustomConfig(const QString & section, const QString 
 	settings.setValue(key, value);
 	settings.endGroup(); // "section"
 	settings.endGroup(); // rtabmap
+
+	QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+	settingsTmp.beginGroup("Gui");
+	settingsTmp.beginGroup(section);
+	settingsTmp.setValue(key, value);
+	settingsTmp.endGroup(); // "section"
+	settingsTmp.endGroup(); // rtabmap
 }
 
 QString PreferencesDialog::loadCustomConfig(const QString & section, const QString & key)
@@ -2771,6 +2838,14 @@ QString PreferencesDialog::loadCustomConfig(const QString & section, const QStri
 	value = settings.value(key, QString()).toString();
 	settings.endGroup(); // "section"
 	settings.endGroup(); // rtabmap
+
+	QSettings settingsTmp(getTmpIniFilePath(), QSettings::IniFormat);
+	settingsTmp.beginGroup("Gui");
+	settingsTmp.beginGroup(section);
+	settingsTmp.setValue(key, value);
+	settingsTmp.endGroup(); // "section"
+	settingsTmp.endGroup(); // rtabmap
+
 	return value;
 }
 
@@ -2855,6 +2930,11 @@ void PreferencesDialog::selectSourceDriver(Src src)
 	}
 }
 
+bool sortCallback(const std::string & a, const std::string & b)
+{
+	return uStrNumCmp(a,b) < 0;
+}
+
 void PreferencesDialog::selectSourceDatabase()
 {
 	QString dir = _ui->source_database_lineEdit_path->text();
@@ -2883,6 +2963,21 @@ void PreferencesDialog::selectSourceDatabase()
 				_ui->general_spinBox_imagesBufferSize->setValue(0);
 			}
 		}
+
+		if(paths.size() > 1)
+		{
+			std::vector<std::string> vFileNames(paths.size());
+			for(int i=0; i<paths.size(); ++i)
+			{
+				vFileNames[i] = paths[i].toStdString();
+			}
+			std::sort(vFileNames.begin(), vFileNames.end(), sortCallback);
+			for(int i=0; i<paths.size(); ++i)
+			{
+				paths[i] = vFileNames[i].c_str();
+			}
+		}
+
 		_ui->source_database_lineEdit_path->setText(paths.size()==1?paths.front():paths.join(";"));
 		_ui->source_spinBox_databaseStartPos->setValue(0);
 		_ui->source_spinBox_database_cameraIndex->setValue(-1);

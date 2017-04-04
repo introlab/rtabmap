@@ -239,8 +239,10 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 
 		// Now load the dictionary if we have a connection
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit("Loading dictionary..."));
+		UDEBUG("Loading dictionary...");
 		if(loadAllNodesInWM)
 		{
+			UDEBUG("load all referenced words in working memory");
 			// load all referenced words in working memory
 			std::set<int> wordIds;
 			const std::map<int, Signature *> & signatures = this->getSignatures();
@@ -248,7 +250,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			{
 				const std::multimap<int, cv::KeyPoint> & words = i->second->getWords();
 				std::list<int> keys = uUniqueKeys(words);
-				for(std::list<int>::iterator iter=keys.begin(); iter!=keys.end();)
+				for(std::list<int>::iterator iter=keys.begin(); iter!=keys.end(); ++iter)
 				{
 					if(*iter > 0)
 					{
@@ -256,6 +258,8 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 					}
 				}
 			}
+
+			UDEBUG("load words %d", (int)wordIds.size());
 			if(wordIds.size())
 			{
 				std::list<VisualWord*> words;
@@ -272,6 +276,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		}
 		else
 		{
+			UDEBUG("load words");
 			// load the last dictionary
 			_dbDriver->load(_vwd);
 		}

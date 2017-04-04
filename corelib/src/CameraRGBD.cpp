@@ -1640,7 +1640,7 @@ SensorData CameraFreenect2::captureImage(CameraInfo * info)
 				{
 					//rectify
 					rgb = stereoModel_.left().rectifyImage(rgb);
-					depth = stereoModel_.left().rectifyImage(depth);
+					depth = stereoModel_.left().rectifyDepth(depth);
 					fx = stereoModel_.left().fx();
 					fy = stereoModel_.left().fy();
 					cx = stereoModel_.left().cx();

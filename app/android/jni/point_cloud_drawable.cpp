@@ -44,35 +44,41 @@ PointCloudDrawable::PointCloudDrawable(
 		GLuint textureShaderProgram,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		float gain) :
-		vertex_buffers_(0),
-		textures_(0),
-		nPoints_(0),
-		pose_(rtabmap::Transform::getIdentity()),
-		poseGl_(1.0f),
-		visible_(true),
-		hasNormals_(false),
-		cloud_shader_program_(cloudShaderProgram),
-		texture_shader_program_(textureShaderProgram),
-		gain_(1.0f)
+		float gainR,
+		float gainG,
+		float gainB) :
+				vertex_buffers_(0),
+				textures_(0),
+				nPoints_(0),
+				pose_(rtabmap::Transform::getIdentity()),
+				poseGl_(1.0f),
+				visible_(true),
+				hasNormals_(false),
+				cloud_shader_program_(cloudShaderProgram),
+				texture_shader_program_(textureShaderProgram),
+				gainR_(gainR),
+				gainG_(gainG),
+				gainB_(gainB)
 {
-	updateCloud(cloud, indices, gain);
+	updateCloud(cloud, indices);
 }
 
 PointCloudDrawable::PointCloudDrawable(
 		GLuint cloudShaderProgram,
 		GLuint textureShaderProgram,
 		const Mesh & mesh) :
-		vertex_buffers_(0),
-		textures_(0),
-		nPoints_(0),
-		pose_(rtabmap::Transform::getIdentity()),
-		poseGl_(1.0f),
-		visible_(true),
-		hasNormals_(false),
-		cloud_shader_program_(cloudShaderProgram),
-		texture_shader_program_(textureShaderProgram),
-		gain_(1.0f)
+				vertex_buffers_(0),
+				textures_(0),
+				nPoints_(0),
+				pose_(rtabmap::Transform::getIdentity()),
+				poseGl_(1.0f),
+				visible_(true),
+				hasNormals_(false),
+				cloud_shader_program_(cloudShaderProgram),
+				texture_shader_program_(textureShaderProgram),
+				gainR_(1.0f),
+				gainG_(1.0f),
+				gainB_(1.0f)
 {
 	updateMesh(mesh);
 }
@@ -132,13 +138,12 @@ void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polyg
 	}
 }
 
-void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices, float gain)
+void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices)
 {
 	UASSERT(cloud.get() && !cloud->empty());
 	nPoints_ = 0;
 	polygons_.clear();
 	polygonsLowRes_.clear();
-	gain_ = gain;
 	verticesLowRes_.clear();
 	verticesLowLowRes_.clear();
 	aabbMinModel_ = aabbMinWorld_ = pcl::PointXYZ(1000,1000,1000);
@@ -264,7 +269,9 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 		vertex_buffers_ = 0;
 	}
 
-	gain_ = mesh.gain;
+	gainR_ = mesh.gains[0];
+	gainG_ = mesh.gains[1];
+	gainB_ = mesh.gains[2];
 
 	bool textureUpdate = false;
 	if(!mesh.texture.empty() && mesh.texture.type() == CV_8UC3)
@@ -513,14 +520,16 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 		glBindTexture(GL_TEXTURE_2D, textures_);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 		cv::Mat rgbImage;
-		cv::cvtColor(mesh.texture, rgbImage, CV_BGR2RGB);
+		cv::cvtColor(mesh.texture, rgbImage, CV_BGR2RGBA);
 
-		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 		//glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 		//glPixelStorei(GL_UNPACK_SKIP_PIXELS, 0);
 		//glPixelStorei(GL_UNPACK_SKIP_ROWS, 0);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, rgbImage.cols, rgbImage.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, rgbImage.data);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, rgbImage.cols, rgbImage.rows, 0, GL_RGBA, GL_UNSIGNED_BYTE, rgbImage.data);
 
 		GLint error = glGetError();
 		if(error != GL_NO_ERROR)
@@ -636,8 +645,12 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			GLuint texture_handle = glGetUniformLocation(texture_shader_program_, "uTexture");
 			glUniform1i(texture_handle, 0);
 
-			GLuint gain_handle = glGetUniformLocation(texture_shader_program_, "uGain");
-			glUniform1f(gain_handle, gain_);
+			GLuint gainR_handle = glGetUniformLocation(texture_shader_program_, "uGainR");
+			GLuint gainG_handle = glGetUniformLocation(texture_shader_program_, "uGainG");
+			GLuint gainB_handle = glGetUniformLocation(texture_shader_program_, "uGainB");
+			glUniform1f(gainR_handle, gainR_);
+			glUniform1f(gainG_handle, gainG_);
+			glUniform1f(gainB_handle, gainB_);
 
 			GLint attribute_vertex = glGetAttribLocation(texture_shader_program_, "aVertex");
 			GLint attribute_texture = glGetAttribLocation(texture_shader_program_, "aTexCoord");
@@ -705,8 +718,12 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			GLuint point_size_handle_ = glGetUniformLocation(cloud_shader_program_, "uPointSize");
 			glUniform1f(point_size_handle_, pointSize);
 
-			GLuint gain_handle = glGetUniformLocation(cloud_shader_program_, "uGain");
-			glUniform1f(gain_handle, gain_);
+			GLuint gainR_handle = glGetUniformLocation(cloud_shader_program_, "uGainR");
+			GLuint gainG_handle = glGetUniformLocation(cloud_shader_program_, "uGainG");
+			GLuint gainB_handle = glGetUniformLocation(cloud_shader_program_, "uGainB");
+			glUniform1f(gainR_handle, gainR_);
+			glUniform1f(gainG_handle, gainG_);
+			glUniform1f(gainB_handle, gainB_);
 
 			GLint attribute_vertex = glGetAttribLocation(cloud_shader_program_, "aVertex");
 			GLint attribute_color = glGetAttribLocation(cloud_shader_program_, "aColor");

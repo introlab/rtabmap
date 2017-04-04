@@ -141,6 +141,10 @@ void feedImpl(
 	cv::Mat_<int> N(num_images, num_images); N.setTo(0);
 	cv::Mat_<double> I(num_images, num_images); I.setTo(0);
 
+	cv::Mat_<double> IR(num_images, num_images); IR.setTo(0);
+	cv::Mat_<double> IG(num_images, num_images); IG.setTo(0);
+	cv::Mat_<double> IB(num_images, num_images); IB.setTo(0);
+
 	// make id to index map
 	idToIndex.clear();
 	std::vector<int> indexToId(clouds.size());
@@ -264,14 +268,17 @@ void feedImpl(
 					}
 
 					UDEBUG("%d->%d: correspondences = %d", iter->second.from(), iter->second.to(), (int)correspondences.size());
-					if((minOverlap <= 0.0 && correspondences.size()) ||
+					if(correspondences.size() && (minOverlap <= 0.0 ||
 							(double(correspondences.size()) / double(clouds.at(iter->second.from())->size()) >= minOverlap &&
-							 double(correspondences.size()) / double(clouds.at(iter->second.to())->size()) >= minOverlap))
+							 double(correspondences.size()) / double(clouds.at(iter->second.to())->size()) >= minOverlap)))
 					{
 						int i = idToIndex.at(iter->second.from());
 						int j = idToIndex.at(iter->second.to());
 
 						double Isum1 = 0, Isum2 = 0;
+						double IRsum1 = 0, IRsum2 = 0;
+						double IGsum1 = 0, IGsum2 = 0;
+						double IBsum1 = 0, IBsum2 = 0;
 						for (unsigned int c = 0; c < correspondences.size(); ++c)
 						{
 							const PointT & pt1 = cloudFrom->at(correspondences.at(c).index_match);
@@ -279,10 +286,24 @@ void feedImpl(
 
 							Isum1 += std::sqrt(static_cast<double>(sqr(pt1.r) + sqr(pt1.g) + sqr(pt1.b)));
 							Isum2 += std::sqrt(static_cast<double>(sqr(pt2.r) + sqr(pt2.g) + sqr(pt2.b)));
+
+							IRsum1 += static_cast<double>(pt1.r);
+							IRsum2 += static_cast<double>(pt2.r);
+							IGsum1 += static_cast<double>(pt1.g);
+							IGsum2 += static_cast<double>(pt2.g);
+							IBsum1 += static_cast<double>(pt1.b);
+							IBsum2 += static_cast<double>(pt2.b);
 						}
 						N(i, j) = N(j, i) = correspondences.size();
 						I(i, j) = Isum1 / N(i, j);
 						I(j, i) = Isum2 / N(i, j);
+
+						IR(i, j) = IRsum1 / N(i, j);
+						IR(j, i) = IRsum2 / N(i, j);
+						IG(i, j) = IGsum1 / N(i, j);
+						IG(j, i) = IGsum2 / N(i, j);
+						IB(i, j) = IBsum1 / N(i, j);
+						IB(j, i) = IBsum2 / N(i, j);
 					}
 				}
 			}
@@ -291,25 +312,52 @@ void feedImpl(
 
 	cv::Mat_<double> A(num_images, num_images); A.setTo(0);
 	cv::Mat_<double> b(num_images, 1); b.setTo(0);
+	cv::Mat_<double> AR(num_images, num_images); AR.setTo(0);
+	cv::Mat_<double> AG(num_images, num_images); AG.setTo(0);
+	cv::Mat_<double> AB(num_images, num_images); AB.setTo(0);
 	for (int i = 0; i < num_images; ++i)
 	{
 		for (int j = 0; j < num_images; ++j)
 		{
 			b(i, 0) += beta * N(i, j);
 			A(i, i) += beta * N(i, j);
+			AR(i, i) += beta * N(i, j);
+			AG(i, i) += beta * N(i, j);
+			AB(i, i) += beta * N(i, j);
 			if (j == i) continue;
 			A(i, i) += 2 * alpha * I(i, j) * I(i, j) * N(i, j);
 			A(i, j) -= 2 * alpha * I(i, j) * I(j, i) * N(i, j);
+
+			AR(i, i) += 2 * alpha * IR(i, j) * IR(i, j) * N(i, j);
+			AR(i, j) -= 2 * alpha * IR(i, j) * IR(j, i) * N(i, j);
+
+			AG(i, i) += 2 * alpha * IG(i, j) * IG(i, j) * N(i, j);
+			AG(i, j) -= 2 * alpha * IG(i, j) * IG(j, i) * N(i, j);
+
+			AB(i, i) += 2 * alpha * IB(i, j) * IB(i, j) * N(i, j);
+			AB(i, j) -= 2 * alpha * IB(i, j) * IB(j, i) * N(i, j);
 		}
 	}
 
-	gains = cv::Mat_<double>();
-	cv::solve(A, b, gains);
+	cv::Mat_<double> gainsGray, gainsR, gainsG, gainsB;
+	cv::solve(A, b, gainsGray);
+
+
+	cv::solve(AR, b, gainsR);
+	cv::solve(AG, b, gainsG);
+	cv::solve(AB, b, gainsB);
+
+	gains = cv::Mat_<double>(gainsGray.rows, 4);
+	gainsGray.copyTo(gains.col(0));
+	gainsR.copyTo(gains.col(1));
+	gainsG.copyTo(gains.col(2));
+	gainsB.copyTo(gains.col(3));
+
 	if(ULogger::kInfo)
 	{
 		for(int i=0; i<gains.rows; ++i)
 		{
-			UINFO("Gain index=%d (id=%d) = %f", i, indexToId[i], gains(i, 0));
+			UINFO("Gain index=%d (id=%d) = %f (%f,%f,%f)", i, indexToId[i], gains(i, 0), gains(i, 1), gains(i, 2), gains(i, 3));
 		}
 	}
 }
@@ -349,16 +397,18 @@ void applyImpl(
 		const pcl::IndicesPtr & indices,
 		const cv::Mat_<double> & gains)
 {
-	double gain = gains(index, 0);
-	UDEBUG("index=%d gain=%f", index, gain);
+	double gainR = gains(index, 1);
+	double gainG = gains(index, 2);
+	double gainB = gains(index, 3);
+	UDEBUG("index=%d gain=%f (%f,%f,%f)", index, gains(index, 0), gainR, gainG, gainB);
 	if(indices->size())
 	{
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
 			PointT & pt = cloud->at(indices->at(i));
-			pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gain)));
-			pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gain)));
-			pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gain)));
+			pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gainR)));
+			pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gainG)));
+			pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gainB)));
 		}
 	}
 	else
@@ -366,9 +416,9 @@ void applyImpl(
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
 			PointT & pt = cloud->at(i);
-			pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gain)));
-			pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gain)));
-			pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gain)));
+			pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gainR)));
+			pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gainG)));
+			pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gainB)));
 		}
 	}
 }
@@ -402,12 +452,39 @@ void GainCompensator::apply(
 		cv::Mat & image) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
-	cv::multiply(image, gains_(idToIndex_.at(id), 0), image);
+	if(image.channels() == 1)
+	{
+		cv::multiply(image, gains_(idToIndex_.at(id), 0), image);
+	}
+	else if(image.channels()>=3)
+	{
+		std::vector<cv::Mat> channels;
+		cv::split(image, channels);
+		// assuming BGR
+		cv::multiply(channels[0], gains_(idToIndex_.at(id), 3), channels[0]);
+		cv::multiply(channels[1], gains_(idToIndex_.at(id), 2), channels[1]);
+		cv::multiply(channels[2], gains_(idToIndex_.at(id), 1), channels[2]);
+		cv::merge(channels, image);
+	}
 }
 
-double GainCompensator::getGain(int id) const
+double GainCompensator::getGain(int id, double * r, double * g, double * b) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
+
+	if(r)
+	{
+		*r = gains_(idToIndex_.at(id), 1);
+	}
+	if(g)
+	{
+		*g = gains_(idToIndex_.at(id), 2);
+	}
+	if(b)
+	{
+		*b = gains_(idToIndex_.at(id), 3);
+	}
+
 	return gains_(idToIndex_.at(id), 0);
 }
 

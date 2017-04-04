@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-182</y>
+            <y>0</y>
             <width>673</width>
             <height>2718</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>8</number>
+                <number>15</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -7750,6 +7750,55 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        <string>Map Update</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_47" columnstretch="0,1">
+                       <item row="7" column="1">
+                        <widget class="QLabel" name="label_space2">
+                         <property name="text">
+                          <string>Local radius for nodes selection in the local map. This parameter is used in some approaches of the sub-panels.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="3" column="1">
+                        <widget class="QLabel" name="label_scanMatching">
+                         <property name="text">
+                          <string>Neighbor link refining. When a new node is added to the graph, the transformation of its neighbor link (odometry) with the previous node is refined using ICP registration approach (laser scans required).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_scanMatching_3">
+                         <property name="text">
+                          <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="0">
+                        <widget class="QDoubleSpinBox" name="localDetection_radius">
+                         <property name="suffix">
+                          <string> m</string>
+                         </property>
+                         <property name="value">
+                          <double>1.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="1" column="1">
                         <widget class="QLabel" name="label_152">
                          <property name="text">
@@ -7763,20 +7812,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="1">
-                        <widget class="QLabel" name="label_space2">
-                         <property name="text">
-                          <string>Local radius for nodes selection in the local map. This parameter is used in some approaches of the sub-panels.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="0">
+                       <item row="6" column="0">
                         <widget class="QDoubleSpinBox" name="rgdb_localImmunizationRatio">
                          <property name="suffix">
                           <string/>
@@ -7876,46 +7912,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_scanMatching">
-                         <property name="text">
-                          <string>Neighbor link refining. When a new node is added to the graph, the transformation of its neighbor link (odometry) with the previous node is refined using ICP registration approach (laser scans required).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="1">
-                        <widget class="QLabel" name="label_scanMatching_3">
-                         <property name="text">
-                          <string>Maximum local locations retrieved (0=disabled) near the current pose in the local map or on the current planned path (those on the planned path have priority).</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="6" column="0">
+                       <item row="5" column="0">
                         <widget class="QSpinBox" name="spinBox_maxLocalLocationsRetrieved"/>
                        </item>
-                       <item row="8" column="0">
-                        <widget class="QDoubleSpinBox" name="localDetection_radius">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="value">
-                          <double>1.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="7" column="1">
+                       <item row="6" column="1">
                         <widget class="QLabel" name="label_scanMatching_5">
                          <property name="text">
                           <string>Ratio of working memory for which local nodes are immunized from transfer.</string>
@@ -7943,26 +7943,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                        </item>
                        <item row="4" column="0">
                         <widget class="QCheckBox" name="loopClosure_reextract">
-                         <property name="text">
-                          <string/>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="1">
-                        <widget class="QLabel" name="label_scanMatching_10">
-                         <property name="text">
-                          <string>Create local occupancy grid maps. See &quot;Occupancy Grid&quot; panel for parameters.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="0">
-                        <widget class="QCheckBox" name="checkbox_rgbd_createOccupancyGRid">
                          <property name="text">
                           <string/>
                          </property>
@@ -8411,21 +8391,44 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_110">
                     <item>
-                     <widget class="QLabel" name="label_octomap_groundObstacle_4">
-                      <property name="text">
-                       <string>A cloud will be created from the depth image (see option below) or 3D laser scan. This cloud will be segmented into ground and obstacle cells. For 2D laser scan, the occupancy grid is created using 2D ray casting (only Resolution and 2D scan related parameters are used).</string>
-                      </property>
-                      <property name="wordWrap">
-                       <bool>true</bool>
-                      </property>
-                      <property name="textInteractionFlags">
-                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                      </property>
-                     </widget>
-                    </item>
-                    <item>
                      <layout class="QGridLayout" name="gridLayout_75" columnstretch="0,1">
-                      <item row="5" column="0">
+                      <item row="3" column="1">
+                       <widget class="QLabel" name="label_327">
+                        <property name="text">
+                         <string>Minimum ground height (0=disabled).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_326">
+                        <property name="text">
+                         <string>Resolution (cell size).</string>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="1">
+                       <widget class="QLabel" name="label_335">
+                        <property name="text">
+                         <string>Footprint filtering height (0=disabled). Footprint length and width should be set.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="6" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_noiseRadius">
                         <property name="suffix">
                          <string> m</string>
@@ -8444,7 +8447,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0">
+                      <item row="5" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_maxObstacleHeight">
                         <property name="suffix">
                          <string> m</string>
@@ -8457,7 +8460,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
+                      <item row="4" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_maxGroundHeight">
                         <property name="suffix">
                          <string> m</string>
@@ -8473,7 +8476,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
+                      <item row="7" column="1">
                        <widget class="QLabel" name="label_321">
                         <property name="text">
                          <string>Noise filtering min neighbors.</string>
@@ -8486,7 +8489,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
+                      <item row="6" column="1">
                        <widget class="QLabel" name="label_325">
                         <property name="text">
                          <string>Noise filtering radius (0=disabled). Done after segmentation.</string>
@@ -8499,7 +8502,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="0">
+                      <item row="2" column="0">
                        <widget class="QCheckBox" name="checkBox_grid_projMapFrame">
                         <property name="text">
                          <string/>
@@ -8509,7 +8512,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="2" column="1">
                        <widget class="QLabel" name="label_311">
                         <property name="text">
                          <string>Projection in map frame. On a 3D terrain and a fixed local camera transform (the cloud is created relative to ground), you may want to disable this to do the projection in robot frame instead.</string>
@@ -8522,20 +8525,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="label_327">
-                        <property name="text">
-                         <string>Minimum ground height (0=disabled).</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
+                      <item row="4" column="1">
                        <widget class="QLabel" name="label_310">
                         <property name="text">
                          <string>Maximum ground height (0=disabled). Should be set if Normals Segmentation Approach is checked below.</string>
@@ -8548,7 +8538,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="1">
+                      <item row="5" column="1">
                        <widget class="QLabel" name="label_309">
                         <property name="text">
                          <string>Maximum obstacles height (0=disabled).</string>
@@ -8561,7 +8551,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="2" column="0">
+                      <item row="3" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_minGroundHeight">
                         <property name="suffix">
                          <string> m</string>
@@ -8583,7 +8573,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
+                      <item row="7" column="0">
                        <widget class="QSpinBox" name="spinBox_grid_noiseMinNeighbors">
                         <property name="minimum">
                          <number>1</number>
@@ -8596,17 +8586,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="label_326">
-                        <property name="text">
-                         <string>Resolution (cell size).</string>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="0">
+                      <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_resolution">
                         <property name="suffix">
                          <string> m</string>
@@ -8622,7 +8602,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
+                      <item row="11" column="1">
                        <widget class="QLabel" name="label_331">
                         <property name="text">
                          <string>Laser scan decimation.</string>
@@ -8635,7 +8615,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QSpinBox" name="spinBox_grid_scanDecimation">
                         <property name="minimum">
                          <number>1</number>
@@ -8648,7 +8628,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="1">
+                      <item row="8" column="1">
                        <widget class="QLabel" name="label_333">
                         <property name="text">
                          <string>Footprint filtering length (0=disabled).</string>
@@ -8661,7 +8641,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="1">
+                      <item row="9" column="1">
                        <widget class="QLabel" name="label_334">
                         <property name="text">
                          <string>Footprint filtering width (0=disabled). Footprint length should be set.</string>
@@ -8674,7 +8654,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="7" column="0">
+                      <item row="8" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_footprintLength">
                         <property name="suffix">
                          <string> m</string>
@@ -8693,7 +8673,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="8" column="0">
+                      <item row="9" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_footprintWidth">
                         <property name="suffix">
                          <string> m</string>
@@ -8712,20 +8692,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
-                       <widget class="QLabel" name="label_335">
-                        <property name="text">
-                         <string>Footprint filtering height (0=disabled). Footprint length and width should be set.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="9" column="0">
+                      <item row="10" column="0">
                        <widget class="QDoubleSpinBox" name="doubleSpinBox_grid_footprintHeight">
                         <property name="suffix">
                          <string> m</string>
@@ -8741,6 +8708,29 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="value">
                          <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="0">
+                       <widget class="QCheckBox" name="checkbox_rgbd_createOccupancyGrid">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="0" column="1">
+                       <widget class="QLabel" name="label_365">
+                        <property name="text">
+                         <string>Create local occupancy grid maps. This should be enabled to generate a global occupancy grid map. A cloud will be created from the depth image (see option below) or the 3D laser scan. This cloud will be segmented into ground and obstacle cells. For 2D laser scan, the occupancy grid is created using 2D ray casting (only Resolution and 2D Laser Scan related parameters are used).</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                         </property>
                        </widget>
                       </item>

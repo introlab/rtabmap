@@ -25,65 +25,64 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef PROGRESSDIALOG_H_
-#define PROGRESSDIALOG_H_
+#ifndef EDITDEPTHAREA_H
+#define EDITDEPTHAREA_H
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+#include <QColor>
+#include <QImage>
+#include <QPoint>
+#include <QWidget>
+#include <opencv2/opencv.hpp>
 
-#include <QDialog>
-
-class QLabel;
-class QTextEdit;
-class QProgressBar;
-class QPushButton;
-class QCheckBox;
+class QMenu;
+class QAction;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ProgressDialog : public QDialog
+class EditDepthArea : public QWidget
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
-	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~ProgressDialog();
+    EditDepthArea(QWidget *parent = 0);
 
-	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
-	void setValue(int value);
-	int maximumSteps() const;
-	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
-	void setCancelButtonVisible(bool visible);
-	bool isCanceled() const {return _canceled;}
+    void setImage(const cv::Mat & depth, const cv::Mat & rgb = cv::Mat());
+    cv::Mat getModifiedImage() const;
+    bool isModified() const {return modified_;}
 
-signals:
-	void canceled();
-
-protected:
-	virtual void closeEvent(QCloseEvent * event);
+    void setPenWidth(int newWidth);
+    int penWidth() const { return myPenWidth_; }
 
 public slots:
-	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep(int steps = 1);
-	void clear();
-	void resetProgress();
+    void resetChanges();
 
-private slots:
-	void closeDialog();
-	void cancel();
+protected:
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void paintEvent(QPaintEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+    void contextMenuEvent(QContextMenuEvent * e) override;
 
 private:
-	QLabel * _text;
-	QTextEdit * _detailedText;
-	QProgressBar * _progressBar;
-	QPushButton * _closeButton;
-	QPushButton * _cancelButton;
-	QCheckBox * _closeWhenDoneCheckBox;
-	QString _endMessage;
-	int _delayedClosingTime; // sec
-	bool _canceled;
+    void drawLineTo(const QPoint &endPoint);
+    void computeScaleOffsets(const QRect & targetRect, float & scale, float & offsetX, float & offsetY) const;
+
+    bool modified_;
+    bool scribbling_;
+    int myPenWidth_;
+    QImage imageRGB_;
+    QImage image_;
+    cv::Mat originalImage_;
+    QPoint lastPoint_;
+
+    QMenu * menu_;
+    QAction * showRGB_;
+    QAction * removeCluster_;
+    QAction * resetChanges_;
+    QAction * setPenWidth_;
 };
 
 }
 
-#endif /* PROGRESSDIALOG_H_ */
+#endif

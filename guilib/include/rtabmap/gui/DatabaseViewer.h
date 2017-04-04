@@ -47,6 +47,7 @@ class Ui_DatabaseViewer;
 class QGraphicsScene;
 class QGraphicsView;
 class QLabel;
+class QDialog;
 
 namespace rtabmap
 {
@@ -54,6 +55,9 @@ class DBDriver;
 class ImageView;
 class SensorData;
 class CloudViewer;
+class OctoMap;
+class ExportCloudsDialog;
+class EditDepthArea;
 
 class RTABMAPGUI_EXP DatabaseViewer : public QMainWindow
 {
@@ -77,6 +81,8 @@ private slots:
 	void writeSettings();
 	void configModified();
 	void openDatabase();
+	void updateStatistics();
+	void editDepthImage();
 	void generateGraph();
 	void exportDatabase();
 	void extractImages();
@@ -102,6 +108,7 @@ private slots:
 	void sliderLoopValueChanged(int);
 	void sliderIterationsValueChanged(int);
 	void updateGrid();
+	void updateOctomapView();
 	void updateGraphView();
 	void refineConstraint();
 	void addConstraint();
@@ -150,8 +157,8 @@ private:
 	std::multimap<int, rtabmap::Link> updateLinksWithModifications(
 			const std::multimap<int, rtabmap::Link> & edgeConstraints);
 	void updateLoopClosuresSlider(int from = 0, int to = 0);
-	void refineConstraint(int from, int to,  bool silent, bool updateGraph);
-	bool addConstraint(int from, int to, bool silent, bool updateGraph);
+	void refineConstraint(int from, int to,  bool silent);
+	bool addConstraint(int from, int to, bool silent);
 
 private:
 	Ui_DatabaseViewer * ui_;
@@ -159,6 +166,7 @@ private:
 	CloudViewer * cloudViewerA_;
 	CloudViewer * cloudViewerB_;
 	CloudViewer * stereoViewer_;
+	CloudViewer * occupancyGridViewer_;
 	QList<int> ids_;
 	std::map<int, int> mapIds_;
 	QMap<int, int> idToIndex_;
@@ -176,8 +184,14 @@ private:
 	std::multimap<int, rtabmap::Link> linksAdded_;
 	std::multimap<int, rtabmap::Link> linksRemoved_;
 	std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps_; // <ground, obstacles>
+	std::map<int, std::pair<float, cv::Point3f> > localMapsInfo_; // <cell size, viewpoint>
 	std::map<int, std::pair<cv::Mat, cv::Mat> > generatedLocalMaps_; // <ground, obstacles>
 	std::map<int, std::pair<float, cv::Point3f> > generatedLocalMapsInfo_; // <cell size, viewpoint>
+	std::map<int, cv::Mat> modifiedDepthImages_;
+	OctoMap * octomap_;
+	ExportCloudsDialog * exportDialog_;
+	QDialog * editDepthDialog_;
+	EditDepthArea * editDepthArea_;
 
 	bool savedMaximized_;
 	bool firstCall_;

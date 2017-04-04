@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-1800</y>
+        <y>-1929</y>
         <width>773</width>
-        <height>3200</height>
+        <height>3342</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1065,26 +1065,45 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
           <bool>false</bool>
          </property>
          <layout class="QGridLayout" name="gridLayout_12" columnstretch="0,1">
-          <item row="2" column="1">
-           <widget class="QLabel" name="label_binaryFile_4">
-            <property name="text">
-             <string>Alpha</string>
+          <item row="1" column="0">
+           <widget class="QDoubleSpinBox" name="doubleSpinBox_gainOverlap">
+            <property name="suffix">
+             <string/>
             </property>
-            <property name="wordWrap">
-             <bool>true</bool>
+            <property name="decimals">
+             <number>2</number>
+            </property>
+            <property name="minimum">
+             <double>0.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>1.000000000000000</double>
+            </property>
+            <property name="singleStep">
+             <double>0.010000000000000</double>
+            </property>
+            <property name="value">
+             <double>0.050000000000000</double>
             </property>
            </widget>
           </item>
           <item row="3" column="0">
+           <widget class="QCheckBox" name="checkBox_gainFull">
+            <property name="text">
+             <string/>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
            <widget class="QDoubleSpinBox" name="doubleSpinBox_gainBeta">
             <property name="suffix">
              <string/>
             </property>
             <property name="decimals">
-             <number>0</number>
+             <number>1</number>
             </property>
             <property name="minimum">
-             <double>1.000000000000000</double>
+             <double>0.100000000000000</double>
             </property>
             <property name="maximum">
              <double>1000.000000000000000</double>
@@ -1107,10 +1126,10 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
+          <item row="2" column="1">
            <widget class="QLabel" name="label_binaryFile_5">
             <property name="text">
-             <string>Beta</string>
+             <string>Beta. The lower, the higher the compensation is but images are darker. When texturing, brightness and contrast balance below can be activated to re-increase brightness (e.g., set high ratio to 20%).</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
@@ -1139,28 +1158,6 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="0">
-           <widget class="QDoubleSpinBox" name="doubleSpinBox_gainAlpha">
-            <property name="suffix">
-             <string/>
-            </property>
-            <property name="decimals">
-             <number>3</number>
-            </property>
-            <property name="minimum">
-             <double>0.001000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>1.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>0.010000000000000</double>
-            </property>
-            <property name="value">
-             <double>0.010000000000000</double>
-            </property>
-           </widget>
-          </item>
           <item row="1" column="1">
            <widget class="QLabel" name="label_binaryFile_6">
             <property name="text">
@@ -1171,42 +1168,13 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
-           <widget class="QDoubleSpinBox" name="doubleSpinBox_gainOverlap">
-            <property name="suffix">
-             <string/>
-            </property>
-            <property name="decimals">
-             <number>2</number>
-            </property>
-            <property name="minimum">
-             <double>0.000000000000000</double>
-            </property>
-            <property name="maximum">
-             <double>1.000000000000000</double>
-            </property>
-            <property name="singleStep">
-             <double>0.010000000000000</double>
-            </property>
-            <property name="value">
-             <double>0.050000000000000</double>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
+          <item row="3" column="1">
            <widget class="QLabel" name="label_binaryFile_7">
             <property name="text">
-             <string>Do compensation just between linked locations. Otherwise, a full compensation between all locations is done (longer to do but quality is better).</string>
+             <string>Do full compensation between all locations (longer to do but quality is better). Otherwise, compensation is done only between linked locations.</string>
             </property>
             <property name="wordWrap">
              <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QCheckBox" name="checkBox_gainLinkedLocationsOnly">
-            <property name="text">
-             <string/>
             </property>
            </widget>
           </item>
@@ -1224,90 +1192,13 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
          <layout class="QVBoxLayout" name="verticalLayout_15">
           <item>
            <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
-            <item row="3" column="1">
-             <widget class="QLabel" name="label_textureMapping">
-              <property name="text">
-               <string>Texture mapping. Images of the cameras will be projected on the mesh(es). Output is a *.obj format. Available on Export or when clouds are not assembled.</string>
-              </property>
-              <property name="wordWrap">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="0" column="0">
-             <widget class="QComboBox" name="comboBox_meshingApproach">
-              <item>
-               <property name="text">
-                <string>Fast GP3</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>Poisson</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QCheckBox" name="checkBox_textureMapping">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QDoubleSpinBox" name="doubleSpinBox_transferColorRadius">
-              <property name="suffix">
-               <string> m</string>
-              </property>
-              <property name="decimals">
-               <number>2</number>
-              </property>
-              <property name="minimum">
-               <double>-1.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>10.000000000000000</double>
-              </property>
-              <property name="singleStep">
-               <double>0.010000000000000</double>
-              </property>
-              <property name="value">
-               <double>0.050000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
+            <item row="5" column="1">
              <widget class="QLabel" name="label_meshClean">
               <property name="text">
                <string>Clean mesh from polygons without color or texture.</string>
               </property>
               <property name="wordWrap">
                <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QSpinBox" name="spinBox_mesh_minClusterSize">
-              <property name="minimum">
-               <number>-1</number>
-              </property>
-              <property name="maximum">
-               <number>99999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QCheckBox" name="checkBox_cleanMesh">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QLabel" name="label_16">
-              <property name="text">
-               <string>Minimum polygon cluster size (-1 means that only the biggest cluster is kept).</string>
               </property>
              </widget>
             </item>
@@ -1340,7 +1231,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
+            <item row="3" column="1">
              <widget class="QLabel" name="label_meshDecimation_2">
               <property name="text">
                <string>Transferring color radius. Radius used to transfer color from original cloud to resampled reconstructed surface (e.g., Poisson or mesh decimation). Negative means disabled, 0 means take the nearest point.</string>
@@ -1360,6 +1251,112 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
               </property>
              </widget>
             </item>
+            <item row="4" column="1">
+             <widget class="QLabel" name="label_textureMapping">
+              <property name="text">
+               <string>Texture mapping. Images of the cameras will be projected on the mesh(es). Output is a *.obj format. Available on Export or when clouds are not assembled.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QComboBox" name="comboBox_meshingApproach">
+              <item>
+               <property name="text">
+                <string>Fast GP3</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>Poisson</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QCheckBox" name="checkBox_textureMapping">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QDoubleSpinBox" name="doubleSpinBox_transferColorRadius">
+              <property name="suffix">
+               <string> m</string>
+              </property>
+              <property name="decimals">
+               <number>2</number>
+              </property>
+              <property name="minimum">
+               <double>-1.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>10.000000000000000</double>
+              </property>
+              <property name="singleStep">
+               <double>0.010000000000000</double>
+              </property>
+              <property name="value">
+               <double>0.050000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QSpinBox" name="spinBox_mesh_minClusterSize">
+              <property name="minimum">
+               <number>-1</number>
+              </property>
+              <property name="maximum">
+               <number>99999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QCheckBox" name="checkBox_cleanMesh">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="1">
+             <widget class="QLabel" name="label_16">
+              <property name="text">
+               <string>Minimum polygon cluster size (-1 means that only the biggest cluster is kept).</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLabel" name="label_meshMaxPolygons">
+              <property name="text">
+               <string>Maximum polygons (0=no max). Another way to do mesh quadric decimation, the factor will be computed depending on the polygons generated.</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QSpinBox" name="spinBox_meshMaxPolygons">
+              <property name="suffix">
+               <string/>
+              </property>
+              <property name="minimum">
+               <number>0</number>
+              </property>
+              <property name="maximum">
+               <number>10000000</number>
+              </property>
+              <property name="singleStep">
+               <number>50000</number>
+              </property>
+              <property name="value">
+               <number>9</number>
+              </property>
+             </widget>
+            </item>
            </layout>
           </item>
           <item>
@@ -1376,6 +1373,16 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
             <layout class="QVBoxLayout" name="verticalLayout_16">
              <item>
               <layout class="QGridLayout" name="gridLayout_15" columnstretch="0,1">
+               <item row="4" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_3">
+                 <property name="text">
+                  <string>Camera filtering. By comparing poses in the same area, only one camera in a fixed radius and angle is used for texturing.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
                <item row="0" column="1">
                 <widget class="QLabel" name="label_meshingTextureFormat">
                  <property name="text">
@@ -1398,6 +1405,23 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                    <string>.png</string>
                   </property>
                  </item>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize">
+                 <property name="text">
+                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="4" column="0">
+                <widget class="QCheckBox" name="checkBox_cameraFilter">
+                 <property name="text">
+                  <string/>
+                 </property>
                 </widget>
                </item>
                <item row="1" column="0">
@@ -1449,10 +1473,66 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </item>
                 </widget>
                </item>
-               <item row="1" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize">
+               <item row="5" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_5">
                  <property name="text">
-                  <string>Output texture size. If not set or when clouds are not assembled, all textures are saved separately. Warning: values higher than 2048 may not be compatible with all GPUs.</string>
+                  <string>Brightness and contrast balance low ratio. Only used when textures are merged.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="6" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioHigh">
+                 <property name="suffix">
+                  <string> %</string>
+                 </property>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>49</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_4">
+                 <property name="text">
+                  <string>Minimum polygon cluster size for texturing. This removes textures applied on sparse polygons. Only used with dense reconstruction flavor.</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="3" column="0">
+                <widget class="QSpinBox" name="spinBox_mesh_minTextureClusterSize">
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>99999</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="5" column="0">
+                <widget class="QSpinBox" name="spinBox_textureBrightnessContrastRatioLow">
+                 <property name="suffix">
+                  <string> %</string>
+                 </property>
+                 <property name="minimum">
+                  <number>0</number>
+                 </property>
+                 <property name="maximum">
+                  <number>49</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_2">
+                 <property name="text">
+                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -1481,50 +1561,30 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  </property>
                 </widget>
                </item>
-               <item row="2" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_2">
+               <item row="6" column="1">
+                <widget class="QLabel" name="label_meshingTextureSize_6">
                  <property name="text">
-                  <string>Maximum distance from the camera for polygons to be textured by this camera (0 means infinite). Only used with dense reconstruction flavor.</string>
+                  <string>Brightness and contrast balance high ratio. Only used when textures are merged.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
                  </property>
                 </widget>
                </item>
-               <item row="4" column="0">
-                <widget class="QCheckBox" name="checkBox_cameraFilter">
+               <item row="7" column="1">
+                <widget class="QLabel" name="label_exposureFusion">
+                 <property name="text">
+                  <string>Exposure fusion. Only used when textures are merged and brightness/contrast balance ratios are used (merging original texture + 1 for each ratios).</string>
+                 </property>
+                 <property name="wordWrap">
+                  <bool>true</bool>
+                 </property>
+                </widget>
+               </item>
+               <item row="7" column="0">
+                <widget class="QCheckBox" name="checkBox_exposureFusion">
                  <property name="text">
                   <string/>
-                 </property>
-                </widget>
-               </item>
-               <item row="4" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_3">
-                 <property name="text">
-                  <string>Camera filtering. By comparing poses in the same area, only one camera in a fixed radius and angle is used for texturing.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="1">
-                <widget class="QLabel" name="label_meshingTextureSize_4">
-                 <property name="text">
-                  <string>Minimum polygon cluster size for texturing. This removes textures applied on sparse polygons. Only used with dense reconstruction flavor.</string>
-                 </property>
-                 <property name="wordWrap">
-                  <bool>true</bool>
-                 </property>
-                </widget>
-               </item>
-               <item row="3" column="0">
-                <widget class="QSpinBox" name="spinBox_mesh_minTextureClusterSize">
-                 <property name="minimum">
-                  <number>0</number>
-                 </property>
-                 <property name="maximum">
-                  <number>99999</number>
                  </property>
                 </widget>
                </item>

@@ -157,6 +157,7 @@ RTABMapApp::RTABMapApp() :
 		fullResolution_(false),
 		appendMode_(true),
 		maxCloudDepth_(0.0),
+		minCloudDepth_(0.0),
 		cloudDensityLevel_(1),
 		meshTrianglePix_(1),
 		meshAngleToleranceDeg_(15.0),
@@ -252,9 +253,7 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 
 	if(logHandler_ == 0)
 	{
-#ifndef DISABLE_LOG
 		logHandler_ = new LogHandler();
-#endif
 	}
 
 	this->registerToEventsManager();
@@ -346,7 +345,7 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 						// Voxelize and filter depending on the previous cloud?
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 						pcl::IndicesPtr indices(new std::vector<int>);
-						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, 0, indices.get());
+						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
 						if(cloud->size() && indices->size())
 						{
 							std::vector<pcl::Vertices> polygons;
@@ -367,11 +366,20 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 								inserted.first->second.polygonsLowRes = polygonsLowRes;
 								inserted.first->second.visible = true;
 								inserted.first->second.cameraModel = data.cameraModels()[0];
-								inserted.first->second.gain = 1.0f;
+								inserted.first->second.gains[0] = 1.0;
+								inserted.first->second.gains[1] = 1.0;
+								inserted.first->second.gains[2] = 1.0;
 								if(main_scene_.isMeshTexturing() && main_scene_.isMapRendering())
 								{
-									cv::Size reducedSize(data.imageRaw().cols/(data.imageRaw().cols>1000?renderingTextureDecimation_*2:renderingTextureDecimation_), data.imageRaw().rows/(data.imageRaw().cols>1000?renderingTextureDecimation_*2:renderingTextureDecimation_));
-									cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+									if(renderingTextureDecimation_>1)
+									{
+										cv::Size reducedSize(data.imageRaw().cols/renderingTextureDecimation_, data.imageRaw().rows/renderingTextureDecimation_);
+										cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+									}
+									else
+									{
+										inserted.first->second.texture = data.imageRaw();
+									}
 								}
 								LOGI("Created cloud %d (%fs)", id, timer.ticks());
 							}
@@ -425,6 +433,8 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	stats.setPoses(poses);
 	stats.setConstraints(links);
 	rtabmapEvents_.push_back(new rtabmap::RtabmapEvent(stats));
+
+	rtabmap_->setOptimizedPoses(poses);
 
 	// Start threads
 	LOGI("Start rtabmap thread");
@@ -799,7 +809,7 @@ void RTABMapApp::gainCompensation(bool full)
 	}
 
 	UASSERT(maxGainRadius_>0.0f);
-	rtabmap::GainCompensator compensator(maxGainRadius_);
+	rtabmap::GainCompensator compensator(maxGainRadius_, 0.0f, 0.01f, 1.0f);
 	if(clouds.size() > 1 && links.size())
 	{
 		compensator.feed(clouds, indices, links);
@@ -812,8 +822,8 @@ void RTABMapApp::gainCompensation(bool full)
 		{
 			if(clouds.size() > 1 && links.size())
 			{
-				iter->second.gain = compensator.getGain(iter->first);
-				LOGI("%d mesh has gain %f", iter->first, iter->second.gain);
+				compensator.getGain(iter->first, &iter->second.gains[0], &iter->second.gains[1], &iter->second.gains[2]);
+				LOGI("%d mesh has gain %f,%f,%f", iter->first, iter->second.gains[0], iter->second.gains[1], iter->second.gains[2]);
 			}
 		}
 	}
@@ -900,7 +910,7 @@ int RTABMapApp::Render()
 				if(exportedMesh_->tex_polygons.size() && exportedMesh_->tex_polygons[0].size())
 				{
 					Mesh mesh;
-					mesh.gain = 1.0f;
+					mesh.gains[0] = mesh.gains[1] = mesh.gains[2] = 1.0;
 					mesh.cloud.reset(new pcl::PointCloud<pcl::PointXYZRGB>);
 					mesh.normals.reset(new pcl::PointCloud<pcl::Normal>);
 					pcl::fromPCLPointCloud2(exportedMesh_->cloud, *mesh.cloud);
@@ -1039,9 +1049,16 @@ int RTABMapApp::Render()
 								textureRaw = rtabmap::uncompressImage(rtabmap_->getMemory()->getImageCompressed(iter->first));
 								if(!textureRaw.empty())
 								{
-									cv::Size reducedSize(textureRaw.cols/(textureRaw.cols>1000?renderingTextureDecimation_*2:renderingTextureDecimation_), textureRaw.rows/(textureRaw.cols>1000?renderingTextureDecimation_*2:renderingTextureDecimation_));
-									LOGD("resize image from %dx%d to %dx%d", textureRaw.cols, textureRaw.rows, reducedSize.width, reducedSize.height);
-									cv::resize(textureRaw, iter->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+									if(renderingTextureDecimation_ > 1)
+									{
+										cv::Size reducedSize(textureRaw.cols/renderingTextureDecimation_, textureRaw.rows/renderingTextureDecimation_);
+										LOGD("resize image from %dx%d to %dx%d", textureRaw.cols, textureRaw.rows, reducedSize.width, reducedSize.height);
+										cv::resize(textureRaw, iter->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+									}
+									else
+									{
+										iter->second.texture = textureRaw;
+									}
 								}
 							}
 							main_scene_.addMesh(iter->first, iter->second, opengl_world_T_rtabmap_world*iter->second.pose);
@@ -1211,7 +1228,7 @@ int RTABMapApp::Render()
 										// Voxelize and filter depending on the previous cloud?
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 										pcl::IndicesPtr indices(new std::vector<int>);
-										cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, 0, indices.get());
+										cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
 #ifdef DEBUG_RENDERING_PERFORMANCE
 										LOGW("Creating node cloud %d (depth=%dx%d rgb=%dx%d, %fs)", id, data.depthRaw().cols, data.depthRaw().rows, data.imageRaw().cols, data.imageRaw().rows, time.ticks());
 #endif
@@ -1241,14 +1258,23 @@ int RTABMapApp::Render()
 												inserted.first->second.polygonsLowRes = polygonsLowRes;
 												inserted.first->second.visible = true;
 												inserted.first->second.cameraModel = data.cameraModels()[0];
-												inserted.first->second.gain = 1.0f;
+												inserted.first->second.gains[0] = 1.0;
+												inserted.first->second.gains[1] = 1.0;
+												inserted.first->second.gains[2] = 1.0;
 												if(main_scene_.isMeshTexturing() && main_scene_.isMapRendering())
 												{
-													cv::Size reducedSize(data.imageRaw().cols/(data.imageRaw().cols>1000?renderingTextureDecimation_*2:renderingTextureDecimation_), data.imageRaw().rows/(data.imageRaw().cols>1000?renderingTextureDecimation_*2:renderingTextureDecimation_));
-													cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
+													if(renderingTextureDecimation_ > 1)
+													{
+														cv::Size reducedSize(data.imageRaw().cols/renderingTextureDecimation_, data.imageRaw().rows/renderingTextureDecimation_);
+														cv::resize(data.imageRaw(), inserted.first->second.texture, reducedSize, 0, 0, CV_INTER_LINEAR);
 #ifdef DEBUG_RENDERING_PERFORMANCE
-													LOGW("resize image from %dx%d to %dx%d (%fs)", data.imageRaw().cols, data.imageRaw().rows, reducedSize.width, reducedSize.height, time.ticks());
+														LOGW("resize image from %dx%d to %dx%d (%fs)", data.imageRaw().cols, data.imageRaw().rows, reducedSize.width, reducedSize.height, time.ticks());
 #endif
+													}
+													else
+													{
+														inserted.first->second.texture = data.imageRaw();
+													}
 												}
 											}
 										}
@@ -1330,7 +1356,7 @@ int RTABMapApp::Render()
 						{
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 							pcl::IndicesPtr indices(new std::vector<int>);
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(odomEvent.data(), meshDecimation_, maxCloudDepth_, 0.0f, indices.get());
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(odomEvent.data(), meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
 							if(cloud->size() && indices->size())
 							{
 								LOGI("Created odom cloud (rgb=%dx%d depth=%dx%d cloud=%dx%d)",
@@ -1358,7 +1384,7 @@ int RTABMapApp::Render()
 				gainCompensation(gainCompensationOnNextRender_==2);
 				for(std::map<int, Mesh>::iterator iter = createdMeshes_.begin(); iter!=createdMeshes_.end(); ++iter)
 				{
-					main_scene_.updateGain(iter->first, iter->second.gain);
+					main_scene_.updateGains(iter->first, iter->second.gains[0], iter->second.gains[1], iter->second.gains[2]);
 				}
 				gainCompensationOnNextRender_ = 0;
 				notifyDataLoaded = true;
@@ -1683,6 +1709,11 @@ void RTABMapApp::setMaxCloudDepth(float value)
 	maxCloudDepth_ = value;
 }
 
+void RTABMapApp::setMinCloudDepth(float value)
+{
+	minCloudDepth_ = value;
+}
+
 void RTABMapApp::setCloudDensityLevel(int value)
 {
 	cloudDensityLevel_ = value;
@@ -1857,9 +1888,12 @@ cv::Mat RTABMapApp::mergeTextures(pcl::TextureMesh & mesh, int textureSize) cons
 				int cols = float(textureSize)/(scale*imageSize.width);
 
 				globalTexture = cv::Mat(textureSize, textureSize, imageType, cv::Scalar::all(255));
+				cv::Mat globalTextureMask = cv::Mat(textureSize, textureSize, CV_8UC1, cv::Scalar::all(0));
 
 				// make a blank texture
 				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(255));
+				cv::Mat emptyImageMask(int(imageSize.height*scale), int(imageSize.width*scale), CV_8UC1, cv::Scalar::all(255));
+				bool gainApplied = false;
 				int oi=0;
 				for(int i=0; i<(int)textures.size(); ++i)
 				{
@@ -1878,9 +1912,17 @@ cv::Mat RTABMapApp::mergeTextures(pcl::TextureMesh & mesh, int textureSize) cons
 							UASSERT(!image.empty());
 							cv::Mat resizedImage;
 							cv::resize(image, resizedImage, emptyImage.size(), 0.0f, 0.0f, cv::INTER_AREA);
-							if(createdMeshes_.find(textures[i]) != createdMeshes_.end() && createdMeshes_.at(textures[i]).gain != 1.0f)
+							if(createdMeshes_.find(textures[i]) != createdMeshes_.end() &&
+									(createdMeshes_.at(textures[i]).gains[0] != 1.0 || createdMeshes_.at(textures[i]).gains[1] != 1.0 || createdMeshes_.at(textures[i]).gains[2] != 1.0))
 							{
-								cv::multiply(resizedImage, createdMeshes_.at(textures[i]).gain, resizedImage);
+								std::vector<cv::Mat> channels;
+								cv::split(resizedImage, channels);
+								// assuming BGR
+								cv::multiply(channels[0], createdMeshes_.at(textures[i]).gains[2], channels[0]);
+								cv::multiply(channels[1], createdMeshes_.at(textures[i]).gains[1], channels[1]);
+								cv::multiply(channels[2], createdMeshes_.at(textures[i]).gains[0], channels[2]);
+								cv::merge(channels, resizedImage);
+								gainApplied = true;
 							}
 							if(resizedImage.type() == CV_8UC1)
 							{
@@ -1890,6 +1932,7 @@ cv::Mat RTABMapApp::mergeTextures(pcl::TextureMesh & mesh, int textureSize) cons
 							}
 							UASSERT(resizedImage.type() == globalTexture.type());
 							resizedImage.copyTo(globalTexture(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
+							emptyImageMask.copyTo(globalTextureMask(cv::Rect(u, v, emptyImageMask.cols, emptyImageMask.rows)));
 						}
 						else
 						{
@@ -1904,6 +1947,10 @@ cv::Mat RTABMapApp::mergeTextures(pcl::TextureMesh & mesh, int textureSize) cons
 					}
 
 					progressionStatus_.increment();
+				}
+				if(gainApplied)
+				{
+					rtabmap::util2d::brightnessAndContrastAuto(globalTexture, globalTextureMask, 0.0f, 10.0f);
 				}
 			}
 			else
@@ -2019,20 +2066,22 @@ bool RTABMapApp::exportMesh(
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 						pcl::IndicesPtr indices(new std::vector<int>);
 						rtabmap::CameraModel model;
-						float gain = 1.0f;
+						float gains[3] = {1.0f};
 						if(jter != createdMeshes_.end())
 						{
 							cloud = jter->second.cloud;
 							indices = jter->second.indices;
 							model = jter->second.cameraModel;
-							gain = jter->second.gain;
+							gains[0] = jter->second.gains[0];
+							gains[1] = jter->second.gains[1];
+							gains[2] = jter->second.gains[2];
 						}
 						else
 						{
 							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && data.cameraModels().size() == 1)
 							{
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, 0, indices.get());
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
 								model = data.cameraModels()[0];
 							}
 						}
@@ -2058,14 +2107,14 @@ bool RTABMapApp::exportMesh(
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 							pcl::concatenateFields(*transformedCloud, *normals, *cloudWithNormals);
 
-							if(textureSize == 0 && gain != 1.0f)
+							if(textureSize == 0 && (gains[0] != 1.0 || gains[1] != 1.0 || gains[2] != 1.0))
 							{
 								for(unsigned int i=0; i<cloudWithNormals->size(); ++i)
 								{
 									pcl::PointXYZRGBNormal & pt = cloudWithNormals->at(i);
-									pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gain)));
-									pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gain)));
-									pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gain)));
+									pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gains[0])));
+									pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gains[1])));
+									pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gains[2])));
 								}
 							}
 
@@ -2522,7 +2571,7 @@ bool RTABMapApp::exportMesh(
 						std::map<int, Mesh>::iterator jter = createdMeshes_.find(iter->first);
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 						std::vector<pcl::Vertices> polygons;
-						float gain = 1.0f;
+						float gains[3] = {1.0f};
 						if(jter != createdMeshes_.end())
 						{
 							cloud = jter->second.cloud;
@@ -2531,14 +2580,16 @@ bool RTABMapApp::exportMesh(
 							{
 								polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 							}
-							gain = jter->second.gain;
+							gains[0] = jter->second.gains[0];
+							gains[1] = jter->second.gains[1];
+							gains[2] = jter->second.gains[2];
 						}
 						else
 						{
 							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
 							if(!data.imageRaw().empty() && !data.depthRaw().empty() && data.cameraModels().size() == 1)
 							{
-								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, 0);
+								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_);
 								polygons = rtabmap::util3d::organizedFastMesh(cloud, meshAngleToleranceDeg_*M_PI/180.0, false, meshTrianglePix_);
 							}
 						}
@@ -2564,14 +2615,14 @@ bool RTABMapApp::exportMesh(
 								// colored mesh
 								cloudWithNormals = rtabmap::util3d::transformPointCloud(cloudWithNormals, iter->second);
 
-								if(gain != 1.0f)
+								if(gains[0] != 1.0f || gains[1] != 1.0f || gains[2] != 1.0f)
 								{
 									for(unsigned int i=0; i<cloudWithNormals->size(); ++i)
 									{
 										pcl::PointXYZRGBNormal & pt = cloudWithNormals->at(i);
-										pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gain)));
-										pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gain)));
-										pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gain)));
+										pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gains[0])));
+										pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gains[1])));
+										pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gains[2])));
 									}
 								}
 
@@ -2767,18 +2818,20 @@ bool RTABMapApp::exportMesh(
 				std::map<int, Mesh>::iterator jter=createdMeshes_.find(iter->first);
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 				pcl::IndicesPtr indices(new std::vector<int>);
-				float gain = 1.0f;
+				float gains[3] = {1.0f};
 				if(regenerateCloud)
 				{
 					if(jter != createdMeshes_.end())
 					{
-						gain = jter->second.gain;
+						gains[0] = jter->second.gains[0];
+						gains[1] = jter->second.gains[1];
+						gains[2] = jter->second.gains[2];
 					}
 					rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
 					if(!data.imageRaw().empty() && !data.depthRaw().empty())
 					{
 						// full resolution
-						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, 0, indices.get());
+						cloud = rtabmap::util3d::cloudRGBFromSensorData(data, 1, maxCloudDepth_, minCloudDepth_, indices.get());
 					}
 				}
 				else
@@ -2787,14 +2840,16 @@ bool RTABMapApp::exportMesh(
 					{
 						cloud = jter->second.cloud;
 						indices = jter->second.indices;
-						gain = jter->second.gain;
+						gains[0] = jter->second.gains[0];
+						gains[1] = jter->second.gains[1];
+						gains[2] = jter->second.gains[2];
 					}
 					else
 					{
 						rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, true);
 						if(!data.imageRaw().empty() && !data.depthRaw().empty())
 						{
-							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, 0, indices.get());
+							cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
 						}
 					}
 				}
@@ -2815,16 +2870,16 @@ bool RTABMapApp::exportMesh(
 						transformedCloud = rtabmap::util3d::transformPointCloud(transformedCloud, iter->second);
 					}
 
-					if(gain != 1.0f)
+					if(gains[0] != 1.0f || gains[1] != 1.0f || gains[2] != 1.0f)
 					{
 						//LOGD("cloud %d, gain=%f", iter->first, gain);
 						for(unsigned int i=0; i<transformedCloud->size(); ++i)
 						{
 							pcl::PointXYZRGB & pt = transformedCloud->at(i);
 							//LOGI("color %d = %d %d %d", i, (int)pt.r, (int)pt.g, (int)pt.b);
-							pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gain)));
-							pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gain)));
-							pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gain)));
+							pt.r = uchar(std::max(0.0, std::min(255.0, double(pt.r) * gains[0])));
+							pt.g = uchar(std::max(0.0, std::min(255.0, double(pt.g) * gains[1])));
+							pt.b = uchar(std::max(0.0, std::min(255.0, double(pt.b) * gains[2])));
 
 						}
 					}

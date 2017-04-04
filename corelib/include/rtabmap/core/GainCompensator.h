@@ -43,7 +43,7 @@ namespace rtabmap {
  */
 class RTABMAP_EXP GainCompensator {
 public:
-	GainCompensator(double maxCorrespondenceDistance = 0.02, double minOverlap = 0.05, double alpha = 0.01, double beta = 10);
+	GainCompensator(double maxCorrespondenceDistance = 0.02, double minOverlap = 0.0, double alpha = 0.01, double beta = 10);
 	virtual ~GainCompensator();
 
 	void feed(
@@ -86,7 +86,7 @@ public:
 			int id,
 			cv::Mat & image) const;
 
-	double getGain(int id) const;
+	double getGain(int id, double * r=0, double * g=0, double * b=0) const;
 	int getIndex(int id) const;
 
 private:

@@ -42,7 +42,8 @@ namespace rtabmap {
 
 ProgressDialog::ProgressDialog(QWidget *parent, Qt::WindowFlags flags) :
 		QDialog(parent, flags),
-		_delayedClosingTime(1)
+		_delayedClosingTime(1),
+		_canceled(false)
 {
 	_text = new QLabel(this);
 	_text->setWordWrap(true);
@@ -62,7 +63,7 @@ ProgressDialog::ProgressDialog(QWidget *parent, Qt::WindowFlags flags) :
 	_endMessage = "Finished!";
 	this->clear();
 	connect(_closeButton, SIGNAL(clicked()), this, SLOT(close()));
-	connect(_cancelButton, SIGNAL(clicked()), this, SIGNAL(canceled()));
+	connect(_cancelButton, SIGNAL(clicked()), this, SLOT(cancel()));
 
 	QVBoxLayout * layout = new QVBoxLayout(this);
 	layout->addWidget(_text);
@@ -146,15 +147,15 @@ void ProgressDialog::incrementStep(int steps)
 void ProgressDialog::clear()
 {
 	_text->clear();
-	_progressBar->reset();
 	_detailedText->clear();
-	_closeButton->setEnabled(false);
+	resetProgress();
 }
 
 void ProgressDialog::resetProgress()
 {
 	_progressBar->reset();
 	_closeButton->setEnabled(false);
+	_canceled = false;
 }
 
 void ProgressDialog::closeDialog()
@@ -169,12 +170,19 @@ void ProgressDialog::closeEvent(QCloseEvent *event)
 {
 	if(_progressBar->value() == _progressBar->maximum())
 	{
+		_canceled = false;
 		event->accept();
 	}
 	else
 	{
 		event->ignore();
 	}
+}
+
+void ProgressDialog::cancel()
+{
+	_canceled = true;
+	emit canceled();
 }
 
 }

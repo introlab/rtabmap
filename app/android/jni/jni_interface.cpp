@@ -247,6 +247,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setMaxCloudDepth(
 	return app.setMaxCloudDepth(value);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setMinCloudDepth(
+		JNIEnv*, jobject, float value)
+{
+	return app.setMinCloudDepth(value);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setCloudDensityLevel(
 		JNIEnv*, jobject, int value)
 {
