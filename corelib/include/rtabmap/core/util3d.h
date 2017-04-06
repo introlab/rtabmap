@@ -213,6 +213,8 @@ pcl::PointNormal RTABMAP_EXP laserScanToPointNormal(const cv::Mat & laserScan, i
 // For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to default r,g,b parameters.
 pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const cv::Mat & laserScan, int index, unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
 
+void RTABMAP_EXP getMinMax3D(const cv::Mat & laserScan, cv::Point3f & min, cv::Point3f & max);
+void RTABMAP_EXP getMinMax3D(const cv::Mat & laserScan, pcl::PointXYZ & min, pcl::PointXYZ & max);
 
 cv::Point3f RTABMAP_EXP projectDisparityTo3D(
 		const cv::Point2f & pt,

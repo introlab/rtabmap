@@ -107,7 +107,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 		}
 		else
 		{
-			UWARN("Updated pose for node %d is not found, some points may not be copied.", jter->first);
+			UWARN("Updated pose for node %d is not found, some points may not be copied. Use negative ids to just update cell values without adding new ones.", jter->first);
 		}
 	}
 	if(graphChanged)

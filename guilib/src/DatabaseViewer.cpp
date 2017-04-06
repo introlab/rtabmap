@@ -1721,6 +1721,7 @@ void DatabaseViewer::regenerateLocalMaps()
 	rtabmap::ProgressDialog progressDialog(this);
 	progressDialog.setMaximumSteps(ids_.size());
 	progressDialog.show();
+	progressDialog.setCancelButtonVisible(true);
 
 	UPlot * plot = new UPlot(this);
 	plot->setWindowFlags(Qt::Window);
@@ -1730,10 +1731,19 @@ void DatabaseViewer::regenerateLocalMaps()
 	UPlotCurve * gridCreationCurve = plot->addCurve("Grid Creation");
 	plot->show();
 
+	UPlot * plotCells = new UPlot(this);
+	plotCells->setWindowFlags(Qt::Window);
+	plotCells->setWindowTitle("Occupancy Cells");
+	plotCells->setAttribute(Qt::WA_DeleteOnClose);
+	UPlotCurve * totalCurve = plotCells->addCurve("Total");
+	UPlotCurve * groundCurve = plotCells->addCurve("Empty");
+	UPlotCurve * obstaclesCurve = plotCells->addCurve("Occupied");
+	plotCells->show();
+
 	double decompressionTime = 0;
 	double gridCreationTime = 0;
 
-	for(int i =0; i<ids_.size(); ++i)
+	for(int i =0; i<ids_.size() && !progressDialog.isCanceled(); ++i)
 	{
 		UTimer timer;
 		SensorData data;
@@ -1758,6 +1768,10 @@ void DatabaseViewer::regenerateLocalMaps()
 			uInsert(generatedLocalMaps_, std::make_pair(data.id(), std::make_pair(ground, obstacles)));
 			uInsert(generatedLocalMapsInfo_, std::make_pair(data.id(), std::make_pair(grid.getCellSize(), viewpoint)));
 			msg = QString("Generated local occupancy grid map %1/%2").arg(i+1).arg((int)ids_.size());
+
+			totalCurve->addValue(ids_.at(i), obstacles.cols+ground.cols);
+			groundCurve->addValue(ids_.at(i), ground.cols);
+			obstaclesCurve->addValue(ids_.at(i), obstacles.cols);
 		}
 
 		progressDialog.appendText(msg);
@@ -1772,7 +1786,16 @@ void DatabaseViewer::regenerateLocalMaps()
 		}
 	}
 	progressDialog.setValue(progressDialog.maximumSteps());
-	updateGrid();
+
+	if(graphes_.size())
+	{
+		update3dView();
+		sliderIterationsValueChanged((int)graphes_.size()-1);
+	}
+	else
+	{
+		updateGrid();
+	}
 }
 
 void DatabaseViewer::regenerateCurrentLocalMaps()
@@ -1826,7 +1849,16 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 		QApplication::processEvents();
 	}
 	progressDialog.setValue(progressDialog.maximumSteps());
-	updateGrid();
+
+	if(graphes_.size())
+	{
+		update3dView();
+		sliderIterationsValueChanged((int)graphes_.size()-1);
+	}
+	else
+	{
+		updateGrid();
+	}
 }
 
 void DatabaseViewer::view3DMap()
@@ -3967,6 +3999,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 								Qt::red);
 						occupancyGridViewer_->setCloudPointSize("obstaclesXYZ", 5);
 					}
+					occupancyGridViewer_->update();
 				}
 			}
 		}

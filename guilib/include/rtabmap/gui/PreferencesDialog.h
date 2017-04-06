@@ -171,6 +171,7 @@ public:
 	int getOctomapTreeDepth() const;
 	bool isOctomapGroundAnObstacle() const;
 	double getOctomapOccupancyThr() const;
+	int getOctomapPointSize() const;
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
 	double getCloudMinDepth(int index) const;  // 0=map, 1=odom
