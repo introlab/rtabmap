@@ -57,6 +57,7 @@ void occupancy2DFromLaserScan(
 	cv::Point3f viewpoint(0,0,0);
 	occupancy2DFromLaserScan(
 			scan,
+			cv::Mat(),
 			viewpoint,
 			ground,
 			obstacles,
@@ -635,7 +636,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize, ((pose.y()+viewpoint.y)-yMin)/cellSize);
 
 			// Set obstacles first
-			for(unsigned int i=0; i<iter->second.first.cols; ++i)
+			for(int i=0; i<iter->second.first.cols; ++i)
 			{
 				const float * ptr = iter->second.first.ptr<float>(0, i);
 				cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
@@ -646,7 +647,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			}
 
 			// ray tracing for hits
-			for(unsigned int i=0; i<iter->second.first.cols; ++i)
+			for(int i=0; i<iter->second.first.cols; ++i)
 			{
 				const float * ptr = iter->second.first.ptr<float>(0, i);
 				cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
@@ -659,7 +660,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				}
 			}
 			// ray tracing for no hits
-			for(unsigned int i=0; i<iter->second.second.cols; ++i)
+			for(int i=0; i<iter->second.second.cols; ++i)
 			{
 				const float * ptr = iter->second.second.ptr<float>(0, i);
 				cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
