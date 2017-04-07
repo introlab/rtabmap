@@ -877,6 +877,35 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S)
 	return map8U;
 }
 
+cv::Mat erodeMap(const cv::Mat & map)
+{
+	UASSERT(map.type() == CV_8SC1);
+	cv::Mat erodedMap = map.clone();
+	for(int i=0; i<map.rows; ++i)
+	{
+		for(int j=0; j<map.cols; ++j)
+		{
+			if(map.at<char>(i, j) == 100)
+			{
+				// remove obstacles which touch at least 3 empty cells but not unknown cells
+				int touchEmpty = (map.at<char>(i+1, j) == 0?1:0) +
+					(map.at<char>(i-1, j) == 0?1:0) +
+					(map.at<char>(i, j+1) == 0?1:0) +
+					(map.at<char>(i, j-1) == 0?1:0);
+
+				if(touchEmpty>=3 && map.at<char>(i+1, j) != -1 &&
+					map.at<char>(i-1, j) != -1 &&
+					map.at<char>(i, j+1) != -1 &&
+					map.at<char>(i, j-1) != -1)
+				{
+					erodedMap.at<char>(i, j) = 0; // empty
+				}
+			}
+		}
+	}
+	return erodedMap;
+}
+
 }
 
 }

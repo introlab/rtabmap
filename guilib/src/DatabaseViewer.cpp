@@ -2673,6 +2673,10 @@ void DatabaseViewer::update(int value,
 																localMaps,
 																ui_->doubleSpinBox_gridCellSize->value(),
 																xMin, yMin);
+									//OccupancyGrid grid(ui_->parameters_toolbox->getParameters());
+									//grid.addToCache(data.id(), localMaps.begin()->second.first, localMaps.begin()->second.second);
+									//grid.update(poses);
+									//map8S = grid.getMap(xMin, yMin);
 								}
 								if(!map8S.empty())
 								{
@@ -3892,7 +3896,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 #ifdef RTABMAP_OCTOMAP
 				if(ui_->checkBox_octomap->isChecked())
 				{
-					map = octomap_->createProjectionMap(xMin, yMin, cell, 0);
+					map = octomap_->createProjectionMap(xMin, yMin, cell, 0, ui_->spinBox_grid_depth->value());
 				}
 				else
 #endif

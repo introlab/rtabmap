@@ -169,7 +169,7 @@ public:
 	bool isOctomapCubeRendering() const;
 	bool isOctomap2dGrid() const;
 	int getOctomapTreeDepth() const;
-	bool isOctomapGroundAnObstacle() const;
+	bool isOctomapFullUpdate() const;
 	double getOctomapOccupancyThr() const;
 	int getOctomapPointSize() const;
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
@@ -199,7 +199,6 @@ public:
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;;
 	bool isGridMapEroded() const;
-	bool isGridMapIncremental() const;
 	double getGridMapFootprintRadius() const;
 	bool isGridMapFrom3DCloud() const;
 	bool projMapFrame() const;

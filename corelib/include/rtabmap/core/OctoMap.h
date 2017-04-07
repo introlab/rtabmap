@@ -57,7 +57,7 @@ public:
 
 class RTABMAP_EXP OctoMap {
 public:
-	OctoMap(float voxelSize = 0.1f, float occupancyThr = 0.5f);
+	OctoMap(float voxelSize = 0.1f, float occupancyThr = 0.5f, bool fullUpdate = false);
 
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	void addToCache(int nodeId,
@@ -81,7 +81,8 @@ public:
 			float & xMin,
 			float & yMin,
 			float & gridCellSize,
-			float minGridSize);
+			float minGridSize = 0.0f,
+			unsigned int treeDepth = 0);
 
 	bool writeBinary(const std::string & path);
 
@@ -97,6 +98,7 @@ private:
 	std::map<int, Transform> addedNodes_;
 	octomap::KeyRay keyRay_;
 	bool hasColor_;
+	bool fullUpdate_;
 };
 
 } /* namespace rtabmap */

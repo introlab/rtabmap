@@ -116,6 +116,8 @@ void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 
 cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S);
 
+cv::Mat RTABMAP_EXP erodeMap(const cv::Mat & map);
+
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr projectCloudOnXYPlane(
 		const typename pcl::PointCloud<PointT> & cloud);
