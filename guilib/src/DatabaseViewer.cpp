@@ -498,7 +498,7 @@ void DatabaseViewer::readSettings()
 
 	// Use same parameters used by RTAB-Map
 	settings.beginGroup("Gui");
-	exportDialog_->loadSettings(settings);
+	exportDialog_->loadSettings(settings, exportDialog_->objectName());
 	settings.beginGroup("PostProcessingDialog");
 	ui_->doubleSpinBox_detectMore_radius->setValue(settings.value("cluster_radius", ui_->doubleSpinBox_detectMore_radius->value()).toDouble());
 	ui_->doubleSpinBox_detectMore_angle->setValue(settings.value("cluster_angle", ui_->doubleSpinBox_detectMore_angle->value()).toDouble());
