@@ -613,7 +613,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const std::map<int, CameraModel> & cameraModels,
 		float maxDistance,
 		int minClusterSize,
-		const ProgressState * state)
+		const ProgressState * state,
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
 {
 	UASSERT(mesh->polygons.size());
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
@@ -671,7 +672,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
 	tm.setMaxDistance(maxDistance);
 	tm.setMinClusterSize(minClusterSize);
-	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state))
+	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state, vertexToPixels))
 	{
 		// compute normals for the mesh if not already here
 		bool hasNormals = false;

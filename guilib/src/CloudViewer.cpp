@@ -317,7 +317,7 @@ void CloudViewer::createMenu()
 	_aSetLighting->setChecked(false);
 	_aSetFlatShading = new QAction("Flat Shading", this);
 	_aSetFlatShading->setCheckable(true);
-	_aSetFlatShading->setChecked(true);
+	_aSetFlatShading->setChecked(false);
 	_aSetEdgeVisibility = new QAction("Show edges", this);
 	_aSetEdgeVisibility->setCheckable(true);
 	_aSetEdgeVisibility->setChecked(false);

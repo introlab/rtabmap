@@ -342,7 +342,6 @@ void feedImpl(
 	cv::Mat_<double> gainsGray, gainsR, gainsG, gainsB;
 	cv::solve(A, b, gainsGray);
 
-
 	cv::solve(AR, b, gainsR);
 	cv::solve(AG, b, gainsG);
 	cv::solve(AB, b, gainsB);

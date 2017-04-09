@@ -139,7 +139,8 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const std::map<int, CameraModel> & cameraModels,
 		float maxDistance = 0.0f, // max camera distance to polygon to apply texture
 		int minClusterSize = 50, // minimum size of polygons clusters textured
-		const ProgressState * state = 0);
+		const ProgressState * state = 0,
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
