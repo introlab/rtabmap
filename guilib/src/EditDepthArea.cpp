@@ -241,7 +241,7 @@ void floodfill(QImage & image, const cv::Mat & depthImage, int x, int y, float l
 		}
 
 		QRgb rgb = image.pixel(x,y);
-		if(qRed(rgb) == 0 && qGreen(rgb) == 0 == qBlue(rgb) == 0)
+		if(qRed(rgb) == 0 && qGreen(rgb) == 0 && qBlue(rgb) == 0)
 		{
 			return;
 		}

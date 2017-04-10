@@ -490,7 +490,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Grid, MinGroundHeight,         float,  0.0,     "Minimum ground height (0=disabled).");
 	RTABMAP_PARAM(Grid, MaxGroundHeight,         float,  0.0,     uFormat("Maximum ground height (0=disabled). Should be set if \"%s\" is true.", kGridNormalsSegmentation().c_str()));
 	RTABMAP_PARAM(Grid, MaxGroundAngle,          float,  45,      uFormat("[%s=true] Maximum angle (degrees) between point's normal to ground's normal to label it as ground. Points with higher angle difference are considered as obstacles.", kGridNormalsSegmentation().c_str()));
-	RTABMAP_PARAM(Grid, NormalK,                 int,    10,      uFormat("[%s=true] K neighbors to compute normals.", kGridNormalsSegmentation().c_str()));
+	RTABMAP_PARAM(Grid, NormalK,                 int,    20,      uFormat("[%s=true] K neighbors to compute normals.", kGridNormalsSegmentation().c_str()));
 	RTABMAP_PARAM(Grid, ClusterRadius,           float,  0.1,     uFormat("[%s=true] Cluster maximum radius.", kGridNormalsSegmentation().c_str()));
 	RTABMAP_PARAM(Grid, MinClusterSize,          int,    10,      uFormat("[%s=true] Minimum cluster size to project the points.", kGridNormalsSegmentation().c_str()));
 	RTABMAP_PARAM(Grid, FlatObstacleDetected,    bool,   true,    uFormat("[%s=true] Flat obstacles detected.", kGridNormalsSegmentation().c_str()));
@@ -504,7 +504,8 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Grid, NoiseFilteringMinNeighbors,   int,     5,       "Noise filtering minimum neighbors.");
 	RTABMAP_PARAM(Grid, Scan2dUnknownSpaceFilled,     bool,    false,   "Unknown space filled. Only used with 2D laser scans.");
 	RTABMAP_PARAM(Grid, Scan2dMaxFilledRange,         float,   4.0,     "Unknown space filled maximum range. If 0, the laser scan maximum range is used.");
-	RTABMAP_PARAM(Grid, ProjRayTracing,               bool,   false,    uFormat("[%s=false] 2D ray tracing is done for each projected obstacle, filling unknown space between the sensor and obstacles.", kGrid3D().c_str()));
+	RTABMAP_PARAM(Grid, ProjRayTracing,               bool,   true,    uFormat("[%s=false] 2D ray tracing is done for each projected obstacle, filling unknown space between the sensor and obstacles.", kGrid3D().c_str()));
+	RTABMAP_PARAM(Grid, FullUpdate,                   bool,   true,    "When the graph is changed, the whole map will be reconstructed instead of moving individually each cells of the map. Also, data added to cache won't be released after updating the map. This process is longer but more robust to drift that would erase some parts of the map when it should not.");
 
 public:
 	virtual ~Parameters();

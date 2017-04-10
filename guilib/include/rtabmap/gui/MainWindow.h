@@ -241,7 +241,8 @@ private:
 			const std::map<int, int> & mapIds,
 			const std::map<int, std::string> & labels,
 			const std::map<int, Transform> & groundTruths,
-			bool verboseProgress = false);
+			bool verboseProgress = false,
+			std::map<std::string, float> * stats = 0);
 	std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> createAndAddCloudToMap(int nodeId,	const Transform & pose, int mapId);
 	void createAndAddScanToMap(int nodeId, const Transform & pose, int mapId);
 	void createAndAddFeaturesToMap(int nodeId, const Transform & pose, int mapId);
@@ -300,9 +301,6 @@ private:
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 
 	std::map<int, cv::Mat> _createdScans;
-	std::map<int, std::pair<cv::Mat, cv::Mat> > _gridLocalMaps; // <ground, obstacles>
-	std::map<int, cv::Point3f> _gridViewPoints;
-	long _cachedGridsMemoryUsage;
 
 	rtabmap::OccupancyGrid * _occupancyGrid;
 	rtabmap::OctoMap * _octomap;

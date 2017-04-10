@@ -1047,7 +1047,8 @@ template<typename PointInT> bool
 pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		pcl::TextureMesh &mesh,
 		const pcl::texture_mapping::CameraVector &cameras,
-		const ProgressState * state)
+		const ProgressState * state,
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
 {
 
 	if (mesh.tex_polygons.size () != 1)
@@ -1258,6 +1259,10 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		return false;
 	}
 	int textured = 0;
+	if(vertexToPixels)
+	{
+		*vertexToPixels = std::vector<std::map<int, pcl::PointXY> >(mesh_cloud->size());
+	}
 	for(unsigned int idx_face=0; idx_face<faces.size(); ++idx_face)
 	{
 		if((idx_face+1)%10000 == 0)
@@ -1274,6 +1279,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 
 		int cameraIndex = -1;
 		float closestDistanceToCam = std::numeric_limits<float>::max();
+		float closestDistanceToCenter = std::numeric_limits<float>::max();
 		pcl::PointXY uv_coords[3];
 		for (std::list<int>::iterator camIter = faceCameras[idx_face].begin(); camIter!=faceCameras[idx_face].end(); ++camIter)
 		{
@@ -1282,14 +1288,26 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 			UASSERT(iter != visibleFaces[current_cam].end());
 			if (iter->second.facingTheCam)
 			{
-				float distanceToCam = iter->second.distance;
+				if(vertexToPixels)
+				{
+					vertexToPixels->at(face.vertices[0]).insert(std::make_pair(current_cam, iter->second.uv_coord1));
+					vertexToPixels->at(face.vertices[1]).insert(std::make_pair(current_cam, iter->second.uv_coord2));
+					vertexToPixels->at(face.vertices[2]).insert(std::make_pair(current_cam, iter->second.uv_coord3));
+				}
+
+				float distanceToCam = 0;//iter->second.distance;
+				float vx = (iter->second.uv_coord1.x+iter->second.uv_coord2.x+ iter->second.uv_coord3.x)/3.0f-0.5f;
+				float vy = (iter->second.uv_coord1.y+iter->second.uv_coord2.y+ iter->second.uv_coord3.y)/3.0f-0.5f;
+				float distanceToCenter = vx*vx+vy*vy;
 
 				//UDEBUG("Process polygon %d cam =%d distanceToCam=%f", idx_face, current_cam, distanceToCam);
 
-				if(distanceToCam < closestDistanceToCam)
+				if(//(distanceToCam <= closestDistanceToCam && distanceToCenter <= closestDistanceToCenter * 1.1) ||
+				   (distanceToCam <= closestDistanceToCam * 2 && distanceToCenter <= closestDistanceToCenter))
 				{
 					cameraIndex = current_cam;
 					closestDistanceToCam = distanceToCam;
+					closestDistanceToCenter = distanceToCenter;
 					uv_coords[0] = iter->second.uv_coord1;
 					uv_coords[1] = iter->second.uv_coord2;
 					uv_coords[2] = iter->second.uv_coord3;
@@ -1314,6 +1332,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		}
 	}
 	UINFO("Process %d polygons...done! (%d textured)", (int)faces.size(), textured);
+
 	return true;
 }
 

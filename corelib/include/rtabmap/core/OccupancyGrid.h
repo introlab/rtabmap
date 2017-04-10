@@ -45,6 +45,8 @@ public:
 	void setCellSize(float cellSize);
 	float getCellSize() const {return cellSize_;}
 	bool isGridFromDepth() const {return occupancyFromCloud_;}
+	bool isFullUpdate() const {return fullUpdate_;}
+	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 
 	template<typename PointT>
 	typename pcl::PointCloud<PointT>::Ptr segmentCloud(
@@ -104,6 +106,7 @@ private:
 	bool scan2dUnknownSpaceFilled_;
 	double scan2dMaxUnknownSpaceFilledRange_;
 	bool projRayTracing_;
+	bool fullUpdate_;
 
 	std::map<int, std::pair<cv::Mat, cv::Mat> > cache_;
 	cv::Mat map_;

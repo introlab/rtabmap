@@ -1424,6 +1424,44 @@ pcl::PointXYZRGB laserScanToPointRGB(const cv::Mat & laserScan, int index, unsig
 	return output;
 }
 
+void getMinMax3D(const cv::Mat & laserScan, cv::Point3f & min, cv::Point3f & max)
+{
+	UASSERT(!laserScan.empty());
+	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
+
+	const float * ptr = laserScan.ptr<float>(0, 0);
+	min.x = max.x = ptr[0];
+	min.y = max.y = ptr[1];
+	min.z = max.z = laserScan.channels() >= 3?ptr[2]:0.0f;
+	for(int i=1; i<laserScan.cols; ++i)
+	{
+		ptr = laserScan.ptr<float>(0, i);
+
+		if(ptr[0] < min.x) min.x = ptr[0];
+		else if(ptr[0] > max.x) max.x = ptr[0];
+
+		if(ptr[1] < min.y) min.y = ptr[1];
+		else if(ptr[1] > max.y) max.y = ptr[1];
+
+		if(laserScan.channels() >= 3)
+		{
+			if(ptr[2] < min.z) min.z = ptr[2];
+			else if(ptr[2] > max.z) max.z = ptr[2];
+		}
+	}
+}
+void getMinMax3D(const cv::Mat & laserScan, pcl::PointXYZ & min, pcl::PointXYZ & max)
+{
+	cv::Point3f minCV, maxCV;
+	getMinMax3D(laserScan, minCV, maxCV);
+	min.x = minCV.x;
+	min.y = minCV.y;
+	min.z = minCV.z;
+	max.x = maxCV.x;
+	max.y = maxCV.y;
+	max.z = maxCV.z;
+}
+
 // inspired from ROS image_geometry/src/stereo_camera_model.cpp
 cv::Point3f projectDisparityTo3D(
 		const cv::Point2f & pt,

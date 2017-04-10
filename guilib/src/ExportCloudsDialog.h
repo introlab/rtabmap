@@ -111,11 +111,12 @@ private:
 				const ParametersMap & parameters,
 				std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
 				std::map<int, pcl::PolygonMesh::Ptr> & meshes,
-				std::map<int, pcl::TextureMesh::Ptr> & textureMeshes);
+				std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
+				std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels);
 	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
-	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, std::map<int, pcl::TextureMesh::Ptr> & textureMeshes, const QMap<int, Signature> & cachedSignatures);
-	cv::Mat mergeTextures(pcl::TextureMesh & mesh, const QMap<int, Signature> & cachedSignatures) const;
+	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, std::map<int, pcl::TextureMesh::Ptr> & textureMeshes, const QMap<int, Signature> & cachedSignatures, const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels);
+	cv::Mat mergeTextures(pcl::TextureMesh & mesh, const QMap<int, Signature> & cachedSignatures, const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels) const;
 
 	void setSaveButton();
 	void setOkButton();

@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UThread.h"
 #include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UMath.h"
 
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_surface.h"
@@ -137,6 +138,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->spinBox_textureBrightnessContrastRatioLow, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_textureBrightnessContrastRatioHigh, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_exposureFusion, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_blending, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_blendingDecimation, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_meshing, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
@@ -289,6 +292,8 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureBrightnessConstrastRatioLow", _ui->spinBox_textureBrightnessContrastRatioLow->value());
 	settings.setValue("mesh_textureBrightnessConstrastRatioHigh", _ui->spinBox_textureBrightnessContrastRatioHigh->value());
 	settings.setValue("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked());
+	settings.setValue("mesh_textureBlending", _ui->checkBox_blending->isChecked());
+	settings.setValue("mesh_textureBlendingDecimation", _ui->comboBox_blendingDecimation->currentIndex());
 
 
 	settings.setValue("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value());
@@ -388,6 +393,8 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	{
 		_ui->checkBox_exposureFusion->setChecked(settings.value("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked()).toBool());
 	}
+	_ui->checkBox_blending->setChecked(settings.value("mesh_textureBlending", _ui->checkBox_blending->isChecked()).toBool());
+	_ui->comboBox_blendingDecimation->setCurrentIndex(settings.value("mesh_textureBlendingDecimation", _ui->comboBox_blendingDecimation->currentIndex()).toInt());
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(settings.value("mesh_angle_tolerance", _ui->doubleSpinBox_mesh_angleTolerance->value()).toDouble());
 	_ui->checkBox_mesh_quad->setChecked(settings.value("mesh_quad", _ui->checkBox_mesh_quad->isChecked()).toBool());
@@ -481,6 +488,8 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_textureBrightnessContrastRatioLow->setValue(0);
 	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(0);
 	_ui->checkBox_exposureFusion->setChecked(false);
+	_ui->checkBox_blending->setChecked(true);
+	_ui->comboBox_blendingDecimation->setCurrentIndex(0);
 
 	_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 	_ui->checkBox_mesh_quad->setChecked(false);
@@ -609,6 +618,7 @@ void ExportCloudsDialog::exportClouds(
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
 	std::map<int, pcl::TextureMesh::Ptr> textureMeshes;
+	std::vector<std::map<int, pcl::PointXY> > textureVertexToPixels;
 
 	setSaveButton();
 
@@ -622,11 +632,12 @@ void ExportCloudsDialog::exportClouds(
 			parameters,
 			clouds,
 			meshes,
-			textureMeshes))
+			textureMeshes,
+			textureVertexToPixels))
 	{
 		if(textureMeshes.size())
 		{
-			saveTextureMeshes(workingDirectory, poses, textureMeshes, cachedSignatures);
+			saveTextureMeshes(workingDirectory, poses, textureMeshes, cachedSignatures, textureVertexToPixels);
 		}
 		else if(meshes.size())
 		{
@@ -667,6 +678,7 @@ void ExportCloudsDialog::viewClouds(
 	std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
 	std::map<int, pcl::PolygonMesh::Ptr> meshes;
 	std::map<int, pcl::TextureMesh::Ptr> textureMeshes;
+	std::vector<std::map<int, pcl::PointXY> > textureVertexToPixels;
 
 	setOkButton();
 
@@ -680,7 +692,8 @@ void ExportCloudsDialog::viewClouds(
 			parameters,
 			clouds,
 			meshes,
-			textureMeshes))
+			textureMeshes,
+			textureVertexToPixels))
 	{
 		QDialog * window = new QDialog(this->parentWidget()?this->parentWidget():this, Qt::Window);
 		window->setAttribute(Qt::WA_DeleteOnClose, true);
@@ -727,7 +740,7 @@ void ExportCloudsDialog::viewClouds(
 				cv::Mat globalTexture;
 				if (mesh->tex_materials.size() > 1)
 				{
-					globalTexture = mergeTextures(*mesh, cachedSignatures);
+					globalTexture = mergeTextures(*mesh, cachedSignatures, textureVertexToPixels);
 				}
 
 				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(mesh->tex_polygons.size()?mesh->tex_polygons[0].size():0));
@@ -901,7 +914,8 @@ bool ExportCloudsDialog::getExportedClouds(
 		const ParametersMap & parameters,
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
 		std::map<int, pcl::PolygonMesh::Ptr> & meshes,
-		std::map<int, pcl::TextureMesh::Ptr> & textureMeshes)
+		std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
+		std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels)
 {
 	_canceled = false;
 	_workingDirectory = workingDirectory;
@@ -979,7 +993,15 @@ bool ExportCloudsDialog::getExportedClouds(
 			return false;
 		}
 
-		if(_ui->checkBox_gainCompensation->isChecked() && clouds.size() > 1)
+		if(_ui->checkBox_gainCompensation->isChecked() && clouds.size() > 1 &&
+				// Do compensation later if we are merging textures on a dense assembled cloud
+				!(_ui->checkBox_meshing->isChecked() &&
+					_ui->checkBox_textureMapping->isEnabled() &&
+					_ui->checkBox_textureMapping->isChecked() &&
+					_ui->comboBox_pipeline->currentIndex()==1 &&
+					_ui->checkBox_assemble->isChecked() &&
+					_ui->comboBox_meshingTextureSize->isEnabled() &&
+					_ui->comboBox_meshingTextureSize->currentIndex() > 0))
 		{
 			UASSERT(_compensator == 0);
 			_compensator = new GainCompensator(_ui->doubleSpinBox_gainRadius->value(), _ui->doubleSpinBox_gainOverlap->value(), 0.01, _ui->doubleSpinBox_gainBeta->value());
@@ -1924,7 +1946,8 @@ bool ExportCloudsDialog::getExportedClouds(
 								cameraModels,
 								_ui->doubleSpinBox_meshingTextureMaxDistance->value(),
 								_ui->spinBox_mesh_minTextureClusterSize->value(),
-								&texturingState);
+								&texturingState,
+								cameraPoses.size()>1?&textureVertexToPixels:0); // only get vertexToPixels if merged clouds with multi textures
 
 						if(_canceled)
 						{
@@ -2643,7 +2666,15 @@ void ExportCloudsDialog::saveMeshes(
 	}
 }
 
-cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<int, Signature> & cachedSignatures) const
+double sqr(uchar v)
+{
+	return double(v)*double(v);
+}
+
+cv::Mat ExportCloudsDialog::mergeTextures(
+		pcl::TextureMesh & mesh,
+		const QMap<int, Signature> & cachedSignatures,
+		const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels) const
 {
 	//get texture size, if disabled use default 1024
 	int textureSize = 1024;
@@ -2659,7 +2690,6 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 		cv::Size imageSize;
 		const int imageType=CV_8UC3;
 		UDEBUG("");
-		bool mergeTextures = true;
 		for(unsigned int i=0; i<mesh.tex_materials.size(); ++i)
 		{
 			if(!mesh.tex_materials[i].tex_file.empty() &&
@@ -2722,7 +2752,7 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 				}
 			}
 		}
-		if(mergeTextures && textures.size() && imageSize.height>0 && imageSize.width>0)
+		if(textures.size() && imageSize.height>0 && imageSize.width>0)
 		{
 			float scale = 0.0f;
 			UDEBUG("");
@@ -2739,14 +2769,19 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(255));
 				cv::Mat emptyImageMask(int(imageSize.height*scale), int(imageSize.width*scale), CV_8UC1, cv::Scalar::all(255));
 				int oi=0;
+				std::vector<cv::Point2i> imageOrigin(textures.size());
+				std::vector<int> newCamIndex(textures.size(), -1);
 				for(int t=0; t<(int)textures.size(); ++t)
 				{
 					if(materialsKept.at(t))
 					{
+						newCamIndex[t] = oi;
 						int u = oi%cols * emptyImage.cols;
 						int v = oi/cols * emptyImage.rows;
 						UASSERT(u < textureSize-emptyImage.cols);
 						UASSERT(v < textureSize-emptyImage.rows);
+						imageOrigin[t].x = u;
+						imageOrigin[t].y = v;
 						if(textures[t]>=0)
 						{
 							cv::Mat image;
@@ -2788,6 +2823,297 @@ cv::Mat ExportCloudsDialog::mergeTextures(pcl::TextureMesh & mesh, const QMap<in
 						++oi;
 					}
 				}
+
+				if(textureVertexToPixels.size())
+				{
+					//UWARN("Saving original.png", globalTexture);
+					//cv::imwrite("original.png", globalTexture);
+
+					if(_ui->checkBox_gainCompensation->isChecked())
+					{
+						const int num_images = static_cast<int>(oi);
+						cv::Mat_<int> N(num_images, num_images); N.setTo(0);
+						cv::Mat_<double> I(num_images, num_images); I.setTo(0);
+
+						cv::Mat_<double> IR(num_images, num_images); IR.setTo(0);
+						cv::Mat_<double> IG(num_images, num_images); IG.setTo(0);
+						cv::Mat_<double> IB(num_images, num_images); IB.setTo(0);
+
+						// Adjust UV coordinates to globalTexture
+						for(unsigned int p=0; p<textureVertexToPixels.size(); ++p)
+						{
+							for(std::map<int, pcl::PointXY>::const_iterator iter=textureVertexToPixels[p].begin(); iter!=textureVertexToPixels[p].end(); ++iter)
+							{
+								if(materialsKept.at(iter->first))
+								{
+									N(newCamIndex[iter->first], newCamIndex[iter->first]) +=1;
+
+									std::map<int, pcl::PointXY>::const_iterator jter=iter;
+									++jter;
+									int k = 1;
+									for(; jter!=textureVertexToPixels[p].end(); ++jter, ++k)
+									{
+										if(materialsKept.at(jter->first))
+										{
+											int i = newCamIndex[iter->first];
+											int j = newCamIndex[jter->first];
+
+											N(i, j) += 1;
+											N(j, i) += 1;
+
+											// uv in globalTexture
+											int ui = iter->second.x*emptyImage.cols + imageOrigin[iter->first].x;
+											int vi = (1.0-iter->second.y)*emptyImage.rows + imageOrigin[iter->first].y;
+											int uj = jter->second.x*emptyImage.cols + imageOrigin[jter->first].x;
+											int vj = (1.0-jter->second.y)*emptyImage.rows + imageOrigin[jter->first].y;
+											cv::Vec3b * pt1 = globalTexture.ptr<cv::Vec3b>(vi,ui);
+											cv::Vec3b * pt2 = globalTexture.ptr<cv::Vec3b>(vj,uj);
+
+											I(i, j) += std::sqrt(static_cast<double>(sqr(pt1->val[0]) + sqr(pt1->val[1]) + sqr(pt1->val[2])));
+											I(j, i) += std::sqrt(static_cast<double>(sqr(pt2->val[0]) + sqr(pt2->val[1]) + sqr(pt2->val[2])));
+
+											IR(i, j) += static_cast<double>(pt1->val[2]);
+											IR(j, i) += static_cast<double>(pt2->val[2]);
+											IG(i, j) += static_cast<double>(pt1->val[1]);
+											IG(j, i) += static_cast<double>(pt2->val[1]);
+											IB(i, j) += static_cast<double>(pt1->val[0]);
+											IB(j, i) += static_cast<double>(pt2->val[0]);
+										}
+									}
+								}
+							}
+						}
+
+						for(int i=0; i<num_images; ++i)
+						{
+							for(int j=i+1; j<num_images; ++j)
+							{
+								if(N(i, j))
+								{
+									I(i, j) /= N(i, j);
+									I(j, i) /= N(j, i);
+
+									IR(i, j) /= N(i, j);
+									IR(j, i) /= N(j, i);
+									IG(i, j) /= N(i, j);
+									IG(j, i) /= N(j, i);
+									IB(i, j) /= N(i, j);
+									IB(j, i) /= N(j, i);
+								}
+							}
+						}
+
+						cv::Mat_<double> A(num_images, num_images); A.setTo(0);
+						cv::Mat_<double> b(num_images, 1); b.setTo(0);
+						cv::Mat_<double> AR(num_images, num_images); AR.setTo(0);
+						cv::Mat_<double> AG(num_images, num_images); AG.setTo(0);
+						cv::Mat_<double> AB(num_images, num_images); AB.setTo(0);
+						double alpha = 0.01;
+						double beta = _ui->doubleSpinBox_gainBeta->value();
+						for (int i = 0; i < num_images; ++i)
+						{
+							for (int j = 0; j < num_images; ++j)
+							{
+								b(i, 0) += beta * N(i, j);
+								A(i, i) += beta * N(i, j);
+								AR(i, i) += beta * N(i, j);
+								AG(i, i) += beta * N(i, j);
+								AB(i, i) += beta * N(i, j);
+								if (j == i) continue;
+								A(i, i) += 2 * alpha * I(i, j) * I(i, j) * N(i, j);
+								A(i, j) -= 2 * alpha * I(i, j) * I(j, i) * N(i, j);
+
+								AR(i, i) += 2 * alpha * IR(i, j) * IR(i, j) * N(i, j);
+								AR(i, j) -= 2 * alpha * IR(i, j) * IR(j, i) * N(i, j);
+
+								AG(i, i) += 2 * alpha * IG(i, j) * IG(i, j) * N(i, j);
+								AG(i, j) -= 2 * alpha * IG(i, j) * IG(j, i) * N(i, j);
+
+								AB(i, i) += 2 * alpha * IB(i, j) * IB(i, j) * N(i, j);
+								AB(i, j) -= 2 * alpha * IB(i, j) * IB(j, i) * N(i, j);
+							}
+						}
+
+						cv::Mat_<double> gainsGray, gainsR, gainsG, gainsB;
+						cv::solve(A, b, gainsGray);
+
+						cv::solve(AR, b, gainsR);
+						cv::solve(AG, b, gainsG);
+						cv::solve(AB, b, gainsB);
+
+						cv::Mat_<double> gains(gainsGray.rows, 4);
+						gainsGray.copyTo(gains.col(0));
+						gainsR.copyTo(gains.col(1));
+						gainsG.copyTo(gains.col(2));
+						gainsB.copyTo(gains.col(3));
+
+						for(int t=0; t<(int)textures.size(); ++t)
+						{
+							//break;
+							if(materialsKept.at(t))
+							{
+								int u = imageOrigin[t].x;
+								int v = imageOrigin[t].y;
+
+								UDEBUG("Gain cam%d = %f", newCamIndex[t], gainsGray(newCamIndex[t], 0));
+
+								cv::Mat roi = globalTexture(cv::Rect(u, v, emptyImage.cols, emptyImage.rows));
+
+								std::vector<cv::Mat> channels;
+								cv::split(roi, channels);
+								// assuming BGR
+								cv::multiply(channels[0], gains(newCamIndex[t], 3), channels[0]);
+								cv::multiply(channels[1], gains(newCamIndex[t], 2), channels[1]);
+								cv::multiply(channels[2], gains(newCamIndex[t], 1), channels[2]);
+								cv::merge(channels, roi);
+							}
+						}
+						//UWARN("Saving gain.png", globalTexture);
+						//cv::imwrite("gain.png", globalTexture);
+					}
+
+					if(_ui->checkBox_blending->isChecked())
+					{
+						// blending BGR
+						int decimation = 1;
+						if(_ui->comboBox_blendingDecimation->currentIndex() == 0)
+						{
+							// determinate decimation to apply
+							std::vector<float> edgeLengths;
+							if(mesh.tex_coordinates.size() && mesh.tex_coordinates[0].size())
+							{
+								UASSERT(mesh.tex_polygons.size() && mesh.tex_polygons[0].size() && mesh.tex_polygons[0][0].vertices.size());
+								int polygonSize = mesh.tex_polygons[0][0].vertices.size();
+								UDEBUG("polygon size=%d", polygonSize);
+
+								for(unsigned int i=0; i<mesh.tex_coordinates[0].size(); i+=polygonSize)
+								{
+									for(int j=0; j<polygonSize; ++j)
+									{
+										const Eigen::Vector2f & uc1 = mesh.tex_coordinates[0][i + j];
+										const Eigen::Vector2f & uc2 = mesh.tex_coordinates[0][i + (j+1)%polygonSize];
+										Eigen::Vector2f edge = (uc1-uc2)*textureSize;
+										edgeLengths.push_back(fabs(edge[0]));
+										edgeLengths.push_back(fabs(edge[1]));
+									}
+								}
+								float edgeLength = 0.0f;
+								if(edgeLengths.size())
+								{
+									std::sort(edgeLengths.begin(), edgeLengths.end());
+									float m = uMean(edgeLengths.data(), edgeLengths.size());
+									float stddev = std::sqrt(uVariance(edgeLengths.data(), edgeLengths.size(), m));
+									edgeLength = m+stddev;
+									decimation = 1 << 6;
+									for(int i=1; i<=6; ++i)
+									{
+										if(float(1 << i) >= edgeLength)
+										{
+											decimation = 1 << i;
+											break;
+										}
+									}
+								}
+
+								UDEBUG("edge length=%f decimation=%d", edgeLength, decimation);
+							}
+						}
+						else
+						{
+							decimation = 1 << (_ui->comboBox_blendingDecimation->currentIndex()-1);
+							UDEBUG("decimation=%d", decimation);
+						}
+
+						cv::Mat blendGains(globalTexture.rows/decimation, globalTexture.cols/decimation, CV_32FC3, cv::Scalar::all(1.0f));
+						for(unsigned int p=0; p<textureVertexToPixels.size(); ++p)
+						{
+							if(textureVertexToPixels[p].size() > 1)
+							{
+								std::vector<float> gainsB(textureVertexToPixels[p].size());
+								std::vector<float> gainsG(textureVertexToPixels[p].size());
+								std::vector<float> gainsR(textureVertexToPixels[p].size());
+								float sumWeight = 0.0f;
+								int k=0;
+								for(std::map<int, pcl::PointXY>::const_iterator iter=textureVertexToPixels[p].begin(); iter!=textureVertexToPixels[p].end(); ++iter)
+								{
+									if(materialsKept.at(iter->first))
+									{
+										int u = iter->second.x*emptyImage.cols + imageOrigin[iter->first].x;
+										int v = (1.0-iter->second.y)*emptyImage.rows + imageOrigin[iter->first].y;
+										float x = iter->second.x - 0.5f;
+										float y = iter->second.y - 0.5f;
+										float weight = 0.7f - sqrt(x*x+y*y);
+										if(weight<0.0f)
+										{
+											weight = 0.0f;
+										}
+										cv::Vec3b * pt = globalTexture.ptr<cv::Vec3b>(v,u);
+										gainsB[k] = static_cast<double>(pt->val[0]) * weight;
+										gainsG[k] = static_cast<double>(pt->val[1]) * weight;
+										gainsR[k] = static_cast<double>(pt->val[2]) * weight;
+										sumWeight += weight;
+										++k;
+									}
+								}
+								gainsB.resize(k);
+								gainsG.resize(k);
+								gainsR.resize(k);
+
+								if(sumWeight > 0)
+								{
+									float targetColor[3];
+									targetColor[0] = uSum(gainsB.data(), gainsB.size()) / sumWeight;
+									targetColor[1] = uSum(gainsG.data(), gainsG.size()) / sumWeight;
+									targetColor[2] = uSum(gainsR.data(), gainsR.size()) / sumWeight;
+									for(std::map<int, pcl::PointXY>::const_iterator iter=textureVertexToPixels[p].begin(); iter!=textureVertexToPixels[p].end(); ++iter)
+									{
+										if(materialsKept.at(iter->first))
+										{
+											int u = iter->second.x*emptyImage.cols + imageOrigin[iter->first].x;
+											int v = (1.0-iter->second.y)*emptyImage.rows + imageOrigin[iter->first].y;
+											cv::Vec3b * pt = globalTexture.ptr<cv::Vec3b>(v,u);
+											float gB = targetColor[0]/(pt->val[0]==0?1.0f:pt->val[0]);
+											float gG = targetColor[1]/(pt->val[1]==0?1.0f:pt->val[1]);
+											float gR = targetColor[2]/(pt->val[2]==0?1.0f:pt->val[2]);
+											cv::Vec3f * ptr = blendGains.ptr<cv::Vec3f>(v/decimation, u/decimation);
+											ptr->val[0] = (gB>1.3f)?1.3f:(gB<0.7f)?0.7f:gB;
+											ptr->val[1] = (gG>1.3f)?1.3f:(gG<0.7f)?0.7f:gG;
+											ptr->val[2] = (gR>1.3f)?1.3f:(gR<0.7f)?0.7f:gR;
+										}
+									}
+								}
+							}
+						}
+
+						/*std::vector<cv::Mat> channels;
+						cv::split(blendGains, channels);
+						cv::Mat img;
+						channels[0].convertTo(img,CV_8U,128.0,0);
+						cv::imwrite("blendSmallB.png", img);
+						channels[1].convertTo(img,CV_8U,128.0,0);
+						cv::imwrite("blendSmallG.png", img);
+						channels[2].convertTo(img,CV_8U,128.0,0);
+						cv::imwrite("blendSmallR.png", img);*/
+
+						cv::Mat dst;
+						cv::blur(blendGains, dst, cv::Size(3,3));
+						cv::resize(dst, blendGains, globalTexture.size(), 0, 0, cv::INTER_LINEAR);
+
+						/*cv::split(blendGains, channels);
+						channels[0].convertTo(img,CV_8U,128.0,0);
+						cv::imwrite("blendFullB.png", img);
+						channels[1].convertTo(img,CV_8U,128.0,0);
+						cv::imwrite("blendFullG.png", img);
+						channels[2].convertTo(img,CV_8U,128.0,0);
+						cv::imwrite("blendFullR.png", img);*/
+
+						cv::multiply(globalTexture, blendGains, globalTexture, 1.0, CV_8UC3);
+
+						//UWARN("Saving blending.png", globalTexture);
+						//cv::imwrite("blending.png", globalTexture);
+					}
+				}
+
 				if(_ui->spinBox_textureBrightnessContrastRatioLow->value() > 0 || _ui->spinBox_textureBrightnessContrastRatioHigh->value() > 0)
 				{
 					if(_ui->checkBox_exposureFusion->isEnabled() && _ui->checkBox_exposureFusion->isChecked())
@@ -2832,7 +3158,8 @@ void ExportCloudsDialog::saveTextureMeshes(
 		const QString & workingDirectory,
 		const std::map<int, Transform> & poses,
 		std::map<int, pcl::TextureMesh::Ptr> & meshes,
-		const QMap<int, Signature> & cachedSignatures)
+		const QMap<int, Signature> & cachedSignatures,
+		const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels)
 {
 	if(meshes.size() == 1)
 	{
@@ -2858,7 +3185,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 				bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
 				if(texturesMerged && mesh->tex_materials.size()>1)
 				{
-					globalTexture = mergeTextures(*mesh, cachedSignatures);
+					globalTexture = mergeTextures(*mesh, cachedSignatures, textureVertexToPixels);
 				}
 				bool singleTexture = mesh->tex_materials.size() == 1;
 				if(!singleTexture)
@@ -2988,7 +3315,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 						bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
 						if(texturesMerged && mesh->tex_materials.size()>1)
 						{
-							globalTexture = mergeTextures(*mesh, cachedSignatures);
+							globalTexture = mergeTextures(*mesh, cachedSignatures, textureVertexToPixels);
 						}
 						bool singleTexture = mesh->tex_materials.size() == 1;
 						if(!singleTexture)
