@@ -175,7 +175,7 @@ Scene::Scene() :
 		pointSize_(5.0f),
 		frustumCulling_(true),
 		boundingBoxRendering_(false),
-		lighting_(true),
+		lighting_(false),
 		backfaceCulling_(true),
 		r_(0.0f),
 		g_(0.0f),

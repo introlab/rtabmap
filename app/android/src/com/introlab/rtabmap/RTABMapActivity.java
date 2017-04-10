@@ -255,7 +255,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonSaveOnDevice.setOnClickListener(this);
 		mButtonShareOnSketchfab.setOnClickListener(this);
 		mButtonFirst.setChecked(true);
-		mButtonLighting.setChecked(true);
+		mButtonLighting.setChecked(false);
 		mButtonLighting.setVisibility(View.INVISIBLE);
 		mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 		mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
