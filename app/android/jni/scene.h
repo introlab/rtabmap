@@ -78,7 +78,7 @@ class Scene {
 
   void SetCameraPose(const rtabmap::Transform & pose);
   rtabmap::Transform GetCameraPose() const {return currentPose_!=0?*currentPose_:rtabmap::Transform();}
-  rtabmap::Transform GetOpenGLCameraPose(float * fov) const;
+  rtabmap::Transform GetOpenGLCameraPose(float * fov = 0) const;
 
   // Touch event passed from android activity. This function only support two
   // touches.
@@ -120,19 +120,20 @@ class Scene {
   void updateMesh(int id, const Mesh & mesh);
   void updateGains(int id, float gainR, float gainG, float gainB);
 
+  void setBlending(bool enabled) {blending_ = enabled;}
   void setMapRendering(bool enabled) {mapRendering_ = enabled;}
   void setMeshRendering(bool enabled, bool withTexture) {meshRendering_ = enabled; meshRenderingTexture_ = withTexture;}
   void setPointSize(float size) {pointSize_ = size;}
-  void setFrustumCulling(bool enabled) {frustumCulling_ = enabled;}
   void setLighting(bool enabled) {lighting_ = enabled;}
   void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
   void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
+  void setGridColor(float r, float g, float b);
 
+  bool isBlending() const {return blending_;}
   bool isMapRendering() const {return mapRendering_;}
   bool isMeshRendering() const {return meshRendering_;}
   bool isMeshTexturing() const {return meshRendering_ && meshRenderingTexture_;}
   float getPointSize() const {return pointSize_;}
-  bool isFrustumCulling() const {return frustumCulling_;}
   bool isLighting() const {return lighting_;}
   bool isBackfaceCulling() const {return backfaceCulling_;}
 
@@ -170,17 +171,23 @@ class Scene {
   GLuint texture_mesh_shader_program_;
   GLuint graph_shader_program_;
 
+  bool blending_;
   bool mapRendering_;
   bool meshRendering_;
   bool meshRenderingTexture_;
   float pointSize_;
-  bool frustumCulling_;
   bool boundingBoxRendering_;
   bool lighting_;
   bool backfaceCulling_;
   float r_;
   float g_;
   float b_;
+  GLuint fboId_;
+  GLuint depthTexture_;
+  GLsizei screenWidth_;
+  GLsizei screenHeight_;
+  bool doubleTapOn_;
+  cv::Point2f doubleTapPos_;
 };
 
 #endif  // TANGO_POINT_CLOUD_SCENE_H_

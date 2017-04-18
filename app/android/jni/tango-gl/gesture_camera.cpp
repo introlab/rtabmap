@@ -182,7 +182,7 @@ void GestureCamera::SetCameraType(CameraType camera_index) {
       SetRotation(glm::quat(1.0f, 0.0f, 0.0f, 0.0f));
       cam_cur_dist_ = kThirdPersonFollow?kThirdPersonFollowCameraDist:kThirdPersonCameraDist;
       anchor_offset_ = glm::vec3(0.0f,0.0f,0.0f);
-      cam_cur_angle_.x = -M_PI / 4.0f;
+      cam_cur_angle_.x = -M_PI / 6.0f;
       cam_cur_angle_.y = kThirdPersonFollow?0:M_PI / 4.0f;
       cam_cur_target_rot_ = glm::quat(1,0,0,0);
       StartCameraToCurrentTransform();

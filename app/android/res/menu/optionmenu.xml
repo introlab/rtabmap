@@ -17,12 +17,6 @@
                   	<item android:id="@+id/export_point_cloud_highrez" android:title="Max Density" />
                   </menu>
               </item>
-              <item android:id="@+id/export_mesh_menu" android:title="Raw Mesh..." >
-	              <menu>
-		              <item android:id="@+id/export_mesh" android:title="Colored Mesh" />
-			          <item android:id="@+id/export_mesh_texture" android:title="Textured Mesh" />
-		          </menu>
-	          </item>
 	          <item android:id="@+id/export_optimized_mesh_menu" android:title="Optimized Mesh..." >
 	              <menu>
 		              <item android:id="@+id/export_optimized_mesh" android:title="Colored Mesh" />

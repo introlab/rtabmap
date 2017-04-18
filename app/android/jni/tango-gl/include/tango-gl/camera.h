@@ -29,6 +29,7 @@ class Camera : public Transform {
 
   void SetAspectRatio(const float aspect_ratio);
   void SetFieldOfView(const float fov);
+  void SetNearFarClipPlanes(const float near, const float far);
 
   glm::mat4 GetViewMatrix();
   glm::mat4 GetProjectionMatrix();

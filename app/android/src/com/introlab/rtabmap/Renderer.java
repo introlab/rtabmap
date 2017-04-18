@@ -41,6 +41,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 
 	private TextManager mTextManager = null;
 	private float mSurfaceHeight = 0.0f;
+	private float mTextColor = 1.0f;
 	
 	private Vector<TextObject> mTexts;
 
@@ -174,9 +175,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 		
 		// Create our text manager
 		mTextManager = new TextManager(mActivity);
-		
-		GLES20.glEnable(GLES20.GL_BLEND);
-	    GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+		mTextManager.setColor(mTextColor);
 	}
 	
 	public void updateTexts(String[] texts)
@@ -206,6 +205,15 @@ public class Renderer implements GLSurfaceView.Renderer {
 			}
 	
 			mTextChanged = true;
+		}
+	}
+	
+	public void setTextColor(float color) 
+	{
+		mTextColor = color;
+		if(mTextManager != null)
+		{
+			mTextManager.setColor(mTextColor);
 		}
 	}
 }

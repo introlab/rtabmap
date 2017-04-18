@@ -34,6 +34,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         ((Preference)findPreference(getString(R.string.pref_key_point_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_point_size))).getEntry() + ") "+getString(R.string.pref_summary_point_size));
         ((Preference)findPreference(getString(R.string.pref_key_angle))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_angle))).getEntry() + ") "+getString(R.string.pref_summary_angle));
         ((Preference)findPreference(getString(R.string.pref_key_triangle))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_triangle))).getEntry() + ") "+getString(R.string.pref_summary_triangle));
+        ((Preference)findPreference(getString(R.string.pref_key_background_color))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_background_color))).getEntry() + ") "+getString(R.string.pref_summary_background_color));
         ((Preference)findPreference(getString(R.string.pref_key_rendering_texture_decimation))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_rendering_texture_decimation))).getEntry() + ") "+getString(R.string.pref_summary_rendering_texture_decimation));
           
         ((Preference)findPreference(getString(R.string.pref_key_update_rate))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_update_rate))).getEntry() + ") "+getString(R.string.pref_summary_update_rate));
@@ -89,6 +90,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	if(key.compareTo(getString(R.string.pref_key_point_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_point_size));
         	if(key.compareTo(getString(R.string.pref_key_angle))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_angle));
         	if(key.compareTo(getString(R.string.pref_key_triangle))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_triangle));
+        	if(key.compareTo(getString(R.string.pref_key_background_color))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_background_color));
         	if(key.compareTo(getString(R.string.pref_key_rendering_texture_decimation))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_rendering_texture_decimation));
         	
         	if(key.compareTo(getString(R.string.pref_key_update_rate))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_update_rate));

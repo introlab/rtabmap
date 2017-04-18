@@ -600,7 +600,11 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 		float pointSize,
 		bool textureRendering,
 		bool lighting,
-		float distanceToCameraSqr) {
+		float distanceToCameraSqr,
+		const GLuint & depthTexture,
+		int screenWidth,
+		int screenHeight,
+		bool packDepthToColorChannel) {
 
 	if(vertex_buffers_ && nPoints_ && visible_)
 	{
@@ -645,12 +649,26 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			GLuint texture_handle = glGetUniformLocation(texture_shader_program_, "uTexture");
 			glUniform1i(texture_handle, 0);
 
+			// Texture activate unit 1
+			glActiveTexture(GL_TEXTURE1);
+			// Bind the texture to this unit.
+			glBindTexture(GL_TEXTURE_2D, depthTexture);
+			// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 1.
+			GLuint depth_texture_handle = glGetUniformLocation(texture_shader_program_, "uDepthTexture");
+			glUniform1i(depth_texture_handle, 1);
+
 			GLuint gainR_handle = glGetUniformLocation(texture_shader_program_, "uGainR");
 			GLuint gainG_handle = glGetUniformLocation(texture_shader_program_, "uGainG");
 			GLuint gainB_handle = glGetUniformLocation(texture_shader_program_, "uGainB");
 			glUniform1f(gainR_handle, gainR_);
 			glUniform1f(gainG_handle, gainG_);
 			glUniform1f(gainB_handle, gainB_);
+
+			GLuint blending_handle = glGetUniformLocation(texture_shader_program_, "uBlending");
+			glUniform1i(blending_handle, depthTexture>0?1:0);
+
+			GLuint screenScale_handle = glGetUniformLocation(texture_shader_program_, "uScreenScale");
+			glUniform2f(screenScale_handle, 1.0f/(float)screenWidth, 1.0f/(float)screenHeight);
 
 			GLint attribute_vertex = glGetAttribLocation(texture_shader_program_, "aVertex");
 			GLint attribute_texture = glGetAttribLocation(texture_shader_program_, "aTexCoord");
@@ -691,7 +709,7 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			glm::mat4 mvp_mat = projectionMatrix * mv_mat;
 			glUniformMatrix4fv(mvp_handle_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
 
-			GLuint n_handle = glGetUniformLocation(texture_shader_program_, "uN");
+			GLuint n_handle = glGetUniformLocation(cloud_shader_program_, "uN");
 			glm::mat3 normalMatrix(mv_mat);
 			normalMatrix = glm::inverse(normalMatrix);
 			normalMatrix = glm::transpose(normalMatrix);
@@ -703,20 +721,28 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			}
 
 			//lighting
-			GLuint lighting_handle = glGetUniformLocation(texture_shader_program_, "uUseLighting");
+			GLuint lighting_handle = glGetUniformLocation(cloud_shader_program_, "uUseLighting");
 			glUniform1i(lighting_handle, lighting?1:0);
 
 			if(lighting)
 			{
-				GLuint ambiant_handle = glGetUniformLocation(texture_shader_program_, "uAmbientColor");
+				GLuint ambiant_handle = glGetUniformLocation(cloud_shader_program_, "uAmbientColor");
 				glUniform3f(ambiant_handle,0.6,0.6,0.6);
 
-				GLuint lightingDirection_handle = glGetUniformLocation(texture_shader_program_, "uLightingDirection");
+				GLuint lightingDirection_handle = glGetUniformLocation(cloud_shader_program_, "uLightingDirection");
 				glUniform3f(lightingDirection_handle, 0.0, 0.0, 1.0); // from the camera
 			}
 
 			GLuint point_size_handle_ = glGetUniformLocation(cloud_shader_program_, "uPointSize");
 			glUniform1f(point_size_handle_, pointSize);
+
+			// Texture activate unit 1
+			glActiveTexture(GL_TEXTURE0);
+			// Bind the texture to this unit.
+			glBindTexture(GL_TEXTURE_2D, depthTexture);
+			// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 1.
+			GLuint depth_texture_handle = glGetUniformLocation(cloud_shader_program_, "uDepthTexture");
+			glUniform1i(depth_texture_handle, 0);
 
 			GLuint gainR_handle = glGetUniformLocation(cloud_shader_program_, "uGainR");
 			GLuint gainG_handle = glGetUniformLocation(cloud_shader_program_, "uGainG");
@@ -724,6 +750,15 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 			glUniform1f(gainR_handle, gainR_);
 			glUniform1f(gainG_handle, gainG_);
 			glUniform1f(gainB_handle, gainB_);
+
+			GLuint packing_handle = glGetUniformLocation(cloud_shader_program_, "uPackDepthToColor");
+			glUniform1i(packing_handle, packDepthToColorChannel?1:0);
+
+			GLuint blending_handle = glGetUniformLocation(cloud_shader_program_, "uBlending");
+			glUniform1i(blending_handle, depthTexture>0?1:0);
+
+			GLuint screenScale_handle = glGetUniformLocation(cloud_shader_program_, "uScreenScale");
+			glUniform2f(screenScale_handle, 1.0f/(float)screenWidth, 1.0f/(float)screenHeight);
 
 			GLint attribute_vertex = glGetAttribLocation(cloud_shader_program_, "aVertex");
 			GLint attribute_color = glGetAttribLocation(cloud_shader_program_, "aColor");

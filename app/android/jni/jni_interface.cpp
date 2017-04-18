@@ -127,6 +127,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setPausedMapping(
 	return app.setPausedMapping(paused);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setOnlineBlending(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setOnlineBlending(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMapCloudShown(
 		JNIEnv*, jobject, bool shown)
 {
@@ -287,6 +293,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setRenderingTextureDecimation(
 		JNIEnv*, jobject, int value)
 {
 	return app.setRenderingTextureDecimation(value);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setBackgroundColor(
+		JNIEnv*, jobject, float value)
+{
+	return app.setBackgroundColor(value);
 }
 JNIEXPORT jint JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setMappingParameter(

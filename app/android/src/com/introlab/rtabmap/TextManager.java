@@ -29,23 +29,20 @@ public class TextManager {
 	public static final String vs_Text =
 		"uniform mat4 uMVPMatrix;" +
 		"attribute vec4 vPosition;" +
-		"attribute vec4 a_Color;" +
 		"attribute vec2 a_texCoord;" +
-		"varying vec4 v_Color;" + 
 		"varying vec2 v_texCoord;" +
 	    "void main() {" +
 	    "  gl_Position = uMVPMatrix * vPosition;" +
 	    "  v_texCoord = a_texCoord;" +
-	    "  v_Color = a_Color;" + 
 	    "}";
 	public static final String fs_Text =
 	    "precision mediump float;" +
-	    "varying vec4 v_Color;" +
+	    "uniform float uColor;" +
 	    "varying vec2 v_texCoord;" +
         "uniform sampler2D s_texture;" +
 	    "void main() {" +
-	    "  gl_FragColor = texture2D( s_texture, v_texCoord ) * v_Color;" +
-	    "  gl_FragColor.rgb *= v_Color.a;" +
+	    "  gl_FragColor = texture2D( s_texture, v_texCoord );" +
+	    "  gl_FragColor.rgb *= uColor;" +
 	    "}";
 	
 	public static int sp_Text;
@@ -60,21 +57,19 @@ public class TextManager {
 	private float mUVWidth;
 	private float mUVHeight;
 	private float mTextHeight;
+	private float mColor;
 	
 	private FloatBuffer vertexBuffer;
 	private FloatBuffer textureBuffer;
-	private FloatBuffer colorBuffer;
 	private ShortBuffer drawListBuffer;
 	
 	private float[] vecs;
 	private float[] uvs;
 	private short[] indices;
-	private float[] colors;
 	
 	private int index_vecs;
 	private int index_indices;
 	private int index_uvs;
-	private int index_colors;
 
 	private int texturenr;
 	private int[] mTextures;
@@ -87,7 +82,6 @@ public class TextManager {
 	{
 		// Create the arrays
 		vecs = new float[3 * 10];
-		colors = new float[4 * 10];
 		uvs = new float[2 * 10];
 		indices = new short[10];
 		
@@ -133,6 +127,7 @@ public class TextManager {
 		}
 		mUVWidth = (float)RI_TEXT_HEIGHT_BASE/(float)RI_TEXT_TEXTURE_SIZE;
 		mUVHeight = mTextHeight/(float)RI_TEXT_TEXTURE_SIZE;
+		mColor = 1.0f;
 		
 		int colCount = RI_TEXT_TEXTURE_SIZE/(int)RI_TEXT_HEIGHT_BASE;
 		mCharacterWidth = new float[RI_TEXT_STOP-RI_TEXT_START];
@@ -190,13 +185,6 @@ public class TextManager {
 			index_vecs++;
 		}
 		
-		// We should add the colors, so we can use the same texture for multiple effects.
-		for(int i=0;i<cs.length;i++)
-		{
-			colors[index_colors] = cs[i];
-			index_colors++;
-		}
-		
 		// We should add the uvs
 		for(int i=0;i<uv.length;i++)
 		{
@@ -218,7 +206,6 @@ public class TextManager {
 		index_vecs = 0;
 		index_indices = 0;
 		index_uvs = 0;
-		index_colors = 0;
 		
 		// Get the total amount of characters
 		int charcount = 0;
@@ -234,12 +221,10 @@ public class TextManager {
 		
 		// Create the arrays we need with the correct size.
 		vecs = null;
-		colors = null;
 		uvs = null;
 		indices = null;
 		
 		vecs = new float[charcount * 12];
-		colors = new float[charcount * 16];
 		uvs = new float[charcount * 8];
 		indices = new short[charcount * 6];
 
@@ -269,6 +254,7 @@ public class TextManager {
 		if(vecs.length > 0)
 		{
 			GLES20.glDisable(GLES20.GL_DEPTH_TEST);
+			GLES20.glEnable(GLES20.GL_BLEND);
 			
 			// Set the correct shader for our grid object.
 			GLES20.glUseProgram(sp_Text);
@@ -279,13 +265,6 @@ public class TextManager {
 			vertexBuffer = bb.asFloatBuffer();
 			vertexBuffer.put(vecs);
 			vertexBuffer.position(0);
-			
-			// The vertex buffer.
-			ByteBuffer bb3 = ByteBuffer.allocateDirect(colors.length * 4);
-			bb3.order(ByteOrder.nativeOrder());
-			colorBuffer = bb3.asFloatBuffer();
-			colorBuffer.put(colors);
-			colorBuffer.position(0);
 			
 			// The texture buffer
 			ByteBuffer bb2 = ByteBuffer.allocateDirect(uvs.length * 4);
@@ -322,21 +301,15 @@ public class TextManager {
 		    GLES20.glEnableVertexAttribArray ( mPositionHandle );
 	        GLES20.glEnableVertexAttribArray ( mTexCoordLoc );
 	
-	        int mColorHandle = GLES20.glGetAttribLocation(sp_Text, "a_Color");
-	
-		    // Enable a handle to the triangle vertices
-		    GLES20.glEnableVertexAttribArray(mColorHandle);
-	
-		    // Prepare the background coordinate data
-		    GLES20.glVertexAttribPointer(mColorHandle, 4,
-		                                 GLES20.GL_FLOAT, false,
-		                                 0, colorBuffer);
-	
 		    // get handle to shape's transformation matrix
 	        int mtrxhandle = GLES20.glGetUniformLocation(sp_Text, "uMVPMatrix");
 	        
 	    	// Apply the projection and view transformation
 	        GLES20.glUniformMatrix4fv(mtrxhandle, 1, false, m, 0);
+	        
+	        // get handle to color value
+	        int colorhandle = GLES20.glGetUniformLocation(sp_Text, "uColor");
+	        GLES20.glUniform1f(colorhandle, mColor);
 	        
 	        int mSamplerLoc = GLES20.glGetUniformLocation (sp_Text, "s_texture" );
 	        
@@ -353,7 +326,6 @@ public class TextManager {
 	        // Disable vertex array
 	        GLES20.glDisableVertexAttribArray(mPositionHandle);
 	        GLES20.glDisableVertexAttribArray(mTexCoordLoc);
-	        GLES20.glDisableVertexAttribArray(mColorHandle);
 		}
 	}
 	
@@ -439,5 +411,9 @@ public class TextManager {
 
 	public void setUniformscale(float uniformscale) {
 		this.uniformscale = uniformscale;
+	}
+	
+	public void setColor(float color) {
+		mColor = color;
 	}
 }

@@ -24,31 +24,31 @@
         android:layout_gravity="top" />
     
     <ToggleButton
-        android:id="@+id/backface_button"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/light_button"
-        android:layout_alignLeft="@+id/light_button"
-        android:layout_alignParentRight="true"
-        android:layout_marginBottom="5dp"
-        android:layout_marginRight="5dp"
-        android:paddingRight="5dp"
-        android:textOff="@string/backface_off"
-        android:textOn="@string/backface_on" />
-   
-    <ToggleButton
         android:id="@+id/light_button"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/first_person_button"
-        android:layout_alignLeft="@+id/first_person_button"
+        android:layout_above="@+id/backface_button"
+        android:layout_alignLeft="@+id/backface_button"
         android:layout_alignParentRight="true"
         android:layout_marginBottom="15dp"
         android:layout_marginRight="5dp"
         android:paddingRight="5dp"
         android:textOff="@string/light_off"
         android:textOn="@string/light_on" />
-   
+    
+    <ToggleButton
+        android:id="@+id/backface_button"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/first_person_button"
+        android:layout_alignLeft="@+id/first_person_button"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="5dp"
+        android:layout_marginRight="5dp"
+        android:paddingRight="5dp"
+        android:textOff="@string/backface_off"
+        android:textOn="@string/backface_on" />
+      
     <ToggleButton
         android:id="@+id/first_person_button"
         android:layout_width="100dp"

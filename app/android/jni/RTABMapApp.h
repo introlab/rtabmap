@@ -114,6 +114,7 @@ class RTABMapApp : public UEventsHandler {
                     float x0, float y0, float x1, float y1);
 
   void setPausedMapping(bool paused);
+  void setOnlineBlending(bool enabled);
   void setMapCloudShown(bool shown);
   void setOdomCloudShown(bool shown);
   void setMeshRendering(bool enabled, bool withTexture);
@@ -141,6 +142,7 @@ class RTABMapApp : public UEventsHandler {
   void setClusterRatio(float value);
   void setMaxGainRadius(float value);
   void setRenderingTextureDecimation(int value);
+  void setBackgroundColor(float gray);
   int setMappingParameter(const std::string & key, const std::string & value);
 
   void resetMapping();
@@ -204,6 +206,7 @@ class RTABMapApp : public UEventsHandler {
   float clusterRatio_;
   float maxGainRadius_;
   int renderingTextureDecimation_;
+  float backgroundColor_;
 
   rtabmap::ParametersMap mappingParameters_;
 

@@ -51,6 +51,18 @@
    			android:entries="@array/pref_rendering_texture_decimation_keys"
    			android:entryValues="@array/pref_rendering_texture_decimation_values"
    			android:defaultValue="@string/pref_default_rendering_texture_decimation"/>
+        <ListPreference 
+            android:key="@string/pref_key_background_color"
+    		android:title="@string/pref_title_background_color"
+    		android:summary="@string/pref_summary_background_color"
+   			android:entries="@array/pref_background_color_keys"
+   			android:entryValues="@array/pref_background_color_values"
+   			android:defaultValue="@string/pref_default_background_color"/>
+        <SwitchPreference
+            android:key="@string/pref_key_blending"
+            android:title="@string/pref_title_blending"
+            android:summary="@string/pref_summary_blending"
+            android:defaultValue="@string/pref_default_blending"/>
         <SwitchPreference
             android:key="@string/pref_key_nodes_filtering"
             android:title="@string/pref_title_nodes_filtering"

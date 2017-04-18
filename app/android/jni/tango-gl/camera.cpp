@@ -22,8 +22,8 @@ namespace tango_gl {
 Camera::Camera() {
   field_of_view_ = 45.0f * DEGREE_2_RADIANS;
   aspect_ratio_ = 4.0f / 3.0f;
-  near_clip_plane_ = 0.1f;
-  far_clip_plane_ = 100.0f;
+  near_clip_plane_ = 0.2f;
+  far_clip_plane_ = 1000.0f;
 }
 
 glm::mat4 Camera::GetViewMatrix() {
@@ -41,6 +41,12 @@ void Camera::SetAspectRatio(float aspect_ratio) {
 
 void Camera::SetFieldOfView(float fov) {
   field_of_view_ = fov * DEGREE_2_RADIANS;
+}
+
+void Camera::SetNearFarClipPlanes(const float near, const float far)
+{
+	near_clip_plane_ = near;
+	far_clip_plane_ = far;
 }
 
 Camera::~Camera() {

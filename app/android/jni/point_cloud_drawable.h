@@ -83,7 +83,11 @@ class PointCloudDrawable {
 		  float pointSize = 3.0f,
 		  bool textureRendering = false,
 		  bool lighting = true,
-		  float distanceToCamSqr = 0.0f);
+		  float distanceToCamSqr = 0.0f,
+		  const GLuint & depthTexture = 0,
+		  int screenWidth = 0,
+		  int screenHeight = 0,
+		  bool packDepthToColorChannel = false);
 
  private:
   template<class PointT>

@@ -164,6 +164,7 @@ RTABMapApp::RTABMapApp() :
 		clusterRatio_(0.1),
 		maxGainRadius_(0.02f),
 		renderingTextureDecimation_(4),
+		backgroundColor_(0.2f),
 		paused_(false),
 		dataRecorderMode_(false),
 		clearSceneOnNextRender_(false),
@@ -237,6 +238,7 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 	processGPUMemoryUsedBytes = 0;
 	bufferedStatsData_.clear();
 	progressionStatus_.setJavaObjects(jvm, RTABMapActivity);
+	main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 
 	if(camera_)
 	{
@@ -680,6 +682,9 @@ void RTABMapApp::InitializeGLContent()
 {
 	UINFO("");
 	main_scene_.InitGLContent();
+
+	float v = backgroundColor_ == 0.5f?0.4f:1.0f-backgroundColor_;
+	main_scene_.setGridColor(v, v, v);
 }
 
 // OpenGL thread
@@ -936,21 +941,18 @@ int RTABMapApp::Render()
 			//backup state
 			bool isMeshRendering = main_scene_.isMeshRendering();
 			bool isTextureRendering = main_scene_.isMeshTexturing();
-			bool isFrustumCulling = main_scene_.isFrustumCulling();
 
 			main_scene_.setMeshRendering(main_scene_.hasMesh(g_exportedMeshId), main_scene_.hasTexture(g_exportedMeshId));
-			main_scene_.setFrustumCulling(false);
 
+			fpsTime.restart();
 			lastDrawnCloudsCount_ = main_scene_.Render();
-
-			// revert state
-			main_scene_.setMeshRendering(isMeshRendering, isTextureRendering);
-			main_scene_.setFrustumCulling(isFrustumCulling);
-
 			if(renderingTime_ < fpsTime.elapsed())
 			{
 				renderingTime_ = fpsTime.elapsed();
 			}
+
+			// revert state
+			main_scene_.setMeshRendering(isMeshRendering, isTextureRendering);
 		}
 		else
 		{
@@ -1143,7 +1145,7 @@ int RTABMapApp::Render()
 						}
 						else if(!paused_ && rejected>0)
 						{
-							main_scene_.setBackgroundColor(0, 0.1f, 0); // dark green
+							main_scene_.setBackgroundColor(0, 0.2f, 0); // dark green
 						}
 						else if(!paused_ && rehearsalMerged>0)
 						{
@@ -1151,7 +1153,7 @@ int RTABMapApp::Render()
 						}
 						else
 						{
-							main_scene_.setBackgroundColor(0, 0, 0);
+							main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 						}
 					}
 				}
@@ -1299,10 +1301,6 @@ int RTABMapApp::Render()
 									processGPUMemoryUsedBytes += estimateCPUMem + (mesh.texture.empty()?0:mesh.polygons.size()*3*8+mesh.texture.total());
 									mesh.texture = cv::Mat(); // don't keep textures in memory
 								}
-								else if(id == poses.rbegin()->first)
-								{
-									UERROR("No mesh could be created for node %d", id);
-								}
 							}
 						}
 					}
@@ -1426,6 +1424,7 @@ int RTABMapApp::Render()
 				notifyDataLoaded = true;
 			}
 
+			fpsTime.restart();
 			lastDrawnCloudsCount_ = main_scene_.Render();
 			if(renderingTime_ < fpsTime.elapsed())
 			{
@@ -1533,7 +1532,7 @@ void RTABMapApp::setPausedMapping(bool paused)
 	{
 		boost::mutex::scoped_lock  lock(renderingMutex_);
 		visualizingMesh_ = false;
-		main_scene_.setBackgroundColor(0, 0, 0);
+		main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 	}
 	paused_ = paused;
 	if(camera_)
@@ -1550,6 +1549,10 @@ void RTABMapApp::setPausedMapping(bool paused)
 			camera_->start();
 		}
 	}
+}
+void RTABMapApp::setOnlineBlending(bool enabled)
+{
+	main_scene_.setBlending(enabled);
 }
 void RTABMapApp::setMapCloudShown(bool shown)
 {
@@ -1743,6 +1746,13 @@ void RTABMapApp::setRenderingTextureDecimation(int value)
 {
 	UASSERT(value>=1);
 	renderingTextureDecimation_ = value;
+}
+
+void RTABMapApp::setBackgroundColor(float gray)
+{
+	backgroundColor_ = gray;
+	float v = backgroundColor_ == 0.5f?0.4f:1.0f-backgroundColor_;
+	main_scene_.setGridColor(v, v, v);
 }
 
 int RTABMapApp::setMappingParameter(const std::string & key, const std::string & value)

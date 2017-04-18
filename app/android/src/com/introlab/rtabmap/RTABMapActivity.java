@@ -66,6 +66,7 @@ import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
 import android.view.Display;
+import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MenuInflater;
@@ -73,6 +74,7 @@ import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.View.OnTouchListener;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.WebView;
@@ -189,6 +191,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private AlertDialog mMemoryWarningDialog = null;
 	
 	private String[] mStatusTexts = new String[16];
+	
+	GestureDetector mGesDetect = null;
 
 	//Tango Service connection.
 	ServiceConnection mTangoServiceConnection = new ServiceConnection() {
@@ -270,8 +274,45 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		// OpenGL view where all of the graphics are drawn.
 		mGLView = (GLSurfaceView) findViewById(R.id.gl_surface_view);
 
+		mGesDetect = new GestureDetector(this, new DoubleTapGestureDetector());
+		
 		// Configure OpenGL renderer
 		mGLView.setEGLContextClientVersion(2);
+		mGLView.setEGLConfigChooser(8, 8, 8, 8, 24, 0);
+		mGLView.setOnTouchListener(new OnTouchListener() {
+	        @Override
+	        public boolean onTouch(View v, MotionEvent event) {
+	            mGesDetect.onTouchEvent(event);
+	            
+	            // Pass the touch event to the native layer for camera control.
+	    		// Single touch to rotate the camera around the device.
+	    		// Two fingers to zoom in and out.
+	    		int pointCount = event.getPointerCount();
+	    		if (pointCount == 1) {
+	    			float normalizedX = event.getX(0) / mScreenSize.x;
+	    			float normalizedY = event.getY(0) / mScreenSize.y;
+	    			RTABMapLib.onTouchEvent(1, 
+	    					event.getActionMasked(), normalizedX, normalizedY, 0.0f, 0.0f);
+	    		}
+	    		if (pointCount == 2) {
+	    			if (event.getActionMasked() == MotionEvent.ACTION_POINTER_UP) {
+	    				int index = event.getActionIndex() == 0 ? 1 : 0;
+	    				float normalizedX = event.getX(index) / mScreenSize.x;
+	    				float normalizedY = event.getY(index) / mScreenSize.y;
+	    				RTABMapLib.onTouchEvent(1, 
+	    						MotionEvent.ACTION_DOWN, normalizedX, normalizedY, 0.0f, 0.0f);
+	    			} else {
+	    				float normalizedX0 = event.getX(0) / mScreenSize.x;
+	    				float normalizedY0 = event.getY(0) / mScreenSize.y;
+	    				float normalizedX1 = event.getX(1) / mScreenSize.x;
+	    				float normalizedY1 = event.getY(1) / mScreenSize.y;
+	    				RTABMapLib.onTouchEvent(2, event.getActionMasked(),
+	    						normalizedX0, normalizedY0, normalizedX1, normalizedY1);
+	    			}
+	    		}
+	    		return true;
+	        }
+	    });
 
 		// Configure the OpenGL renderer.
 		mRenderer = new Renderer(this);
@@ -342,6 +383,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
                 public void onDisplayChanged(int displayId) {
                     synchronized (this) {
                         setAndroidOrientation();
+                        Display display = getWindowManager().getDefaultDisplay();
+                        display.getSize(mScreenSize);
                     }
                 }
 
@@ -455,6 +498,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			String optimizer = sharedPref.getString(getString(R.string.pref_key_optimizer), getString(R.string.pref_default_optimizer));
 			
 			if(!DISABLE_LOG) Log.d(TAG, "set mapping parameters");
+			RTABMapLib.setOnlineBlending(sharedPref.getBoolean(getString(R.string.pref_key_blending), Boolean.parseBoolean(getString(R.string.pref_default_blending))));
 			RTABMapLib.setNodesFiltering(sharedPref.getBoolean(getString(R.string.pref_key_nodes_filtering), Boolean.parseBoolean(getString(R.string.pref_default_nodes_filtering))));
 			RTABMapLib.setAutoExposure(sharedPref.getBoolean(getString(R.string.pref_key_auto_exposure), Boolean.parseBoolean(getString(R.string.pref_default_auto_exposure))));
 			RTABMapLib.setRawScanSaved(sharedPref.getBoolean(getString(R.string.pref_key_raw_scan_saved), Boolean.parseBoolean(getString(R.string.pref_default_raw_scan_saved))));
@@ -484,6 +528,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			RTABMapLib.setPointSize(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_point_size), getString(R.string.pref_default_point_size))));
 			RTABMapLib.setMeshAngleTolerance(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_angle), getString(R.string.pref_default_angle))));
 			RTABMapLib.setMeshTriangleSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_triangle), getString(R.string.pref_default_triangle))));
+			float bgColor = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_background_color), getString(R.string.pref_default_background_color)));
+			RTABMapLib.setBackgroundColor(bgColor);
+			mRenderer.setTextColor(bgColor==0.5f?0.4f:1.0f-bgColor);
 			
 			if(!DISABLE_LOG) Log.d(TAG, "set rendering parameters...");
 			RTABMapLib.setClusterRatio(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_cluster_ratio), getString(R.string.pref_default_cluster_ratio))));
@@ -592,37 +639,17 @@ public class RTABMapActivity extends Activity implements OnClickListener {
         Camera.getCameraInfo(fisheye?1:0, colorCameraInfo);
         RTABMapLib.setScreenRotation(display.getRotation(), colorCameraInfo.orientation);
     }
+	
+	class DoubleTapGestureDetector extends GestureDetector.SimpleOnGestureListener {
 
-	@Override
-	public boolean onTouchEvent(MotionEvent event) {
-		// Pass the touch event to the native layer for camera control.
-		// Single touch to rotate the camera around the device.
-		// Two fingers to zoom in and out.
-		int pointCount = event.getPointerCount();
-		if (pointCount == 1) {
-			float normalizedX = event.getX(0) / mScreenSize.x;
+        @Override
+        public boolean onDoubleTap(MotionEvent event) {
+        	float normalizedX = event.getX(0) / mScreenSize.x;
 			float normalizedY = event.getY(0) / mScreenSize.y;
-			RTABMapLib.onTouchEvent(1, 
-					event.getActionMasked(), normalizedX, normalizedY, 0.0f, 0.0f);
-		}
-		if (pointCount == 2) {
-			if (event.getActionMasked() == MotionEvent.ACTION_POINTER_UP) {
-				int index = event.getActionIndex() == 0 ? 1 : 0;
-				float normalizedX = event.getX(index) / mScreenSize.x;
-				float normalizedY = event.getY(index) / mScreenSize.y;
-				RTABMapLib.onTouchEvent(1, 
-						MotionEvent.ACTION_DOWN, normalizedX, normalizedY, 0.0f, 0.0f);
-			} else {
-				float normalizedX0 = event.getX(0) / mScreenSize.x;
-				float normalizedY0 = event.getY(0) / mScreenSize.y;
-				float normalizedX1 = event.getX(1) / mScreenSize.x;
-				float normalizedY1 = event.getY(1) / mScreenSize.y;
-				RTABMapLib.onTouchEvent(2, event.getActionMasked(),
-						normalizedX0, normalizedY0, normalizedX1, normalizedY1);
-			}
-		}
-		return true;
-	}
+        	RTABMapLib.onTouchEvent(3, event.getActionMasked(), normalizedX, normalizedY, 0.0f, 0.0f);
+            return true;
+        }
+    }
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -1568,15 +1595,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			.show();
 		}
 		else if(itemId == R.id.export_point_cloud ||
-				itemId == R.id.export_point_cloud_highrez ||
-				itemId == R.id.export_mesh ||
-				itemId == R.id.export_mesh_texture)
+				itemId == R.id.export_point_cloud_highrez)
 		{
-			final boolean isOBJ = itemId == R.id.export_mesh_texture || itemId == R.id.export_optimized_mesh_texture;
-			final boolean meshing = itemId != R.id.export_point_cloud && itemId != R.id.export_point_cloud_highrez;
 			final boolean regenerateCloud = itemId == R.id.export_point_cloud_highrez;
 
-			export(isOBJ, meshing, regenerateCloud, false, 0);
+			export(false, false, regenerateCloud, false, 0);
 		}
 		else if(itemId == R.id.export_optimized_mesh ||
 				itemId == R.id.export_optimized_mesh_texture)
