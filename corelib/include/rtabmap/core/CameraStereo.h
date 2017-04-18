@@ -42,10 +42,7 @@ class Camera;
 
 namespace sl
 {
-namespace zed
-{
 class Camera;
-}
 }
 
 namespace rtabmap
@@ -148,7 +145,7 @@ protected:
 
 private:
 #ifdef RTABMAP_ZED
-	sl::zed::Camera * zed_;
+	sl::Camera * zed_;
 	StereoCameraModel stereoModel_;
 	CameraVideo::Source src_;
 	int usbDevice_;
