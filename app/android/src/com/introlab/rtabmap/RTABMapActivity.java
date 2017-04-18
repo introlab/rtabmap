@@ -500,7 +500,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			if(!DISABLE_LOG) Log.d(TAG, "set mapping parameters");
 			RTABMapLib.setOnlineBlending(sharedPref.getBoolean(getString(R.string.pref_key_blending), Boolean.parseBoolean(getString(R.string.pref_default_blending))));
 			RTABMapLib.setNodesFiltering(sharedPref.getBoolean(getString(R.string.pref_key_nodes_filtering), Boolean.parseBoolean(getString(R.string.pref_default_nodes_filtering))));
-			RTABMapLib.setAutoExposure(sharedPref.getBoolean(getString(R.string.pref_key_auto_exposure), Boolean.parseBoolean(getString(R.string.pref_default_auto_exposure))));
 			RTABMapLib.setRawScanSaved(sharedPref.getBoolean(getString(R.string.pref_key_raw_scan_saved), Boolean.parseBoolean(getString(R.string.pref_default_raw_scan_saved))));
 			RTABMapLib.setFullResolution(sharedPref.getBoolean(getString(R.string.pref_key_resolution), Boolean.parseBoolean(getString(R.string.pref_default_resolution))));
 			RTABMapLib.setSmoothing(sharedPref.getBoolean(getString(R.string.pref_key_smoothing), Boolean.parseBoolean(getString(R.string.pref_default_smoothing))));
@@ -530,7 +529,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			RTABMapLib.setMeshTriangleSize(Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_triangle), getString(R.string.pref_default_triangle))));
 			float bgColor = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_background_color), getString(R.string.pref_default_background_color)));
 			RTABMapLib.setBackgroundColor(bgColor);
-			mRenderer.setTextColor(bgColor==0.5f?0.4f:1.0f-bgColor);
+			mRenderer.setTextColor(bgColor>=0.6f?0.0f:1.0f);
 			
 			if(!DISABLE_LOG) Log.d(TAG, "set rendering parameters...");
 			RTABMapLib.setClusterRatio(Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_cluster_ratio), getString(R.string.pref_default_cluster_ratio))));
@@ -2108,6 +2107,27 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 									+ "failed, so the map cannot be shown. Change the Graph Optimizer approach used"
 									+ " or enable/disable if the graph is optimized from graph "
 									+ "end in \"Settings -> Mapping...\" and try opening again.")
+							.setPositiveButton("Open Settings", new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog, int which) {
+									Intent intent = new Intent(getActivity(), SettingsActivity.class);
+									startActivity(intent);
+									mBlockBack = true;
+								}
+							})
+							.setNegativeButton("Close", new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog, int which) {
+								}
+							})
+							.show();
+						}
+						else if(status == -2)
+						{
+							mProgressDialog.dismiss();
+							new AlertDialog.Builder(getActivity())
+							.setCancelable(false)
+							.setTitle("Error")
+							.setMessage("Failed to open database: Out of memory! Try "
+									+ "again after lowering Point Cloud Density in Settings.")
 							.setPositiveButton("Open Settings", new DialogInterface.OnClickListener() {
 								public void onClick(DialogInterface dialog, int which) {
 									Intent intent = new Intent(getActivity(), SettingsActivity.class);

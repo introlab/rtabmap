@@ -205,12 +205,6 @@ Java_com_introlab_rtabmap_RTABMapLib_setGridVisible(
 	return app.setGridVisible(visible);
 }
 JNIEXPORT void JNICALL
-Java_com_introlab_rtabmap_RTABMapLib_setAutoExposure(
-		JNIEnv*, jobject, bool enabled)
-{
-	return app.setAutoExposure(enabled);
-}
-JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setRawScanSaved(
 		JNIEnv*, jobject, bool enabled)
 {

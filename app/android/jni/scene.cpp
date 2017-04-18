@@ -43,141 +43,6 @@ const tango_gl::Color kGridColor(0.85f, 0.85f, 0.85f);
 // Frustum scale.
 const glm::vec3 kFrustumScale = glm::vec3(0.4f, 0.3f, 0.5f);
 
-const std::string kPointCloudVertexShader =
-    "precision mediump float;\n"
-    "precision mediump int;\n"
-    "attribute vec3 aVertex;\n"
-	"attribute vec3 aNormal;\n"
-    "attribute vec3 aColor;\n"
-
-    "uniform mat4 uMVP;\n"
-	"uniform mat3 uN;\n"
-	"uniform vec3 uAmbientColor;\n"
-	"uniform vec3 uLightingDirection;\n"
-	"uniform bool uUseLighting;\n"
-
-    "uniform float uPointSize;\n"
-    "varying vec3 vColor;\n"
-    "varying float vLightWeighting;\n"
-
-    "void main() {\n"
-    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
-    "  gl_PointSize = uPointSize;\n"
-	"  if (!uUseLighting) {\n"
-	"    vLightWeighting = 1.0;\n"
-	"  } else {\n"
-	"    vec3 transformedNormal = uN * aNormal;\n"
-	"    vLightWeighting = max(dot(transformedNormal, uLightingDirection)*0.5+0.5, 0.0);\n"
-	"    if(vLightWeighting<0.5) vLightWeighting=0.5;\n"
-	"  }\n"
-    "  vColor = aColor;\n"
-    "}\n";
-const std::string kPointCloudFragmentShader =
-    "precision highp float;\n"
-    "precision mediump int;\n"
-	"uniform float uGainR;\n"
-	"uniform float uGainG;\n"
-	"uniform float uGainB;\n"
-	"uniform sampler2D uDepthTexture;\n"
-	"uniform bool uBlending;\n"
-	"uniform vec2 uScreenScale;\n"
-	"uniform bool uPackDepthToColor;\n"
-    "varying vec3 vColor;\n"
-	"varying float vLightWeighting;\n"
-    "void main() {\n"
-    "  vec4 textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
-	"  float alpha = 1.0;\n"
-	"  if(uBlending) {\n"
-	"    vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
-	"    float depth = texture2D(uDepthTexture, coord).r;\n"
-//	"    alpha = 0.5;\n"
-	"    float zNear = 0.2;\n"
-	"    float zFar = 1000.0;\n"
-	"    float ndcDepth = depth * 2.0 - 1.0;\n" // Back to NDC
-	" 	 float linearDepth = (2.0 * zNear * zFar) / (zFar + zNear - ndcDepth * (zFar - zNear));\n"
-	"    float ndcFragz = gl_FragCoord.z * 2.0 - 1.0;\n" // Back to NDC
-	" 	 float linearFragz = (2.0 * zNear * zFar) / (zFar + zNear - ndcFragz * (zFar - zNear));\n"
-	"	 if(linearFragz > linearDepth + 0.05)\n"
-	"      alpha=0.0;\n"
-	"  }\n"
-	"  if(uPackDepthToColor) {\n"
-	"    float toFixed = 255.0/256.0;\n"
-	"    vec4 enc = vec4(1.0, 255.0, 65025.0, 160581375.0) * toFixed * gl_FragCoord.z;\n"
-	"    enc = fract(enc);\n"
-	"    gl_FragColor = enc;\n"
-	"  }\n"
-	"  else {"
-	"    gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
-	"  }\n"
-    "}\n";
-
-const std::string kTextureMeshVertexShader =
-    "precision mediump float;\n"
-    "precision mediump int;\n"
-    "attribute vec3 aVertex;\n"
-	"attribute vec3 aNormal;\n"
-    "attribute vec2 aTexCoord;\n"
-
-    "uniform mat4 uMVP;\n"
-    "uniform mat3 uN;\n"
-	"uniform vec3 uAmbientColor;\n"
-    "uniform vec3 uLightingDirection;\n"
-    "uniform bool uUseLighting;\n"
-
-    "varying vec2 vTexCoord;\n"
-    "varying float vLightWeighting;\n"
-
-    "void main() {\n"
-    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
-
-	"  if(aTexCoord.x < 0.0) {\n"
-	"    vTexCoord.x = 1.0;\n"
-	"    vTexCoord.y = 1.0;\n" // bottom right corner
-	"  } else {\n"
-    "    vTexCoord = aTexCoord;\n"
-    "  }\n"
-
-	"  if (!uUseLighting) {\n"
-    "    vLightWeighting = 1.0;\n"
-    "  } else {\n"
-    "    vec3 transformedNormal = uN * aNormal;\n"
-    "    vLightWeighting = max(dot(transformedNormal, uLightingDirection)*0.5+0.5, 0.0);\n"
-    "    if(vLightWeighting<0.5) vLightWeighting=0.5;\n"
-    "  }\n"
-    "}\n";
-const std::string kTextureMeshFragmentShader =
-    "precision highp float;\n"
-    "precision mediump int;\n"
-	"uniform sampler2D uTexture;\n"
-    "uniform sampler2D uDepthTexture;\n"
-	"uniform float uGainR;\n"
-	"uniform float uGainG;\n"
-	"uniform float uGainB;\n"
-	"uniform bool uBlending;\n"
-	"uniform vec2 uScreenScale;\n"
-    "varying vec2 vTexCoord;\n"
-	"varying float vLightWeighting;\n"
-	""
-    "void main() {\n"
-    "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
-    "  float alpha = 1.0;\n"
-    "  if(uBlending) {\n"
-	"    vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
-    "    float depth = texture2D(uDepthTexture, coord).r;\n"
- //   "    alpha = 0.5;\n"
-  //Linearize depth: http://stackoverflow.com/questions/6652253/getting-the-true-z-value-from-the-depth-buffer
-	"    float zNear = 0.2;\n"
-	"    float zFar = 1000.0;\n"
-    "    float ndcDepth = depth * 2.0 - 1.0;\n" // Back to NDC
-    " 	 float linearDepth = (2.0 * zNear * zFar) / (zFar + zNear - ndcDepth * (zFar - zNear));\n"
-	"    float ndcFragz = gl_FragCoord.z * 2.0 - 1.0;\n" // Back to NDC
-	" 	 float linearFragz = (2.0 * zNear * zFar) / (zFar + zNear - ndcFragz * (zFar - zNear));\n"
-	"	 if(linearFragz > linearDepth + 0.05)\n"
-	"      alpha=0.0;\n"
-	"  }\n"
-	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
-    "}\n";
-
 const std::string kGraphVertexShader =
     "precision mediump float;\n"
     "precision mediump int;\n"
@@ -212,8 +77,6 @@ Scene::Scene() :
 		traceVisible_(true),
 		color_camera_to_display_rotation_(ROTATION_0),
 		currentPose_(0),
-		cloud_shader_program_(0),
-		texture_mesh_shader_program_(0),
 		graph_shader_program_(0),
 		blending_(true),
 		mapRendering_(true),
@@ -253,38 +116,30 @@ void Scene::InitGLContent()
 	UASSERT(axis_ == 0);
 
 
-  axis_ = new tango_gl::Axis();
-  frustum_ = new tango_gl::Frustum();
-  trace_ = new tango_gl::Trace();
-  grid_ = new tango_gl::Grid();
-  box_ = new BoundingBoxDrawable();
-  currentPose_ = new rtabmap::Transform();
+	axis_ = new tango_gl::Axis();
+	frustum_ = new tango_gl::Frustum();
+	trace_ = new tango_gl::Trace();
+	grid_ = new tango_gl::Grid();
+	box_ = new BoundingBoxDrawable();
+	currentPose_ = new rtabmap::Transform();
 
 
-  axis_->SetScale(glm::vec3(0.5f,0.5f,0.5f));
-  frustum_->SetColor(kTraceColor);
-  trace_->ClearVertexArray();
-  trace_->SetColor(kTraceColor);
-  grid_->SetColor(kGridColor);
-  grid_->SetPosition(-kHeightOffset);
-  box_->SetShader();
-  box_->SetColor(1,0,0);
+	axis_->SetScale(glm::vec3(0.5f,0.5f,0.5f));
+	frustum_->SetColor(kTraceColor);
+	trace_->ClearVertexArray();
+	trace_->SetColor(kTraceColor);
+	grid_->SetColor(kGridColor);
+	grid_->SetPosition(-kHeightOffset);
+	box_->SetShader();
+	box_->SetColor(1,0,0);
 
-  if(cloud_shader_program_ == 0)
-  {
-	  cloud_shader_program_ = tango_gl::util::CreateProgram(kPointCloudVertexShader.c_str(), kPointCloudFragmentShader.c_str());
-	  UASSERT(cloud_shader_program_ != 0);
-  }
-  if(texture_mesh_shader_program_ == 0)
-  {
-	  texture_mesh_shader_program_ = tango_gl::util::CreateProgram(kTextureMeshVertexShader.c_str(), kTextureMeshFragmentShader.c_str());
-	  UASSERT(texture_mesh_shader_program_ != 0);
-  }
-  if(graph_shader_program_ == 0)
-  {
-	  graph_shader_program_ = tango_gl::util::CreateProgram(kGraphVertexShader.c_str(), kGraphFragmentShader.c_str());
-	  UASSERT(graph_shader_program_ != 0);
-  }
+	PointCloudDrawable::createShaderPrograms();
+
+	if(graph_shader_program_ == 0)
+	{
+		graph_shader_program_ = tango_gl::util::CreateProgram(kGraphVertexShader.c_str(), kGraphFragmentShader.c_str());
+		UASSERT(graph_shader_program_ != 0);
+	}
 }
 
 //Should only be called in OpenGL thread!
@@ -302,14 +157,8 @@ void Scene::DeleteResources() {
 		delete box_;
 	}
 
-	if (cloud_shader_program_) {
-		glDeleteShader(cloud_shader_program_);
-		cloud_shader_program_ = 0;
-	}
-	if (texture_mesh_shader_program_) {
-		glDeleteShader(texture_mesh_shader_program_);
-		texture_mesh_shader_program_ = 0;
-	}
+	PointCloudDrawable::releaseShaderPrograms();
+
 	if (graph_shader_program_) {
 		glDeleteShader(graph_shader_program_);
 		graph_shader_program_ = 0;
@@ -535,7 +384,28 @@ int Scene::Render() {
 		 0.0f,  1.0f,  0.0f, 0.0f,
 		-1.0f,  0.0f,  0.0f, 0.0f);
 
+	//Culling
 	std::vector<glm::vec4> planes = computeFrustumPlanes(projectionMatrix*viewMatrix, true);
+	std::vector<PointCloudDrawable*> cloudsToDraw(pointClouds_.size());
+	int oi=0;
+	for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
+	{
+		if(!mapRendering_ && iter->first > 0)
+		{
+			break;
+		}
+
+		if(iter->second->isVisible())
+		{
+			if(intersectFrustumAABB(planes,
+					iter->second->aabbMinWorld(),
+					iter->second->aabbMaxWorld()))
+			{
+				cloudsToDraw[oi++] = iter->second;
+			}
+		}
+	}
+	cloudsToDraw.resize(oi);
 
 	// First rendering to get depth texture
 	glEnable(GL_DEPTH_TEST);
@@ -556,8 +426,7 @@ int Scene::Render() {
 
 	UTimer timer;
 
-	bool onlineBlending = blending_ && mapRendering_ && meshRendering_ && pointClouds_.size()>1;
-	std::set<int> usedForDepth;
+	bool onlineBlending = blending_ && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1;
 	if(onlineBlending && fboId_)
 	{
 		// set the rendering destination to FBO
@@ -568,23 +437,10 @@ int Scene::Render() {
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 		// Draw scene
-		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
+		for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
 		{
-			if(iter->second->isVisible())
-			{
-				if(intersectFrustumAABB(planes,
-						iter->second->aabbMinWorld(),
-						iter->second->aabbMaxWorld()))
-				{
-					usedForDepth.insert(iter->first);
-					Eigen::Vector3f cloudToCamera(
-							iter->second->getPose().x() - openglCamera.x(),
-							iter->second->getPose().y() - openglCamera.y(),
-							iter->second->getPose().z() - openglCamera.z());
-					float distanceToCameraSqr = 999.0f; // set it large to use low res polygons for fast processing
-					iter->second->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, distanceToCameraSqr);
-				}
-			}
+			// set large distance to cam to use low res polygons for fast processing
+			(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, false, false, 999.0f);
 		}
 
 		// back to normal window-system-provided framebuffer
@@ -597,17 +453,10 @@ int Scene::Render() {
 		glClearColor(0, 0, 0, 0);
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
+		for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
 		{
-			if((onlineBlending && usedForDepth.find(iter->first) != usedForDepth.end()) ||
-				(!onlineBlending && iter->second->isVisible() &&
-						intersectFrustumAABB(planes,
-							iter->second->aabbMinWorld(),
-							iter->second->aabbMaxWorld())))
-			{
-				float distanceToCameraSqr = 999.0f; // set it large to use low res polygons for fast processing
-				iter->second->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_*10.0f, false, false, distanceToCameraSqr, 0, 0, 0, true);
-			}
+			// set large distance to cam to use low res polygons for fast processing
+			(*iter)->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_*10.0f, false, false, 999.0f, 0, 0, 0, 0, 0, true);
 		}
 
 		GLubyte zValue[4];
@@ -661,75 +510,39 @@ int Scene::Render() {
 		graph_->Render(projectionMatrix, viewMatrix);
 	}
 
-	int cloudDrawn=0;
-	if(mapRendering_)
+
+	if(onlineBlending)
 	{
-		if(onlineBlending)
-		{
-			glEnable (GL_BLEND);
-			glDepthMask(GL_FALSE);
-		}
-
-		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
-		{
-			if((onlineBlending && usedForDepth.find(iter->first) != usedForDepth.end()) ||
-				(!onlineBlending && iter->second->isVisible() &&
-						intersectFrustumAABB(planes,
-							iter->second->aabbMinWorld(),
-							iter->second->aabbMaxWorld())))
-			{
-				if(boundingBoxRendering_)
-				{
-					box_->updateVertices(iter->second->aabbMinWorld(), iter->second->aabbMaxWorld());
-					box_->Render(projectionMatrix, viewMatrix);
-				}
-
-				Eigen::Vector3f cloudToCamera(
-						iter->second->getPose().x() - openglCamera.x(),
-						iter->second->getPose().y() - openglCamera.y(),
-						iter->second->getPose().z() - openglCamera.z());
-				float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
-
-				iter->second->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_);
-				++cloudDrawn;
-			}
-		}
-
-		if(onlineBlending)
-		{
-			glDisable (GL_BLEND);
-			glDepthMask(GL_TRUE);
-		}
-	}
-	else
-	{
-		for(std::map<int, PointCloudDrawable*>::const_iterator iter=pointClouds_.begin(); iter!=pointClouds_.end(); ++iter)
-		{
-			if(iter->first > 0)
-			{
-				break;
-			}
-
-			if(iter->second->isVisible())
-			{
-				if(boundingBoxRendering_)
-				{
-					box_->updateVertices(iter->second->aabbMinWorld(), iter->second->aabbMaxWorld());
-					box_->Render(projectionMatrix, viewMatrix);
-				}
-
-				++cloudDrawn;
-				Eigen::Vector3f cloudToCamera(
-						iter->second->getPose().x() - openglCamera.x(),
-						iter->second->getPose().y() - openglCamera.y(),
-						iter->second->getPose().z() - openglCamera.z());
-				float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
-				iter->second->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_);
-			}
-		}
+		glEnable (GL_BLEND);
+		glDepthMask(GL_FALSE);
 	}
 
-	return 1;
+	for(std::vector<PointCloudDrawable*>::const_iterator iter=cloudsToDraw.begin(); iter!=cloudsToDraw.end(); ++iter)
+	{
+		PointCloudDrawable * cloud = *iter;
+
+		if(boundingBoxRendering_)
+		{
+			box_->updateVertices(cloud->aabbMinWorld(), cloud->aabbMaxWorld());
+			box_->Render(projectionMatrix, viewMatrix);
+		}
+
+		Eigen::Vector3f cloudToCamera(
+				cloud->getPose().x() - openglCamera.x(),
+				cloud->getPose().y() - openglCamera.y(),
+				cloud->getPose().z() - openglCamera.z());
+		float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
+
+		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane());
+	}
+
+	if(onlineBlending)
+	{
+		glDisable (GL_BLEND);
+		glDepthMask(GL_TRUE);
+	}
+
+	return (int)cloudsToDraw.size();
 }
 
 void Scene::SetCameraType(tango_gl::GestureCamera::CameraType camera_type) {
@@ -824,12 +637,7 @@ void Scene::addCloud(
 	}
 
 	//create
-	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
-	PointCloudDrawable * drawable = new PointCloudDrawable(
-			cloud_shader_program_,
-			texture_mesh_shader_program_,
-			cloud,
-			indices);
+	PointCloudDrawable * drawable = new PointCloudDrawable(cloud, indices);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }
@@ -848,11 +656,7 @@ void Scene::addMesh(
 	}
 
 	//create
-	UASSERT(cloud_shader_program_ != 0 && texture_mesh_shader_program_!=0);
-	PointCloudDrawable * drawable = new PointCloudDrawable(
-			cloud_shader_program_,
-			texture_mesh_shader_program_,
-			mesh);
+	PointCloudDrawable * drawable = new PointCloudDrawable(mesh);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }

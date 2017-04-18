@@ -68,7 +68,6 @@ public class RTABMapLib
     public static native void setNodesFiltering(boolean enabled);
     public static native void setGraphVisible(boolean visible);
     public static native void setGridVisible(boolean visible);
-    public static native void setAutoExposure(boolean enabled);
     public static native void setRawScanSaved(boolean enabled);
     public static native void setFullResolution(boolean enabled);
     public static native void setSmoothing(boolean enabled);

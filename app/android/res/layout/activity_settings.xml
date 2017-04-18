@@ -85,11 +85,6 @@
 	            android:summary="@string/pref_summary_append"
 	            android:defaultValue="@string/pref_default_append"/>
 		    <SwitchPreference
-	            android:key="@string/pref_key_auto_exposure"
-	            android:title="@string/pref_title_auto_exposure"
-	            android:summary="@string/pref_summary_auto_exposure"
-	            android:defaultValue="@string/pref_default_auto_exposure"/>
-		    <SwitchPreference
 	            android:key="@string/pref_key_resolution"
 	            android:title="@string/pref_title_resolution"
 	            android:summary="@string/pref_summary_resolution"
@@ -270,7 +265,7 @@
 		            android:key="@string/pref_key_opt_depth"
 		    		android:title="@string/pref_title_opt_depth"
 		    		android:summary="@string/pref_summary_opt_depth"
-		   			android:entries="@array/pref_opt_depth_values"
+		   			android:entries="@array/pref_opt_depth_keys"
 		   			android:entryValues="@array/pref_opt_depth_values"
 		   			android:defaultValue="@string/pref_default_opt_depth"/>
 		        

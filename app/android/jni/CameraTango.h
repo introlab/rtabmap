@@ -75,7 +75,7 @@ public:
 	static const float bilateralFilteringSigmaR;
 
 public:
-	CameraTango(bool colorCamera, int decimation, bool autoExposure, bool publishRawScan, bool smoothing);
+	CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing);
 	virtual ~CameraTango();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -87,7 +87,6 @@ public:
 	void setColorCamera(bool enabled) {if(!this->isRunning()) colorCamera_ = enabled;}
 	void setDecimation(int value) {decimation_ = value;}
 	void setSmoothing(bool enabled) {smoothing_ = enabled;}
-	void setAutoExposure(bool enabled) {autoExposure_ = enabled;}
 	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
 	void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
 
@@ -112,7 +111,6 @@ private:
 	double stampEpochOffset_;
 	bool colorCamera_;
 	int decimation_;
-	bool autoExposure_;
 	bool rawScanPublished_;
 	bool smoothing_;
 	cv::Mat cloud_;

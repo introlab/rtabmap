@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "point_cloud_drawable.h"
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
 #include <opencv2/imgproc/imgproc.hpp>
 #include "util.h"
@@ -39,9 +40,264 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define LOW_DEC 2
 #define LOWLOW_DEC 4
 
+enum PointCloudShaders
+{
+	kPointCloud = 0,
+	kPointCloudBlending = 1,
+	kPointCloudLighting = 2,
+	kPointCloudLightingBlending = 3,
+
+	kTexture = 4,
+	kTextureBlending = 5,
+	kTextureLighting = 6,
+	kTextureLightingBlending = 7,
+
+	kDepthPacking = 8
+};
+
+// PointCloud shaders
+const std::string kPointCloudVertexShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+    "attribute vec3 aVertex;\n"
+    "attribute vec3 aColor;\n"
+
+    "uniform mat4 uMVP;\n"
+    "uniform float uPointSize;\n"
+
+    "varying vec3 vColor;\n"
+    "varying float vLightWeighting;\n"
+
+    "void main() {\n"
+    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
+    "  gl_PointSize = uPointSize;\n"
+	"  vLightWeighting = 1.0;\n"
+    "  vColor = aColor;\n"
+    "}\n";
+const std::string kPointCloudLightingVertexShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+    "attribute vec3 aVertex;\n"
+	"attribute vec3 aNormal;\n"
+    "attribute vec3 aColor;\n"
+
+    "uniform mat4 uMVP;\n"
+	"uniform mat3 uN;\n"
+	"uniform vec3 uLightingDirection;\n"
+    "uniform float uPointSize;\n"
+
+    "varying vec3 vColor;\n"
+    "varying float vLightWeighting;\n"
+
+    "void main() {\n"
+    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
+    "  gl_PointSize = uPointSize;\n"
+	"  vec3 transformedNormal = uN * aNormal;\n"
+	"  vLightWeighting = max(dot(transformedNormal, uLightingDirection)*0.5+0.5, 0.0);\n"
+	"  if(vLightWeighting<0.5)"
+	"    vLightWeighting=0.5;\n"
+    "  vColor = aColor;\n"
+    "}\n";
+
+const std::string kPointCloudFragmentShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+	"uniform float uGainR;\n"
+	"uniform float uGainG;\n"
+	"uniform float uGainB;\n"
+    "varying vec3 vColor;\n"
+	"varying float vLightWeighting;\n"
+    "void main() {\n"
+    "  vec4 textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
+	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, textureColor.a);\n"
+    "}\n";
+const std::string kPointCloudBlendingFragmentShader =
+    "precision highp float;\n"
+    "precision mediump int;\n"
+	"uniform float uGainR;\n"
+	"uniform float uGainG;\n"
+	"uniform float uGainB;\n"
+	"uniform float uNearZ;\n"
+	"uniform float uFarZ;\n"
+	"uniform sampler2D uDepthTexture;\n"
+	"uniform vec2 uScreenScale;\n"
+    "varying vec3 vColor;\n"
+	"varying float vLightWeighting;\n"
+    "void main() {\n"
+    "  vec4 textureColor = vec4(vColor.z, vColor.y, vColor.x, 1.0);\n"
+	"  float alpha = 1.0;\n"
+	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
+	"  float depth = texture2D(uDepthTexture, coord).r;\n"
+	"  float num =  (2.0 * uNearZ * uFarZ);\n"
+	"  float diff = (uFarZ - uNearZ);\n"
+	"  float add = (uFarZ + uNearZ);\n"
+	"  float ndcDepth = depth * 2.0 - 1.0;\n" // Back to NDC
+	"  float linearDepth = num / (add - ndcDepth * diff);\n" // inverse projection matrix
+	"  float ndcFragz = gl_FragCoord.z * 2.0 - 1.0;\n" // Back to NDC
+	"  float linearFragz = num / (add - ndcFragz * diff);\n" // inverse projection matrix
+	"  if(linearFragz > linearDepth + 0.05)\n"
+	"    alpha=0.0;\n"
+	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
+    "}\n";
+
+const std::string kPointCloudDepthPackingVertexShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+    "attribute vec3 aVertex;\n"
+    "uniform mat4 uMVP;\n"
+    "uniform float uPointSize;\n"
+    "void main() {\n"
+    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
+    "  gl_PointSize = uPointSize;\n"
+    "}\n";
+const std::string kPointCloudDepthPackingFragmentShader =
+    "precision highp float;\n"
+    "precision mediump int;\n"
+    "void main() {\n"
+	"  float toFixed = 255.0/256.0;\n"
+	"  vec4 enc = vec4(1.0, 255.0, 65025.0, 160581375.0) * toFixed * gl_FragCoord.z;\n"
+	"  enc = fract(enc);\n"
+	"  gl_FragColor = enc;\n"
+    "}\n";
+
+// Texture shaders
+const std::string kTextureMeshVertexShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+    "attribute vec3 aVertex;\n"
+    "attribute vec2 aTexCoord;\n"
+
+    "uniform mat4 uMVP;\n"
+
+    "varying vec2 vTexCoord;\n"
+    "varying float vLightWeighting;\n"
+
+    "void main() {\n"
+    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
+
+	"  if(aTexCoord.x < 0.0) {\n"
+	"    vTexCoord.x = 1.0;\n"
+	"    vTexCoord.y = 1.0;\n" // bottom right corner
+	"  } else {\n"
+    "    vTexCoord = aTexCoord;\n"
+    "  }\n"
+
+    "  vLightWeighting = 1.0;\n"
+    "}\n";
+const std::string kTextureMeshLightingVertexShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+    "attribute vec3 aVertex;\n"
+	"attribute vec3 aNormal;\n"
+    "attribute vec2 aTexCoord;\n"
+
+    "uniform mat4 uMVP;\n"
+    "uniform mat3 uN;\n"
+    "uniform vec3 uLightingDirection;\n"
+
+    "varying vec2 vTexCoord;\n"
+    "varying float vLightWeighting;\n"
+
+    "void main() {\n"
+    "  gl_Position = uMVP*vec4(aVertex.x, aVertex.y, aVertex.z, 1.0);\n"
+
+	"  if(aTexCoord.x < 0.0) {\n"
+	"    vTexCoord.x = 1.0;\n"
+	"    vTexCoord.y = 1.0;\n" // bottom right corner
+	"  } else {\n"
+    "    vTexCoord = aTexCoord;\n"
+    "  }\n"
+
+    "  vec3 transformedNormal = uN * aNormal;\n"
+    "  vLightWeighting = max(dot(transformedNormal, uLightingDirection)*0.5+0.5, 0.0);\n"
+    "  if(vLightWeighting<0.5) \n"
+    "    vLightWeighting=0.5;\n"
+    "}\n";
+const std::string kTextureMeshFragmentShader =
+    "precision mediump float;\n"
+    "precision mediump int;\n"
+	"uniform sampler2D uTexture;\n"
+	"uniform float uGainR;\n"
+	"uniform float uGainG;\n"
+	"uniform float uGainB;\n"
+    "varying vec2 vTexCoord;\n"
+	"varying float vLightWeighting;\n"
+	""
+    "void main() {\n"
+    "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
+	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, textureColor.a);\n"
+    "}\n";
+const std::string kTextureMeshBlendingFragmentShader =
+    "precision highp float;\n"
+    "precision mediump int;\n"
+	"uniform sampler2D uTexture;\n"
+    "uniform sampler2D uDepthTexture;\n"
+	"uniform float uGainR;\n"
+	"uniform float uGainG;\n"
+	"uniform float uGainB;\n"
+	"uniform vec2 uScreenScale;\n"
+	"uniform float uNearZ;\n"
+	"uniform float uFarZ;\n"
+    "varying vec2 vTexCoord;\n"
+	"varying float vLightWeighting;\n"
+	""
+    "void main() {\n"
+    "  vec4 textureColor = texture2D(uTexture, vTexCoord);\n"
+    "  float alpha = 1.0;\n"
+	"  vec2 coord = uScreenScale * gl_FragCoord.xy;\n;"
+	"  float depth = texture2D(uDepthTexture, coord).r;\n"
+	"  float num =  (2.0 * uNearZ * uFarZ);\n"
+	"  float diff = (uFarZ - uNearZ);\n"
+	"  float add = (uFarZ + uNearZ);\n"
+	"  float ndcDepth = depth * 2.0 - 1.0;\n" // Back to NDC
+	"  float linearDepth = num / (add - ndcDepth * diff);\n" // inverse projection matrix
+	"  float ndcFragz = gl_FragCoord.z * 2.0 - 1.0;\n" // Back to NDC
+	"  float linearFragz = num / (add - ndcFragz * diff);\n" // inverse projection matrix
+	"  if(linearFragz > linearDepth + 0.05)\n"
+	"    alpha=0.0;\n"
+	"  gl_FragColor = vec4(textureColor.r * uGainR * vLightWeighting, textureColor.g * uGainG * vLightWeighting, textureColor.b * uGainB * vLightWeighting, alpha);\n"
+    "}\n";
+
+std::vector<GLuint> PointCloudDrawable::shaderPrograms_;
+
+void PointCloudDrawable::createShaderPrograms()
+{
+	if(shaderPrograms_.empty())
+	{
+		shaderPrograms_.resize(9);
+
+		shaderPrograms_[kPointCloud] = tango_gl::util::CreateProgram(kPointCloudVertexShader.c_str(), kPointCloudFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kPointCloud] != 0);
+		shaderPrograms_[kPointCloudBlending] = tango_gl::util::CreateProgram(kPointCloudVertexShader.c_str(), kPointCloudBlendingFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kPointCloudBlending] != 0);
+		shaderPrograms_[kPointCloudLighting] = tango_gl::util::CreateProgram(kPointCloudLightingVertexShader.c_str(), kPointCloudFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kPointCloudLighting] != 0);
+		shaderPrograms_[kPointCloudLightingBlending] = tango_gl::util::CreateProgram(kPointCloudLightingVertexShader.c_str(), kPointCloudBlendingFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kPointCloudLightingBlending] != 0);
+
+		shaderPrograms_[kTexture] = tango_gl::util::CreateProgram(kTextureMeshVertexShader.c_str(), kTextureMeshFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kTexture] != 0);
+		shaderPrograms_[kTextureBlending] = tango_gl::util::CreateProgram(kTextureMeshVertexShader.c_str(), kTextureMeshBlendingFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kTextureBlending] != 0);
+		shaderPrograms_[kTextureLighting] = tango_gl::util::CreateProgram(kTextureMeshLightingVertexShader.c_str(), kTextureMeshFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kTextureLighting] != 0);
+		shaderPrograms_[kTextureLightingBlending] = tango_gl::util::CreateProgram(kTextureMeshLightingVertexShader.c_str(), kTextureMeshBlendingFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kTextureLightingBlending] != 0);
+
+		shaderPrograms_[kDepthPacking] = tango_gl::util::CreateProgram(kPointCloudDepthPackingVertexShader.c_str(), kPointCloudDepthPackingFragmentShader.c_str());
+		UASSERT(shaderPrograms_[kDepthPacking] != 0);
+	}
+}
+void PointCloudDrawable::releaseShaderPrograms()
+{
+	for(unsigned int i=0; i<shaderPrograms_.size(); ++i)
+	{
+		glDeleteShader(shaderPrograms_[i]);
+	}
+	shaderPrograms_.clear();
+}
+
 PointCloudDrawable::PointCloudDrawable(
-		GLuint cloudShaderProgram,
-		GLuint textureShaderProgram,
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float gainR,
@@ -54,8 +310,6 @@ PointCloudDrawable::PointCloudDrawable(
 				poseGl_(1.0f),
 				visible_(true),
 				hasNormals_(false),
-				cloud_shader_program_(cloudShaderProgram),
-				texture_shader_program_(textureShaderProgram),
 				gainR_(gainR),
 				gainG_(gainG),
 				gainB_(gainB)
@@ -64,8 +318,6 @@ PointCloudDrawable::PointCloudDrawable(
 }
 
 PointCloudDrawable::PointCloudDrawable(
-		GLuint cloudShaderProgram,
-		GLuint textureShaderProgram,
 		const Mesh & mesh) :
 				vertex_buffers_(0),
 				textures_(0),
@@ -74,8 +326,6 @@ PointCloudDrawable::PointCloudDrawable(
 				poseGl_(1.0f),
 				visible_(true),
 				hasNormals_(false),
-				cloud_shader_program_(cloudShaderProgram),
-				texture_shader_program_(textureShaderProgram),
 				gainR_(1.0f),
 				gainG_(1.0f),
 				gainB_(1.0f)
@@ -321,9 +571,8 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 		int oi_lowlow = 0;
 		if(textures_ && polygons.size())
 		{
-			//LOGD("Organized mesh with texture");
 			int items = hasNormals_?9:6;
-			vertices = std::vector<float>(mesh.indices->size()*9);
+			vertices = std::vector<float>(mesh.indices->size()*items);
 			for(unsigned int i=0; i<mesh.indices->size(); ++i)
 			{
 				const pcl::PointXYZRGB & pt = mesh.cloud->at(mesh.indices->at(i));
@@ -401,7 +650,6 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 	}
 	else // assume dense mesh with texCoords set to polygons
 	{
-		totalPoints = mesh.cloud->size();
 		if(textures_ && polygons.size() && mesh.normals->size())
 		{
 			//LOGD("Dense mesh with texture (%d texCoords %d points %d polygons %dx%d)",
@@ -411,8 +659,9 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 			//  tex_coordinates should be linked to points, not
 			//  polygon vertices. Points linked to multiple different texCoords (different textures) should
 			//  be duplicated.
+			totalPoints = mesh.texCoords.size();
 			vertices = std::vector<float>(mesh.texCoords.size()*9);
-			organizedToDenseIndices_ = std::vector<unsigned int>(mesh.texCoords.size(), -1);
+			organizedToDenseIndices_ = std::vector<unsigned int>(totalPoints, -1);
 
 			UASSERT_MSG(mesh.texCoords.size() == polygons[0].vertices.size()*polygons.size(),
 					uFormat("%d vs %d x %d", (int)mesh.texCoords.size(), (int)polygons[0].vertices.size(), (int)polygons.size()).c_str());
@@ -468,9 +717,10 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 		}
 		else
 		{
+			totalPoints = mesh.cloud->size();
 			//LOGD("Dense mesh");
 			int items = hasNormals_?7:4;
-			organizedToDenseIndices_ = std::vector<unsigned int>(mesh.cloud->size(), -1);
+			organizedToDenseIndices_ = std::vector<unsigned int>(totalPoints, -1);
 			vertices = std::vector<float>(mesh.cloud->size()*items);
 			for(unsigned int i=0; i<mesh.cloud->size(); ++i)
 			{
@@ -594,7 +844,8 @@ void PointCloudDrawable::updateAABBWorld(const rtabmap::Transform & pose)
 }
 
 
-void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
+void PointCloudDrawable::Render(
+		const glm::mat4 & projectionMatrix,
 		const glm::mat4 & viewMatrix,
 		bool meshRendering,
 		float pointSize,
@@ -604,94 +855,171 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 		const GLuint & depthTexture,
 		int screenWidth,
 		int screenHeight,
-		bool packDepthToColorChannel) {
-
-	if(vertex_buffers_ && nPoints_ && visible_)
+		float nearClipPlane,
+	    float farClipPlane,
+		bool packDepthToColorChannel) const
+{
+	if(vertex_buffers_ && nPoints_ && visible_ && !shaderPrograms_.empty())
 	{
-		if(meshRendering && textureRendering && textures_ && (verticesLowRes_.empty() || distanceToCameraSqr<50.0f))
+		if(packDepthToColorChannel || !hasNormals_)
 		{
-			glUseProgram(texture_shader_program_);
+			lighting = false;
+		}
 
-			GLuint mvp_handle = glGetUniformLocation(texture_shader_program_, "uMVP");
-			glm::mat4 mv_mat = viewMatrix * poseGl_;
-			glm::mat4 mvp_mat = projectionMatrix * mv_mat;
-			glUniformMatrix4fv(mvp_handle, 1, GL_FALSE, glm::value_ptr(mvp_mat));
+		if(packDepthToColorChannel || !(meshRendering && textureRendering && textures_))
+		{
+			textureRendering = false;
+		}
 
-			GLuint n_handle = glGetUniformLocation(texture_shader_program_, "uN");
-			glm::mat3 normalMatrix(mv_mat);
-			normalMatrix = glm::inverse(normalMatrix);
-			normalMatrix = glm::transpose(normalMatrix);
-			glUniformMatrix3fv(n_handle, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-
-			if(!hasNormals_)
-			{
-				lighting = false;
-			}
-
-			//lighting
-			GLuint lighting_handle = glGetUniformLocation(texture_shader_program_, "uUseLighting");
-			glUniform1i(lighting_handle, lighting?1:0);
-
+		GLuint program;
+		if(packDepthToColorChannel)
+		{
+			program = shaderPrograms_[kDepthPacking];
+		}
+		else if(textureRendering)
+		{
 			if(lighting)
 			{
-				GLuint ambiant_handle = glGetUniformLocation(texture_shader_program_, "uAmbientColor");
-				glUniform3f(ambiant_handle,0.6,0.6,0.6);
-
-				GLuint lightingDirection_handle = glGetUniformLocation(texture_shader_program_, "uLightingDirection");
-				glUniform3f(lightingDirection_handle, 0.0, 0.0, 1.0); // from the camera
+				program = shaderPrograms_[depthTexture>0?kTextureLightingBlending:kTextureLighting];
 			}
+			else
+			{
+				program = shaderPrograms_[depthTexture>0?kTextureBlending:kTexture];
+			}
+		}
+		else
+		{
+			if(lighting)
+			{
+				program = shaderPrograms_[depthTexture>0?kPointCloudLightingBlending:kPointCloudLighting];
+			}
+			else
+			{
+				program = shaderPrograms_[depthTexture>0?kPointCloudBlending:kPointCloud];
+			}
+		}
 
-			// Texture activate unit 0
-			glActiveTexture(GL_TEXTURE0);
-			// Bind the texture to this unit.
-			glBindTexture(GL_TEXTURE_2D, textures_);
-			// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
-			GLuint texture_handle = glGetUniformLocation(texture_shader_program_, "uTexture");
-			glUniform1i(texture_handle, 0);
+		glUseProgram(program);
+		tango_gl::util::CheckGlError("Pointcloud::Render() set program");
 
-			// Texture activate unit 1
-			glActiveTexture(GL_TEXTURE1);
-			// Bind the texture to this unit.
-			glBindTexture(GL_TEXTURE_2D, depthTexture);
-			// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 1.
-			GLuint depth_texture_handle = glGetUniformLocation(texture_shader_program_, "uDepthTexture");
-			glUniform1i(depth_texture_handle, 1);
+		GLuint mvp_handle = glGetUniformLocation(program, "uMVP");
+		glm::mat4 mv_mat = viewMatrix * poseGl_;
+		glm::mat4 mvp_mat = projectionMatrix * mv_mat;
+		glUniformMatrix4fv(mvp_handle, 1, GL_FALSE, glm::value_ptr(mvp_mat));
 
-			GLuint gainR_handle = glGetUniformLocation(texture_shader_program_, "uGainR");
-			GLuint gainG_handle = glGetUniformLocation(texture_shader_program_, "uGainG");
-			GLuint gainB_handle = glGetUniformLocation(texture_shader_program_, "uGainB");
+		GLint attribute_vertex = glGetAttribLocation(program, "aVertex");
+		glEnableVertexAttribArray(attribute_vertex);
+		GLint attribute_color = 0;
+		GLint attribute_texture = 0;
+		GLint attribute_normal = 0;
+
+		if(packDepthToColorChannel || !textureRendering)
+		{
+			GLuint point_size_handle_ = glGetUniformLocation(program, "uPointSize");
+			glUniform1f(point_size_handle_, pointSize);
+		}
+		tango_gl::util::CheckGlError("Pointcloud::Render() vertex");
+
+		if(!packDepthToColorChannel)
+		{
+			GLuint gainR_handle = glGetUniformLocation(program, "uGainR");
+			GLuint gainG_handle = glGetUniformLocation(program, "uGainG");
+			GLuint gainB_handle = glGetUniformLocation(program, "uGainB");
 			glUniform1f(gainR_handle, gainR_);
 			glUniform1f(gainG_handle, gainG_);
 			glUniform1f(gainB_handle, gainB_);
 
-			GLuint blending_handle = glGetUniformLocation(texture_shader_program_, "uBlending");
-			glUniform1i(blending_handle, depthTexture>0?1:0);
-
-			GLuint screenScale_handle = glGetUniformLocation(texture_shader_program_, "uScreenScale");
-			glUniform2f(screenScale_handle, 1.0f/(float)screenWidth, 1.0f/(float)screenHeight);
-
-			GLint attribute_vertex = glGetAttribLocation(texture_shader_program_, "aVertex");
-			GLint attribute_texture = glGetAttribLocation(texture_shader_program_, "aTexCoord");
-			GLint attribute_normal=0;
-			if(hasNormals_)
+			// blending
+			if(depthTexture > 0)
 			{
-				attribute_normal = glGetAttribLocation(texture_shader_program_, "aNormal");
+				// Texture activate unit 1
+				glActiveTexture(GL_TEXTURE1);
+				// Bind the texture to this unit.
+				glBindTexture(GL_TEXTURE_2D, depthTexture);
+				// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 1.
+				GLuint depth_texture_handle = glGetUniformLocation(program, "uDepthTexture");
+				glUniform1i(depth_texture_handle, 1);
+
+				GLuint zNear_handle = glGetUniformLocation(program, "uNearZ");
+				GLuint zFar_handle = glGetUniformLocation(program, "uFarZ");
+				glUniform1f(zNear_handle, nearClipPlane);
+				glUniform1f(zFar_handle, farClipPlane);
+
+				GLuint screenScale_handle = glGetUniformLocation(program, "uScreenScale");
+				glUniform2f(screenScale_handle, 1.0f/(float)screenWidth, 1.0f/(float)screenHeight);
 			}
 
-			glEnableVertexAttribArray(attribute_vertex);
-			glEnableVertexAttribArray(attribute_texture);
-			if(hasNormals_)
+			if(lighting)
 			{
+				GLuint n_handle = glGetUniformLocation(program, "uN");
+				glm::mat3 normalMatrix(mv_mat);
+				normalMatrix = glm::inverse(normalMatrix);
+				normalMatrix = glm::transpose(normalMatrix);
+				glUniformMatrix3fv(n_handle, 1, GL_FALSE, glm::value_ptr(normalMatrix));
+
+				GLuint lightingDirection_handle = glGetUniformLocation(program, "uLightingDirection");
+				glUniform3f(lightingDirection_handle, 0.0, 0.0, 1.0); // from the camera
+
+				attribute_normal = glGetAttribLocation(program, "aNormal");
 				glEnableVertexAttribArray(attribute_normal);
 			}
-			glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
+
+			if(textureRendering)
+			{
+				// Texture activate unit 0
+				glActiveTexture(GL_TEXTURE0);
+				// Bind the texture to this unit.
+				glBindTexture(GL_TEXTURE_2D, textures_);
+				// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 0.
+				GLuint texture_handle = glGetUniformLocation(program, "uTexture");
+				glUniform1i(texture_handle, 0);
+
+				attribute_texture = glGetAttribLocation(program, "aTexCoord");
+				glEnableVertexAttribArray(attribute_texture);
+			}
+			else
+			{
+				attribute_color = glGetAttribLocation(program, "aColor");
+				glEnableVertexAttribArray(attribute_color);
+			}
+		}
+		tango_gl::util::CheckGlError("Pointcloud::Render() common");
+
+		glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
+		if(textures_)
+		{
 			glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, (hasNormals_?9:6)*sizeof(GLfloat), 0);
-			glVertexAttribPointer(attribute_texture, 2, GL_FLOAT, GL_FALSE, (hasNormals_?9:6)*sizeof(GLfloat), (GLvoid*) (4 * sizeof(GLfloat)));
-			if(hasNormals_)
+			if(textureRendering)
+			{
+				glVertexAttribPointer(attribute_texture, 2, GL_FLOAT, GL_FALSE, (hasNormals_?9:6)*sizeof(GLfloat), (GLvoid*) (4 * sizeof(GLfloat)));
+			}
+			else if(!packDepthToColorChannel)
+			{
+				glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE,  (hasNormals_?9:6)*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
+			}
+			if(lighting && hasNormals_)
 			{
 				glVertexAttribPointer(attribute_normal, 3, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), (GLvoid*) (6 * sizeof(GLfloat)));
 			}
-			if(distanceToCameraSqr<150.0f || polygonsLowRes_.empty())
+		}
+		else
+		{
+			glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, (hasNormals_?7:4)*sizeof(GLfloat), 0);
+			if(!packDepthToColorChannel)
+			{
+				glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE, (hasNormals_?7:4)*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
+			}
+			if(lighting && hasNormals_)
+			{
+				glVertexAttribPointer(attribute_normal, 3, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (GLvoid*) (4 * sizeof(GLfloat)));
+			}
+		}
+		tango_gl::util::CheckGlError("Pointcloud::Render() set attribute pointer");
+
+		UTimer drawTime;
+		if(textureRendering)
+		{
+			if(distanceToCameraSqr<16.0f || polygonsLowRes_.empty())
 			{
 				glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
 			}
@@ -700,135 +1028,44 @@ void PointCloudDrawable::Render(const glm::mat4 & projectionMatrix,
 				glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
 			}
 		}
-		else // point cloud or colored mesh
+		else if(meshRendering && polygons_.size())
 		{
-			glUseProgram(cloud_shader_program_);
-
-			GLuint mvp_handle_ = glGetUniformLocation(cloud_shader_program_, "uMVP");
-			glm::mat4 mv_mat = viewMatrix * poseGl_;
-			glm::mat4 mvp_mat = projectionMatrix * mv_mat;
-			glUniformMatrix4fv(mvp_handle_, 1, GL_FALSE, glm::value_ptr(mvp_mat));
-
-			GLuint n_handle = glGetUniformLocation(cloud_shader_program_, "uN");
-			glm::mat3 normalMatrix(mv_mat);
-			normalMatrix = glm::inverse(normalMatrix);
-			normalMatrix = glm::transpose(normalMatrix);
-			glUniformMatrix3fv(n_handle, 1, GL_FALSE, glm::value_ptr(normalMatrix));
-
-			if(!hasNormals_)
+			if(distanceToCameraSqr<50.0f || polygonsLowRes_.empty())
 			{
-				lighting = false;
-			}
-
-			//lighting
-			GLuint lighting_handle = glGetUniformLocation(cloud_shader_program_, "uUseLighting");
-			glUniform1i(lighting_handle, lighting?1:0);
-
-			if(lighting)
-			{
-				GLuint ambiant_handle = glGetUniformLocation(cloud_shader_program_, "uAmbientColor");
-				glUniform3f(ambiant_handle,0.6,0.6,0.6);
-
-				GLuint lightingDirection_handle = glGetUniformLocation(cloud_shader_program_, "uLightingDirection");
-				glUniform3f(lightingDirection_handle, 0.0, 0.0, 1.0); // from the camera
-			}
-
-			GLuint point_size_handle_ = glGetUniformLocation(cloud_shader_program_, "uPointSize");
-			glUniform1f(point_size_handle_, pointSize);
-
-			// Texture activate unit 1
-			glActiveTexture(GL_TEXTURE0);
-			// Bind the texture to this unit.
-			glBindTexture(GL_TEXTURE_2D, depthTexture);
-			// Tell the texture uniform sampler to use this texture in the shader by binding to texture unit 1.
-			GLuint depth_texture_handle = glGetUniformLocation(cloud_shader_program_, "uDepthTexture");
-			glUniform1i(depth_texture_handle, 0);
-
-			GLuint gainR_handle = glGetUniformLocation(cloud_shader_program_, "uGainR");
-			GLuint gainG_handle = glGetUniformLocation(cloud_shader_program_, "uGainG");
-			GLuint gainB_handle = glGetUniformLocation(cloud_shader_program_, "uGainB");
-			glUniform1f(gainR_handle, gainR_);
-			glUniform1f(gainG_handle, gainG_);
-			glUniform1f(gainB_handle, gainB_);
-
-			GLuint packing_handle = glGetUniformLocation(cloud_shader_program_, "uPackDepthToColor");
-			glUniform1i(packing_handle, packDepthToColorChannel?1:0);
-
-			GLuint blending_handle = glGetUniformLocation(cloud_shader_program_, "uBlending");
-			glUniform1i(blending_handle, depthTexture>0?1:0);
-
-			GLuint screenScale_handle = glGetUniformLocation(cloud_shader_program_, "uScreenScale");
-			glUniform2f(screenScale_handle, 1.0f/(float)screenWidth, 1.0f/(float)screenHeight);
-
-			GLint attribute_vertex = glGetAttribLocation(cloud_shader_program_, "aVertex");
-			GLint attribute_color = glGetAttribLocation(cloud_shader_program_, "aColor");
-			GLint attribute_normal=0;
-			if(hasNormals_)
-			{
-				attribute_normal = glGetAttribLocation(cloud_shader_program_, "aNormal");
-			}
-
-			glEnableVertexAttribArray(attribute_vertex);
-			glEnableVertexAttribArray(attribute_color);
-			if(hasNormals_)
-			{
-				glEnableVertexAttribArray(attribute_normal);
-			}
-			glBindBuffer(GL_ARRAY_BUFFER, vertex_buffers_);
-			if(textures_)
-			{
-				glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, (hasNormals_?9:6)*sizeof(GLfloat), 0);
-				glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE,  (hasNormals_?9:6)*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
-				if(hasNormals_)
-				{
-					glVertexAttribPointer(attribute_normal, 3, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), (GLvoid*) (6 * sizeof(GLfloat)));
-				}
+				glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
 			}
 			else
 			{
-				glVertexAttribPointer(attribute_vertex, 3, GL_FLOAT, GL_FALSE, (hasNormals_?7:4)*sizeof(GLfloat), 0);
-				glVertexAttribPointer(attribute_color, 3, GL_UNSIGNED_BYTE, GL_TRUE, (hasNormals_?7:4)*sizeof(GLfloat), (GLvoid*) (3 * sizeof(GLfloat)));
-				if(hasNormals_)
-				{
-					glVertexAttribPointer(attribute_normal, 3, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (GLvoid*) (4 * sizeof(GLfloat)));
-				}
+				glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
 			}
-			if(meshRendering && polygons_.size())
+		}
+		else if(!verticesLowRes_.empty())
+		{
+			if(distanceToCameraSqr>600.0f)
 			{
-				if(distanceToCameraSqr<150.0f || polygonsLowRes_.empty())
-				{
-					glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
-				}
-				else
-				{
-					glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
-				}
+				glDrawElements(GL_POINTS, verticesLowLowRes_.size(), GL_UNSIGNED_INT, verticesLowLowRes_.data());
 			}
-			else if(!verticesLowRes_.empty())
+			else if(distanceToCameraSqr>150.0f)
 			{
-				if(distanceToCameraSqr>600.0f)
-				{
-					glDrawElements(GL_POINTS, verticesLowLowRes_.size(), GL_UNSIGNED_INT, verticesLowLowRes_.data());
-				}
-				else if(distanceToCameraSqr>150.0f)
-				{
-					glDrawElements(GL_POINTS, verticesLowRes_.size(), GL_UNSIGNED_INT, verticesLowRes_.data());
-				}
-				else
-				{
-					glDrawArrays(GL_POINTS, 0, nPoints_);
-				}
+				glDrawElements(GL_POINTS, verticesLowRes_.size(), GL_UNSIGNED_INT, verticesLowRes_.data());
 			}
 			else
 			{
 				glDrawArrays(GL_POINTS, 0, nPoints_);
 			}
 		}
+		else
+		{
+			glDrawArrays(GL_POINTS, 0, nPoints_);
+		}
+		//UERROR("drawTime=%fs", drawTime.ticks());
+		tango_gl::util::CheckGlError("Pointcloud::Render() draw");
+
 		glDisableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 		glUseProgram(0);
-		tango_gl::util::CheckGlError("Pointcloud::Render()");
+		tango_gl::util::CheckGlError("Pointcloud::Render() cleaning");
 	}
 }
 

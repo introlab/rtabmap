@@ -127,7 +127,6 @@ class RTABMapApp : public UEventsHandler {
   void setNodesFiltering(bool enabled);
   void setGraphVisible(bool visible);
   void setGridVisible(bool visible);
-  void setAutoExposure(bool enabled);
   void setRawScanSaved(bool enabled);
   void setCameraColor(bool enabled);
   void setFullResolution(bool enabled);
@@ -192,7 +191,6 @@ class RTABMapApp : public UEventsHandler {
   bool nodesFiltering_;
   bool localizationMode_;
   bool trajectoryMode_;
-  bool autoExposure_;
   bool rawScanSaved_;
   bool smoothing_;
   bool cameraColor_;

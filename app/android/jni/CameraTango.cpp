@@ -104,14 +104,13 @@ void onTangoEventAvailableRouter(void* context, const TangoEvent* event)
 const float CameraTango::bilateralFilteringSigmaS = 2.0f;
 const float CameraTango::bilateralFilteringSigmaR = 0.075f;
 
-CameraTango::CameraTango(bool colorCamera, int decimation, bool autoExposure, bool publishRawScan, bool smoothing) :
+CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing) :
 		Camera(0),
 		tango_config_(0),
 		firstFrame_(true),
 		stampEpochOffset_(0.0),
 		colorCamera_(colorCamera),
 		decimation_(decimation),
-		autoExposure_(autoExposure),
 		rawScanPublished_(publishRawScan),
 		smoothing_(smoothing),
 		cloudStamp_(0),
@@ -218,31 +217,6 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 		{
 			LOGE("NativeRTABMap: config_enable_color_camera() failed with error code: %d", ret);
 			return false;
-		}
-		// disable auto exposure (disabled, seems broken on latest Tango releases)
-		ret = TangoConfig_setBool(tango_config_, "config_color_mode_auto", autoExposure_);
-		if (ret != TANGO_SUCCESS)
-		{
-			LOGE("NativeRTABMap: config_color_mode_auto() failed with error code: %d", ret);
-			//return false;
-		}
-		else
-		{
-			if(!autoExposure_)
-			{
-				ret = TangoConfig_setInt32(tango_config_, "config_color_iso", 800);
-				if (ret != TANGO_SUCCESS)
-				{
-					LOGE("NativeRTABMap: config_color_iso() failed with error code: %d", ret);
-					return false;
-				}
-			}
-			bool verifyAutoExposureState;
-			int32_t verifyIso, verifyExp;
-			TangoConfig_getBool( tango_config_, "config_color_mode_auto", &verifyAutoExposureState );
-			TangoConfig_getInt32( tango_config_, "config_color_iso", &verifyIso );
-			TangoConfig_getInt32( tango_config_, "config_color_exp", &verifyExp );
-			LOGI( "NativeRTABMap: config_color autoExposure=%s %d %d", verifyAutoExposureState?"On" : "Off", verifyIso, verifyExp );
 		}
 	}
 

@@ -697,7 +697,14 @@ void SensorData::uncompressDataConst(
 			*imageRaw = ctImage.getUncompressedData();
 			if(imageRaw->empty())
 			{
-				UWARN("Requested raw image data, but the sensor data (%d) doesn't have image.", this->id());
+				if(_imageCompressed.empty())
+				{
+					UWARN("Requested raw image data, but the sensor data (%d) doesn't have image.", this->id());
+				}
+				else
+				{
+					UERROR("Requested image data, but failed to uncompress (%d).", this->id());
+				}
 			}
 		}
 		if(depthRaw && depthRaw->empty())
@@ -705,7 +712,14 @@ void SensorData::uncompressDataConst(
 			*depthRaw = ctDepth.getUncompressedData();
 			if(depthRaw->empty())
 			{
-				UWARN("Requested depth/right image data, but the sensor data (%d) doesn't have depth/right image.", this->id());
+				if(_depthOrRightCompressed.empty())
+				{
+					UWARN("Requested depth/right image data, but the sensor data (%d) doesn't have depth/right image.", this->id());
+				}
+				else
+				{
+					UERROR("Requested depth/right image data, but failed to uncompress (%d).", this->id());
+				}
 			}
 		}
 		if(laserScanRaw && laserScanRaw->empty())
@@ -714,7 +728,14 @@ void SensorData::uncompressDataConst(
 
 			if(laserScanRaw->empty())
 			{
-				UWARN("Requested laser scan data, but the sensor data (%d) doesn't have laser scan.", this->id());
+				if(_laserScanCompressed.empty())
+				{
+					UWARN("Requested laser scan data, but the sensor data (%d) doesn't have laser scan.", this->id());
+				}
+				else
+				{
+					UERROR("Requested laser scan data, but failed to uncompress (%d).", this->id());
+				}
 			}
 		}
 		if(userDataRaw && userDataRaw->empty())
@@ -723,7 +744,14 @@ void SensorData::uncompressDataConst(
 
 			if(userDataRaw->empty())
 			{
-				UWARN("Requested user data, but the sensor data (%d) doesn't have user data.", this->id());
+				if(_userDataCompressed.empty())
+				{
+					UWARN("Requested user data, but the sensor data (%d) doesn't have user data.", this->id());
+				}
+				else
+				{
+					UERROR("Requested user data, but failed to uncompress (%d).", this->id());
+				}
 			}
 		}
 		if(groundCellsRaw && groundCellsRaw->empty())

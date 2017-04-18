@@ -167,8 +167,6 @@ class Scene {
   rtabmap::Transform * currentPose_;
 
   // Shader to display point cloud.
-  GLuint cloud_shader_program_;
-  GLuint texture_mesh_shader_program_;
   GLuint graph_shader_program_;
 
   bool blending_;
