@@ -3198,45 +3198,44 @@ Transform MainWindow::alignPosesToGroundTruth(
 
 void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 {
-	if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
+	UINFO("Update visibility %d", nodeId);
+	QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
+	if(_preferencesDialog->isCloudsShown(0))
 	{
-		QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
-		if(_preferencesDialog->isCloudsShown(0))
+		std::string cloudName = uFormat("cloud%d", nodeId);
+		if(visible && !viewerClouds.contains(cloudName) && _cachedSignatures.contains(nodeId) && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
 		{
-			std::string cloudName = uFormat("cloud%d", nodeId);
-			if(visible && !viewerClouds.contains(cloudName) && _cachedSignatures.contains(nodeId))
-			{
-				createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
-			}
-			else if(viewerClouds.contains(cloudName))
-			{
-				if(visible)
-				{
-					//make sure the transformation was done
-					_cloudViewer->updateCloudPose(cloudName, _currentPosesMap.find(nodeId)->second);
-				}
-				_cloudViewer->setCloudVisibility(cloudName, visible);
-			}
+			createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
 		}
-
-		if(_preferencesDialog->isScansShown(0))
+		else if(viewerClouds.contains(cloudName))
 		{
-			std::string scanName = uFormat("scan%d", nodeId);
-			if(visible && !viewerClouds.contains(scanName) && _cachedSignatures.contains(nodeId))
+			if(visible && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
 			{
-				createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
+				//make sure the transformation was done
+				_cloudViewer->updateCloudPose(cloudName, _currentPosesMap.find(nodeId)->second);
 			}
-			else if(viewerClouds.contains(scanName))
-			{
-				if(visible)
-				{
-					//make sure the transformation was done
-					_cloudViewer->updateCloudPose(scanName, _currentPosesMap.find(nodeId)->second);
-				}
-				_cloudViewer->setCloudVisibility(scanName, visible);
-			}
+			_cloudViewer->setCloudVisibility(cloudName, visible);
 		}
 	}
+
+	if(_preferencesDialog->isScansShown(0))
+	{
+		std::string scanName = uFormat("scan%d", nodeId);
+		if(visible && !viewerClouds.contains(scanName) && _cachedSignatures.contains(nodeId) && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
+		{
+			createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
+		}
+		else if(viewerClouds.contains(scanName))
+		{
+			if(visible && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
+			{
+				//make sure the transformation was done
+				_cloudViewer->updateCloudPose(scanName, _currentPosesMap.find(nodeId)->second);
+			}
+			_cloudViewer->setCloudVisibility(scanName, visible);
+		}
+	}
+
 	_cloudViewer->update();
 }
 
@@ -5908,8 +5907,6 @@ void MainWindow::exportGridMap()
 	{
 		return;
 	}
-
-	std::map<int, Transform> poses = _ui->widget_mapVisibility->getVisiblePoses();
 
 	// create the map
 	float xMin=0.0f, yMin=0.0f;

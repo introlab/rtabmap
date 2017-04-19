@@ -115,7 +115,7 @@ std::map<int, Transform> MapVisibilityWidget::getVisiblePoses() const
 	std::map<int, Transform> poses;
 	for(std::map<int, Transform>::const_iterator iter=_poses.begin(); iter!=_poses.end(); ++iter)
 	{
-		if(_mask.at(iter->first))
+		if(_mask.at(iter->first) && iter->first > 0)
 		{
 			poses.insert(*iter);
 		}
