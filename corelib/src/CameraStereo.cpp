@@ -964,7 +964,6 @@ static cv::Mat slMat2cvMat(sl::Mat& input) {
 	//cv::Mat and sl::Mat will share the same memory pointer
 	return cv::Mat(input.getHeight(), input.getWidth(), cv_type, input.getPtr<sl::uchar1>(sl::MEM_CPU));
 }
-#endif
 
 Transform zedPoseToTransform(const sl::Pose & pose)
 {
@@ -973,6 +972,7 @@ Transform zedPoseToTransform(const sl::Pose & pose)
 			pose.pose_data.m[4], pose.pose_data.m[5], pose.pose_data.m[6], pose.pose_data.m[7],
 			pose.pose_data.m[8], pose.pose_data.m[9], pose.pose_data.m[10], pose.pose_data.m[11]);
 }
+#endif
 
 SensorData CameraStereoZed::captureImage(CameraInfo * info)
 {
