@@ -787,7 +787,7 @@ CameraStereoZed::CameraStereoZed(
 #ifdef RTABMAP_ZED
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
 	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
-	UASSERT(sensingMode_ >= sl::SENSING_MODE_FILL && sensingMode_ <sl::SENSING_MODE_LAST);
+	UASSERT(sensingMode_ >= sl::SENSING_MODE_STANDARD && sensingMode_ <sl::SENSING_MODE_LAST);
 	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
 #endif
 }
@@ -900,6 +900,16 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 		this->getLocalTransform(),
 		cv::Size(res.width, res.height));
 
+	UINFO("Calibration: fx=%f, fy=%f, cx=%f, cy=%f, baseline=%f, width=%d, height=%d, transform=%s",
+			stereoParams->left_cam.fx,
+			stereoParams->left_cam.fy,
+			stereoParams->left_cam.cx,
+			stereoParams->left_cam.cy,
+			stereoParams->T[0],//baseline
+			(int)res.width,
+			(int)res.height,
+			this->getLocalTransform().prettyPrint().c_str());
+
 	return true;
 #else
 	UERROR("CameraStereoZED: RTAB-Map is not built with ZED sdk support!");
@@ -955,6 +965,14 @@ static cv::Mat slMat2cvMat(sl::Mat& input) {
 	return cv::Mat(input.getHeight(), input.getWidth(), cv_type, input.getPtr<sl::uchar1>(sl::MEM_CPU));
 }
 #endif
+
+Transform zedPoseToTransform(const sl::Pose & pose)
+{
+	return Transform(
+			pose.pose_data.m[0], pose.pose_data.m[1], pose.pose_data.m[2], pose.pose_data.m[3],
+			pose.pose_data.m[4], pose.pose_data.m[5], pose.pose_data.m[6], pose.pose_data.m[7],
+			pose.pose_data.m[8], pose.pose_data.m[9], pose.pose_data.m[10], pose.pose_data.m[11]);
+}
 
 SensorData CameraStereoZed::captureImage(CameraInfo * info)
 {
@@ -1012,9 +1030,7 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				int trackingConfidence = pose.pose_confidence;
 				if (trackingConfidence)
 				{
-					Transform t;
-					for(int i=0;i<16;i++)t.data()[i]=pose.pose_data.m[i];
-					info->odomPose = t;
+					info->odomPose = zedPoseToTransform(pose);
 					if (!info->odomPose.isNull())
 					{
 						//transform x->forward, y->left, z->up

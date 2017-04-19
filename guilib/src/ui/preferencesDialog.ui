@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-675</y>
+            <y>-433</y>
             <width>678</width>
             <height>2701</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>15</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2582,7 +2582,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3820,12 +3820,12 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                    <widget class="QComboBox" name="comboBox_stereoZed_sensingMode">
                                     <item>
                                      <property name="text">
-                                      <string>FILL</string>
+                                      <string>STANDARD</string>
                                      </property>
                                     </item>
                                     <item>
                                      <property name="text">
-                                      <string>STANDARD</string>
+                                      <string>FILL</string>
                                      </property>
                                     </item>
                                    </widget>
@@ -3908,7 +3908,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <item row="1" column="1">
                                    <widget class="QLabel" name="label_290">
                                     <property name="text">
-                                     <string>Quality. If NONE, the disparity is not computed on the GPU.</string>
+                                     <string>Quality. If NONE, the disparity is not computed on the GPU, but on CPU using OpenCV (see StereoBM panel for parameters).</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
