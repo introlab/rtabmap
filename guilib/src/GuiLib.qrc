@@ -29,8 +29,9 @@
         <file>images/sense.png</file>
         <file>images/xtion_pro_live.png</file>
         <file>images/bumblebee2.png</file>
-        <file>images/webcam.png</file> 
+        <file>images/webcam.png</file>
         <file>images/zed.png</file>
         <file>images/r200.png</file>
+        <file>images/zr300.png</file>
     </qresource>
 </RCC>

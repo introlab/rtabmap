@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -176,13 +176,24 @@
         <iconset resource="../GuiLib.qrc">
          <normaloff>:/images/r200.png</normaloff>:/images/r200.png</iconset>
        </property>
-       <addaction name="actionRealSense"/>
+       <addaction name="actionRealSense_R200"/>
+      </widget>
+      <widget class="QMenu" name="menuRealSense_ZR300">
+       <property name="title">
+        <string>RealSense ZR300</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/zr300.png</normaloff>:/images/zr300.png</iconset>
+       </property>
+       <addaction name="actionRealSense_ZR300"/>
       </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuSense_3D_scanner"/>
       <addaction name="menuKinect_v2"/>
       <addaction name="menuRealSense_R200"/>
+      <addaction name="menuRealSense_ZR300"/>
      </widget>
      <widget class="QMenu" name="menuStereo_camera">
       <property name="title">
@@ -1338,7 +1349,7 @@
     <string>Export octomap...</string>
    </property>
   </action>
-  <action name="actionRealSense">
+  <action name="actionRealSense_R200">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -1349,6 +1360,14 @@
   <action name="actionDepth_Calibration">
    <property name="text">
     <string>Depth calibration...</string>
+   </property>
+  </action>
+  <action name="actionRealSense_ZR300">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RealSense</string>
    </property>
   </action>
  </widget>
