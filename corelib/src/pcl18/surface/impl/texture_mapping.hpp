@@ -1389,44 +1389,61 @@ pcl::TextureMapping<PointInT>::getTriangleCircumcscribedCircleCentroid ( const p
 template<typename PointInT> inline bool
 pcl::TextureMapping<PointInT>::getPointUVCoordinates(const PointInT &pt, const Camera &cam, pcl::PointXY &UV_coordinates)
 {
-  if (pt.z > 0 && (max_distance_<=0.0f || pt.z<max_distance_))
-  {
-    // compute image center and dimension
-    double sizeX = cam.width;
-    double sizeY = cam.height;
-    double cx, cy;
-    if (cam.center_w > 0)
-      cx = cam.center_w;
-    else
-      cx = sizeX / 2.0;
-    if (cam.center_h > 0)
-      cy = cam.center_h;
-    else
-      cy = sizeY / 2.0;
+	if (pt.z > 0 && (max_distance_<=0.0f || pt.z<max_distance_))
+	{
+		// compute image center and dimension
+		double sizeX = cam.width;
+		double sizeY = cam.height;
+		double cx, cy;
+		if (cam.center_w > 0)
+			cx = cam.center_w;
+		else
+			cx = sizeX / 2.0;
+		if (cam.center_h > 0)
+			cy = cam.center_h;
+		else
+			cy = sizeY / 2.0;
 
-    double focal_x, focal_y; 
-    if (cam.focal_length_w > 0)
-      focal_x = cam.focal_length_w;
-    else
-      focal_x = cam.focal_length;
-    if (cam.focal_length_h > 0)
-      focal_y = cam.focal_length_h;
-    else
-      focal_y = cam.focal_length;
+		double focal_x, focal_y;
+		if (cam.focal_length_w > 0)
+			focal_x = cam.focal_length_w;
+		else
+			focal_x = cam.focal_length;
+		if (cam.focal_length_h > 0)
+			focal_y = cam.focal_length_h;
+		else
+			focal_y = cam.focal_length;
 
-    // project point on camera's image plane
-    UV_coordinates.x = static_cast<float> ((focal_x * (pt.x / pt.z) + cx) / sizeX); //horizontal
-    UV_coordinates.y = 1.0f - static_cast<float> ((focal_y * (pt.y / pt.z) + cy) / sizeY); //vertical
+		// project point on camera's image plane
+		UV_coordinates.x = static_cast<float> ((focal_x * (pt.x / pt.z) + cx) / sizeX); //horizontal
+		UV_coordinates.y = static_cast<float> ((focal_y * (pt.y / pt.z) + cy) / sizeY); //vertical
 
-    // point is visible!
-    if (UV_coordinates.x >= 0.0 && UV_coordinates.x <= 1.0 && UV_coordinates.y >= 0.0 && UV_coordinates.y <= 1.0)
-      return (true); // point was visible by the camera
-  }
+		if(cam.roi.size() == 4)
+		{
+			if( UV_coordinates.x < cam.roi[0]/sizeX ||
+				UV_coordinates.y < cam.roi[1]/sizeY ||
+				UV_coordinates.x > (cam.roi[0]+cam.roi[2])/sizeX ||
+				UV_coordinates.y > (cam.roi[1]+cam.roi[3])/sizeY)
+			{
+				// point is NOT in region of interest of the camera
+				UV_coordinates.x = -1.0f;
+				UV_coordinates.y = -1.0f;
+				return false;
+			}
+		}
 
-  // point is NOT visible by the camera
-  UV_coordinates.x = -1.0f;
-  UV_coordinates.y = -1.0f;
-  return (false); // point was not visible by the camera
+		// original code of PCL inverted y
+		UV_coordinates.y = 1.0f - UV_coordinates.y;
+
+		// point is visible!
+		if (UV_coordinates.x >= 0.0 && UV_coordinates.x <= 1.0 && UV_coordinates.y >= 0.0 && UV_coordinates.y <= 1.0)
+			return (true); // point was visible by the camera
+	}
+
+	// point is NOT visible by the camera
+	UV_coordinates.x = -1.0f;
+	UV_coordinates.y = -1.0f;
+	return (false); // point was not visible by the camera
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////

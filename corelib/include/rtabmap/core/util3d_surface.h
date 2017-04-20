@@ -139,6 +139,7 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const std::map<int, CameraModel> & cameraModels,
 		float maxDistance = 0.0f, // max camera distance to polygon to apply texture
 		int minClusterSize = 50, // minimum size of polygons clusters textured
+		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
 

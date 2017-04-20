@@ -992,10 +992,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 				cv::Mat depth(sensorData.depthRaw(), cv::Rect(subDepthWidth*i, 0, subDepthWidth, sensorData.depthRaw().rows));
 				CameraModel model = sensorData.cameraModels()[i];
 				if( roiRatios.size() == 4 &&
-					(roiRatios[0] > 0.0f ||
-					roiRatios[1] > 0.0f ||
-					roiRatios[2] > 0.0f ||
-					roiRatios[3] > 0.0f))
+					((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
+					 (roiRatios[1] > 0.0f && roiRatios[1] <= 1.0f) ||
+					 (roiRatios[2] > 0.0f && roiRatios[2] <= 1.0f) ||
+					 (roiRatios[3] > 0.0f && roiRatios[3] <= 1.0f)))
 				{
 					cv::Rect roiDepth = util2d::computeRoi(depth, roiRatios);
 					cv::Rect roiRgb = util2d::computeRoi(rgb, roiRatios);

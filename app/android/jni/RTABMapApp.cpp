@@ -2735,6 +2735,7 @@ bool RTABMapApp::exportMesh(
 										cameraModels,
 										optimizedMaxTextureDistance,
 										optimizedMinTextureClusterSize,
+										std::vector<float>(),
 										&progressionStatus_,
 										&vertexToPixels);
 								LOGI("Texturing... done! %fs", timer.ticks());

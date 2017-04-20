@@ -1147,28 +1147,30 @@ cv::Rect computeRoi(const cv::Size & imageSize, const std::vector<float> & roiRa
 		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
 
 		//left roi
-		if(roiRatios[0] > 0 && roiRatios[0] < 1 - roiRatios[1])
+		if(roiRatios[0] > 0 && roiRatios[0] < 1.0f - roiRatios[1])
 		{
 			roi.x = width * roiRatios[0];
 		}
 
 		//right roi
-		if(roiRatios[1] > 0 && roiRatios[1] < 1 - roiRatios[0])
+		if(roiRatios[1] > 0 && roiRatios[1] < 1.0f - roiRatios[0])
 		{
-			roi.width -= width * roiRatios[1] + width * roiRatios[0];
+			roi.width -= width * roiRatios[1];
 		}
+		roi.width -= roi.x;
 
 		//top roi
-		if(roiRatios[2] > 0 && roiRatios[2] < 1 - roiRatios[3])
+		if(roiRatios[2] > 0 && roiRatios[2] < 1.0f - roiRatios[3])
 		{
 			roi.y = height * roiRatios[2];
 		}
 
 		//bottom roi
-		if(roiRatios[3] > 0 && roiRatios[3] < 1 - roiRatios[2])
+		if(roiRatios[3] > 0 && roiRatios[3] < 1.0f - roiRatios[2])
 		{
-			roi.height -= height * roiRatios[3] + height * roiRatios[2];
+			roi.height -= height * roiRatios[3];
 		}
+		roi.height -= roi.y;
 		UDEBUG("roi = %d, %d, %d, %d", roi.x, roi.y, roi.width, roi.height);
 
 		return roi;

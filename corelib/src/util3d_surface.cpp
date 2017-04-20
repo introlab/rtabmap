@@ -573,9 +573,11 @@ pcl::PolygonMesh::Ptr createMesh(
 
 pcl::texture_mapping::CameraVector createTextureCameras(
 		const std::map<int, Transform> & poses,
-		const std::map<int, CameraModel> & cameraModels)
+		const std::map<int, CameraModel> & cameraModels,
+		const std::vector<float> & roiRatios)
 {
 	UASSERT(poses.size() == cameraModels.size());
+	UASSERT(roiRatios.empty() || roiRatios.size() == 4);
 	pcl::texture_mapping::CameraVector cameras(poses.size());
 	std::map<int, Transform>::const_iterator poseIter=poses.begin();
 	std::map<int, CameraModel>::const_iterator modelIter=cameraModels.begin();
@@ -602,6 +604,14 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 		cam.height=modelIter->second.imageHeight();
 		cam.width=modelIter->second.imageWidth();
 		cam.texture_file = uFormat("%d", poseIter->first);
+		if(!roiRatios.empty())
+		{
+			cam.roi.resize(4);
+			cam.roi[0] = cam.width * roiRatios[0]; // left -> x
+			cam.roi[1] = cam.height * roiRatios[2]; // top -> y
+			cam.roi[2] = cam.width * (1.0 - roiRatios[1]) - cam.roi[0]; // right -> width
+			cam.roi[3] = cam.height * (1.0 - roiRatios[3]) - cam.roi[1]; // bottom -> height
+		}
 		cameras[oi++] = cam;
 	}
 	return cameras;
@@ -613,6 +623,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const std::map<int, CameraModel> & cameraModels,
 		float maxDistance,
 		int minClusterSize,
+		const std::vector<float> & roiRatios,
 		const ProgressState * state,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
 {
@@ -629,7 +640,8 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	// create cameras
 	pcl::texture_mapping::CameraVector cameras = createTextureCameras(
 			poses,
-			cameraModels);
+			cameraModels,
+			roiRatios);
 
 	// Create materials for each texture (and one extra for occluded faces)
 	textureMesh->tex_materials.resize (cameras.size () + 1);

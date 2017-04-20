@@ -77,6 +77,7 @@ namespace pcl
       double height;
       double width;
       std::string texture_file;
+      std::vector<double> roi; // [x, y, width, height]
 
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     };

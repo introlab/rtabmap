@@ -159,6 +159,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_meshingTextureSize, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshingTextureMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_mesh_minTextureClusterSize, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->lineEdit_meshingTextureRoiRatios, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_cameraFilterRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
@@ -286,6 +287,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex());
 	settings.setValue("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value());
 	settings.setValue("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value());
+	settings.setValue("mesh_textureRoiRatios", _ui->lineEdit_meshingTextureRoiRatios->text());
 	settings.setValue("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked());
 	settings.setValue("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value());
 	settings.setValue("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value());
@@ -384,6 +386,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(settings.value("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex()).toInt());
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(settings.value("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value()).toDouble());
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(settings.value("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value()).toDouble());
+	_ui->lineEdit_meshingTextureRoiRatios->setText(settings.value("mesh_textureRoiRatios", _ui->lineEdit_meshingTextureRoiRatios->text()).toString());
 	_ui->checkBox_cameraFilter->setChecked(settings.value("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked()).toBool());
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(settings.value("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value()).toDouble());
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
@@ -482,6 +485,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(5); // 4096
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(50);
+	_ui->lineEdit_meshingTextureRoiRatios->setText("");
 	_ui->checkBox_cameraFilter->setChecked(false);
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(0.1);
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
@@ -1940,12 +1944,42 @@ bool ExportCloudsDialog::getExportedClouds(
 
 						TexturingState texturingState(_progressDialog);
 						_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+iter->second->polygons.size()/10000+1);
+
+						std::vector<float> roiRatios;
+						QStringList strings = _ui->lineEdit_meshingTextureRoiRatios->text().split(' ');
+						if(!_ui->lineEdit_meshingTextureRoiRatios->text().isEmpty())
+						{
+							if(strings.size()==4)
+							{
+								roiRatios.resize(4);
+								roiRatios[0]=strings[0].toDouble();
+								roiRatios[1]=strings[1].toDouble();
+								roiRatios[2]=strings[2].toDouble();
+								roiRatios[3]=strings[3].toDouble();
+								if(!(roiRatios[0]>=0.0f && roiRatios[0]<=1.0f &&
+									roiRatios[1]>=0.0f && roiRatios[1]<=1.0f &&
+									roiRatios[2]>=0.0f && roiRatios[2]<=1.0f &&
+									roiRatios[3]>=0.0f && roiRatios[3]<=1.0f))
+								{
+									roiRatios.clear();
+								}
+							}
+							if(roiRatios.empty())
+							{
+								QString msg = tr("Wrong ROI format. Region of Interest (ROI) must have 4 values [left right top bottom] between 0 and 1 separated by space (%1), ignoring it for texturing...").arg(_ui->lineEdit_meshingTextureRoiRatios->text());
+								UWARN(msg.toStdString().c_str());
+								_progressDialog->appendText(msg, Qt::darkYellow);
+								_progressDialog->setAutoClose(false);
+							}
+						}
+
 						textureMesh = util3d::createTextureMesh(
 								iter->second,
 								cameraPoses,
 								cameraModels,
 								_ui->doubleSpinBox_meshingTextureMaxDistance->value(),
 								_ui->spinBox_mesh_minTextureClusterSize->value(),
+								roiRatios,
 								&texturingState,
 								cameraPoses.size()>1?&textureVertexToPixels:0); // only get vertexToPixels if merged clouds with multi textures
 
