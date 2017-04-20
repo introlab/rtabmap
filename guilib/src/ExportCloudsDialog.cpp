@@ -485,7 +485,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(5); // 4096
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(50);
-	_ui->lineEdit_meshingTextureRoiRatios->setText("");
+	_ui->lineEdit_meshingTextureRoiRatios->setText("0.0 0.0 0.0 0.0");
 	_ui->checkBox_cameraFilter->setChecked(false);
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(0.1);
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
