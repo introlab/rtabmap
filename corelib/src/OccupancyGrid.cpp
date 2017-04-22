@@ -422,20 +422,23 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 	std::map<int, cv::Mat> emptyLocalMaps;
 	std::map<int, cv::Mat> occupiedLocalMaps;
 
-	// First, check of the graph has changed. If so, re-create the map by moving all occupied nodes.
-	bool graphChanged = false;
+	// First, check of the graph has changed. If so, re-create the map by moving all occupied nodes (fullUpdate==false).
+	bool graphOptimized = false; // If a loop closure happened (e.g., poses are modified)
+	bool graphChanged = true;    // If the new map doesn't have any node from the previous map
 	std::map<int, Transform> transforms;
 	for(std::map<int, Transform>::iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
 	{
 		std::map<int, Transform>::const_iterator jter = posesIn.find(iter->first);
 		if(jter != posesIn.end())
 		{
+			graphChanged = false;
+
 			UASSERT(!iter->second.isNull() && !jter->second.isNull());
 			Transform t = Transform::getIdentity();
 			if(iter->second.getDistanceSquared(jter->second) > 0.0001)
 			{
 				t = jter->second * iter->second.inverse();
-				graphChanged = true;
+				graphOptimized = true;
 			}
 			transforms.insert(std::make_pair(jter->first, t));
 
@@ -466,10 +469,18 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 		}
 	}
 
-	if(graphChanged && !map_.empty())
+	if(graphOptimized || graphChanged)
 	{
-		UINFO("Graph changed!");
-		if(!fullUpdate_)
+		if(graphChanged)
+		{
+			UWARN("Graph has changed! The whole map should be rebuilt.");
+		}
+		else
+		{
+			UINFO("Graph optimized!");
+		}
+
+		if(!fullUpdate_ && !graphChanged && !map_.empty()) // incremental, just move cells
 		{
 			// 1) recreate all local maps
 			UASSERT(map_.cols == mapInfo_.cols &&
@@ -558,7 +569,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 		undefinedSize = false;
 	}
 
-	bool incrementalGraphUpdate = graphChanged && !fullUpdate_;
+	bool incrementalGraphUpdate = graphOptimized && !fullUpdate_ && !graphChanged;
 
 	std::list<std::pair<int, Transform> > poses;
 	int lastId = addedNodes_.size()?addedNodes_.rbegin()->first:0;

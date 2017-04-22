@@ -88,7 +88,8 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	UDEBUG("Update (poses=%d addedNodes_=%d)", (int)poses.size(), (int)addedNodes_.size());
 
 	// First, check of the graph has changed. If so, re-create the octree by moving all occupied nodes.
-	bool graphChanged = false;
+	bool graphOptimized = false; // If a loop closure happened (e.g., poses are modified)
+	bool graphChanged = true;    // If the new map doesn't have any node from the previous map
 	std::map<int, Transform> transforms;
 	std::map<int, Transform> updatedAddedNodes;
 	for(std::map<int, Transform>::iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
@@ -96,25 +97,34 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 		std::map<int, Transform>::const_iterator jter = poses.find(iter->first);
 		if(jter != poses.end())
 		{
+			graphChanged = false;
 			UASSERT(!iter->second.isNull() && !jter->second.isNull());
 			Transform t = Transform::getIdentity();
 			if(iter->second.getDistanceSquared(jter->second) > 0.0001)
 			{
 				t = jter->second * iter->second.inverse();
-				graphChanged = true;
+				graphOptimized = true;
 			}
 			transforms.insert(std::make_pair(jter->first, t));
 			updatedAddedNodes.insert(std::make_pair(jter->first, jter->second));
 		}
 		else
 		{
-			UWARN("Updated pose for node %d is not found, some points may not be copied. Use negative ids to just update cell values without adding new ones.", jter->first);
+			UDEBUG("Updated pose for node %d is not found, some points may not be copied. Use negative ids to just update cell values without adding new ones.", jter->first);
 		}
 	}
-	if(graphChanged)
+	if(graphOptimized || graphChanged)
 	{
-		UINFO("Graph changed!");
-		if(fullUpdate_)
+		if(graphChanged)
+		{
+			UWARN("Graph has changed! The whole map should be rebuilt.");
+		}
+		else
+		{
+			UINFO("Graph optimized!");
+		}
+
+		if(fullUpdate_ || graphChanged)
 		{
 			// clear all but keep cache
 			octree_->clear();
