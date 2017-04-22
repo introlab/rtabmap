@@ -567,11 +567,15 @@ cv::Mat Feature2D::generateDescriptors(
 		const cv::Mat & image,
 		std::vector<cv::KeyPoint> & keypoints) const
 {
-	UASSERT(!image.empty());
-	UASSERT(image.type() == CV_8UC1);
-	cv::Mat descriptors = generateDescriptorsImpl(image, keypoints);
-	UASSERT_MSG(descriptors.rows == (int)keypoints.size(), uFormat("descriptors=%d, keypoints=%d", descriptors.rows, (int)keypoints.size()).c_str());
-	UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
+	cv::Mat descriptors;
+	if(keypoints.size())
+	{
+		UASSERT(!image.empty());
+		UASSERT(image.type() == CV_8UC1);
+		descriptors = generateDescriptorsImpl(image, keypoints);
+		UASSERT_MSG(descriptors.rows == (int)keypoints.size(), uFormat("descriptors=%d, keypoints=%d", descriptors.rows, (int)keypoints.size()).c_str());
+		UDEBUG("Descriptors extracted = %d, remaining kpts=%d", descriptors.rows, (int)keypoints.size());
+	}
 	return descriptors;
 }
 
@@ -580,47 +584,50 @@ std::vector<cv::Point3f> Feature2D::generateKeypoints3D(
 		const std::vector<cv::KeyPoint> & keypoints) const
 {
 	std::vector<cv::Point3f> keypoints3D;
-	if(!data.rightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection())
+	if(keypoints.size())
 	{
-		//stereo
-		cv::Mat imageMono;
-		// convert to grayscale
-		if(data.imageRaw().channels() > 1)
+		if(!data.rightRaw().empty() && !data.imageRaw().empty() && data.stereoCameraModel().isValidForProjection())
 		{
-			cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
+			//stereo
+			cv::Mat imageMono;
+			// convert to grayscale
+			if(data.imageRaw().channels() > 1)
+			{
+				cv::cvtColor(data.imageRaw(), imageMono, cv::COLOR_BGR2GRAY);
+			}
+			else
+			{
+				imageMono = data.imageRaw();
+			}
+
+			std::vector<cv::Point2f> leftCorners;
+			cv::KeyPoint::convert(keypoints, leftCorners);
+			std::vector<unsigned char> status;
+
+			std::vector<cv::Point2f> rightCorners;
+			rightCorners = _stereo->computeCorrespondences(
+					imageMono,
+					data.rightRaw(),
+					leftCorners,
+					status);
+
+			keypoints3D = util3d::generateKeypoints3DStereo(
+					leftCorners,
+					rightCorners,
+					data.stereoCameraModel(),
+					status,
+					_minDepth,
+					_maxDepth);
 		}
-		else
+		else if(!data.depthRaw().empty() && data.cameraModels().size())
 		{
-			imageMono = data.imageRaw();
+			keypoints3D = util3d::generateKeypoints3DDepth(
+					keypoints,
+					data.depthOrRightRaw(),
+					data.cameraModels(),
+					_minDepth,
+					_maxDepth);
 		}
-
-		std::vector<cv::Point2f> leftCorners;
-		cv::KeyPoint::convert(keypoints, leftCorners);
-		std::vector<unsigned char> status;
-
-		std::vector<cv::Point2f> rightCorners;
-		rightCorners = _stereo->computeCorrespondences(
-				imageMono,
-				data.rightRaw(),
-				leftCorners,
-				status);
-
-		keypoints3D = util3d::generateKeypoints3DStereo(
-				leftCorners,
-				rightCorners,
-				data.stereoCameraModel(),
-				status,
-				_minDepth,
-				_maxDepth);
-	}
-	else if(!data.depthRaw().empty() && data.cameraModels().size())
-	{
-		keypoints3D = util3d::generateKeypoints3DDepth(
-				keypoints,
-				data.depthOrRightRaw(),
-				data.cameraModels(),
-				_minDepth,
-				_maxDepth);
 	}
 
 	return keypoints3D;
