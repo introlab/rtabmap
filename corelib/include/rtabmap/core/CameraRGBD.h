@@ -69,6 +69,9 @@ namespace rs
 {
 	class context;
 	class device;
+	namespace slam {
+	class slam;
+	}
 }
 
 typedef struct _freenect_context freenect_context;
@@ -290,6 +293,7 @@ private:
 /////////////////////////
 // CameraRealSense
 /////////////////////////
+class slam_event_handler;
 class RTABMAP_EXP CameraRealSense :
 	public Camera
 {
@@ -302,6 +306,7 @@ public:
 		int deviceId = 0,
 		int presetRGB = 0, // 0=best quality, 1=largest image, 2=highest framerate
 		int presetDepth = 0, // 0=best quality, 1=largest image, 2=highest framerate
+		bool computeOdometry = false,
 		float imageRate = 0,
 		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense();
@@ -309,6 +314,7 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+	virtual bool odomProvided() const;
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -320,6 +326,16 @@ private:
 	int deviceId_;
 	int presetRGB_;
 	int presetDepth_;
+	bool computeOdometry_;
+
+	int motionSeq_[2];
+	rs::slam::slam * slam_;
+	UMutex slamLock_;
+
+	std::map<double, std::pair<cv::Mat, cv::Mat> > bufferedFrames_;
+	std::pair<cv::Mat, cv::Mat> lastSyncFrames_;
+	UMutex dataMutex_;
+	USemaphore dataReady_;
 #endif
 };
 

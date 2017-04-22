@@ -4,6 +4,7 @@
 #
 # It sets the following variables:
 #  RealSense_FOUND       - Set to false, or undefined, if RealSense isn't found.
+#  RealSenseSlam_FOUND    - Set to false, or undefined, if RealSense slam module isn't found.
 #  RealSense_INCLUDE_DIRS - The RealSense include directory.
 #  RealSense_LIBRARIES     - The RealSense library to link against.
 
@@ -19,9 +20,35 @@ IF (RealSense_INCLUDE_DIRS AND RealSense_LIBRARY)
    SET(RealSense_FOUND TRUE)
 ENDIF (RealSense_INCLUDE_DIRS AND RealSense_LIBRARY)
 
+#SLAM
+find_path(RealSenseSlam_INCLUDE_DIRS NAMES librealsense/slam/slam.h PATHS $ENV{RealSense_ROOT_DIR}/include)
+if(CMAKE_CL_64)
+find_library(RealSenseSlam_LIBRARY NAMES realsense_slam PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/x64)
+find_library(RealSenseImage_LIBRARY NAMES realsense_image PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/x64)
+find_library(RealSenseSP_Core_LIBRARY NAMES SP_Core PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/x64)
+find_library(RealSenseTracker_LIBRARY NAMES tracker PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/x64)
+else()
+find_library(RealSenseSlam_LIBRARY NAMES realsense_slam PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/Win32)
+find_library(RealSenseImage_LIBRARY NAMES realsense_image PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/Win32)
+find_library(RealSenseSP_Core_LIBRARY NAMES SP_Core PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/Win32)
+find_library(RealSenseTracker_LIBRARY NAMES tracker PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/Win32)
+endif()
+
+IF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
+   SET(RealSenseSlam_FOUND TRUE)
+ENDIF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
+
 IF (RealSense_FOUND)
    # show which RealSense was found only if not quiet
    SET(RealSense_LIBRARIES ${RealSense_LIBRARY})
+   IF (RealSenseSlam_FOUND)
+      SET(RealSense_LIBRARIES 
+            ${RealSense_LIBRARIES}
+            ${RealSenseSlam_LIBRARY}
+            ${RealSenseImage_LIBRARY}
+            ${RealSenseSP_Core_LIBRARY}
+            ${RealSenseTracker_LIBRARY})
+   ENDIF(RealSenseSlam_FOUND)
    IF (NOT RealSense_FIND_QUIETLY)
       MESSAGE(STATUS "Found RealSense: ${RealSense_LIBRARIES}")
    ENDIF (NOT RealSense_FIND_QUIETLY)

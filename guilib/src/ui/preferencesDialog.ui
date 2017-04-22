@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-641</y>
+            <y>-416</y>
             <width>678</width>
             <height>2701</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>20</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2582,7 +2582,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -2692,7 +2692,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>1</number>
+                              <number>6</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -3186,6 +3186,19 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>RealSense</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_73" columnstretch="0,1">
+                                  <item row="3" column="0">
+                                   <spacer name="verticalSpacer_51">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
                                   <item row="0" column="1">
                                    <widget class="QLabel" name="label_317">
                                     <property name="text">
@@ -3198,19 +3211,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                                     </property>
                                    </widget>
-                                  </item>
-                                  <item row="2" column="0">
-                                   <spacer name="verticalSpacer_51">
-                                    <property name="orientation">
-                                     <enum>Qt::Vertical</enum>
-                                    </property>
-                                    <property name="sizeHint" stdset="0">
-                                     <size>
-                                      <width>20</width>
-                                      <height>0</height>
-                                     </size>
-                                    </property>
-                                   </spacer>
                                   </item>
                                   <item row="0" column="0">
                                    <widget class="QComboBox" name="comboBox_realsensePresetRGB">
@@ -3267,6 +3267,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                       <string>Highest Framerate</string>
                                      </property>
                                     </item>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="1">
+                                   <widget class="QLabel" name="label_367">
+                                    <property name="text">
+                                     <string>Use visual inertial odometry for ZR300.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="2" column="0">
+                                   <widget class="QCheckBox" name="checkbox_realsenseOdom">
+                                    <property name="text">
+                                     <string/>
+                                    </property>
+                                    <property name="checked">
+                                     <bool>false</bool>
+                                    </property>
                                    </widget>
                                   </item>
                                  </layout>

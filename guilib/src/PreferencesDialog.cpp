@@ -154,6 +154,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->groupBox_octomap->setEnabled(false);
 #endif
 
+#ifndef RTABMAP_REALSENSE_SLAM
+	_ui->checkbox_realsenseOdom->setChecked(false);
+	_ui->checkbox_realsenseOdom->setEnabled(false);
+#endif
+
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
 		_ui->comboBox_detector_strategy->setItemData(1, 0, Qt::UserRole - 1);
@@ -488,6 +493,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_freenect2NoiseFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceImagesStamps()));
 	connect(_ui->lineEdit_cameraImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1400,6 +1406,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_freenect2NoiseFiltering->setChecked(true);
 		_ui->comboBox_realsensePresetRGB->setCurrentIndex(0);
 		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
+		_ui->checkbox_realsenseOdom->setChecked(false);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
@@ -1767,6 +1774,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("RealSense");
 	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
 	_ui->comboBox_realsensePresetDepth->setCurrentIndex(settings.value("presetDepth", _ui->comboBox_realsensePresetDepth->currentIndex()).toInt());
+	_ui->checkbox_realsenseOdom->setChecked(settings.value("odom", _ui->checkbox_realsenseOdom->isChecked()).toBool());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
@@ -2152,6 +2160,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("RealSense");
 	settings.setValue("presetRGB",           _ui->comboBox_realsensePresetRGB->currentIndex());
 	settings.setValue("presetDepth",         _ui->comboBox_realsensePresetDepth->currentIndex());
+	settings.setValue("odom",                _ui->checkbox_realsenseOdom->isChecked());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
@@ -4518,6 +4527,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
 				_ui->comboBox_realsensePresetRGB->currentIndex(),
 				_ui->comboBox_realsensePresetDepth->currentIndex(),
+				_ui->checkbox_realsenseOdom->isChecked(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 		}
