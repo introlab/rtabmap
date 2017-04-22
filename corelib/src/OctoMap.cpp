@@ -89,7 +89,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 
 	// First, check of the graph has changed. If so, re-create the octree by moving all occupied nodes.
 	bool graphOptimized = false; // If a loop closure happened (e.g., poses are modified)
-	bool graphChanged = true;    // If the new map doesn't have any node from the previous map
+	bool graphChanged = addedNodes_.size()>0; // If the new map doesn't have any node from the previous map
 	std::map<int, Transform> transforms;
 	std::map<int, Transform> updatedAddedNodes;
 	for(std::map<int, Transform>::iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
