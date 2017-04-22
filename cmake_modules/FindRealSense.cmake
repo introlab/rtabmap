@@ -34,15 +34,19 @@ find_library(RealSenseSP_Core_LIBRARY NAMES SP_Core PATHS $ENV{RealSense_ROOT_DI
 find_library(RealSenseTracker_LIBRARY NAMES tracker PATHS $ENV{RealSense_ROOT_DIR}/lib  $ENV{RealSense_ROOT_DIR}/bin $ENV{RealSense_ROOT_DIR}/bin/Win32)
 endif()
 
-IF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
-   SET(RealSenseSlam_FOUND TRUE)
-ENDIF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
-
 IF (RealSense_FOUND)
+
+   IF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
+      SET(RealSenseSlam_FOUND TRUE)
+   ENDIF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
+
    # show which RealSense was found only if not quiet
    SET(RealSense_LIBRARIES ${RealSense_LIBRARY})
    IF (RealSenseSlam_FOUND)
-      SET(RealSense_LIBRARIES 
+   IF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
+   SET(RealSenseSlam_FOUND TRUE)
+ENDIF (RealSenseSlam_INCLUDE_DIRS AND RealSenseSlam_LIBRARY AND RealSenseImage_LIBRARY AND RealSenseSP_Core_LIBRARY AND RealSenseTracker_LIBRARY)
+SET(RealSense_LIBRARIES 
             ${RealSense_LIBRARIES}
             ${RealSenseSlam_LIBRARY}
             ${RealSenseImage_LIBRARY}

@@ -14,7 +14,6 @@ modification, are permitted provided that the following conditions are met:
       derived from this software without specific prior written permission.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
 DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
@@ -66,9 +65,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #ifdef RTABMAP_REALSENSE
 #include <librealsense/rs.hpp>
+#ifdef RTABMAP_REALSENSE_SLAM
 #include <rs_core.h>
 #include <rs_utils.h>
-#ifdef RTABMAP_REALSENSE_SLAM
 #include <librealsense/slam/slam.h>
 #endif
 #endif
@@ -2112,8 +2111,8 @@ bool CameraRealSense::init(const std::string & calibrationFolder, const std::str
 	UINFO("    Preset RGB: %d", presetRGB_);
 	UINFO("    Preset Depth: %d", presetDepth_);
 
-#ifdef RTABMAP_REALSENSE_SLAM
 	bool computeOdometry = false;
+#ifdef RTABMAP_REALSENSE_SLAM
 	if (name.find("ZR300") != std::string::npos && computeOdometry_)
 	{
 		// Only enable ZR300 functionality if fisheye stream is enabled.
@@ -2136,11 +2135,11 @@ bool CameraRealSense::init(const std::string & calibrationFolder, const std::str
 	UINFO("    RGB:   %dx%d", color_intrin.width, color_intrin.height);
 	UINFO("    Depth: %dx%d", depth_intrin.width, depth_intrin.height);
 
+#ifdef RTABMAP_REALSENSE_SLAM
 	UDEBUG("Setup frame callback");
 	// Define lambda callback for receiving stream data
 	std::function<void(rs::frame)> frameCallback = [this](rs::frame frame)
 	{
-#ifdef RTABMAP_REALSENSE_SLAM
 		if(slam_ != 0)
 		{
 			const auto timestampDomain = frame.get_frame_timestamp_domain();
@@ -2151,7 +2150,6 @@ bool CameraRealSense::init(const std::string & calibrationFolder, const std::str
 				return ;
 			}
 		}
-#endif
 
 		int width = frame.get_width();
 		int height = frame.get_height();
@@ -2224,7 +2222,7 @@ bool CameraRealSense::init(const std::string & calibrationFolder, const std::str
 		{
 			return;
 		}
-#ifdef RTABMAP_REALSENSE_SLAM
+
 		if(slam_ != 0)
 		{
 			rs::core::stream_type stream = rs::utils::convert_stream_type(frame.get_stream_type());
@@ -2244,7 +2242,6 @@ bool CameraRealSense::init(const std::string & calibrationFolder, const std::str
 			}
 			sample_set[stream]->release();
 		}
-#endif
 	};
 
 	// Setup stream callback for stream
@@ -2255,8 +2252,6 @@ bool CameraRealSense::init(const std::string & calibrationFolder, const std::str
 	dev_->set_frame_callback(rs::stream::depth, frameCallback);
 	dev_->set_frame_callback(rs::stream::color, frameCallback);
 
-
-#ifdef RTABMAP_REALSENSE_SLAM
 	if (computeOdometry)
 	{
 		dev_->enable_stream(rs::stream::fisheye, 640, 480, rs::format::raw8, 30);
@@ -2379,10 +2374,19 @@ bool CameraRealSense::init(const std::string & calibrationFolder, const std::str
 		dev_->start(rs::source::all_sources);
 	}
 	else
-#endif
 	{
 		dev_->start();
 	}
+#else
+	dev_->start();
+	try {
+		dev_->wait_for_frames();
+	}
+	catch (const rs::error & e)
+	{
+		UERROR("Exception: %s", e.what());
+	}
+#endif
 
 	uSleep(1000); // ignore the first frames
 	UINFO("Enabling streams...done!");
@@ -2440,15 +2444,20 @@ SensorData CameraRealSense::captureImage(CameraInfo * info)
 #ifdef RTABMAP_REALSENSE
 	if (dev_)
 	{
+		cv::Mat rgb;
+		cv::Mat depthIn;
+
+		// Retrieve camera parameters for mapping between depth and color
+		rs::intrinsics depth_intrin = dev_->get_stream_intrinsics(rs::stream::depth);
+		rs::extrinsics depth_to_color = dev_->get_extrinsics(rs::stream::depth, rs::stream::color);
+		rs::intrinsics color_intrin = dev_->get_stream_intrinsics(rs::stream::color);
+
+#ifdef RTABMAP_REALSENSE_SLAM
 		if(!dataReady_.acquire(1, 5000))
 		{
 			UWARN("Not received new frames since 5 seconds, end of stream reached!");
 			return data;
 		}
-
-		cv::Mat rgb;
-		cv::Mat depthIn;
-
 		{
 			UScopeMutex lock(dataMutex_);
 			rgb = lastSyncFrames_.first;
@@ -2461,11 +2470,21 @@ SensorData CameraRealSense::captureImage(CameraInfo * info)
 		{
 			return data;
 		}
+#else
+		try {
+			dev_->wait_for_frames();
+		}
+		catch (const rs::error & e)
+		{
+			UERROR("Exception: %s", e.what());
+			return data;
+		}
 
-		// Retrieve camera parameters for mapping between depth and color
-		rs::intrinsics depth_intrin = dev_->get_stream_intrinsics(rs::stream::depth);
-		rs::extrinsics depth_to_color = dev_->get_extrinsics(rs::stream::depth, rs::stream::color);
-		rs::intrinsics color_intrin = dev_->get_stream_intrinsics(rs::stream::color);
+		// Retrieve our images
+		depthIn = cv::Mat(depth_intrin.height, depth_intrin.width, CV_16UC1, (unsigned char*)dev_->get_frame_data(rs::stream::depth));
+		rgb = cv::Mat(color_intrin.height, color_intrin.width, CV_8UC3, (unsigned char*)dev_->get_frame_data(rs::stream::color));
+#endif
+
 		float scale = dev_->get_depth_scale();
 
 		// factory registration...
