@@ -157,6 +157,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_REALSENSE_SLAM
 	_ui->checkbox_realsenseOdom->setChecked(false);
 	_ui->checkbox_realsenseOdom->setEnabled(false);
+	_ui->label_realsenseOdom->setEnabled(false);
 #endif
 
 #ifndef RTABMAP_NONFREE
