@@ -52,7 +52,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>339</width>
+           <width>337</width>
            <height>208</height>
           </rect>
          </property>
@@ -210,7 +210,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>339</width>
+           <width>337</width>
            <height>208</height>
           </rect>
          </property>
@@ -529,6 +529,7 @@
     <property name="title">
      <string>View</string>
     </property>
+    <addaction name="actionVertical_Layout"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuEdit"/>
@@ -935,18 +936,14 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_10">
      <item>
-      <layout class="QGridLayout" name="gridLayout_4">
-       <item row="1" column="2">
-        <widget class="QLabel" name="label_logger_level_2">
-         <property name="text">
-          <string>Vertical layout</string>
-         </property>
-        </widget>
-       </item>
+      <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,1">
        <item row="0" column="2">
         <widget class="QLabel" name="label_logger_level">
          <property name="text">
           <string>Logger level</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -977,10 +974,23 @@
          </item>
         </widget>
        </item>
+       <item row="1" column="2">
+        <widget class="QLabel" name="label_logger_level_2">
+         <property name="text">
+          <string>Align poses with ground truth</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="1">
-        <widget class="QCheckBox" name="checkBox_verticalLayout">
+        <widget class="QCheckBox" name="checkBox_alignPosesWithGroundTruth">
          <property name="text">
           <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -997,7 +1007,7 @@
           <x>0</x>
           <y>0</y>
           <width>324</width>
-          <height>207</height>
+          <height>188</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1463,8 +1473,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>283</width>
-          <height>222</height>
+          <width>272</width>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1563,8 +1573,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>268</width>
-          <height>304</height>
+          <width>272</width>
+          <height>288</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2139,6 +2149,17 @@
   <action name="actionEdit_depth_image">
    <property name="text">
     <string>Edit depth image...</string>
+   </property>
+  </action>
+  <action name="actionVertical_Layout">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Vertical Layout</string>
    </property>
   </action>
  </widget>

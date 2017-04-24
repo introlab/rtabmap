@@ -118,7 +118,7 @@ private slots:
 	void updateLoggerLevel();
 	void updateStereo();
 	void notifyParametersChanged(const QStringList &);
-	void setupMainLayout(int vertical);
+	void setupMainLayout(bool vertical);
 
 private:
 	QString getIniFilePath() const;

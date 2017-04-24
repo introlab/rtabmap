@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include <pcl/common/common.h>
 #include <stdio.h>
+#include <signal.h>
 
 using namespace rtabmap;
 
@@ -553,7 +554,7 @@ int main(int argc, char * argv[])
 			}
 			else
 			{
-				UWARN("Cannot compute ground truth statistics, the computed poses (%d) are not the same as the ground truth (%d). Make sure to use option \"--Rtabmap/CreateIntermediateNodes true\".");
+				UWARN("Cannot compute ground truth statistics, the computed poses (%d) are not the same size as the ground truth (%d). Make sure to use option \"--Rtabmap/CreateIntermediateNodes true\".");
 			}
 		}
 	}

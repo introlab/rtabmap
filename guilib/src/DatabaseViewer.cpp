@@ -113,7 +113,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->comboBox_logger_level->setVisible(parent==0);
 	ui_->label_logger_level->setVisible(parent==0);
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(updateLoggerLevel()));
-	connect(ui_->checkBox_verticalLayout, SIGNAL(stateChanged(int)), this, SLOT(setupMainLayout(int)));
+	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(setupMainLayout(bool)));
 
 	editDepthDialog_->resize(640, 480);
 	QVBoxLayout * vLayout = new QVBoxLayout(editDepthDialog_);
@@ -193,6 +193,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	exportDialog_->setObjectName("ExportCloudsDialog");
 	this->readSettings();
 
+	setupMainLayout(ui_->actionVertical_Layout->isChecked());
 	ui_->checkBox_grid_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->checkBox_grid_empty->setVisible(ui_->checkBox_octomap->isChecked());
@@ -325,7 +326,9 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	//connect(ui_->graphicsView_A, SIGNAL(configChanged()), this, SLOT(configModified()));
 	//connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_verticalLayout, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
+	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	// Graph view
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -386,7 +389,7 @@ DatabaseViewer::~DatabaseViewer()
 #endif
 }
 
-void DatabaseViewer::setupMainLayout(int vertical)
+void DatabaseViewer::setupMainLayout(bool vertical)
 {
 	if(vertical)
 	{
@@ -397,6 +400,10 @@ void DatabaseViewer::setupMainLayout(int vertical)
 	{
 		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_imageViews->layout())->setDirection(QBoxLayout::LeftToRight);
 		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_3dviews->layout())->setDirection(QBoxLayout::LeftToRight);
+	}
+	if(ids_.size())
+	{
+		sliderAValueChanged(ui_->horizontalSlider_A->value()); // update matching lines
 	}
 }
 
@@ -445,7 +452,8 @@ void DatabaseViewer::readSettings()
 	savedMaximized_ = settings.value("maximized", false).toBool();
 
 	ui_->comboBox_logger_level->setCurrentIndex(settings.value("loggerLevel", ui_->comboBox_logger_level->currentIndex()).toInt());
-	ui_->checkBox_verticalLayout->setChecked(settings.value("verticalLayout", ui_->checkBox_verticalLayout->isChecked()).toBool());
+	ui_->actionVertical_Layout->setChecked(settings.value("verticalLayout", ui_->actionVertical_Layout->isChecked()).toBool());
+	ui_->checkBox_alignPosesWithGroundTruth->setChecked(settings.value("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked()).toBool());
 
 	// GraphViewer settings
 	ui_->graphViewer->loadSettings(settings, "GraphView");
@@ -531,7 +539,8 @@ void DatabaseViewer::writeSettings()
 	savedMaximized_ = this->isMaximized();
 
 	settings.setValue("loggerLevel", ui_->comboBox_logger_level->currentIndex());
-	settings.setValue("verticalLayout", ui_->checkBox_verticalLayout->isChecked());
+	settings.setValue("verticalLayout", ui_->actionVertical_Layout->isChecked());
+	settings.setValue("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked());
 
 	// save GraphViewer settings
 	ui_->graphViewer->saveSettings(settings, "GraphView");
@@ -3131,7 +3140,7 @@ void DatabaseViewer::updateWordsMatching()
 					float deltaX = 0;
 					float deltaY = 0;
 
-					if(ui_->checkBox_verticalLayout->isChecked())
+					if(ui_->actionVertical_Layout->isChecked())
 					{
 						deltaY = ui_->graphicsView_A->height()/scaleX;
 					}
@@ -3783,6 +3792,154 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 	if(dbDriver_ && value >=0 && value < (int)graphes_.size())
 	{
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, value);
+
+		// Log ground truth statistics (in TUM's RGBD-SLAM format)
+		if(groundTruthPoses_.size())
+		{
+			if(ui_->checkBox_alignPosesWithGroundTruth->isChecked())
+			{
+				//align with ground truth for more meaningful results
+				pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
+				cloud1.resize(graph.size());
+				cloud2.resize(graph.size());
+				int oi = 0;
+				int idFirst = 0;
+				for(std::map<int, Transform>::const_iterator iter=groundTruthPoses_.begin(); iter!=groundTruthPoses_.end(); ++iter)
+				{
+					std::map<int, Transform>::iterator iter2 = graph.find(iter->first);
+					if(iter2!=graph.end())
+					{
+						if(oi==0)
+						{
+							idFirst = iter->first;
+						}
+						cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+						cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
+					}
+				}
+
+				Transform t = Transform::getIdentity();
+				if(oi>5)
+				{
+					cloud1.resize(oi);
+					cloud2.resize(oi);
+
+					t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
+				}
+				else if(idFirst)
+				{
+					t = groundTruthPoses_.at(idFirst) * graph.at(idFirst).inverse();
+				}
+				if(!t.isIdentity())
+				{
+					for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+					{
+						iter->second = t * iter->second;
+					}
+				}
+			}
+
+			std::vector<float> translationalErrors(graph.size());
+			std::vector<float> rotationalErrors(graph.size());
+			float sumTranslationalErrors = 0.0f;
+			float sumRotationalErrors = 0.0f;
+			float sumSqrdTranslationalErrors = 0.0f;
+			float sumSqrdRotationalErrors = 0.0f;
+			float radToDegree = 180.0f / M_PI;
+			float translational_min = 0.0f;
+			float translational_max = 0.0f;
+			float rotational_min = 0.0f;
+			float rotational_max = 0.0f;
+			int oi=0;
+			for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+			{
+				std::map<int, Transform>::const_iterator jter = groundTruthPoses_.find(iter->first);
+				if(jter!=groundTruthPoses_.end())
+				{
+					Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+					rotationalErrors[oi] = a*radToDegree;
+					translationalErrors[oi] = iter->second.getDistance(jter->second);
+
+					sumTranslationalErrors+=translationalErrors[oi];
+					sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
+					sumRotationalErrors+=rotationalErrors[oi];
+					sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
+
+					if(oi == 0)
+					{
+						translational_min = translational_max = translationalErrors[oi];
+						rotational_min = rotational_max = rotationalErrors[oi];
+					}
+					else
+					{
+						if(translationalErrors[oi] < translational_min)
+						{
+							translational_min = translationalErrors[oi];
+						}
+						else if(translationalErrors[oi] > translational_max)
+						{
+							translational_max = translationalErrors[oi];
+						}
+
+						if(rotationalErrors[oi] < rotational_min)
+						{
+							rotational_min = rotationalErrors[oi];
+						}
+						else if(rotationalErrors[oi] > rotational_max)
+						{
+							rotational_max = rotationalErrors[oi];
+						}
+					}
+					++oi;
+				}
+			}
+			translationalErrors.resize(oi);
+			rotationalErrors.resize(oi);
+			if(oi)
+			{
+				float total = float(oi);
+				float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
+				float translational_mean = sumTranslationalErrors/total;
+				float translational_median = translationalErrors[oi/2];
+				float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
+
+				float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
+				float rotational_mean = sumRotationalErrors/total;
+				float rotational_median = rotationalErrors[oi/2];
+				float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
+
+				UINFO("translational_rmse=%f", translational_rmse);
+				UINFO("translational_mean=%f", translational_mean);
+				UINFO("translational_median=%f", translational_median);
+				UINFO("translational_std=%f", translational_std);
+				UINFO("translational_min=%f", translational_min);
+				UINFO("translational_max=%f", translational_max);
+
+				UINFO("rotational_rmse=%f", rotational_rmse);
+				UINFO("rotational_mean=%f", rotational_mean);
+				UINFO("rotational_median=%f", rotational_median);
+				UINFO("rotational_std=%f", rotational_std);
+				UINFO("rotational_min=%f", rotational_min);
+				UINFO("rotational_max=%f", rotational_max);
+
+				ui_->toolBox_statistics->updateStat("GT/translational_rmse/", translational_rmse, false);
+				ui_->toolBox_statistics->updateStat("GT/translational_mean/", translational_mean, false);
+				ui_->toolBox_statistics->updateStat("GT/translational_median/", translational_median, false);
+				ui_->toolBox_statistics->updateStat("GT/translational_std/", translational_std, false);
+				ui_->toolBox_statistics->updateStat("GT/translational_min/", translational_min, false);
+				ui_->toolBox_statistics->updateStat("GT/translational_max/", translational_max, false);
+
+				ui_->toolBox_statistics->updateStat("GT/rotational_rmse/", rotational_rmse, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational_mean/", rotational_mean, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational_median/", rotational_median, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational_std/", rotational_std, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational_min/", rotational_min, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational_max/", rotational_max, false);
+			}
+		}
+
 		std::map<int, rtabmap::Transform> graphFiltered = graph;
 		if(ui_->groupBox_posefiltering->isChecked())
 		{
