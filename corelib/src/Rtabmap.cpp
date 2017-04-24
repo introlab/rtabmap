@@ -816,9 +816,38 @@ void Rtabmap::resetMemory()
 // MAIN LOOP
 //============================================================
 bool Rtabmap::process(
+		const cv::Mat & image,
+		int id,
+		const std::map<std::string, float> & externalStats)
+{
+	return this->process(SensorData(image, id), Transform());
+}
+bool Rtabmap::process(
+			const SensorData & data,
+			Transform odomPose,
+			float odomLinearVariance,
+			float odomAngularVariance,
+			const std::map<std::string, float> & externalStats)
+{
+	if(!odomPose.isNull())
+	{
+		UASSERT(odomLinearVariance>0.0f);
+		UASSERT(odomAngularVariance>0.0f);
+	}
+	cv::Mat covariance = cv::Mat::eye(6,6,CV_64FC1);
+	covariance.at<double>(0,0) = odomLinearVariance;
+	covariance.at<double>(1,1) = odomLinearVariance;
+	covariance.at<double>(2,2) = odomLinearVariance;
+	covariance.at<double>(3,3) = odomAngularVariance;
+	covariance.at<double>(4,4) = odomAngularVariance;
+	covariance.at<double>(5,5) = odomAngularVariance;
+	return process(data, odomPose, covariance, externalStats);
+}
+bool Rtabmap::process(
 		const SensorData & data,
 		Transform odomPose,
-		const cv::Mat & covariance)
+		const cv::Mat & odomCovariance,
+		const std::map<std::string, float> & externalStats)
 {
 	UDEBUG("");
 
@@ -870,6 +899,10 @@ bool Rtabmap::process(
 	std::set<int> immunizedLocations;
 
 	statistics_ = Statistics(); // reset
+	for(std::map<std::string, float>::const_iterator iter=externalStats.begin(); iter!=externalStats.end(); ++iter)
+	{
+		statistics_.addStatistic(iter->first, iter->second);
+	}
 
 	//============================================================
 	// Wait for an image...
@@ -952,7 +985,7 @@ bool Rtabmap::process(
 	ULOGGER_INFO("Updating memory...");
 	if(_rgbdSlamMode)
 	{
-		if(!_memory->update(data, odomPose, covariance, &statistics_))
+		if(!_memory->update(data, odomPose, odomCovariance, &statistics_))
 		{
 			return false;
 		}
@@ -982,8 +1015,8 @@ bool Rtabmap::process(
 	std::list<int> signaturesRemoved;
 	if(_rgbdSlamMode)
 	{
-		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), covariance.empty()?1.0f:(float)covariance.at<double>(0,0));
-		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_ang(), covariance.empty()?1.0f:(float)covariance.at<double>(5,5));
+		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_lin(), odomCovariance.empty()?1.0f:(float)odomCovariance.at<double>(0,0));
+		statistics_.addStatistic(Statistics::kMemoryOdometry_variance_ang(), odomCovariance.empty()?1.0f:(float)odomCovariance.at<double>(5,5));
 
 		//Verify if there was a rehearsal
 		int rehearsedId = (int)uValue(statistics_.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
@@ -2725,11 +2758,6 @@ bool Rtabmap::process(
 	UDEBUG("End process");
 
 	return true;
-}
-
-bool Rtabmap::process(const cv::Mat & image, int id)
-{
-	return this->process(SensorData(image, id), Transform());
 }
 
 // SETTERS

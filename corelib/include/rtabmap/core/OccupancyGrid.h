@@ -48,6 +48,7 @@ public:
 	bool isGridFromDepth() const {return occupancyFromCloud_;}
 	bool isFullUpdate() const {return fullUpdate_;}
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
+	int cacheSize() const {return (int)cache_.size();}
 
 	template<typename PointT>
 	typename pcl::PointCloud<PointT>::Ptr segmentCloud(

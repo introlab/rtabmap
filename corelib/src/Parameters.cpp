@@ -643,6 +643,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 					if(i < argc)
 					{
 						uInsert(out, ParametersPair(iter->first, argv[i]));
+						UINFO("Parsed parameter \"%s\"=\"%s\"", iter->first.c_str(), argv[i]);
 					}
 				}
 				else

@@ -759,7 +759,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 		const cv::Mat & imageLeft,
 		const cv::Mat & imageRight,
 		const StereoCameraModel & model,
-		int decimation,
+		float decimation,
 		float maxDepth,
 		float minDepth,
 		std::vector<int> * validIndices,
@@ -770,20 +770,22 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 	UASSERT(imageLeft.channels() == 3 || imageLeft.channels() == 1);
 	UASSERT(imageLeft.rows == imageRight.rows &&
 			imageLeft.cols == imageRight.cols);
-	UASSERT(decimation >= 1);
+	UASSERT(decimation >= 1.0f);
 
 	cv::Mat leftColor = imageLeft;
 	cv::Mat rightMono = imageRight;
 
 	StereoCameraModel modelDecimation = model;
 
-	if(leftColor.rows % decimation != 0 ||
-	   leftColor.cols % decimation != 0)
+	if(decimation>1.0f)
 	{
-		leftColor = util2d::decimate(leftColor, decimation);
-		rightMono = util2d::decimate(rightMono, decimation);
+		cv::Mat resized;
+		cv::resize(leftColor, resized, cv::Size(), 1.0f/decimation, 1.0f/decimation, cv::INTER_AREA);
+		leftColor = resized;
+		resized = cv::Mat();
+		cv::resize(rightMono, resized, cv::Size(), 1.0f/decimation, 1.0f/decimation, cv::INTER_AREA);
+		rightMono = resized;
 		modelDecimation.scale(1/float(decimation));
-		decimation = 1;
 	}
 
 	cv::Mat leftMono;
@@ -800,7 +802,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromStereoImages(
 			leftColor,
 			util2d::disparityFromStereoImages(leftMono, rightMono, parameters),
 			modelDecimation,
-			decimation,
+			1,
 			maxDepth,
 			minDepth,
 			validIndices);

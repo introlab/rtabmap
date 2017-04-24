@@ -357,7 +357,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 
 			int seq = *_currentId;
 			++_currentId;
-			if(data.imageCompressed().empty())
+			if(data.imageCompressed().empty() && weight>=0)
 			{
 				UWARN("No image loaded from the database for id=%d!", *_currentId);
 			}

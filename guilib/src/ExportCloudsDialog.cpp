@@ -2314,7 +2314,15 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				}
 				else
 				{
-					UERROR("Cloud %d not found in cache!", iter->first);
+					int weight = 0;
+					if(_dbDriver)
+					{
+						_dbDriver->getWeight(iter->first, weight);
+					}
+					if(weight>=0) // don't show error for intermediate nodes
+					{
+						UERROR("Cloud %d not found in cache!", iter->first);
+					}
 				}
 			}
 			else if(uContains(cachedClouds, iter->first))

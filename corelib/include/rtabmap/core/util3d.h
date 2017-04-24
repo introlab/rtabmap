@@ -129,7 +129,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudFromStereoImages(
 		const cv::Mat & imageLeft,
 		const cv::Mat & imageRight,
 		const StereoCameraModel & model,
-		int decimation = 1,
+		float decimation = 1.0f,
 		float maxDepth = 0.0f,
 		float minDepth = 0.0f,
 		std::vector<int> * validIndices = 0,

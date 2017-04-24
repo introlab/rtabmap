@@ -807,7 +807,7 @@ ParametersMap DBDriverSqlite3::getLastParametersQuery() const
 
 std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, double & stamp) const
 {
-	UDEBUG("");
+	UDEBUG("nodeId=%d", nodeId);
 	std::map<std::string, float> data;
 	if(_ppDb)
 	{

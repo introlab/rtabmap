@@ -2386,7 +2386,10 @@ void MainWindow::updateMapCloud(
 		else
 #endif
 		{
-			_occupancyGrid->update(poses);
+			if(_occupancyGrid->addedNodes().size() || _occupancyGrid->cacheSize()>0)
+			{
+				_occupancyGrid->update(poses);
+			}
 			if(stats)
 			{
 				stats->insert(std::make_pair("GUI/Grid Update/ms", (float)timer.restart()*1000.0f));
@@ -2505,7 +2508,6 @@ void MainWindow::updateMapCloud(
 
 std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::createAndAddCloudToMap(int nodeId, const Transform & pose, int mapId)
 {
-	UDEBUG("");
 	UASSERT(!pose.isNull());
 	std::string cloudName = uFormat("cloud%d", nodeId);
 	std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> outputPair;
@@ -2824,7 +2826,6 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 		}
 	}
 
-	UDEBUG("");
 	return outputPair;
 }
 

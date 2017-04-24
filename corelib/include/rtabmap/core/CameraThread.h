@@ -42,6 +42,8 @@ namespace rtabmap
 {
 
 class Camera;
+class CameraInfo;
+class SensorData;
 class StereoDense;
 
 /**
@@ -79,6 +81,8 @@ public:
 		_scanVoxelSize = voxelSize;
 		_scanNormalsK = normalsK;
 	}
+
+	void postUpdate(SensorData * data, CameraInfo * info = 0) const;
 
 	//getters
 	bool isPaused() const {return !this->isRunning();}
