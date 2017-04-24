@@ -79,6 +79,7 @@ protected:
 
 private slots:
 	void writeSettings();
+	void restoreDefaultSettings();
 	void configModified();
 	void openDatabase();
 	void updateStatistics();

@@ -191,6 +191,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	parameters.insert(*Parameters::getDefaultParameters().find(Parameters::kRGBDLoopClosureReextractFeatures()));
 	ui_->parameters_toolbox->setupUi(parameters);
 	exportDialog_->setObjectName("ExportCloudsDialog");
+	restoreDefaultSettings();
 	this->readSettings();
 
 	setupMainLayout(ui_->actionVertical_Layout->isChecked());
@@ -237,6 +238,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionRegenerate_local_grid_maps, SIGNAL(triggered()), this, SLOT(regenerateLocalMaps()));
 	connect(ui_->actionRegenerate_local_grid_maps_selected, SIGNAL(triggered()), this, SLOT(regenerateCurrentLocalMaps()));
 	connect(ui_->actionReset_all_changes, SIGNAL(triggered()), this, SLOT(resetAllChanges()));
+	connect(ui_->actionRestore_default_GUI_settings, SIGNAL(triggered()), this, SLOT(restoreDefaultSettings()));
 
 	//ICP buttons
 	connect(ui_->pushButton_refine, SIGNAL(clicked()), this, SLOT(refineConstraint()));
@@ -619,6 +621,45 @@ void DatabaseViewer::writeSettings()
 	Parameters::writeINI(path.toStdString(), parameters);
 
 	this->setWindowModified(false);
+}
+
+void DatabaseViewer::restoreDefaultSettings()
+{
+	// reset GUI parameters
+	ui_->comboBox_logger_level->setCurrentIndex(1);
+	ui_->checkBox_alignPosesWithGroundTruth->setChecked(true);
+
+	ui_->checkBox_spanAllMaps->setChecked(true);
+	ui_->checkBox_ignorePoseCorrection->setChecked(false);
+	ui_->checkBox_ignoreGlobalLoop->setChecked(false);
+	ui_->checkBox_ignoreLocalLoopSpace->setChecked(false);
+	ui_->checkBox_ignoreLocalLoopTime->setChecked(false);
+	ui_->checkBox_ignoreUserLoop->setChecked(false);
+	ui_->spinBox_optimizationDepth->setValue(0);
+	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
+
+	ui_->doubleSpinBox_gridCellSize->setValue(0.05);
+	ui_->groupBox_posefiltering->setChecked(false);
+	ui_->doubleSpinBox_posefilteringRadius->setValue(0.1);
+	ui_->doubleSpinBox_posefilteringAngle->setValue(30);
+	ui_->checkBox_gridErode->setChecked(false);
+	ui_->checkBox_octomap->setChecked(false);
+
+	ui_->checkBox_mesh_quad->setChecked(true);
+	ui_->spinBox_mesh_angleTolerance->setValue(15);
+	ui_->spinBox_mesh_minClusterSize->setValue(0);
+	ui_->spinBox_mesh_fillDepthHoles->setValue(false);
+	ui_->spinBox_mesh_depthError->setValue(10);
+	ui_->spinBox_mesh_triangleSize->setValue(2);
+
+	ui_->spinBox_icp_decimation->setValue(1);
+	ui_->doubleSpinBox_icp_maxDepth->setValue(0.0);
+	ui_->doubleSpinBox_icp_minDepth->setValue(0.0);
+	ui_->checkBox_icp_from_depth->setChecked(false);
+
+	ui_->doubleSpinBox_detectMore_radius->setValue(1.0);
+	ui_->doubleSpinBox_detectMore_angle->setValue(30.0);
+	ui_->spinBox_detectMore_iterations->setValue(5);
 }
 
 void DatabaseViewer::openDatabase()

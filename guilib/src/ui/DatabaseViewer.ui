@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1392</width>
+    <width>1465</width>
     <height>965</height>
    </rect>
   </property>
@@ -52,8 +52,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>337</width>
-           <height>208</height>
+           <width>353</width>
+           <height>196</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -210,8 +210,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>337</width>
-           <height>208</height>
+           <width>353</width>
+           <height>196</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -483,8 +483,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1392</width>
-     <height>22</height>
+     <width>1465</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -521,6 +521,7 @@
     <addaction name="actionEdit_depth_image"/>
     <addaction name="separator"/>
     <addaction name="actionReset_all_changes"/>
+    <addaction name="actionRestore_default_GUI_settings"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
     <addaction name="actionView_3D_laser_scans"/>
@@ -999,15 +1000,15 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>2</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>324</width>
-          <height>188</height>
+          <width>339</width>
+          <height>186</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1142,8 +1143,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>280</width>
-          <height>608</height>
+          <width>282</width>
+          <height>569</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1179,7 +1180,7 @@
               <number>3</number>
              </property>
              <property name="minimum">
-              <double>0.010000000000000</double>
+              <double>0.001000000000000</double>
              </property>
              <property name="singleStep">
               <double>0.010000000000000</double>
@@ -1473,8 +1474,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>272</width>
-          <height>126</height>
+          <width>205</width>
+          <height>117</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1573,8 +1574,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>272</width>
-          <height>288</height>
+          <width>184</width>
+          <height>487</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2118,7 +2119,7 @@
   </action>
   <action name="actionReset_all_changes">
    <property name="text">
-    <string>Reset all changes</string>
+    <string>Reset link and grid map changes</string>
    </property>
   </action>
   <action name="actionGenerate_g2o_graph_g2o">
@@ -2160,6 +2161,11 @@
    </property>
    <property name="text">
     <string>Vertical Layout</string>
+   </property>
+  </action>
+  <action name="actionRestore_default_GUI_settings">
+   <property name="text">
+    <string>Restore default GUI settings</string>
    </property>
   </action>
  </widget>
