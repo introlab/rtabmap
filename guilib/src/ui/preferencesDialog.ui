@@ -63,25 +63,16 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-221</y>
-            <width>677</width>
-            <height>2644</height>
+            <y>-373</y>
+            <width>673</width>
+            <height>2718</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -2591,7 +2582,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -4070,6 +4061,26 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </item>
                               </widget>
                              </item>
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_242">
+                               <property name="text">
+                                <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QCheckBox" name="checkBox_rgb_rectify">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
                             </layout>
                            </item>
                            <item>
@@ -4159,26 +4170,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="1">
-                                   <widget class="QLabel" name="label_242">
-                                    <property name="text">
-                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="3" column="0">
-                                   <widget class="QCheckBox" name="checkBox_rgbImages_rectify">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
                                  </layout>
                                 </widget>
                                </item>
@@ -4204,14 +4195,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                  <property name="title">
                                   <string>Video (AVI)</string>
                                  </property>
-                                 <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,10">
-                                  <item row="0" column="0">
-                                   <widget class="QToolButton" name="source_video_toolButton_selectSource">
-                                    <property name="text">
-                                     <string>...</string>
-                                    </property>
-                                   </widget>
-                                  </item>
+                                 <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,0">
                                   <item row="0" column="1">
                                    <widget class="QLineEdit" name="source_video_lineEdit_path">
                                     <property name="readOnly">
@@ -4219,23 +4203,10 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="1" column="1">
-                                   <widget class="QLabel" name="label_241">
+                                  <item row="0" column="0">
+                                   <widget class="QToolButton" name="source_video_toolButton_selectSource">
                                     <property name="text">
-                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="1" column="0">
-                                   <widget class="QCheckBox" name="checkBox_rgbVideo_rectify">
-                                    <property name="text">
-                                     <string/>
+                                     <string>...</string>
                                     </property>
                                    </widget>
                                   </item>
@@ -4451,16 +4422,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -10917,16 +10879,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -11066,16 +11019,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -11233,16 +11177,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -11322,16 +11257,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -11443,16 +11369,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>

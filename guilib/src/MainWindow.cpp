@@ -4400,7 +4400,7 @@ void MainWindow::startDetection()
 
 			int button = QMessageBox::question(this,
 					tr("Camera is not calibrated!"),
-					tr("RTAB-Map cannot run with an uncalibrated camera. Do you want to calibrate the camera now?"),
+					tr("RTAB-Map in metric SLAM mode cannot run with an uncalibrated camera. Do you want to calibrate the camera now?"),
 					 QMessageBox::Yes | QMessageBox::No);
 			if(button == QMessageBox::Yes)
 			{
