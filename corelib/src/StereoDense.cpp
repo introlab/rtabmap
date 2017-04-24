@@ -68,7 +68,7 @@ void StereoBM::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kStereoBMPreFilterCap(), preFilterCap_);
 	Parameters::parse(parameters, Parameters::kStereoBMUniquenessRatio(), uniquenessRatio_);
 	Parameters::parse(parameters, Parameters::kStereoBMTextureThreshold(), textureThreshold_);
-	Parameters::parse(parameters, Parameters::kStereoBMPreFilterSize(), speckleWindowSize_);
+	Parameters::parse(parameters, Parameters::kStereoBMSpeckleWindowSize(), speckleWindowSize_);
 	Parameters::parse(parameters, Parameters::kStereoBMSpeckleRange(), speckleRange_);
 }
 
