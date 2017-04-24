@@ -393,6 +393,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_ceilingFilterHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_floorFilterHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_ceilingFilterHeight_scan, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_floorFilterHeight_scan, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->spinBox_normalKSearch_scan, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showFrustums, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1282,12 +1285,15 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->doubleSpinBox_ceilingFilterHeight->setValue(0);
 		_ui->doubleSpinBox_floorFilterHeight->setValue(0);
+		_ui->spinBox_normalKSearch->setValue(10);
+
+		_ui->doubleSpinBox_ceilingFilterHeight_scan->setValue(0);
+		_ui->doubleSpinBox_floorFilterHeight_scan->setValue(0);
+		_ui->spinBox_normalKSearch_scan->setValue(0);
 
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showFrustums->setChecked(false);
 		_ui->checkBox_showLabels->setChecked(false);
-
-		_ui->spinBox_normalKSearch->setValue(10);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
 		_ui->groupBox_organized->setChecked(false);
@@ -1674,6 +1680,9 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_ceilingFilterHeight->setValue(settings.value("cloudCeilingHeight", _ui->doubleSpinBox_ceilingFilterHeight->value()).toDouble());
 	_ui->doubleSpinBox_floorFilterHeight->setValue(settings.value("cloudFloorHeight", _ui->doubleSpinBox_floorFilterHeight->value()).toDouble());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
+	_ui->doubleSpinBox_ceilingFilterHeight_scan->setValue(settings.value("scanCeilingHeight", _ui->doubleSpinBox_ceilingFilterHeight_scan->value()).toDouble());
+	_ui->doubleSpinBox_floorFilterHeight_scan->setValue(settings.value("scanFloorHeight", _ui->doubleSpinBox_floorFilterHeight_scan->value()).toDouble());
+	_ui->spinBox_normalKSearch_scan->setValue(settings.value("scanNormalKSearch", _ui->spinBox_normalKSearch_scan->value()).toInt());
 
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showFrustums->setChecked(settings.value("showFrustums", _ui->checkBox_showFrustums->isChecked()).toBool());
@@ -2056,7 +2065,10 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("cloudNoiseMinNeighbors", _ui->spinBox_noiseMinNeighbors->value());
 	settings.setValue("cloudCeilingHeight",     _ui->doubleSpinBox_ceilingFilterHeight->value());
 	settings.setValue("cloudFloorHeight",       _ui->doubleSpinBox_floorFilterHeight->value());
-	settings.setValue("normalKSearch",           _ui->spinBox_normalKSearch->value());
+	settings.setValue("normalKSearch",          _ui->spinBox_normalKSearch->value());
+	settings.setValue("scanCeilingHeight",      _ui->doubleSpinBox_ceilingFilterHeight_scan->value());
+	settings.setValue("scanFloorHeight",        _ui->doubleSpinBox_floorFilterHeight_scan->value());
+	settings.setValue("scanNormalKSearch",      _ui->spinBox_normalKSearch_scan->value());
 
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showFrustums", _ui->checkBox_showFrustums->isChecked());
@@ -4100,6 +4112,18 @@ double PreferencesDialog::getFloorFilteringHeight() const
 int PreferencesDialog::getNormalKSearch() const
 {
 	return _ui->spinBox_normalKSearch->value();
+}
+double PreferencesDialog::getScanCeilingFilteringHeight() const
+{
+	return _ui->doubleSpinBox_ceilingFilterHeight_scan->value();
+}
+double PreferencesDialog::getScanFloorFilteringHeight() const
+{
+	return _ui->doubleSpinBox_floorFilterHeight_scan->value();
+}
+int PreferencesDialog::getScanNormalKSearch() const
+{
+	return _ui->spinBox_normalKSearch_scan->value();
 }
 
 bool PreferencesDialog::isGraphsShown() const

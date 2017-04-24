@@ -2863,6 +2863,24 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			{
 				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
 			}
+
+			// Do ceiling/floor filtering
+			if(cloud->size() &&
+			   (_preferencesDialog->getScanFloorFilteringHeight() != 0.0 ||
+			   _preferencesDialog->getScanCeilingFilteringHeight() != 0.0))
+			{
+				// perform in /map frame
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudTransformed = util3d::transformPointCloud(cloud, pose);
+				cloudTransformed = rtabmap::util3d::passThrough(
+						cloudTransformed,
+						"z",
+						_preferencesDialog->getScanFloorFilteringHeight()==0.0?(float)std::numeric_limits<int>::min():_preferencesDialog->getScanFloorFilteringHeight(),
+						_preferencesDialog->getScanCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getScanCeilingFilteringHeight());
+
+				//transform back in sensor frame
+				cloud = util3d::transformPointCloud(cloudTransformed, pose.inverse());
+			}
+
 			QColor color = Qt::gray;
 			if(mapId >= 0)
 			{
@@ -2895,37 +2913,92 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		{
 			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 			cloud = util3d::laserScanToPointCloud(scan, iter->sensorData().laserScanInfo().localTransform());
+			bool filtered = false;
 			if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
 			{
 				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
+				filtered = true;
 			}
+
+			// Do ceiling/floor filtering
+			if(scan.channels() > 2 && // don't filter 2D scans
+				cloud->size() &&
+			   (_preferencesDialog->getScanFloorFilteringHeight() != 0.0 ||
+			   _preferencesDialog->getScanCeilingFilteringHeight() != 0.0))
+			{
+				// perform in /map frame
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTransformed = util3d::transformPointCloud(cloud, pose);
+				cloudTransformed = rtabmap::util3d::passThrough(
+						cloudTransformed,
+						"z",
+						_preferencesDialog->getScanFloorFilteringHeight()==0.0?(float)std::numeric_limits<int>::min():_preferencesDialog->getScanFloorFilteringHeight(),
+						_preferencesDialog->getScanCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getScanCeilingFilteringHeight());
+
+				//transform back in sensor frame
+				cloud = util3d::transformPointCloud(cloudTransformed, pose.inverse());
+				filtered = true;
+			}
+
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals;
+			if(scan.channels() > 2 && // don't compute normals for 2D scans
+				cloud->size() &&
+			   _preferencesDialog->getScanNormalKSearch() > 0)
+			{
+				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _preferencesDialog->getScanNormalKSearch());
+				cloudWithNormals.reset(new pcl::PointCloud<pcl::PointNormal>);
+				pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+				filtered = true;
+			}
+
 			QColor color = Qt::gray;
 			if(mapId >= 0)
 			{
 				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
 			}
-			if(!_cloudViewer->addCloud(scanName, cloud, pose, color))
+			if(cloudWithNormals.get())
 			{
-				UERROR("Adding cloud %d to viewer failed!", nodeId);
+				if(!_cloudViewer->addCloud(scanName, cloudWithNormals, pose, color))
+				{
+					UERROR("Adding cloud %d to viewer failed!", nodeId);
+				}
+				else
+				{
+					if(nodeId > 0)
+					{
+						//reconvert the voxelized cloud
+						scan = util3d::laserScanFromPointCloud(*cloudWithNormals);
+						_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
+					}
+
+					_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+					_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+				}
 			}
 			else
 			{
-				if(nodeId > 0)
+				if(!_cloudViewer->addCloud(scanName, cloud, pose, color))
 				{
-					if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
-					{
-						//reconvert the voxelized cloud
-						scan = util3d::laserScanFromPointCloud(*cloud);
-					}
-					else
-					{
-						scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
-					}
-					_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
+					UERROR("Adding cloud %d to viewer failed!", nodeId);
 				}
+				else
+				{
+					if(nodeId > 0)
+					{
+						if(filtered)
+						{
+							//reconvert the voxelized cloud
+							scan = util3d::laserScanFromPointCloud(*cloud);
+						}
+						else
+						{
+							scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
+						}
+						_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
+					}
 
-				_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-				_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+					_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+					_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+				}
 			}
 		}
 	}

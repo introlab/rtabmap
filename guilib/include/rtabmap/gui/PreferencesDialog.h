@@ -163,6 +163,9 @@ public:
 	double getCeilingFilteringHeight() const;
 	double getFloorFilteringHeight() const;
 	int getNormalKSearch() const;
+	double getScanCeilingFilteringHeight() const;
+	double getScanFloorFilteringHeight() const;
+	int getScanNormalKSearch() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	bool isOctomapUpdated() const;
 	bool isOctomapShown() const;
