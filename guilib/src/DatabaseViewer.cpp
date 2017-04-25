@@ -2228,6 +2228,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	UASSERT(iterations > 0);
 	int added = 0;
 	std::multimap<int, int> checkedLoopClosures;
+	std::pair<int, int> lastAdded(0,0);
 	for(int n=0; n<iterations; ++n)
 	{
 		UINFO("iteration %d/%d", n+1, iterations);
@@ -2269,6 +2270,8 @@ void DatabaseViewer::detectMoreLoopClosures()
 						++added;
 						addedLinks.insert(from);
 						addedLinks.insert(to);
+						lastAdded.first = from;
+						lastAdded.second = to;
 
 						progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 						QApplication::processEvents();
@@ -2288,6 +2291,7 @@ void DatabaseViewer::detectMoreLoopClosures()
 	if(added)
 	{
 		this->updateGraphView();
+		this->updateLoopClosuresSlider(lastAdded.first, lastAdded.second);
 	}
 	UINFO("Total added %d loop closures.", added);
 
