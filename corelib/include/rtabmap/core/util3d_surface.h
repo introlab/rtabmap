@@ -142,6 +142,15 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
+pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
+		const pcl::PolygonMesh::Ptr & mesh,
+		const std::map<int, Transform> & poses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		float maxDistance = 0.0f, // max camera distance to polygon to apply texture
+		int minClusterSize = 50, // minimum size of polygons clusters textured
+		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
+		const ProgressState * state = 0,
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

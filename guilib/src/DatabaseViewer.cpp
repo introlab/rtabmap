@@ -144,18 +144,15 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 
 	// Create cloud viewers
 	constraintsViewer_ = new CloudViewer(ui_->dockWidgetContents);
-	cloudViewerA_ = new CloudViewer(ui_->dockWidgetContents_3dviews);
-	cloudViewerB_ = new CloudViewer(ui_->dockWidgetContents_3dviews);
+	cloudViewer_ = new CloudViewer(ui_->dockWidgetContents_3dviews);
 	stereoViewer_ = new CloudViewer(ui_->dockWidgetContents_stereo);
 	occupancyGridViewer_ = new CloudViewer(ui_->dockWidgetContents_occupancyGrid);
 	constraintsViewer_->setObjectName("constraintsViewer");
-	cloudViewerA_->setObjectName("cloudViewerA");
-	cloudViewerB_->setObjectName("cloudViewerB");
+	cloudViewer_->setObjectName("cloudViewerA");
 	stereoViewer_->setObjectName("stereoViewer");
 	occupancyGridViewer_->setObjectName("occupancyGridView");
 	ui_->layout_constraintsViewer->addWidget(constraintsViewer_);
-	ui_->horizontalLayout_3dviews->addWidget(cloudViewerA_, 1);
-	ui_->horizontalLayout_3dviews->addWidget(cloudViewerB_, 1);
+	ui_->horizontalLayout_3dviews->addWidget(cloudViewer_, 1);
 	ui_->horizontalLayout_stereo->addWidget(stereoViewer_, 1);
 	ui_->layout_occupancyGridView->addWidget(occupancyGridViewer_, 1);
 
@@ -268,6 +265,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->spinBox_mesh_depthError, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_mesh_quad, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->spinBox_mesh_triangleSize, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
+	connect(ui_->checkBox_showWords, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showCloud, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showMesh, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
 	connect(ui_->checkBox_showScan, SIGNAL(toggled(bool)), this, SLOT(update3dView()));
@@ -311,6 +309,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->spinBox_grid_depth, SIGNAL(valueChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->checkBox_grid_empty, SIGNAL(stateChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
+	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
+	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(update3dView()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
@@ -342,6 +342,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -396,12 +397,10 @@ void DatabaseViewer::setupMainLayout(bool vertical)
 	if(vertical)
 	{
 		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_imageViews->layout())->setDirection(QBoxLayout::TopToBottom);
-		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_3dviews->layout())->setDirection(QBoxLayout::TopToBottom);
 	}
 	else if(!vertical)
 	{
 		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_imageViews->layout())->setDirection(QBoxLayout::LeftToRight);
-		qobject_cast<QHBoxLayout *>(ui_->horizontalLayout_3dviews->layout())->setDirection(QBoxLayout::LeftToRight);
 	}
 	if(ids_.size())
 	{
@@ -469,6 +468,8 @@ void DatabaseViewer::readSettings()
 	ui_->checkBox_ignoreUserLoop->setChecked(settings.value("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked()).toBool());
 	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(settings.value("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value()).toDouble());
+	ui_->doubleSpinBox_voxelSize->setValue(settings.value("voxelSize", ui_->doubleSpinBox_voxelSize->value()).toDouble());
+
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -561,6 +562,7 @@ void DatabaseViewer::writeSettings()
 	//settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
 	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
 	settings.setValue("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value());
+	settings.setValue("voxelSize", ui_->doubleSpinBox_voxelSize->value());
 	settings.endGroup();
 
 	// save Grid settings
@@ -637,6 +639,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreUserLoop->setChecked(false);
 	ui_->spinBox_optimizationDepth->setValue(0);
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
+	ui_->doubleSpinBox_voxelSize->setValue(0.0);
 
 	ui_->doubleSpinBox_gridCellSize->setValue(0.05);
 	ui_->groupBox_posefiltering->setChecked(false);
@@ -952,6 +955,15 @@ void DatabaseViewer::resizeEvent(QResizeEvent* anEvent)
 	if(this->isVisible())
 	{
 		this->configModified();
+	}
+}
+
+void DatabaseViewer::keyPressEvent(QKeyEvent *event)
+{
+	//catch ctrl-s to save settings
+	if((event->modifiers() & Qt::ControlModifier) && event->key() == Qt::Key_S)
+	{
+		this->writeSettings();
 	}
 }
 
@@ -2370,7 +2382,6 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_labelA,
 			ui_->label_stampA,
 			ui_->graphicsView_A,
-			cloudViewerA_,
 			ui_->label_idA,
 			ui_->label_mapA,
 			ui_->label_poseA,
@@ -2388,7 +2399,6 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_labelB,
 			ui_->label_stampB,
 			ui_->graphicsView_B,
-			cloudViewerB_,
 			ui_->label_idB,
 			ui_->label_mapB,
 			ui_->label_poseB,
@@ -2404,7 +2414,6 @@ void DatabaseViewer::update(int value,
 						QLabel * label,
 						QLabel * stamp,
 						rtabmap::ImageView * view,
-						rtabmap::CloudViewer * view3D,
 						QLabel * labelId,
 						QLabel * labelMapId,
 						QLabel * labelPose,
@@ -2543,7 +2552,7 @@ void DatabaseViewer::update(int value,
 				}
 
 				// 3d view
-				if(view3D->isVisible())
+				if(cloudViewer_->isVisible())
 				{
 					Transform pose = Transform::getIdentity();
 					if(signatures.size() && ui_->checkBox_odomFrame_3dview->isChecked())
@@ -2553,14 +2562,15 @@ void DatabaseViewer::update(int value,
 						pose = Transform(0,0,z,roll,pitch,0);
 					}
 
-					view3D->removeAllFrustums();
-					view3D->removeCloud("mesh");
-					view3D->removeCloud("cloud");
-					view3D->removeCloud("scan");
-					view3D->removeCloud("map");
-					view3D->removeCloud("ground");
-					view3D->removeCloud("obstacles");
-					view3D->removeOctomap();
+					cloudViewer_->removeAllFrustums();
+					cloudViewer_->removeCloud("mesh");
+					cloudViewer_->removeCloud("cloud");
+					cloudViewer_->removeCloud("scan");
+					cloudViewer_->removeCloud("map");
+					cloudViewer_->removeCloud("ground");
+					cloudViewer_->removeCloud("obstacles");
+					cloudViewer_->removeCloud("words");
+					cloudViewer_->removeOctomap();
 					if(ui_->checkBox_showCloud->isChecked() || ui_->checkBox_showMesh->isChecked())
 					{
 						if(!data.depthOrRightRaw().empty())
@@ -2591,6 +2601,11 @@ void DatabaseViewer::update(int value,
 								}
 								if(cloud->size())
 								{
+									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+									{
+										cloud = util3d::voxelize(cloud, ui_->doubleSpinBox_voxelSize->value());
+									}
+
 									if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
 									{
 										Eigen::Vector3f viewpoint(0.0f,0.0f,0.0f);
@@ -2638,14 +2653,13 @@ void DatabaseViewer::update(int value,
 											polygons = filteredPolygons;
 										}
 
-										view3D->addCloudMesh("mesh", cloud, polygons, pose);
+										cloudViewer_->addCloudMesh("mesh", cloud, polygons, pose);
 									}
 									if(ui_->checkBox_showCloud->isChecked())
 									{
-										view3D->addCloud("cloud", cloud, pose);
+										cloudViewer_->addCloud("cloud", cloud, pose);
 									}
 								}
-								view3D->updateCameraFrustums(pose, data.cameraModels());
 							}
 							else if(ui_->checkBox_showCloud->isChecked())
 							{
@@ -2653,10 +2667,45 @@ void DatabaseViewer::update(int value,
 								cloud = util3d::cloudFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
 								if(cloud->size())
 								{
-									view3D->addCloud("cloud", cloud, pose);
-									view3D->updateCameraFrustum(pose, data.stereoCameraModel());
+									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+									{
+										cloud = util3d::voxelize(cloud, ui_->doubleSpinBox_voxelSize->value());
+									}
+
+									cloudViewer_->addCloud("cloud", cloud, pose);
+									cloudViewer_->updateCameraFrustum(pose, data.stereoCameraModel());
 								}
 							}
+						}
+					}
+
+					//frustums
+					if(cloudViewer_->isFrustumShown())
+					{
+						cloudViewer_->updateCameraFrustums(pose, data.cameraModels());
+					}
+
+					//words
+					if(ui_->checkBox_showWords->isChecked() && signatures.size())
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+						cloud->resize((*signatures.begin())->getWords3().size());
+						int i=0;
+						for(std::multimap<int, cv::Point3f>::const_iterator iter=(*signatures.begin())->getWords3().begin();
+							iter!=(*signatures.begin())->getWords3().end();
+							++iter)
+						{
+							cloud->at(i++) = pcl::PointXYZ(iter->second.x, iter->second.y, iter->second.z);
+						}
+
+						if(cloud->size())
+						{
+							cloud = rtabmap::util3d::removeNaNFromPointCloud(cloud);
+						}
+
+						if(cloud->size())
+						{
+							cloudViewer_->addCloud("words", cloud, pose, Qt::red);
 						}
 					}
 
@@ -2666,12 +2715,20 @@ void DatabaseViewer::update(int value,
 						if(data.laserScanRaw().channels() == 6)
 						{
 							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
-							view3D->addCloud("scan", scan, pose, Qt::yellow);
+							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+							{
+								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+							}
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 						else
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
-							view3D->addCloud("scan", scan, pose, Qt::yellow);
+							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+							{
+								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+							}
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 					}
 
@@ -2735,7 +2792,7 @@ void DatabaseViewer::update(int value,
 								if(!map8S.empty())
 								{
 									//convert to gray scaled map
-									view3D->addOccupancyGridMap(util3d::convertMap2Image8U(map8S), gridCellSize, xMin, yMin, 1);
+									cloudViewer_->addOccupancyGridMap(util3d::convertMap2Image8U(map8S), gridCellSize, xMin, yMin, 1);
 								}
 							}
 
@@ -2751,36 +2808,36 @@ void DatabaseViewer::update(int value,
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(0, obstacles.get(), empty.get());
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 										pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
-										view3D->addCloud("obstacles", obstaclesCloud);
-										view3D->setCloudPointSize("obstacles", 5);
+										cloudViewer_->addCloud("obstacles", obstaclesCloud);
+										cloudViewer_->setCloudPointSize("obstacles", 5);
 										if(ui_->checkBox_grid_empty->isChecked())
 										{
 											pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCloud(new pcl::PointCloud<pcl::PointXYZ>);
 											pcl::copyPointCloud(*cloud, *empty, *emptyCloud);
-											view3D->addCloud("ground", emptyCloud, Transform::getIdentity(), Qt::white);
-											view3D->setCloudOpacity("ground", 0.5);
-											view3D->setCloudPointSize("ground", 5);
+											cloudViewer_->addCloud("ground", emptyCloud, Transform::getIdentity(), Qt::white);
+											cloudViewer_->setCloudOpacity("ground", 0.5);
+											cloudViewer_->setCloudPointSize("ground", 5);
 										}
 									}
 									else
 									{
-										view3D->addOctomap(octomap);
+										cloudViewer_->addOctomap(octomap);
 									}
 								}
 								else
 #endif
 								{
 									// occupancy cloud
-									view3D->addCloud("ground",
+									cloudViewer_->addCloud("ground",
 											util3d::laserScanToPointCloud(localMaps.begin()->second.first),
 											Transform::getIdentity(),
 											Qt::green);
-									view3D->addCloud("obstacles",
+									cloudViewer_->addCloud("obstacles",
 											util3d::laserScanToPointCloud(localMaps.begin()->second.second),
 											Transform::getIdentity(),
 											Qt::red);
-									view3D->setCloudPointSize("ground", 5);
-									view3D->setCloudPointSize("obstacles", 5);
+									cloudViewer_->setCloudPointSize("ground", 5);
+									cloudViewer_->setCloudPointSize("obstacles", 5);
 								}
 							}
 #ifdef RTABMAP_OCTOMAP
@@ -2791,7 +2848,7 @@ void DatabaseViewer::update(int value,
 #endif
 						}
 					}
-					view3D->update();
+					cloudViewer_->update();
 				}
 
 				if(signatures.size())
@@ -3381,7 +3438,6 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_labelA,
 					ui_->label_stampA,
 					ui_->graphicsView_A,
-					cloudViewerA_,
 					ui_->label_idA,
 					ui_->label_mapA,
 					ui_->label_poseA,
@@ -3395,7 +3451,6 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_labelB,
 					ui_->label_stampB,
 					ui_->graphicsView_B,
-					cloudViewerB_,
 					ui_->label_idB,
 					ui_->label_mapB,
 					ui_->label_poseB,
@@ -3472,10 +3527,18 @@ void DatabaseViewer::updateConstraintView(
 
 				if(cloudFrom.get() && cloudFrom->size())
 				{
+					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+					{
+						cloudFrom = util3d::voxelize(cloudFrom, ui_->doubleSpinBox_voxelSize->value());
+					}
 					constraintsViewer_->addCloud("cloud0", cloudFrom, pose, Qt::red);
 				}
 				if(cloudTo.get() && cloudTo->size())
 				{
+					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+					{
+						cloudTo = util3d::voxelize(cloudTo, ui_->doubleSpinBox_voxelSize->value());
+					}
 					constraintsViewer_->addCloud("cloud1", cloudTo, pose, Qt::cyan);
 				}
 			}
@@ -3699,6 +3762,10 @@ void DatabaseViewer::updateConstraintView(
 
 							if(assembledScans->size())
 							{
+								if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+								{
+									assembledScans = util3d::voxelize(assembledScans, ui_->doubleSpinBox_voxelSize->value());
+								}
 								constraintsViewer_->addCloud("scan2", assembledScans, pose, Qt::cyan);
 							}
 							if(graph->size())
@@ -3716,24 +3783,40 @@ void DatabaseViewer::updateConstraintView(
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
+					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+					{
+						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+					}
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 				}
 				else
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
+					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+					{
+						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+					}
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 				}
 				if(dataTo.laserScanRaw().channels() == 6)
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
+					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+					{
+						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+					}
 					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
 				}
 				else
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
+					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+					{
+						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+					}
 					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
 				}
 			}

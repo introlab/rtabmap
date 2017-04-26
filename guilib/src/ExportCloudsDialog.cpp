@@ -777,7 +777,7 @@ void ExportCloudsDialog::viewClouds(
 							for(unsigned int j=0; j<vertices.vertices.size(); ++j)
 							{
 								UASSERT(oi < cloud->size());
-								UASSERT(vertices.vertices[j] < originalCloud->size());
+								UASSERT_MSG(vertices.vertices[j] < originalCloud->size(), uFormat("%d vs %d", vertices.vertices[j], (int)originalCloud->size()).c_str());
 								cloud->at(oi) = originalCloud->at(vertices.vertices[j]);
 								vertices.vertices[j] = oi; // new vertice index
 								++oi;
@@ -1090,7 +1090,10 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 				else
 				{
-					transformed = util3d::transformPointCloud(iter->second.first, poses.at(iter->first));
+					// it looks like that using only transformPointCloud with indices
+					// flushes the colors, so we should extract points before... maybe a too old PCL version
+					pcl::copyPointCloud(*iter->second.first, *iter->second.second, *transformed);
+					transformed = rtabmap::util3d::transformPointCloud(transformed, poses.at(iter->first));
 				}
 
 				*assembledCloud += *transformed;
@@ -1124,7 +1127,13 @@ bool ExportCloudsDialog::getExportedClouds(
 			}
 
 			clouds.clear();
-			clouds.insert(std::make_pair(0, std::make_pair(assembledCloud, pcl::IndicesPtr(new std::vector<int>))));
+			pcl::IndicesPtr indices(new std::vector<int>);
+			indices->resize(assembledCloud->size());
+			for(unsigned int i=0; i<indices->size(); ++i)
+			{
+				indices->at(i) = i;
+			}
+			clouds.insert(std::make_pair(0, std::make_pair(assembledCloud, indices)));
 		}
 
 		if(_canceled)
@@ -1803,7 +1812,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					cameras.insert(std::make_pair(iter->first, _ui->checkBox_assemble->isChecked()?poses.at(iter->first):Transform::getIdentity()));
 				}
 				std::map<int, Transform> cameraPoses;
-				std::map<int, CameraModel> cameraModels;
+				std::map<int, std::vector<CameraModel> > cameraModels;
 				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
 				{
 					std::vector<CameraModel> models;
@@ -1821,18 +1830,18 @@ bool ExportCloudsDialog::getExportedClouds(
 						_dbDriver->getCalibration(jter->first, models, stereoModel);
 					}
 
-					CameraModel model;
 					if(stereoModel.isValidForProjection())
 					{
-						model = stereoModel.left();
+						models.clear();
+						models.push_back(stereoModel.left());
 					}
-					else if(models.size() == 1 && models[0].isValidForProjection())
+					else if(models.size() == 0 || !models[0].isValidForProjection())
 					{
-						model = models[0];
+						models.clear();
 					}
-					if(!jter->second.isNull() && model.isValidForProjection())
+					if(!jter->second.isNull() && models.size())
 					{
-						if(model.imageWidth() == 0 || model.imageHeight() == 0)
+						if(models[0].imageWidth() == 0 || models[0].imageHeight() == 0)
 						{
 							// we are using an old database format (image size not saved in calibrations), we should
 							// uncompress images to get their size
@@ -1847,13 +1856,19 @@ bool ExportCloudsDialog::getExportedClouds(
 								_dbDriver->getNodeData(jter->first, data, true, false, false, false);
 								data.uncompressDataConst(&img, 0);
 							}
-							model.setImageSize(img.size());
+							cv::Size imageSize = img.size();
+							imageSize.width /= models.size();
+							for(unsigned int i=0; i<models.size(); ++i)
+							{
+								models[i].setImageSize(imageSize);
+							}
+
 						}
 
-						if(model.imageWidth() != 0 && model.imageHeight() != 0)
+						if(models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
 						{
 							cameraPoses.insert(std::make_pair(jter->first, jter->second));
-							cameraModels.insert(std::make_pair(jter->first, model));
+							cameraModels.insert(std::make_pair(jter->first, models));
 						}
 					}
 				}
@@ -1920,7 +1935,7 @@ bool ExportCloudsDialog::getExportedClouds(
 							cameraPoses = graph::radiusPosesFiltering(cameraPoses,
 									_ui->doubleSpinBox_cameraFilterRadius->value(),
 									_ui->doubleSpinBox_cameraFilterAngle->value());
-							for(std::map<int, CameraModel>::iterator modelIter = cameraModels.begin(); modelIter!=cameraModels.end();)
+							for(std::map<int, std::vector<CameraModel> >::iterator modelIter = cameraModels.begin(); modelIter!=cameraModels.end();)
 							{
 								if(cameraPoses.find(modelIter->first)==cameraPoses.end())
 								{
@@ -1944,6 +1959,10 @@ bool ExportCloudsDialog::getExportedClouds(
 
 						TexturingState texturingState(_progressDialog);
 						_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+iter->second->polygons.size()/10000+1);
+						if(cameraModels.size() && cameraModels.begin()->second.size()>1)
+						{
+							_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+cameraModels.size()*(cameraModels.begin()->second.size()-1));
+						}
 
 						std::vector<float> roiRatios;
 						QStringList strings = _ui->lineEdit_meshingTextureRoiRatios->text().split(' ');
@@ -2397,7 +2416,6 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				{
 					indices = util3d::radiusFiltering(cloud, indices, _ui->doubleSpinBox_filteringRadius->value(), _ui->spinBox_filteringMinNeighbors->value());
 				}
-
 				clouds.insert(std::make_pair(iter->first, std::make_pair(cloud, indices)));
 				points = (int)cloud->size();
 				totalIndices = (int)indices->size();
@@ -2728,25 +2746,32 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 	cv::Mat globalTexture;
 	if(mesh.tex_materials.size() > 1)
 	{
-		std::vector<int> textures(mesh.tex_materials.size(), -1);
+		std::vector<std::pair<int, int> > textures(mesh.tex_materials.size(), std::pair<int, int>(-1,-1));
 		cv::Size imageSize;
 		const int imageType=CV_8UC3;
+
 		UDEBUG("");
 		for(unsigned int i=0; i<mesh.tex_materials.size(); ++i)
 		{
+			std::list<std::string> texFileSplit = uSplit(mesh.tex_materials[i].tex_file, '_');
 			if(!mesh.tex_materials[i].tex_file.empty() &&
 				mesh.tex_polygons[i].size() &&
-			   uIsInteger(mesh.tex_materials[i].tex_file, false))
+			   uIsInteger(texFileSplit.front(), false))
 			{
-				int textureId = uStr2Int(mesh.tex_materials[i].tex_file);
-				textures[i] = textureId;
+				textures[i].first = uStr2Int(texFileSplit.front());
+				if(texFileSplit.size() == 2 &&
+				   uIsInteger(texFileSplit.back(), false)	)
+				{
+					textures[i].second = uStr2Int(texFileSplit.back());
+				}
 
+				int textureId = textures[i].first;
 				if(imageSize.width == 0 || imageSize.height == 0)
 				{
 					if(cachedSignatures.find(textureId)!=cachedSignatures.end() && !cachedSignatures.find(textureId)->sensorData().imageCompressed().empty())
 					{
 						SensorData data = cachedSignatures.find(textureId).value().sensorData();
-						if(data.cameraModels().size()==1 &&
+						if(data.cameraModels().size()>=1 &&
 							data.cameraModels()[0].imageHeight()>0 &&
 							data.cameraModels()[0].imageWidth()>0)
 						{
@@ -2763,6 +2788,10 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 							data.uncompressDataConst(&image, 0);
 							UASSERT(!image.empty());
 							imageSize = image.size();
+							if(data.cameraModels().size()>1)
+							{
+								imageSize.width/=data.cameraModels().size();
+							}
 						}
 					}
 					else if(_dbDriver)
@@ -2770,7 +2799,7 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 						std::vector<CameraModel> models;
 						StereoCameraModel stereoModel;
 						_dbDriver->getCalibration(textureId, models, stereoModel);
-						if(models.size()==1 &&
+						if(models.size()>=1 &&
 							models[0].imageHeight()>0 &&
 							models[0].imageWidth()>0)
 						{
@@ -2789,11 +2818,20 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 							data.uncompressDataConst(&image, 0);
 							UASSERT(!image.empty());
 							imageSize = image.size();
+							if(data.cameraModels().size()>1)
+							{
+								imageSize.width/=data.cameraModels().size();
+							}
 						}
 					}
 				}
 			}
+			else
+			{
+				UWARN("Failed parsing texture file name: %s", mesh.tex_materials[i].tex_file.c_str());
+			}
 		}
+		UDEBUG("textures=%d imageSize=%dx%d", (int)textures.size(), imageSize.height, imageSize.width);
 		if(textures.size() && imageSize.height>0 && imageSize.width>0)
 		{
 			float scale = 0.0f;
@@ -2806,6 +2844,11 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 
 				globalTexture = cv::Mat(textureSize, textureSize, imageType, cv::Scalar::all(255));
 				cv::Mat globalTextureMask = cv::Mat(textureSize, textureSize, CV_8UC1, cv::Scalar::all(0));
+
+				// used for multi camera texturing, to avoid reloading same texture for sub cameras
+				cv::Mat previousImage;
+				int previousTextureId = 0;
+				std::vector<CameraModel> previousCameraModels;
 
 				// make a blank texture
 				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(255));
@@ -2824,23 +2867,47 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 						UASSERT(v < textureSize-emptyImage.rows);
 						imageOrigin[t].x = u;
 						imageOrigin[t].y = v;
-						if(textures[t]>=0)
+						if(textures[t].first>=0)
 						{
 							cv::Mat image;
+							std::vector<CameraModel> models;
 
-							if(cachedSignatures.find(textures[t]) != cachedSignatures.end() &&
-							  !cachedSignatures.find(textures[t])->sensorData().imageCompressed().empty())
+							if(textures[t].first == previousTextureId)
 							{
-								cachedSignatures.find(textures[t])->sensorData().uncompressDataConst(&image, 0);
+								image = previousImage;
+								models = previousCameraModels;
 							}
-							else if(_dbDriver)
+							else
 							{
-								SensorData data;
-								_dbDriver->getNodeData(textures[t], data, true, false, false, false);
-								data.uncompressDataConst(&image, 0);
+								if(cachedSignatures.find(textures[t].first) != cachedSignatures.end() &&
+								  !cachedSignatures.find(textures[t].first)->sensorData().imageCompressed().empty())
+								{
+									cachedSignatures.find(textures[t].first)->sensorData().uncompressDataConst(&image, 0);
+									models = cachedSignatures.find(textures[t].first)->sensorData().cameraModels();
+								}
+								else if(_dbDriver)
+								{
+									SensorData data;
+									_dbDriver->getNodeData(textures[t].first, data, true, false, false, false);
+									data.uncompressDataConst(&image, 0);
+									StereoCameraModel stereoModel;
+									_dbDriver->getCalibration(textures[t].first, models, stereoModel);
+								}
+
+								previousImage = image;
+								previousCameraModels = models;
+								previousTextureId = textures[t].first;
 							}
 
 							UASSERT(!image.empty());
+
+							if(textures[t].second>=0)
+							{
+								UASSERT(textures[t].second < (int)models.size());
+								int width = image.cols/models.size();
+								image = image.colRange(width*textures[t].second, width*(textures[t].second+1));
+							}
+
 							cv::Mat resizedImage;
 							cv::resize(image, resizedImage, emptyImage.size(), 0.0f, 0.0f, cv::INTER_AREA);
 							UASSERT(resizedImage.type() == CV_8UC1 || resizedImage.type() == CV_8UC3);
@@ -2850,9 +2917,9 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 								cv::cvtColor(resizedImage, resizedImageColor, CV_GRAY2BGR);
 								resizedImage = resizedImageColor;
 							}
-							if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textures[t]) >= 0)
+							if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textures[t].first) >= 0)
 							{
-								_compensator->apply(textures[t], resizedImage);
+								_compensator->apply(textures[t].first, resizedImage);
 							}
 							UASSERT(resizedImage.type() == globalTexture.type());
 							resizedImage.copyTo(globalTexture(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
@@ -3235,6 +3302,12 @@ void ExportCloudsDialog::saveTextureMeshes(
 					removeDirRecursively(QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+QFileInfo(path).baseName());
 					QDir(QFileInfo(path).absoluteDir().absolutePath()).mkdir(QFileInfo(path).baseName());
 				}
+
+				// used for multi camera texturing, to avoid reloading same texture for sub cameras
+				cv::Mat previousImage;
+				int previousTextureId = 0;
+				std::vector<CameraModel> previousCameraModels;
+
 				cv::Size imageSize;
 				for(unsigned int i=0; i<mesh->tex_materials.size(); ++i)
 				{
@@ -3253,22 +3326,52 @@ void ExportCloudsDialog::saveTextureMeshes(
 						UDEBUG("Saving %s...", fullPath.toStdString().c_str());
 						if(singleTexture || !QFileInfo(fullPath).exists())
 						{
-							if(uIsInteger(mesh->tex_materials[i].tex_file, false))
+							std::list<std::string> texFileSplit = uSplit(mesh->tex_materials[i].tex_file, '_');
+							if(texFileSplit.size() && uIsInteger(texFileSplit.front(), false))
 							{
-								int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
-								cv::Mat image;
-								if(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty())
+								int textureId = uStr2Int(texFileSplit.front());
+								int textureSubCamera = -1;
+								if(texFileSplit.size() == 2 &&
+								   uIsInteger(texFileSplit.back(), false))
 								{
-									cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+									textureSubCamera = uStr2Int(texFileSplit.back());
 								}
-								else if(_dbDriver)
+								cv::Mat image;
+								std::vector<CameraModel> cameraModels;
+
+								if(textureId == previousTextureId)
 								{
-									SensorData data;
-									_dbDriver->getNodeData(textureId, data, true, false, false, false);
-									data.uncompressDataConst(&image, 0);
+									image = previousImage;
+									cameraModels = previousCameraModels;
+								}
+								else
+								{
+									if(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty())
+									{
+										cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+										cameraModels = cachedSignatures.value(textureId).sensorData().cameraModels();
+									}
+									else if(_dbDriver)
+									{
+										SensorData data;
+										_dbDriver->getNodeData(textureId, data, true, false, false, false);
+										data.uncompressDataConst(&image, 0);
+										StereoCameraModel stereoModel;
+										_dbDriver->getCalibration(textureId, cameraModels, stereoModel);
+									}
+
+									previousImage = image;
+									previousCameraModels = cameraModels;
+									previousTextureId = textureId;
 								}
 								UASSERT(!image.empty());
 								imageSize = image.size();
+								if(textureSubCamera>=0)
+								{
+									UASSERT(cameraModels.size());
+									imageSize.width/=cameraModels.size();
+									image = image.colRange(imageSize.width*textureSubCamera, imageSize.width*(textureSubCamera+1));
+								}
 								if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
 								{
 									_compensator->apply(textureId, image);
@@ -3365,11 +3468,30 @@ void ExportCloudsDialog::saveTextureMeshes(
 							removeDirRecursively(path+QDir::separator()+currentPrefix);
 							QDir(path).mkdir(currentPrefix);
 						}
+
+						// used for multi camera texturing, to avoid reloading same texture for sub cameras
+						cv::Mat previousImage;
+						int previousTextureId = 0;
+						std::vector<CameraModel> previousCameraModels;
+
 						cv::Size imageSize;
 						for(unsigned int i=0;i<mesh->tex_materials.size(); ++i)
 						{
 							if(!mesh->tex_materials[i].tex_file.empty())
 							{
+								std::list<std::string> texFileSplit = uSplit(mesh->tex_materials[i].tex_file, '_');
+								int textureId = 0;
+								int textureSubCamera = -1;
+								if(texFileSplit.size() && uIsInteger(texFileSplit.front(), false))
+								{
+									textureId = uStr2Int(texFileSplit.front());
+									if(texFileSplit.size() == 2 &&
+									   uIsInteger(texFileSplit.back(), false))
+									{
+										textureSubCamera = uStr2Int(texFileSplit.back());
+									}
+								}
+
 								// absolute path
 								QString fullPath;
 								if(singleTexture)
@@ -3381,23 +3503,46 @@ void ExportCloudsDialog::saveTextureMeshes(
 								{
 									fullPath = path+QDir::separator()+currentPrefix+QDir::separator()+QString(mesh->tex_materials[i].tex_file.c_str())+_ui->comboBox_meshingTextureFormat->currentText();
 								}
-								if(uIsInteger(mesh->tex_materials[i].tex_file, false))
+								if(textureId>0)
 								{
-									int textureId = uStr2Int(mesh->tex_materials[i].tex_file);
 									cv::Mat image;
-									if(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty())
+									std::vector<CameraModel> cameraModels;
+
+									if(textureId == previousTextureId)
 									{
-										cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+										image = previousImage;
+										cameraModels = previousCameraModels;
 									}
-									else if(_dbDriver)
+									else
 									{
-										SensorData data;
-										_dbDriver->getNodeData(textureId, data, true, false, false, false);
-										data.uncompressDataConst(&image, 0);
+										if(cachedSignatures.contains(textureId) && !cachedSignatures.value(textureId).sensorData().imageCompressed().empty())
+										{
+											cachedSignatures.value(textureId).sensorData().uncompressDataConst(&image, 0);
+											cameraModels = cachedSignatures.value(textureId).sensorData().cameraModels();
+										}
+										else if(_dbDriver)
+										{
+											SensorData data;
+											_dbDriver->getNodeData(textureId, data, true, false, false, false);
+											data.uncompressDataConst(&image, 0);
+											StereoCameraModel stereoModel;
+											_dbDriver->getCalibration(textureId, cameraModels, stereoModel);
+										}
+
+										previousImage = image;
+										previousCameraModels = cameraModels;
+										previousTextureId = textureId;
 									}
+
 
 									UASSERT(!image.empty());
 									imageSize = image.size();
+									if(textureSubCamera>=0)
+									{
+										UASSERT(cameraModels.size());
+										imageSize.width/=cameraModels.size();
+										image = image.colRange(imageSize.width*textureSubCamera, imageSize.width*(textureSubCamera+1));
+									}
 									if(_ui->checkBox_gainCompensation->isChecked() && _compensator && _compensator->getIndex(textureId) >= 0)
 									{
 										_compensator->apply(textureId, image);

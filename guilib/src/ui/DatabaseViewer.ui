@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1465</width>
+    <width>1547</width>
     <height>965</height>
    </rect>
   </property>
@@ -52,7 +52,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>353</width>
+           <width>394</width>
            <height>196</height>
           </rect>
          </property>
@@ -210,7 +210,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>353</width>
+           <width>394</width>
            <height>196</height>
           </rect>
          </property>
@@ -483,7 +483,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1465</width>
+     <width>1547</width>
      <height>25</height>
     </rect>
    </property>
@@ -1008,7 +1008,7 @@
           <x>0</x>
           <y>0</y>
           <width>339</width>
-          <height>186</height>
+          <height>210</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1144,7 +1144,7 @@
           <x>0</x>
           <y>0</y>
           <width>282</width>
-          <height>569</height>
+          <height>626</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1230,6 +1230,38 @@
             <widget class="QCheckBox" name="checkBox_octomap">
              <property name="text">
               <string/>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLabel" name="label_54">
+             <property name="text">
+              <string>Voxel size (for clouds and scans)</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize">
+             <property name="suffix">
+              <string> m</string>
+             </property>
+             <property name="decimals">
+              <number>3</number>
+             </property>
+             <property name="minimum">
+              <double>0.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>99.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.010000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -1474,8 +1506,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>205</width>
-          <height>117</height>
+          <width>295</width>
+          <height>223</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1574,8 +1606,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>184</width>
-          <height>487</height>
+          <width>282</width>
+          <height>266</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1802,6 +1834,16 @@
      </item>
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <item>
+        <widget class="QCheckBox" name="checkBox_showWords">
+         <property name="text">
+          <string>Words</string>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
        <item>
         <widget class="QCheckBox" name="checkBox_showCloud">
          <property name="text">

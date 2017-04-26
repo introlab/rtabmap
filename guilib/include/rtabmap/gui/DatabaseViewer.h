@@ -74,6 +74,7 @@ protected:
 	virtual void showEvent(QShowEvent* anEvent);
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
+	virtual void keyPressEvent(QKeyEvent *event);
 	virtual void closeEvent(QCloseEvent* event);
 	virtual bool eventFilter(QObject *obj, QEvent *event);
 
@@ -134,7 +135,6 @@ private:
 				QLabel * label,
 				QLabel * stamp,
 				rtabmap::ImageView * view,
-				rtabmap::CloudViewer * view3D,
 				QLabel * labelId,
 				QLabel * labelMapId,
 				QLabel * labelPose,
@@ -164,8 +164,7 @@ private:
 private:
 	Ui_DatabaseViewer * ui_;
 	CloudViewer * constraintsViewer_;
-	CloudViewer * cloudViewerA_;
-	CloudViewer * cloudViewerB_;
+	CloudViewer * cloudViewer_;
 	CloudViewer * stereoViewer_;
 	CloudViewer * occupancyGridViewer_;
 	QList<int> ids_;

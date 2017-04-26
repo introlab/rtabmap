@@ -118,6 +118,7 @@ protected:
 	virtual void showEvent(QShowEvent* anEvent);
 	virtual void moveEvent(QMoveEvent* anEvent);
 	virtual void resizeEvent(QResizeEvent* anEvent);
+	virtual void keyPressEvent(QKeyEvent *event);
 	virtual bool eventFilter(QObject *obj, QEvent *event);
 
 private slots:

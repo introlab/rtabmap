@@ -573,46 +573,56 @@ pcl::PolygonMesh::Ptr createMesh(
 
 pcl::texture_mapping::CameraVector createTextureCameras(
 		const std::map<int, Transform> & poses,
-		const std::map<int, CameraModel> & cameraModels,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		const std::vector<float> & roiRatios)
 {
-	UASSERT(poses.size() == cameraModels.size());
+	UASSERT_MSG(poses.size() == cameraModels.size(), uFormat("%d vs %d", (int)poses.size(), (int)cameraModels.size()).c_str());
 	UASSERT(roiRatios.empty() || roiRatios.size() == 4);
-	pcl::texture_mapping::CameraVector cameras(poses.size());
+	pcl::texture_mapping::CameraVector cameras;
 	std::map<int, Transform>::const_iterator poseIter=poses.begin();
-	std::map<int, CameraModel>::const_iterator modelIter=cameraModels.begin();
-	int oi=0;
+	std::map<int, std::vector<CameraModel> >::const_iterator modelIter=cameraModels.begin();
 	for(; poseIter!=poses.end(); ++poseIter, ++modelIter)
 	{
 		UASSERT(poseIter->first == modelIter->first);
-		pcl::TextureMapping<pcl::PointXYZ>::Camera cam;
 
-		// should be in camera frame
-		UASSERT(!modelIter->second.localTransform().isNull() && !poseIter->second.isNull());
-		Transform t = poseIter->second*modelIter->second.localTransform();
-
-		cam.pose = t.toEigen3f();
-
-		if(modelIter->second.imageHeight() <=0 || modelIter->second.imageWidth() <=0)
+		// for each sub camera
+		for(unsigned int i=0; i<modelIter->second.size(); ++i)
 		{
-			UERROR("Should have camera models with width/height set to create texture cameras!");
-			return pcl::texture_mapping::CameraVector();
-		}
+			pcl::TextureMapping<pcl::PointXYZ>::Camera cam;
+			// should be in camera frame
+			UASSERT(!modelIter->second[i].localTransform().isNull() && !poseIter->second.isNull());
+			Transform t = poseIter->second*modelIter->second[i].localTransform();
 
-		UASSERT(modelIter->second.fx()>0 && modelIter->second.imageHeight()>0 && modelIter->second.imageWidth()>0);
-		cam.focal_length=modelIter->second.fx();
-		cam.height=modelIter->second.imageHeight();
-		cam.width=modelIter->second.imageWidth();
-		cam.texture_file = uFormat("%d", poseIter->first);
-		if(!roiRatios.empty())
-		{
-			cam.roi.resize(4);
-			cam.roi[0] = cam.width * roiRatios[0]; // left -> x
-			cam.roi[1] = cam.height * roiRatios[2]; // top -> y
-			cam.roi[2] = cam.width * (1.0 - roiRatios[1]) - cam.roi[0]; // right -> width
-			cam.roi[3] = cam.height * (1.0 - roiRatios[3]) - cam.roi[1]; // bottom -> height
+			cam.pose = t.toEigen3f();
+
+			if(modelIter->second[i].imageHeight() <=0 || modelIter->second[i].imageWidth() <=0)
+			{
+				UERROR("Should have camera models with width/height set to create texture cameras!");
+				return pcl::texture_mapping::CameraVector();
+			}
+
+			UASSERT(modelIter->second[i].fx()>0 && modelIter->second[i].imageHeight()>0 && modelIter->second[i].imageWidth()>0);
+			cam.focal_length=modelIter->second[i].fx();
+			cam.height=modelIter->second[i].imageHeight();
+			cam.width=modelIter->second[i].imageWidth();
+			if(modelIter->second.size() == 1)
+			{
+				cam.texture_file = uFormat("%d", poseIter->first); // camera index
+			}
+			else
+			{
+				cam.texture_file = uFormat("%d_%d", poseIter->first, (int)i); // camera index, sub camera model index
+			}
+			if(!roiRatios.empty())
+			{
+				cam.roi.resize(4);
+				cam.roi[0] = cam.width * roiRatios[0]; // left -> x
+				cam.roi[1] = cam.height * roiRatios[2]; // top -> y
+				cam.roi[2] = cam.width * (1.0 - roiRatios[1]) - cam.roi[0]; // right -> width
+				cam.roi[3] = cam.height * (1.0 - roiRatios[3]) - cam.roi[1]; // bottom -> height
+			}
+			cameras.push_back(cam);
 		}
-		cameras[oi++] = cam;
 	}
 	return cameras;
 }
@@ -621,6 +631,35 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
+		float maxDistance,
+		int minClusterSize,
+		const std::vector<float> & roiRatios,
+		const ProgressState * state,
+		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
+{
+	std::map<int, std::vector<CameraModel> > cameraSubModels;
+	for(std::map<int, CameraModel>::const_iterator iter=cameraModels.begin(); iter!=cameraModels.end(); ++iter)
+	{
+		std::vector<CameraModel> models;
+		models.push_back(iter->second);
+		cameraSubModels.insert(std::make_pair(iter->first, models));
+	}
+
+	return createTextureMesh(
+			mesh,
+			poses,
+			cameraSubModels,
+			maxDistance,
+			minClusterSize,
+			roiRatios,
+			state,
+			vertexToPixels);
+}
+
+pcl::TextureMesh::Ptr createTextureMesh(
+		const pcl::PolygonMesh::Ptr & mesh,
+		const std::map<int, Transform> & poses,
+		const std::map<int, std::vector<CameraModel> > & cameraModels,
 		float maxDistance,
 		int minClusterSize,
 		const std::vector<float> & roiRatios,

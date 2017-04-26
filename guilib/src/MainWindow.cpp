@@ -3940,6 +3940,15 @@ void MainWindow::resizeEvent(QResizeEvent* anEvent)
 	}
 }
 
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+	//catch ctrl-s to save settings
+	if((event->modifiers() & Qt::ControlModifier) && event->key() == Qt::Key_S)
+	{
+		this->saveConfigGUI();
+	}
+}
+
 bool MainWindow::eventFilter(QObject *obj, QEvent *event)
 {
 	if (event->type() == QEvent::Resize && qobject_cast<QDockWidget*>(obj))
