@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UStl.h>
 #include <opencv2/opencv_modules.hpp>
 
 namespace rtabmap {
@@ -346,19 +347,47 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout,
 		const double & value)
 {
 	QDoubleSpinBox * widget = new QDoubleSpinBox(this);
+	int decimals = 0;
+	int decimalValue = 0;
+
+	QString str = Parameters::getDefaultParameters().at(key.toStdString()).c_str();
+	if(!str.isEmpty())
+	{
+		str.replace(',', '.');
+		QStringList items = str.split('.');
+		if(items.size() == 2)
+		{
+			decimals = items.back().length();
+			decimalValue = items.back().toInt();
+		}
+	}
+
 	double def = uStr2Double(Parameters::getDefaultParameters().at(key.toStdString()));
-	if(def<0.001)
+	if(def<0.001 || (decimals >= 4 && decimalValue>0))
 	{
 		widget->setDecimals(5);
+		widget->setSingleStep(0.0001);
 	}
-	else if(def<0.01)
+	else if(def<0.01 || (decimals >= 3 && decimalValue>0))
 	{
 		widget->setDecimals(4);
+		widget->setSingleStep(0.001);
 	}
-	else if(def<0.1)
+	else if(def<0.1 || (decimals >= 2 && decimalValue>0))
 	{
 		widget->setDecimals(3);
+		widget->setSingleStep(0.01);
 	}
+	else if(def<1.0 || (decimals >= 1 && decimalValue>0))
+	{
+		widget->setDecimals(2);
+		widget->setSingleStep(0.1);
+	}
+	else
+	{
+		widget->setDecimals(1);
+	}
+
 
 	if(def>0.0)
 	{
