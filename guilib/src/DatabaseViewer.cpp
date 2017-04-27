@@ -331,6 +331,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
 	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(updateStatistics()));
 	// Graph view
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -455,6 +457,7 @@ void DatabaseViewer::readSettings()
 	ui_->comboBox_logger_level->setCurrentIndex(settings.value("loggerLevel", ui_->comboBox_logger_level->currentIndex()).toInt());
 	ui_->actionVertical_Layout->setChecked(settings.value("verticalLayout", ui_->actionVertical_Layout->isChecked()).toBool());
 	ui_->checkBox_alignPosesWithGroundTruth->setChecked(settings.value("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked()).toBool());
+	ui_->checkBox_timeStats->setChecked(settings.value("timeStats", ui_->checkBox_timeStats->isChecked()).toBool());
 
 	// GraphViewer settings
 	ui_->graphViewer->loadSettings(settings, "GraphView");
@@ -544,6 +547,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("loggerLevel", ui_->comboBox_logger_level->currentIndex());
 	settings.setValue("verticalLayout", ui_->actionVertical_Layout->isChecked());
 	settings.setValue("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked());
+	settings.setValue("timeStats", ui_->checkBox_timeStats->isChecked());
 
 	// save GraphViewer settings
 	ui_->graphViewer->saveSettings(settings, "GraphView");
@@ -630,6 +634,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	// reset GUI parameters
 	ui_->comboBox_logger_level->setCurrentIndex(1);
 	ui_->checkBox_alignPosesWithGroundTruth->setChecked(true);
+	ui_->checkBox_timeStats->setChecked(true);
 
 	ui_->checkBox_spanAllMaps->setChecked(true);
 	ui_->checkBox_ignorePoseCorrection->setChecked(false);
@@ -707,6 +712,8 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			ui_->checkBox_showOptimized->setEnabled(false);
 			ui_->toolBox_statistics->clear();
 			databaseFileName_.clear();
+			ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+			ui_->label_alignPosesWithGroundTruth->setVisible(false);
 		}
 
 		std::string driverType = "sqlite3";
@@ -1283,6 +1290,8 @@ void DatabaseViewer::updateIds()
 	mapIds_.clear();
 	poses_.clear();
 	groundTruthPoses_.clear();
+	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+	ui_->label_alignPosesWithGroundTruth->setVisible(false);
 	links_.clear();
 	linksAdded_.clear();
 	linksRefined_.clear();
@@ -1382,6 +1391,12 @@ void DatabaseViewer::updateIds()
 			}
 		}
 	}
+	if(!groundTruthPoses_.empty())
+	{
+		ui_->checkBox_alignPosesWithGroundTruth->setVisible(true);
+		ui_->label_alignPosesWithGroundTruth->setVisible(true);
+	}
+
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)poses_.size(), (int)links_.size());
 
 	if(ids_.size() && ui_->toolBox_statistics->isVisible())
@@ -1547,7 +1562,7 @@ void DatabaseViewer::updateStatistics()
 			}
 			for(std::map<std::string, float>::iterator iter=statistics.begin(); iter!=statistics.end(); ++iter)
 			{
-				ui_->toolBox_statistics->updateStat(iter->first.c_str(), float(stamp-firstStamp), iter->second, true);
+				ui_->toolBox_statistics->updateStat(iter->first.c_str(), ui_->checkBox_timeStats->isChecked()?float(stamp-firstStamp):ids_[i], iter->second, true);
 			}
 		}
 	}
@@ -2315,9 +2330,12 @@ void DatabaseViewer::refineAllNeighborLinks()
 {
 	if(neighborLinks_.size())
 	{
-		rtabmap::ProgressDialog progressDialog(this);
-		progressDialog.setMaximumSteps(neighborLinks_.size());
-		progressDialog.show();
+		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+		progressDialog->setMaximumSteps(neighborLinks_.size());
+		progressDialog->setCancelButtonVisible(true);
+		progressDialog->setMinimumWidth(800);
+		progressDialog->show();
 
 		for(int i=0; i<neighborLinks_.size(); ++i)
 		{
@@ -2325,14 +2343,18 @@ void DatabaseViewer::refineAllNeighborLinks()
 			int to = neighborLinks_[i].to();
 			this->refineConstraint(neighborLinks_[i].from(), neighborLinks_[i].to(), true);
 
-			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
-			progressDialog.incrementStep();
+			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(neighborLinks_.size()));
+			progressDialog->incrementStep();
 			QApplication::processEvents();
+			if(progressDialog->isCanceled())
+			{
+				break;
+			}
 		}
 		this->updateGraphView();
 
-		progressDialog.setValue(progressDialog.maximumSteps());
-		progressDialog.appendText("Refining links finished!");
+		progressDialog->setValue(progressDialog->maximumSteps());
+		progressDialog->appendText("Refining links finished!");
 	}
 }
 
@@ -2340,9 +2362,12 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 {
 	if(loopLinks_.size())
 	{
-		rtabmap::ProgressDialog progressDialog(this);
-		progressDialog.setMaximumSteps(loopLinks_.size());
-		progressDialog.show();
+		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+		progressDialog->setMaximumSteps(neighborLinks_.size());
+		progressDialog->setCancelButtonVisible(true);
+		progressDialog->setMinimumWidth(800);
+		progressDialog->show();
 
 		for(int i=0; i<loopLinks_.size(); ++i)
 		{
@@ -2350,14 +2375,18 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 			int to = loopLinks_[i].to();
 			this->refineConstraint(loopLinks_[i].from(), loopLinks_[i].to(), true);
 
-			progressDialog.appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
-			progressDialog.incrementStep();
+			progressDialog->appendText(tr("Refined link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(loopLinks_.size()));
+			progressDialog->incrementStep();
 			QApplication::processEvents();
+			if(progressDialog->isCanceled())
+			{
+				break;
+			}
 		}
 		this->updateGraphView();
 
-		progressDialog.setValue(progressDialog.maximumSteps());
-		progressDialog.appendText("Refining links finished!");
+		progressDialog->setValue(progressDialog->maximumSteps());
+		progressDialog->appendText("Refining links finished!");
 	}
 }
 

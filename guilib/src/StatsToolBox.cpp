@@ -154,8 +154,10 @@ void StatItem::setupUi(QGridLayout * grid)
 	_button->setPopupMode(QToolButton::InstantPopup);
 	_button->setMenu(_menu);
 	_name = new QLabel(this);
+	_name->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	_name->setWordWrap(true);
 	_value = new QLabel(this);
+	_value->setTextInteractionFlags(Qt::TextSelectableByMouse);
 	_unit = new QLabel(this);
 
 	if(grid)

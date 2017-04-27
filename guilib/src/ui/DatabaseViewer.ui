@@ -52,7 +52,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>394</width>
+           <width>381</width>
            <height>196</height>
           </rect>
          </property>
@@ -210,7 +210,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>394</width>
+           <width>381</width>
            <height>196</height>
           </rect>
          </property>
@@ -916,6 +916,26 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_alignPosesWithGroundTruth">
+         <property name="text">
+          <string>Align poses with ground truth</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QCheckBox" name="checkBox_alignPosesWithGroundTruth">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
     </layout>
@@ -936,19 +956,12 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_10">
+     <property name="margin">
+      <number>0</number>
+     </property>
      <item>
-      <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,0,1">
-       <item row="0" column="2">
-        <widget class="QLabel" name="label_logger_level">
-         <property name="text">
-          <string>Logger level</string>
-         </property>
-         <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
+      <layout class="QGridLayout" name="gridLayout_4" columnstretch="0,1">
+       <item row="0" column="0">
         <widget class="QComboBox" name="comboBox_logger_level">
          <property name="currentIndex">
           <number>1</number>
@@ -975,22 +988,12 @@
          </item>
         </widget>
        </item>
-       <item row="1" column="2">
-        <widget class="QLabel" name="label_logger_level_2">
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_logger_level">
          <property name="text">
-          <string>Align poses with ground truth</string>
+          <string>Logger level</string>
          </property>
          <property name="wordWrap">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QCheckBox" name="checkBox_alignPosesWithGroundTruth">
-         <property name="text">
-          <string/>
-         </property>
-         <property name="checked">
           <bool>true</bool>
          </property>
         </widget>
@@ -1000,7 +1003,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1008,7 +1011,7 @@
           <x>0</x>
           <y>0</y>
           <width>339</width>
-          <height>210</height>
+          <height>186</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1143,8 +1146,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>282</width>
-          <height>626</height>
+          <width>326</width>
+          <height>609</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1506,8 +1509,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>295</width>
-          <height>223</height>
+          <width>339</width>
+          <height>173</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1606,8 +1609,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>282</width>
-          <height>266</height>
+          <width>326</width>
+          <height>249</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1974,6 +1977,30 @@
      <property name="margin">
       <number>0</number>
      </property>
+     <item>
+      <layout class="QGridLayout" name="gridLayout_8" columnstretch="0,1">
+       <item row="0" column="0">
+        <widget class="QCheckBox" name="checkBox_timeStats">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_logger_level_3">
+         <property name="text">
+          <string>Time (s) used in figures for x-axis instead of node IDs.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
      <item>
       <widget class="rtabmap::StatsToolBox" name="toolBox_statistics" native="true"/>
      </item>
