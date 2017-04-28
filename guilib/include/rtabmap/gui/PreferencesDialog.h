@@ -131,7 +131,7 @@ public:
 
 	rtabmap::ParametersMap getAllParameters() const;
 	std::string getParameter(const std::string & key) const;
-	void updateParameters(const ParametersMap & parameters);
+	void updateParameters(const ParametersMap & parameters, bool setOtherParametersToDefault = false);
 
 	//General panel
 	int getGeneralLoggerLevel() const;

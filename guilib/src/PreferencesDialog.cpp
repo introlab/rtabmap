@@ -2889,13 +2889,26 @@ std::string PreferencesDialog::getParameter(const std::string & key) const
 	return _parameters.at(key);
 }
 
-void PreferencesDialog::updateParameters(const ParametersMap & parameters)
+void PreferencesDialog::updateParameters(const ParametersMap & parameters, bool setOtherParametersToDefault)
 {
 	if(parameters.size())
 	{
 		for(rtabmap::ParametersMap::const_iterator iter = parameters.begin(); iter!=parameters.end(); ++iter)
 		{
 			this->setParameter(iter->first, iter->second);
+		}
+		if(setOtherParametersToDefault)
+		{
+			for(ParametersMap::const_iterator iter=Parameters::getDefaultParameters().begin();
+				iter!=Parameters::getDefaultParameters().end();
+				++iter)
+			{
+				if(parameters.find(iter->first) == parameters.end() &&
+					iter->first.compare(Parameters::kRtabmapWorkingDirectory())!=0)
+				{
+					this->setParameter(iter->first, iter->second);
+				}
+			}
 		}
 		if(!this->isVisible())
 		{

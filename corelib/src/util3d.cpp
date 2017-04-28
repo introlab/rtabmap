@@ -595,9 +595,25 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDisparity(
 		std::vector<int> * validIndices)
 {
 	UASSERT(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1);
-	UASSERT(imageDisparity.rows % decimation == 0);
-	UASSERT(imageDisparity.cols % decimation == 0);
 	UASSERT(decimation >= 1);
+
+	if(imageDisparity.rows % decimation != 0 || imageDisparity.cols % decimation != 0)
+	{
+		int oldDecimation = decimation;
+		while(decimation >= 1)
+		{
+			if(imageDisparity.rows % decimation == 0 && imageDisparity.cols % decimation == 0)
+			{
+				break;
+			}
+			--decimation;
+		}
+
+		if(imageDisparity.rows % oldDecimation != 0 || imageDisparity.cols % oldDecimation != 0)
+		{
+			UWARN("Decimation (%d) is not valid for current image size (depth=%dx%d). Highest compatible decimation used=%d.", oldDecimation, imageDisparity.cols, imageDisparity.rows, decimation);
+		}
+	}
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
@@ -686,7 +702,24 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudFromDisparityRGB(
 			(imageDisparity.type() == CV_32FC1 || imageDisparity.type()==CV_16SC1));
 	UASSERT(imageRgb.channels() == 3 || imageRgb.channels() == 1);
 	UASSERT(decimation >= 1);
-	UASSERT(imageDisparity.rows % decimation == 0 && imageDisparity.cols % decimation == 0);
+
+	if(imageDisparity.rows % decimation != 0 || imageDisparity.cols % decimation != 0)
+	{
+		int oldDecimation = decimation;
+		while(decimation >= 1)
+		{
+			if(imageDisparity.rows % decimation == 0 && imageDisparity.cols % decimation == 0)
+			{
+				break;
+			}
+			--decimation;
+		}
+
+		if(imageDisparity.rows % oldDecimation != 0 || imageDisparity.cols % oldDecimation != 0)
+		{
+			UWARN("Decimation (%d) is not valid for current image size (depth=%dx%d). Highest compatible decimation used=%d.", oldDecimation, imageDisparity.cols, imageDisparity.rows, decimation);
+		}
+	}
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 

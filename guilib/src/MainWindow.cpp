@@ -4081,7 +4081,13 @@ void MainWindow::updateParameters(const ParametersMap & parameters)
 			_ui->widget_console->appendMsg(msg);
 			UWARN(msg.toStdString().c_str());
 		}
-		_preferencesDialog->updateParameters(parameters);
+		QMessageBox::StandardButton button = QMessageBox::question(this,
+				tr("Parameters"),
+				tr("Some parameters have been set on command line, do you "
+					"want to set all other RTAB-Map's parameters to default?"),
+					QMessageBox::Yes | QMessageBox::No,
+					QMessageBox::No);
+		_preferencesDialog->updateParameters(parameters, button==QMessageBox::Yes);
 	}
 }
 
