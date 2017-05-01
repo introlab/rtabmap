@@ -2826,7 +2826,7 @@ cv::Mat ExportCloudsDialog::mergeTextures(
 					}
 				}
 			}
-			else
+			else if(mesh.tex_polygons[i].size())
 			{
 				UWARN("Failed parsing texture file name: %s", mesh.tex_materials[i].tex_file.c_str());
 			}
