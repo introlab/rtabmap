@@ -115,11 +115,21 @@ public:
 	void setWords3(const std::multimap<int, cv::Point3f> & words3) {_words3 = words3;}
 	void setPose(const Transform & pose) {_pose = pose;}
 	void setGroundTruthPose(const Transform & pose) {_groundTruthPose = pose;}
+	void setVelocity(float vx, float vy, float vz, float vroll, float vpitch, float vyaw) {
+		_velocity = std::vector<float>(6,0);
+		_velocity[0]=vx;
+		_velocity[1]=vy;
+		_velocity[2]=vz;
+		_velocity[3]=vroll;
+		_velocity[4]=vpitch;
+		_velocity[5]=vyaw;
+	}
 
 	const std::multimap<int, cv::Point3f> & getWords3() const {return _words3;}
 	const Transform & getPose() const {return _pose;}
 	cv::Mat getPoseCovariance() const;
 	const Transform & getGroundTruthPose() const {return _groundTruthPose;}
+	const std::vector<float> & getVelocity() const {return _velocity;}
 
 	SensorData & sensorData() {return _sensorData;}
 	const SensorData & sensorData() const {return _sensorData;}
@@ -147,6 +157,7 @@ private:
 
 	Transform _pose;
 	Transform _groundTruthPose;
+	std::vector<float> _velocity;
 
 	SensorData _sensorData;
 };

@@ -197,6 +197,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Mem, MapLabelsAdded, 		    bool, true, 	"Create map labels. The first node of a map will be labelled as \"map#\" where # is the map ID.");
 	RTABMAP_PARAM(Mem, SaveDepth16Format, 		bool, false, 	"Save depth image into 16 bits format to reduce memory used. Warning: values over ~65 meters are ignored (maximum 65535 millimeters).");
 	RTABMAP_PARAM(Mem, NotLinkedNodesKept, 	    bool, true, 	"Keep not linked nodes in db (rehearsed nodes and deleted nodes).");
+	RTABMAP_PARAM(Mem, IntermediateNodeDataKept, bool, false, 	"Keep intermediate node data in db.");
 	RTABMAP_PARAM(Mem, STMSize, 		        unsigned int, 10, "Short-term memory size.");
 	RTABMAP_PARAM(Mem, IncrementalMemory,       bool, true, 	"SLAM mode, otherwise it is Localization mode.");
 	RTABMAP_PARAM(Mem, ReduceGraph,             bool, false, 	"Reduce graph. Merge nodes when loop closures are added (ignoring those with user data set).");

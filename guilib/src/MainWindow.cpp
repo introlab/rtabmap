@@ -811,10 +811,12 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 			emit cameraInfoReceived(cameraEvent->info());
 			if (_odomThread == 0 && _camera->camera()->odomProvided() && _preferencesDialog->isRGBDMode())
 			{
+				OdometryInfo odomInfo;
+				odomInfo.covariance = cameraEvent->info().odomCovariance;
 				if (!_processingOdometry && !_processingStatistics)
 				{
 					_processingOdometry = true; // if we receive too many odometry events!
-					OdometryEvent tmp(cameraEvent->data(), cameraEvent->info().odomPose, cameraEvent->info().odomCovariance);
+					OdometryEvent tmp(cameraEvent->data(), cameraEvent->info().odomPose, odomInfo);
 					emit odometryReceived(tmp, false);
 				}
 				else
@@ -824,7 +826,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 					data.setCameraModels(cameraEvent->data().cameraModels());
 					data.setStereoCameraModel(cameraEvent->data().stereoCameraModel());
 					data.setGroundTruth(cameraEvent->data().groundTruth());
-					OdometryEvent tmp(data, cameraEvent->info().odomPose, cameraEvent->info().odomCovariance);
+					OdometryEvent tmp(data, cameraEvent->info().odomPose, odomInfo);
 					emit odometryReceived(tmp, true);
 				}
 			}
@@ -845,7 +847,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 			data.setCameraModels(odomEvent->data().cameraModels());
 			data.setStereoCameraModel(odomEvent->data().stereoCameraModel());
 			data.setGroundTruth(odomEvent->data().groundTruth());
-			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->covariance(), odomEvent->info().copyWithoutData());
+			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->info().copyWithoutData());
 			emit odometryReceived(tmp, true);
 		}
 	}
@@ -1302,10 +1304,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().matches, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().varianceLin), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().varianceLin, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().varianceAng), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().varianceAng, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/Features/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().features, _preferencesDialog->isCacheSavedInFigures());
@@ -5068,10 +5070,11 @@ void MainWindow::postProcessing()
 									if(!transform.isIdentity())
 									{
 										// normalize variance
-										info.varianceLin *= transform.getNorm();
-										info.varianceAng *= transform.getAngle();
-										info.varianceLin = info.varianceLin>0.0f?info.varianceLin:0.0001f; // epsilon if exact transform
-										info.varianceAng = info.varianceAng>0.0f?info.varianceAng:0.0001f; // epsilon if exact transform
+										info.covariance *= transform.getNorm();
+										if(info.covariance.at<double>(0,0)<=0.0)
+										{
+											info.covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
+										}
 									}
 
 									//optimize the graph to see if the new constraint is globally valid
@@ -5090,7 +5093,7 @@ void MainWindow::postProcessing()
 											}
 										}
 										std::multimap<int, Link> linksIn = _currentLinksMap;
-										linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
+										linksIn.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.covariance.inv())));
 										const Link * maxLinearLink = 0;
 										const Link * maxAngularLink = 0;
 										float maxLinearError = 0.0f;
@@ -5186,7 +5189,7 @@ void MainWindow::postProcessing()
 										addedLinks.insert(from);
 										addedLinks.insert(to);
 
-										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.varianceAng, info.varianceLin)));
+										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.covariance.inv())));
 										++loopClosuresAdded;
 										_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 										QApplication::processEvents();
@@ -5282,7 +5285,7 @@ void MainWindow::postProcessing()
 
 						if(!transform.isNull())
 						{
-							Link newLink(from, to, iter->second.type(), transform, info.varianceAng, info.varianceLin);
+							Link newLink(from, to, iter->second.type(), transform, info.covariance.inv());
 							iter->second = newLink;
 						}
 						else

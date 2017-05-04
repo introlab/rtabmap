@@ -267,7 +267,8 @@ SensorData DBReader::captureImage(CameraInfo * info)
 						double stamp;
 						int mapId;
 						Transform localTransform, pose, groundTruth;
-						_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth);
+						std::vector<float> velocity;
+						_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth, velocity);
 						if(previousStamp && stamp && stamp > previousStamp)
 						{
 							delay = stamp - previousStamp;
@@ -320,7 +321,8 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			std::string label;
 			double stamp;
 			Transform groundTruth;
-			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth);
+			std::vector<float> velocity;
+			_dbDriver->getNodeInfo(*_currentId, pose, mapId, weight, label, stamp, groundTruth, velocity);
 
 			cv::Mat infMatrix = cv::Mat::eye(6,6,CV_64FC1);
 			if(!_odometryIgnored)

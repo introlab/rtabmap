@@ -18,8 +18,9 @@ CREATE TABLE Node (
 	map_id INTEGER NOT NULL,
 	weight INTEGER,
 	stamp FLOAT,
-	pose BLOB,
-	ground_truth_pose BLOB,
+	pose BLOB,                -- 3x4 float
+	ground_truth_pose BLOB,   -- 3x4 float
+	velocity BLOB,            -- 6 float (vx,vy,vz,vroll,vpitch,vyaw) m/s and rad/s
 	label TEXT,
 	
 	time_enter DATE,
@@ -51,9 +52,8 @@ CREATE TABLE Link (
 	from_id INTEGER NOT NULL,
 	to_id INTEGER NOT NULL,
 	type INTEGER NOT NULL,    -- neighbor=0, loop=1, child=2
-	rot_variance FLOAT NOT NULL,
-	trans_variance FLOAT NOT NULL,
-	transform BLOB,
+	information_matrix BLOB NOT NULL, -- 6x6 double (inverse covariance)
+	transform BLOB,           -- 3x4 float
 	user_data BLOB,           -- compressed data (User data)
 	FOREIGN KEY (from_id) REFERENCES Node(id),
 	FOREIGN KEY (to_id) REFERENCES Node(id)
@@ -68,7 +68,7 @@ CREATE TABLE Word (
 	PRIMARY KEY (id)
 );
 
-CREATE TABLE Map_Node_Word (
+CREATE TABLE Feature (
 	node_id INTEGER NOT NULL,
 	word_id INTEGER NOT NULL,
 	pos_x FLOAT NOT NULL,
@@ -111,10 +111,10 @@ CREATE TABLE Admin (
 -- *******************************************************************
 -- TRIGGERS
 -- *******************************************************************
-CREATE TRIGGER insert_Map_Node_Word BEFORE INSERT ON Map_Node_Word 
+CREATE TRIGGER insert_Feature BEFORE INSERT ON Feature 
 WHEN NOT EXISTS (SELECT Node.id FROM Node WHERE Node.id = NEW.node_id)
 BEGIN
- SELECT RAISE(ABORT, 'Foreign key constraint failed in Map_Node_Word table');
+ SELECT RAISE(ABORT, 'Foreign key constraint failed in Feature table');
 END;
 
  --   Creating a trigger for time_enter
@@ -137,7 +137,7 @@ END;
 -- INDEXES
 -- *******************************************************************
 CREATE UNIQUE INDEX IDX_Node_id on Node (id);
-CREATE INDEX IDX_Map_Node_Word_node_id on Map_Node_Word (node_id);
+CREATE INDEX IDX_Feature_node_id on Feature (node_id);
 CREATE INDEX IDX_Link_from_id on Link (from_id);
 CREATE UNIQUE INDEX IDX_node_label on Node (label);
 CREATE UNIQUE INDEX IDX_Statistics_id on Statistics (id);

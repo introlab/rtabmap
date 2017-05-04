@@ -125,8 +125,7 @@ private:
 	Rtabmap * _rtabmap;
 	bool _paused;
 	Transform lastPose_;
-	double _rotVariance;
-	double _transVariance;
+	cv::Mat covariance_;
 
 	cv::Mat _userData;
 	UMutex _userDataMutex;

@@ -75,6 +75,7 @@ public:
 	bool update(const SensorData & data,
 			const Transform & pose,
 			const cv::Mat & covariance,
+			const std::vector<float> & velocity = std::vector<float>(), // vx,vy,vz,vroll,vpitch,vyaw
 			Statistics * stats = 0);
 	bool init(const std::string & dbUrl,
 			bool dbOverwritten = false,
@@ -153,6 +154,7 @@ public:
 			std::string & label,
 			double & stamp,
 			Transform & groundTruth,
+			std::vector<float> & velocity,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
 	SensorData getNodeData(int nodeId, bool uncompressedData = false) const;
@@ -244,6 +246,7 @@ private:
 	bool _rawDescriptorsKept;
 	bool _saveDepth16Format;
 	bool _notLinkedNodesKeptInDb;
+	bool _saveIntermediateNodeData;
 	bool _incrementalMemory;
 	bool _reduceGraph;
 	int _maxStMemSize;

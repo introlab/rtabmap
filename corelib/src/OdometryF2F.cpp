@@ -168,8 +168,7 @@ Transform OdometryF2F::computeTransform(
 		//return Identity
 		output = Transform::getIdentity();
 		// a very high variance tells that the new pose is not linked with the previous one
-		regInfo.varianceLin = 9999;
-		regInfo.varianceAng = 9999;
+		regInfo.covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0;
 	}
 
 	if(!output.isNull())
@@ -245,8 +244,7 @@ Transform OdometryF2F::computeTransform(
 	if(info)
 	{
 		info->type = 1;
-		info->varianceLin = regInfo.varianceLin;
-		info->varianceAng = regInfo.varianceAng;
+		info->covariance = regInfo.covariance;
 		info->inliers = regInfo.inliers;
 		info->icpInliersRatio = regInfo.icpInliersRatio;
 		info->matches = regInfo.matches;

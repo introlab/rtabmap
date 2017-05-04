@@ -31,6 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/OdometryInfo.h"
+#include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/Memory.h"
 #include "rtabmap/core/util3d_registration.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UDirectory.h"
@@ -53,6 +55,7 @@ void showUsage()
 			"  --output           Output directory. By default, results are saved in \"path\".\n"
 			"  --gt \"path\"        Ground truth path (e.g., ~/KITTI/devkit/cpp/data/odometry/poses/07.txt)\n"
 			"  --color            Use color images for stereo (image_2 and image_3 folders).\n"
+			"  --disp             Generate full disparity.\n"
 			"  --scan             Include velodyne scan in node's data.\n"
 			"  --scan_step #      Scan downsample step (default=10).\n"
 			"  --scan_voxel #.#   Scan voxel size (default 0.3 m).\n"
@@ -97,6 +100,7 @@ int main(int argc, char * argv[])
 	int mapUpdate = 10;
 	bool color = false;
 	bool scan = false;
+	bool disp = false;
 	int scanStep = 10;
 	float scanVoxel = 0.3f;
 	int scanNormalK = 20;
@@ -159,7 +163,11 @@ int main(int argc, char * argv[])
 			}
 			else if(std::strcmp(argv[i], "--scan") == 0)
 			{
-				color = true;
+				scan = true;
+			}
+			else if(std::strcmp(argv[i], "--disp") == 0)
+			{
+				disp = true;
 			}
 		}
 		parameters = Parameters::parseArguments(argc, argv);
@@ -173,6 +181,7 @@ int main(int argc, char * argv[])
 		else
 		{
 			output = uReplaceChar(output, '~', UDirectory::homeDir());
+			UDirectory::makeDir(output);
 		}
 	}
 
@@ -213,6 +222,10 @@ int main(int argc, char * argv[])
 			UERROR("Ground truth file path is not valid: \"%s\"", gtPath.c_str());
 			return -1;
 		}
+	}
+	if(disp)
+	{
+		printf("   Disparity:         %s\n", disp?"true":"false");
 	}
 	if(scan)
 	{
@@ -291,6 +304,10 @@ int main(int argc, char * argv[])
 				0.0f,
 				opticalRotation), parameters);
 	((CameraStereoImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
+	if(disp)
+	{
+		cameraThread.setStereoToDepth(true);
+	}
 	if(!gtPath.empty())
 	{
 		((CameraStereoImages*)cameraThread.camera())->setGroundTruthPath(gtPath, 2);
@@ -327,6 +344,7 @@ int main(int argc, char * argv[])
 		/////////////////////////////
 		// Processing dataset begin
 		/////////////////////////////
+		cv::Mat covariance;
 		while(data.isValid() && g_forever)
 		{
 			std::map<std::string, float> externalStats;
@@ -347,8 +365,10 @@ int main(int argc, char * argv[])
 			Transform pose = odom.process(data, &odomInfo);
 			externalStats.insert(std::make_pair("Odometry/LocalBundle/ms", odomInfo.localBundleTime*1000.0f));
 			externalStats.insert(std::make_pair("Odometry/TotalTime/ms", odomInfo.timeEstimation*1000.0f));
-			float speed = odomInfo.transform.x()/odomInfo.interval*3.6;
-			externalStats.insert(std::make_pair("Odometry/Speed/ms", speed));
+			float speed = 0.0f;
+			if(odomInfo.interval>0.0)
+				speed = odomInfo.transform.x()/odomInfo.interval*3.6;
+			externalStats.insert(std::make_pair("Odometry/Speed/kph", speed));
 			externalStats.insert(std::make_pair("Odometry/Inliers/ms", odomInfo.inliers));
 			externalStats.insert(std::make_pair("Odometry/Features/ms", odomInfo.features));
 
@@ -360,11 +380,21 @@ int main(int argc, char * argv[])
 				data.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());// remove features
 				processData = intermediateNodes;
 			}
+			if(covariance.empty())
+			{
+				covariance = odomInfo.covariance;
+			}
+			else
+			{
+				covariance = (covariance.inv() + odomInfo.covariance.inv()).inv();
+			}
 
 			timer.restart();
 			if(processData)
 			{
-				rtabmap.process(data, pose, odomInfo.varianceLin, odomInfo.varianceAng, externalStats);
+				OdometryEvent e(SensorData(), Transform(), odomInfo);
+				rtabmap.process(data, pose, covariance, e.velocity(), externalStats);
+				covariance = cv::Mat();
 			}
 			double slamTime = timer.ticks();
 
@@ -400,161 +430,157 @@ int main(int argc, char * argv[])
 		{
 			// Log ground truth statistics (in TUM's RGBD-SLAM format)
 			std::map<int, Transform> groundTruth;
-			graph::importPoses(gtPath, 2, groundTruth);
-			if(poses.size() == groundTruth.size())
+
+			//align with ground truth for more meaningful results
+			pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
+			cloud1.resize(poses.size());
+			cloud2.resize(poses.size());
+			int oi = 0;
+			int idFirst = 0;
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
-				//align with ground truth for more meaningful results
-				pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
-				cloud1.resize(poses.size());
-				cloud2.resize(poses.size());
-				int oi = 0;
-				int idFirst = 0;
-				for(std::map<int, Transform>::const_iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
+				Transform o, gtPose;
+				int m,w;
+				std::string l;
+				double s;
+				std::vector<float> v;
+				rtabmap.getMemory()->getNodeInfo(iter->first, o, m, w, l, s, gtPose, v, true);
+				if(!gtPose.isNull())
 				{
-					std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
-					if(iter2!=poses.end())
+					groundTruth.insert(std::make_pair(iter->first, gtPose));
+					if(oi==0)
 					{
-						if(oi==0)
-						{
-							idFirst = iter->first;
-						}
-						cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-						cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
+						idFirst = iter->first;
 					}
-				}
-
-				Transform t = Transform::getIdentity();
-				if(oi>5)
-				{
-					cloud1.resize(oi);
-					cloud2.resize(oi);
-
-					t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
-				}
-				else if(idFirst)
-				{
-					t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
-				}
-				if(!t.isIdentity())
-				{
-					for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-					{
-						iter->second = t * iter->second;
-					}
-				}
-
-				std::vector<float> translationalErrors(poses.size());
-				std::vector<float> rotationalErrors(poses.size());
-				float sumTranslationalErrors = 0.0f;
-				float sumRotationalErrors = 0.0f;
-				float sumSqrdTranslationalErrors = 0.0f;
-				float sumSqrdRotationalErrors = 0.0f;
-				float radToDegree = 180.0f / M_PI;
-				float translational_min = 0.0f;
-				float translational_max = 0.0f;
-				float rotational_min = 0.0f;
-				float rotational_max = 0.0f;
-				oi=0;
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					std::map<int, Transform>::const_iterator jter = groundTruth.find(iter->first);
-					if(jter!=groundTruth.end())
-					{
-						Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-						Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-						double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-						rotationalErrors[oi] = a*radToDegree;
-						translationalErrors[oi] = iter->second.getDistance(jter->second);
-
-						sumTranslationalErrors+=translationalErrors[oi];
-						sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
-						sumRotationalErrors+=rotationalErrors[oi];
-						sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
-
-						if(oi == 0)
-						{
-							translational_min = translational_max = translationalErrors[oi];
-							rotational_min = rotational_max = rotationalErrors[oi];
-						}
-						else
-						{
-							if(translationalErrors[oi] < translational_min)
-							{
-								translational_min = translationalErrors[oi];
-							}
-							else if(translationalErrors[oi] > translational_max)
-							{
-								translational_max = translationalErrors[oi];
-							}
-
-							if(rotationalErrors[oi] < rotational_min)
-							{
-								rotational_min = rotationalErrors[oi];
-							}
-							else if(rotationalErrors[oi] > rotational_max)
-							{
-								rotational_max = rotationalErrors[oi];
-							}
-						}
-
-						++oi;
-					}
-				}
-				translationalErrors.resize(oi);
-				rotationalErrors.resize(oi);
-				if(oi)
-				{
-					float total = float(oi);
-					float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
-					float translational_mean = sumTranslationalErrors/total;
-					float translational_median = translationalErrors[oi/2];
-					float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
-
-					float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
-					float rotational_mean = sumRotationalErrors/total;
-					float rotational_median = rotationalErrors[oi/2];
-					float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
-
-					printf("Ground truth comparison:\n");
-					printf("  translational_rmse=   %f\n", translational_rmse);
-					printf("  translational_mean=   %f\n", translational_mean);
-					printf("  translational_median= %f\n", translational_median);
-					printf("  translational_std=    %f\n", translational_std);
-					printf("  translational_min=    %f\n", translational_min);
-					printf("  translational_max=    %f\n", translational_max);
-					printf("  rotational_rmse=      %f\n", rotational_rmse);
-					printf("  rotational_mean=      %f\n", rotational_mean);
-					printf("  rotational_median=    %f\n", rotational_median);
-					printf("  rotational_std=       %f\n", rotational_std);
-					printf("  rotational_min=       %f\n", rotational_min);
-					printf("  rotational_max=       %f\n", rotational_max);
-
-					pFile = 0;
-					std::string pathErrors = output+"/rtabmap_rmse"+seq+".txt";
-					pFile = fopen(pathErrors.c_str(),"w");
-					if(!pFile)
-					{
-						UERROR("could not save RMSE results to \"%s\"", pathErrors.c_str());
-					}
-					fprintf(pFile, "Ground truth comparison:\n");
-					fprintf(pFile, "  translational_rmse=   %f\n", translational_rmse);
-					fprintf(pFile, "  translational_mean=   %f\n", translational_mean);
-					fprintf(pFile, "  translational_median= %f\n", translational_median);
-					fprintf(pFile, "  translational_std=    %f\n", translational_std);
-					fprintf(pFile, "  translational_min=    %f\n", translational_min);
-					fprintf(pFile, "  translational_max=    %f\n", translational_max);
-					fprintf(pFile, "  rotational_rmse=      %f\n", rotational_rmse);
-					fprintf(pFile, "  rotational_mean=      %f\n", rotational_mean);
-					fprintf(pFile, "  rotational_median=    %f\n", rotational_median);
-					fprintf(pFile, "  rotational_std=       %f\n", rotational_std);
-					fprintf(pFile, "  rotational_min=       %f\n", rotational_min);
-					fprintf(pFile, "  rotational_max=       %f\n", rotational_max);
-					fclose(pFile);
+					cloud1[oi] = pcl::PointXYZ(gtPose.x(), gtPose.y(), gtPose.z());
+					cloud2[oi++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
 				}
 			}
-			else
+
+			// compute KITTI statistics before aligning the poses
+			float t_err = 0.0f;
+			float r_err = 0.0f;
+			graph::calcKittiSequenceErrors(uValues(groundTruth), uValues(poses), t_err, r_err);
+			printf("Ground truth comparison:\n");
+			printf("   KITTI t_err = %f %%\n", t_err);
+			printf("   KITTI r_err = %f deg/m\n", r_err);
+
+			Transform t = Transform::getIdentity();
+			if(oi>5)
 			{
-				UWARN("Cannot compute ground truth statistics, the computed poses (%d) are not the same size as the ground truth (%d). Make sure to use option \"--Rtabmap/CreateIntermediateNodes true\".");
+				cloud1.resize(oi);
+				cloud2.resize(oi);
+
+				t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
+			}
+			else if(idFirst)
+			{
+				t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
+			}
+			if(!t.isIdentity())
+			{
+				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					iter->second = t * iter->second;
+				}
+			}
+
+			std::vector<float> translationalErrors(poses.size());
+			std::vector<float> rotationalErrors(poses.size());
+			float sumTranslationalErrors = 0.0f;
+			float sumRotationalErrors = 0.0f;
+			float sumSqrdTranslationalErrors = 0.0f;
+			float sumSqrdRotationalErrors = 0.0f;
+			float radToDegree = 180.0f / M_PI;
+			float translational_min = 0.0f;
+			float translational_max = 0.0f;
+			float rotational_min = 0.0f;
+			float rotational_max = 0.0f;
+			oi=0;
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				std::map<int, Transform>::const_iterator jter = groundTruth.find(iter->first);
+				if(jter!=groundTruth.end())
+				{
+					Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+					rotationalErrors[oi] = a*radToDegree;
+					translationalErrors[oi] = iter->second.getDistance(jter->second);
+
+					sumTranslationalErrors+=translationalErrors[oi];
+					sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
+					sumRotationalErrors+=rotationalErrors[oi];
+					sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
+
+					if(oi == 0)
+					{
+						translational_min = translational_max = translationalErrors[oi];
+						rotational_min = rotational_max = rotationalErrors[oi];
+					}
+					else
+					{
+						if(translationalErrors[oi] < translational_min)
+						{
+							translational_min = translationalErrors[oi];
+						}
+						else if(translationalErrors[oi] > translational_max)
+						{
+							translational_max = translationalErrors[oi];
+						}
+
+						if(rotationalErrors[oi] < rotational_min)
+						{
+							rotational_min = rotationalErrors[oi];
+						}
+						else if(rotationalErrors[oi] > rotational_max)
+						{
+							rotational_max = rotationalErrors[oi];
+						}
+					}
+
+					++oi;
+				}
+			}
+			translationalErrors.resize(oi);
+			rotationalErrors.resize(oi);
+			if(oi)
+			{
+				float total = float(oi);
+				float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
+				float translational_mean = sumTranslationalErrors/total;
+				float translational_median = translationalErrors[oi/2];
+				float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
+
+				float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
+				float rotational_mean = sumRotationalErrors/total;
+				float rotational_median = rotationalErrors[oi/2];
+				float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
+
+				printf("  translational_rmse=   %f\n", translational_rmse);
+				printf("  rotational_rmse=      %f\n", rotational_rmse);
+
+				pFile = 0;
+				std::string pathErrors = output+"/rtabmap_rmse"+seq+".txt";
+				pFile = fopen(pathErrors.c_str(),"w");
+				if(!pFile)
+				{
+					UERROR("could not save RMSE results to \"%s\"", pathErrors.c_str());
+				}
+				fprintf(pFile, "Ground truth comparison:\n");
+				fprintf(pFile, "  translational_rmse=   %f\n", translational_rmse);
+				fprintf(pFile, "  translational_mean=   %f\n", translational_mean);
+				fprintf(pFile, "  translational_median= %f\n", translational_median);
+				fprintf(pFile, "  translational_std=    %f\n", translational_std);
+				fprintf(pFile, "  translational_min=    %f\n", translational_min);
+				fprintf(pFile, "  translational_max=    %f\n", translational_max);
+				fprintf(pFile, "  rotational_rmse=      %f\n", rotational_rmse);
+				fprintf(pFile, "  rotational_mean=      %f\n", rotational_mean);
+				fprintf(pFile, "  rotational_median=    %f\n", rotational_median);
+				fprintf(pFile, "  rotational_std=       %f\n", rotational_std);
+				fprintf(pFile, "  rotational_min=       %f\n", rotational_min);
+				fprintf(pFile, "  rotational_max=       %f\n", rotational_max);
+				fclose(pFile);
 			}
 		}
 	}

@@ -639,7 +639,8 @@ bool DBDriver::getNodeInfo(
 		int & weight,
 		std::string & label,
 		double & stamp,
-		Transform & groundTruthPose) const
+		Transform & groundTruthPose,
+		std::vector<float> & velocity) const
 {
 	bool found = false;
 	// look in the trash
@@ -659,7 +660,7 @@ bool DBDriver::getNodeInfo(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose, velocity);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;

@@ -976,8 +976,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 		if(info)
 		{
 			// a very high variance tells that the new pose is not linked with the previous one
-			info->varianceLin = 9999;
-			info->varianceAng = 9999;
+			info->covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0;
 		}
 
 			// generate kpts

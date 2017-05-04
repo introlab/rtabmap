@@ -319,6 +319,10 @@ void StatsToolBox::updateStat(const QString & statFullName, const std::vector<fl
 			grp = list.at(0);
 			name = list.at(1);
 			unit = list.at(2);
+			for(int i=3; i<list.size(); ++i)
+			{
+				unit += "/" + list.at(i);
+			}
 		}
 		else if(list.size() == 2)
 		{

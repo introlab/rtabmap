@@ -71,6 +71,7 @@ public:
 			const SensorData & data,
 			Transform odomPose,
 			const cv::Mat & odomCovariance = cv::Mat::eye(6,6,CV_64FC1),
+			const std::vector<float> & odomVelocity = std::vector<float>(),
 			const std::map<std::string, float> & externalStats = std::map<std::string, float>());
 	// for convenience
 	bool process(
@@ -78,6 +79,7 @@ public:
 			Transform odomPose,
 			float odomLinearVariance,
 			float odomAngularVariance,
+			const std::vector<float> & odomVelocity = std::vector<float>(),
 			const std::map<std::string, float> & externalStats = std::map<std::string, float>());
 	// for convenience, loop closure detection only
 	bool process(

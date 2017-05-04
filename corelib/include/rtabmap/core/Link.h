@@ -52,14 +52,7 @@ public:
 			int to,
 			Type type,
 			const Transform & transform,
-			const cv::Mat & infMatrix = cv::Mat::eye(6,6,CV_64FC1),
-			const cv::Mat & userData = cv::Mat());
-	Link(int from,
-			int to,
-			Type type,
-			const Transform & transform,
-			double rotVariance,
-			double transVariance,
+			const cv::Mat & infMatrix = cv::Mat::eye(6,6,CV_64FC1), // information matrix: inverse of covariance matrix
 			const cv::Mat & userData = cv::Mat());
 
 	bool isValid() const {return from_ > 0 && to_ > 0 && !transform_.isNull() && type_!=kUndef;}
@@ -87,7 +80,6 @@ public:
 
 private:
 	void setInfMatrix(const cv::Mat & infMatrix);
-	void setVariance(double rotVariance, double transVariance);
 
 private:
 	int from_;

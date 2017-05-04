@@ -102,10 +102,8 @@ void OdometryThread::mainLoop()
 		OdometryInfo info;
 		Transform pose = _odometry->process(data, &info);
 		// a null pose notify that odometry could not be computed
-		double varianceLin = info.varianceLin>0?info.varianceLin:1;
-		double varianceAng = info.varianceAng>0?info.varianceAng:1;
 		UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
-		this->post(new OdometryEvent(data, pose, varianceAng, varianceLin, info));
+		this->post(new OdometryEvent(data, pose, info));
 	}
 }
 

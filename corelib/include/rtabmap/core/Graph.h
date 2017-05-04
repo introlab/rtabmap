@@ -58,6 +58,20 @@ bool RTABMAP_EXP importPoses(
 		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
 		std::map<int, double> * stamps = 0); // optional for format 1
 
+/**
+ * Compute translation and rotation errors for KITTI datasets.
+ * See http://www.cvlibs.net/datasets/kitti/eval_odometry.php.
+ * @param poses_gt, Ground Truth poses
+ * @param poses_result, Estimated poses
+ * @param t_err, Output translation error (%)
+ * @param r_err, Output rotation error (deg/m)
+ */
+void RTABMAP_EXP calcKittiSequenceErrors(
+		const std::vector<Transform> &poses_gt,
+		const std::vector<Transform> &poses_result,
+		float & t_err,
+		float & r_err);
+
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,
@@ -204,6 +218,10 @@ float RTABMAP_EXP computePathLength(
 		const std::vector<std::pair<int, Transform> > & path,
 		unsigned int fromIndex = 0,
 		unsigned int toIndex = 0);
+
+// assuming they are all linked in map order
+float RTABMAP_EXP computePathLength(
+		const std::map<int, Transform> & path);
 
 std::list<std::map<int, Transform> > RTABMAP_EXP getPaths(
 		std::map<int, Transform> poses,

@@ -197,16 +197,16 @@ Transform Registration::computeTransformationMod(
 	{
 		if(info.icpInliersRatio)
 		{
-			info.varianceLin = info.icpInliersRatio > 0?1.0/double(info.icpInliersRatio):1.0;
-			info.varianceAng = info.icpInliersRatio > 0?1.0/double(info.icpInliersRatio):1.0;
+			info.covariance = cv::Mat::eye(6,6,CV_64FC1)*(info.icpInliersRatio > 0?1.0/double(info.icpInliersRatio):1.0);
 		}
 		else
 		{
-			info.varianceLin = info.inliers > 0?1.0f/float(info.inliers):1.0f;
-			info.varianceAng = info.inliers > 0?1.0f/float(info.inliers):1.0f;
+			info.covariance = cv::Mat::eye(6,6,CV_64FC1)*(info.inliers > 0?1.0/double(info.inliers):1.0);
 		}
-		info.varianceLin = info.varianceLin>0.0f?info.varianceLin:0.0001f; // epsilon if exact transform
-		info.varianceAng = info.varianceAng>0.0f?info.varianceAng:0.0001f; // epsilon if exact transform
+		if(info.covariance.at<double>(0,0)<0.0001)
+		{
+			info.covariance =cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
+		}
 	}
 
 	if(child_)

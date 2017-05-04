@@ -42,8 +42,6 @@ public:
 		matches(0),
 		inliers(0),
 		icpInliersRatio(0.0f),
-		varianceLin(0.0f),
-		varianceAng(0.0f),
 		features(0),
 		localMapSize(0),
 		localScanMapSize(0),
@@ -67,8 +65,7 @@ public:
 		output.matches = matches;
 		output.inliers = inliers;
 		output.icpInliersRatio = icpInliersRatio;
-		output.varianceLin = varianceLin;
-		output.varianceAng = varianceAng;
+		output.covariance = covariance.clone();
 		output.features = features;
 		output.localMapSize = localMapSize;
 		output.localScanMapSize = localScanMapSize;
@@ -80,6 +77,7 @@ public:
 		output.timeEstimation = timeEstimation;
 		output.timeParticleFiltering = timeParticleFiltering;
 		output.stamp = stamp;
+		output.interval = interval;
 		output.transform = transform;
 		output.transformFiltered = transformFiltered;
 		output.transformGroundTruth = transformGroundTruth;
@@ -92,8 +90,7 @@ public:
 	int matches;
 	int inliers;
 	float icpInliersRatio;
-	float varianceLin;
-	float varianceAng;
+	cv::Mat covariance;
 	int features;
 	int localMapSize;
 	int localScanMapSize;

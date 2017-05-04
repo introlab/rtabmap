@@ -74,6 +74,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_rawDescriptorsKept(Parameters::defaultMemRawDescriptorsKept()),
 	_saveDepth16Format(Parameters::defaultMemSaveDepth16Format()),
 	_notLinkedNodesKeptInDb(Parameters::defaultMemNotLinkedNodesKept()),
+	_saveIntermediateNodeData(Parameters::defaultMemIntermediateNodeDataKept()),
 	_incrementalMemory(Parameters::defaultMemIncrementalMemory()),
 	_reduceGraph(Parameters::defaultMemReduceGraph()),
 	_maxStMemSize(Parameters::defaultMemSTMSize()),
@@ -425,6 +426,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
 	Parameters::parse(parameters, Parameters::kMemReduceGraph(), _reduceGraph);
 	Parameters::parse(parameters, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
+	Parameters::parse(parameters, Parameters::kMemIntermediateNodeDataKept(), _saveIntermediateNodeData);
 	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
 	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
 	Parameters::parse(parameters, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
@@ -580,13 +582,14 @@ bool Memory::update(
 		const SensorData & data,
 		Statistics * stats)
 {
-	return update(data, Transform(), cv::Mat(), stats);
+	return update(data, Transform(), cv::Mat(), std::vector<float>(), stats);
 }
 
 bool Memory::update(
 		const SensorData & data,
 		const Transform & pose,
 		const cv::Mat & covariance,
+		const std::vector<float> & velocity,
 		Statistics * stats)
 {
 	UDEBUG("");
@@ -612,6 +615,10 @@ bool Memory::update(
 	{
 		UERROR("Failed to create a signature...");
 		return false;
+	}
+	if(velocity.size()==6)
+	{
+		signature->setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 	}
 
 	t=timer.ticks()*1000;
@@ -2265,10 +2272,11 @@ Transform Memory::computeTransform(
 			else if(info && !transform.isIdentity())
 			{
 				//normalize variance
-				info->varianceLin *= transform.getNorm();
-				info->varianceAng *= transform.getAngle();
-				info->varianceLin = info->varianceLin>0.0f?info->varianceLin:0.0001f; // epsilon if exact transform
-				info->varianceAng = info->varianceAng>0.0f?info->varianceAng:0.0001f; // epsilon if exact transform
+				info->covariance *= transform.getNorm();
+				if(info->covariance.at<double>(0,0) < 0.0001)
+				{
+					info->covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
+				}
 			}
 		}
 	}
@@ -2321,10 +2329,11 @@ Transform Memory::computeIcpTransform(
 		if(!t.isNull() && !t.isIdentity() && info)
 		{
 			// normalize variance
-			info->varianceLin *= t.getNorm();
-			info->varianceAng *= t.getAngle();
-			info->varianceLin = info->varianceLin>0.0f?info->varianceLin:0.0001f; // epsilon if exact transform
-			info->varianceAng = info->varianceAng>0.0f?info->varianceAng:0.0001f; // epsilon if exact transform
+			info->covariance *= t.getNorm();
+			if(info->covariance.at<double>(0,0)<=0.0)
+			{
+				info->covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
+			}
 		}
 	}
 	else
@@ -2875,7 +2884,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				newS->setLabel(oldS->getLabel());
 				oldS->setLabel("");
 				oldS->removeLinks(); // remove all links
-				oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), 1, 1)); // to keep track of the merged location
+				oldS->addLink(Link(oldS->id(), newS->id(), Link::kGlobalClosure, Transform(), cv::Mat::eye(6,6,CV_64FC1))); // to keep track of the merged location
 
 				// Set old image to new signature
 				this->copyData(oldS, newS);
@@ -2890,7 +2899,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 			}
 			else
 			{
-				newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform() , 1, 1)); // to keep track of the merged location
+				newS->addLink(Link(newS->id(), oldS->id(), Link::kGlobalClosure, Transform() , cv::Mat::eye(6,6,CV_64FC1))); // to keep track of the merged location
 
 				// update weight
 				oldS->setWeight(newS->getWeight() + 1 + oldS->getWeight());
@@ -2949,7 +2958,8 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 	int mapId, weight;
 	std::string label;
 	double stamp;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, lookInDatabase);
+	std::vector<float> velocity;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, lookInDatabase);
 	return pose;
 }
 
@@ -2959,7 +2969,8 @@ Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
 	int mapId, weight;
 	std::string label;
 	double stamp;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, lookInDatabase);
+	std::vector<float> velocity;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, lookInDatabase);
 	return groundTruth;
 }
 
@@ -2970,6 +2981,7 @@ bool Memory::getNodeInfo(int signatureId,
 		std::string & label,
 		double & stamp,
 		Transform & groundTruth,
+		std::vector<float> & velocity,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -2981,11 +2993,12 @@ bool Memory::getNodeInfo(int signatureId,
 		label = s->getLabel();
 		stamp = s->getStamp();
 		groundTruth = s->getGroundTruthPose();
+		velocity = s->getVelocity();
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth, velocity);
 	}
 	return false;
 }
@@ -3669,7 +3682,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 
 	Signature * s;
-	if(this->isBinDataKept() && !isIntermediateNode)
+	if(this->isBinDataKept() && (!isIntermediateNode || _saveIntermediateNodeData))
 	{
 		UDEBUG("Bin data kept: rgb=%d, depth=%d, scan=%d, userData=%d",
 				image.empty()?0:1,

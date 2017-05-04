@@ -665,10 +665,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				UASSERT(!iter->second.transform().isNull());
 
 				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-				if(!isCovarianceIgnored())
-				{
-					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
-				}
+				memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
 
 				// between cameras, not base_link
 				Transform camLink = models.at(id1).localTransform().inverse()*iter->second.transform()*models.at(id2).localTransform();
@@ -777,7 +774,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		UASSERT(optimizer.verifyInformationMatrices());
 
-		UINFO("g2o optimizing begin (max iterations=%d, epsilon=%f robustKernel=%f)", iterations(), this->epsilon(), robustKernelDelta_);
+		UINFO("g2o optimizing begin (max iterations=%d, robustKernel=%f)", iterations(), robustKernelDelta_);
 
 		int it = 0;
 		UTimer timer;

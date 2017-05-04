@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-667</y>
             <width>673</width>
-            <height>2718</height>
+            <height>2747</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>13</number>
+                <number>18</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -6124,7 +6124,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="0">
+                      <item row="16" column="0">
                        <widget class="QSpinBox" name="general_spinBox_laserScanDownsample">
                         <property name="minimumSize">
                          <size>
@@ -6140,7 +6140,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="1">
+                      <item row="11" column="1">
                        <widget class="QLabel" name="label_retrieved_12">
                         <property name="text">
                          <string>Raw descriptors kept in memory.</string>
@@ -6153,7 +6153,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
+                      <item row="11" column="0">
                        <widget class="QCheckBox" name="general_checkBox_keepDescriptors">
                         <property name="text">
                          <string/>
@@ -6163,7 +6163,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="1">
+                      <item row="14" column="1">
                        <widget class="QLabel" name="label_retrieved_13">
                         <property name="text">
                          <string>Image pre decimation. This option can be used to reduce image size before features extraction. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
@@ -6222,7 +6222,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="1">
+                      <item row="12" column="1">
                        <widget class="QLabel" name="label_retrieved_9">
                         <property name="text">
                          <string>Save depth image into 16 bits format to reduce memory used. Warning: values over ~65 meters are ignored (maximum 65535 millimeters).</string>
@@ -6235,7 +6235,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="0">
+                      <item row="15" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePostDecimation">
                         <property name="minimum">
                          <number>-16</number>
@@ -6281,7 +6281,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="14" column="1">
+                      <item row="15" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
                          <string>Image post decimation. This option can be used to save images in lower resolution (size/decimation). It is done on the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).</string>
@@ -6307,7 +6307,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="1">
+                      <item row="16" column="1">
                        <widget class="QLabel" name="label_retrieved_8">
                         <property name="text">
                          <string>If &gt; 1, downsample the laser scans when creating a location. This feature can be used to save laser scans already downsampled.</string>
@@ -6320,7 +6320,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="11" column="0">
+                      <item row="12" column="0">
                        <widget class="QCheckBox" name="general_checkBox_saveDepth16bits">
                         <property name="text">
                          <string/>
@@ -6330,7 +6330,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="0">
+                      <item row="14" column="0">
                        <widget class="QSpinBox" name="spinBox_imagePreDecimation">
                         <property name="minimum">
                          <number>-16</number>
@@ -6340,7 +6340,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="16" column="0">
+                      <item row="17" column="0">
                        <widget class="QSpinBox" name="general_spinBox_laserScanNormalK">
                         <property name="minimumSize">
                          <size>
@@ -6359,7 +6359,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="16" column="1">
+                      <item row="17" column="1">
                        <widget class="QLabel" name="label_retrieved_14">
                         <property name="text">
                          <string>If &gt; 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.</string>
@@ -6372,7 +6372,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="12" column="1">
+                      <item row="13" column="1">
                        <widget class="QLabel" name="label_retrieved_15">
                         <property name="text">
                          <string>Multi-threaded compression.</string>
@@ -6385,8 +6385,31 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="12" column="0">
+                      <item row="13" column="0">
                        <widget class="QCheckBox" name="general_checkBox_compressionParallelized">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="1">
+                       <widget class="QLabel" name="label_retrieved_16">
+                        <property name="text">
+                         <string>Save intermediate node data.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_saveIntermediateNodeData">
                         <property name="text">
                          <string/>
                         </property>
@@ -10058,7 +10081,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                              <item row="4" column="1">
                               <widget class="QLabel" name="label_357">
                                <property name="text">
-                                <string>[Visual] Local bundle adjustment. See Optimizer panel. This will not work with Optical Flow correspondences strategy is selected in Visual Registration panel.</string>
+                                <string>[Visual] Local bundle adjustment. See Optimizer panel. This will not work if Optical Flow correspondences strategy is selected in Visual Registration panel.</string>
                                </property>
                                <property name="wordWrap">
                                 <bool>true</bool>
@@ -12299,153 +12322,166 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <property name="title">
                        <string>g2o</string>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_70" columnstretch="0,1">
-                       <item row="1" column="0">
-                        <widget class="QComboBox" name="comboBox_g2o_optimizer">
-                         <item>
-                          <property name="text">
-                           <string>Levenberg</string>
-                          </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_117">
+                       <item>
+                        <layout class="QGridLayout" name="gridLayout_70" columnstretch="0,1">
+                         <item row="0" column="0">
+                          <widget class="QComboBox" name="comboBox_g2o_solver">
+                           <item>
+                            <property name="text">
+                             <string>CSparse</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>PCG</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Cholmod</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Eigen</string>
+                            </property>
+                           </item>
+                          </widget>
                          </item>
-                         <item>
-                          <property name="text">
-                           <string>Gauss Newton</string>
-                          </property>
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_107">
+                           <property name="text">
+                            <string>Solver.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
                          </item>
-                        </widget>
-                       </item>
-                       <item row="0" column="0">
-                        <widget class="QComboBox" name="comboBox_g2o_solver">
-                         <item>
-                          <property name="text">
-                           <string>CSparse</string>
-                          </property>
+                         <item row="1" column="0">
+                          <widget class="QComboBox" name="comboBox_g2o_optimizer">
+                           <item>
+                            <property name="text">
+                             <string>Levenberg</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>Gauss Newton</string>
+                            </property>
+                           </item>
+                          </widget>
                          </item>
-                         <item>
-                          <property name="text">
-                           <string>PCG</string>
-                          </property>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_138">
+                           <property name="text">
+                            <string>Optimization algorithm.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                          </widget>
                          </item>
-                         <item>
-                          <property name="text">
-                           <string>Cholmod</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>Eigen</string>
-                          </property>
-                         </item>
-                        </widget>
+                        </layout>
                        </item>
-                       <item row="2" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_pixelVariance">
-                         <property name="decimals">
-                          <number>2</number>
+                       <item>
+                        <widget class="QGroupBox" name="groupBox_20">
+                         <property name="title">
+                          <string>Bundle Adjustement</string>
                          </property>
-                         <property name="minimum">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>999.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.001000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.010000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_107">
-                         <property name="text">
-                          <string>Solver.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QLabel" name="label_138">
-                         <property name="text">
-                          <string>Optimization algorithm.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
-                        <widget class="QLabel" name="label_148">
-                         <property name="text">
-                          <string>Pixel variance used for bundle adjustment.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="1">
-                        <widget class="QLabel" name="label_350">
-                         <property name="text">
-                          <string>Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="3" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_robustKernelDelta">
-                         <property name="decimals">
-                          <number>3</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>999.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>5.991000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_baseline">
-                         <property name="suffix">
-                          <string> m</string>
-                         </property>
-                         <property name="decimals">
-                          <number>4</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>9.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.010000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>0.075000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_352">
-                         <property name="text">
-                          <string>When doing bundle adjustment with RGB-D data, we can set a fake baseline to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
+                         <layout class="QGridLayout" name="gridLayout_84" columnstretch="0,1">
+                          <item row="0" column="0">
+                           <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_pixelVariance">
+                            <property name="decimals">
+                             <number>2</number>
+                            </property>
+                            <property name="minimum">
+                             <double>0.010000000000000</double>
+                            </property>
+                            <property name="maximum">
+                             <double>999.000000000000000</double>
+                            </property>
+                            <property name="singleStep">
+                             <double>0.001000000000000</double>
+                            </property>
+                            <property name="value">
+                             <double>0.010000000000000</double>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="0" column="1">
+                           <widget class="QLabel" name="label_148">
+                            <property name="text">
+                             <string>Pixel variance used for bundle adjustment.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="0">
+                           <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_robustKernelDelta">
+                            <property name="decimals">
+                             <number>3</number>
+                            </property>
+                            <property name="minimum">
+                             <double>0.000000000000000</double>
+                            </property>
+                            <property name="maximum">
+                             <double>999.000000000000000</double>
+                            </property>
+                            <property name="singleStep">
+                             <double>1.000000000000000</double>
+                            </property>
+                            <property name="value">
+                             <double>5.991000000000000</double>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="1" column="1">
+                           <widget class="QLabel" name="label_350">
+                            <property name="text">
+                             <string>Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="2" column="0">
+                           <widget class="QDoubleSpinBox" name="doubleSpinBox_g2o_baseline">
+                            <property name="suffix">
+                             <string> m</string>
+                            </property>
+                            <property name="decimals">
+                             <number>4</number>
+                            </property>
+                            <property name="minimum">
+                             <double>0.000000000000000</double>
+                            </property>
+                            <property name="maximum">
+                             <double>9.000000000000000</double>
+                            </property>
+                            <property name="singleStep">
+                             <double>0.010000000000000</double>
+                            </property>
+                            <property name="value">
+                             <double>0.075000000000000</double>
+                            </property>
+                           </widget>
+                          </item>
+                          <item row="2" column="1">
+                           <widget class="QLabel" name="label_352">
+                            <property name="text">
+                             <string>When doing bundle adjustment with RGB-D data, we can set a fake baseline to do stereo bundle adjustment (if 0, mono bundle adjustment is done). For stereo data, the baseline in the calibration is used directly.</string>
+                            </property>
+                            <property name="wordWrap">
+                             <bool>true</bool>
+                            </property>
+                           </widget>
+                          </item>
+                         </layout>
                         </widget>
                        </item>
                       </layout>

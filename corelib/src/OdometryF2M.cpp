@@ -250,7 +250,8 @@ Transform OdometryF2M::computeTransform(
 						UASSERT_MSG(bundlePoses.find(lastFrame_->id()) == bundlePoses.end(),
 								uFormat("Frame %d already added! Make sure the input frames have unique IDs!", lastFrame_->id()).c_str());
 
-						bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, regInfo.varianceAng, regInfo.varianceLin)));
+						regInfo.covariance *= transform.getNorm();
+						bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, regInfo.covariance.inv())));
 						bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
 
 						UDEBUG("Fill matches (%d)", (int)regInfo.inliersIDs.size());
@@ -735,8 +736,7 @@ Transform OdometryF2M::computeTransform(
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().keypoints3D(), lastFrame_->sensorData().descriptors());
 
 			// a very high variance tells that the new pose is not linked with the previous one
-			regInfo.varianceLin = 9999;
-			regInfo.varianceAng = 9999;
+			regInfo.covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0;
 
 			bool frameValid = false;
 			Transform newFramePose = this->getPose(); // initial pose may be not identity...
@@ -874,8 +874,7 @@ Transform OdometryF2M::computeTransform(
 
 	if(info)
 	{
-		info->varianceLin = regInfo.varianceLin;
-		info->varianceAng = regInfo.varianceAng;
+		info->covariance = regInfo.covariance;
 		info->inliers = regInfo.inliers;
 		info->matches = regInfo.matches;
 		info->icpInliersRatio = regInfo.icpInliersRatio;
@@ -899,8 +898,8 @@ Transform OdometryF2M::computeTransform(
 			nFeatures,
 			regInfo.inliers,
 			regInfo.matches,
-			regInfo.varianceLin,
-			regInfo.varianceAng,
+			regInfo.covariance.at<double>(0,0),
+			regInfo.covariance.at<double>(5,5),
 			regPipeline_->isImageRequired()?(int)map_->getWords3().size():0,
 			regPipeline_->isScanRequired()?(int)map_->sensorData().laserScanRaw().cols:0);
 

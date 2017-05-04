@@ -35,8 +35,6 @@ class RegistrationInfo
 {
 public:
 	RegistrationInfo() :
-		varianceLin(0),
-		varianceAng(0),
 		inliers(0),
 		matches(0),
 		icpInliersRatio(0),
@@ -45,8 +43,7 @@ public:
 	{
 	}
 
-	float varianceLin;
-	float varianceAng;
+	cv::Mat covariance;
 	std::string rejectedMsg;
 
 	// RegistrationVis

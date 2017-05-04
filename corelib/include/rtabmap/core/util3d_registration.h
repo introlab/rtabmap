@@ -57,7 +57,7 @@ Transform RTABMAP_EXP transformFromXYZCorrespondences(
 		int refineModelIterations = 10,
 		double refineModelSigma = 3.0,
 		std::vector<int> * inliers = 0,
-		double * variance = 0);
+		cv::Mat * variance = 0);
 
 void RTABMAP_EXP computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudA,

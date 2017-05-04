@@ -66,15 +66,15 @@ Transform transformFromXYZCorrespondences(
 		int refineIterations,
 		double refineSigma,
 		std::vector<int> * inliersOut,
-		double * varianceOut)
+		cv::Mat * covariance)
 {
 	//NOTE: this method is a mix of two methods:
 	//  - getRemainingCorrespondences() in pcl/registration/impl/correspondence_rejection_sample_consensus.hpp
 	//  - refineModel() in pcl/sample_consensus/sac.h
 
-	if(varianceOut)
+	if(covariance)
 	{
-		*varianceOut = 1.0;
+		*covariance = cv::Mat::eye(6,6,CV_64FC1);
 	}
 	Transform transform;
 	if(cloud1->size() >=3 && cloud1->size() == cloud2->size())
@@ -199,9 +199,9 @@ Transform transformFromXYZCorrespondences(
 				{
 					*inliersOut = inliers;
 				}
-				if(varianceOut)
+				if(covariance)
 				{
-					*varianceOut = model->computeVariance();
+					*covariance *= model->computeVariance();
 				}
 
 				// get best transformation

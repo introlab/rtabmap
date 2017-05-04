@@ -52,8 +52,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>381</width>
-           <height>196</height>
+           <width>408</width>
+           <height>208</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -210,8 +210,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>381</width>
-           <height>196</height>
+           <width>408</width>
+           <height>208</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -484,13 +484,23 @@
      <x>0</x>
      <y>0</y>
      <width>1547</width>
-     <height>25</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
     </property>
+    <widget class="QMenu" name="menuExport_poses">
+     <property name="title">
+      <string>Export poses...</string>
+     </property>
+     <addaction name="actionRaw_format_txt"/>
+     <addaction name="actionRGBD_SLAM_format_txt"/>
+     <addaction name="actionKITTI_format_txt"/>
+     <addaction name="actionTORO_graph"/>
+     <addaction name="actionG2o_g2o"/>
+    </widget>
     <addaction name="actionOpen_database"/>
     <addaction name="separator"/>
     <addaction name="actionSave_config"/>
@@ -499,6 +509,7 @@
     <addaction name="actionExport_3D_laser_scans_ply_pcd"/>
     <addaction name="actionExport"/>
     <addaction name="actionExtract_images"/>
+    <addaction name="menuExport_poses"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -508,8 +519,6 @@
     </property>
     <addaction name="actionGenerate_graph_dot"/>
     <addaction name="actionGenerate_local_graph_dot"/>
-    <addaction name="actionGenerate_TORO_graph_graph"/>
-    <addaction name="actionGenerate_g2o_graph_g2o"/>
     <addaction name="separator"/>
     <addaction name="actionDetect_more_loop_closures"/>
     <addaction name="actionRefine_all_neighbor_links"/>
@@ -1010,8 +1019,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>339</width>
-          <height>186</height>
+          <width>324</width>
+          <height>188</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1146,8 +1155,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>326</width>
-          <height>609</height>
+          <width>280</width>
+          <height>666</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1509,8 +1518,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>339</width>
-          <height>173</height>
+          <width>201</width>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1609,8 +1618,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>326</width>
-          <height>249</height>
+          <width>186</width>
+          <height>496</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2155,11 +2164,6 @@
     <string>View 3D map...</string>
    </property>
   </action>
-  <action name="actionGenerate_TORO_graph_graph">
-   <property name="text">
-    <string>Generate TORO graph (*.graph)...</string>
-   </property>
-  </action>
   <action name="actionRefine_all_neighbor_links">
    <property name="text">
     <string>Refine all neighbor links...</string>
@@ -2189,11 +2193,6 @@
   <action name="actionReset_all_changes">
    <property name="text">
     <string>Reset link and grid map changes</string>
-   </property>
-  </action>
-  <action name="actionGenerate_g2o_graph_g2o">
-   <property name="text">
-    <string>Generate g2o graph (*.g2o)...</string>
    </property>
   </action>
   <action name="actionView_3D_laser_scans">
@@ -2237,28 +2236,53 @@
     <string>Restore default GUI settings</string>
    </property>
   </action>
+  <action name="actionRaw_format_txt">
+   <property name="text">
+    <string>Raw format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionRGBD_SLAM_format_txt">
+   <property name="text">
+    <string>RGBD-SLAM format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionKITTI_format_txt">
+   <property name="text">
+    <string>KITTI format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionTORO_graph">
+   <property name="text">
+    <string>TORO (*.graph)</string>
+   </property>
+  </action>
+  <action name="actionG2o_g2o">
+   <property name="text">
+    <string>g2o (*.g2o)</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
    <class>rtabmap::ImageView</class>
    <extends>QWidget</extends>
-   <header>rtabmap/gui/ImageView.h</header>
+   <header>../include/rtabmap/gui/ImageView.h</header>
+  </customwidget>
+  <customwidget>
+   <class>rtabmap::StatsToolBox</class>
+   <extends>QWidget</extends>
+   <header>../include/rtabmap/gui/StatsToolBox.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>rtabmap::GraphViewer</class>
    <extends>QGraphicsView</extends>
-   <header>rtabmap/gui/GraphViewer.h</header>
+   <header>../include/rtabmap/gui/GraphViewer.h</header>
   </customwidget>
   <customwidget>
    <class>rtabmap::ParametersToolBox</class>
    <extends>QWidget</extends>
    <header>ParametersToolBox.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>rtabmap::StatsToolBox</class>
-   <extends>QWidget</extends>
-   <header>rtabmap/gui/StatsToolBox.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
