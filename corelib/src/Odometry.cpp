@@ -269,8 +269,20 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	}
 
 	double dt = previousStamp_>0.0f?data.stamp() - previousStamp_:0.0;
-	Transform guess = dt && guessFromMotion_ && !previousVelocityTransform_.isNull()?Transform::getIdentity():Transform();
-	UASSERT_MSG(dt>0.0 || (dt == 0.0 && previousVelocityTransform_.isNull()), uFormat("dt=%f previous transform=%s", dt, previousVelocityTransform_.prettyPrint().c_str()).c_str());
+	Transform guess = dt>0.0 && guessFromMotion_ && !previousVelocityTransform_.isNull()?Transform::getIdentity():Transform();
+	if(!(dt>0.0 || (dt == 0.0 && previousVelocityTransform_.isNull())))
+	{
+		if(guessFromMotion_)
+		{
+			UERROR("Guess from motion is set but dt is invalid! Odometry is then computed without guess. (dt=%f previous transform=%s)", dt, previousVelocityTransform_.prettyPrint().c_str());
+		}
+		else if(_filteringStrategy==1)
+		{
+			UERROR("Kalman filtering is enalbed but dt is invalid! Odometry is then computed without Kalman filtering. (dt=%f previous transform=%s)", dt, previousVelocityTransform_.prettyPrint().c_str());
+		}
+		dt=0;
+		previousVelocityTransform_.setNull();
+	}
 	if(!previousVelocityTransform_.isNull())
 	{
 		if(guessFromMotion_)
