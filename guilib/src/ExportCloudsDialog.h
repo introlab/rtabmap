@@ -122,6 +122,12 @@ private:
 	void setOkButton();
 	void enableRegeneration(bool enabled);
 
+	void denseMeshPostProcessing(
+			int id,
+			pcl::PolygonMeshPtr & mesh,
+			bool lostColors,
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
+
 private:
 	Ui_ExportCloudsDialog * _ui;
 	ProgressDialog * _progressDialog;

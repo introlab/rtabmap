@@ -61,6 +61,11 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_octomap->setText("No");
 #endif
+#ifdef RTABMAP_CPUTSDF
+	_ui->label_cputsdf->setText("Yes");
+#else
+	_ui->label_cputsdf->setText("No");
+#endif
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
 	_ui->label_freenect2->setText(CameraFreenect2::available()?"Yes":"No");
