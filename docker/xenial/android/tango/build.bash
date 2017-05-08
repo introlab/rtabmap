@@ -6,6 +6,7 @@ git clone https://github.com/introlab/rtabmap.git rtabmap-tango
 # tango
 wget https://developers.google.com/tango/downloads/TangoSDK_Hopak_C.zip
 unzip -qq TangoSDK_Hopak_C.zip
+rm TangoSDK_Hopak_C.zip
 cp -r lib_tango_client_api/include/* /opt/android/armeabi-v7a/include/.
 cp -r lib_tango_client_api/include/* /opt/android/arm64-v8a/include/.
 cp -r lib_tango_client_api/lib/armeabi-v7a/* /opt/android/armeabi-v7a/lib/.
@@ -13,6 +14,7 @@ cp -r lib_tango_client_api/lib/arm64-v8a/* /opt/android/arm64-v8a/lib/.
 rm -r lib_tango_client_api
 wget https://developers.google.com/tango/downloads/TangoSupport_Hopak_C.zip
 unzip -qq TangoSupport_Hopak_C.zip
+rm TangoSupport_Hopak_C.zip
 cp -r lib_tango_support_api/include/* /opt/android/armeabi-v7a/include/.
 cp -r lib_tango_support_api/include/* /opt/android/arm64-v8a/include/.
 cp -r lib_tango_support_api/lib/armeabi-v7a/* /opt/android/armeabi-v7a/lib/.
@@ -35,5 +37,5 @@ cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDRO
 make
 
 # package with binaries of both architectures
-cp ../armeabi-v7a/app/android/libs/armeabi-v7a/libNativeRTABMap.so app/android/libs/armeabi-v7a/libNativeRTABMap.so
+cp -r ../armeabi-v7a/app/android/libs/armeabi-v7a app/android/libs/armeabi-v7a
 make
