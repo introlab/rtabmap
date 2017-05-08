@@ -1,34 +1,5 @@
 #!/bin/bash
 
-# Setup java 1.8
-apt-get update
-apt-get install -y --no-install-recommends apt-utils
-apt-get install -y unzip wget ant
-apt-get install -y default-jre default-jdk
-apt-get install -y lib32stdc++6 lib32z1
-
-# Setup android sdk
-echo "wget android-sdk..."
-wget -nv https://dl.google.com/android/repository/tools_r25.2.3-linux.zip
-unzip -qq tools_r25.2.3-linux.zip
-rm tools_r25.2.3-linux.zip
-mkdir $ANDROID_HOME
-mv tools $ANDROID_HOME/.
-#android list sdk --all --extended
-echo y | android update sdk --no-ui --all --filter platform-tools,android-19,build-tools-19.1.0
-
-# Setup android ndk
-echo "wget android-ndk..."
-wget -nv https://dl.google.com/android/repository/android-ndk-r14-linux-x86_64.zip
-unzip -qq android-ndk-r14-linux-x86_64.zip
-rm android-ndk-r14-linux-x86_64.zip
-mv android-ndk-r14 /opt/.
-
-# Install directory for all dependencies
-mkdir -p /opt/android/share
-wget -nv https://github.com/introlab/rtabmap/raw/master/cmake_modules/android.toolchain.cmake
-mv android.toolchain.cmake /opt/android/share/.
-
 # Boost
 echo "wget boost..."
 wget -nv https://downloads.sourceforge.net/project/boost/boost/1.59.0/boost_1_59_0.tar.gz
@@ -38,7 +9,11 @@ wget -nv https://gist.github.com/matlabbe/0bce8feeb73a499a76afbbcc5c687221/raw/4
 wget -nv https://gist.github.com/matlabbe/0bce8feeb73a499a76afbbcc5c687221/raw/e7fbf0e301cfea417a7aa69989a761a4de08b8c3/CMakeLists.txt
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=/opt/android/share/android.toolchain.cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
+make
+make install
+rm -r *
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
 make
 make install
 cd
@@ -51,7 +26,11 @@ tar -xzf 3.2.7.tar.gz
 cd eigen-eigen-b30b87236a1b
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=/opt/android/share/android.toolchain.cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
+make
+make install
+rm -r *
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
 make
 make install
 cd
@@ -64,8 +43,12 @@ unzip -qq flann-1.8.4-src.zip
 cd flann-1.8.4-src
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=/opt/android/share/android.toolchain.cmake -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
 make 
+make install
+rm -r *
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
+make
 make install
 cd
 rm -r flann-1.8.4-src.zip flann-1.8.4-src
@@ -79,8 +62,12 @@ wget -nv https://gist.github.com/matlabbe/726b490c658afd3293f4b3f2f501b863/raw/d
 git apply gtsam_GKlib_android_fix.patch
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=/opt/android/share/android.toolchain.cmake -DMETIS_SHARED=OFF -DGTSAM_BUILD_STATIC_LIBRARY=ON -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DMETIS_SHARED=OFF -DGTSAM_BUILD_STATIC_LIBRARY=ON -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
 make 
+make install
+rm -r *
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DMETIS_SHARED=OFF -DGTSAM_BUILD_STATIC_LIBRARY=ON -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
+make
 make install
 cd
 rm -r gtsam
@@ -90,7 +77,11 @@ git clone https://github.com/RainerKuemmerle/g2o.git
 cd g2o
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=/opt/android/share/android.toolchain.cmake -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
+make
+make install
+rm -r *
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_LGPL_SHARED_LIBS=OFF -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
 make
 make install
 cd
@@ -109,9 +100,13 @@ cd VTK
 git checkout tags/v7.1.1
 mkdir build
 cd build
-~/cmake-3.7.2-Linux-x86_64/bin/cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DVTK_ANDROID_BUILD=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
+~/cmake-3.7.2-Linux-x86_64/bin/cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DVTK_ANDROID_BUILD=ON -DANDROID_ARCH_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
 make
-cp -r CMakeExternals/Install/vtk-android/* /opt/android/.
+cp -r CMakeExternals/Install/vtk-android/* /opt/android/armeabi-v7a/.
+rm -r *
+~/cmake-3.7.2-Linux-x86_64/bin/cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DVTK_ANDROID_BUILD=ON -DANDROID_ARCH_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
+make
+cp -r CMakeExternals/Install/vtk-android/* /opt/android/arm64-v8a/.
 cd
 rm -r VTK cmake-3.7.2-Linux-x86_64
 
@@ -125,8 +120,14 @@ git apply pcl_1_8_0_vtk_android_support.patch
 mkdir build
 cd build
 # do it 2 times because there is a cmake error on the first time and not the second time!?
-cmake -DCMAKE_TOOLCHAIN_FILE=/opt/android/share/android.toolchain.cmake -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
-cmake -DCMAKE_TOOLCHAIN_FILE=/opt/android/share/android.toolchain.cmake -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
+make
+make install
+rm -r *
+# do it 2 times because there is a cmake error on the first time and not the second time!?
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=OFF -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=OFF -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
 make
 make install
 cd

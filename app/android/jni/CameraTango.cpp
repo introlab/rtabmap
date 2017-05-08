@@ -356,6 +356,14 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 		return false;
 	}
 
+	LOGD("Calibration: fx=%f fy=%f cx=%f cy=%f width=%d height=%d",
+			color_camera_intrinsics.fx,
+			color_camera_intrinsics.fy,
+			color_camera_intrinsics.cx,
+			color_camera_intrinsics.cy,
+			color_camera_intrinsics.width,
+			color_camera_intrinsics.height);
+
 	cv::Mat K = cv::Mat::eye(3, 3, CV_64FC1);
 	K.at<double>(0,0) = color_camera_intrinsics.fx;
 	K.at<double>(1,1) = color_camera_intrinsics.fy;
