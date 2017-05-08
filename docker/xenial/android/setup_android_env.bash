@@ -15,7 +15,7 @@ rm tools_r25.2.3-linux.zip
 mkdir $ANDROID_HOME
 mv tools $ANDROID_HOME/.
 #android list sdk --all --extended
-echo y | android update sdk --no-ui --all --filter platform-tools,android-19,build-tools-19.1.0
+echo y | android update sdk --no-ui --all --filter platform-tools,android-21,build-tools-21.1.0
 
 # Setup android ndk
 echo "wget android-ndk..."
