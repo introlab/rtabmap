@@ -15,7 +15,7 @@
     <uses-feature android:glEsVersion="0x00020000" />
 
     <!-- This is the platform API where NativeActivity was introduced. -->
-    <uses-sdk android:minSdkVersion="19" />
+    <uses-sdk android:minSdkVersion="21" />
 
     <!-- This .apk has no Java code itself, so set hasCode to false. -->
     <application 
