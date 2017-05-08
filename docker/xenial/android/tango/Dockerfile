@@ -8,4 +8,4 @@ ADD build.bash /root/build.bash
 RUN chmod +x build.bash
 RUN /bin/bash -c "./build.bash"
 
-WORKDIR /root/rtabmap-tango/build/app/android/bin
+WORKDIR /root/
