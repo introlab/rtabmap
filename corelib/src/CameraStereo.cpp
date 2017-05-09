@@ -821,7 +821,7 @@ CameraStereoZed::CameraStereoZed(
 #ifdef RTABMAP_ZED
 	UASSERT(resolution_ >= sl::RESOLUTION_HD2K && resolution_ <sl::RESOLUTION_LAST);
 	UASSERT(quality_ >= sl::DEPTH_MODE_NONE && quality_ <sl::DEPTH_MODE_LAST);
-	UASSERT(sensingMode_ >= sl::SENSING_MODE_FILL && sensingMode_ <sl::SENSING_MODE_LAST);
+	UASSERT(sensingMode_ >= sl::SENSING_MODE_STANDARD && sensingMode_ <sl::SENSING_MODE_LAST);
 	UASSERT(confidenceThr_ >= 0 && confidenceThr_ <=100);
 #endif
 }
