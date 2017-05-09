@@ -847,11 +847,23 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	}
 	
 	lost_ = true;
+
+	sl::InitParameters param;
+	param.camera_resolution=static_cast<sl::RESOLUTION>(resolution_);
+	param.camera_fps=getImageRate();
+	param.camera_linux_id=usbDevice_;
+	param.depth_mode=(sl::DEPTH_MODE)quality_;
+	param.coordinate_units=sl::UNIT_METER;
+	param.coordinate_system=(sl::COORDINATE_SYSTEM)sl::COORDINATE_SYSTEM_IMAGE ;
+	param.sdk_verbose=false;
+	param.sdk_gpu_id=-1;
+	param.depth_minimum_distance=-1;
+	param.camera_disable_self_calib=!selfCalibration_;
+
 	if(src_ == CameraVideo::kVideoFile)
 	{
 		UINFO("svo file = %s", svoFilePath_.c_str());
 		zed_ = new sl::Camera(); // Use in SVO playback mode
-		sl::InitParameters param;
 		param.svo_input_filename=svoFilePath_.c_str();
 		zed_->open(param);
 	}
@@ -859,17 +871,6 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	{
 		UINFO("Resolution=%d imagerate=%f device=%d", resolution_, getImageRate(), usbDevice_);
 		zed_ = new sl::Camera(); // Use in Live Mode
-		sl::InitParameters param;
-		param.camera_resolution=static_cast<sl::RESOLUTION>(resolution_);
-		param.camera_fps=getImageRate();
-		param.camera_linux_id=usbDevice_;
-		param.depth_mode=(sl::DEPTH_MODE)quality_;
-		param.coordinate_units=sl::UNIT_METER;
-		param.coordinate_system=(sl::COORDINATE_SYSTEM)sl::COORDINATE_SYSTEM_IMAGE ;
-		param.sdk_verbose=false;
-		param.sdk_gpu_id=-1;
-		param.depth_minimum_distance=-1;
-		param.camera_disable_self_calib=!selfCalibration_;
 		zed_->open(param);
 	}
 
