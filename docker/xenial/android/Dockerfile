@@ -3,7 +3,7 @@
 FROM introlab3it/rtabmap
 
 ENV ANDROID_HOME=/opt/android-sdk
-ENV ANDROID_NATIVE_API_LEVEL=android-21
+ENV ANDROID_NATIVE_API_LEVEL=android-19
 ENV ANDROID_NDK=/opt/android-ndk-r14
 ENV PATH=$PATH:/opt/android-sdk/tools:/opt/android-sdk/platform-tools:/opt/android-ndk-r14
 
