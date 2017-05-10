@@ -632,6 +632,30 @@ bool DBDriver::getCalibration(
 	return found;
 }
 
+bool DBDriver::getLaserScanInfo(
+		int signatureId,
+		LaserScanInfo & info) const
+{
+	UDEBUG("");
+	bool found = false;
+	// look in the trash
+	_trashesMutex.lock();
+	if(uContains(_trashSignatures, signatureId))
+	{
+		info = _trashSignatures.at(signatureId)->sensorData().laserScanInfo();
+		found = true;
+	}
+	_trashesMutex.unlock();
+
+	if(!found)
+	{
+		_dbSafeAccessMutex.lock();
+		found = this->getLaserScanInfoQuery(signatureId, info);
+		_dbSafeAccessMutex.unlock();
+	}
+	return found;
+}
+
 bool DBDriver::getNodeInfo(
 		int signatureId,
 		Transform & pose,

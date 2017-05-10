@@ -1437,6 +1437,70 @@ bool DBDriverSqlite3::getCalibrationQuery(
 	return found;
 }
 
+bool DBDriverSqlite3::getLaserScanInfoQuery(
+		int signatureId,
+		LaserScanInfo & info) const
+{
+	bool found = false;
+	if(_ppDb && signatureId)
+	{
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		if(uStrNumCmp(_version, "0.11.10") >= 0)
+		{
+			query << "SELECT scan_info "
+				  << "FROM Data "
+				  << "WHERE id = " << signatureId
+				  <<";";
+		}
+		else
+		{
+			return false;
+		}
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		const void * data = 0;
+		int dataSize = 0;
+		Transform localTransform = Transform::getIdentity();
+		int maxPts = 0;
+		float maxRange = 0.0f;
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			found = true;
+			int index = 0;
+
+			// scan_info
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+
+			if(dataSize > 0 && data)
+			{
+				float * dataFloat = (float*)data;
+				memcpy(localTransform.data(), dataFloat+2, localTransform.size()*sizeof(float));
+				maxPts = (int)dataFloat[0];
+				maxRange = dataFloat[1];
+
+				info = LaserScanInfo(maxPts, maxRange, localTransform);
+			}
+
+			rc = sqlite3_step(ppStmt); // next result...
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return found;
+}
+
 bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		Transform & pose,
 		int & mapId,

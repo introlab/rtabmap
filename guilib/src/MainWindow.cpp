@@ -4740,13 +4740,14 @@ void MainWindow::exportPoses(int format)
 {
 	if(_currentPosesMap.size())
 	{
-		std::map<int, Transform> poses;
+		std::map<int, Transform> localTransforms;
 		QStringList items;
 		items.push_back("Robot");
 		items.push_back("Camera");
 		items.push_back("Scan");
-		QString item = QInputDialog::getItem(this, tr("Export Poses"), tr("Frame: "), items, _exportPosesFrame, false);
-		if(item.isEmpty())
+		bool ok;
+		QString item = QInputDialog::getItem(this, tr("Export Poses"), tr("Frame: "), items, _exportPosesFrame, false, &ok);
+		if(!ok || item.isEmpty())
 		{
 			return;
 		}
@@ -4792,7 +4793,7 @@ void MainWindow::exportPoses(int format)
 					}
 					if(!localTransform.isNull())
 					{
-						poses.insert(std::make_pair(iter->first, iter->second * localTransform));
+						localTransforms.insert(std::make_pair(iter->first, localTransform));
 					}
 				}
 				else
@@ -4800,18 +4801,42 @@ void MainWindow::exportPoses(int format)
 					UWARN("Did not find node %d in cache", iter->first);
 				}
 			}
-			if(poses.empty())
+			if(localTransforms.empty())
 			{
 				QMessageBox::warning(this,
 						tr("Export Poses"),
 						tr("Could not find any \"%1\" frame, exporting in Robot frame instead.").arg(item));
-				poses = _currentPosesMap;
 			}
 		}
 		else
 		{
 			_exportPosesFrame = 0;
+		}
+
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> links;
+		if(localTransforms.empty())
+		{
 			poses = _currentPosesMap;
+			links = _currentLinksMap;
+		}
+		else
+		{
+			//adjust poses and links
+			for(std::map<int, Transform>::iterator iter=localTransforms.begin(); iter!=localTransforms.end(); ++iter)
+			{
+				poses.insert(std::make_pair(iter->first, _currentPosesMap.at(iter->first) * iter->second));
+			}
+			for(std::multimap<int, Link>::iterator iter=_currentLinksMap.begin(); iter!=_currentLinksMap.end(); ++iter)
+			{
+				if(uContains(poses, iter->second.from()) && uContains(poses, iter->second.to()))
+				{
+					std::multimap<int, Link>::iterator inserted = links.insert(*iter);
+					int from = iter->second.from();
+					int to = iter->second.to();
+					inserted->second.setTransform(localTransforms.at(from).inverse()*iter->second.transform()*localTransforms.at(to));
+				}
+			}
 		}
 
 		std::map<int, double> stamps;
@@ -4846,24 +4871,6 @@ void MainWindow::exportPoses(int format)
 		if(!path.isEmpty())
 		{
 			_exportPosesFileName[format] = path;
-
-			std::multimap<int, Link> links;
-			if(poses.size() != _currentPosesMap.size())
-			{
-				for(std::multimap<int, Link>::iterator iter=_currentLinksMap.begin(); iter!=_currentLinksMap.end(); ++iter)
-				{
-					if(uContains(poses, iter->second.from()) && uContains(poses, iter->second.to()))
-					{
-						links.insert(*iter);
-					}
-				}
-			}
-			else
-			{
-				links = _currentLinksMap;
-			}
-
-
 			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
 
 			if(saved)

@@ -1632,10 +1632,115 @@ void DatabaseViewer::exportPoses(int format)
 
 	if(optimizedPoses.size())
 	{
+		std::map<int, Transform> localTransforms;
+		QStringList items;
+		items.push_back("Robot");
+		items.push_back("Camera");
+		items.push_back("Scan");
+		bool ok;
+		QString item = QInputDialog::getItem(this, tr("Export Poses"), tr("Frame: "), items, 0, false, &ok);
+		if(!ok || item.isEmpty())
+		{
+			return;
+		}
+		if(item.compare("Robot") != 0)
+		{
+			bool cameraFrame = item.compare("Camera") == 0;
+			for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+			{
+				Transform localTransform;
+				if(cameraFrame)
+				{
+					std::vector<CameraModel> models;
+					StereoCameraModel stereoModel;
+					if(dbDriver_->getCalibration(iter->first, models, stereoModel))
+					{
+						if((models.size() == 1 &&
+							!models.at(0).localTransform().isNull()))
+						{
+							localTransform = models.at(0).localTransform();
+						}
+						else if(!stereoModel.localTransform().isNull())
+						{
+							localTransform = stereoModel.localTransform();
+						}
+						else if(models.size()>1)
+						{
+							UWARN("Multi-camera is not supported (node %d)", iter->first);
+						}
+						else
+						{
+							UWARN("Calibration not valid for node %d", iter->first);
+						}
+					}
+					else
+					{
+						UWARN("Missing calibration for node %d", iter->first);
+					}
+				}
+				else
+				{
+					LaserScanInfo info;
+					if(dbDriver_->getLaserScanInfo(iter->first, info))
+					{
+						if(!info.localTransform().isNull())
+						{
+							localTransform = info.localTransform();
+						}
+						else
+						{
+							UWARN("Invalid scan info for node %d", iter->first);
+						}
+					}
+					else
+					{
+						UWARN("Missing scan info for node %d", iter->first);
+					}
+
+				}
+				if(!localTransform.isNull())
+				{
+					localTransforms.insert(std::make_pair(iter->first, localTransform));
+				}
+			}
+			if(localTransforms.empty())
+			{
+				QMessageBox::warning(this,
+						tr("Export Poses"),
+						tr("Could not find any \"%1\" frame, exporting in Robot frame instead.").arg(item));
+			}
+		}
+
+		std::map<int, Transform> poses;
+		std::multimap<int, Link> links;
+		if(localTransforms.empty())
+		{
+			poses = optimizedPoses;
+			links = graphLinks_;
+		}
+		else
+		{
+			//adjust poses and links
+			for(std::map<int, Transform>::iterator iter=localTransforms.begin(); iter!=localTransforms.end(); ++iter)
+			{
+				poses.insert(std::make_pair(iter->first, optimizedPoses.at(iter->first) * iter->second));
+			}
+			for(std::multimap<int, Link>::iterator iter=graphLinks_.begin(); iter!=graphLinks_.end(); ++iter)
+			{
+				if(uContains(poses, iter->second.from()) && uContains(poses, iter->second.to()))
+				{
+					std::multimap<int, Link>::iterator inserted = links.insert(*iter);
+					int from = iter->second.from();
+					int to = iter->second.to();
+					inserted->second.setTransform(localTransforms.at(from).inverse()*iter->second.transform()*localTransforms.at(to));
+				}
+			}
+		}
+
 		std::map<int, double> stamps;
 		if(format == 1)
 		{
-			for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
 				Transform p, g;
 				int w;
@@ -1648,10 +1753,10 @@ void DatabaseViewer::exportPoses(int format)
 					stamps.insert(std::make_pair(iter->first, stamp));
 				}
 			}
-			if(stamps.size()!=optimizedPoses.size())
+			if(stamps.size()!=poses.size())
 			{
 				QMessageBox::warning(this, tr("Export poses..."), tr("Poses (%1) and stamps (%2) have not the same size! Cannot export in RGB-D SLAM format.")
-						.arg(optimizedPoses.size()).arg(stamps.size()));
+						.arg(poses.size()).arg(stamps.size()));
 				return;
 			}
 		}
@@ -1666,7 +1771,7 @@ void DatabaseViewer::exportPoses(int format)
 
 		if(!path.isEmpty())
 		{
-			bool saved = graph::exportPoses(path.toStdString(), format, optimizedPoses, graphLinks_, stamps);
+			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
 
 			if(saved)
 			{
