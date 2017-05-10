@@ -1639,7 +1639,7 @@ void DatabaseViewer::exportPoses(int format)
 		items.push_back("Scan");
 		bool ok;
 		QString item = QInputDialog::getItem(this, tr("Export Poses"), tr("Frame: "), items, 0, false, &ok);
-		if(!ok || item.isEmpty())
+		if(!ok || item.isEmpty())
 		{
 			return;
 		}
