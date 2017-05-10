@@ -115,6 +115,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_assemble, SIGNAL(clicked(bool)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_voxelSize_assembled, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_frame, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->comboBox_frame, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
 
 	connect(_ui->checkBox_subtraction, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_subtraction, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
@@ -263,6 +265,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 
 	settings.setValue("assemble", _ui->checkBox_assemble->isChecked());
 	settings.setValue("assemble_voxel",_ui->doubleSpinBox_voxelSize_assembled->value());
+	settings.setValue("frame",_ui->comboBox_frame->currentIndex());
 
 	settings.setValue("subtract",_ui->checkBox_subtraction->isChecked());
 	settings.setValue("subtract_point_radius",_ui->doubleSpinBox_subtractPointFilteringRadius->value());
@@ -370,6 +373,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 
 	_ui->checkBox_assemble->setChecked(settings.value("assemble", _ui->checkBox_assemble->isChecked()).toBool());
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(settings.value("assemble_voxel", _ui->doubleSpinBox_voxelSize_assembled->value()).toDouble());
+	_ui->comboBox_frame->setCurrentIndex(settings.value("frame", _ui->comboBox_frame->currentIndex()).toInt());
 
 	_ui->checkBox_subtraction->setChecked(settings.value("subtract",_ui->checkBox_subtraction->isChecked()).toBool());
 	_ui->doubleSpinBox_subtractPointFilteringRadius->setValue(settings.value("subtract_point_radius",_ui->doubleSpinBox_subtractPointFilteringRadius->value()).toDouble());
@@ -477,6 +481,7 @@ void ExportCloudsDialog::restoreDefaults()
 
 	_ui->checkBox_assemble->setChecked(true);
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(0.0);
+	_ui->comboBox_frame->setCurrentIndex(0);
 
 	_ui->checkBox_subtraction->setChecked(false);
 	_ui->doubleSpinBox_subtractPointFilteringRadius->setValue(0.02);
@@ -558,10 +563,17 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 	_ui->checkBox_smoothing->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->checkBox_smoothing->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 
+	_ui->comboBox_frame->setEnabled(!_ui->checkBox_assemble->isChecked() && _ui->checkBox_binary->isEnabled());
+	_ui->comboBox_frame->setVisible(_ui->comboBox_frame->isEnabled());
+	_ui->label_frame->setVisible(_ui->comboBox_frame->isEnabled());
+	_ui->checkBox_gainCompensation->setEnabled(!(_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex() == 2));
+	_ui->checkBox_gainCompensation->setVisible(_ui->checkBox_gainCompensation->isEnabled());
+	_ui->label_gainCompensation->setVisible(_ui->checkBox_gainCompensation->isEnabled());
+
 	_ui->groupBox_regenerate->setVisible(_ui->checkBox_regenerate->isChecked());
 	_ui->groupBox_bilateral->setVisible(_ui->checkBox_bilateral->isChecked());
 	_ui->groupBox_filtering->setVisible(_ui->checkBox_filtering->isChecked());
-	_ui->groupBox_gain->setVisible(_ui->checkBox_gainCompensation->isChecked());
+	_ui->groupBox_gain->setVisible(_ui->checkBox_gainCompensation->isEnabled() && _ui->checkBox_gainCompensation->isChecked());
 	_ui->groupBox_mls->setVisible(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked());
 	_ui->groupBox_meshing->setVisible(_ui->checkBox_meshing->isChecked());
 	_ui->groupBox_subtraction->setVisible(_ui->checkBox_subtraction->isChecked());
@@ -1060,7 +1072,9 @@ bool ExportCloudsDialog::getExportedClouds(
 					_ui->comboBox_pipeline->currentIndex()==1 &&
 					_ui->checkBox_assemble->isChecked() &&
 					_ui->comboBox_meshingTextureSize->isEnabled() &&
-					_ui->comboBox_meshingTextureSize->currentIndex() > 0))
+					_ui->comboBox_meshingTextureSize->currentIndex() > 0) &&
+				// Don't do compensation if clouds are in camera frame
+				!(_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex()==2))
 		{
 			UASSERT(_compensator == 0);
 			_compensator = new GainCompensator(_ui->doubleSpinBox_gainRadius->value(), _ui->doubleSpinBox_gainOverlap->value(), 0.01, _ui->doubleSpinBox_gainBeta->value());
@@ -1196,7 +1210,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			return false;
 		}
 
-		std::map<int, Transform> viewPoints = poses;
+		std::map<int, Transform> mlsViewPoints = poses;
 		if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked())
 		{
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
@@ -1205,29 +1219,32 @@ bool ExportCloudsDialog::getExportedClouds(
 			uSleep(100);
 			QApplication::processEvents();
 
-			// Adjust view points with local transforms
-			for(std::map<int, Transform>::iterator iter= viewPoints.begin(); iter!=viewPoints.end(); ++iter)
+			if(_ui->checkBox_assemble->isChecked())
 			{
-				std::vector<CameraModel> models;
-				StereoCameraModel stereoModel;
-				if(cachedSignatures.contains(iter->first))
+				// Adjust view points with local transforms
+				for(std::map<int, Transform>::iterator iter= mlsViewPoints.begin(); iter!=mlsViewPoints.end(); ++iter)
 				{
-					const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
-					models = data.cameraModels();
-					stereoModel = data.stereoCameraModel();
-				}
-				else if(_dbDriver)
-				{
-					_dbDriver->getCalibration(iter->first, models, stereoModel);
-				}
+					std::vector<CameraModel> models;
+					StereoCameraModel stereoModel;
+					if(cachedSignatures.contains(iter->first))
+					{
+						const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
+						models = data.cameraModels();
+						stereoModel = data.stereoCameraModel();
+					}
+					else if(_dbDriver)
+					{
+						_dbDriver->getCalibration(iter->first, models, stereoModel);
+					}
 
-				if(models.size() && !models[0].localTransform().isNull())
-				{
-					iter->second *= models[0].localTransform();
-				}
-				else if(!stereoModel.localTransform().isNull())
-				{
-					iter->second *= stereoModel.localTransform();
+					if(models.size() && !models[0].localTransform().isNull())
+					{
+						iter->second *= models[0].localTransform();
+					}
+					else if(!stereoModel.localTransform().isNull())
+					{
+						iter->second *= stereoModel.localTransform();
+					}
 				}
 			}
 		}
@@ -1289,7 +1306,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					_progressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(cloudWithNormals->size()).arg(poses.size()));
 
 					util3d::adjustNormalsToViewPoints(
-							viewPoints,
+							mlsViewPoints,
 							rawAssembledCloud,
 							rawCameraIndices,
 							cloudWithNormals);
@@ -1422,17 +1439,21 @@ bool ExportCloudsDialog::getExportedClouds(
 							else
 #endif
 							{
-								if(models.size() && !models[0].localTransform().isNull())
+								if((_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex() != 2) ||
+									!iter->second->isOrganized())
 								{
-									viewpoint[0] = models[0].localTransform().x();
-									viewpoint[1] = models[0].localTransform().y();
-									viewpoint[2] = models[0].localTransform().z();
-								}
-								else if(!stereoModel.localTransform().isNull())
-								{
-									viewpoint[0] = stereoModel.localTransform().x();
-									viewpoint[1] = stereoModel.localTransform().y();
-									viewpoint[2] = stereoModel.localTransform().z();
+									if(models.size() && !models[0].localTransform().isNull())
+									{
+										viewpoint[0] = models[0].localTransform().x();
+										viewpoint[1] = models[0].localTransform().y();
+										viewpoint[2] = models[0].localTransform().z();
+									}
+									else if(!stereoModel.localTransform().isNull())
+									{
+										viewpoint[0] = stereoModel.localTransform().x();
+										viewpoint[1] = stereoModel.localTransform().y();
+										viewpoint[2] = stereoModel.localTransform().z();
+									}
 								}
 
 								std::vector<pcl::Vertices> polygons = util3d::organizedFastMesh(
@@ -2184,6 +2205,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 			pcl::IndicesPtr indices(new std::vector<int>);
+			Transform localTransform = Transform::getIdentity();
 			if(_ui->checkBox_regenerate->isChecked())
 			{
 				SensorData data;
@@ -2267,12 +2289,14 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
 						if(data.cameraModels().size() && !data.cameraModels()[0].localTransform().isNull())
 						{
+							localTransform = data.cameraModels()[0].localTransform();
 							viewPoint[0] = data.cameraModels()[0].localTransform().x();
 							viewPoint[1] = data.cameraModels()[0].localTransform().y();
 							viewPoint[2] = data.cameraModels()[0].localTransform().z();
 						}
 						else if(!data.stereoCameraModel().localTransform().isNull())
 						{
+							localTransform = data.stereoCameraModel().localTransform();
 							viewPoint[0] = data.stereoCameraModel().localTransform().x();
 							viewPoint[1] = data.stereoCameraModel().localTransform().y();
 							viewPoint[2] = data.stereoCameraModel().localTransform().z();
@@ -2362,12 +2386,14 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 				if(models.size() && !models[0].localTransform().isNull())
 				{
+					localTransform = models[0].localTransform();
 					viewPoint[0] = models[0].localTransform().x();
 					viewPoint[1] = models[0].localTransform().y();
 					viewPoint[2] = models[0].localTransform().z();
 				}
 				else if(!stereoModel.localTransform().isNull())
 				{
+					localTransform = stereoModel.localTransform();
 					viewPoint[0] = stereoModel.localTransform().x();
 					viewPoint[1] = stereoModel.localTransform().y();
 					viewPoint[2] = stereoModel.localTransform().z();
@@ -2393,6 +2419,12 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				{
 					indices = util3d::radiusFiltering(cloud, indices, _ui->doubleSpinBox_filteringRadius->value(), _ui->spinBox_filteringMinNeighbors->value());
 				}
+
+				if((_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex()==2) && cloud->isOrganized())
+				{
+					cloud = util3d::transformPointCloud(cloud, localTransform.inverse()); // put back in camera frame
+				}
+
 				clouds.insert(std::make_pair(iter->first, std::make_pair(cloud, indices)));
 				points = (int)cloud->size();
 				totalIndices = (int)indices->size();
@@ -2502,7 +2534,7 @@ void ExportCloudsDialog::saveClouds(
 						if(iter->second->size())
 						{
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformedCloud;
-							transformedCloud = util3d::transformPointCloud(iter->second, poses.at(iter->first));
+							transformedCloud = util3d::transformPointCloud(iter->second, !_ui->comboBox_frame->isEnabled()||_ui->comboBox_frame->currentIndex()==0?poses.at(iter->first):Transform::getIdentity());
 
 							QString pathFile = path+QDir::separator()+QString("%1%2.%3").arg(prefix).arg(iter->first).arg(suffix);
 							bool success =false;
@@ -2642,14 +2674,14 @@ void ExportCloudsDialog::saveMeshes(
 							{
 								pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZRGB>);
 								pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
-								tmp = util3d::transformPointCloud(tmp, poses.at(iter->first));
+								tmp = util3d::transformPointCloud(tmp, !_ui->comboBox_frame->isEnabled()||_ui->comboBox_frame->currentIndex()==0?poses.at(iter->first):Transform::getIdentity());
 								pcl::toPCLPointCloud2(*tmp, mesh.cloud);
 							}
 							else
 							{
 								pcl::PointCloud<pcl::PointXYZ>::Ptr tmp(new pcl::PointCloud<pcl::PointXYZ>);
 								pcl::fromPCLPointCloud2(iter->second->cloud, *tmp);
-								tmp = util3d::transformPointCloud(tmp, poses.at(iter->first));
+								tmp = util3d::transformPointCloud(tmp, !_ui->comboBox_frame->isEnabled()||_ui->comboBox_frame->currentIndex()==0?poses.at(iter->first):Transform::getIdentity());
 								pcl::toPCLPointCloud2(*tmp, mesh.cloud);
 							}
 
@@ -3564,7 +3596,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 						}
 						pcl::PointCloud<pcl::PointNormal>::Ptr tmp(new pcl::PointCloud<pcl::PointNormal>);
 						pcl::fromPCLPointCloud2(mesh->cloud, *tmp);
-						tmp = util3d::transformPointCloud(tmp, poses.at(iter->first));
+						tmp = util3d::transformPointCloud(tmp, !_ui->comboBox_frame->isEnabled()||_ui->comboBox_frame->currentIndex()==0?poses.at(iter->first):Transform::getIdentity());
 						pcl::toPCLPointCloud2(*tmp, mesh->cloud);
 
 						QString pathFile = path+QDir::separator()+QString("%1.%3").arg(currentPrefix).arg(suffix);

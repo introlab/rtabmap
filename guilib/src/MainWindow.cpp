@@ -163,6 +163,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_posteriorCurve(0),
 	_likelihoodCurve(0),
 	_rawLikelihoodCurve(0),
+	_exportPosesFrame(0),
 	_autoScreenCaptureOdomSync(false),
 	_autoScreenCaptureRAM(false),
 	_firstCall(true),
@@ -4737,20 +4738,94 @@ void MainWindow::exportPoses(int format)
 {
 	if(_currentPosesMap.size())
 	{
+		std::map<int, Transform> poses;
+		QStringList items;
+		items.push_back("Robot");
+		items.push_back("Camera");
+		items.push_back("Scan");
+		QString item = QInputDialog::getItem(this, tr("Export Poses"), tr("Frame: "), items, _exportPosesFrame, false);
+		if(item.isEmpty())
+		{
+			return;
+		}
+		if(item.compare("Robot") != 0)
+		{
+			bool cameraFrame = item.compare("Camera") == 0;
+			_exportPosesFrame = cameraFrame?1:2;
+			for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+			{
+				if(_cachedSignatures.contains(iter->first))
+				{
+					Transform localTransform;
+					if(cameraFrame)
+					{
+						if((_cachedSignatures[iter->first].sensorData().cameraModels().size() == 1 &&
+							!_cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform().isNull()))
+						{
+							localTransform = _cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform();
+						}
+						else if(!_cachedSignatures[iter->first].sensorData().stereoCameraModel().localTransform().isNull())
+						{
+							localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModel().localTransform();
+						}
+						else if(_cachedSignatures[iter->first].sensorData().cameraModels().size()>1)
+						{
+							UWARN("Multi-camera is not supported (node %d)", iter->first);
+						}
+						else
+						{
+							UWARN("Missing calibration for node %d", iter->first);
+						}
+					}
+					else
+					{
+						if(!_cachedSignatures[iter->first].sensorData().laserScanInfo().localTransform().isNull())
+						{
+							localTransform = _cachedSignatures[iter->first].sensorData().laserScanInfo().localTransform();
+						}
+						else
+						{
+							UWARN("Missing scan info for node %d", iter->first);
+						}
+					}
+					if(!localTransform.isNull())
+					{
+						poses.insert(std::make_pair(iter->first, iter->second * localTransform));
+					}
+				}
+				else
+				{
+					UWARN("Did not find node %d in cache", iter->first);
+				}
+			}
+			if(poses.empty())
+			{
+				QMessageBox::warning(this,
+						tr("Export Poses"),
+						tr("Could not find any \"%1\" frame, exporting in Robot frame instead.").arg(item));
+				poses = _currentPosesMap;
+			}
+		}
+		else
+		{
+			_exportPosesFrame = 0;
+			poses = _currentPosesMap;
+		}
+
 		std::map<int, double> stamps;
 		if(format == 1)
 		{
-			for(std::map<int, Transform>::iterator iter=_currentPosesMap.begin(); iter!=_currentPosesMap.end(); ++iter)
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 			{
 				if(_cachedSignatures.contains(iter->first))
 				{
 					stamps.insert(std::make_pair(iter->first, _cachedSignatures.value(iter->first).getStamp()));
 				}
 			}
-			if(stamps.size()!=_currentPosesMap.size())
+			if(stamps.size()!=poses.size())
 			{
 				QMessageBox::warning(this, tr("Export poses..."), tr("RGB-D SLAM format: Poses (%1) and stamps (%2) have not the same size! Try again after updating the cache.")
-						.arg(_currentPosesMap.size()).arg(stamps.size()));
+						.arg(poses.size()).arg(stamps.size()));
 				return;
 			}
 		}
@@ -4770,7 +4845,24 @@ void MainWindow::exportPoses(int format)
 		{
 			_exportPosesFileName[format] = path;
 
-			bool saved = graph::exportPoses(path.toStdString(), format, _currentPosesMap, _currentLinksMap, stamps);
+			std::multimap<int, Link> links;
+			if(poses.size() != _currentPosesMap.size())
+			{
+				for(std::multimap<int, Link>::iterator iter=_currentLinksMap.begin(); iter!=_currentLinksMap.end(); ++iter)
+				{
+					if(uContains(poses, iter->second.from()) && uContains(poses, iter->second.to()))
+					{
+						links.insert(*iter);
+					}
+				}
+			}
+			else
+			{
+				links = _currentLinksMap;
+			}
+
+
+			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
 
 			if(saved)
 			{
