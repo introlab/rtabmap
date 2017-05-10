@@ -319,6 +319,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadCloud(
 		int downsampleStep = 1,
 		float voxelSize = 0.0f);
 
+// returns all divisors of num
+std::set<size_t> get_divisors(const size_t &num);
+
+// returns divisor from divisors closest to ref
+size_t GetClosestToRef(const std::set<size_t> &divisors, const double &ref);
+
+// sets bin_width and bin_height to appropriate values
+void GetBinSize(const size_t &width, const size_t &height, size_t &bin_width, size_t &bin_height);
+
 } // namespace util3d
 } // namespace rtabmap
 

@@ -391,7 +391,9 @@ void DepthCalibrationDialog::calibrate(
 			const cv::Size & imageSize = sequence.begin()->second.cameraModels()[0].imageSize();
 			if(_model == 0)
 			{
-				_model = new clams::DiscreteDepthDistortionModel(imageSize.width, imageSize.height);
+				size_t bin_width, bin_height;
+				util3d::GetBinSize(imageSize.width, imageSize.height, bin_width, bin_height);
+				_model = new clams::DiscreteDepthDistortionModel(imageSize.width, imageSize.height, bin_width, bin_height);
 			}
 			UASSERT(_model->getWidth() == imageSize.width && _model->getHeight() == imageSize.height);
 
