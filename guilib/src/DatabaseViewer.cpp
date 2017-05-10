@@ -4894,6 +4894,17 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			fromS->sensorData().uncompressData();
 			dbDriver_->getNodeData(to, toS->sensorData());
 			toS->sensorData().uncompressData();
+			if(reextractVisualFeatures)
+			{
+				fromS->setWords(std::multimap<int, cv::KeyPoint>());
+				fromS->setWords3(std::multimap<int, cv::Point3f>());
+				fromS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+				fromS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+				toS->setWords(std::multimap<int, cv::KeyPoint>());
+				toS->setWords3(std::multimap<int, cv::Point3f>());
+				toS->setWordsDescriptors(std::multimap<int, cv::Mat>());
+				toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+			}
 		}
 
 		t = reg->computeTransformationMod(*fromS, *toS, Transform(), &info);
