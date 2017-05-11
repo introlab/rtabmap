@@ -2275,56 +2275,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadCloud(
 	return util3d::transformPointCloud(cloud, transform);
 }
 
-std::set<size_t> get_divisors(const size_t &num)
-{
-	std::set<size_t> divisors;
-		for(size_t i = 1; i <= num; i++)
-		{
-			if(num % i == 0)
-			{
-				divisors.insert(i);
-			}
-		}
-	return divisors;
-}
-
-size_t GetClosestToRef(const std::set<size_t> &divisors, const double &ref)
-{
-	std::set<size_t>::iterator low, prev;
-	low = divisors.lower_bound(ref);
-	if(low == divisors.end())
-	{
-		return *(--divisors.end());
-	}
-	else if(low == divisors.begin())
-	{
-		return *low;
-	}
-	else
-	{
-		prev = low;
-		--prev;
-		if((ref - *prev) <= (*low - ref))
-		{
-			return *prev;
-		}
-		else
-		{
-			return *low;
-		}
-	}
-}
-
-void GetBinSize(const size_t &width, const size_t &height, size_t &bin_width, size_t &bin_height) {
-	double ratio = width / static_cast<double>(height);
-	std::set<size_t> divisors = get_divisors(width);
-	double ref_bin_width = 8;
-	bin_width = GetClosestToRef(divisors, ref_bin_width);
-	divisors = get_divisors(height);
-	double ref_bin_height = ref_bin_width / ratio;
-	bin_height = GetClosestToRef(divisors, ref_bin_height);
-}
-
 }
 
 }

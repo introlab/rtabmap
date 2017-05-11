@@ -392,7 +392,7 @@ void DepthCalibrationDialog::calibrate(
 			if(_model == 0)
 			{
 				size_t bin_width, bin_height;
-				util3d::GetBinSize(imageSize.width, imageSize.height, bin_width, bin_height);
+                                clams::DiscreteDepthDistortionModel::getBinSize(imageSize.width, imageSize.height, bin_width, bin_height);
 				_model = new clams::DiscreteDepthDistortionModel(imageSize.width, imageSize.height, bin_width, bin_height);
 			}
 			UASSERT(_model->getWidth() == imageSize.width && _model->getHeight() == imageSize.height);

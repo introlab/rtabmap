@@ -153,6 +153,57 @@ namespace clams
       UDEBUG("Frustum: multipliers=%d", multipliers_.rows());
     }
 
+  std::set<size_t> DiscreteDepthDistortionModel::getDivisors(const size_t &num)
+  {
+    std::set<size_t> divisors;
+    for(size_t i = 1; i <= num; i++)
+    {
+      if(num % i == 0)
+      {
+        divisors.insert(i);
+      }
+    }
+    return divisors;
+  }
+
+  size_t DiscreteDepthDistortionModel::getClosestToRef(const std::set<size_t> &divisors, const double &ref)
+  {
+    std::set<size_t>::iterator low, prev;
+    low = divisors.lower_bound(ref);
+    if(low == divisors.end())
+    {
+      return *(--divisors.end());
+    }
+    else if(low == divisors.begin())
+    {
+      return *low;
+    }
+    else
+    {
+      prev = low;
+      --prev;
+      if((ref - *prev) <= (*low - ref))
+      {
+        return *prev;
+      }
+      else
+      {
+        return *low;
+      }
+    }
+  }
+
+  void DiscreteDepthDistortionModel::getBinSize(const size_t &width, const size_t &height, size_t &bin_width, size_t &bin_height) {
+    double ratio = width / static_cast<double>(height);
+    std::set<size_t> divisors = getDivisors(width);
+    double ref_bin_width = 8;
+    bin_width = getClosestToRef(divisors, ref_bin_width);
+    divisors = getDivisors(height);
+    double ref_bin_height = ref_bin_width / ratio;
+    bin_height = getClosestToRef(divisors, ref_bin_height);
+  }
+
+
   DiscreteDepthDistortionModel::DiscreteDepthDistortionModel(const DiscreteDepthDistortionModel& other)
   {
     *this = other;
