@@ -67,6 +67,16 @@ namespace clams
   class RTABMAP_EXP DiscreteDepthDistortionModel
   {
   public:
+    // returns all divisors of num
+    static std::set<size_t> getDivisors(const size_t &num);
+
+    // returns divisor from divisors closest to ref
+    static size_t getClosestToRef(const std::set<size_t> &divisors, const double &ref);
+
+    // sets bin_width and bin_height to appropriate values
+    static void getBinSize(const size_t &width, const size_t &height, size_t &bin_width, size_t &bin_height);
+
+  public:
     DiscreteDepthDistortionModel() :
     	width_(0),
 		height_(0),
