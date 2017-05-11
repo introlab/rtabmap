@@ -74,6 +74,12 @@ DepthCalibrationDialog::DepthCalibrationDialog(QWidget *parent) :
 	connect(_ui->doubleSpinBox_coneStdDevThresh, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_laserScan, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 
+	connect(_ui->spinBox_bin_width, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_bin_height, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_bin_depth, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->spinBox_smoothing, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_maxDepthModel, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+
 	_ui->buttonBox->button(QDialogButtonBox::Ok)->setFocus();
 
 	_progressDialog = new ProgressDialog(this);
@@ -109,6 +115,12 @@ void DepthCalibrationDialog::saveSettings(QSettings & settings, const QString & 
 	settings.setValue("cone_stddev_thresh",_ui->doubleSpinBox_coneStdDevThresh->value());
 	settings.setValue("laser_scan",_ui->checkBox_laserScan->isChecked());
 
+	settings.setValue("bin_width",_ui->spinBox_bin_width->value());
+	settings.setValue("bin_height",_ui->spinBox_bin_height->value());
+	settings.setValue("bin_depth",_ui->doubleSpinBox_bin_depth->value());
+	settings.setValue("smoothing",_ui->spinBox_smoothing->value());
+	settings.setValue("max_model_depth",_ui->doubleSpinBox_maxDepthModel->value());
+
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -130,6 +142,12 @@ void DepthCalibrationDialog::loadSettings(QSettings & settings, const QString & 
 	_ui->doubleSpinBox_coneStdDevThresh->setValue(settings.value("cone_stddev_thresh", _ui->doubleSpinBox_coneStdDevThresh->value()).toDouble());
 	_ui->checkBox_laserScan->setChecked(settings.value("laser_scan", _ui->checkBox_laserScan->isChecked()).toBool());
 
+	_ui->spinBox_bin_width->setValue(settings.value("bin_width", _ui->spinBox_bin_width->value()).toInt());
+	_ui->spinBox_bin_height->setValue(settings.value("bin_height", _ui->spinBox_bin_height->value()).toInt());
+	_ui->doubleSpinBox_bin_depth->setValue(settings.value("bin_depth", _ui->doubleSpinBox_bin_depth->value()).toDouble());
+	_ui->spinBox_smoothing->setValue(settings.value("smoothing", _ui->spinBox_smoothing->value()).toInt());
+	_ui->doubleSpinBox_maxDepthModel->setValue(settings.value("max_model_depth", _ui->doubleSpinBox_maxDepthModel->value()).toDouble());
+
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -146,6 +164,19 @@ void DepthCalibrationDialog::restoreDefaults()
 	_ui->doubleSpinBox_coneStdDevThresh->setValue(0.1); // 0.03
 	_ui->checkBox_laserScan->setChecked(false);
 	_ui->checkBox_resetModel->setChecked(true);
+
+	_ui->spinBox_bin_width->setValue(8);
+	_ui->spinBox_bin_height->setValue(6);
+	if(_imageSize.width > 0 && _imageSize.height > 0)
+	{
+		size_t bin_width, bin_height;
+		clams::DiscreteDepthDistortionModel::getBinSize(_imageSize.width, _imageSize.height, bin_width, bin_height);
+		_ui->spinBox_bin_width->setValue(bin_width);
+		_ui->spinBox_bin_height->setValue(bin_height);
+	}
+	_ui->doubleSpinBox_bin_depth->setValue(2.0),
+	_ui->spinBox_smoothing->setValue(1);
+	_ui->doubleSpinBox_maxDepthModel->setValue(10.0);
 }
 
 void DepthCalibrationDialog::saveModel()
@@ -192,12 +223,43 @@ void DepthCalibrationDialog::calibrate(
 	{
 		_ui->label_trainingSamples->setNum((int)_model->getTrainingSamples());
 	}
+
+	_ui->label_width->setText("NA");
+	_ui->label_height->setText("NA");
+	_imageSize = cv::Size();
+	if(cachedSignatures.size())
+	{
+		const Signature & s = cachedSignatures.begin().value();
+		const SensorData & data = s.sensorData();
+		if(data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForReprojection())
+		{
+			_imageSize = data.cameraModels()[0].imageSize();
+			_ui->label_width->setNum(data.cameraModels()[0].imageWidth());
+			_ui->label_height->setNum(data.cameraModels()[0].imageHeight());
+
+			if(data.cameraModels()[0].imageWidth() % _ui->spinBox_bin_width->value() != 0 ||
+			   data.cameraModels()[0].imageHeight() % _ui->spinBox_bin_height->value() != 0)
+			{
+				size_t bin_width, bin_height;
+				clams::DiscreteDepthDistortionModel::getBinSize(data.cameraModels()[0].imageWidth(), data.cameraModels()[0].imageHeight(), bin_width, bin_height);
+				_ui->spinBox_bin_width->setValue(bin_width);
+				_ui->spinBox_bin_height->setValue(bin_height);
+			}
+		}
+	}
+
 	if(this->exec() == QDialog::Accepted)
 	{
 		if(_model && _ui->checkBox_resetModel->isChecked())
 		{
 			delete _model;
 			_model = 0;
+		}
+
+		if(_ui->doubleSpinBox_maxDepthModel->value() < _ui->doubleSpinBox_bin_depth->value())
+		{
+			QMessageBox::warning(this, tr("Wrong parameter"), tr("Maximum model depth should be higher than bin depth, setting to bin depth x5."));
+			_ui->doubleSpinBox_maxDepthModel->setValue(_ui->doubleSpinBox_bin_depth->value() * 5.0);
 		}
 
 		_progressDialog->setMaximumSteps(poses.size()*2 + 3);
@@ -391,9 +453,24 @@ void DepthCalibrationDialog::calibrate(
 			const cv::Size & imageSize = sequence.begin()->second.cameraModels()[0].imageSize();
 			if(_model == 0)
 			{
-				size_t bin_width, bin_height;
-                                clams::DiscreteDepthDistortionModel::getBinSize(imageSize.width, imageSize.height, bin_width, bin_height);
-				_model = new clams::DiscreteDepthDistortionModel(imageSize.width, imageSize.height, bin_width, bin_height);
+				size_t bin_width = _ui->spinBox_bin_width->value();
+				size_t bin_height = _ui->spinBox_bin_height->value();
+				if(imageSize.width % _ui->spinBox_bin_width->value() != 0 ||
+				   imageSize.height % _ui->spinBox_bin_height->value() != 0)
+				{
+					size_t bin_width, bin_height;
+					clams::DiscreteDepthDistortionModel::getBinSize(imageSize.width, imageSize.height, bin_width, bin_height);
+					_ui->spinBox_bin_width->setValue(bin_width);
+					_ui->spinBox_bin_height->setValue(bin_height);
+				}
+				_model = new clams::DiscreteDepthDistortionModel(
+						imageSize.width,
+						imageSize.height,
+						bin_width,
+						bin_height,
+						_ui->doubleSpinBox_bin_depth->value(),
+						_ui->spinBox_smoothing->value(),
+						_ui->doubleSpinBox_maxDepthModel->value());
 			}
 			UASSERT(_model->getWidth() == imageSize.width && _model->getHeight() == imageSize.height);
 

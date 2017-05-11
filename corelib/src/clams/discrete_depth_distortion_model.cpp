@@ -40,10 +40,13 @@ using namespace Eigen;
 namespace clams
 {
 
-  DiscreteFrustum::DiscreteFrustum(int smoothing, double bin_depth) :
-    max_dist_(10),
+  DiscreteFrustum::DiscreteFrustum(int smoothing, double bin_depth, double max_dist) :
+    max_dist_(max_dist),
     bin_depth_(bin_depth)
   {
+    UASSERT(max_dist_ >= bin_depth_);
+    UASSERT(bin_depth_>0.0);
+    UASSERT(smoothing>=1);
     num_bins_ = ceil(max_dist_ / bin_depth_);
     counts_ = VectorXf::Ones(num_bins_) * smoothing;
     total_numerators_ = VectorXf::Ones(num_bins_) * smoothing;
@@ -231,7 +234,8 @@ namespace clams
   DiscreteDepthDistortionModel::DiscreteDepthDistortionModel(int width, int height,
                                                              int bin_width, int bin_height,
                                                              double bin_depth,
-                                                             int smoothing) :
+                                                             int smoothing,
+															 double max_depth) :
     width_(width),
     height_(height),
     bin_width_(bin_width),
@@ -248,7 +252,7 @@ namespace clams
     for(size_t i = 0; i < frustums_.size(); ++i) {
       frustums_[i].resize(num_bins_x_, NULL);
       for(size_t j = 0; j < frustums_[i].size(); ++j)
-        frustums_[i][j] = new DiscreteFrustum(smoothing, bin_depth);
+        frustums_[i][j] = new DiscreteFrustum(smoothing, bin_depth, max_depth);
     }
 
     training_samples_ = 0;

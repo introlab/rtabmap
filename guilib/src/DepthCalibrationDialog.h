@@ -76,6 +76,7 @@ private:
 	bool _canceled;
 	clams::DiscreteDepthDistortionModel * _model;
 	QString _workingDirectory;
+	cv::Size _imageSize;
 };
 
 } /* namespace rtabmap */
