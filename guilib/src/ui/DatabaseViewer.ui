@@ -506,7 +506,6 @@
     <addaction name="actionSave_config"/>
     <addaction name="separator"/>
     <addaction name="actionGenerate_3D_map_pcd"/>
-    <addaction name="actionExport_3D_laser_scans_ply_pcd"/>
     <addaction name="actionExport"/>
     <addaction name="actionExtract_images"/>
     <addaction name="menuExport_poses"/>
@@ -533,7 +532,6 @@
     <addaction name="actionRestore_default_GUI_settings"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
-    <addaction name="actionView_3D_laser_scans"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -2119,29 +2117,9 @@
     <string>Generate graph (*.dot) ...</string>
    </property>
   </action>
-  <action name="actionGenerate_graph_only_weighted_locations">
-   <property name="text">
-    <string>Generate graph (only weighted locations) ...</string>
-   </property>
-  </action>
-  <action name="actionClean_database">
-   <property name="text">
-    <string>Clean database</string>
-   </property>
-  </action>
   <action name="actionGenerate_local_graph_dot">
    <property name="text">
     <string>Generate local graph (.dot) ...</string>
-   </property>
-  </action>
-  <action name="actionClean_local_graph">
-   <property name="text">
-    <string>Clean local graph ...</string>
-   </property>
-  </action>
-  <action name="actionUpdate_base_ids">
-   <property name="text">
-    <string>Update base ids</string>
    </property>
   </action>
   <action name="actionGenerate_3D_map_pcd">
@@ -2193,16 +2171,6 @@
   <action name="actionReset_all_changes">
    <property name="text">
     <string>Reset link and grid map changes</string>
-   </property>
-  </action>
-  <action name="actionView_3D_laser_scans">
-   <property name="text">
-    <string>View 2D-3D laser scans...</string>
-   </property>
-  </action>
-  <action name="actionExport_3D_laser_scans_ply_pcd">
-   <property name="text">
-    <string>Export 2D-3D laser scans (*.ply *.pcd) ...</string>
    </property>
   </action>
   <action name="actionRegenerate_local_grid_maps">

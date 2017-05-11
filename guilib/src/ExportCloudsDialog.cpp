@@ -84,6 +84,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	restoreDefaults();
 	_ui->comboBox_upsamplingMethod->setItemData(1, 0, Qt::UserRole - 1); // disable DISTINCT_CLOUD
 
+	connect(_ui->checkBox_fromDepth, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->checkBox_fromDepth, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->checkBox_binary, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_pipeline, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
@@ -243,6 +245,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 		settings.beginGroup(group);
 	}
 	settings.setValue("pipeline", _ui->comboBox_pipeline->currentIndex());
+	settings.setValue("from_depth", _ui->checkBox_fromDepth->isChecked());
 	settings.setValue("binary", _ui->checkBox_binary->isChecked());
 	settings.setValue("normals_k", _ui->spinBox_normalKSearch->value());
 
@@ -351,6 +354,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	}
 
 	_ui->comboBox_pipeline->setCurrentIndex(settings.value("pipeline", _ui->comboBox_pipeline->currentIndex()).toInt());
+	_ui->checkBox_fromDepth->setChecked(settings.value("from_depth", _ui->checkBox_fromDepth->isChecked()).toBool());
 	_ui->checkBox_binary->setChecked(settings.value("binary", _ui->checkBox_binary->isChecked()).toBool());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normals_k", _ui->spinBox_normalKSearch->value()).toInt());
 
@@ -459,6 +463,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 void ExportCloudsDialog::restoreDefaults()
 {
 	_ui->comboBox_pipeline->setCurrentIndex(1);
+	_ui->checkBox_fromDepth->setChecked(true);
 	_ui->checkBox_binary->setChecked(true);
 	_ui->spinBox_normalKSearch->setValue(20);
 
@@ -560,6 +565,28 @@ void ExportCloudsDialog::restoreDefaults()
 
 void ExportCloudsDialog::updateReconstructionFlavor()
 {
+	if(!_ui->checkBox_fromDepth->isChecked())
+	{
+		_ui->comboBox_pipeline->setCurrentIndex(1);
+		_ui->comboBox_pipeline->setEnabled(false);
+		_ui->comboBox_frame->setItemData(2, 0,Qt::UserRole - 1);
+		_ui->comboBox_frame->setItemData(3, 1|32,Qt::UserRole - 1);
+		if(_ui->comboBox_frame->currentIndex() == 2)
+		{
+			_ui->comboBox_frame->setCurrentIndex(0);
+		}
+	}
+	else
+	{
+		_ui->comboBox_pipeline->setEnabled(true);
+		_ui->comboBox_frame->setItemData(2, 1|32,Qt::UserRole - 1);
+		_ui->comboBox_frame->setItemData(3, 0,Qt::UserRole - 1);
+		if(_ui->comboBox_frame->currentIndex() == 3)
+		{
+			_ui->comboBox_frame->setCurrentIndex(0);
+		}
+	}
+
 	_ui->checkBox_smoothing->setVisible(_ui->comboBox_pipeline->currentIndex() == 1);
 	_ui->checkBox_smoothing->setEnabled(_ui->comboBox_pipeline->currentIndex() == 1);
 
@@ -570,7 +597,8 @@ void ExportCloudsDialog::updateReconstructionFlavor()
 	_ui->checkBox_gainCompensation->setVisible(_ui->checkBox_gainCompensation->isEnabled());
 	_ui->label_gainCompensation->setVisible(_ui->checkBox_gainCompensation->isEnabled());
 
-	_ui->groupBox_regenerate->setVisible(_ui->checkBox_regenerate->isChecked());
+	_ui->groupBox_regenerate->setVisible(_ui->checkBox_regenerate->isChecked() && _ui->checkBox_fromDepth->isChecked());
+	_ui->groupBox_regenerateScans->setVisible(_ui->checkBox_regenerate->isChecked() && !_ui->checkBox_fromDepth->isChecked());
 	_ui->groupBox_bilateral->setVisible(_ui->checkBox_bilateral->isChecked());
 	_ui->groupBox_filtering->setVisible(_ui->checkBox_filtering->isChecked());
 	_ui->groupBox_gain->setVisible(_ui->checkBox_gainCompensation->isEnabled() && _ui->checkBox_gainCompensation->isChecked());
@@ -668,21 +696,13 @@ void ExportCloudsDialog::setOkButton()
 	updateReconstructionFlavor();
 }
 
-void ExportCloudsDialog::enableRegeneration(bool enabled)
-{
-	if(!enabled)
-	{
-		_ui->checkBox_regenerate->setChecked(false);
-	}
-	_ui->checkBox_regenerate->setEnabled(enabled);
-}
-
 void ExportCloudsDialog::exportClouds(
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & links,
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
+		const std::map<int, cv::Mat> & cachedScans,
 		const QString & workingDirectory,
 		const ParametersMap & parameters)
 {
@@ -699,6 +719,7 @@ void ExportCloudsDialog::exportClouds(
 			mapIds,
 			cachedSignatures,
 			cachedClouds,
+			cachedScans,
 			workingDirectory,
 			parameters,
 			clouds,
@@ -743,6 +764,7 @@ void ExportCloudsDialog::viewClouds(
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
+		const std::map<int, cv::Mat> & cachedScans,
 		const QString & workingDirectory,
 		const ParametersMap & parameters)
 {
@@ -759,6 +781,7 @@ void ExportCloudsDialog::viewClouds(
 			mapIds,
 			cachedSignatures,
 			cachedClouds,
+			cachedScans,
 			workingDirectory,
 			parameters,
 			clouds,
@@ -981,6 +1004,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
+		const std::map<int, cv::Mat> & cachedScans,
 		const QString & workingDirectory,
 		const ParametersMap & parameters,
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
@@ -990,10 +1014,11 @@ bool ExportCloudsDialog::getExportedClouds(
 {
 	_canceled = false;
 	_workingDirectory = workingDirectory;
-	enableRegeneration(_dbDriver || cachedSignatures.size());
+	_ui->checkBox_regenerate->setEnabled(true);
 	if(cachedSignatures.empty() && _dbDriver)
 	{
 		_ui->checkBox_regenerate->setChecked(true);
+		_ui->checkBox_regenerate->setEnabled(false);
 	}
 	if(_compensator)
 	{
@@ -1037,12 +1062,16 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 		_progressDialog->setMaximumSteps(int(poses.size())*mul+1);
 
+		bool has2dScans = false;
 		std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > clouds = this->getClouds(
 				poses,
 				cachedSignatures,
 				cachedClouds,
-				parameters);
+				cachedScans,
+				parameters,
+				has2dScans);
 
+		UDEBUG("");
 		if(_canceled)
 		{
 			return false;
@@ -1064,7 +1093,8 @@ bool ExportCloudsDialog::getExportedClouds(
 			return false;
 		}
 
-		if(_ui->checkBox_gainCompensation->isChecked() && clouds.size() > 1 &&
+		UDEBUG("");
+		if(_ui->checkBox_gainCompensation->isChecked() && _ui->checkBox_fromDepth->isChecked() && clouds.size() > 1 &&
 				// Do compensation later if we are merging textures on a dense assembled cloud
 				!(_ui->checkBox_meshing->isChecked() &&
 					_ui->checkBox_textureMapping->isEnabled() &&
@@ -1137,6 +1167,59 @@ bool ExportCloudsDialog::getExportedClouds(
 			}
 		}
 
+		UDEBUG("");
+		std::map<int, Transform> normalViewpoints = poses;
+		if(_ui->checkBox_assemble->isChecked())
+		{
+			// Adjust view points with local transforms
+			for(std::map<int, Transform>::iterator iter= normalViewpoints.begin(); iter!=normalViewpoints.end(); ++iter)
+			{
+				if(_ui->checkBox_fromDepth->isChecked())
+				{
+					std::vector<CameraModel> models;
+					StereoCameraModel stereoModel;
+					if(cachedSignatures.contains(iter->first))
+					{
+						const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
+						models = data.cameraModels();
+						stereoModel = data.stereoCameraModel();
+					}
+					else if(_dbDriver)
+					{
+						_dbDriver->getCalibration(iter->first, models, stereoModel);
+					}
+
+					if(models.size() && !models[0].localTransform().isNull())
+					{
+						iter->second *= models[0].localTransform();
+					}
+					else if(!stereoModel.localTransform().isNull())
+					{
+						iter->second *= stereoModel.localTransform();
+					}
+				}
+				else
+				{
+					LaserScanInfo info;
+					if(cachedSignatures.contains(iter->first))
+					{
+						const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
+						info = data.laserScanInfo();
+					}
+					else if(_dbDriver)
+					{
+						_dbDriver->getLaserScanInfo(iter->first, info);
+					}
+
+					if(!info.localTransform().isNull())
+					{
+						iter->second *= info.localTransform();
+					}
+				}
+			}
+		}
+
+		UDEBUG("");
 		pcl::PointCloud<pcl::PointXYZ>::Ptr rawAssembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
 		std::vector<int> rawCameraIndices;
 		if(_ui->checkBox_assemble->isChecked() &&
@@ -1202,61 +1285,55 @@ bool ExportCloudsDialog::getExportedClouds(
 			{
 				indices->at(i) = i;
 			}
+
+			if(!_ui->checkBox_fromDepth->isChecked() && !has2dScans)
+			{
+				// recompute normals
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZ>);
+				pcl::copyPointCloud(*assembledCloud, *cloudWithoutNormals);
+				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value());
+
+				UASSERT(assembledCloud->size() == normals->size());
+				for(unsigned int i=0; i<normals->size(); ++i)
+				{
+					assembledCloud->points[i].normal_x = normals->points[i].normal_x;
+					assembledCloud->points[i].normal_y = normals->points[i].normal_y;
+					assembledCloud->points[i].normal_z = normals->points[i].normal_z;
+				}
+
+				// adjust with point of views
+				util3d::adjustNormalsToViewPoints(
+											normalViewpoints,
+											rawAssembledCloud,
+											rawCameraIndices,
+											assembledCloud);
+			}
+
 			clouds.insert(std::make_pair(0, std::make_pair(assembledCloud, indices)));
 		}
 
+		UDEBUG("");
 		if(_canceled)
 		{
 			return false;
 		}
 
-		std::map<int, Transform> mlsViewPoints = poses;
-		if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked())
+		if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked() && !has2dScans)
 		{
 			_progressDialog->appendText(tr("Smoothing the surface using Moving Least Squares (MLS) algorithm... "
 					"[search radius=%1m voxel=%2m]").arg(_ui->doubleSpinBox_mlsRadius->value()).arg(_ui->doubleSpinBox_voxelSize_assembled->value()));
 			QApplication::processEvents();
 			uSleep(100);
 			QApplication::processEvents();
-
-			if(_ui->checkBox_assemble->isChecked())
-			{
-				// Adjust view points with local transforms
-				for(std::map<int, Transform>::iterator iter= mlsViewPoints.begin(); iter!=mlsViewPoints.end(); ++iter)
-				{
-					std::vector<CameraModel> models;
-					StereoCameraModel stereoModel;
-					if(cachedSignatures.contains(iter->first))
-					{
-						const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
-						models = data.cameraModels();
-						stereoModel = data.stereoCameraModel();
-					}
-					else if(_dbDriver)
-					{
-						_dbDriver->getCalibration(iter->first, models, stereoModel);
-					}
-
-					if(models.size() && !models[0].localTransform().isNull())
-					{
-						iter->second *= models[0].localTransform();
-					}
-					else if(!stereoModel.localTransform().isNull())
-					{
-						iter->second *= stereoModel.localTransform();
-					}
-				}
-			}
 		}
 
 		//fill cloudWithNormals
 		for(std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> >::iterator iter=clouds.begin();
-			iter!= clouds.end();
-			++iter)
+			iter!= clouds.end();)
 		{
 			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals = iter->second.first;
 
-			if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked())
+			if(_ui->checkBox_smoothing->isEnabled() && _ui->checkBox_smoothing->isChecked() && !has2dScans)
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZRGB>);
 				if(iter->second.second->size())
@@ -1306,7 +1383,7 @@ bool ExportCloudsDialog::getExportedClouds(
 					_progressDialog->appendText(tr("Update %1 normals with %2 camera views...").arg(cloudWithNormals->size()).arg(poses.size()));
 
 					util3d::adjustNormalsToViewPoints(
-							mlsViewPoints,
+							normalViewpoints,
 							rawAssembledCloud,
 							rawCameraIndices,
 							cloudWithNormals);
@@ -1319,6 +1396,9 @@ bool ExportCloudsDialog::getExportedClouds(
 
 			cloudsWithNormals.insert(std::make_pair(iter->first, cloudWithNormals));
 
+			// clear memory
+			clouds.erase(iter++);
+
 			_progressDialog->incrementStep();
 			QApplication::processEvents();
 			if(_canceled)
@@ -1327,6 +1407,7 @@ bool ExportCloudsDialog::getExportedClouds(
 			}
 		}
 
+		UDEBUG("");
 #ifdef RTABMAP_CPUTSDF
 		cpu_tsdf::TSDFVolumeOctree::Ptr tsdf;
 #endif
@@ -1337,7 +1418,7 @@ bool ExportCloudsDialog::getExportedClouds(
 
 		//mesh
 		UDEBUG("Meshing=%d", _ui->checkBox_meshing->isChecked()?1:0);
-		if(_ui->checkBox_meshing->isChecked())
+		if(_ui->checkBox_meshing->isChecked() && !has2dScans)
 		{
 			if(_ui->comboBox_pipeline->currentIndex() == 0)
 			{
@@ -1521,7 +1602,7 @@ bool ExportCloudsDialog::getExportedClouds(
 									if(polygons.size() == 0)
 									{
 										std::string msg = uFormat("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.", before, _ui->spinBox_mesh_minClusterSize->value());
-										_progressDialog->appendText(msg.c_str());
+										_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
 										UWARN(msg.c_str());
 									}
 
@@ -1529,7 +1610,7 @@ bool ExportCloudsDialog::getExportedClouds(
 									QApplication::processEvents();
 								}
 
-								_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(polygons.size()).arg(++i).arg(clouds.size()));
+								_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(polygons.size()).arg(++i).arg(cloudsWithNormals.size()));
 
 								pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 								std::vector<pcl::Vertices> densePolygons;
@@ -1571,12 +1652,25 @@ bool ExportCloudsDialog::getExportedClouds(
 						}
 						else
 						{
-							_progressDialog->appendText(tr("Mesh %1 not created (no valid points) (%2/%3).").arg(iter->first).arg(++i).arg(clouds.size()));
+							_progressDialog->appendText(tr("Mesh %1 not created (no valid points) (%2/%3).").arg(iter->first).arg(++i).arg(cloudsWithNormals.size()));
 						}
 					}
 					else
 					{
-						_progressDialog->appendText(tr("Mesh %1 not created (cloud is not organized). You may want to check cloud regeneration option (%2/%3).").arg(iter->first).arg(++i).arg(clouds.size()));
+						int weight = 0;
+						if(cachedSignatures.contains(iter->first))
+						{
+							const Signature & s = cachedSignatures.find(iter->first).value();
+							weight = s.getWeight();
+						}
+						else if(_dbDriver)
+						{
+							_dbDriver->getWeight(iter->first, weight);
+						}
+						if(weight>=0) // don't show error for intermediate nodes
+						{
+							_progressDialog->appendText(tr("Mesh %1 not created (cloud is not organized). You may want to check cloud regeneration option (%2/%3).").arg(iter->first).arg(++i).arg(cloudsWithNormals.size()));
+						}
 					}
 
 					_progressDialog->incrementStep();
@@ -1694,7 +1788,14 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 			}
 		}
+		else if(_ui->checkBox_meshing->isChecked())
+		{
+			std::string msg = uFormat("Some clouds are 2D laser scans. Meshing can be done only from RGB-D clouds or 3D laser scans.");
+			_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
+			UWARN(msg.c_str());
+		}
 
+		UDEBUG("");
 #ifdef RTABMAP_CPUTSDF
 		if(tsdf.get())
 		{
@@ -1780,6 +1881,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		}
 #endif
 
+		UDEBUG("");
 		if(_canceled)
 		{
 			return false;
@@ -1787,7 +1889,7 @@ bool ExportCloudsDialog::getExportedClouds(
 
 		// texture mesh
 		UDEBUG("texture mapping=%d", _ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked()?1:0);
-		if(_ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
+		if(!has2dScans && _ui->checkBox_textureMapping->isEnabled() && _ui->checkBox_textureMapping->isChecked())
 		{
 			_progressDialog->appendText(tr("Texturing..."));
 			QApplication::processEvents();
@@ -2083,7 +2185,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								if(validPolygons.size() == 0)
 								{
 									std::string msg = uFormat("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.",totalSize, _ui->spinBox_mesh_minClusterSize->value());
-									_progressDialog->appendText(msg.c_str());
+									_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
 									UWARN(msg.c_str());
 								}
 
@@ -2190,8 +2292,11 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 		const std::map<int, Transform> & poses,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-		const ParametersMap & parameters) const
+		const std::map<int, cv::Mat> & cachedScans,
+		const ParametersMap & parameters,
+		bool & has2dScans) const
 {
+	has2dScans = false;
 	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::IndicesPtr> > clouds;
 	int index=1;
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr previousCloud;
@@ -2209,20 +2314,26 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			if(_ui->checkBox_regenerate->isChecked())
 			{
 				SensorData data;
-				cv::Mat image, depth;
+				cv::Mat image, depth, scan;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = cachedSignatures.find(iter->first).value();
 					data = s.sensorData();
-					data.uncompressData(&image, &depth, 0);
+					data.uncompressData(
+							_ui->checkBox_fromDepth->isChecked()?&image:0,
+							_ui->checkBox_fromDepth->isChecked()?&depth:0,
+							!_ui->checkBox_fromDepth->isChecked()?&scan:0);
 				}
 				else if(_dbDriver)
 				{
-					_dbDriver->getNodeData(iter->first, data, true, false, false, false);
-					data.uncompressData(&image, &depth, 0);
+					_dbDriver->getNodeData(iter->first, data, _ui->checkBox_fromDepth->isChecked(), !_ui->checkBox_fromDepth->isChecked(), false, false);
+					data.uncompressData(
+							_ui->checkBox_fromDepth->isChecked()?&image:0,
+							_ui->checkBox_fromDepth->isChecked()?&depth:0,
+							!_ui->checkBox_fromDepth->isChecked()?&scan:0);
 				}
 
-				if(!image.empty() && !depth.empty())
+				if(_ui->checkBox_fromDepth->isChecked() && !image.empty() && !depth.empty())
 				{
 					if(_ui->spinBox_fillDepthHoles->value() > 0)
 					{
@@ -2332,10 +2443,63 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						}
 					}
 				}
+				else if(!_ui->checkBox_fromDepth->isChecked() && !scan.empty())
+				{
+					bool is2D = scan.channels() == 2;
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+					localTransform = Transform::getIdentity();
+					Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+					if(_ui->comboBox_frame->isEnabled() &&
+						_ui->comboBox_frame->currentIndex()!=3 &&
+						!data.laserScanInfo().localTransform().isNull())
+					{
+						localTransform = data.laserScanInfo().localTransform();
+						viewPoint[0] = localTransform.x();
+						viewPoint[1] = localTransform.y();
+						viewPoint[2] = localTransform.z();
+					}
+					cloudWithoutNormals = util3d::laserScanToPointCloudRGB(scan, localTransform);
+					if(cloudWithoutNormals->size())
+					{
+						if(_ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
+						{
+							cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, _ui->doubleSpinBox_voxelSize_assembled->value());
+						}
+						indices->resize(cloudWithoutNormals->size());
+						for(unsigned int i=0; i<indices->size(); ++i)
+						{
+							indices->at(i) = i;
+						}
+						pcl::PointCloud<pcl::Normal>::Ptr normals;
+						if(is2D)
+						{
+							// set nan normals
+							normals.reset(new pcl::PointCloud<pcl::Normal>);
+							normals->resize(cloudWithoutNormals->size());
+							for(unsigned int i=0;i<cloudWithoutNormals->size(); ++i)
+							{
+								normals->points[i].normal_x =std::numeric_limits<float>::quiet_NaN();
+								normals->points[i].normal_y =std::numeric_limits<float>::quiet_NaN();
+								normals->points[i].normal_z =std::numeric_limits<float>::quiet_NaN();
+							}
+							has2dScans = true;
+						}
+						else
+						{
+							normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+						}
+						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+					}
+				}
 				else
 				{
 					int weight = 0;
-					if(_dbDriver)
+					if(cachedSignatures.contains(iter->first))
+					{
+						const Signature & s = cachedSignatures.find(iter->first).value();
+						weight = s.getWeight();
+					}
+					else if(_dbDriver)
 					{
 						_dbDriver->getWeight(iter->first, weight);
 					}
@@ -2345,7 +2509,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					}
 				}
 			}
-			else if(uContains(cachedClouds, iter->first))
+			else if(_ui->checkBox_fromDepth->isChecked() && uContains(cachedClouds, iter->first))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
 				if(!_ui->checkBox_meshing->isChecked() &&
@@ -2406,9 +2570,88 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
 				pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 			}
+			else if(!_ui->checkBox_fromDepth->isChecked() && uContains(cachedScans, iter->first))
+			{
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
+				localTransform = Transform::getIdentity();
+				Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+
+				LaserScanInfo info;
+				if(cachedSignatures.contains(iter->first))
+				{
+					const Signature & s = cachedSignatures.find(iter->first).value();
+					info = s.sensorData().laserScanInfo();
+				}
+				else if(_dbDriver)
+				{
+					_dbDriver->getLaserScanInfo(iter->first, info);
+				}
+
+				if(!info.localTransform().isNull())
+				{
+					if(_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex()!=3)
+					{
+						viewPoint[0] = localTransform.x();
+						viewPoint[1] = localTransform.y();
+						viewPoint[2] = localTransform.z();
+					}
+					else
+					{
+						localTransform = info.localTransform().inverse();
+					}
+				}
+
+				bool is2D = cachedScans.at(iter->first).channels() == 2;
+				cloudWithoutNormals = util3d::laserScanToPointCloudRGB(cachedScans.at(iter->first), localTransform);
+				if(cloudWithoutNormals->size())
+				{
+					if(_ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
+					{
+						cloudWithoutNormals = util3d::voxelize(cloudWithoutNormals, _ui->doubleSpinBox_voxelSize_assembled->value());
+					}
+					indices->resize(cloudWithoutNormals->size());
+					for(unsigned int i=0; i<indices->size(); ++i)
+					{
+						indices->at(i) = i;
+					}
+
+					pcl::PointCloud<pcl::Normal>::Ptr normals;
+					if(is2D)
+					{
+						// set nan normals
+						normals.reset(new pcl::PointCloud<pcl::Normal>);
+						normals->resize(cloudWithoutNormals->size());
+						for(unsigned int i=0;i<cloudWithoutNormals->size(); ++i)
+						{
+							normals->points[i].normal_x =std::numeric_limits<float>::quiet_NaN();
+							normals->points[i].normal_y =std::numeric_limits<float>::quiet_NaN();
+							normals->points[i].normal_z =std::numeric_limits<float>::quiet_NaN();
+						}
+						has2dScans = true;
+					}
+					else
+					{
+						normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+					}
+					pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
+				}
+			}
 			else
 			{
-				_progressDialog->appendText(tr("Cached cloud %1 not found. You may want to regenerate the clouds (%2/%3).").arg(iter->first).arg(index).arg(poses.size()), Qt::darkYellow);
+				int weight = 0;
+				if(cachedSignatures.contains(iter->first))
+				{
+					const Signature & s = cachedSignatures.find(iter->first).value();
+					weight = s.getWeight();
+				}
+				else if(_dbDriver)
+				{
+					_dbDriver->getWeight(iter->first, weight);
+				}
+				if(weight>=0) // don't show error for intermediate nodes
+				{
+					_progressDialog->appendText(tr("Cached cloud %1 not found. You may want to regenerate the clouds (%2/%3).").arg(iter->first).arg(index).arg(poses.size()), Qt::darkYellow);
+				}
 			}
 
 			if(indices->size())

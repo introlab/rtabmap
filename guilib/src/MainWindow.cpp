@@ -62,7 +62,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UCv2Qt.h"
 
 #include "ExportCloudsDialog.h"
-#include "ExportScansDialog.h"
 #include "AboutDialog.h"
 #include "PostProcessingDialog.h"
 #include "DepthCalibrationDialog.h"
@@ -137,7 +136,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog(0),
 	_aboutDialog(0),
 	_exportCloudsDialog(0),
-	_exportScansDialog(0),
 	_dataRecorder(0),
 	_lastId(0),
 	_firstStamp(0.0f),
@@ -185,8 +183,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_aboutDialog->setObjectName("AboutDialog");
 	_exportCloudsDialog = new ExportCloudsDialog(this);
 	_exportCloudsDialog->setObjectName("ExportCloudsDialog");
-	_exportScansDialog = new ExportScansDialog(this);
-	_exportScansDialog->setObjectName("ExportScansDialog");
 	_postProcessingDialog = new PostProcessingDialog(this);
 	_postProcessingDialog->setObjectName("PostProcessingDialog");
 	_depthCalibrationDialog = new DepthCalibrationDialog(this);
@@ -238,7 +234,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadMainWindowState(this, _savedMaximized, statusBarShown);
 	_preferencesDialog->loadWindowGeometry(_preferencesDialog);
 	_preferencesDialog->loadWindowGeometry(_exportCloudsDialog);
-	_preferencesDialog->loadWindowGeometry(_exportScansDialog);
 	_preferencesDialog->loadWindowGeometry(_postProcessingDialog);
 	_preferencesDialog->loadWindowGeometry(_depthCalibrationDialog);
 	_preferencesDialog->loadWindowGeometry(_aboutDialog);
@@ -372,11 +367,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->action1080p, SIGNAL(triggered()), this, SLOT(setAspectRatio1080p()));
 	connect(_ui->actionCustom, SIGNAL(triggered()), this, SLOT(setAspectRatioCustom()));
 	connect(_ui->actionSave_point_cloud, SIGNAL(triggered()), this, SLOT(exportClouds()));
-	connect(_ui->actionExport_2D_scans_ply_pcd, SIGNAL(triggered()), this, SLOT(exportScans()));
 	connect(_ui->actionExport_2D_Grid_map_bmp_png, SIGNAL(triggered()), this, SLOT(exportGridMap()));
 	connect(_ui->actionExport_images_RGB_jpg_Depth_png, SIGNAL(triggered()), this , SLOT(exportImages()));
 	connect(_ui->actionExport_cameras_in_Bundle_format_out, SIGNAL(triggered()), SLOT(exportBundlerFormat()));
-	connect(_ui->actionView_scans, SIGNAL(triggered()), this, SLOT(viewScans()));
 	connect(_ui->actionExport_octomap, SIGNAL(triggered()), this, SLOT(exportOctomap()));
 	connect(_ui->actionView_high_res_point_cloud, SIGNAL(triggered()), this, SLOT(viewClouds()));
 	connect(_ui->actionReset_Odometry, SIGNAL(triggered()), this, SLOT(resetOdometry()));
@@ -467,7 +460,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->graphicsView_graphView, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_exportCloudsDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
-	connect(_exportScansDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_depthCalibrationDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
@@ -528,7 +520,6 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	//dialog states
 	_preferencesDialog->loadWidgetState(_exportCloudsDialog);
-	_preferencesDialog->loadWidgetState(_exportScansDialog);
 	_preferencesDialog->loadWidgetState(_postProcessingDialog);
 	_preferencesDialog->loadWidgetState(_depthCalibrationDialog);
 
@@ -2494,9 +2485,7 @@ void MainWindow::updateMapCloud(
 	{
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
-		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_occupancyGrid->addedNodes().empty());
-		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
@@ -2990,7 +2979,14 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 						if(filtered)
 						{
 							//reconvert the voxelized cloud
-							scan = util3d::laserScanFromPointCloud(*cloud);
+							if(scan.channels() == 2)
+							{
+								scan = util3d::laserScan2dFromPointCloud(*cloud);
+							}
+							else
+							{
+								scan = util3d::laserScanFromPointCloud(*cloud);
+							}
 						}
 						else
 						{
@@ -4106,7 +4102,6 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_ui->imageView_loopClosure);
 	_preferencesDialog->saveWidgetState(_ui->imageView_odometry);
 	_preferencesDialog->saveWidgetState(_exportCloudsDialog);
-	_preferencesDialog->saveWidgetState(_exportScansDialog);
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
 	_preferencesDialog->saveWidgetState(_depthCalibrationDialog);
 	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
@@ -5800,13 +5795,11 @@ void MainWindow::clearTheCache()
 	_ui->statsToolBox->clear();
 	//disable save cloud action
 	_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
-	_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 	_ui->actionPost_processing->setEnabled(false);
 	_ui->actionSave_point_cloud->setEnabled(false);
 	_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 	_ui->actionDepth_Calibration->setEnabled(false);
 	_ui->actionExport_images_RGB_jpg_Depth_png->setEnabled(false);
-	_ui->actionView_scans->setEnabled(false);
 	_ui->actionExport_octomap->setEnabled(false);
 	_ui->actionView_high_res_point_cloud->setEnabled(false);
 	_likelihoodCurve->clear();
@@ -6162,37 +6155,6 @@ void MainWindow::exportGridMap()
 	}
 }
 
-void MainWindow::exportScans()
-{
-	if(_exportScansDialog->isVisible())
-	{
-		return;
-	}
-
-	_exportScansDialog->exportScans(
-			_currentPosesMap,
-			_currentMapIds,
-			_cachedSignatures,
-			_createdScans,
-			_preferencesDialog->getWorkingDirectory());
-}
-
-void MainWindow::viewScans()
-{
-	if(_exportScansDialog->isVisible())
-	{
-		return;
-	}
-
-	_exportScansDialog->viewScans(
-			_ui->widget_mapVisibility->getVisiblePoses(),
-			_currentMapIds,
-			_cachedSignatures,
-			_createdScans,
-			_preferencesDialog->getWorkingDirectory());
-
-}
-
 void MainWindow::exportClouds()
 {
 	if(_exportCloudsDialog->isVisible())
@@ -6225,6 +6187,7 @@ void MainWindow::exportClouds()
 			_currentMapIds,
 			_cachedSignatures,
 			_cachedClouds,
+			_createdScans,
 			_preferencesDialog->getWorkingDirectory(),
 			_preferencesDialog->getAllParameters());
 }
@@ -6261,6 +6224,7 @@ void MainWindow::viewClouds()
 			_currentMapIds,
 			_cachedSignatures,
 			_cachedClouds,
+			_createdScans,
 			_preferencesDialog->getWorkingDirectory(),
 			_preferencesDialog->getAllParameters());
 
@@ -6780,9 +6744,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
-		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_occupancyGrid->addedNodes().empty());
-		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
@@ -6842,9 +6804,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
-		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_occupancyGrid->addedNodes().empty());
-		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
@@ -6893,9 +6853,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->menuExport_poses->setEnabled(false);
 		_ui->actionSave_point_cloud->setEnabled(false);
 		_ui->actionView_high_res_point_cloud->setEnabled(false);
-		_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
-		_ui->actionView_scans->setEnabled(false);
 		_ui->actionExport_octomap->setEnabled(false);
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 		_ui->actionDepth_Calibration->setEnabled(false);
@@ -6937,9 +6895,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->menuExport_poses->setEnabled(false);
 			_ui->actionSave_point_cloud->setEnabled(false);
 			_ui->actionView_high_res_point_cloud->setEnabled(false);
-			_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
-			_ui->actionView_scans->setEnabled(false);
 			_ui->actionExport_octomap->setEnabled(false);
 			_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 			_ui->actionDepth_Calibration->setEnabled(false);
@@ -6968,9 +6924,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
 			_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 			_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
-			_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 			_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_occupancyGrid->addedNodes().empty());
-			_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 			_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else
@@ -7003,9 +6957,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->menuExport_poses->setEnabled(false);
 		_ui->actionSave_point_cloud->setEnabled(false);
 		_ui->actionView_high_res_point_cloud->setEnabled(false);
-		_ui->actionExport_2D_scans_ply_pcd->setEnabled(false);
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(false);
-		_ui->actionView_scans->setEnabled(false);
 		_ui->actionExport_octomap->setEnabled(false);
 		_ui->actionExport_cameras_in_Bundle_format_out->setEnabled(false);
 		_ui->actionDepth_Calibration->setEnabled(false);
@@ -7035,9 +6987,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		_ui->menuExport_poses->setEnabled(!_currentPosesMap.empty());
 		_ui->actionSave_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
 		_ui->actionView_high_res_point_cloud->setEnabled(!_cachedSignatures.empty() || !_cachedClouds.empty());
-		_ui->actionExport_2D_scans_ply_pcd->setEnabled(!_createdScans.empty());
 		_ui->actionExport_2D_Grid_map_bmp_png->setEnabled(!_occupancyGrid->addedNodes().empty());
-		_ui->actionView_scans->setEnabled(!_createdScans.empty());
 #ifdef RTABMAP_OCTOMAP
 		_ui->actionExport_octomap->setEnabled(_octomap->octree()->size());
 #else

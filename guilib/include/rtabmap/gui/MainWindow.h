@@ -67,7 +67,6 @@ class StatsToolBox;
 class ProgressDialog;
 class TwistGridWidget;
 class ExportCloudsDialog;
-class ExportScansDialog;
 class PostProcessingDialog;
 class DepthCalibrationDialog;
 class DataRecorder;
@@ -203,10 +202,8 @@ private slots:
 	void setAspectRatio1080p();
 	void setAspectRatioCustom();
 	void exportGridMap();
-	void exportScans();
 	void exportClouds();
 	void exportBundlerFormat();
-	void viewScans();
 	void viewClouds();
 	void resetOdometry();
 	void triggerNewMap();
@@ -268,7 +265,6 @@ private:
 	PreferencesDialog * _preferencesDialog;
 	AboutDialog * _aboutDialog;
 	ExportCloudsDialog * _exportCloudsDialog;
-	ExportScansDialog * _exportScansDialog;
 	PostProcessingDialog * _postProcessingDialog;
 	DepthCalibrationDialog * _depthCalibrationDialog;
 	DataRecorder * _dataRecorder;

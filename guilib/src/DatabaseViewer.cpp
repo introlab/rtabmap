@@ -230,9 +230,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(ui_->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
-	connect(ui_->actionView_3D_laser_scans, SIGNAL(triggered()), this, SLOT(view3DLaserScans()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
-	connect(ui_->actionExport_3D_laser_scans_ply_pcd, SIGNAL(triggered()), this, SLOT(generate3DLaserScans()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
 	connect(ui_->actionRefine_all_neighbor_links, SIGNAL(triggered()), this, SLOT(refineAllNeighborLinks()));
 	connect(ui_->actionRefine_all_loop_closure_links, SIGNAL(triggered()), this, SLOT(refineAllLoopClosureLinks()));
@@ -2079,124 +2077,13 @@ void DatabaseViewer::view3DMap()
 				mapIds_,
 				QMap<int, Signature>(),
 				std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >(),
+				std::map<int, cv::Mat>(),
 				pathDatabase_,
 				ui_->parameters_toolbox->getParameters());
 	}
 	else
 	{
 		QMessageBox::critical(this, tr("Error"), tr("No neighbors found for node %1.").arg(ui_->spinBox_optimizationsFrom->value()));
-	}
-}
-
-void DatabaseViewer::view3DLaserScans()
-{
-	if(!ids_.size() || !dbDriver_)
-	{
-		QMessageBox::warning(this, tr("Cannot view 3D laser scans"), tr("The database is empty..."));
-		return;
-	}
-
-	if(graphes_.empty())
-	{
-		this->updateGraphView();
-		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
-		{
-			QMessageBox::warning(this, tr("Cannot generate a graph"), tr("No graph in database?!"));
-			return;
-		}
-	}
-	bool ok = false;
-	int downsamplingStepSize = QInputDialog::getInt(this, tr("Downsampling?"), tr("Downsample step size (1 = no filtering)"), 1, 1, 99999, 1, &ok);
-	if(ok)
-	{
-		std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-		if(ui_->groupBox_posefiltering->isChecked())
-		{
-			optimizedPoses = graph::radiusPosesFiltering(optimizedPoses,
-					ui_->doubleSpinBox_posefilteringRadius->value(),
-					ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
-		}
-		if(optimizedPoses.size() > 0)
-		{
-			rtabmap::ProgressDialog progressDialog(this);
-			progressDialog.setMaximumSteps((int)optimizedPoses.size());
-			progressDialog.show();
-
-			// create a window
-			QDialog * window = new QDialog(this, Qt::Window);
-			window->setModal(this->isModal());
-			window->setWindowTitle(tr("3D Laser Scans"));
-			window->setMinimumWidth(800);
-			window->setMinimumHeight(600);
-
-			rtabmap::CloudViewer * viewer = new rtabmap::CloudViewer(window);
-
-			QVBoxLayout *layout = new QVBoxLayout();
-			layout->addWidget(viewer);
-			viewer->setCameraLockZ(false);
-			window->setLayout(layout);
-			connect(window, SIGNAL(finished(int)), viewer, SLOT(clear()));
-
-			window->show();
-
-			for(std::map<int, Transform>::const_iterator iter = optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
-			{
-				rtabmap::Transform pose = iter->second;
-				if(!pose.isNull())
-				{
-					SensorData data;
-					dbDriver_->getNodeData(iter->first, data);
-					cv::Mat scan;
-					data.uncompressDataConst(0, 0, &scan);
-
-					if(!scan.empty())
-					{
-						if(downsamplingStepSize>1)
-						{
-							scan = util3d::downsample(scan, downsamplingStepSize);
-						}
-
-						QColor color = Qt::red;
-						int mapId, weight;
-						Transform odomPose, groundTruth;
-						std::string label;
-						double stamp;
-						std::vector<float> velocity;
-						if(dbDriver_->getNodeInfo(iter->first, odomPose, mapId, weight, label, stamp, groundTruth, velocity))
-						{
-							color = (Qt::GlobalColor)(mapId % 12 + 7 );
-						}
-
-						if(scan.channels() == 6)
-						{
-							pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-							cloud = util3d::laserScanToPointCloudNormal(scan, data.laserScanInfo().localTransform());
-							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
-						}
-						else
-						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-							cloud = util3d::laserScanToPointCloud(scan, data.laserScanInfo().localTransform());
-							viewer->addCloud(uFormat("cloud%d", iter->first), cloud, pose, color);
-						}
-						UINFO("Generated %d (%d points)", iter->first, scan.cols);
-						progressDialog.appendText(QString("Generated %1 (%2 points)").arg(iter->first).arg(scan.cols));
-					}
-					else
-					{
-						UINFO("Empty scan %d", iter->first);
-						progressDialog.appendText(QString("Empty scan %1").arg(iter->first));
-					}
-					progressDialog.incrementStep();
-					QApplication::processEvents();
-				}
-			}
-			progressDialog.setValue(progressDialog.maximumSteps());
-		}
-		else
-		{
-			QMessageBox::critical(this, tr("Error"), tr("No neighbors found for node %1.").arg(ui_->spinBox_optimizationsFrom->value()));
-		}
 	}
 }
 
@@ -2233,109 +2120,13 @@ void DatabaseViewer::generate3DMap()
 				mapIds_,
 				QMap<int, Signature>(),
 				std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >(),
+				std::map<int, cv::Mat>(),
 				pathDatabase_,
 				ui_->parameters_toolbox->getParameters());
 	}
 	else
 	{
 		QMessageBox::critical(this, tr("Error"), tr("No neighbors found for node %1.").arg(ui_->spinBox_optimizationsFrom->value()));
-	}
-}
-
-void DatabaseViewer::generate3DLaserScans()
-{
-	if(!ids_.size() || !dbDriver_)
-	{
-		QMessageBox::warning(this, tr("Cannot generate a graph"), tr("The database is empty..."));
-		return;
-	}
-	bool ok = false;
-	int downsamplingStepSize = QInputDialog::getInt(this, tr("Downsampling?"), tr("Downsample step size (1 = no filtering)"), 1, 1, 99999, 1, &ok);
-	if(ok)
-	{
-		QString path = QFileDialog::getSaveFileName(this, tr("Save point cloud"),
-					pathDatabase_+QDir::separator()+"cloud.ply",
-					tr("Point Cloud (*.ply *.pcd)"));
-		if(!path.isEmpty())
-		{
-			std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-			if(ui_->groupBox_posefiltering->isChecked())
-			{
-				optimizedPoses = graph::radiusPosesFiltering(optimizedPoses,
-						ui_->doubleSpinBox_posefilteringRadius->value(),
-						ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
-			}
-			if(optimizedPoses.size() > 0)
-			{
-				rtabmap::ProgressDialog progressDialog;
-				progressDialog.setMaximumSteps((int)optimizedPoses.size());
-				progressDialog.show();
-
-				pcl::PointCloud<pcl::PointXYZ>::Ptr assembledCloud(new pcl::PointCloud<pcl::PointXYZ>);
-				for(std::map<int, Transform>::const_iterator iter = optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
-				{
-					const rtabmap::Transform & pose = iter->second;
-					if(!pose.isNull())
-					{
-						SensorData data;
-						dbDriver_->getNodeData(iter->first, data);
-						cv::Mat scan;
-						data.uncompressDataConst(0, 0, &scan);
-						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-						UASSERT(scan.empty() || scan.type()==CV_32FC2 || scan.type() == CV_32FC3);
-
-						if(downsamplingStepSize > 1)
-						{
-							scan = util3d::downsample(scan, downsamplingStepSize);
-						}
-						cloud = util3d::laserScanToPointCloud(scan, data.laserScanInfo().localTransform());
-
-						if(cloud->size())
-						{
-							cloud = rtabmap::util3d::transformPointCloud(cloud, pose);
-							if(assembledCloud->size() == 0)
-							{
-								*assembledCloud = *cloud;
-							}
-							else
-							{
-								*assembledCloud += *cloud;
-							}
-						}
-						UINFO("Created cloud %d (%d points)", iter->first, (int)cloud->size());
-						progressDialog.appendText(QString("Created cloud %1 (%2 points)").arg(iter->first).arg(cloud->size()));
-
-						progressDialog.incrementStep();
-						QApplication::processEvents();
-					}
-				}
-
-				if(assembledCloud->size())
-				{
-					//voxelize by default to 1 cm
-					progressDialog.appendText(QString("Voxelize assembled cloud (%1 points)").arg(assembledCloud->size()));
-					QApplication::processEvents();
-					assembledCloud = util3d::voxelize(assembledCloud, 0.01);
-					if(QFileInfo(path).suffix() == "ply")
-					{
-						pcl::io::savePLYFile(path.toStdString(), *assembledCloud);
-					}
-					else
-					{
-						pcl::io::savePCDFile(path.toStdString(), *assembledCloud);
-					}
-					progressDialog.appendText(QString("Saved %1 (%2 points)").arg(path).arg(assembledCloud->size()));
-					QApplication::processEvents();
-				}
-				QMessageBox::information(this, tr("Finished"), tr("%1 clouds generated to %2.").arg(optimizedPoses.size()).arg(path));
-
-				progressDialog.setValue(progressDialog.maximumSteps());
-			}
-			else
-			{
-				QMessageBox::critical(this, tr("Error"), tr("No neighbors found for node %1.").arg(ui_->spinBox_optimizationsFrom->value()));
-			}
-		}
 	}
 }
 
