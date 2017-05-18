@@ -1029,7 +1029,8 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				sl::Pose pose;
 				zed_->getPosition(pose);
 				int trackingConfidence = pose.pose_confidence;
-				if (trackingConfidence)
+				// FIXME What does pose_confidence == -1 mean?
+				if (trackingConfidence>0)
 				{
 					info->odomPose = zedPoseToTransform(pose);
 					if (!info->odomPose.isNull())
@@ -1037,24 +1038,31 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 						//transform x->forward, y->left, z->up
 						Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 						info->odomPose = opticalTransform * info->odomPose * opticalTransform.inverse();
-					}
-					if (lost_)
-					{
-						info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
-						lost_ = false;
-						UDEBUG("Init %s (var=%f)", info->odomPose.prettyPrint().c_str(), 9999.0f);
+
+						if (lost_)
+						{
+							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
+							lost_ = false;
+							UDEBUG("Init %s (var=%f)", info->odomPose.prettyPrint().c_str(), 9999.0f);
+						}
+						else
+						{
+							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
+							UDEBUG("Run %s (var=%f)", info->odomPose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
+						}
 					}
 					else
 					{
-						info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
-						UDEBUG("Run %s (var=%f)", info->odomPose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
+						info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
+						lost_ = true;
+						UWARN("ZED lost! (trackingConfidence=%d)", trackingConfidence);
 					}
 				}
 				else
 				{
 					info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
 					lost_ = true;
-					UWARN("ZED lost!");
+					UWARN("ZED lost! (trackingConfidence=%d)", trackingConfidence);
 				}
 			}
 		}
