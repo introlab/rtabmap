@@ -47,6 +47,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/core/linear_solver.h"
 #include "g2o/types/sba/types_sba.h"
+#include "g2o/types/slam2d/types_slam2d.h"
+#include "g2o/types/slam3d/types_slam3d.h"
 #include "g2o/core/robust_kernel_impl.h"
 #ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
@@ -56,10 +58,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #endif
 #include "g2o/solvers/eigen/linear_solver_eigen.h"
-#include "g2o/types/slam3d/vertex_se3.h"
-#include "g2o/types/slam3d/edge_se3.h"
-#include "g2o/types/slam2d/vertex_se2.h"
-#include "g2o/types/slam2d/edge_se2.h"
+
+enum {
+    PARAM_OFFSET=0,
+};
 
 typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
 typedef g2o::LinearSolverEigen<SlamBlockSolver::PoseMatrixType> SlamLinearEigenSolver;
@@ -165,6 +167,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
+		g2o::ParameterSE3Offset* odomOffset = new g2o::ParameterSE3Offset();
+		odomOffset->setId(PARAM_OFFSET);
+		optimizer.addParameter(odomOffset);
 
 		SlamBlockSolver * blockSolver = 0;
 
@@ -377,6 +382,20 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					e->setInformation(information);
 					edge = e;
 				}
+#ifdef RTABMAP_G2O_UNARY
+				{
+					g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
+					g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+					priorEdge->setVertex(0, v2);
+					priorEdge->setMeasurement(v2->estimate());
+					priorEdge->setParameterId(0, PARAM_OFFSET);
+					priorEdge->setInformation(information);
+					UWARN("adding edge prior");
+					if (!optimizer.addEdge(priorEdge)) {
+						UERROR("Map: Failed adding unary edge for %d, skipping", id2);
+					}
+				}
+#endif
 			}
 
 			if (!optimizer.addEdge(edge))
@@ -384,6 +403,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				delete edge;
 				UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
 			}
+
+
 		}
 
 		UDEBUG("Initial optimization...");
