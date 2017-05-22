@@ -63,6 +63,7 @@ public:
 
 	bool varianceFromInliersCount() const {return varianceFromInliersCount_;}
 	bool force3DoF() const {return force3DoF_;}
+	bool covarianceNormalized() const {return covarianceNormalized_;}
 
 	// take ownership!
 	void setChildRegistration(Registration * child);
@@ -104,6 +105,7 @@ protected:
 
 private:
 	bool varianceFromInliersCount_;
+	bool covarianceNormalized_;
 	bool force3DoF_;
 	Registration * child_;
 

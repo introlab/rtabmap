@@ -589,7 +589,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		double maxTransVar = odomEvent.transVariance();
 		if(maxRotVar != 1.0f && maxTransVar != 1.0f && !covariance_.empty())
 		{
-			covariance_ = (covariance_.inv() + odomEvent.covariance().inv()).inv();
+			covariance_ += odomEvent.covariance();
 		}
 		else
 		{

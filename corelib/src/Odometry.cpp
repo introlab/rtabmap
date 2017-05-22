@@ -529,12 +529,6 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			info->distanceTravelled = distanceTravelled_;
 		}
 
-		info->covariance *= t.getNorm();
-		if(info->covariance.at<double>(0,0)<=0.0)
-		{
-			info->covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
-		}
-
 		return _pose *= t; // update
 	}
 	else if(_resetCurrentCount > 0)

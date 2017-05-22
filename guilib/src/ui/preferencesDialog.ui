@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-667</y>
+            <y>0</y>
             <width>673</width>
             <height>2747</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>18</number>
+                <number>19</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -272,7 +272,7 @@
                     <item>
                      <widget class="QGroupBox" name="groupBox_5">
                       <property name="title">
-                       <string>Loop Closure Detection View</string>
+                       <string>Loop Closure Detection</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_31" columnstretch="0,1">
                        <item row="1" column="0">
@@ -371,16 +371,15 @@
                      </widget>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox">
+                     <widget class="QGroupBox" name="groupBox_21">
                       <property name="title">
-                       <string>3D Map View</string>
+                       <string>Odometry</string>
                       </property>
-                      <layout class="QGridLayout" name="gridLayout_38" columnstretch="0,1">
+                      <layout class="QGridLayout" name="gridLayout_85" columnstretch="0,1">
                        <item row="0" column="1">
-                        <widget class="QLabel" name="label_86">
+                        <widget class="QLabel" name="label_369">
                          <property name="text">
-                          <string>Odometry warning theshold:
-Show a yellow background when the number of odometry inliers goes under this threshold. If 0, it is ignored. You can see the current odometry inliers count under Statistics view -&gt; General -&gt; Odom inliers.</string>
+                          <string>Show only inliers.</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
@@ -391,6 +390,30 @@ Show a yellow background when the number of odometry inliers goes under this thr
                         </widget>
                        </item>
                        <item row="0" column="0">
+                        <widget class="QCheckBox" name="checkBox_odom_onlyInliersShown">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_159">
+                         <property name="text">
+                          <string>Warning theshold:
+Show a yellow background when the number of odometry inliers goes under this threshold. If 0, it is ignored. You can see the current odometry inliers count under Statistics view -&gt; General -&gt; Odom inliers.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
                         <widget class="QSpinBox" name="spinBox_odomQualityWarnThr">
                          <property name="maximum">
                           <number>9999</number>
@@ -2678,7 +2701,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>2</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -2788,7 +2811,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>6</number>
+                              <number>7</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -3480,7 +3503,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      <string>For RGBD-SLAM datasets, it is 5.</string>
                                     </property>
                                     <property name="decimals">
-                                     <number>1</number>
+                                     <number>3</number>
                                     </property>
                                     <property name="minimum">
                                      <double>1.000000000000000</double>
@@ -10760,6 +10783,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLabel" name="label_370">
+                      <property name="text">
+                       <string>Normalize covariance values. Position variances are multiplied by norm of the transform and orientation variances are multiplied by angle of the transform.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QCheckBox" name="reg_varianceNormalized">
+                      <property name="text">
+                       <string/>
                       </property>
                      </widget>
                     </item>

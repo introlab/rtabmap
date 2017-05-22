@@ -62,6 +62,7 @@ Registration * Registration::create(Registration::Type & type, const ParametersM
 
 Registration::Registration(const ParametersMap & parameters, Registration * child) :
 	varianceFromInliersCount_(Parameters::defaultRegVarianceFromInliersCount()),
+	covarianceNormalized_(Parameters::defaultRegVarianceNormalized()),
 	force3DoF_(Parameters::defaultRegForce3DoF()),
 	child_(child)
 {
@@ -78,6 +79,7 @@ Registration::~Registration()
 void Registration::parseParameters(const ParametersMap & parameters)
 {
 	Parameters::parse(parameters, Parameters::kRegVarianceFromInliersCount(), varianceFromInliersCount_);
+	Parameters::parse(parameters, Parameters::kRegVarianceNormalized(), covarianceNormalized_);
 	Parameters::parse(parameters, Parameters::kRegForce3DoF(), force3DoF_);
 	if(child_)
 	{
@@ -193,6 +195,11 @@ Transform Registration::computeTransformationMod(
 
 	Transform t = computeTransformationImpl(from, to, guess, info);
 
+	if(info.covariance.empty())
+	{
+		info.covariance = cv::Mat::eye(6,6,CV_64FC1);
+	}
+
 	if(varianceFromInliersCount_)
 	{
 		if(info.icpInliersRatio)
@@ -203,11 +210,37 @@ Transform Registration::computeTransformationMod(
 		{
 			info.covariance = cv::Mat::eye(6,6,CV_64FC1)*(info.inliers > 0?1.0/double(info.inliers):1.0);
 		}
-		if(info.covariance.at<double>(0,0)<0.0001)
+	}
+
+	if(covarianceNormalized_)
+	{
+		// normalize variance
+		UASSERT(info.covariance.cols == 6 && info.covariance.rows == 6);
+		float norm = t.getNorm();
+		if(norm > 0.0f)
 		{
-			info.covariance =cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
+			cv::Mat(info.covariance, cv::Range(0,3), cv::Range(0,3)) *= norm;
+		}
+		float angle = t.getAngle();
+		if(angle > 0.0f)
+		{
+			cv::Mat(info.covariance, cv::Range(3,6), cv::Range(3,6)) *= angle;
 		}
 	}
+
+	double epsilon = 0.000001;
+	if(info.covariance.at<double>(0,0)<=0.0)
+		info.covariance.at<double>(0,0) = epsilon; // epsilon if exact transform
+	if(info.covariance.at<double>(1,1)<=0.0)
+		info.covariance.at<double>(1,1) = epsilon; // epsilon if exact transform
+	if(info.covariance.at<double>(2,2)<=0.0)
+		info.covariance.at<double>(2,2) = epsilon; // epsilon if exact transform
+	if(info.covariance.at<double>(3,3)<=0.0)
+		info.covariance.at<double>(3,3) = epsilon; // epsilon if exact transform
+	if(info.covariance.at<double>(4,4)<=0.0)
+		info.covariance.at<double>(4,4) = epsilon; // epsilon if exact transform
+	if(info.covariance.at<double>(5,5)<=0.0)
+		info.covariance.at<double>(5,5) = epsilon; // epsilon if exact transform
 
 	if(child_)
 	{

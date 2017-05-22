@@ -1120,8 +1120,13 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
 						(*cloud)[i].r = inlier?0:255;
 						(*cloud)[i].g = 255;
-						(*cloud)[i++].b = 0;
+						(*cloud)[i].b = 0;
+						if(!_preferencesDialog->isOdomOnlyInliersShown() || inlier)
+						{
+							++i;
+						}
 					}
+					cloud->resize(i);
 
 					_cloudViewer->addCloud("featuresOdom", cloud, _odometryCorrection);
 					_cloudViewer->setCloudVisibility("featuresOdom", true);
@@ -1185,10 +1190,25 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		{
 			if(odom.info().type == 0)
 			{
-				_ui->imageView_odometry->setFeatures(
-						odom.info().words,
-						odom.data().depthRaw(),
-						Qt::yellow);
+				if(_preferencesDialog->isOdomOnlyInliersShown())
+				{
+					std::multimap<int, cv::KeyPoint> kpInliers;
+					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
+					{
+						kpInliers.insert(*odom.info().words.find(odom.info().wordInliers[i]));
+					}
+					_ui->imageView_odometry->setFeatures(
+							kpInliers,
+							odom.data().depthRaw(),
+							Qt::green);
+				}
+				else
+				{
+					_ui->imageView_odometry->setFeatures(
+							odom.info().words,
+							odom.data().depthRaw(),
+							Qt::yellow);
+				}
 			}
 			else if(odom.info().type == 1)
 			{
@@ -1238,7 +1258,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 			if(odom.info().type == 0)
 			{
-				if(_ui->imageView_odometry->isFeaturesShown())
+				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{
 					for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
 					{
@@ -5179,7 +5199,7 @@ void MainWindow::postProcessing()
 										if(!msg.empty())
 										{
 											UWARN("%s", msg.c_str());
-											_initProgressDialog->appendText(tr("%s").arg(msg.c_str()));
+											_initProgressDialog->appendText(tr("%1").arg(msg.c_str()));
 											QApplication::processEvents();
 											updateConstraint = false;
 										}
@@ -6678,7 +6698,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		}
 	}
 	actions = _ui->menuFile->actions();
-	if(actions.size()==17)
+	if(actions.size()==16)
 	{
 		if(actions.at(2)->isSeparator())
 		{
@@ -6688,9 +6708,9 @@ void MainWindow::changeState(MainWindow::State newState)
 		{
 			UWARN("Menu File separators have not the same order.");
 		}
-		if(actions.at(13)->isSeparator())
+		if(actions.at(12)->isSeparator())
 		{
-			actions.at(13)->setVisible(!monitoring);
+			actions.at(12)->setVisible(!monitoring);
 		}
 		else
 		{

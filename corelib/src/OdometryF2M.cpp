@@ -250,7 +250,6 @@ Transform OdometryF2M::computeTransform(
 						UASSERT_MSG(bundlePoses.find(lastFrame_->id()) == bundlePoses.end(),
 								uFormat("Frame %d already added! Make sure the input frames have unique IDs!", lastFrame_->id()).c_str());
 
-						regInfo.covariance *= transform.getNorm();
 						bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, regInfo.covariance.inv())));
 						bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
 

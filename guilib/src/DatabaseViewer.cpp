@@ -2206,6 +2206,10 @@ void DatabaseViewer::detectMoreLoopClosures()
 				}
 			}
 			progressDialog->incrementStep();
+			if(i%100)
+			{
+				QApplication::processEvents();
+			}
 		}
 		UINFO("Iteration %d/%d: added %d loop closures.", n+1, iterations, (int)addedLinks.size()/2);
 		progressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(iterations).arg(addedLinks.size()/2));
@@ -3321,30 +3325,27 @@ void DatabaseViewer::updateConstraintView(
 			.arg(sqrt(link.rotVariance()))
 			.arg(sqrt(link.transVariance())));
 	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()).replace(" ", "\n"));
-	if((link.type() == Link::kNeighbor || link.type() == Link::kNeighborMerged) &&
-	   graphes_.size() &&
+	if(graphes_.size() &&
 	   (int)graphes_.size()-1 == ui_->horizontalSlider_iterations->maximum())
 	{
 		std::map<int, rtabmap::Transform> & graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
-		if(link.type() == Link::kNeighbor || link.type() == Link::kNeighborMerged)
-		{
-			std::map<int, rtabmap::Transform>::iterator iterFrom = graph.find(link.from());
-			std::map<int, rtabmap::Transform>::iterator iterTo = graph.find(link.to());
-			if(iterFrom != graph.end() && iterTo != graph.end())
-			{
-				ui_->checkBox_showOptimized->setEnabled(true);
-				Transform topt = iterFrom->second.inverse()*iterTo->second;
-				float diff = topt.getDistance(t);
-				Transform v1 = t.rotation()*Transform(1,0,0,0,0,0);
-				Transform v2 = topt.rotation()*Transform(1,0,0,0,0,0);
-				float a = pcl::getAngle3D(Eigen::Vector4f(v1.x(), v1.y(), v1.z(), 0), Eigen::Vector4f(v2.x(), v2.y(), v2.z(), 0));
-				a = (a *180.0f) / CV_PI;
-				ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((diff/t.getNorm())*100.0f).arg(a));
 
-				if(ui_->checkBox_showOptimized->isChecked())
-				{
-					t = topt;
-				}
+		std::map<int, rtabmap::Transform>::iterator iterFrom = graph.find(link.from());
+		std::map<int, rtabmap::Transform>::iterator iterTo = graph.find(link.to());
+		if(iterFrom != graph.end() && iterTo != graph.end())
+		{
+			ui_->checkBox_showOptimized->setEnabled(true);
+			Transform topt = iterFrom->second.inverse()*iterTo->second;
+			float diff = topt.getDistance(t);
+			Transform v1 = t.rotation()*Transform(1,0,0,0,0,0);
+			Transform v2 = topt.rotation()*Transform(1,0,0,0,0,0);
+			float a = pcl::getAngle3D(Eigen::Vector4f(v1.x(), v1.y(), v1.z(), 0), Eigen::Vector4f(v2.x(), v2.y(), v2.z(), 0));
+			a = (a *180.0f) / CV_PI;
+			ui_->label_constraint_opt->setText(QString("%1\n(error=%2% a=%3)").arg(QString(topt.prettyPrint().c_str()).replace(" ", "\n")).arg((diff/t.getNorm())*100.0f).arg(a));
+
+			if(ui_->checkBox_showOptimized->isChecked())
+			{
+				t = topt;
 			}
 		}
 	}

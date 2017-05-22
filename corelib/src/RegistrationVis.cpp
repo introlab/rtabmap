@@ -1291,10 +1291,30 @@ Transform RegistrationVis::computeTransformationImpl(
 			poses.insert(std::make_pair(1, Transform::getIdentity()));
 			poses.insert(std::make_pair(2, transforms[0]));
 
-			links.insert(std::make_pair(1, Link(1, 2, Link::kNeighbor, transforms[0], (covariances[0]*transforms[0].getNorm()).inv())));
+			cv::Mat cov = covariances[0].clone();
+			if(covarianceNormalized())
+			{
+				cv::Mat(cov, cv::Range(0,3), cv::Range(0,3)) *= transform.getNorm();
+				cv::Mat(cov, cv::Range(3,6), cv::Range(3,6)) *= transform.getAngle();
+			}
+			if(cov.at<double>(0,0)<=0.0)
+			{
+				cov = cv::Mat::eye(6,6,CV_64FC1)*0.000001; // epsilon if exact transform
+			}
+			links.insert(std::make_pair(1, Link(1, 2, Link::kNeighbor, transforms[0], cov.inv())));
 			if(!transforms[1].isNull() && inliers[1].size())
 			{
-				links.insert(std::make_pair(2, Link(2, 1, Link::kNeighbor, transforms[1], (covariances[1]*transforms[1].getNorm()).inv())));
+				cov = covariances[1].clone();
+				if(covarianceNormalized())
+				{
+					cv::Mat(cov, cv::Range(0,3), cv::Range(0,3)) *= transform.getNorm();
+					cv::Mat(cov, cv::Range(3,6), cv::Range(3,6)) *= transform.getAngle();
+				}
+				if(cov.at<double>(0,0)<=0.0)
+				{
+					cov = cv::Mat::eye(6,6,CV_64FC1)*0.000001; // epsilon if exact transform
+				}
+				links.insert(std::make_pair(2, Link(2, 1, Link::kNeighbor, transforms[1], cov.inv())));
 			}
 
 			std::map<int, Transform> optimizedPoses;
@@ -1450,7 +1470,7 @@ Transform RegistrationVis::computeTransformationImpl(
 	info.inliers = inliersCount;
 	info.matches = matchesCount;
 	info.rejectedMsg = msg;
-	info.covariance = covariance.at<double>(0,0)>0.0001?covariance:cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
+	info.covariance = covariance;
 
 	UDEBUG("transform=%s", transform.prettyPrint().c_str());
 	return transform;

@@ -1071,6 +1071,8 @@ bool ExportCloudsDialog::getExportedClouds(
 				parameters,
 				has2dScans);
 
+		std::set<int> validCameras = uKeysSet(clouds);
+
 		UDEBUG("");
 		if(_canceled)
 		{
@@ -1915,60 +1917,63 @@ bool ExportCloudsDialog::getExportedClouds(
 				std::map<int, std::vector<CameraModel> > cameraModels;
 				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
 				{
-					std::vector<CameraModel> models;
-					StereoCameraModel stereoModel;
-					bool cacheHasCompressedImage = false;
-					if(cachedSignatures.contains(jter->first))
+					if(validCameras.find(jter->first) != validCameras.end())
 					{
-						const SensorData & data = cachedSignatures.find(jter->first)->sensorData();
-						models = data.cameraModels();
-						stereoModel = data.stereoCameraModel();
-						cacheHasCompressedImage = !data.imageCompressed().empty();
-					}
-					else if(_dbDriver)
-					{
-						_dbDriver->getCalibration(jter->first, models, stereoModel);
-					}
-
-					if(stereoModel.isValidForProjection())
-					{
-						models.clear();
-						models.push_back(stereoModel.left());
-					}
-					else if(models.size() == 0 || !models[0].isValidForProjection())
-					{
-						models.clear();
-					}
-					if(!jter->second.isNull() && models.size())
-					{
-						if(models[0].imageWidth() == 0 || models[0].imageHeight() == 0)
+						std::vector<CameraModel> models;
+						StereoCameraModel stereoModel;
+						bool cacheHasCompressedImage = false;
+						if(cachedSignatures.contains(jter->first))
 						{
-							// we are using an old database format (image size not saved in calibrations), we should
-							// uncompress images to get their size
-							cv::Mat img;
-							if(cacheHasCompressedImage)
-							{
-								cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(&img, 0);
-							}
-							else if(_dbDriver)
-							{
-								SensorData data;
-								_dbDriver->getNodeData(jter->first, data, true, false, false, false);
-								data.uncompressDataConst(&img, 0);
-							}
-							cv::Size imageSize = img.size();
-							imageSize.width /= models.size();
-							for(unsigned int i=0; i<models.size(); ++i)
-							{
-								models[i].setImageSize(imageSize);
-							}
-
+							const SensorData & data = cachedSignatures.find(jter->first)->sensorData();
+							models = data.cameraModels();
+							stereoModel = data.stereoCameraModel();
+							cacheHasCompressedImage = !data.imageCompressed().empty();
+						}
+						else if(_dbDriver)
+						{
+							_dbDriver->getCalibration(jter->first, models, stereoModel);
 						}
 
-						if(models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
+						if(stereoModel.isValidForProjection())
 						{
-							cameraPoses.insert(std::make_pair(jter->first, jter->second));
-							cameraModels.insert(std::make_pair(jter->first, models));
+							models.clear();
+							models.push_back(stereoModel.left());
+						}
+						else if(models.size() == 0 || !models[0].isValidForProjection())
+						{
+							models.clear();
+						}
+						if(!jter->second.isNull() && models.size())
+						{
+							if(models[0].imageWidth() == 0 || models[0].imageHeight() == 0)
+							{
+								// we are using an old database format (image size not saved in calibrations), we should
+								// uncompress images to get their size
+								cv::Mat img;
+								if(cacheHasCompressedImage)
+								{
+									cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(&img, 0);
+								}
+								else if(_dbDriver)
+								{
+									SensorData data;
+									_dbDriver->getNodeData(jter->first, data, true, false, false, false);
+									data.uncompressDataConst(&img, 0);
+								}
+								cv::Size imageSize = img.size();
+								imageSize.width /= models.size();
+								for(unsigned int i=0; i<models.size(); ++i)
+								{
+									models[i].setImageSize(imageSize);
+								}
+
+							}
+
+							if(models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
+							{
+								cameraPoses.insert(std::make_pair(jter->first, jter->second));
+								cameraModels.insert(std::make_pair(jter->first, models));
+							}
 						}
 					}
 				}

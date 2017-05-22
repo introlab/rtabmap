@@ -2269,15 +2269,6 @@ Transform Memory::computeTransform(
 					info->rejectedMsg = msg;
 				}
 			}
-			else if(info && !transform.isIdentity())
-			{
-				//normalize variance
-				info->covariance *= transform.getNorm();
-				if(info->covariance.at<double>(0,0) < 0.0001)
-				{
-					info->covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
-				}
-			}
 		}
 	}
 	return transform;
@@ -2325,16 +2316,6 @@ Transform Memory::computeIcpTransform(
 		// compute transform fromId -> toId
 		std::vector<int> inliersV;
 		t = _registrationIcp->computeTransformation(fromS->sensorData(), toS->sensorData(), guess, info);
-
-		if(!t.isNull() && !t.isIdentity() && info)
-		{
-			// normalize variance
-			info->covariance *= t.getNorm();
-			if(info->covariance.at<double>(0,0)<=0.0)
-			{
-				info->covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
-			}
-		}
 	}
 	else
 	{

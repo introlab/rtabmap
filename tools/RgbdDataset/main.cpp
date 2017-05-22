@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/OdometryF2M.h>
 #include "rtabmap/core/Rtabmap.h"
-#include "rtabmap/core/CameraStereo.h"
+#include "rtabmap/core/CameraRGBD.h"
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/OdometryInfo.h"
@@ -48,20 +48,13 @@ using namespace rtabmap;
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-kitti_dataset [options] path\n"
-			"  path               Folder of the sequence (e.g., \"~/KITTI/dataset/sequences/07\")\n"
-			"                        containing least calib.txt, times.txt, image_0 and image_1 folders.\n"
-			"                        Optional image_2, image_3 and velodyne folders.\n"
-			"  --output           Output directory. By default, results are saved in \"path\".\n"
-			"  --gt \"path\"        Ground truth path (e.g., ~/KITTI/devkit/cpp/data/odometry/poses/07.txt)\n"
-			"  --color            Use color images for stereo (image_2 and image_3 folders).\n"
-			"  --disp             Generate full disparity.\n"
-			"  --scan             Include velodyne scan in node's data.\n"
-			"  --scan_step #      Scan downsample step (default=10).\n"
-			"  --scan_voxel #.#   Scan voxel size (default 0.3 m).\n"
-			"  --scan_k           Scan normal K (default 20).\n"
-			"  --map_update  #    Do map update each X odometry frames (default=10, which\n"
-			"                        gives 1 Hz map update assuming images are at 10 Hz).\n\n"
+			"rtabmap-rgbd_dataset [options] path\n"
+			"  path               Folder of the sequence (e.g., \"~/rgbd_dataset_freiburg3_long_office_household\")\n"
+			"                        containing least rgb_sync and depth_sync folders. These folders contain\n"
+			"                        synchronized images using associate.py tool (use tool version from\n"
+			"                        https://gist.github.com/matlabbe/484134a2d9da8ad425362c6669824798). If \n"
+			"                        \"groundtruth.txt\" is found in the sequence folder, they will be saved in the database.\n"
+			"  --output           Output directory. By default, results are saved in \"path\".\n\n"
 			"%s\n"
 			"Example:\n\n"
 			"   $ rtabmap-kitti_dataset \\\n"
@@ -71,8 +64,8 @@ void showUsage()
 			"       --Odom/GuessMotion true\\\n"
 			"       --OdomF2M/BundleAdjustment 1\\\n"
 			"       --Rtabmap/CreateIntermediateNodes true\\\n"
-			"       --gt \"~/KITTI/devkit/cpp/data/odometry/poses/07.txt\"\\\n"
-			"       ~/KITTI/dataset/sequences/07\n\n", rtabmap::Parameters::showUsage());
+			"       --Rtabmap/DetectionRate 1\\\n"
+			"       ~/rgbd_dataset_freiburg3_long_office_household\n\n", rtabmap::Parameters::showUsage());
 	exit(1);
 }
 
@@ -96,15 +89,6 @@ int main(int argc, char * argv[])
 	ParametersMap parameters;
 	std::string path;
 	std::string output;
-	std::string seq;
-	int mapUpdate = 10;
-	bool color = false;
-	bool scan = false;
-	bool disp = false;
-	int scanStep = 10;
-	float scanVoxel = 0.3f;
-	int scanNormalK = 20;
-	std::string gtPath;
 	if(argc < 2)
 	{
 		showUsage();
@@ -116,58 +100,6 @@ int main(int argc, char * argv[])
 			if(std::strcmp(argv[i], "--output") == 0)
 			{
 				output = argv[++i];
-			}
-			else if(std::strcmp(argv[i], "--map_update") == 0)
-			{
-				mapUpdate = atoi(argv[++i]);
-				if(mapUpdate <= 0)
-				{
-					printf("map_update should be > 0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--scan_step") == 0)
-			{
-				scanStep = atoi(argv[++i]);
-				if(scanStep <= 0)
-				{
-					printf("scan_step should be > 0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--scan_voxel") == 0)
-			{
-				scanVoxel = atof(argv[++i]);
-				if(scanVoxel < 0.0f)
-				{
-					printf("scan_voxel should be >= 0.0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--scan_k") == 0)
-			{
-				scanNormalK = atoi(argv[++i]);
-				if(scanNormalK < 0)
-				{
-					printf("scanNormalK should be >= 0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--gt") == 0)
-			{
-				gtPath = argv[++i];
-			}
-			else if(std::strcmp(argv[i], "--color") == 0)
-			{
-				color = true;
-			}
-			else if(std::strcmp(argv[i], "--scan") == 0)
-			{
-				scan = true;
-			}
-			else if(std::strcmp(argv[i], "--disp") == 0)
-			{
-				disp = true;
 			}
 		}
 		parameters = Parameters::parseArguments(argc, argv);
@@ -185,58 +117,27 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	seq = uSplit(path, '/').back();
-	if(seq.empty() || !(uStr2Int(seq)>=0 && uStr2Int(seq)<=21))
+	std::string pathRgbImages  = path+"/rgb_sync";
+	std::string pathDepthImages = path+"/depth_sync";
+	std::string pathGt = path+"/groundtruth.txt";
+	if(!UFile::exists(pathGt))
 	{
-		UWARN("Sequence number \"%s\" should be between 0 and 21 (official KITTI datasets).", seq.c_str());
-		seq.clear();
+		UWARN("Ground truth file path doesn't exist: \"%s\", benchmark values won't be computed.", pathGt.c_str());
+		pathGt.clear();
 	}
-	std::string pathLeftImages  = path+(color?"/image_2":"/image_0");
-	std::string pathRightImages = path+(color?"/image_3":"/image_1");
-	std::string pathCalib = path+"/calib.txt";
-	std::string pathTimes = path+"/times.txt";
-	std::string pathScan;
 
 	printf("Paths:\n"
-			"   Sequence number:  %s\n"
-			"   Sequence path:    %s\n"
-			"   Output:           %s\n"
-			"   left images:      %s\n"
-			"   right images:     %s\n"
-			"   calib.txt:        %s\n"
-			"   times.txt:        %s\n",
-			seq.c_str(),
+			"   Dataset path:    %s\n"
+			"   RGB path:        %s\n"
+			"   Depth path:      %s\n"
+			"   Output:          %s\n",
 			path.c_str(),
-			output.c_str(),
-			pathLeftImages.c_str(),
-			pathRightImages.c_str(),
-			pathCalib.c_str(),
-			pathTimes.c_str());
-	if(!gtPath.empty())
+			pathRgbImages.c_str(),
+			pathDepthImages.c_str(),
+			output.c_str());
+	if(!pathGt.empty())
 	{
-		gtPath = uReplaceChar(gtPath, '~', UDirectory::homeDir());
-		gtPath = uReplaceChar(gtPath, '\\', '/');
-		if(!UFile::exists(gtPath))
-		{
-			UWARN("Ground truth file path doesn't exist: \"%s\", benchmark values won't be computed.", gtPath.c_str());
-			gtPath.clear();
-		}
-		else
-		{
-			printf("   Ground Truth:      %s\n", gtPath.c_str());
-		}
-	}
-	if(disp)
-	{
-		printf("   Disparity:         %s\n", disp?"true":"false");
-	}
-	if(scan)
-	{
-		pathScan = path+"/velodyne";
-		printf("   Scan:              %s\n", pathScan.c_str());
-		printf("   Scan step:         %d\n", scanStep);
-		printf("   Scan voxel:        %fm\n", scanVoxel);
-		printf("   Scan normal k:     %d\n", scanNormalK);
+		printf("   groundtruth.txt: %s\n", pathGt.c_str());
 	}
 	if(!parameters.empty())
 	{
@@ -247,92 +148,48 @@ int main(int argc, char * argv[])
 		}
 	}
 
-	// convert calib.txt to rtabmap format (yaml)
-	FILE * pFile = 0;
-	pFile = fopen(pathCalib.c_str(),"r");
-	if(!pFile)
+	// setup calibraiton file
+	CameraModel model;
+	std::string sequenceName = UFile(path).getName();
+	Transform opticalRotation(0,0,1,0, -1,0,0,0, 0,-1,0,0);
+	float depthFactor = 5.0f;
+	if(sequenceName.find("freiburg1") != std::string::npos)
 	{
-		UERROR("Cannot open calibration file \"%s\"", pathCalib.c_str());
-		return -1;
+		model = CameraModel("rtabmap_calib", 517.3, 516.5, 318.6, 255.3, opticalRotation, 0, cv::Size(640,480));
 	}
-	cv::Mat_<double> P0(3,4);
-	cv::Mat_<double> P1(3,4);
-	cv::Mat_<double> P2(3,4);
-	cv::Mat_<double> P3(3,4);
-	char skipStr[10];
-	fscanf (pFile, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", skipStr,
-			&P0(0, 0), &P0(0, 1), &P0(0, 2), &P0(0, 3),
-			&P0(1, 0), &P0(1, 1), &P0(1, 2), &P0(1, 3),
-			&P0(2, 0), &P0(2, 1), &P0(2, 2), &P0(2, 3));
-	fscanf (pFile, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", skipStr,
-			&P1(0, 0), &P1(0, 1), &P1(0, 2), &P1(0, 3),
-			&P1(1, 0), &P1(1, 1), &P1(1, 2), &P1(1, 3),
-			&P1(2, 0), &P1(2, 1), &P1(2, 2), &P1(2, 3));
-	fscanf (pFile, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", skipStr,
-			&P2(0, 0), &P2(0, 1), &P2(0, 2), &P2(0, 3),
-			&P2(1, 0), &P2(1, 1), &P2(1, 2), &P2(1, 3),
-			&P2(2, 0), &P2(2, 1), &P2(2, 2), &P2(2, 3));
-	fscanf (pFile, "%s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf", skipStr,
-			&P3(0, 0), &P3(0, 1), &P3(0, 2), &P3(0, 3),
-			&P3(1, 0), &P3(1, 1), &P3(1, 2), &P3(1, 3),
-			&P3(2, 0), &P3(2, 1), &P3(2, 2), &P3(2, 3));
-	fclose (pFile);
-	// get image size
-	UDirectory dir(pathLeftImages);
-	std::string firstImage = dir.getNextFileName();
-	cv::Mat image = cv::imread(dir.getNextFilePath());
-	if(image.empty())
+	else if(sequenceName.find("freiburg2") != std::string::npos)
 	{
-		UERROR("Failed to read first image of \"%s\"", firstImage.c_str());
-		return -1;
+		model = CameraModel("rtabmap_calib", 520.9, 521.0, 325.1, 249.7, opticalRotation, 0, cv::Size(640,480));
+		depthFactor = 5.208f;
 	}
-	StereoCameraModel model("rtabmap_calib"+seq,
-			image.size(), P0.colRange(0,3), cv::Mat(), cv::Mat(), P0,
-			image.size(), P1.colRange(0,3), cv::Mat(), cv::Mat(), P1,
-			cv::Mat(), cv::Mat(), cv::Mat(), cv::Mat());
-	if(!model.save(output, true))
+	else //if(sequenceName.find("freiburg3") != std::string::npos)
 	{
-		UERROR("Could not save calibration!");
-		return -1;
+		model = CameraModel("rtabmap_calib", 535.4, 539.2, 320.1, 247.6, opticalRotation, 0, cv::Size(640,480));
 	}
-	printf("Saved calibration \"%s\" to \"%s\"\n", ("rtabmap_calib"+seq).c_str(), output.c_str());
+	model.save(output);
 
-	// We use CameraThread only to use postUpdate() method
-	Transform opticalRotation(0,0,1,0, -1,0,0,color?-0.06:0, 0,-1,0,0);
 	CameraThread cameraThread(new
-		CameraStereoImages(
-				pathLeftImages,
-				pathRightImages,
-				false, // assume that images are already rectified
+		CameraRGBDImages(
+				pathRgbImages,
+				pathDepthImages,
+				depthFactor,
 				0.0f,
 				opticalRotation), parameters);
-	((CameraStereoImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
-	if(disp)
+	((CameraRGBDImages*)cameraThread.camera())->setTimestamps(true, "", false);
+	if(!pathGt.empty())
 	{
-		cameraThread.setStereoToDepth(true);
-	}
-	if(!gtPath.empty())
-	{
-		((CameraStereoImages*)cameraThread.camera())->setGroundTruthPath(gtPath, 2);
-	}
-	if(!pathScan.empty())
-	{
-		((CameraStereoImages*)cameraThread.camera())->setScanPath(
-						pathScan,
-						130000,
-						scanStep,
-						scanVoxel,
-						scanNormalK,
-						Transform(-0.27f, 0.0f, 0.08, 0.0f, 0.0f, 0.0f));
+		((CameraRGBDImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 1);
 	}
 
 	bool intermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();
+	float detectionRate = Parameters::defaultRtabmapDetectionRate();
 	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
-	std::string databasePath = output+"/rtabmap" + seq + ".db";
+	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
+	std::string databasePath = output+"/rtabmap.db";
 	UFile::erase(databasePath);
-	if(cameraThread.camera()->init(output, "rtabmap_calib"+seq))
+	if(cameraThread.camera()->init(output, "rtabmap_calib"))
 	{
-		int totalImages = (int)((CameraStereoImages*)cameraThread.camera())->filenames().size();
+		int totalImages = (int)((CameraRGBDImages*)cameraThread.camera())->filenames().size();
 
 		OdometryF2M odom(parameters);
 		Rtabmap rtabmap;
@@ -348,6 +205,7 @@ int main(int argc, char * argv[])
 		// Processing dataset begin
 		/////////////////////////////
 		cv::Mat covariance;
+		double previousStamp = 0.0;
 		while(data.isValid() && g_forever)
 		{
 			std::map<std::string, float> externalStats;
@@ -368,15 +226,23 @@ int main(int argc, char * argv[])
 			Transform pose = odom.process(data, &odomInfo);
 			externalStats.insert(std::make_pair("Odometry/LocalBundle/ms", odomInfo.localBundleTime*1000.0f));
 			externalStats.insert(std::make_pair("Odometry/TotalTime/ms", odomInfo.timeEstimation*1000.0f));
-			float speed = 0.0f;
-			if(odomInfo.interval>0.0)
-				speed = odomInfo.transform.x()/odomInfo.interval*3.6;
-			externalStats.insert(std::make_pair("Odometry/Speed/kph", speed));
 			externalStats.insert(std::make_pair("Odometry/Inliers/ms", odomInfo.inliers));
 			externalStats.insert(std::make_pair("Odometry/Features/ms", odomInfo.features));
 
 			bool processData = true;
-			if(iteration % mapUpdate != 0)
+			if(detectionRate>0.0f &&
+				previousStamp>0.0 &&
+				data.stamp()>previousStamp && data.stamp() - previousStamp < 1.0/detectionRate)
+			{
+				processData = false;
+			}
+
+			if(processData)
+			{
+				previousStamp = data.stamp();
+			}
+
+			if(!processData)
 			{
 				// set negative id so rtabmap will detect it as an intermediate node
 				data.setId(-1);
@@ -402,8 +268,8 @@ int main(int argc, char * argv[])
 			double slamTime = timer.ticks();
 
 			++iteration;
-			printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms",
-					iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+			printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms",
+					iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
 			if(processData && rtabmap.getLoopClosureId()>0)
 			{
 				printf(" *");
@@ -424,7 +290,7 @@ int main(int argc, char * argv[])
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
 		rtabmap.getGraph(poses, links, true, true);
-		std::string pathTrajectory = output+"/rtabmap_poses"+seq+".txt";
+		std::string pathTrajectory = output+"/rtabmap_poses.txt";
 		if(poses.size() && graph::exportPoses(pathTrajectory, 2, poses, links))
 		{
 			printf("Saving %s... done!\n", pathTrajectory.c_str());
@@ -434,7 +300,7 @@ int main(int argc, char * argv[])
 			printf("Saving %s... failed!\n", pathTrajectory.c_str());
 		}
 
-		if(!gtPath.empty())
+		if(!pathGt.empty())
 		{
 			// Log ground truth statistics (in TUM's RGBD-SLAM format)
 			std::map<int, Transform> groundTruth;
@@ -464,14 +330,6 @@ int main(int argc, char * argv[])
 					cloud2[oi++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
 				}
 			}
-
-			// compute KITTI statistics before aligning the poses
-			float t_err = 0.0f;
-			float r_err = 0.0f;
-			graph::calcKittiSequenceErrors(uValues(groundTruth), uValues(poses), t_err, r_err);
-			printf("Ground truth comparison:\n");
-			printf("   KITTI t_err = %f %%\n", t_err);
-			printf("   KITTI r_err = %f deg/m\n", r_err);
 
 			Transform t = Transform::getIdentity();
 			if(oi>5)
@@ -568,8 +426,8 @@ int main(int argc, char * argv[])
 				printf("  translational_rmse=   %f\n", translational_rmse);
 				printf("  rotational_rmse=      %f\n", rotational_rmse);
 
-				pFile = 0;
-				std::string pathErrors = output+"/rtabmap_rmse"+seq+".txt";
+				FILE * pFile = 0;
+				std::string pathErrors = output+"/rtabmap_rmse.txt";
 				pFile = fopen(pathErrors.c_str(),"w");
 				if(!pFile)
 				{
@@ -597,9 +455,9 @@ int main(int argc, char * argv[])
 		UERROR("Camera init failed!");
 	}
 
-	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", (output+"/rtabmap" + seq + ".db").c_str());
+	printf("Saving rtabmap database (with all statistics) to \"%s\"\n", (output+"/rtabmap.db").c_str());
 	printf("Do:\n"
-			" $ rtabmap-databaseViewer %s\n\n", (output+"/rtabmap" + seq + ".db").c_str());
+			" $ rtabmap-databaseViewer %s\n\n", (output+"/rtabmap.db").c_str());
 
 	return 0;
 }

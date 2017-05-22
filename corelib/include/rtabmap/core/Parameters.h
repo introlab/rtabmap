@@ -399,6 +399,7 @@ class RTABMAP_EXP Parameters
 
 	// Common registration parameters
 	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
+	RTABMAP_PARAM(Reg, VarianceNormalized,       bool, false,   "Normalize covariance values. Position variances are multiplied by norm of the transform and orientation variances are multiplied by angle of the transform.");
 	RTABMAP_PARAM(Reg, Strategy,                 int, 0,        "0=Vis, 1=Icp, 2=VisIcp");
 	RTABMAP_PARAM(Reg, Force3DoF,                bool, false,   "Force 3 degrees-of-freedom transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.");
 	

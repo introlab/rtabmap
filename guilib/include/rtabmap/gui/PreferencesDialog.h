@@ -149,6 +149,7 @@ public:
 	bool isCacheSavedInFigures() const;
 	bool notifyWhenNewGlobalPathIsReceived() const;
 	int getOdomQualityWarnThr() const;
+	bool isOdomOnlyInliersShown() const;
 	bool isPosteriorGraphView() const;
 	int getOdomRegistrationApproach() const;
 	bool isOdomDisabled() const;
