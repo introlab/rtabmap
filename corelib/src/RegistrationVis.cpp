@@ -1292,28 +1292,13 @@ Transform RegistrationVis::computeTransformationImpl(
 			poses.insert(std::make_pair(2, transforms[0]));
 
 			cv::Mat cov = covariances[0].clone();
-			if(covarianceNormalized())
-			{
-				cv::Mat(cov, cv::Range(0,3), cv::Range(0,3)) *= transform.getNorm();
-				cv::Mat(cov, cv::Range(3,6), cv::Range(3,6)) *= transform.getAngle();
-			}
-			if(cov.at<double>(0,0)<=0.0)
-			{
-				cov = cv::Mat::eye(6,6,CV_64FC1)*0.000001; // epsilon if exact transform
-			}
+			normalizeCovariance(cov, transform);
+
 			links.insert(std::make_pair(1, Link(1, 2, Link::kNeighbor, transforms[0], cov.inv())));
 			if(!transforms[1].isNull() && inliers[1].size())
 			{
 				cov = covariances[1].clone();
-				if(covarianceNormalized())
-				{
-					cv::Mat(cov, cv::Range(0,3), cv::Range(0,3)) *= transform.getNorm();
-					cv::Mat(cov, cv::Range(3,6), cv::Range(3,6)) *= transform.getAngle();
-				}
-				if(cov.at<double>(0,0)<=0.0)
-				{
-					cov = cv::Mat::eye(6,6,CV_64FC1)*0.000001; // epsilon if exact transform
-				}
+				normalizeCovariance(cov, transform);
 				links.insert(std::make_pair(2, Link(2, 1, Link::kNeighbor, transforms[1], cov.inv())));
 			}
 

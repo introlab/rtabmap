@@ -85,6 +85,8 @@ public:
 			Transform guess = Transform::getIdentity(),
 			RegistrationInfo * info = 0) const;
 
+	void normalizeCovariance(cv::Mat & covariance, const Transform & transform) const;
+
 protected:
 	// take ownership of child
 	Registration(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
