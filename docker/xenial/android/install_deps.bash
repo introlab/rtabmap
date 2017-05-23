@@ -134,8 +134,14 @@ cd
 rm -r pcl
 
 # OpenCV
-echo "wget opencv..."
+echo "wget opencv3..."
 wget -nv https://downloads.sourceforge.net/project/opencvlibrary/opencv-android/3.2.0/opencv-3.2.0-android-sdk.zip
 unzip -qq opencv-3.2.0-android-sdk.zip
 rm opencv-3.2.0-android-sdk.zip
-mv OpenCV-android-sdk /opt/.
+mv OpenCV-android-sdk /opt/OpenCV3-android-sdk
+
+echo "wget opencv2..."
+wget -nv https://downloads.sourceforge.net/project/opencvlibrary/opencv-android/2.4.13/opencv-2.4.13.2-android-sdk.zip
+unzip -qq opencv-2.4.13.2-android-sdk.zip
+rm opencv-2.4.13.2-android-sdk.zip
+mv OpenCV-android-sdk /opt/OpenCV2-android-sdk
