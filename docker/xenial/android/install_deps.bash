@@ -134,14 +134,21 @@ cd
 rm -r pcl
 
 # OpenCV
-echo "wget opencv3..."
-wget -nv https://downloads.sourceforge.net/project/opencvlibrary/opencv-android/3.2.0/opencv-3.2.0-android-sdk.zip
-unzip -qq opencv-3.2.0-android-sdk.zip
-rm opencv-3.2.0-android-sdk.zip
-mv OpenCV-android-sdk /opt/OpenCV3-android-sdk
-
-echo "wget opencv2..."
-wget -nv https://downloads.sourceforge.net/project/opencvlibrary/opencv-android/2.4.13/opencv-2.4.13.2-android-sdk.zip
-unzip -qq opencv-2.4.13.2-android-sdk.zip
-rm opencv-2.4.13.2-android-sdk.zip
-mv OpenCV-android-sdk /opt/OpenCV2-android-sdk
+git clone https://github.com/opencv/opencv_contrib.git
+cd opencv_contrib
+git checkout tags/3.2.0
+cd
+git clone https://github.com/opencv/opencv.git
+cd opencv
+git checkout tags/3.2.0
+mkdir build
+cd build
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ..
+make
+make install
+rm -r *
+cmake -DCMAKE_TOOLCHAIN_FILE=/root/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ..
+make
+make install
+cd
+rm -r opencv opencv_contrib

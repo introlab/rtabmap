@@ -27,13 +27,13 @@ mv TangoSDK_Hopak_Java.jar rtabmap-tango/app/android/libs/.
 # rtabmap
 mkdir rtabmap-tango/build/armeabi-v7a
 cd rtabmap-tango/build/armeabi-v7a
-cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=/opt/OpenCV2-android-sdk/sdk/native/jni -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ../..
+cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=/opt/android/armeabi-v7a/sdk/native/jni -DCMAKE_INSTALL_PREFIX=/opt/android/armeabi-v7a ../..
 make
 
 cd
 mkdir rtabmap-tango/build/arm64-v8a
 cd rtabmap-tango/build/arm64-v8a
-cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=/opt/OpenCV2-android-sdk/sdk/native/jni -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ../..
+cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=/opt/android/arm64-v8a/sdk/native/jni -DCMAKE_INSTALL_PREFIX=/opt/android/arm64-v8a ../..
 make
 
 # package with binaries of both architectures
