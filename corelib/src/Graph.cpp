@@ -1456,61 +1456,64 @@ std::list<std::pair<int, Transform> > computePath(
 		}
 		for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
-			Transform nextPose = currentNode->pose()*iter->second.transform();
-			float cost = 0.0f;
-			if(linearVelocity <= 0.0f && angularVelocity <= 0.0f)
+			if(iter->second.from() != iter->second.to())
 			{
-				// use distance only
-				cost = iter->second.transform().getNorm();
-			}
-			else // use time
-			{
-				if(linearVelocity > 0.0f)
+				Transform nextPose = currentNode->pose()*iter->second.transform();
+				float cost = 0.0f;
+				if(linearVelocity <= 0.0f && angularVelocity <= 0.0f)
 				{
-					cost += iter->second.transform().getNorm()/linearVelocity;
+					// use distance only
+					cost = iter->second.transform().getNorm();
 				}
-				if(angularVelocity > 0.0f)
+				else // use time
 				{
-					Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-currentNode->pose().x(), nextPose.y()-currentNode->pose().y(), nextPose.z()-currentNode->pose().z(), 1.0f);
-					Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
-					float angle = pcl::getAngle3D(v1, v2);
-					cost += angle / angularVelocity;
-				}
-			}
-
-			std::map<int, Node>::iterator nodeIter = nodes.find(iter->first);
-			if(nodeIter == nodes.end())
-			{
-				Node n(iter->second.to(), currentNode->id(), nextPose);
-
-				n.setCostSoFar(currentNode->costSoFar() + cost);
-				nodes.insert(std::make_pair(iter->second.to(), n));
-				if(updateNewCosts)
-				{
-					pqmap.insert(std::make_pair(n.totalCost(), n.id()));
-				}
-				else
-				{
-					pq.push(Pair(n.id(), n.totalCost()));
-				}
-			}
-			else if(updateNewCosts && nodeIter->second.isOpened())
-			{
-				float newCostSoFar = currentNode->costSoFar() + cost;
-				if(nodeIter->second.costSoFar() > newCostSoFar)
-				{
-					// update pose with new link
-					nodeIter->second.setPose(nextPose);
-
-					// update the cost in the priority queue
-					for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
+					if(linearVelocity > 0.0f)
 					{
-						if(mapIter->second == nodeIter->first)
+						cost += iter->second.transform().getNorm()/linearVelocity;
+					}
+					if(angularVelocity > 0.0f)
+					{
+						Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-currentNode->pose().x(), nextPose.y()-currentNode->pose().y(), nextPose.z()-currentNode->pose().z(), 1.0f);
+						Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+						float angle = pcl::getAngle3D(v1, v2);
+						cost += angle / angularVelocity;
+					}
+				}
+
+				std::map<int, Node>::iterator nodeIter = nodes.find(iter->first);
+				if(nodeIter == nodes.end())
+				{
+					Node n(iter->second.to(), currentNode->id(), nextPose);
+
+					n.setCostSoFar(currentNode->costSoFar() + cost);
+					nodes.insert(std::make_pair(iter->second.to(), n));
+					if(updateNewCosts)
+					{
+						pqmap.insert(std::make_pair(n.totalCost(), n.id()));
+					}
+					else
+					{
+						pq.push(Pair(n.id(), n.totalCost()));
+					}
+				}
+				else if(updateNewCosts && nodeIter->second.isOpened())
+				{
+					float newCostSoFar = currentNode->costSoFar() + cost;
+					if(nodeIter->second.costSoFar() > newCostSoFar)
+					{
+						// update pose with new link
+						nodeIter->second.setPose(nextPose);
+
+						// update the cost in the priority queue
+						for(std::multimap<float, int>::iterator mapIter=pqmap.begin(); mapIter!=pqmap.end(); ++mapIter)
 						{
-							pqmap.erase(mapIter);
-							nodeIter->second.setCostSoFar(newCostSoFar);
-							pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
-							break;
+							if(mapIter->second == nodeIter->first)
+							{
+								pqmap.erase(mapIter);
+								nodeIter->second.setCostSoFar(newCostSoFar);
+								pqmap.insert(std::make_pair(nodeIter->second.totalCost(), nodeIter->first));
+								break;
+							}
 						}
 					}
 				}

@@ -134,6 +134,11 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			int id1 = iter->second.from();
 			int id2 = iter->second.to();
+			if(id1 == id2)
+			{
+				// not supporting pose prior
+				continue;
+			}
 
 			UASSERT(!iter->second.transform().isNull());
 

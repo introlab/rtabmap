@@ -1127,7 +1127,7 @@ void DBDriver::generateGraph(
 									 weightNeighbor,
 									 colorG);
 						 }
-						 else
+						 else if(iter->first != id)
 						 {
 							 //child
 							 fprintf(fout, "   \"%d\\n%d\" -> \"%d\\n%d\" [label=\"C\", fontcolor=%s, fontsize=8];\n",

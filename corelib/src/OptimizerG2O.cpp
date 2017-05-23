@@ -47,6 +47,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/core/linear_solver.h"
 #include "g2o/types/sba/types_sba.h"
+#include "g2o/types/slam2d/types_slam2d.h"
+#include "g2o/types/slam3d/types_slam3d.h"
 #include "g2o/core/robust_kernel_impl.h"
 #ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
@@ -56,10 +58,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #endif
 #include "g2o/solvers/eigen/linear_solver_eigen.h"
-#include "g2o/types/slam3d/vertex_se3.h"
-#include "g2o/types/slam3d/edge_se3.h"
-#include "g2o/types/slam2d/vertex_se2.h"
-#include "g2o/types/slam2d/edge_se2.h"
+
+enum {
+    PARAM_OFFSET=0,
+};
 
 typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
 typedef g2o::LinearSolverEigen<SlamBlockSolver::PoseMatrixType> SlamLinearEigenSolver;
@@ -165,6 +167,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
+		g2o::ParameterSE3Offset* odomOffset = new g2o::ParameterSE3Offset();
+		odomOffset->setId(PARAM_OFFSET);
+		optimizer.addParameter(odomOffset);
 
 		SlamBlockSolver * blockSolver = 0;
 
@@ -211,6 +216,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		}
 
 		UDEBUG("fill poses to g2o...");
+		std::map<int, std::pair<Transform, cv::Mat> > geoPoses; // pose / information matrix
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());
@@ -255,127 +261,175 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 			g2o::HyperGraph::Edge * edge = 0;
 
-#ifdef RTABMAP_VERTIGO
-			VertexSwitchLinear * v = 0;
-			if(this->isRobust() &&
-			   iter->second.type() != Link::kNeighbor &&
-			   iter->second.type() != Link::kNeighborMerged)
+			if(id1 == id2)
 			{
-				// For loop closure links, add switchable edges
-
-				// create new switch variable
-				// Sunderhauf IROS 2012:
-				// "Since it is reasonable to initially accept all loop closure constraints,
-				//  a proper and convenient initial value for all switch variables would be
-				//  sij = 1 when using the linear switch function"
-				v = new VertexSwitchLinear();
-				v->setEstimate(1.0);
-				v->setId(vertigoVertexId++);
-				UASSERT_MSG(optimizer.addVertex(v), uFormat("cannot insert switchable vertex %d!?", v->id()).c_str());
-
-				// create switch prior factor
-				// "If the front-end is not able to assign sound individual values
-				//  for Ξij , it is save to set all Ξij = 1, since this value is close
-				//  to the individual optimal choice of Ξij for a large range of
-				//  outliers."
-				EdgeSwitchPrior * prior = new EdgeSwitchPrior();
-				prior->setMeasurement(1.0);
-				prior->setVertex(0, v);
-				UASSERT_MSG(optimizer.addEdge(prior), uFormat("cannot insert switchable prior edge %d!?", v->id()).c_str());
-			}
-#endif
-
-			if(isSlam2d())
-			{
-				Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
-				if(!isCovarianceIgnored())
+				if(isSlam2d())
 				{
-					information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
-					information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
-					information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
-					information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
-					information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
-					information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
-					information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
-					information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
-					information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
-				}
-
-#ifdef RTABMAP_VERTIGO
-				if(this->isRobust() &&
-				   iter->second.type() != Link::kNeighbor  &&
-				   iter->second.type() != Link::kNeighborMerged)
-				{
-					EdgeSE2Switchable * e = new EdgeSE2Switchable();
+					g2o::EdgeSE2Prior * priorEdge = new g2o::EdgeSE2Prior();
 					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-					g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
-					UASSERT(v1 != 0);
-					UASSERT(v2 != 0);
-					e->setVertex(0, v1);
-					e->setVertex(1, v2);
-					e->setVertex(2, v);
-					e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
-					e->setInformation(information);
-					edge = e;
+					priorEdge->setVertex(0, v1);
+					priorEdge->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+					priorEdge->setParameterId(0, PARAM_OFFSET);
+					Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+					if(!isCovarianceIgnored())
+					{
+						information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+						information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+						information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
+						information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+						information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+						information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
+						information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
+						information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
+						information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
+					}
+					priorEdge->setInformation(information);
+					edge = priorEdge;
 				}
 				else
-#endif
 				{
-					g2o::EdgeSE2 * e = new g2o::EdgeSE2();
-					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-					g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
-					UASSERT(v1 != 0);
-					UASSERT(v2 != 0);
-					e->setVertex(0, v1);
-					e->setVertex(1, v2);
-					e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
-					e->setInformation(information);
-					edge = e;
+					g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
+					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+					priorEdge->setVertex(0, v1);
+					Eigen::Affine3d a = iter->second.transform().toEigen3d();
+					Eigen::Isometry3d pose;
+					pose = a.rotation();
+					pose.translation() = a.translation();
+					priorEdge->setMeasurement(pose);
+					priorEdge->setParameterId(0, PARAM_OFFSET);
+					Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+					if(!isCovarianceIgnored())
+					{
+						memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+					}
+					priorEdge->setInformation(information);
+					edge = priorEdge;
 				}
 			}
 			else
 			{
-				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-				if(!isCovarianceIgnored())
-				{
-					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
-				}
-
-				Eigen::Affine3d a = iter->second.transform().toEigen3d();
-				Eigen::Isometry3d constraint;
-				constraint = a.rotation();
-				constraint.translation() = a.translation();
-
 #ifdef RTABMAP_VERTIGO
+				VertexSwitchLinear * v = 0;
 				if(this->isRobust() &&
 				   iter->second.type() != Link::kNeighbor &&
 				   iter->second.type() != Link::kNeighborMerged)
 				{
-					EdgeSE3Switchable * e = new EdgeSE3Switchable();
-					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-					g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-					UASSERT(v1 != 0);
-					UASSERT(v2 != 0);
-					e->setVertex(0, v1);
-					e->setVertex(1, v2);
-					e->setVertex(2, v);
-					e->setMeasurement(constraint);
-					e->setInformation(information);
-					edge = e;
+					// For loop closure links, add switchable edges
+
+					// create new switch variable
+					// Sunderhauf IROS 2012:
+					// "Since it is reasonable to initially accept all loop closure constraints,
+					//  a proper and convenient initial value for all switch variables would be
+					//  sij = 1 when using the linear switch function"
+					v = new VertexSwitchLinear();
+					v->setEstimate(1.0);
+					v->setId(vertigoVertexId++);
+					UASSERT_MSG(optimizer.addVertex(v), uFormat("cannot insert switchable vertex %d!?", v->id()).c_str());
+
+					// create switch prior factor
+					// "If the front-end is not able to assign sound individual values
+					//  for Ξij , it is save to set all Ξij = 1, since this value is close
+					//  to the individual optimal choice of Ξij for a large range of
+					//  outliers."
+					EdgeSwitchPrior * prior = new EdgeSwitchPrior();
+					prior->setMeasurement(1.0);
+					prior->setVertex(0, v);
+					UASSERT_MSG(optimizer.addEdge(prior), uFormat("cannot insert switchable prior edge %d!?", v->id()).c_str());
+				}
+#endif
+
+				if(isSlam2d())
+				{
+					Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+					if(!isCovarianceIgnored())
+					{
+						information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+						information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+						information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
+						information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+						information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+						information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
+						information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
+						information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
+						information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
+					}
+
+#ifdef RTABMAP_VERTIGO
+					if(this->isRobust() &&
+					   iter->second.type() != Link::kNeighbor  &&
+					   iter->second.type() != Link::kNeighborMerged)
+					{
+						EdgeSE2Switchable * e = new EdgeSE2Switchable();
+						g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+						g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+						UASSERT(v1 != 0);
+						UASSERT(v2 != 0);
+						e->setVertex(0, v1);
+						e->setVertex(1, v2);
+						e->setVertex(2, v);
+						e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+						e->setInformation(information);
+						edge = e;
+					}
+					else
+#endif
+					{
+						g2o::EdgeSE2 * e = new g2o::EdgeSE2();
+						g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+						g2o::VertexSE2* v2 = (g2o::VertexSE2*)optimizer.vertex(id2);
+						UASSERT(v1 != 0);
+						UASSERT(v2 != 0);
+						e->setVertex(0, v1);
+						e->setVertex(1, v2);
+						e->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+						e->setInformation(information);
+						edge = e;
+					}
 				}
 				else
-#endif
 				{
-					g2o::EdgeSE3 * e = new g2o::EdgeSE3();
-					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-					g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
-					UASSERT(v1 != 0);
-					UASSERT(v2 != 0);
-					e->setVertex(0, v1);
-					e->setVertex(1, v2);
-					e->setMeasurement(constraint);
-					e->setInformation(information);
-					edge = e;
+					Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+					if(!isCovarianceIgnored())
+					{
+						memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+					}
+
+					Eigen::Affine3d a = iter->second.transform().toEigen3d();
+					Eigen::Isometry3d constraint;
+					constraint = a.rotation();
+					constraint.translation() = a.translation();
+
+#ifdef RTABMAP_VERTIGO
+					if(this->isRobust() &&
+					   iter->second.type() != Link::kNeighbor &&
+					   iter->second.type() != Link::kNeighborMerged)
+					{
+						EdgeSE3Switchable * e = new EdgeSE3Switchable();
+						g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+						g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+						UASSERT(v1 != 0);
+						UASSERT(v2 != 0);
+						e->setVertex(0, v1);
+						e->setVertex(1, v2);
+						e->setVertex(2, v);
+						e->setMeasurement(constraint);
+						e->setInformation(information);
+						edge = e;
+					}
+					else
+#endif
+					{
+						g2o::EdgeSE3 * e = new g2o::EdgeSE3();
+						g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+						g2o::VertexSE3* v2 = (g2o::VertexSE3*)optimizer.vertex(id2);
+						UASSERT(v1 != 0);
+						UASSERT(v2 != 0);
+						e->setVertex(0, v1);
+						e->setVertex(1, v2);
+						e->setMeasurement(constraint);
+						e->setInformation(information);
+						edge = e;
+					}
 				}
 			}
 
@@ -384,6 +438,8 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				delete edge;
 				UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
 			}
+
+
 		}
 
 		UDEBUG("Initial optimization...");

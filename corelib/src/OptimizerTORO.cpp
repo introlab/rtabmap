@@ -126,15 +126,19 @@ std::map<int, Transform> OptimizerTORO::optimize(
 
 				int id1 = iter->second.from();
 				int id2 = iter->second.to();
-				AISNavigation::TreePoseGraph2::Vertex* v1=pg2.vertex(id1);
-				AISNavigation::TreePoseGraph2::Vertex* v2=pg2.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				AISNavigation::TreePoseGraph2::Transformation t(p);
-				if (!pg2.addEdge(v1, v2, t, inf))
+				if(id1 != id2)
 				{
-					UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
+					AISNavigation::TreePoseGraph2::Vertex* v1=pg2.vertex(id1);
+					AISNavigation::TreePoseGraph2::Vertex* v2=pg2.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					AISNavigation::TreePoseGraph2::Transformation t(p);
+					if (!pg2.addEdge(v1, v2, t, inf))
+					{
+						UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
+					}
 				}
+				//else // not supporting pose prior
 			}
 		}
 		else
@@ -154,15 +158,19 @@ std::map<int, Transform> OptimizerTORO::optimize(
 
 				int id1 = iter->second.from();
 				int id2 = iter->second.to();
-				AISNavigation::TreePoseGraph3::Vertex* v1=pg3.vertex(id1);
-				AISNavigation::TreePoseGraph3::Vertex* v2=pg3.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				AISNavigation::TreePoseGraph3::Transformation t(p);
-				if (!pg3.addEdge(v1, v2, t, inf))
+				if(id1 != id2)
 				{
-					UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
+					AISNavigation::TreePoseGraph3::Vertex* v1=pg3.vertex(id1);
+					AISNavigation::TreePoseGraph3::Vertex* v2=pg3.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					AISNavigation::TreePoseGraph3::Transformation t(p);
+					if (!pg3.addEdge(v1, v2, t, inf))
+					{
+						UERROR("Map: Edge already exits between nodes %d and %d, skipping", id1, id2);
+					}
 				}
+				//else // not supporting pose prior
 			}
 		}
 		UDEBUG("buildMST... root=%d", rootId);

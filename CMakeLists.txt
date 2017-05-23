@@ -46,25 +46,25 @@ IF(NOT ANDROID)
 ENDIF(NOT ANDROID)
 
 IF(WIN32 AND NOT MINGW)
-  	ADD_DEFINITIONS("-DNOMINMAX")
+    ADD_DEFINITIONS("-DNOMINMAX")
     ADD_DEFINITIONS("-wd4100 -wd4127 -wd4150 -wd4191 -wd4242 -wd4244 -wd4251 -wd4305 -wd4365 -wd4512 -wd4514 -wd4548 -wd4571 -wd4619 -wd4625 -wd4626 -wd4628 -wd4668 -wd4710 -wd4711 -wd4738 -wd4820 -wd4946 -wd4986")
 ELSE ()
-	ADD_DEFINITIONS( "-Wall" )
-	ADD_DEFINITIONS("-Wno-unknown-pragmas")
+    ADD_DEFINITIONS( "-Wall" )
+    ADD_DEFINITIONS("-Wno-unknown-pragmas")
 ENDIF()
 
 if(POLICY CMP0020)
-	cmake_policy(SET CMP0020 OLD)
+    cmake_policy(SET CMP0020 OLD)
 endif()
 if(POLICY CMP0043)
-	cmake_policy(SET CMP0043 OLD)
+    cmake_policy(SET CMP0043 OLD)
 endif()
 
 IF(MINGW)
     # Hide the --enable-auto-import warning
-	SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-auto-import")  
-	SET(CMAKE_MODULE_LINKER_FLAGS "-Wl,--enable-auto-import") 
-	SET(CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-auto-import") 
+    SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--enable-auto-import")
+    SET(CMAKE_MODULE_LINKER_FLAGS "-Wl,--enable-auto-import")
+    SET(CMAKE_SHARED_LINKER_FLAGS "-Wl,--enable-auto-import")
 ENDIF(MINGW)
 
 # GCC 4 required
@@ -125,7 +125,7 @@ set(INSTALL_CMAKE_DIR ${DEF_INSTALL_CMAKE_DIR} CACHE PATH
   
 ####### BUILD OPTIONS #######
 IF(APPLE)
-	OPTION(BUILD_AS_BUNDLE "Set to ON to build as bundle (DragNDrop)" OFF)
+    OPTION(BUILD_AS_BUNDLE "Set to ON to build as bundle (DragNDrop)" OFF)
 ENDIF(APPLE)
 OPTION(BUILD_APP "Build main application" ON)
 OPTION(BUILD_TOOLS "Build tools" ON)
@@ -232,18 +232,18 @@ ENDIF(WITH_FREENECT)
 IF(WITH_FREENECT2)
     FIND_PACKAGE(freenect2 QUIET)
     IF(freenect2_FOUND)
-	   IF(NOT freenect2_INCLUDE_DIRS)
-	      SET(freenect2_INCLUDE_DIRS ${freenect2_INCLUDE_DIR})
-	   ENDIF(NOT freenect2_INCLUDE_DIRS)
+       IF(NOT freenect2_INCLUDE_DIRS)
+          SET(freenect2_INCLUDE_DIRS ${freenect2_INCLUDE_DIR})
+       ENDIF(NOT freenect2_INCLUDE_DIRS)
        MESSAGE(STATUS "Found freenect2: ${freenect2_INCLUDE_DIRS}")
        # Explicitly link to OpenCL (in case of CUDA installed)
-	   FIND_PACKAGE(OpenCL QUIET)
-	   IF(OpenCL_FOUND)
-		  SET(freenect2_LIBRARIES
-			${OpenCL_LIBRARIES}
-			${freenect2_LIBRARIES}
-		  )
-	   ENDIF(OpenCL_FOUND)
+       FIND_PACKAGE(OpenCL QUIET)
+       IF(OpenCL_FOUND)
+          SET(freenect2_LIBRARIES
+            ${OpenCL_LIBRARIES}
+            ${freenect2_LIBRARIES}
+          )
+       ENDIF(OpenCL_FOUND)
     ENDIF(freenect2_FOUND)
 ENDIF(WITH_FREENECT2)
 
@@ -281,47 +281,47 @@ IF(WITH_FLYCAPTURE2)
 ENDIF(WITH_FLYCAPTURE2)
 
 IF(WITH_CVSBA)
-	FIND_PACKAGE(cvsba QUIET)
+    FIND_PACKAGE(cvsba QUIET)
     IF(cvsba_FOUND)
        MESSAGE(STATUS "Found cvsba: ${cvsba_INCLUDE_DIRS}")
     ENDIF(cvsba_FOUND)
 ENDIF(WITH_CVSBA)
 
 IF(WITH_ZED)
-	IF(WIN32) # Windows
-		SET(ZED_INCLUDE_DIRS $ENV{ZED_INCLUDE_DIRS})
-		if (CMAKE_CL_64) # 64 bits
-			SET(ZED_LIBRARIES $ENV{ZED_LIBRARIES_64})
-		else(CMAKE_CL_64) # 32 bits
-			message("32bits compilation is no more available with CUDA7.0")
-		endif(CMAKE_CL_64)
-		SET(ZED_LIBRARY_DIR $ENV{ZED_LIBRARY_DIR})
-		IF(ZED_LIBRARIES AND ZED_INCLUDE_DIRS)
-			SET(ZED_FOUND TRUE)
-			LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${ZED_LIBRARY_DIR})
-		ENDIF(ZED_LIBRARIES AND ZED_INCLUDE_DIRS)
-	ELSE() # Linux
-		find_package(ZED 1 QUIET)
-	ENDIF(WIN32)
-	
-	IF(ZED_FOUND)
+    IF(WIN32) # Windows
+        SET(ZED_INCLUDE_DIRS $ENV{ZED_INCLUDE_DIRS})
+        if (CMAKE_CL_64) # 64 bits
+            SET(ZED_LIBRARIES $ENV{ZED_LIBRARIES_64})
+        else(CMAKE_CL_64) # 32 bits
+            message("32bits compilation is no more available with CUDA7.0")
+        endif(CMAKE_CL_64)
+        SET(ZED_LIBRARY_DIR $ENV{ZED_LIBRARY_DIR})
+        IF(ZED_LIBRARIES AND ZED_INCLUDE_DIRS)
+            SET(ZED_FOUND TRUE)
+            LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${ZED_LIBRARY_DIR})
+        ENDIF(ZED_LIBRARIES AND ZED_INCLUDE_DIRS)
+    ELSE() # Linux
+        find_package(ZED 1 QUIET)
+    ENDIF(WIN32)
+    
+    IF(ZED_FOUND)
        MESSAGE(STATUS "Found ZED sdk: ${ZED_INCLUDE_DIRS}")
-	   ## look for CUDA
-	   find_package(CUDA)
-	   IF(CUDA_FOUND)
-		MESSAGE(STATUS "Found CUDA: ${CUDA_INCLUDE_DIRS}")
-	   ELSE()
-	    MESSAGE(FATAL_ERROR "CUDA is required to build with Zed sdk! Set -DWITH_ZED=OFF if you don't have CUDA.")
-	   ENDIF()
+       ## look for CUDA
+       find_package(CUDA)
+       IF(CUDA_FOUND)
+        MESSAGE(STATUS "Found CUDA: ${CUDA_INCLUDE_DIRS}")
+       ELSE()
+        MESSAGE(FATAL_ERROR "CUDA is required to build with Zed sdk! Set -DWITH_ZED=OFF if you don't have CUDA.")
+       ENDIF()
     ENDIF(ZED_FOUND)
 ENDIF(WITH_ZED)
 
 IF(WITH_REALSENSE)
     IF(WITH_REALSENSE_SLAM)
-	   FIND_PACKAGE(RealSense QUIET COMPONENTS slam)
-	ELSE()
-	   FIND_PACKAGE(RealSense QUIET)
-	ENDIF()
+       FIND_PACKAGE(RealSense QUIET COMPONENTS slam)
+    ELSE()
+       FIND_PACKAGE(RealSense QUIET)
+    ENDIF()
     IF(RealSense_FOUND)
        MESSAGE(STATUS "Found RealSense: ${RealSense_INCLUDE_DIRS}")
     ENDIF(RealSense_FOUND)
@@ -331,14 +331,14 @@ IF(WITH_REALSENSE)
 ENDIF(WITH_REALSENSE)
 
 IF(WITH_OCTOMAP)
-	FIND_PACKAGE(OCTOMAP QUIET)
+    FIND_PACKAGE(OCTOMAP QUIET)
     IF(OCTOMAP_FOUND)
        MESSAGE(STATUS "Found octomap: ${OCTOMAP_INCLUDE_DIRS}")
     ENDIF(OCTOMAP_FOUND)
 ENDIF(WITH_OCTOMAP)
 
 IF(WITH_CPUTSDF)
-	FIND_PACKAGE(CPUTSDF QUIET)
+    FIND_PACKAGE(CPUTSDF QUIET)
     IF(CPUTSDF_FOUND)
        MESSAGE(STATUS "Found CPUTSDF: ${CPUTSDF_INCLUDE_DIRS}")
     ENDIF(CPUTSDF_FOUND)
@@ -348,15 +348,15 @@ IF(G2O_FOUND OR GTSAM_FOUND OR ZED_FOUND OR ANDROID OR RealSense_FOUND)
    #Newest versions require std11
    IF(NOT MSVC)
      include(CheckCXXCompilerFlag)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-	  CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
-	  IF(COMPILER_SUPPORTS_CXX11)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-	  ELSEIF(COMPILER_SUPPORTS_CXX0X)
-		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
-	  ELSE()
-		message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler if you want to use g2o or gtsam (set \"-DWITH_G2O=OFF -DWITH_GTSAM=OFF\" to build without g2o and gtsam).")
-	  ENDIF()
+      CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+      CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+      IF(COMPILER_SUPPORTS_CXX11)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+      ELSEIF(COMPILER_SUPPORTS_CXX0X)
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+      ELSE()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler if you want to use g2o or gtsam (set \"-DWITH_G2O=OFF -DWITH_GTSAM=OFF\" to build without g2o and gtsam).")
+      ENDIF()
    ENDIF()
 ENDIF(G2O_FOUND OR GTSAM_FOUND OR ZED_FOUND OR ANDROID OR RealSense_FOUND)
 
@@ -392,7 +392,7 @@ ENDIF(APPLE AND BUILD_AS_BUNDLE)
 
 # CONF_DEPENDENCIES contains only dependencies not required by the headers
 SET(CONF_DEPENDENCIES 
-	${ZLIB_LIBRARIES}
+    ${ZLIB_LIBRARIES}
 )
 IF(NOT (OPENCV_NONFREE_FOUND OR OPENCV_XFEATURES2D_FOUND))
    SET(NONFREE "//")
@@ -520,8 +520,8 @@ file(RELATIVE_PATH REL_LIB_DIR "${CMAKE_INSTALL_PREFIX}/${INSTALL_CMAKE_DIR}" "$
    
 # ... for the build tree
 set(CONF_INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/corelib/include" 
-					  "${PROJECT_SOURCE_DIR}/guilib/include" 
-					  "${PROJECT_SOURCE_DIR}/utilite/include")
+                      "${PROJECT_SOURCE_DIR}/guilib/include" 
+                      "${PROJECT_SOURCE_DIR}/utilite/include")
 set(CONF_LIB_DIR "${CMAKE_ARCHIVE_OUTPUT_DIRECTORY} ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}")
 IF(QT4_FOUND OR Qt5_FOUND)
    set(CONF_WITH_GUI ON)
@@ -646,8 +646,8 @@ MESSAGE(STATUS "  BUILD_APP =            ${BUILD_APP}")
 MESSAGE(STATUS "  BUILD_TOOLS =          ${BUILD_TOOLS}")
 MESSAGE(STATUS "  BUILD_EXAMPLES =       ${BUILD_EXAMPLES}")
 IF(NOT WIN32)
-	# see comment above for the BUILD_SHARED_LIBS option on Windows
-	MESSAGE(STATUS "  BUILD_SHARED_LIBS =    ${BUILD_SHARED_LIBS}")
+    # see comment above for the BUILD_SHARED_LIBS option on Windows
+    MESSAGE(STATUS "  BUILD_SHARED_LIBS =    ${BUILD_SHARED_LIBS}")
 ENDIF(NOT WIN32)
 IF(APPLE)
 MESSAGE(STATUS "  BUILD_AS_BUNDLE =      ${BUILD_AS_BUNDLE}")
@@ -807,3 +807,5 @@ MESSAGE(SEND_ERROR "No graph optimizer found! You should have at least one of th
        GTSAM (https://collab.cc.gatech.edu/borg/gtsam)
        set -DWITH_TORO=ON")
 ENDIF(NOT GTSAM_FOUND AND NOT G2O_FOUND AND NOT WITH_TORO)
+
+# vim: set et ft=cmake fenc=utf-8 ff=unix sts=0 sw=2 ts=2 :
