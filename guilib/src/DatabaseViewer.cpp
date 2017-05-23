@@ -4879,7 +4879,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
 				// ignore links with high variance
-				if(iter->second.transVariance() <= 1.0)
+				if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
 				{
 					UASSERT(poses.find(iter->second.from())!=poses.end());
 					UASSERT(poses.find(iter->second.to())!=poses.end());

@@ -221,6 +221,10 @@ public:
 	void setGroundTruth(const Transform & pose) {groundTruth_ = pose;}
 	const Transform & groundTruth() const {return groundTruth_;}
 
+	void setGlobalPose(const Transform & pose, const cv::Mat & covariance) {globalPose_ = pose; globalPoseCovariance_ = covariance;}
+	const Transform & globalPose() const {return globalPose_;}
+	const cv::Mat & globalPoseCovariance() const {return globalPoseCovariance_;}
+
 	long getMemoryUsed() const; // Return memory usage in Bytes
 
 private:
@@ -258,6 +262,9 @@ private:
 	cv::Mat _descriptors;
 
 	Transform groundTruth_;
+
+	Transform globalPose_;
+	cv::Mat globalPoseCovariance_; // 6x6 double
 };
 
 }

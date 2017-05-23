@@ -805,6 +805,7 @@ void Memory::moveSignatureToWMFromSTM(int id, int * reducedTo)
 			if(!merge)
 			{
 				merge = iter->second.to() < s->id() && // should be a parent->child link
+						iter->second.to() != iter->second.from() &&
 						iter->second.type() != Link::kNeighbor &&
 						iter->second.type() != Link::kNeighborMerged &&
 						iter->second.userDataCompressed().empty() &&
@@ -958,6 +959,7 @@ std::map<int, Link> Memory::getLoopClosureLinks(
 		{
 			if(iter->second.type() != Link::kNeighbor &&
 			   iter->second.type() != Link::kNeighborMerged &&
+			   iter->second.type() != Link::kPosePrior &&
 			   iter->second.type() != Link::kUndef)
 			{
 				loopClosures.insert(*iter);
@@ -1843,27 +1845,30 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			const std::map<int, Link> & links = s->getLinks();
 			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
-				Signature * sTo = this->_getSignature(iter->first);
-				// neighbor to s
-				UASSERT_MSG(sTo!=0,
-							uFormat("A neighbor (%d) of the deleted location %d is "
-									"not found in WM/STM! Are you deleting a location "
-									"outside the STM?", iter->first, s->id()).c_str());
-
-				if(iter->first > s->id() && links.size()>1 && sTo->hasLink(s->id()))
+				if(iter->second.from() != iter->second.to())
 				{
-					UWARN("Link %d of %d is newer, removing neighbor link "
-						  "may split the map!",
-							iter->first, s->id());
-				}
+					Signature * sTo = this->_getSignature(iter->first);
+					// neighbor to s
+					UASSERT_MSG(sTo!=0,
+								uFormat("A neighbor (%d) of the deleted location %d is "
+										"not found in WM/STM! Are you deleting a location "
+										"outside the STM?", iter->first, s->id()).c_str());
 
-				// child
-				if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id())
-				{
-					sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
-				}
+					if(iter->first > s->id() && links.size()>1 && sTo->hasLink(s->id()))
+					{
+						UWARN("Link %d of %d is newer, removing neighbor link "
+							  "may split the map!",
+								iter->first, s->id());
+					}
 
-				sTo->removeLink(s->id());
+					// child
+					if(iter->second.type() == Link::kGlobalClosure && s->id() > sTo->id())
+					{
+						sTo->setWeight(sTo->getWeight() + s->getWeight()); // copy weight
+					}
+
+					sTo->removeLink(s->id());
+				}
 
 			}
 			s->removeLinks(); // remove all links
@@ -2089,6 +2094,7 @@ void Memory::removeLink(int oldId, int newId)
 			{
 				if(iter->second.type() != Link::kNeighbor &&
 				   iter->second.type() != Link::kNeighborMerged &&
+				   iter->second.type() != Link::kPosePrior &&
 				   iter->first < newS->id())
 				{
 					noChildrenAnymore = false;
@@ -2694,7 +2700,7 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 					{
 						childIds.insert(*iter);
 					}
-					else
+					else if(iter->second.from() != iter->second.to())
 					{
 						loopIds.insert(*iter);
 					}
@@ -2724,8 +2730,7 @@ void Memory::dumpMemoryTree(const char * fileNameTree) const
 void Memory::rehearsal(Signature * signature, Statistics * stats)
 {
 	UTimer timer;
-	if(signature->getLinks().size() != 1 ||
-	   signature->isBadSignature())
+	if(signature->isBadSignature())
 	{
 		return;
 	}
@@ -2790,7 +2795,8 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 		std::map<int, Link>::const_iterator iter = oldS->getLinks().find(newS->id());
 		if(iter != oldS->getLinks().end() &&
 		   iter->second.type() != Link::kNeighbor &&
-		   iter->second.type() != Link::kNeighborMerged)
+		   iter->second.type() != Link::kNeighborMerged &&
+		   iter->second.from() != iter->second.to())
 		{
 			// do nothing, already merged
 			UWARN("already merged, old=%d, new=%d", oldId, newId);
@@ -2804,7 +2810,7 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 
 		bool fullMerge;
 		bool intermediateMerge = false;
-		if(!newS->getLinks().begin()->second.transform().isNull())
+		if(!newS->getLinks().empty() && !newS->getLinks().begin()->second.transform().isNull())
 		{
 			// we are in metric SLAM mode:
 			// 1) Normal merge if not moving AND has direct link
@@ -2844,22 +2850,25 @@ bool Memory::rehearsalMerge(int oldId, int newId)
 				const std::map<int, Link> & links = oldS->getLinks();
 				for(std::map<int, Link>::const_iterator iter = links.begin(); iter!=links.end(); ++iter)
 				{
-					Link link = iter->second;
-					Link mergedLink = newToOldLink.merge(link, link.type());
-					UASSERT(mergedLink.from() == newS->id() && mergedLink.to() == link.to());
-
-					Signature * s = this->_getSignature(link.to());
-					if(s)
+					if(iter->second.from() != iter->second.to())
 					{
-						// modify neighbor "from"
-						s->removeLink(oldS->id());
-						s->addLink(mergedLink.inverse());
+						Link link = iter->second;
+						Link mergedLink = newToOldLink.merge(link, link.type());
+						UASSERT(mergedLink.from() == newS->id() && mergedLink.to() == link.to());
 
-						newS->addLink(mergedLink);
-					}
-					else
-					{
-						UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
+						Signature * s = this->_getSignature(link.to());
+						if(s)
+						{
+							// modify neighbor "from"
+							s->removeLink(oldS->id());
+							s->addLink(mergedLink.inverse());
+
+							newS->addLink(mergedLink);
+						}
+						else
+						{
+							UERROR("Didn't find neighbor %d of %d in RAM...", link.to(), oldS->id());
+						}
 					}
 				}
 				newS->setLabel(oldS->getLabel());
@@ -3846,6 +3855,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		UDEBUG("time grid map = %fs", t);
 	}
 	s->sensorData().setOccupancyGrid(ground, obstacles, cellSize, viewPoint);
+
+	// prior
+	if(!isIntermediateNode && !data.globalPose().isNull() && data.globalPoseCovariance().cols==6 && data.globalPoseCovariance().rows==6 && data.globalPoseCovariance().cols==CV_64FC1)
+	{
+		s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
+	}
 
 	return s;
 }

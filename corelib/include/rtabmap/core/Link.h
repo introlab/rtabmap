@@ -46,7 +46,8 @@ public:
 		kUserClosure,
 		kVirtualClosure,
 		kNeighborMerged,
-		kUndef};
+		kPosePrior,
+		kUndef = 99};
 	Link();
 	Link(int from,
 			int to,

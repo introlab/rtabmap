@@ -1033,7 +1033,7 @@ bool Rtabmap::process(
 			// Minimum displacement required to add to Memory
 			//============================================================
 			const std::map<int, Link> & links = signature->getLinks();
-			if(links.size() == 1)
+			if(links.size() && links.begin()->second.type() == Link::kNeighbor)
 			{
 				// don't do this if there are intermediate nodes
 				const Signature * s = _memory->getSignature(links.begin()->second.to());
@@ -1061,7 +1061,8 @@ bool Rtabmap::process(
 		// Update optimizedPoses with the newly added node
 		Transform newPose;
 		if(_neighborLinkRefining &&
-			signature->getLinks().size() == 1 &&
+			signature->getLinks().size() &&
+			signature->getLinks().begin()->second.type() == Link::kNeighbor &&
 		   _memory->isIncremental() && // ignore pose matching in localization mode
 		   rehearsedId == 0) // don't do it if rehearsal happened
 		{
@@ -1166,7 +1167,7 @@ bool Rtabmap::process(
 		// Update Poses and Constraints
 		_optimizedPoses.insert(std::make_pair(signature->id(), newPose));
 		_lastLocalizationPose = newPose; // keep in cache the latest corrected pose
-		if(signature->getLinks().size() == 1 &&
+		if(signature->getLinks().size() &&
 		   signature->getLinks().begin()->second.type() == Link::kNeighbor)
 		{
 			// link should be old to new
@@ -1297,7 +1298,7 @@ bool Rtabmap::process(
 	//============================================================
 	// Bayes filter update
 	//============================================================
-	int previousId = signature->getLinks().size() == 1?signature->getLinks().begin()->first:0;
+	int previousId = signature->getLinks().size() && signature->getLinks().begin()->first!=signature->id()?signature->getLinks().begin()->first:0;
 	// Not a bad signature, not an intermediate node, not a small displacement unless the previous signature didn't have a loop closure
 	if(!signature->isBadSignature() && signature->getWeight()>=0 && (!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0))
 	{
@@ -1383,7 +1384,7 @@ bool Rtabmap::process(
 			{
 				float loopThr = _loopThr;
 				if((_startNewMapOnLoopClosure || !_memory->isIncremental()) &&
-					signature->getLinks().size() == 0 &&     // alone in the current map
+					graph::filterLinks(signature->getLinks(), Link::kPosePrior).size() == 0 && // alone in the current map
 					_memory->getWorkingMem().size()>1 && // should have an old map (beside virtual signature)
 					(int)_memory->getWorkingMem().size()<=_memory->getMaxStMemSize() &&
 					_rgbdSlamMode)
@@ -2154,14 +2155,16 @@ bool Rtabmap::process(
 		(_loopClosureHypothesis.first>0 ||
 	     lastProximitySpaceClosureId>0 || // can be different map of the current one
 	     statistics_.reducedIds().size() ||
+		 signature->hasLink(signature->id()) || // prior edge
 	     proximityDetectionsInTimeFound>0 ||
-		 ((_memory->isIncremental() || signature->getLinks().size()) && // In localization mode, the new node should be linked
+		 ((_memory->isIncremental() || graph::filterLinks(signature->getLinks(), Link::kPosePrior).size()) && // In localization mode, the new node should be linked
 		          signaturesRetrieved.size())))  		// can be different map of the current one
 	{
 		UASSERT(uContains(_optimizedPoses, signature->id()));
 
 		//used in localization mode: filter virtual links
 		std::map<int, Link> localizationLinks = graph::filterLinks(signature->getLinks(), Link::kVirtualClosure);
+		localizationLinks = graph::filterLinks(localizationLinks, Link::kPosePrior);
 
 		// Note that in localization mode, we don't re-optimize the graph
 		// if:
@@ -2239,7 +2242,7 @@ bool Rtabmap::process(
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
 				{
 					// ignore links with high variance
-					if(iter->second.transVariance() <= 1.0)
+					if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
 					{
 						Transform t1 = uValue(poses, iter->second.from(), Transform());
 						Transform t2 = uValue(poses, iter->second.to(), Transform());
@@ -2437,7 +2440,7 @@ bool Rtabmap::process(
 
 	Signature lastSignatureData(signature->id());
 	Transform lastSignatureLocalizedPose;
-	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end() && signature->getLinks().size())
+	if(_optimizedPoses.find(signature->id()) != _optimizedPoses.end() && graph::filterLinks(signature->getLinks(), Link::kPosePrior).size())
 	{
 		// only if localized set it
 		lastSignatureLocalizedPose = _optimizedPoses.at(signature->id());
@@ -2466,7 +2469,7 @@ bool Rtabmap::process(
 	{
 		if(_startNewMapOnLoopClosure &&
 			_memory->isIncremental() &&              // only in mapping mode
-			signature->getLinks().size() == 0 &&     // alone in the current map
+			graph::filterLinks(signature->getLinks(), Link::kPosePrior).size() == 0 &&     // alone in the current map
 			_memory->getWorkingMem().size()>=2)       // The working memory should not be empty (beside virtual signature)
 		{
 			UWARN("Ignoring location %d because a global loop closure is required before starting a new map!",
@@ -3121,18 +3124,26 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 				}
 			}
 		}
+		int ignoredLinks = 0;
 		if(edgeConstraints.size() != linksOut.size())
 		{
 			for(std::multimap<int, Link>::iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
 				if(graph::findLink(linksOut, iter->second.from(), iter->second.to()) == linksOut.end())
 				{
-					UERROR("Not found link %d->%d in linksOut", iter->second.from(), iter->second.to());
+					if(iter->second.type() == Link::kPosePrior)
+					{
+						++ignoredLinks;
+					}
+					else
+					{
+						UERROR("Not found link %d->%d in linksOut", iter->second.from(), iter->second.to());
+					}
 				}
 			}
 		}
-		UASSERT_MSG(poses.size() == posesOut.size() && edgeConstraints.size() == linksOut.size(),
-				uFormat("nodes %d->%d, links %d->%d", poses.size(), posesOut.size(), edgeConstraints.size(), linksOut.size()).c_str());
+		UASSERT_MSG(poses.size() == posesOut.size() && edgeConstraints.size()-ignoredLinks == linksOut.size(),
+				uFormat("nodes %d->%d, links %d->%d (ignored=%d)", poses.size(), posesOut.size(), edgeConstraints.size(), linksOut.size(), ignoredLinks).c_str());
 	}
 
 	if(constraints)
@@ -3143,7 +3154,7 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	UASSERT(_graphOptimizer!=0);
 	if(_graphOptimizer->iterations() == 0)
 	{
-		// Optimization desactivated! Return not optimized poses.
+		// Optimization disabled! Return not optimized poses.
 		optimizedPoses = poses;
 	}
 	else
@@ -3574,7 +3585,7 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 								for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 								{
 									// ignore links with high variance
-									if(iter->second.transVariance() <= 1.0)
+									if(iter->second.transVariance() <= 1.0 && iter->second.from() != iter->second.to())
 									{
 										UASSERT(optimizedPoses.find(iter->second.from())!=optimizedPoses.end());
 										UASSERT(optimizedPoses.find(iter->second.to())!=optimizedPoses.end());
@@ -3906,7 +3917,7 @@ bool Rtabmap::computePath(const Transform & targetPose)
 		for(std::map<int, Link>::const_iterator jter=s->getLinks().begin(); jter!=s->getLinks().end(); ++jter)
 		{
 			// only add links for which poses are in "nodes"
-			if(uContains(nodes, jter->second.to()))
+			if(jter->second.from() != jter->second.to() && uContains(nodes, jter->second.to()))
 			{
 				links.insert(std::make_pair(jter->second.from(), jter->second.to()));
 				//links.insert(std::make_pair(jter->second.to(), jter->second.from())); // <-> (commented: already added when iterating in nodes)
