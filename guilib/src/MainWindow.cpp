@@ -1716,7 +1716,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			Transform groundTruthOffset = alignPosesToGroundTruth(poses, groundTruth, stat.stamp(), stat.refImageId());
 			UDEBUG("time= %d ms", time.restart());
 
-			if(!_odometryReceived && poses.size())
+			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
 			{
 				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second);
 
