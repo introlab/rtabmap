@@ -215,6 +215,16 @@ std::map<int, Transform> OptimizerG2O::optimize(
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
 		}
 
+		// detect if there is a global pose prior set, if so remove rootId
+		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		{
+			if(iter->second.from() == iter->second.to())
+			{
+				rootId = 0;
+				break;
+			}
+		}
+
 		UDEBUG("fill poses to g2o...");
 		std::map<int, std::pair<Transform, cv::Mat> > geoPoses; // pose / information matrix
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
