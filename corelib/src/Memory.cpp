@@ -3214,7 +3214,8 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().size() == 0 &&
-		!data.stereoCameraModel().isValidForProjection())
+		!data.stereoCameraModel().isValidForProjection() &&
+		!pose.isNull())
 	{
 		UERROR("Rectified images required! Calibrate your camera.");
 		return 0;

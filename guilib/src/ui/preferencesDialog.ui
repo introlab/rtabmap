@@ -63,9 +63,9 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>673</width>
-            <height>2747</height>
+            <y>-327</y>
+            <width>678</width>
+            <height>2739</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>19</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2701,7 +2701,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_src">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>1</number>
                       </property>
                       <widget class="QWidget" name="page_41">
                        <layout class="QVBoxLayout" name="verticalLayout_64">
@@ -3628,12 +3628,32 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                </property>
                               </widget>
                              </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_stereo_rectify">
+                               <property name="text">
+                                <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QCheckBox" name="checkBox_stereo_rectify">
+                               <property name="text">
+                                <string/>
+                               </property>
+                              </widget>
+                             </item>
                             </layout>
                            </item>
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_stereo">
                              <property name="currentIndex">
-                              <number>4</number>
+                              <number>2</number>
                              </property>
                              <widget class="QWidget" name="page_49">
                               <layout class="QVBoxLayout" name="verticalLayout_91">
@@ -3683,13 +3703,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                   <string>Stereo Images</string>
                                  </property>
                                  <layout class="QGridLayout" name="gridLayout_61" columnstretch="0,0,1">
-                                  <item row="2" column="1">
-                                   <widget class="QCheckBox" name="checkBox_stereoImages_rectify">
-                                    <property name="text">
-                                     <string/>
-                                    </property>
-                                   </widget>
-                                  </item>
                                   <item row="0" column="0">
                                    <widget class="QToolButton" name="toolButton_cameraStereoImages_path_left">
                                     <property name="text">
@@ -3697,7 +3710,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="3" column="0">
+                                  <item row="2" column="0">
                                    <spacer name="verticalSpacer_38">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -3709,19 +3722,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                      </size>
                                     </property>
                                    </spacer>
-                                  </item>
-                                  <item row="2" column="2">
-                                   <widget class="QLabel" name="label_250">
-                                    <property name="text">
-                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
                                   </item>
                                   <item row="0" column="2">
                                    <widget class="QLabel" name="label_249">
@@ -3803,20 +3803,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </widget>
                                   </item>
-                                  <item row="0" column="2">
-                                   <widget class="QLabel" name="label_339">
-                                    <property name="text">
-                                     <string>Side-by-Side (SBS) video or left video.</string>
-                                    </property>
-                                    <property name="wordWrap">
-                                     <bool>true</bool>
-                                    </property>
-                                    <property name="textInteractionFlags">
-                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="3" column="0">
+                                  <item row="2" column="0">
                                    <spacer name="verticalSpacer_39">
                                     <property name="orientation">
                                      <enum>Qt::Vertical</enum>
@@ -3829,23 +3816,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                                     </property>
                                    </spacer>
                                   </item>
-                                  <item row="2" column="2">
-                                   <widget class="QLabel" name="label_234">
+                                  <item row="0" column="2">
+                                   <widget class="QLabel" name="label_339">
                                     <property name="text">
-                                     <string>Rectify images. If checked, the images will be rectified using the calibration file (if its name is set above). If not checked, we assume that images are already rectified.</string>
+                                     <string>Side-by-Side (SBS) video or left video.</string>
                                     </property>
                                     <property name="wordWrap">
                                      <bool>true</bool>
                                     </property>
                                     <property name="textInteractionFlags">
                                      <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                                    </property>
-                                   </widget>
-                                  </item>
-                                  <item row="2" column="1">
-                                   <widget class="QCheckBox" name="checkBox_stereoVideo_rectify">
-                                    <property name="text">
-                                     <string/>
                                     </property>
                                    </widget>
                                   </item>
