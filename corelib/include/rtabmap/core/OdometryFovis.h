@@ -40,8 +40,6 @@ class StereoDepth;
 
 namespace rtabmap {
 
-class Registration;
-
 class RTABMAP_EXP OdometryFovis : public Odometry
 {
 public:

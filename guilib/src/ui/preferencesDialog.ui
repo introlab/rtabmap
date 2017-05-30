@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-530</y>
             <width>678</width>
             <height>2739</height>
            </rect>
@@ -9704,6 +9704,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>Fovis</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>Viso2</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -10218,6 +10223,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </layout>
                       </widget>
+                      <widget class="QWidget" name="page_67"/>
+                      <widget class="QWidget" name="page_68"/>
                       <widget class="QWidget" name="page_26">
                        <layout class="QVBoxLayout" name="verticalLayout_88">
                         <item>

@@ -61,6 +61,7 @@ SET(SRC_FILES
 	OdometryMono.cpp
 	OdometryF2F.cpp
 	OdometryFovis.cpp
+	OdometryViso2.cpp
 	
 	Stereo.cpp
 	StereoDense.cpp
@@ -286,6 +287,17 @@ IF(libfovis_FOUND)
 		${libfovis_LIBRARIES}
 	)
 ENDIF(libfovis_FOUND)
+
+IF(libviso2_FOUND)
+    SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${libviso2_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${libviso2_LIBRARIES}
+	)
+ENDIF(libviso2_FOUND)
 
 ####################################
 # Generate resources files

@@ -299,6 +299,7 @@ private slots:
 	void addParameter(const QString & value);
 	void updatePredictionPlot();
 	void updateKpROI();
+	void updateOdometryVisibility();
 	void updateStereoDisparityVisibility();
 	void useOdomFeatures();
 	void useGridProjRayTracing();

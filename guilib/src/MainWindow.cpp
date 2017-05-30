@@ -1188,7 +1188,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	{
 		if(_ui->imageView_odometry->isFeaturesShown())
 		{
-			if(odom.info().type == 0)
+			if(odom.info().type == (int)Odometry::kTypeF2M)
 			{
 				if(_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -1210,10 +1210,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 							Qt::yellow);
 				}
 			}
-			else if(odom.info().type == 1)
+			else if(odom.info().type == (int)Odometry::kTypeF2F || odom.info().type == (int)Odometry::kTypeViso2)
 			{
 				std::vector<cv::KeyPoint> kpts;
-				cv::KeyPoint::convert(odom.info().refCorners, kpts);
+				cv::KeyPoint::convert(odom.info().refCorners, kpts, 7);
 				_ui->imageView_odometry->setFeatures(
 						kpts,
 						odom.data().depthRaw(),
@@ -1223,10 +1223,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 		//detect if it is OdometryMono intitialization
 		bool monoInitialization = false;
-		if(_preferencesDialog->getOdomStrategy() == 2 && odom.info().type == 1)
-		{
-			monoInitialization = true;
-		}
+		//if(_preferencesDialog->getOdomStrategy() ==  ?? && odom.info().type == (int)Odometry::kTypeF2F)
+		//{
+		//	monoInitialization = true;
+		//}
 
 		_ui->imageView_odometry->clearLines();
 		if(lost && !monoInitialization)
@@ -1256,7 +1256,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
 			}
 
-			if(odom.info().type == 0)
+			if(odom.info().type == (int)Odometry::kTypeF2M)
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -1270,7 +1270,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					}
 				}
 			}
-			if(odom.info().type == 1 && odom.info().refCorners.size())
+			if((odom.info().type == (int)Odometry::kTypeF2F || odom.info().type == (int)Odometry::kTypeViso2) && odom.info().refCorners.size())
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
 				{
