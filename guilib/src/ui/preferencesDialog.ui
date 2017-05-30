@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-530</y>
+            <y>-556</y>
             <width>678</width>
             <height>2739</height>
            </rect>
@@ -9980,12 +9980,12 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>0</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
                         <item>
-                         <widget class="QGroupBox" name="groupBox_odometryBOW2">
+                         <widget class="QGroupBox" name="groupBox_odomF2M">
                           <property name="title">
                            <string>Frame to Map</string>
                           </property>
@@ -10187,7 +10187,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <widget class="QWidget" name="page_58">
                        <layout class="QVBoxLayout" name="verticalLayout_55">
                         <item>
-                         <widget class="QGroupBox" name="groupBox_odometryFlow2">
+                         <widget class="QGroupBox" name="groupBox_odomF2F">
                           <property name="title">
                            <string>Frame to Frame</string>
                           </property>
@@ -10223,12 +10223,1291 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </layout>
                       </widget>
-                      <widget class="QWidget" name="page_67"/>
-                      <widget class="QWidget" name="page_68"/>
+                      <widget class="QWidget" name="page_67">
+                       <layout class="QVBoxLayout" name="verticalLayout_119">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomFovis">
+                          <property name="title">
+                           <string>Fovis</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_118">
+                           <item>
+                            <widget class="QLabel" name="label_234">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Fast Odometry from VISion: &lt;a href=&quot;https://github.com/srv/libfovis&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/srv/libfovis&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_23">
+                             <property name="title">
+                              <string>Motion Estimator</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_90" columnstretch="0,1">
+                              <item row="5" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisFeatureSearchWindow">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>25</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisMinFeaturesForEstimate">
+                                <property name="minimum">
+                                 <number>3</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>10</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_371">
+                                <property name="text">
+                                 <string>The maximum image-space reprojection error (in pixels) a feature match is allowed to have and still be considered an inlier in the set of features used for motion estimation.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_377">
+                                <property name="text">
+                                 <string>Specifies the size of the search window to apply when searching for feature matches across time frames.  The search is conducted around the feature location predicted by the initial rotation estimate.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomFovisUpdateTargetFeaturesWithRefined">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_374">
+                                <property name="text">
+                                 <string>Minimum number of features in the inlier set for the motion estimate to be considered valid.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomFovisInlierMaxReprojectionError">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="decimals">
+                                 <number>1</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>9.900000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>1.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomFovisUseSubpixelRefinement">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_375">
+                                <property name="text">
+                                 <string>Maximum mean reprojection error over the inlier feature matches for the motion estimate to be considered valid.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomFovisCliqueInlierThreshold">
+                                <property name="suffix">
+                                 <string> m</string>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>9.990000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.010000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.100000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomFovisMaxMeanReprojectionError">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="decimals">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>10.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_250">
+                                <property name="text">
+                                 <string>See Howard's greedy max-clique algorithm for determining the maximum set of mutually consisten feature matches. This specifies the compatibility threshold, in meters.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_376">
+                                <property name="text">
+                                 <string>Specifies whether or not to refine feature matches to subpixel resolution.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_379">
+                                <property name="text">
+                                 <string>When subpixel refinement is enabled, the refined feature locations can be saved over the original feature locations.  This has a slightly negative impact on frame-to-frame visual odometry, but is likely better when using this library as part of a visual SLAM algorithm.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_24">
+                             <property name="title">
+                              <string>Features</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_38" columnstretch="0,1">
+                              <item row="4" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisFastThreshold">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>20</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomFovisUseAdaptiveThreshold">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomFovisFastThresholdAdaptiveGain">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>3</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.001000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.001000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.005000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_382">
+                                <property name="text">
+                                 <string>FAST threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisMinPyramidLevel">
+                                <property name="minimum">
+                                 <number>0</number>
+                                </property>
+                                <property name="value">
+                                 <number>0</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisMaxPyramidLevel">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>3</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_373">
+                                <property name="text">
+                                 <string>The maximum Gaussian pyramid level to process the image at. Pyramid level 1 corresponds to the original image.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisTargetPixelsPerFeature">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>250</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_381">
+                                <property name="text">
+                                 <string>The minimum pyramid level.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisFeatureWindowSize">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>9</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_372">
+                                <property name="text">
+                                 <string>The size of the n x n image patch surrounding each feature, used for keypoint matching.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_378">
+                                <property name="text">
+                                 <string>Specifies the desired feature density as a ratio of input image pixels per feature detected.  This number is used to control the adaptive feature thresholding.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomFovisUseHomographyInitialization">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_383">
+                                <property name="text">
+                                 <string>Use FAST adaptive threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_400">
+                                <property name="text">
+                                 <string>FAST threshold adaptive gain.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QLabel" name="label_401">
+                                <property name="text">
+                                 <string>Use homography initialization.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_60">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_25">
+                             <property name="title">
+                              <string>Bucket</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_91" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomFovisUseBucketing">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_402">
+                                <property name="text">
+                                 <string>Use bucketing.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisBucketHeight">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>80</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisMaxKeypointsPerBucket">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>25</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisBucketWidth">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>80</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomFovisUseImageNormalization">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_403">
+                                <property name="text">
+                                 <string>Bucket width.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_404">
+                                <property name="text">
+                                 <string>Bucket height.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_405">
+                                <property name="text">
+                                 <string>Max Keypoints per bucket.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_406">
+                                <property name="text">
+                                 <string>Use image normalization.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_26">
+                             <property name="title">
+                              <string>Stereo</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_92" columnstretch="0,1">
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomFovisStereoMaxDistEpipolarLine">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>1</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>9.900000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>1.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomFovisStereoMaxRefinementDisplacement">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="decimals">
+                                 <number>1</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>9.900000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>1.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomFovisStereoRequireMutualMatch">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_407">
+                                <property name="text">
+                                 <string>Require mutual match.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomFovisStereoMaxDisparity">
+                                <property name="suffix">
+                                 <string/>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="value">
+                                 <number>128</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_408">
+                                <property name="text">
+                                 <string>Maximum distance to epipolar line.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_409">
+                                <property name="text">
+                                 <string>Max refinement displacement.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_410">
+                                <property name="text">
+                                 <string>Max disparity.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_68">
+                       <layout class="QVBoxLayout" name="verticalLayout_121">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomViso2">
+                          <property name="title">
+                           <string>Viso2</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_120">
+                           <item>
+                            <widget class="QLabel" name="label_380">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Library for Visual Odometry 2: &lt;a href=&quot;http://www.cvlibs.net/software/libviso/&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;http://www.cvlibs.net/software/libviso&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Only stereo is supported.&lt;/span&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_86" columnstretch="0,1">
+                             <item row="1" column="1">
+                              <widget class="QLabel" name="label_386">
+                               <property name="text">
+                                <string>Fundamental matrix inlier threshold.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QLabel" name="label_384">
+                               <property name="text">
+                                <string>Lower border weights (more robust to calibration errors).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLabel" name="label_385">
+                               <property name="text">
+                                <string>Number of RANSAC iterations.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QSpinBox" name="spinBox_OdomViso2RansacIters">
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>999</number>
+                               </property>
+                               <property name="singleStep">
+                                <number>10</number>
+                               </property>
+                               <property name="value">
+                                <number>200</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="0">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomViso2InlierThreshold">
+                               <property name="suffix">
+                                <string> pix</string>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.100000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>9.900000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.100000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>2.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="0">
+                              <widget class="QCheckBox" name="checkBox_OdomViso2Reweighting">
+                               <property name="text">
+                                <string/>
+                               </property>
+                               <property name="checked">
+                                <bool>true</bool>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox">
+                             <property name="title">
+                              <string>Match</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_87" columnstretch="0,1">
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_389">
+                                <property name="text">
+                                 <string>Matching bin width/height (affects efficiency only).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_388">
+                                <property name="text">
+                                 <string>Non-max-suppression: interest point peakiness threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_391">
+                                <property name="text">
+                                 <string>Disparity tolerance for stereo matches (in pixels).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchNmsN">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>99</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>3</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_387">
+                                <property name="text">
+                                 <string>Non-max-suppression: min. distance between maxima (in pixels).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_392">
+                                <property name="text">
+                                 <string>Outlier removal: disparity tolerance (in pixels).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_395">
+                                <property name="text">
+                                 <string>Match at half resolution, refine at full resolution.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QLabel" name="label_394">
+                                <property name="text">
+                                 <string>Multistage matching (denser and faster).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_393">
+                                <property name="text">
+                                 <string>Outlier removal: flow tolerance (in pixels).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_390">
+                                <property name="text">
+                                 <string>Matching radius (du/dv in pixels).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="1">
+                               <widget class="QLabel" name="label_396">
+                                <property name="text">
+                                 <string>Refinement (0=none,1=pixel,2=subpixel).</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchNmsTau">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>50</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchBinsize">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>50</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchRadius">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>10</number>
+                                </property>
+                                <property name="value">
+                                 <number>200</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchDispTolerance">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>2</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchOutlierDispTolerance">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>5</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchOutlierFlowTolerance">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>999</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>5</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2MatchRefinement">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>2</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>1</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomViso2MatchMultiStage">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="0">
+                               <widget class="QCheckBox" name="checkBox_OdomViso2MatchHalfResolution">
+                                <property name="text">
+                                 <string/>
+                                </property>
+                                <property name="checked">
+                                 <bool>true</bool>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_22">
+                             <property name="title">
+                              <string>Bucket</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_89" columnstretch="0,1">
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_398">
+                                <property name="text">
+                                 <string>Width of bucket.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_397">
+                                <property name="text">
+                                 <string>Maximal number of features per bucket.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_399">
+                                <property name="text">
+                                 <string>Height of bucket.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomViso2BucketWidth">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="decimals">
+                                 <number>0</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>999.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>50.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomViso2BucketHeight">
+                                <property name="suffix">
+                                 <string> pix</string>
+                                </property>
+                                <property name="decimals">
+                                 <number>0</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>999.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>50.000000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="spinBox_OdomViso2BucketMaxFeatures">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                                <property name="maximum">
+                                 <number>99</number>
+                                </property>
+                                <property name="singleStep">
+                                 <number>1</number>
+                                </property>
+                                <property name="value">
+                                 <number>2</number>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_61">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>0</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </widget>
                       <widget class="QWidget" name="page_26">
                        <layout class="QVBoxLayout" name="verticalLayout_88">
                         <item>
-                         <widget class="QGroupBox" name="groupBox_odometryMono2">
+                         <widget class="QGroupBox" name="groupBox_odomMono">
                           <property name="title">
                            <string>Mono</string>
                           </property>
@@ -10245,6 +11524,19 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                               <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
                              </property>
                             </widget>
+                           </item>
+                           <item>
+                            <spacer name="verticalSpacer_62">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>40</height>
+                              </size>
+                             </property>
+                            </spacer>
                            </item>
                            <item>
                             <widget class="QLabel" name="label_661">
@@ -10395,7 +11687,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryFiltering">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>2</number>
                       </property>
                       <widget class="QWidget" name="page_31">
                        <layout class="QVBoxLayout" name="verticalLayout_84"/>

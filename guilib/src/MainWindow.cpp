@@ -1210,10 +1210,12 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 							Qt::yellow);
 				}
 			}
-			else if(odom.info().type == (int)Odometry::kTypeF2F || odom.info().type == (int)Odometry::kTypeViso2)
+			else if(odom.info().type == (int)Odometry::kTypeF2F ||
+					odom.info().type == (int)Odometry::kTypeViso2 ||
+					odom.info().type == (int)Odometry::kTypeFovis)
 			{
 				std::vector<cv::KeyPoint> kpts;
-				cv::KeyPoint::convert(odom.info().refCorners, kpts, 7);
+				cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);
 				_ui->imageView_odometry->setFeatures(
 						kpts,
 						odom.data().depthRaw(),
@@ -1223,10 +1225,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 		//detect if it is OdometryMono intitialization
 		bool monoInitialization = false;
-		//if(_preferencesDialog->getOdomStrategy() ==  ?? && odom.info().type == (int)Odometry::kTypeF2F)
-		//{
-		//	monoInitialization = true;
-		//}
+		if(_preferencesDialog->getOdomStrategy() ==  4 && odom.info().type == (int)Odometry::kTypeF2F)
+		{
+			monoInitialization = true;
+		}
 
 		_ui->imageView_odometry->clearLines();
 		if(lost && !monoInitialization)
@@ -1270,7 +1272,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					}
 				}
 			}
-			if((odom.info().type == (int)Odometry::kTypeF2F || odom.info().type == (int)Odometry::kTypeViso2) && odom.info().refCorners.size())
+			if((odom.info().type == (int)Odometry::kTypeF2F ||
+				odom.info().type == (int)Odometry::kTypeViso2 ||
+				odom.info().type == (int)Odometry::kTypeFovis) && odom.info().refCorners.size())
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() || _ui->imageView_odometry->isLinesShown())
 				{
@@ -1286,10 +1290,10 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						if(_ui->imageView_odometry->isLinesShown())
 						{
 							_ui->imageView_odometry->addLine(
-									odom.info().refCorners[i].x,
-									odom.info().refCorners[i].y,
 									odom.info().newCorners[i].x,
 									odom.info().newCorners[i].y,
+									odom.info().refCorners[i].x,
+									odom.info().refCorners[i].y,
 									inliers.find(i) != inliers.end()?Qt::blue:Qt::yellow);
 						}
 					}

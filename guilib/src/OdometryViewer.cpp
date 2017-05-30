@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/OdometryEvent.h"
+#include "rtabmap/core/Odometry.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UCv2Qt.h"
@@ -379,14 +380,16 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 
 	if(!odom.data().imageRaw().empty())
 	{
-		if(odom.info().type == 0)
+		if(odom.info().type == (int)Odometry::kTypeF2M)
 		{
 			imageView_->setFeatures(odom.info().words, odom.data().depthRaw(), Qt::yellow);
 		}
-		else if(odom.info().type == 1)
+		else if(odom.info().type == (int)Odometry::kTypeF2F ||
+				odom.info().type == (int)Odometry::kTypeViso2 ||
+				odom.info().type == (int)Odometry::kTypeFovis)
 		{
 			std::vector<cv::KeyPoint> kpts;
-			cv::KeyPoint::convert(odom.info().refCorners, kpts);
+			cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);
 			imageView_->setFeatures(kpts, odom.data().depthRaw(), Qt::red);
 		}
 
@@ -418,7 +421,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 				imageView_->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
 			}
 
-			if(odom.info().type == 0)
+			if(odom.info().type == Odometry::kTypeF2M)
 			{
 				if(imageView_->isFeaturesShown())
 				{
@@ -433,7 +436,9 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 				}
 			}
 		}
-		if(odom.info().type == 1 && odom.info().cornerInliers.size())
+		if((odom.info().type == (int)Odometry::kTypeF2F ||
+			odom.info().type == (int)Odometry::kTypeViso2 ||
+			odom.info().type == (int)Odometry::kTypeFovis) && odom.info().cornerInliers.size())
 		{
 			if(imageView_->isFeaturesShown() || imageView_->isLinesShown())
 			{
@@ -448,10 +453,10 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 					if(imageView_->isLinesShown())
 					{
 						imageView_->addLine(
-								odom.info().refCorners[odom.info().cornerInliers[i]].x,
-								odom.info().refCorners[odom.info().cornerInliers[i]].y,
 								odom.info().newCorners[odom.info().cornerInliers[i]].x,
 								odom.info().newCorners[odom.info().cornerInliers[i]].y,
+								odom.info().refCorners[odom.info().cornerInliers[i]].x,
+								odom.info().refCorners[odom.info().cornerInliers[i]].y,
 								Qt::blue);
 					}
 				}

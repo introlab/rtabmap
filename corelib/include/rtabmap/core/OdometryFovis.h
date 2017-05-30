@@ -58,6 +58,8 @@ private:
 	fovis::StereoCalibration * stereoCalib_;
 	fovis::DepthImage * depthImage_;
 	fovis::StereoDepth * stereoDepth_;
+	ParametersMap fovisParameters_;
+	bool lost_;
 };
 
 }

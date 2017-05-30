@@ -45,8 +45,14 @@ OdometryFovis::OdometryFovis(const ParametersMap & parameters) :
 	rect_(0),
 	stereoCalib_(0),
 	depthImage_(0),
-	stereoDepth_(0)
+	stereoDepth_(0),
+	lost_(false)
 {
+	fovisParameters_ = Parameters::filterParameters(parameters, "OdomFovis");
+	if(parameters.find(Parameters::kOdomVisKeyFrameThr()) != parameters.end())
+	{
+		fovisParameters_.insert(*parameters.find(Parameters::kOdomVisKeyFrameThr()));
+	}
 }
 
 OdometryFovis::~OdometryFovis()
@@ -104,6 +110,7 @@ void OdometryFovis::reset(const Transform & initialPose)
 		delete stereoDepth_;
 		stereoDepth_ = 0;
 	}
+	lost_ = false;
 #endif
 }
 
@@ -150,7 +157,45 @@ Transform OdometryFovis::computeTransform(
 		UFATAL("Not supported color type!");
 	}
 
-	fovis::VisualOdometryOptions options = fovis::VisualOdometry::getDefaultOptions();
+	fovis::VisualOdometryOptions options;
+	if(fovis_ == 0 || (data.cameraModels().size() != 1 && stereoDepth_ == 0))
+	{
+		options = fovis::VisualOdometry::getDefaultOptions();
+
+		ParametersMap defaults = Parameters::getDefaultParameters("OdomFovis");
+		options["feature-window-size"]           = uValue(fovisParameters_, Parameters::kOdomFovisFeatureWindowSize(), defaults.at(Parameters::kOdomFovisFeatureWindowSize()));
+		options["max-pyramid-level"]             = uValue(fovisParameters_, Parameters::kOdomFovisMaxPyramidLevel(), defaults.at(Parameters::kOdomFovisMaxPyramidLevel()));
+		options["min-pyramid-level"]             = uValue(fovisParameters_, Parameters::kOdomFovisMinPyramidLevel(), defaults.at(Parameters::kOdomFovisMinPyramidLevel()));
+		options["target-pixels-per-feature"]     = uValue(fovisParameters_, Parameters::kOdomFovisTargetPixelsPerFeature(), defaults.at(Parameters::kOdomFovisTargetPixelsPerFeature()));
+		options["fast-threshold"]                = uValue(fovisParameters_, Parameters::kOdomFovisFastThreshold(), defaults.at(Parameters::kOdomFovisFastThreshold()));
+		options["use-adaptive-threshold"]        = uValue(fovisParameters_, Parameters::kOdomFovisUseAdaptiveThreshold(), defaults.at(Parameters::kOdomFovisUseAdaptiveThreshold()));
+		options["fast-threshold-adaptive-gain"]  = uValue(fovisParameters_, Parameters::kOdomFovisFastThresholdAdaptiveGain(), defaults.at(Parameters::kOdomFovisFastThresholdAdaptiveGain()));
+		options["use-homography-initialization"] = uValue(fovisParameters_, Parameters::kOdomFovisUseHomographyInitialization(), defaults.at(Parameters::kOdomFovisUseHomographyInitialization()));
+		options["ref-frame-change-threshold"]    = uValue(fovisParameters_, Parameters::kOdomVisKeyFrameThr(), uNumber2Str(Parameters::defaultOdomVisKeyFrameThr()));
+
+		  // OdometryFrame
+		options["use-bucketing"]            = uValue(fovisParameters_, Parameters::kOdomFovisUseBucketing(), defaults.at(Parameters::kOdomFovisUseBucketing()));
+		options["bucket-width"]             = uValue(fovisParameters_, Parameters::kOdomFovisBucketWidth(), defaults.at(Parameters::kOdomFovisBucketWidth()));
+		options["bucket-height"]            = uValue(fovisParameters_, Parameters::kOdomFovisBucketHeight(), defaults.at(Parameters::kOdomFovisBucketHeight()));
+		options["max-keypoints-per-bucket"] = uValue(fovisParameters_, Parameters::kOdomFovisMaxKeypointsPerBucket(), defaults.at(Parameters::kOdomFovisMaxKeypointsPerBucket()));
+		options["use-image-normalization"]  = uValue(fovisParameters_, Parameters::kOdomFovisUseImageNormalization(), defaults.at(Parameters::kOdomFovisUseImageNormalization()));
+
+		  // MotionEstimator
+		options["inlier-max-reprojection-error"]       = uValue(fovisParameters_, Parameters::kOdomFovisInlierMaxReprojectionError(), defaults.at(Parameters::kOdomFovisInlierMaxReprojectionError()));
+		options["clique-inlier-threshold"]             = uValue(fovisParameters_, Parameters::kOdomFovisCliqueInlierThreshold(), defaults.at(Parameters::kOdomFovisCliqueInlierThreshold()));
+		options["min-features-for-estimate"]           = uValue(fovisParameters_, Parameters::kOdomFovisMinFeaturesForEstimate(), defaults.at(Parameters::kOdomFovisMinFeaturesForEstimate()));
+		options["max-mean-reprojection-error"]         = uValue(fovisParameters_, Parameters::kOdomFovisMaxMeanReprojectionError(), defaults.at(Parameters::kOdomFovisMaxMeanReprojectionError()));
+		options["use-subpixel-refinement"]             = uValue(fovisParameters_, Parameters::kOdomFovisUseSubpixelRefinement(), defaults.at(Parameters::kOdomFovisUseSubpixelRefinement()));
+		options["feature-search-window"]               = uValue(fovisParameters_, Parameters::kOdomFovisFeatureSearchWindow(), defaults.at(Parameters::kOdomFovisFeatureSearchWindow()));
+		options["update-target-features-with-refined"] = uValue(fovisParameters_, Parameters::kOdomFovisUpdateTargetFeaturesWithRefined(), defaults.at(Parameters::kOdomFovisUpdateTargetFeaturesWithRefined()));
+
+		  // StereoDepth
+		options["stereo-require-mutual-match"]        = uValue(fovisParameters_, Parameters::kOdomFovisStereoRequireMutualMatch(), defaults.at(Parameters::kOdomFovisStereoRequireMutualMatch()));
+		options["stereo-max-dist-epipolar-line"]      = uValue(fovisParameters_, Parameters::kOdomFovisStereoMaxDistEpipolarLine(), defaults.at(Parameters::kOdomFovisStereoMaxDistEpipolarLine()));
+		options["stereo-max-refinement-displacement"] = uValue(fovisParameters_, Parameters::kOdomFovisStereoMaxRefinementDisplacement(), defaults.at(Parameters::kOdomFovisStereoMaxRefinementDisplacement()));
+		options["stereo-max-disparity"]               = uValue(fovisParameters_, Parameters::kOdomFovisStereoMaxDisparity(), defaults.at(Parameters::kOdomFovisStereoMaxDisparity()));
+	}
+
 	fovis::DepthSource * depthSource = 0;
 	cv::Mat depth;
 	cv::Mat right;
@@ -283,22 +328,35 @@ Transform OdometryFovis::computeTransform(
 		fovis_ = new fovis::VisualOdometry(rect_, options);
 	}
 
-
 	fovis_->processFrame(gray.data, depthSource);
 
 	// get the motion estimate for this frame to the previous frame.
 	t = Transform::fromEigen3d(fovis_->getMotionEstimate());
 
-	fovis::MotionEstimateStatusCode statusCode = fovis::SUCCESS;
-	if(fovis_->getMotionEstimator())
-	{
-		statusCode = fovis_->getMotionEstimator()->getMotionEstimateStatus();
-	}
-
+	cv::Mat covariance;
+	fovis::MotionEstimateStatusCode statusCode = fovis_->getMotionEstimator()->getMotionEstimateStatus();
 	if(statusCode > fovis::SUCCESS)
 	{
 		UWARN("Fovis error status: %s", fovis::MotionEstimateStatusCodeStrings[statusCode]);
 		t.setNull();
+		lost_ = true;
+		covariance = cv::Mat::eye(6,6, CV_64FC1)*9999.0;
+	}
+	else if(lost_)
+	{
+		lost_ = false;
+		// we are not lost anymore but we don't know where we are now according to last valid pose
+		covariance = cv::Mat::eye(6,6, CV_64FC1)*9999.0;
+	}
+	else
+	{
+		const Eigen::MatrixXd& cov = fovis_->getMotionEstimator()->getMotionEstimateCov();
+		if(cov.cols() == 6 && cov.rows() == 6 && cov(0,0) > 0.0)
+		{
+			covariance = cv::Mat::eye(6,6, CV_64FC1);
+			memcpy(covariance.data, cov.data(), 36*sizeof(double));
+			covariance *= 100.0; // to be in the same scale than loop closure detection
+		}
 	}
 
 	if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
@@ -314,12 +372,28 @@ Transform OdometryFovis::computeTransform(
 		info->features = fovis_->getTargetFrame()->getNumDetectedKeypoints();
 		info->matches = fovis_->getMotionEstimator()->getNumMatches();
 		info->inliers = fovis_->getMotionEstimator()->getNumInliers();
-		const Eigen::MatrixXd& cov = fovis_->getMotionEstimator()->getMotionEstimateCov();
-		if(cov.cols() == 6 && cov.rows() == 6 && cov(0,0) > 0.0)
+		info->covariance = covariance;
+
+		if(this->isInfoDataFilled())
 		{
-			info->covariance = cv::Mat::eye(6,6, CV_64FC1);
-			memcpy(info->covariance.data, cov.data(), 36*sizeof(double));
-			info->covariance *= 100.0; // to be in the same scale than loop closure detection
+			const fovis::FeatureMatch * matches = fovis_->getMotionEstimator()->getMatches();
+			int numMatches = fovis_->getMotionEstimator()->getNumMatches();
+			if(matches && numMatches>0)
+			{
+				info->refCorners.resize(numMatches);
+				info->newCorners.resize(numMatches);
+				info->cornerInliers.resize(numMatches);
+				int oi=0;
+				for (int i = 0; i < numMatches; ++i)
+				{
+					info->refCorners[i].x = matches[i].ref_keypoint->base_uv[0];
+					info->refCorners[i].y = matches[i].ref_keypoint->base_uv[1];
+					info->newCorners[i].x = matches[i].target_keypoint->base_uv[0];
+					info->newCorners[i].y = matches[i].target_keypoint->base_uv[1];
+					info->cornerInliers[oi++] = i;
+				}
+				info->cornerInliers.resize(oi);
+			}
 		}
 	}
 

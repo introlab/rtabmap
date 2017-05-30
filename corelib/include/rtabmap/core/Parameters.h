@@ -383,7 +383,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,           "Decimation of the images before registration. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
 	RTABMAP_PARAM(Odom, AlignWithGround,        bool, false,      "Align odometry with the ground on initialization.");
 
-	// Odometry Bag-of-words
+	// Odometry Frame-to-Map
 	RTABMAP_PARAM(OdomF2M, MaxSize,             int, 2000,    "[Visual] Local map size: If > 0 (example 5000), the odometry will maintain a local map of X maximum words.");
 	RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,       "[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.");
 	RTABMAP_PARAM(OdomF2M, ScanMaxSize,         int, 2000,    "[Geometry] Maximum local scan map size.");
@@ -397,6 +397,53 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(OdomMono, MinTranslation,         float, 0.02, "Minimum translation to add new points to local map. On initialization, translation x 5 is used as the minimum.");
 	RTABMAP_PARAM(OdomMono, MaxVariance,            float, 0.01, "Maximum variance to add new points to local map.");
 
+	// Odometry Fovis
+	RTABMAP_PARAM(OdomFovis, FeatureWindowSize,               int, 9,        "The size of the n x n image patch surrounding each feature, used for keypoint matching.");
+	RTABMAP_PARAM(OdomFovis, MaxPyramidLevel,                 int, 3,        "The maximum Gaussian pyramid level to process the image at. Pyramid level 1 corresponds to the original image.");
+	RTABMAP_PARAM(OdomFovis, MinPyramidLevel,                 int, 0,        "The minimum pyramid level.");
+	RTABMAP_PARAM(OdomFovis, TargetPixelsPerFeature,          int, 250,      "Specifies the desired feature density as a ratio of input image pixels per feature detected.  This number is used to control the adaptive feature thresholding.");
+	RTABMAP_PARAM(OdomFovis, FastThreshold,                   int, 20,       "FAST threshold.");
+	RTABMAP_PARAM(OdomFovis, UseAdaptiveThreshold,            bool, true,    "Use FAST adaptive threshold.");
+	RTABMAP_PARAM(OdomFovis, FastThresholdAdaptiveGain,       double, 0.005, "FAST threshold adaptive gain.");
+	RTABMAP_PARAM(OdomFovis, UseHomographyInitialization,     bool, true,    "Use homography initialization.");
+
+	RTABMAP_PARAM(OdomFovis, UseBucketing,                    bool, true,  "");
+	RTABMAP_PARAM(OdomFovis, BucketWidth,                     int, 80,     "");
+	RTABMAP_PARAM(OdomFovis, BucketHeight,                    int, 80,     "");
+	RTABMAP_PARAM(OdomFovis, MaxKeypointsPerBucket,           int, 25,     "");
+	RTABMAP_PARAM(OdomFovis, UseImageNormalization,           bool, false, "");
+
+	RTABMAP_PARAM(OdomFovis, InlierMaxReprojectionError,      double, 1.5,  "The maximum image-space reprojection error (in pixels) a feature match is allowed to have and still be considered an inlier in the set of features used for motion estimation.");
+	RTABMAP_PARAM(OdomFovis, CliqueInlierThreshold,           double, 0.1,  "See Howard's greedy max-clique algorithm for determining the maximum set of mutually consisten feature matches. This specifies the compatibility threshold, in meters.");
+	RTABMAP_PARAM(OdomFovis, MinFeaturesForEstimate,          int, 10,      "Minimum number of features in the inlier set for the motion estimate to be considered valid.");
+	RTABMAP_PARAM(OdomFovis, MaxMeanReprojectionError,        double, 10.0, "Maximum mean reprojection error over the inlier feature matches for the motion estimate to be considered valid.");
+	RTABMAP_PARAM(OdomFovis, UseSubpixelRefinement,           bool, true,   "Specifies whether or not to refine feature matches to subpixel resolution.");
+	RTABMAP_PARAM(OdomFovis, FeatureSearchWindow,             int, 25,      "Specifies the size of the search window to apply when searching for feature matches across time frames.  The search is conducted around the feature location predicted by the initial rotation estimate.");
+	RTABMAP_PARAM(OdomFovis, UpdateTargetFeaturesWithRefined, bool, false,  "When subpixel refinement is enabled, the refined feature locations can be saved over the original feature locations.  This has a slightly negative impact on frame-to-frame visual odometry, but is likely better when using this library as part of a visual SLAM algorithm.");
+
+	RTABMAP_PARAM(OdomFovis, StereoRequireMutualMatch,        bool, true,  "");
+	RTABMAP_PARAM(OdomFovis, StereoMaxDistEpipolarLine,       double, 1.5, "");
+	RTABMAP_PARAM(OdomFovis, StereoMaxRefinementDisplacement, double, 1.0, "");
+	RTABMAP_PARAM(OdomFovis, StereoMaxDisparity,              int, 128,    "");
+
+	// Odometry viso2
+	RTABMAP_PARAM(OdomViso2, RansacIters,               int, 200,    "Number of RANSAC iterations.");
+	RTABMAP_PARAM(OdomViso2, InlierThreshold,           double, 2.0, "Fundamental matrix inlier threshold.");
+	RTABMAP_PARAM(OdomViso2, Reweighting,               bool, true,  "Lower border weights (more robust to calibration errors).");
+	RTABMAP_PARAM(OdomViso2, MatchNmsN,                 int, 3,      "Non-max-suppression: min. distance between maxima (in pixels).");
+	RTABMAP_PARAM(OdomViso2, MatchNmsTau,               int, 50,     "Non-max-suppression: interest point peakiness threshold.");
+	RTABMAP_PARAM(OdomViso2, MatchBinsize,              int, 50,     "Matching bin width/height (affects efficiency only).");
+	RTABMAP_PARAM(OdomViso2, MatchRadius,               int, 200,    "Matching radius (du/dv in pixels).");
+	RTABMAP_PARAM(OdomViso2, MatchDispTolerance,        int, 2,      "Disparity tolerance for stereo matches (in pixels).");
+	RTABMAP_PARAM(OdomViso2, MatchOutlierDispTolerance, int, 5,      "Outlier removal: disparity tolerance (in pixels).");
+	RTABMAP_PARAM(OdomViso2, MatchOutlierFlowTolerance, int, 5,      "Outlier removal: flow tolerance (in pixels).");
+	RTABMAP_PARAM(OdomViso2, MatchMultiStage,           bool, true,  "Multistage matching (denser and faster).");
+	RTABMAP_PARAM(OdomViso2, MatchHalfResolution,       bool, true,  "Match at half resolution, refine at full resolution.");
+	RTABMAP_PARAM(OdomViso2, MatchRefinement,           int, 1,      "Refinement (0=none,1=pixel,2=subpixel).");
+	RTABMAP_PARAM(OdomViso2, BucketMaxFeatures,         int, 2,      "Maximal number of features per bucket.");
+	RTABMAP_PARAM(OdomViso2, BucketWidth,               double, 50,  "Width of bucket.");
+	RTABMAP_PARAM(OdomViso2, BucketHeight,              double, 50,  "Height of bucket.");
+
 	// Common registration parameters
 	RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
 	RTABMAP_PARAM(Reg, VarianceNormalized,       bool, false,   "Normalize covariance values. Position variances are multiplied by norm of the transform and orientation variances are multiplied by angle of the transform.");
@@ -404,7 +451,7 @@ class RTABMAP_EXP Parameters
 	RTABMAP_PARAM(Reg, Force3DoF,                bool, false,   "Force 3 degrees-of-freedom transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.");
 	
 	// Visual registration parameters
-	RTABMAP_PARAM(Vis, EstimationType,           int, 0,    	"Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
+	RTABMAP_PARAM(Vis, EstimationType,           int, 1,    	"Motion estimation approach: 0:3D->3D, 1:3D->2D (PnP), 2:2D->2D (Epipolar Geometry)");
 	RTABMAP_PARAM(Vis, ForwardEstOnly,           bool, true, 	"Forward estimation only (A->B). If false, a transformation is also computed in backward direction (B->A), then the two resulting transforms are merged (middle interpolation between the transforms).");
 	RTABMAP_PARAM(Vis, InlierDistance,           float, 0.1,    uFormat("[%s = 0] Maximum distance for feature correspondences. Used by 3D->3D estimation approach.", kVisEstimationType().c_str()));
 	RTABMAP_PARAM(Vis, RefineIterations,         int, 5,        uFormat("[%s = 0] Number of iterations used to refine the transformation found by RANSAC. 0 means that the transformation is not refined.", kVisEstimationType().c_str()));
@@ -424,7 +471,6 @@ class RTABMAP_EXP Parameters
 #else
 	RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=FREAK.");
 #endif
-	
 	RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,     "0 no limits.");
 	RTABMAP_PARAM(Vis, MaxDepth, 	             float, 0,      "Max depth of the features (0 means no limit).");
 	RTABMAP_PARAM(Vis, MinDepth, 	             float, 0,      "Min depth of the features (0 means no limit).");

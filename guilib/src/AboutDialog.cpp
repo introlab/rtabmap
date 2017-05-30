@@ -78,6 +78,17 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_gtsam->setText(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?"Yes":"No");
 	_ui->label_cvsba->setText(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?"Yes":"No");
 
+#ifdef RTABMAP_FOVIS
+	_ui->label_fovis->setText("Yes");
+#else
+	_ui->label_fovis->setText("No");
+#endif
+#ifdef RTABMAP_VISO2
+	_ui->label_viso2->setText("Yes");
+#else
+	_ui->label_viso2->setText("No");
+#endif
+
 }
 
 AboutDialog::~AboutDialog()

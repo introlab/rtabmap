@@ -62,6 +62,7 @@ OdometryViso2::OdometryViso2(const ParametersMap & parameters) :
 	reference_motion_(Transform::getIdentity())
 {
 	Parameters::parse(parameters, Parameters::kOdomVisKeyFrameThr(), ref_frame_inlier_threshold_);
+	viso2Parameters_ = Parameters::filterParameters(parameters, "OdomViso2");
 }
 
 OdometryViso2::~OdometryViso2()
@@ -162,6 +163,30 @@ Transform OdometryViso2::computeTransform(
 		params.calib.cu  = data.stereoCameraModel().left().cx();
 		params.calib.cv  = data.stereoCameraModel().left().cy();
 		params.calib.f   = data.stereoCameraModel().left().fx();
+
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2RansacIters(), params.ransac_iters);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2InlierThreshold(), params.inlier_threshold);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2Reweighting(), params.reweighting);
+
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchNmsN(), params.match.nms_n);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchNmsTau(), params.match.nms_tau);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchBinsize(), params.match.match_binsize);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchRadius(), params.match.match_radius);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchDispTolerance(), params.match.match_disp_tolerance);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchOutlierDispTolerance(), params.match.outlier_disp_tolerance);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchOutlierFlowTolerance(), params.match.outlier_flow_tolerance);
+		bool multistage = Parameters::defaultOdomViso2MatchMultiStage();
+		bool halfResolution = Parameters::defaultOdomViso2MatchHalfResolution();
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchMultiStage(), multistage);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchHalfResolution() , halfResolution);
+		params.match.multi_stage = multistage?1:0;
+		params.match.half_resolution = halfResolution?1:0;
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2MatchRefinement(), params.match.refinement);
+
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2BucketMaxFeatures(), params.bucket.max_features);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2BucketWidth(), params.bucket.bucket_width);
+		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2BucketHeight(), params.bucket.bucket_height);
+
 		viso2_ = new VisualOdometryStereo(params);
 
 		viso2_->process(leftGray.data, rightGray.data, dims);
@@ -245,17 +270,20 @@ Transform OdometryViso2::computeTransform(
 			info->covariance = covariance;
 		}
 
-		std::vector<Matcher::p_match> matches = viso2_->getMatches();
-		info->refCorners.resize(matches.size());
-		info->newCorners.resize(matches.size());
-		info->cornerInliers.resize(matches.size());
-		for (size_t i = 0; i < matches.size(); ++i)
+		if(this->isInfoDataFilled())
 		{
-			info->refCorners[i].x = matches[i].u1c;
-			info->refCorners[i].y = matches[i].v1c;
-			info->newCorners[i].x = matches[i].u1p;
-			info->newCorners[i].y = matches[i].v1p;
-			info->cornerInliers[i] = i;
+			std::vector<Matcher::p_match> matches = viso2_->getMatches();
+			info->refCorners.resize(matches.size());
+			info->newCorners.resize(matches.size());
+			info->cornerInliers.resize(matches.size());
+			for (size_t i = 0; i < matches.size(); ++i)
+			{
+				info->refCorners[i].x = matches[i].u1p;
+				info->refCorners[i].y = matches[i].v1p;
+				info->newCorners[i].x = matches[i].u1c;
+				info->newCorners[i].y = matches[i].v1c;
+				info->cornerInliers[i] = i;
+			}
 		}
 	}
 

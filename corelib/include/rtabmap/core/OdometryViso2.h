@@ -54,6 +54,7 @@ private:
 	bool lost_;
 	bool keep_reference_frame_;
 	Transform reference_motion_;
+	ParametersMap viso2Parameters_;
 };
 
 }
