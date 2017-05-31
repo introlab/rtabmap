@@ -620,14 +620,44 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 			{
 				for(rtabmap::ParametersMap::const_iterator iter=parameters.begin(); iter!=parameters.end(); ++iter)
 				{
-					std::string str = "Param: " + iter->first + " = \"" + iter->second + "\"";
-					std::cout <<
-							str <<
-							std::setw(60 - str.size()) <<
-							" [" <<
-							rtabmap::Parameters::getDescription(iter->first).c_str() <<
-							"]" <<
-							std::endl;
+					bool ignore = false;
+					UASSERT(uSplit(iter->first, '/').size()  == 2);
+					std::string group = uSplit(iter->first, '/').front();
+#ifndef RTABMAP_GTSAM
+				   if(group.compare("GTSAM") == 0)
+				   {
+					   ignore = true;
+				   }
+#endif
+#ifndef RTABMAP_G2O
+					if(group.compare("g2o") == 0)
+					{
+						ignore = true;
+					}
+#endif
+#ifndef RTABMAP_FOVIS
+					if(group.compare("OdomFovis") == 0)
+					{
+						ignore = true;
+					}
+#endif
+#ifndef RTABMAP_VISO2
+					if(group.compare("OdomViso2") == 0)
+					{
+						ignore = true;
+					}
+#endif
+					if(!ignore)
+					{
+						std::string str = "Param: " + iter->first + " = \"" + iter->second + "\"";
+						std::cout <<
+								str <<
+								std::setw(60 - str.size()) <<
+								" [" <<
+								rtabmap::Parameters::getDescription(iter->first).c_str() <<
+								"]" <<
+								std::endl;
+					}
 				}
 				UWARN("App will now exit after showing default RTAB-Map parameters because "
 						 "argument \"--params\" is detected!");
