@@ -55,7 +55,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/ply_io.h>
 #include <pcl/io/obj_io.h>
 #include <pcl/surface/poisson.h>
-#include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
+//#include <pcl/surface/vtk_smoothing/vtk_mesh_quadric_decimation.h>
 
 #define LOW_RES_PIX 2
 //#define DEBUG_RENDERING_PERFORMANCE;

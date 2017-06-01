@@ -5,3 +5,9 @@ app/android/.classpath
 app/android/.project
 app/android/AndroidManifest.xml
 app/android/res/raw/
+app/android/.idea/
+build.log
+build_android/
+rtabmap_cloud.pcd
+rtabmap_trajectory.txt
+
