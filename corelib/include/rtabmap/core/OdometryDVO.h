@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2014, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -16,7 +16,7 @@ modification, are permitted provided that the following conditions are met:
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
 ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
 WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-DISCLAIMED. IN NO EVENT SHALL UNIVERTY DE SHERBROOKE BE LIABLE FOR ANY
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
 DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
 (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
 LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
@@ -24,39 +24,43 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
- 
-#ifndef VERSION_H_
-#define VERSION_H_
 
-// This is auto-generated!
-#define RTABMAP_VERSION "@PROJECT_VERSION@"
+#ifndef ODOMETRYDVO_H_
+#define ODOMETRYDVO_H_
 
-#define RTABMAP_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
-#define RTABMAP_VERSION_MINOR @PROJECT_VERSION_MINOR@
-#define RTABMAP_VERSION_PATCH @PROJECT_VERSION_PATCH@
+#include <rtabmap/core/Odometry.h>
 
-#define RTABMAP_VERSION_COMPARE(major, minor, patch)  (major>=@PROJECT_VERSION_MAJOR@ || (major==@PROJECT_VERSION_MAJOR@ && minor>=@PROJECT_VERSION_MINOR@) || (major==@PROJECT_VERSION_MAJOR@ && minor==@PROJECT_VERSION_MINOR@ && patch >=@PROJECT_VERSION_PATCH@))
+namespace dvo {
+class DenseTracker;
+namespace core {
+class RgbdImagePyramid;
+class RgbdCameraPyramid;
+}
+}
 
-@NONFREE@#define RTABMAP_NONFREE
-@TORO@#define RTABMAP_TORO
-@G2O@#define RTABMAP_G2O
-@GTSAM@#define RTABMAP_GTSAM
-@VERTIGO@#define RTABMAP_VERTIGO
-@OPENCV3@#define RTABMAP_OPENCV3
-@OPENNI2@#define RTABMAP_OPENNI2
-@FREENECT@#define RTABMAP_FREENECT
-@FREENECT2@#define RTABMAP_FREENECT2
-@CVSBA@#define RTABMAP_CVSBA
-@DC1394@#define RTABMAP_DC1394
-@FLYCAPTURE2@#define RTABMAP_FLYCAPTURE2
-@ZED@#define RTABMAP_ZED
-@REALSENSE@#define RTABMAP_REALSENSE
-@REALSENSESLAM@#define RTABMAP_REALSENSE_SLAM
-@OCTOMAP@#define RTABMAP_OCTOMAP
-@CPUTSDF@#define RTABMAP_CPUTSDF
-@FOVIS@#define RTABMAP_FOVIS
-@VISO2@#define RTABMAP_VISO2
-@DVO@#define RTABMAP_DVO
+namespace rtabmap {
 
-#endif /* VERSION_H_ */
+class RTABMAP_EXP OdometryDVO : public Odometry
+{
+public:
+	OdometryDVO(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryDVO();
 
+	virtual void reset(const Transform & initialPose = Transform::getIdentity());
+	virtual Odometry::Type getType() {return Odometry::kTypeDVO;}
+
+private:
+	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
+
+private:
+	dvo::DenseTracker * dvo_;
+	dvo::core::RgbdImagePyramid * reference_;
+	dvo::core::RgbdCameraPyramid * camera_;
+	bool lost_;
+	Transform motionFromKeyFrame_;
+
+};
+
+}
+
+#endif /* ODOMETRYDVO_H_ */

@@ -1225,7 +1225,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 		//detect if it is OdometryMono intitialization
 		bool monoInitialization = false;
-		if(_preferencesDialog->getOdomStrategy() ==  4 && odom.info().type == (int)Odometry::kTypeF2F)
+		if(_preferencesDialog->getOdomStrategy() ==  5 && odom.info().type == (int)Odometry::kTypeF2F)
 		{
 			monoInitialization = true;
 		}

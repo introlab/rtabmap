@@ -165,6 +165,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_VISO2
 	_ui->odom_strategy->setItemData(3, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_DVO
+	_ui->odom_strategy->setItemData(4, 0, Qt::UserRole - 1);
+#endif
 
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);

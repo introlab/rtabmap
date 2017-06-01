@@ -316,6 +316,13 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
+          <item row="21" column="0">
+           <widget class="QLabel" name="label_20">
+            <property name="text">
+             <string>With Octomap :</string>
+            </property>
+           </widget>
+          </item>
           <item row="11" column="0">
            <widget class="QLabel" name="label_12">
             <property name="text">
@@ -330,10 +337,10 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="21" column="0">
-           <widget class="QLabel" name="label_20">
+          <item row="16" column="0">
+           <widget class="QLabel" name="label_17">
             <property name="text">
-             <string>With Octomap :</string>
+             <string>With stereo FlyCapture2 :</string>
             </property>
            </widget>
           </item>
@@ -344,13 +351,6 @@ p, li { white-space: pre-wrap; }
             </property>
             <property name="alignment">
              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="16" column="0">
-           <widget class="QLabel" name="label_17">
-            <property name="text">
-             <string>With stereo FlyCapture2 :</string>
             </property>
            </widget>
           </item>
@@ -365,6 +365,13 @@ p, li { white-space: pre-wrap; }
            <widget class="QLabel" name="label_19">
             <property name="text">
              <string>With GTSAM :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="22" column="0">
+           <widget class="QLabel" name="label_24">
+            <property name="text">
+             <string>With CPU-TSDF :</string>
             </property>
            </widget>
           </item>
@@ -385,10 +392,10 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="22" column="0">
-           <widget class="QLabel" name="label_24">
+          <item row="24" column="0">
+           <widget class="QLabel" name="label_26">
             <property name="text">
-             <string>With CPU-TSDF :</string>
+             <string>With Viso2 :</string>
             </property>
            </widget>
           </item>
@@ -419,13 +426,6 @@ p, li { white-space: pre-wrap; }
             </property>
            </widget>
           </item>
-          <item row="24" column="0">
-           <widget class="QLabel" name="label_26">
-            <property name="text">
-             <string>With Viso2 :</string>
-            </property>
-           </widget>
-          </item>
           <item row="23" column="1">
            <widget class="QLabel" name="label_fovis">
             <property name="text">
@@ -438,6 +438,23 @@ p, li { white-space: pre-wrap; }
           </item>
           <item row="24" column="1">
            <widget class="QLabel" name="label_viso2">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            </property>
+           </widget>
+          </item>
+          <item row="25" column="0">
+           <widget class="QLabel" name="label_27">
+            <property name="text">
+             <string>With Viso2 :</string>
+            </property>
+           </widget>
+          </item>
+          <item row="25" column="1">
+           <widget class="QLabel" name="label_dvo">
             <property name="text">
              <string/>
             </property>

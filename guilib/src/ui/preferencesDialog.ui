@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-556</y>
+            <y>-34</y>
             <width>678</width>
             <height>2739</height>
            </rect>
@@ -9709,6 +9709,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>Viso2</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>DVO</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -9980,7 +9985,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>2</number>
+                       <number>4</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -11501,6 +11506,48 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            </item>
                           </layout>
                          </widget>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_69">
+                       <layout class="QVBoxLayout" name="verticalLayout_122">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_27">
+                          <property name="title">
+                           <string>DVO</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_123">
+                           <item>
+                            <widget class="QLabel" name="label_411">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Dense Visual Odometry: &lt;a href=&quot;https://github.com/tum-vision/dvo_slam&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/tum-vision/dvo_slam&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;Only RGB-D is supported.&lt;/span&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_63">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>1029</height>
+                           </size>
+                          </property>
+                         </spacer>
                         </item>
                        </layout>
                       </widget>

@@ -88,6 +88,11 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_viso2->setText("No");
 #endif
+#ifdef RTABMAP_DVO
+	_ui->label_dvo->setText("Yes");
+#else
+	_ui->label_dvo->setText("No");
+#endif
 
 }
 

@@ -47,7 +47,8 @@ public:
 		kTypeF2M = 0,
 		kTypeF2F = 1,
 		kTypeFovis = 2,
-		kTypeViso2 = 3
+		kTypeViso2 = 3,
+		kTypeDVO = 4
 	};
 
 public:
