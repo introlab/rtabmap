@@ -114,7 +114,7 @@ Transform OdometryDVO::computeTransform(
 
 	if(!(data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForReprojection()))
 	{
-		UERROR("Invalid camera model! Only single RGB-D camera supported.");
+		UERROR("Invalid camera model! Only single RGB-D camera supported by DVO. Try another odometry approach.");
 		return t;
 	}
 
