@@ -394,11 +394,12 @@ void applyImpl(
 		int index,
 		typename pcl::PointCloud<PointT>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		const cv::Mat_<double> & gains)
+		const cv::Mat_<double> & gains,
+		bool rgb)
 {
-	double gainR = gains(index, 1);
-	double gainG = gains(index, 2);
-	double gainB = gains(index, 3);
+	double gainR = gains(index, rgb?1:0);
+	double gainG = gains(index, rgb?2:0);
+	double gainB = gains(index, rgb?3:0);
 	UDEBUG("index=%d gain=%f (%f,%f,%f)", index, gains(index, 0), gainR, gainG, gainB);
 	if(indices->size())
 	{
@@ -424,34 +425,38 @@ void applyImpl(
 
 void GainCompensator::apply(
 		int id,
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud) const
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+		bool rgb) const
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	apply(id, cloud, indices);
+	apply(id, cloud, indices, rgb);
 }
 void GainCompensator::apply(
 		int id,
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		const pcl::IndicesPtr & indices) const
+		const pcl::IndicesPtr & indices,
+		bool rgb) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
-	applyImpl<pcl::PointXYZRGB>(idToIndex_.at(id), cloud, indices, gains_);
+	applyImpl<pcl::PointXYZRGB>(idToIndex_.at(id), cloud, indices, gains_, rgb);
 }
 void GainCompensator::apply(
 		int id,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices) const
+		const pcl::IndicesPtr & indices,
+		bool rgb) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
-	applyImpl<pcl::PointXYZRGBNormal>(idToIndex_.at(id), cloud, indices, gains_);
+	applyImpl<pcl::PointXYZRGBNormal>(idToIndex_.at(id), cloud, indices, gains_, rgb);
 }
 
 void GainCompensator::apply(
 		int id,
-		cv::Mat & image) const
+		cv::Mat & image,
+		bool rgb) const
 {
 	UASSERT_MSG(uContains(idToIndex_, id), uFormat("id=%d idToIndex_.size()=%d", id, (int)idToIndex_.size()).c_str());
-	if(image.channels() == 1)
+	if(image.channels() == 1 || !rgb)
 	{
 		cv::multiply(image, gains_(idToIndex_.at(id), 0), image);
 	}
