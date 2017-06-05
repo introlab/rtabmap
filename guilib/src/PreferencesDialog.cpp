@@ -168,6 +168,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_DVO
 	_ui->odom_strategy->setItemData(4, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_ORB_SLAM2
+	_ui->odom_strategy->setItemData(5, 0, Qt::UserRole - 1);
+#endif
 
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
@@ -971,6 +974,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_OdomViso2BucketMaxFeatures->setObjectName(Parameters::kOdomViso2BucketMaxFeatures().c_str());
 	_ui->doubleSpinBox_OdomViso2BucketWidth->setObjectName(Parameters::kOdomViso2BucketWidth().c_str());
 	_ui->doubleSpinBox_OdomViso2BucketHeight->setObjectName(Parameters::kOdomViso2BucketHeight().c_str());
+
+	// Odometry ORBSLAM2
+	_ui->lineEdit_OdomORBSLAM2VocPath->setObjectName(Parameters::kOdomORBSLAM2VocPath().c_str());
+	connect(_ui->toolButton_OdomORBSLAM2VocPath, SIGNAL(clicked()), this, SLOT(changeOdometryORBSLAM2Vocabulary()));
+	_ui->doubleSpinBox_OdomORBSLAM2Bf->setObjectName(Parameters::kOdomORBSLAM2Bf().c_str());
+	_ui->doubleSpinBox_OdomORBSLAM2ThDepth->setObjectName(Parameters::kOdomORBSLAM2ThDepth().c_str());
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
@@ -3885,11 +3894,14 @@ void PreferencesDialog::setupKpRoiPanel()
 
 void PreferencesDialog::updateOdometryVisibility()
 {
+	UASSERT(_ui->odom_strategy->count() == 6);
 	_ui->groupBox_odomF2M->setVisible(_ui->odom_strategy->currentIndex()==0);
 	_ui->groupBox_odomF2F->setVisible(_ui->odom_strategy->currentIndex()==1);
 	_ui->groupBox_odomFovis->setVisible(_ui->odom_strategy->currentIndex()==2);
 	_ui->groupBox_odomViso2->setVisible(_ui->odom_strategy->currentIndex()==3);
-	_ui->groupBox_odomMono->setVisible(_ui->odom_strategy->currentIndex()==4);
+	_ui->groupBox_odomDVO->setVisible(_ui->odom_strategy->currentIndex()==4);
+	_ui->groupBox_odomORBSLAM2->setVisible(_ui->odom_strategy->currentIndex()==5);
+	_ui->groupBox_odomMono->setVisible(_ui->odom_strategy->currentIndex()==6);
 }
 
 void PreferencesDialog::updateKpROI()
@@ -3983,6 +3995,23 @@ void PreferencesDialog::changeDictionaryPath()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_dictionaryPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeOdometryORBSLAM2Vocabulary()
+{
+	QString path;
+	if(_ui->lineEdit_OdomORBSLAM2VocPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), this->getWorkingDirectory());
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), _ui->lineEdit_OdomORBSLAM2VocPath->text());
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomORBSLAM2VocPath->setText(path);
 	}
 }
 

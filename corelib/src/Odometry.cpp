@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryFovis.h"
 #include "rtabmap/core/OdometryViso2.h"
 #include "rtabmap/core/OdometryDVO.h"
+#include "rtabmap/core/OdometryORBSLAM2.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util3d_mapping.h"
@@ -59,6 +60,9 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 	Odometry * odometry = 0;
 	switch(type)
 	{
+	case Odometry::kTypeORBSLAM2:
+		odometry = new OdometryORBSLAM2(parameters);
+		break;
 	case Odometry::kTypeDVO:
 		odometry = new OdometryDVO(parameters);
 		break;

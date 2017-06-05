@@ -262,11 +262,11 @@ class RTABMAP_EXP Parameters
 
     RTABMAP_PARAM(BRIEF, Bytes,            int, 32,      "Bytes is a length of descriptor in bytes. It can be equal 16, 32 or 64 bytes.");
 
-    RTABMAP_PARAM(FAST, Threshold,          int, 10,      "Threshold on difference between intensity of the central pixel and pixels of a circle around this pixel.");
+    RTABMAP_PARAM(FAST, Threshold,          int, 20,      "Threshold on difference between intensity of the central pixel and pixels of a circle around this pixel.");
     RTABMAP_PARAM(FAST, NonmaxSuppression,  bool, true,   "If true, non-maximum suppression is applied to detected corners (keypoints).");
     RTABMAP_PARAM(FAST, Gpu,                bool, false,  "GPU-FAST: Use GPU version of FAST. This option is enabled only if OpenCV is built with CUDA and GPUs are detected.");
     RTABMAP_PARAM(FAST, GpuKeypointsRatio,  double, 0.05, "Used with FAST GPU.");
-    RTABMAP_PARAM(FAST, MinThreshold,       int, 1,       "Minimum threshold. Used only when FAST/GridRows and FAST/GridCols are set.");
+    RTABMAP_PARAM(FAST, MinThreshold,       int, 7,       "Minimum threshold. Used only when FAST/GridRows and FAST/GridCols are set.");
     RTABMAP_PARAM(FAST, MaxThreshold,       int, 200,     "Maximum threshold. Used only when FAST/GridRows and FAST/GridCols are set.");
     RTABMAP_PARAM(FAST, GridRows,           int, 4,       "Grid rows (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
     RTABMAP_PARAM(FAST, GridCols,           int, 4,       "Grid cols (0 to disable). Adapts the detector to partition the source image into a grid and detect points in each cell.");
@@ -363,7 +363,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(GTSAM, Optimizer,       int, 1,          "0=Levenberg 1=GaussNewton 2=Dogleg");
 
     // Odometry
-    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2");
+    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2 4=DVO-SLAM 5=ORB_SLAM2");
     RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,       "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
     RTABMAP_PARAM(Odom, Holonomic,              bool, true,   "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
     RTABMAP_PARAM(Odom, FillInfoData,           bool, true,   "Fill info with data (inliers/outliers features).");
@@ -444,6 +444,11 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomViso2, BucketWidth,               double, 50,  "Width of bucket.");
     RTABMAP_PARAM(OdomViso2, BucketHeight,              double, 50,  "Height of bucket.");
 
+    // Odometry ORB_SLAM2
+    RTABMAP_PARAM_STR(OdomORBSLAM2, VocPath,            "", "Path to ORB vocabulary (*.txt).");
+    RTABMAP_PARAM(OdomORBSLAM2, Bf,          double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
+    RTABMAP_PARAM(OdomORBSLAM2, ThDepth,     double, 40.0,  "Close/Far threshold. Baseline times.");
+
     // Common registration parameters
     RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
     RTABMAP_PARAM(Reg, VarianceNormalized,       bool, false,   "Normalize covariance values. Position variances are multiplied by norm of the transform and orientation variances are multiplied by angle of the transform.");
@@ -479,7 +484,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, SubPixIterations,         int, 0,      "See cv::cornerSubPix(). 0 disables sub pixel refining.");
     RTABMAP_PARAM(Vis, SubPixEps,                float, 0.02, "See cv::cornerSubPix().");
     RTABMAP_PARAM(Vis, CorType,                  int, 0,      "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
-    RTABMAP_PARAM(Vis, CorNNType,                  int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.", kVisCorType().c_str()));
+    RTABMAP_PARAM(Vis, CorNNType,                int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.6,  uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorGuessWinSize,          int, 20,     uFormat("[%s=0] Matching window size (pixels) around projected points when a guess transform is provided to find correspondences. 0 means disabled.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorFlowWinSize,           int, 16,     uFormat("[%s=1] See cv::calcOpticalFlowPyrLK(). Used for optical flow approach.", kVisCorType().c_str()));

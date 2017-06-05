@@ -442,7 +442,7 @@ struct errors {
 std::vector<float> trajectoryDistances (const std::vector<Transform> &poses) {
 	std::vector<float> dist;
 	dist.push_back(0);
-	for (int32_t i=1; i<poses.size(); i++) {
+	for (unsigned int i=1; i<poses.size(); i++) {
 		Transform P1 = poses[i-1];
 		Transform P2 = poses[i];
 		float dx = P1.x()-P2.x();
@@ -454,7 +454,7 @@ std::vector<float> trajectoryDistances (const std::vector<Transform> &poses) {
 }
 
 int32_t lastFrameFromSegmentLength(std::vector<float> &dist,int32_t first_frame,float len) {
-	for (int32_t i=first_frame; i<dist.size(); i++)
+	for (unsigned int i=first_frame; i<dist.size(); i++)
 		if (dist[i]>dist[first_frame]+len)
 			return i;
 	return -1;
@@ -493,7 +493,7 @@ void calcKittiSequenceErrors (
 	std::vector<float> dist = trajectoryDistances(poses_gt);
 
 	// for all start positions do
-	for (int32_t first_frame=0; first_frame<poses_gt.size(); first_frame+=step_size) {
+	for (unsigned int first_frame=0; first_frame<poses_gt.size(); first_frame+=step_size) {
 
 		// for all segment lengths do
 		for (int32_t i=0; i<num_lengths; i++) {

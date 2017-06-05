@@ -305,6 +305,7 @@ private slots:
 	void useGridProjRayTracing();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
+	void changeOdometryORBSLAM2Vocabulary();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();

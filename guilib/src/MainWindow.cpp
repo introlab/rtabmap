@@ -1188,7 +1188,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	{
 		if(_ui->imageView_odometry->isFeaturesShown())
 		{
-			if(odom.info().type == (int)Odometry::kTypeF2M)
+			if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM2)
 			{
 				if(_preferencesDialog->isOdomOnlyInliersShown())
 				{
@@ -1223,9 +1223,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			}
 		}
 
-		//detect if it is OdometryMono intitialization
+		//detect if it is OdometryMono initialization
 		bool monoInitialization = false;
-		if(_preferencesDialog->getOdomStrategy() ==  5 && odom.info().type == (int)Odometry::kTypeF2F)
+		if(_preferencesDialog->getOdomStrategy() ==  6 && odom.info().type == (int)Odometry::kTypeF2F)
 		{
 			monoInitialization = true;
 		}
@@ -1258,7 +1258,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
 			}
 
-			if(odom.info().type == (int)Odometry::kTypeF2M)
+			if(odom.info().type == (int)Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM2)
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{

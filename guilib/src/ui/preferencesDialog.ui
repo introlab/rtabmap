@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-34</y>
+            <y>-637</y>
             <width>678</width>
             <height>2739</height>
            </rect>
@@ -9714,6 +9714,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>DVO</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>ORB SLAM 2</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -9985,7 +9990,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>4</number>
+                       <number>5</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -11512,7 +11517,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       <widget class="QWidget" name="page_69">
                        <layout class="QVBoxLayout" name="verticalLayout_122">
                         <item>
-                         <widget class="QGroupBox" name="groupBox_27">
+                         <widget class="QGroupBox" name="groupBox_odomDVO">
                           <property name="title">
                            <string>DVO</string>
                           </property>
@@ -11545,6 +11550,145 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                            <size>
                             <width>20</width>
                             <height>1029</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </widget>
+                      <widget class="QWidget" name="page_70">
+                       <layout class="QVBoxLayout" name="verticalLayout_125">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomORBSLAM2">
+                          <property name="title">
+                           <string>ORB SLAM 2</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_124">
+                           <item>
+                            <widget class="QLabel" name="label_412">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;ORB SLAM 2: &lt;a href=&quot;https://github.com/raulmur/ORB_SLAM2&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/raulmur/ORB_SLAM2&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Tracking and local mapping from ORB SLAM 2 is done but loop closure detection is disabled, using RTAB-Map loop closure detection instead. See ORB panel for ORB parameters (pyramid scale and number of pyramids). See FAST panel for FAST parameters (init and min thresholds). Vis/MaxFeatures (see Visual Registration panel) is used as the number of ORB features extracted.&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_93" columnstretch="0,0,1">
+                             <item row="1" column="1">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAM2Bf">
+                               <property name="suffix">
+                                <string> m</string>
+                               </property>
+                               <property name="decimals">
+                                <number>4</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.000000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>9.999900000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>0.010000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>0.076000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_415">
+                               <property name="text">
+                                <string>Path to ORB vocabulary (*.txt).</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="1">
+                              <widget class="QLineEdit" name="lineEdit_OdomORBSLAM2VocPath"/>
+                             </item>
+                             <item row="2" column="2">
+                              <widget class="QLabel" name="label_414">
+                               <property name="text">
+                                <string>Close/Far threshold. Baseline times.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="2" column="1">
+                              <widget class="QDoubleSpinBox" name="doubleSpinBox_OdomORBSLAM2ThDepth">
+                               <property name="suffix">
+                                <string/>
+                               </property>
+                               <property name="decimals">
+                                <number>1</number>
+                               </property>
+                               <property name="minimum">
+                                <double>0.100000000000000</double>
+                               </property>
+                               <property name="maximum">
+                                <double>999.000000000000000</double>
+                               </property>
+                               <property name="singleStep">
+                                <double>1.000000000000000</double>
+                               </property>
+                               <property name="value">
+                                <double>40.000000000000000</double>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="1" column="2">
+                              <widget class="QLabel" name="label_413">
+                               <property name="text">
+                                <string>Fake IR projector baseline used only when stereo is not used.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QToolButton" name="toolButton_OdomORBSLAM2VocPath">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_64">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>40</height>
                            </size>
                           </property>
                          </spacer>
@@ -14933,10 +15077,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout">
                     <item>
-                     <layout class="QFormLayout" name="formLayout_2">
-                      <property name="fieldGrowthPolicy">
-                       <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
-                      </property>
+                     <layout class="QGridLayout" name="gridLayout_94" columnstretch="0,1">
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="fastThreshold">
                         <property name="minimum">
@@ -14964,6 +15105,32 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                        </widget>
                       </item>
                       <item row="1" column="0">
+                       <widget class="QSpinBox" name="fastThresholdMin">
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>9999</number>
+                        </property>
+                        <property name="value">
+                         <number>50</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="1" column="1">
+                       <widget class="QLabel" name="label_111">
+                        <property name="text">
+                         <string>Minimum threshold. Used when FAST/GridRows and FAST/GridCols are set or if ORBSLAM2 odometry is used.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="2" column="0">
                        <widget class="QCheckBox" name="fastSuppressNonMax">
                         <property name="text">
                          <string/>
@@ -14973,7 +15140,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                        </widget>
                       </item>
-                      <item row="1" column="1">
+                      <item row="2" column="1">
                        <widget class="QLabel" name="label_69">
                         <property name="text">
                          <string>If true, non-maximum suppression is applied to detected corners (keypoints).</string>
@@ -14994,32 +15161,6 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                        <string>OpenCV 2</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_71" columnstretch="0,1">
-                       <item row="0" column="0">
-                        <widget class="QSpinBox" name="fastThresholdMin">
-                         <property name="minimum">
-                          <number>1</number>
-                         </property>
-                         <property name="maximum">
-                          <number>9999</number>
-                         </property>
-                         <property name="value">
-                          <number>50</number>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_111">
-                         <property name="text">
-                          <string>Minimum threshold. Used only when FAST/GridRows and FAST/GridCols are set.</string>
-                         </property>
-                         <property name="wordWrap">
-                          <bool>true</bool>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="1" column="0">
                         <widget class="QSpinBox" name="fastThresholdMax">
                          <property name="minimum">

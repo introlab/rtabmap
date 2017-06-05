@@ -49,49 +49,79 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	QString cv_version = CV_VERSION;
 #ifdef RTABMAP_NONFREE
 	cv_version.append(" [With nonfree]");
+	_ui->label_opencv_license->setText("Not Commercial");
 #else
 	cv_version.append(" [Without nonfree]");
+	_ui->label_opencv_license->setText("BSD");
 #endif
 	_ui->label_version->setText(version);
 	_ui->label_opencv_version->setText(cv_version);
 	_ui->label_pcl_version->setText(PCL_VERSION_PRETTY);
 	_ui->label_vtk_version->setText(vtkVersion::GetVTKVersion());
+	_ui->label_qt_version->setText(qVersion());
 #ifdef RTABMAP_OCTOMAP
 	_ui->label_octomap->setText("Yes");
+	_ui->label_octomap_license->setEnabled(true);
 #else
 	_ui->label_octomap->setText("No");
+	_ui->label_octomap_license->setEnabled(false);
 #endif
 #ifdef RTABMAP_CPUTSDF
 	_ui->label_cputsdf->setText("Yes");
+	_ui->label_cputsdf_license->setEnabled(true);
 #else
 	_ui->label_cputsdf->setText("No");
+	_ui->label_cputsdf_license->setEnabled(false);
 #endif
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
+	_ui->label_freenect_license->setEnabled(CameraFreenect::available());
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
+	_ui->label_openni2_license->setEnabled(CameraOpenNI2::available());
 	_ui->label_freenect2->setText(CameraFreenect2::available()?"Yes":"No");
+	_ui->label_freenect2_license->setEnabled(CameraFreenect2::available());
 	_ui->label_realsense->setText(CameraRealSense::available() ? "Yes" : "No");
+	_ui->label_realsense_license->setEnabled(CameraRealSense::available());
 	_ui->label_dc1394->setText(CameraStereoDC1394::available()?"Yes":"No");
+	_ui->label_dc1394_license->setEnabled(CameraStereoDC1394::available());
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
 	_ui->label_zed->setText(CameraStereoZed::available()?"Yes":"No");
 
+	_ui->label_toro->setText(Optimizer::isAvailable(Optimizer::kTypeTORO)?"Yes":"No");
+	_ui->label_toro_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeTORO)?true:false);
 	_ui->label_g2o->setText(Optimizer::isAvailable(Optimizer::kTypeG2O)?"Yes":"No");
+	_ui->label_g2o_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeG2O)?true:false);
 	_ui->label_gtsam->setText(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?"Yes":"No");
+	_ui->label_gtsam_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeGTSAM)?true:false);
 	_ui->label_cvsba->setText(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?"Yes":"No");
+	_ui->label_cvsba_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?true:false);
 
 #ifdef RTABMAP_FOVIS
 	_ui->label_fovis->setText("Yes");
+	_ui->label_fovis_license->setEnabled(true);
 #else
 	_ui->label_fovis->setText("No");
+	_ui->label_fovis_license->setEnabled(false);
 #endif
 #ifdef RTABMAP_VISO2
 	_ui->label_viso2->setText("Yes");
+	_ui->label_viso2_license->setEnabled(true);
 #else
 	_ui->label_viso2->setText("No");
+	_ui->label_viso2_license->setEnabled(false);
 #endif
 #ifdef RTABMAP_DVO
 	_ui->label_dvo->setText("Yes");
+	_ui->label_dvo_license->setEnabled(true);
 #else
 	_ui->label_dvo->setText("No");
+	_ui->label_dvo_license->setEnabled(false);
+#endif
+#ifdef RTABMAP_ORB_SLAM2
+	_ui->label_orbslam2->setText("Yes");
+	_ui->label_orbslam2_license->setEnabled(true);
+#else
+	_ui->label_orbslam2->setText("No");
+	_ui->label_orbslam2_license->setEnabled(false);
 #endif
 
 }
