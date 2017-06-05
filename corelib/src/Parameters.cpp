@@ -647,6 +647,12 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
+#ifndef RTABMAP_VISO2
+					if(group.compare("OdomORBSLAM2") == 0)
+					{
+						ignore = true;
+					}
+#endif
 					if(!ignore)
 					{
 						std::string str = "Param: " + iter->first + " = \"" + iter->second + "\"";
