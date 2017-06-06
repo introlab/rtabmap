@@ -574,6 +574,7 @@ pcl::PolygonMesh::Ptr createMesh(
 pcl::texture_mapping::CameraVector createTextureCameras(
 		const std::map<int, Transform> & poses,
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		const std::map<int, cv::Mat> & cameraDepths,
 		const std::vector<float> & roiRatios)
 {
 	UASSERT_MSG(poses.size() == cameraModels.size(), uFormat("%d vs %d", (int)poses.size(), (int)cameraModels.size()).c_str());
@@ -584,6 +585,8 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 	for(; poseIter!=poses.end(); ++poseIter, ++modelIter)
 	{
 		UASSERT(poseIter->first == modelIter->first);
+
+		std::map<int, cv::Mat>::const_iterator depthIter = cameraDepths.find(poseIter->first);
 
 		// for each sub camera
 		for(unsigned int i=0; i<modelIter->second.size(); ++i)
@@ -621,6 +624,15 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 				cam.roi[2] = cam.width * (1.0 - roiRatios[1]) - cam.roi[0]; // right -> width
 				cam.roi[3] = cam.height * (1.0 - roiRatios[3]) - cam.roi[1]; // bottom -> height
 			}
+
+			if(depthIter != cameraDepths.end() && !depthIter->second.empty())
+			{
+				UASSERT(depthIter->second.type() == CV_32FC1 || depthIter->second.type() == CV_16UC1);
+				UASSERT(depthIter->second.cols % modelIter->second.size() == 0);
+				int subWidth = depthIter->second.cols/(modelIter->second.size());
+				cam.depth = cv::Mat(depthIter->second, cv::Range(0, depthIter->second.rows), cv::Range(subWidth*i, subWidth*(i+1)));
+			}
+
 			cameras.push_back(cam);
 		}
 	}
@@ -631,7 +643,10 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
+		const std::map<int, cv::Mat> & cameraDepths,
 		float maxDistance,
+		float maxDepthError,
+		float maxAngle,
 		int minClusterSize,
 		const std::vector<float> & roiRatios,
 		const ProgressState * state,
@@ -649,7 +664,10 @@ pcl::TextureMesh::Ptr createTextureMesh(
 			mesh,
 			poses,
 			cameraSubModels,
+			cameraDepths,
 			maxDistance,
+			maxDepthError,
+			maxAngle,
 			minClusterSize,
 			roiRatios,
 			state,
@@ -660,7 +678,10 @@ pcl::TextureMesh::Ptr createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		const std::map<int, cv::Mat> & cameraDepths,
 		float maxDistance,
+		float maxDepthError,
+		float maxAngle,
 		int minClusterSize,
 		const std::vector<float> & roiRatios,
 		const ProgressState * state,
@@ -680,6 +701,7 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	pcl::texture_mapping::CameraVector cameras = createTextureCameras(
 			poses,
 			cameraModels,
+			cameraDepths,
 			roiRatios);
 
 	// Create materials for each texture (and one extra for occluded faces)
@@ -722,6 +744,11 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	// Texture by projection
 	pcl::TextureMapping<pcl::PointXYZ> tm; // TextureMapping object that will perform the sort
 	tm.setMaxDistance(maxDistance);
+	tm.setMaxAngle(maxAngle);
+	if(maxDepthError > 0.0f)
+	{
+		tm.setMaxDepthError(maxDepthError);
+	}
 	tm.setMinClusterSize(minClusterSize);
 	if(tm.textureMeshwithMultipleCameras2(*textureMesh, cameras, state, vertexToPixels))
 	{

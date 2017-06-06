@@ -1013,12 +1013,16 @@ class FaceInfo
 {
 public:
 	FaceInfo(float d,
+			float a,
+			float edge,
 			bool facingCam,
 			const pcl::PointXY & uv1,
 			const pcl::PointXY & uv2,
 			const pcl::PointXY & uv3,
 			const pcl::PointXY & center) :
 				distance(d),
+				angle(a),
+				longestEdgeSqrd(edge),
 				facingTheCam(facingCam),
 				uv_coord1(uv1),
 				uv_coord2(uv2),
@@ -1026,6 +1030,8 @@ public:
 				uv_center(center)
 	{}
 	float distance;
+	float angle;
+	float longestEdgeSqrd;
 	bool facingTheCam;
 	pcl::PointXY uv_coord1;
 	pcl::PointXY uv_coord2;
@@ -1116,10 +1122,36 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 				float angle = normal.dot(Eigen::Vector3f(0.0f,0.0f,1.0f));
 				bool facingTheCam = angle>0.0f;
 				float distanceToCam = std::min(std::min(pt0.z, pt1.z), pt2.z);
+				float angleToCam = 0.0f;
+				Eigen::Vector3f e0 = Eigen::Vector3f(
+						pt1.x - pt0.x,
+						pt1.y - pt0.y,
+						pt1.z - pt0.z);
+				Eigen::Vector3f e1 = Eigen::Vector3f(
+						pt2.x - pt0.x,
+						pt2.y - pt0.y,
+						pt2.z - pt0.z);
+				Eigen::Vector3f e2 = Eigen::Vector3f(
+						pt2.x - pt1.x,
+						pt2.y - pt1.y,
+						pt2.z - pt1.z);
+				if(facingTheCam && this->max_angle_)
+				{
+					Eigen::Vector3f normal3D;
+					normal3D = e0.cross(e1);
+					angleToCam = pcl::getAngle3D(Eigen::Vector4f(normal3D[0], normal3D[1], normal3D[2], 0.0f), Eigen::Vector4f(0.0f,0.0f,-1.0f,0.0f));
+				}
+
+				// longest edge
+				float e0norm2 = e0[0]*e0[0] + e0[1]*e0[1] + e0[2]*e0[2];
+				float e1norm2 = e1[0]*e1[0] + e1[1]*e1[1] + e1[2]*e1[2];
+				float e2norm2 = e2[0]*e2[0] + e2[1]*e2[1] + e2[2]*e2[2];
+				float longestEdgeSqrd = std::max(std::max(e0norm2, e1norm2), e2norm2);
+
 				pcl::PointXY center;
 				center.x = (uv_coords1.x+uv_coords2.x+uv_coords3.x)/3.0f;
 				center.y = (uv_coords1.y+uv_coords2.y+uv_coords3.y)/3.0f;
-				visibleFaces[current_cam].insert(visibleFaces[current_cam].end(), std::make_pair(idx_face, FaceInfo(distanceToCam, facingTheCam, uv_coords1, uv_coords2, uv_coords3, center)));
+				visibleFaces[current_cam].insert(visibleFaces[current_cam].end(), std::make_pair(idx_face, FaceInfo(distanceToCam, angleToCam, longestEdgeSqrd, facingTheCam, uv_coords1, uv_coords2, uv_coords3, center)));
 				sortedVisibleFaces.insert(std::make_pair(distanceToCam, idx_face));
 				visibilityIndices[oi] = idx_face;
 				++oi;
@@ -1278,16 +1310,72 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		pcl::Vertices & face = faces[idx_face];
 
 		int cameraIndex = -1;
-		float closestDistanceToCam = std::numeric_limits<float>::max();
-		float closestDistanceToCenter = std::numeric_limits<float>::max();
+		float smallestWeight = std::numeric_limits<float>::max();
+		bool depthSet = false;
 		pcl::PointXY uv_coords[3];
 		for (std::list<int>::iterator camIter = faceCameras[idx_face].begin(); camIter!=faceCameras[idx_face].end(); ++camIter)
 		{
 			int current_cam = *camIter;
 			std::map<int, FaceInfo>::iterator iter = visibleFaces[current_cam].find(idx_face);
 			UASSERT(iter != visibleFaces[current_cam].end());
-			if (iter->second.facingTheCam)
+			if (iter->second.facingTheCam && (max_angle_ <=0.0f || iter->second.angle <= max_angle_))
 			{
+				float distanceToCam = iter->second.distance;
+				float vx = (iter->second.uv_coord1.x+iter->second.uv_coord2.x+ iter->second.uv_coord3.x)/3.0f-0.5f;
+				float vy = (iter->second.uv_coord1.y+iter->second.uv_coord2.y+ iter->second.uv_coord3.y)/3.0f-0.5f;
+				float distanceToCenter = vx*vx+vy*vy;
+
+				cv::Mat depth = cameras[current_cam].depth;
+				bool currentDepthSet = false;
+				float maxDepthError = max_depth_error_==0.0f?std::sqrt(iter->second.longestEdgeSqrd) : max_depth_error_;
+				if(!cameras[current_cam].depth.empty() && maxDepthError > 0.0f)
+				{
+					float d1 = depth.type() == CV_32FC1?
+							depth.at<float>((1.0f-iter->second.uv_coord1.y)*depth.rows, iter->second.uv_coord1.x*depth.cols):
+							float(depth.at<unsigned short>((1.0f-iter->second.uv_coord1.y)*depth.rows, iter->second.uv_coord1.x*depth.cols))/1000.0f;
+					float d2 = depth.type() == CV_32FC1?
+							depth.at<float>((1.0f-iter->second.uv_coord2.y)*depth.rows, iter->second.uv_coord2.x*depth.cols):
+							float(depth.at<unsigned short>((1.0f-iter->second.uv_coord2.y)*depth.rows, iter->second.uv_coord2.x*depth.cols))/1000.0f;
+					float d3 = depth.type() == CV_32FC1?
+							depth.at<float>((1.0f-iter->second.uv_coord3.y)*depth.rows, iter->second.uv_coord3.x*depth.cols):
+							float(depth.at<unsigned short>((1.0f-iter->second.uv_coord3.y)*depth.rows, iter->second.uv_coord3.x*depth.cols))/1000.0f;
+					if(d1 <= 0.0f || !std::isfinite(d1) || d2 <= 0.0f || !std::isfinite(d2) || d3 <= 0.0f || !std::isfinite(d3))
+					{
+						if(depthSet)
+						{
+							// ignore pixels with no depth
+							continue;
+						}
+						else if(d1 > 0.0f && std::isfinite(d1) && fabs(d1 - distanceToCam) > maxDepthError)
+						{
+							// ignore pixels with too much depth error
+							continue;
+						}
+						else if(d2 > 0.0f && std::isfinite(d2) && fabs(d2 - distanceToCam) > maxDepthError)
+						{
+							// ignore pixels with too much depth error
+							continue;
+						}
+						else if(d3 > 0.0f && std::isfinite(d3) && fabs(d3 - distanceToCam) > maxDepthError)
+						{
+							// ignore pixels with too much depth error
+							continue;
+						}
+						//else it could be a window for which no depth is available on any cameras
+					}
+					else
+					{
+						if(fabs(d1 - distanceToCam) > maxDepthError ||
+							fabs(d2 - distanceToCam) > maxDepthError ||
+							fabs(d3 - distanceToCam) > maxDepthError)
+						{
+							// ignore pixels with too much depth error
+							continue;
+						}
+						currentDepthSet = true;
+					}
+				}
+
 				if(vertexToPixels)
 				{
 					vertexToPixels->at(face.vertices[0]).insert(std::make_pair(current_cam, iter->second.uv_coord1));
@@ -1295,22 +1383,19 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 					vertexToPixels->at(face.vertices[2]).insert(std::make_pair(current_cam, iter->second.uv_coord3));
 				}
 
-				float distanceToCam = 0;//iter->second.distance;
-				float vx = (iter->second.uv_coord1.x+iter->second.uv_coord2.x+ iter->second.uv_coord3.x)/3.0f-0.5f;
-				float vy = (iter->second.uv_coord1.y+iter->second.uv_coord2.y+ iter->second.uv_coord3.y)/3.0f-0.5f;
-				float distanceToCenter = vx*vx+vy*vy;
-
 				//UDEBUG("Process polygon %d cam =%d distanceToCam=%f", idx_face, current_cam, distanceToCam);
 
-				if(//(distanceToCam <= closestDistanceToCam && distanceToCenter <= closestDistanceToCenter * 1.1) ||
-				   (distanceToCam <= closestDistanceToCam * 2 && distanceToCenter <= closestDistanceToCenter))
+				if(distanceToCenter <= smallestWeight || (!depthSet && currentDepthSet))
 				{
 					cameraIndex = current_cam;
-					closestDistanceToCam = distanceToCam;
-					closestDistanceToCenter = distanceToCenter;
+					smallestWeight = distanceToCenter;
 					uv_coords[0] = iter->second.uv_coord1;
 					uv_coords[1] = iter->second.uv_coord2;
 					uv_coords[2] = iter->second.uv_coord3;
+					if(!depthSet && currentDepthSet)
+					{
+						depthSet = true;
+					}
 				}
 			}
 		}
@@ -1432,12 +1517,14 @@ pcl::TextureMapping<PointInT>::getPointUVCoordinates(const PointInT &pt, const C
 			}
 		}
 
-		// original code of PCL inverted y
-		UV_coordinates.y = 1.0f - UV_coordinates.y;
-
 		// point is visible!
 		if (UV_coordinates.x >= 0.0 && UV_coordinates.x <= 1.0 && UV_coordinates.y >= 0.0 && UV_coordinates.y <= 1.0)
-			return (true); // point was visible by the camera
+		{
+			// point is visible by the camera
+			// original code of PCL inverted y
+			UV_coordinates.y = 1.0f - UV_coordinates.y;
+			return (true);
+		}
 	}
 
 	// point is NOT visible by the camera

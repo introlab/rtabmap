@@ -137,7 +137,10 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, CameraModel> & cameraModels,
+		const std::map<int, cv::Mat> & cameraDepths,
 		float maxDistance = 0.0f, // max camera distance to polygon to apply texture
+		float maxDepthError = 0.0f, // maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used)
+		float maxAngle = 0.0f, // maximum angle between camera and face (0=disabled)
 		int minClusterSize = 50, // minimum size of polygons clusters textured
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,
@@ -146,7 +149,10 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const pcl::PolygonMesh::Ptr & mesh,
 		const std::map<int, Transform> & poses,
 		const std::map<int, std::vector<CameraModel> > & cameraModels,
+		const std::map<int, cv::Mat> & cameraDepths,
 		float maxDistance = 0.0f, // max camera distance to polygon to apply texture
+		float maxDepthError = 0.0f, // maximum depth error between reprojected mesh and depth image to texture a face (-1=disabled, 0=edge length is used)
+		float maxAngle = 0.0f, // maximum angle between camera and face (0=disabled)
 		int minClusterSize = 50, // minimum size of polygons clusters textured
 		const std::vector<float> & roiRatios = std::vector<float>(), // [left, right, top, bottom] region of interest (in ratios) of the image projected.
 		const ProgressState * state = 0,

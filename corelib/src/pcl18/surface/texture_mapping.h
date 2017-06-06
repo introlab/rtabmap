@@ -78,6 +78,7 @@ namespace pcl
       double width;
       std::string texture_file;
       std::vector<double> roi; // [x, y, width, height]
+      cv::Mat depth;
 
       EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     };
@@ -120,7 +121,7 @@ namespace pcl
 
       /** \brief Constructor. */
       TextureMapping () :
-        f_ (), vector_field_ (), tex_files_ (), tex_material_ (), max_distance_(0.0f), min_cluster_size_(50)
+        f_ (), vector_field_ (), tex_files_ (), tex_material_ (), max_distance_(0.0f), max_depth_error_(0.0f), max_angle_(0.0f), min_cluster_size_(50)
       {
       }
 
@@ -174,6 +175,18 @@ namespace pcl
       {
     	  max_distance_ = maxDistance;
       }
+
+      inline void
+	  setMaxDepthError(float maxDepthError)
+	  {
+    	  max_depth_error_ = maxDepthError;
+	  }
+
+      inline void
+	  setMaxAngle(float maxAngle)
+	  {
+    	  max_angle_ = maxAngle;
+	  }
 
       inline void
 	  setMinClusterSize(int size)
@@ -370,6 +383,12 @@ namespace pcl
 
       /** \brief maximum distance between camera and polygon to apply a texture */
       float max_distance_;
+
+      /** \brief maximum depth error between projected point and corresponding depth of the camera to apply a texture */
+      float max_depth_error_;
+
+      /** \brief maximum angle (rad) between camera and polygon to apply a texture */
+      float max_angle_;
 
       /** \brief Remove texture from small polygon clusters */
       int min_cluster_size_;

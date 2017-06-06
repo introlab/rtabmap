@@ -170,6 +170,8 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->comboBox_meshingTextureSize, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_mesh_maxTextures, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_meshingTextureMaxDistance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_meshingTextureMaxDepthError, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_meshingTextureMaxAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_mesh_minTextureClusterSize, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->lineEdit_meshingTextureRoiRatios, SIGNAL(textChanged(const QString &)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -310,6 +312,8 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex());
 	settings.setValue("mesh_textureMaxCount", _ui->spinBox_mesh_maxTextures->value());
 	settings.setValue("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value());
+	settings.setValue("mesh_textureMaxDepthError", _ui->doubleSpinBox_meshingTextureMaxDepthError->value());
+	settings.setValue("mesh_textureMaxAngle", _ui->doubleSpinBox_meshingTextureMaxAngle->value());
 	settings.setValue("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value());
 	settings.setValue("mesh_textureRoiRatios", _ui->lineEdit_meshingTextureRoiRatios->text());
 	settings.setValue("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked());
@@ -421,6 +425,8 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(settings.value("mesh_textureSize", _ui->comboBox_meshingTextureSize->currentIndex()).toInt());
 	_ui->spinBox_mesh_maxTextures->setValue(settings.value("mesh_textureMaxCount", _ui->spinBox_mesh_maxTextures->value()).toInt());
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(settings.value("mesh_textureMaxDistance", _ui->doubleSpinBox_meshingTextureMaxDistance->value()).toDouble());
+	_ui->doubleSpinBox_meshingTextureMaxDepthError->setValue(settings.value("mesh_textureMaxDepthError", _ui->doubleSpinBox_meshingTextureMaxDepthError->value()).toDouble());
+	_ui->doubleSpinBox_meshingTextureMaxAngle->setValue(settings.value("mesh_textureMaxAngle", _ui->doubleSpinBox_meshingTextureMaxAngle->value()).toDouble());
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(settings.value("mesh_textureMinCluster", _ui->spinBox_mesh_minTextureClusterSize->value()).toDouble());
 	_ui->lineEdit_meshingTextureRoiRatios->setText(settings.value("mesh_textureRoiRatios", _ui->lineEdit_meshingTextureRoiRatios->text()).toString());
 	_ui->checkBox_cameraFilter->setChecked(settings.value("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked()).toBool());
@@ -532,6 +538,8 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->comboBox_meshingTextureSize->setCurrentIndex(5); // 4096
 	_ui->spinBox_mesh_maxTextures->setValue(1);
 	_ui->doubleSpinBox_meshingTextureMaxDistance->setValue(3.0);
+	_ui->doubleSpinBox_meshingTextureMaxDepthError->setValue(0.0);
+	_ui->doubleSpinBox_meshingTextureMaxAngle->setValue(0.0);
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(50);
 	_ui->lineEdit_meshingTextureRoiRatios->setText("0.0 0.0 0.0 0.0");
 	_ui->checkBox_cameraFilter->setChecked(false);
@@ -1928,6 +1936,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 				std::map<int, Transform> cameraPoses;
 				std::map<int, std::vector<CameraModel> > cameraModels;
+				std::map<int, cv::Mat > cameraDepths;
 				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
 				{
 					if(validCameras.find(jter->first) != validCameras.end())
@@ -1947,8 +1956,10 @@ bool ExportCloudsDialog::getExportedClouds(
 							_dbDriver->getCalibration(jter->first, models, stereoModel);
 						}
 
+						bool stereo=false;
 						if(stereoModel.isValidForProjection())
 						{
+							stereo = true;
 							models.clear();
 							models.push_back(stereoModel.left());
 						}
@@ -1956,8 +1967,11 @@ bool ExportCloudsDialog::getExportedClouds(
 						{
 							models.clear();
 						}
+
 						if(!jter->second.isNull() && models.size())
 						{
+							cv::Mat depth;
+							bool getDepth = !stereo && _ui->doubleSpinBox_meshingTextureMaxDepthError->value() >= 0.0f;
 							if(models[0].imageWidth() == 0 || models[0].imageHeight() == 0)
 							{
 								// we are using an old database format (image size not saved in calibrations), we should
@@ -1965,13 +1979,13 @@ bool ExportCloudsDialog::getExportedClouds(
 								cv::Mat img;
 								if(cacheHasCompressedImage)
 								{
-									cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(&img, 0);
+									cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(&img, getDepth?&depth:0);
 								}
 								else if(_dbDriver)
 								{
 									SensorData data;
 									_dbDriver->getNodeData(jter->first, data, true, false, false, false);
-									data.uncompressDataConst(&img, 0);
+									data.uncompressDataConst(&img, getDepth?&depth:0);
 								}
 								cv::Size imageSize = img.size();
 								imageSize.width /= models.size();
@@ -1979,13 +1993,30 @@ bool ExportCloudsDialog::getExportedClouds(
 								{
 									models[i].setImageSize(imageSize);
 								}
-
+							}
+							else
+							{
+								// get just the depth
+								if(cacheHasCompressedImage)
+								{
+									cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(0, getDepth?&depth:0);
+								}
+								else if(_dbDriver)
+								{
+									SensorData data;
+									_dbDriver->getNodeData(jter->first, data, true, false, false, false);
+									data.uncompressDataConst(0, getDepth?&depth:0);
+								}
 							}
 
 							if(models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
 							{
 								cameraPoses.insert(std::make_pair(jter->first, jter->second));
 								cameraModels.insert(std::make_pair(jter->first, models));
+								if(!depth.empty())
+								{
+									cameraDepths.insert(std::make_pair(jter->first, depth));
+								}
 							}
 						}
 					}
@@ -2058,6 +2089,7 @@ bool ExportCloudsDialog::getExportedClouds(
 								if(cameraPoses.find(modelIter->first)==cameraPoses.end())
 								{
 									cameraModels.erase(modelIter++);
+									cameraDepths.erase(modelIter->first);
 								}
 								else
 								{
@@ -2114,7 +2146,10 @@ bool ExportCloudsDialog::getExportedClouds(
 								iter->second,
 								cameraPoses,
 								cameraModels,
+								cameraDepths,
 								_ui->doubleSpinBox_meshingTextureMaxDistance->value(),
+								_ui->doubleSpinBox_meshingTextureMaxDepthError->value(),
+								_ui->doubleSpinBox_meshingTextureMaxAngle->value()*M_PI/180.0,
 								_ui->spinBox_mesh_minTextureClusterSize->value(),
 								roiRatios,
 								&texturingState,
@@ -3097,7 +3132,7 @@ std::vector<cv::Mat> ExportCloudsDialog::mergeTextures(
 					}
 				}
 			}
-			else if(mesh.tex_polygons[i].size())
+			else if(mesh.tex_polygons[i].size() && mesh.tex_materials[i].tex_file.compare("occluded")!=0)
 			{
 				UWARN("Failed parsing texture file name: %s", mesh.tex_materials[i].tex_file.c_str());
 			}
@@ -3278,9 +3313,16 @@ std::vector<cv::Mat> ExportCloudsDialog::mergeTextures(
 
 						for(int i=0; i<num_images; ++i)
 						{
-							for(int j=i+1; j<num_images; ++j)
+							for(int j=i; j<num_images; ++j)
 							{
-								if(N(i, j))
+								if(i == j)
+								{
+									if(N(i,j) == 0)
+									{
+										N(i,j) = 1;
+									}
+								}
+								else if(N(i, j))
 								{
 									I(i, j) /= N(i, j);
 									I(j, i) /= N(j, i);
