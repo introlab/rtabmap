@@ -116,6 +116,22 @@ long DBDriver::getMemoryUsed() const
 	return bytes;
 }
 
+long DBDriver::getNodesMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getNodesMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getLinksMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getLinksMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
 long DBDriver::getImagesMemoryUsed() const
 {
 	long bytes;
@@ -129,6 +145,22 @@ long DBDriver::getDepthImagesMemoryUsed() const
 	long bytes;
 	_dbSafeAccessMutex.lock();
 	bytes = getDepthImagesMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getCalibrationsMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getCalibrationsMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getGridsMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getGridsMemoryUsedQuery();
 	_dbSafeAccessMutex.unlock();
 	return bytes;
 }
@@ -153,6 +185,22 @@ long DBDriver::getWordsMemoryUsed() const
 	long bytes;
 	_dbSafeAccessMutex.lock();
 	bytes = getWordsMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getFeaturesMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getFeaturesMemoryUsedQuery();
+	_dbSafeAccessMutex.unlock();
+	return bytes;
+}
+long DBDriver::getStatisticsMemoryUsed() const
+{
+	long bytes;
+	_dbSafeAccessMutex.lock();
+	bytes = getStatisticsMemoryUsedQuery();
 	_dbSafeAccessMutex.unlock();
 	return bytes;
 }

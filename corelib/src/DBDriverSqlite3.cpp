@@ -490,6 +490,90 @@ long DBDriverSqlite3::getMemoryUsedQuery() const
 	//}
 }
 
+long DBDriverSqlite3::getNodesMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		{
+			query = "SELECT sum(length(id) + length(map_id) + length(weight) + length(pose) + length(stamp) + ifnull(length(label),0) + length(ground_truth_pose) + ifnull(length(velocity),0) + length(time_enter)) from Node;";
+		}
+		else if(uStrNumCmp(_version, "0.11.1") >= 0)
+		{
+			query = "SELECT sum(length(id) + length(map_id) + length(weight) + length(pose) + length(stamp) + ifnull(length(label),0) + length(ground_truth_pose)+ length(time_enter)) from Node;";
+		}
+		else if(uStrNumCmp(_version, "0.8.5") >= 0)
+		{
+			query = "SELECT sum(length(id) + length(map_id) + length(weight) + length(pose) + length(stamp) + ifnull(length(label),0) + length(time_enter)) from Node;";
+		}
+		else
+		{
+			query = "SELECT sum(length(id) + length(map_id) + length(weight) + length(pose)+ length(time_enter)) from Node;";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getLinksMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		{
+			query = "SELECT sum(length(type) + length(information_matrix) + length(transform) + ifnull(length(user_data),0) + length(from_id) + length(to_id)) from Link;";
+		}
+		else if(uStrNumCmp(_version, "0.10.10") >= 0)
+		{
+			query = "SELECT sum(length(type) + length(rot_variance) + length(trans_variance) + length(transform) + ifnull(length(user_data),0) + length(from_id) + length(to_id)) from Link;";
+		}
+		else if(uStrNumCmp(_version, "0.8.4") >= 0)
+		{
+			query = "SELECT sum(length(type) + length(rot_variance) + length(trans_variance) + length(transform) + length(from_id) + length(to_id)) from Link;";
+		}
+		else if(uStrNumCmp(_version, "0.7.4") >= 0)
+		{
+			query = "SELECT sum(length(type) + length(variance) + length(transform) + length(from_id) + length(to_id)) from Link;";
+		}
+		else
+		{
+			query = "SELECT sum(length(type) + length(transform) + length(from_id) + length(to_id)) from Link;";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
 long DBDriverSqlite3::getImagesMemoryUsedQuery() const
 {
 	UDEBUG("");
@@ -499,11 +583,11 @@ long DBDriverSqlite3::getImagesMemoryUsedQuery() const
 		std::string query;
 		if(uStrNumCmp(_version, "0.10.0") >= 0)
 		{
-			query = "SELECT sum(length(image)) from Data;";
+			query = "SELECT sum(ifnull(length(image),0) + ifnull(length(time_enter),0)) from Data;";
 		}
 		else
 		{
-			query = "SELECT sum(length(data)) from Image;";
+			query = "SELECT sum(length(data) + ifnull(length(time_enter),0)) from Image;";
 		}
 
 		int rc = SQLITE_OK;
@@ -531,11 +615,81 @@ long DBDriverSqlite3::getDepthImagesMemoryUsedQuery() const
 		std::string query;
 		if(uStrNumCmp(_version, "0.10.0") >= 0)
 		{
-			query = "SELECT sum(length(depth)) from Data;";
+			query = "SELECT sum(ifnull(length(depth),0) + ifnull(length(time_enter),0)) from Data;";
 		}
 		else
 		{
-			query = "SELECT sum(length(data)) from Depth;";
+			query = "SELECT sum(length(data) + ifnull(length(time_enter),0)) from Depth;";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getCalibrationsMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+
+		if(uStrNumCmp(_version, "0.10.0") >= 0)
+		{
+			query = "SELECT sum(length(calibration)) from Data;";
+		}
+		else if(uStrNumCmp(_version, "0.7.0") >= 0)
+		{
+			query = "SELECT sum(length(fx) + length(fy) + length(cx) + length(cy) + length(local_transform)) from Depth;";
+		}
+		else
+		{
+			query = "SELECT sum(length(constant) + length(local_transform)) from Depth;";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getGridsMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+
+		if(uStrNumCmp(_version, "0.11.10") >= 0)
+		{
+			query = "SELECT sum(ifnull(length(ground_cells),0) + ifnull(length(obstacle_cells),0) + length(cell_size) + length(view_point_x) + length(view_point_y) + length(view_point_z)) from Data;";
+		}
+		else
+		{
+			return size;
 		}
 
 		int rc = SQLITE_OK;
@@ -561,9 +715,22 @@ long DBDriverSqlite3::getLaserScansMemoryUsedQuery() const
 	if(_ppDb)
 	{
 		std::string query;
-		if(uStrNumCmp(_version, "0.10.0") >= 0)
+
+		if(uStrNumCmp(_version, "0.11.10") >= 0)
 		{
-			query = "SELECT sum(length(scan)) from Data;";
+			query = "SELECT sum(ifnull(length(scan_info),0) + ifnull(length(scan),0)) from Data;";
+		}
+		else if(uStrNumCmp(_version, "0.10.7") >= 0)
+		{
+			query = "SELECT sum(length(scan_max_pts) + length(scan_max_range) + ifnull(length(scan),0)) from Data;";
+		}
+		else if(uStrNumCmp(_version, "0.10.0") >= 0)
+		{
+			query = "SELECT sum(length(scan_max_pts) + ifnull(length(scan),0)) from Data;";
+		}
+		else if(uStrNumCmp(_version, "0.8.11") >= 0)
+		{
+			query = "SELECT sum(length(data2d) + length(data2d_max_pts)) from Depth;";
 		}
 		else
 		{
@@ -628,7 +795,83 @@ long DBDriverSqlite3::getWordsMemoryUsedQuery() const
 	long size = 0L;
 	if(_ppDb)
 	{
-		std::string query = "SELECT sum(length(descriptor)) from Word;";
+		std::string query = "SELECT sum(length(id) + length(descriptor_size) + length(descriptor) + length(time_enter)) from Word;";
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getFeaturesMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		{
+			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+					 "FROM Feature";
+		}
+		else if(uStrNumCmp(_version, "0.12.0") >= 0)
+		{
+			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(octave) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+					 "FROM Map_Node_Word";
+		}
+		else if(uStrNumCmp(_version, "0.11.2") >= 0)
+		{
+			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z) + length(descriptor_size) + length(descriptor)) "
+					 "FROM Map_Node_Word";
+		}
+		else
+		{
+			query = "SELECT sum(length(word_id) + length(pos_x) + length(pos_y) + length(size) + length(dir) + length(response) + length(depth_x) + length(depth_y) + length(depth_z)) "
+					 "FROM Map_Node_Word";
+		}
+
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_step(ppStmt);
+		if(rc == SQLITE_ROW)
+		{
+			size = sqlite3_column_int64(ppStmt, 0);
+			rc = sqlite3_step(ppStmt);
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+	return size;
+}
+long DBDriverSqlite3::getStatisticsMemoryUsedQuery() const
+{
+	UDEBUG("");
+	long size = 0L;
+	if(_ppDb)
+	{
+		std::string query;
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			query = "SELECT sum(length(id) + length(stamp) + length(data)) FROM Statistics";
+		}
+		else
+		{
+			return size;
+		}
 
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;

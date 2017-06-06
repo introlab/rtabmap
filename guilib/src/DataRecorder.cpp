@@ -70,11 +70,12 @@ bool DataRecorder::init(const QString & path, bool recordInRAM)
 	if(!memory_)
 	{
 		ParametersMap customParameters;
-		customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // desactivate rehearsal
-		customParameters.insert(ParametersPair(Parameters::kKpMaxFeatures(), "-1")); // desactivate keypoints extraction
+		customParameters.insert(ParametersPair(Parameters::kMemRehearsalSimilarity(), "1.0")); // deactivate rehearsal
+		customParameters.insert(ParametersPair(Parameters::kKpMaxFeatures(), "-1")); // deactivate keypoints extraction
 		customParameters.insert(ParametersPair(Parameters::kMemBinDataKept(), "true")); // to keep images
 		customParameters.insert(ParametersPair(Parameters::kMemMapLabelsAdded(), "false")); // don't create map labels
-		customParameters.insert(ParametersPair(Parameters::kMemBadSignaturesIgnored(), "true")); // make usre memory cleanup is done
+		customParameters.insert(ParametersPair(Parameters::kMemBadSignaturesIgnored(), "true")); // make sure memory cleanup is done
+		customParameters.insert(ParametersPair(Parameters::kMemIntermediateNodeDataKept(), "true"));
 		if(!recordInRAM)
 		{
 			customParameters.insert(ParametersPair(Parameters::kDbSqlite3InMemory(), "false"));
@@ -147,7 +148,7 @@ void DataRecorder::addData(const rtabmap::SensorData & data, const Transform & p
 		{
 			memory_->emptyTrash();
 		}
-		UDEBUG("Time to process a message = %f s", time.ticks());
+		UDEBUG("Time to process a message = %f s, totalSizeKB_=%d", time.ticks(), totalSizeKB_);
 	}
 	memoryMutex_.unlock();
 }

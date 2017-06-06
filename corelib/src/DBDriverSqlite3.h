@@ -53,11 +53,17 @@ private:
 	virtual bool isConnectedQuery() const;
 	virtual long getMemoryUsedQuery() const; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const;
+	virtual long getNodesMemoryUsedQuery() const;
+	virtual long getLinksMemoryUsedQuery() const;
 	virtual long getImagesMemoryUsedQuery() const;
 	virtual long getDepthImagesMemoryUsedQuery() const;
+	virtual long getCalibrationsMemoryUsedQuery() const;
+	virtual long getGridsMemoryUsedQuery() const;
 	virtual long getLaserScansMemoryUsedQuery() const;
 	virtual long getUserDataMemoryUsedQuery() const;
 	virtual long getWordsMemoryUsedQuery() const;
+	virtual long getFeaturesMemoryUsedQuery() const;
+	virtual long getStatisticsMemoryUsedQuery() const;
 	virtual int getLastNodesSizeQuery() const;
 	virtual int getLastDictionarySizeQuery() const;
 	virtual int getTotalNodesSizeQuery() const;

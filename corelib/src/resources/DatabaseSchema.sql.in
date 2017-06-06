@@ -123,6 +123,11 @@ BEGIN
  UPDATE Node SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
 END;
 
+CREATE TRIGGER insert_Data_timeEnter AFTER INSERT ON Data
+BEGIN
+ UPDATE Node SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;
+END;
+
 CREATE TRIGGER insert_Word_timeEnter AFTER INSERT ON Word
 BEGIN
  UPDATE Word SET time_enter = DATETIME('NOW')  WHERE rowid = new.rowid;

@@ -107,11 +107,17 @@ public:
 	bool isConnected() const;
 	long getMemoryUsed() const; // In bytes
 	std::string getDatabaseVersion() const;
+	long getNodesMemoryUsed() const;
+	long getLinksMemoryUsed() const;
 	long getImagesMemoryUsed() const;
 	long getDepthImagesMemoryUsed() const;
+	long getCalibrationsMemoryUsed() const;
+	long getGridsMemoryUsed() const;
 	long getLaserScansMemoryUsed() const;
 	long getUserDataMemoryUsed() const;
 	long getWordsMemoryUsed() const;
+	long getFeaturesMemoryUsed() const;
+	long getStatisticsMemoryUsed() const;
 	int getLastNodesSize() const; // working memory
 	int getLastDictionarySize() const; // working memory
 	int getTotalNodesSize() const;
@@ -152,11 +158,17 @@ private:
 	virtual bool isConnectedQuery() const = 0;
 	virtual long getMemoryUsedQuery() const = 0; // In bytes
 	virtual bool getDatabaseVersionQuery(std::string & version) const = 0;
+	virtual long getNodesMemoryUsedQuery() const = 0;
+	virtual long getLinksMemoryUsedQuery() const = 0;
 	virtual long getImagesMemoryUsedQuery() const = 0;
 	virtual long getDepthImagesMemoryUsedQuery() const = 0;
+	virtual long getCalibrationsMemoryUsedQuery() const = 0;
+	virtual long getGridsMemoryUsedQuery() const = 0;
 	virtual long getLaserScansMemoryUsedQuery() const = 0;
 	virtual long getUserDataMemoryUsedQuery() const = 0;
 	virtual long getWordsMemoryUsedQuery() const = 0;
+	virtual long getFeaturesMemoryUsedQuery() const = 0;
+	virtual long getStatisticsMemoryUsedQuery() const = 0;
 	virtual int getLastNodesSizeQuery() const = 0;
 	virtual int getLastDictionarySizeQuery() const = 0;
 	virtual int getTotalNodesSizeQuery() const = 0;
