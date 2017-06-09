@@ -2027,7 +2027,7 @@ void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & image
 			rowCount = float(textureSize)/(scale*float(h));
 			factor+=epsilon; // search the maximum perfect fit
 		}
-		int outputTextures = (materials / (colCount*rowCount))+1;
+		int outputTextures = (materials / (colCount*rowCount)) + (materials % (colCount*rowCount) > 0?1:0);
 		UDEBUG("materials=%d col=%d row=%d output textures=%d factor=%f scale=%f", materials, colCount, rowCount, outputTextures, factor-epsilon, scale);
 
 		UASSERT(mesh.tex_coordinates.size() == mesh.tex_materials.size() && mesh.tex_polygons.size() == mesh.tex_materials.size());

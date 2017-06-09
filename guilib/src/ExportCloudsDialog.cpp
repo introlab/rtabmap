@@ -3604,6 +3604,7 @@ std::vector<cv::Mat> ExportCloudsDialog::mergeTextures(
 			}
 		}
 	}
+	UDEBUG("globalTextures=%d", (int)globalTextures.size());
 	return globalTextures;
 }
 
