@@ -2069,7 +2069,7 @@ void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & image
 			{
 				int indexMaterial = ti / (colCount*rowCount);
 				UASSERT(indexMaterial < outputTextures);
-				if(outputMesh.tex_polygons.size() <= indexMaterial)
+                                if((int)outputMesh.tex_polygons.size() <= indexMaterial)
 				{
 					std::vector<pcl::Vertices> newPolygons(totalPolygons[indexMaterial]);
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)

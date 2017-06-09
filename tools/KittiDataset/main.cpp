@@ -259,22 +259,38 @@ int main(int argc, char * argv[])
 	cv::Mat_<double> P1(3,4);
 	cv::Mat_<double> P2(3,4);
 	cv::Mat_<double> P3(3,4);
-	fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 			&P0(0, 0), &P0(0, 1), &P0(0, 2), &P0(0, 3),
 			&P0(1, 0), &P0(1, 1), &P0(1, 2), &P0(1, 3),
-			&P0(2, 0), &P0(2, 1), &P0(2, 2), &P0(2, 3));
-	fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+			&P0(2, 0), &P0(2, 1), &P0(2, 2), &P0(2, 3)) != 12)
+	{
+		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
+		return -1;
+	}
+	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 			&P1(0, 0), &P1(0, 1), &P1(0, 2), &P1(0, 3),
 			&P1(1, 0), &P1(1, 1), &P1(1, 2), &P1(1, 3),
-			&P1(2, 0), &P1(2, 1), &P1(2, 2), &P1(2, 3));
-	fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+			&P1(2, 0), &P1(2, 1), &P1(2, 2), &P1(2, 3)) != 12)
+	{
+		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
+		return -1;
+	}
+	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 			&P2(0, 0), &P2(0, 1), &P2(0, 2), &P2(0, 3),
 			&P2(1, 0), &P2(1, 1), &P2(1, 2), &P2(1, 3),
-			&P2(2, 0), &P2(2, 1), &P2(2, 2), &P2(2, 3));
-	fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
+			&P2(2, 0), &P2(2, 1), &P2(2, 2), &P2(2, 3)) != 12)
+	{
+		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
+		return -1;
+	}
+	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
 			&P3(0, 0), &P3(0, 1), &P3(0, 2), &P3(0, 3),
 			&P3(1, 0), &P3(1, 1), &P3(1, 2), &P3(1, 3),
-			&P3(2, 0), &P3(2, 1), &P3(2, 2), &P3(2, 3));
+			&P3(2, 0), &P3(2, 1), &P3(2, 2), &P3(2, 3)) != 12)
+	{
+		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
+		return -1;
+	}
 	fclose (pFile);
 	// get image size
 	UDirectory dir(pathLeftImages);
