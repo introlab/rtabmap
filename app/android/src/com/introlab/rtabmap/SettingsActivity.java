@@ -1,23 +1,36 @@
 package com.introlab.rtabmap;
 
-import android.app.Activity;
+import java.io.File;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map.Entry;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceManager;
+import android.text.InputType;
+import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 
 public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
+	
+	private SettingsActivity getActivity() {return this;}
 	
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.layout.activity_settings);
         
-        Preference button = findPreference(getString(R.string.pref_key_reset_button));
-        button.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+        Preference buttonReset = findPreference(getString(R.string.pref_key_reset_button));
+        buttonReset.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
         	@Override
         	public boolean onPreferenceClick(Preference preference) {   
         		getPreferenceScreen().getSharedPreferences().edit().clear().commit();
@@ -27,6 +40,148 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         		return true;
         	}
         });
+        
+        Preference buttonOpen = findPreference(getString(R.string.pref_key_open_button));
+        buttonOpen.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+        	@Override
+        	public boolean onPreferenceClick(Preference preference) {   
+        		File prefsdir = new File(getApplicationInfo().dataDir,"shared_prefs");
+        		if(prefsdir.exists() && prefsdir.isDirectory()){
+        			ArrayList<String> filesArray = new ArrayList<String>(Arrays.asList(prefsdir.list()));
+        			ArrayList<String> newList = new ArrayList<String>();
+        			filesArray.remove("com.introlab.rtabmap_preferences.xml");
+        			for (String s : filesArray) {
+        				newList.add(s.substring(0, s.length()-4)); // rip off the ".xml"
+        			}
+        			final String[] files = newList.toArray(new String[filesArray.size()]);
+        			if(files.length > 0)
+        			{
+        				AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        				builder.setTitle("Choose Presets:");
+        				builder.setItems(files, new DialogInterface.OnClickListener() {
+        					public void onClick(DialogInterface dialog, final int which) {
+        						//sp1 is the shared pref to copy to
+        						SharedPreferences.Editor ed = getPreferenceScreen().getSharedPreferences().edit(); 
+        						SharedPreferences sp = getActivity().getSharedPreferences(files[which], MODE_PRIVATE); //The shared preferences to copy from
+        						//Cycle through all the entries in the sp
+        						for(Entry<String,?> entry : sp.getAll().entrySet()){ 
+        						 Object v = entry.getValue(); 
+        						 String key = entry.getKey();
+        						 //Now we just figure out what type it is, so we can copy it.
+        						 // Note that i am using Boolean and Integer instead of boolean and int.
+        						 // That's because the Entry class can only hold objects and int and boolean are primatives.
+        						 if(v instanceof Boolean) 
+        						 // Also note that i have to cast the object to a Boolean 
+        						 // and then use .booleanValue to get the boolean
+        						    ed.putBoolean(key, ((Boolean)v).booleanValue());
+        						 else if(v instanceof Float)
+        						    ed.putFloat(key, ((Float)v).floatValue());
+        						 else if(v instanceof Integer)
+        						    ed.putInt(key, ((Integer)v).intValue());
+        						 else if(v instanceof Long)
+        						    ed.putLong(key, ((Long)v).longValue());
+        						 else if(v instanceof String)
+        						    ed.putString(key, ((String)v));         
+        						}
+        						ed.commit(); //save it.
+        						recreate();
+        						return;
+        					}
+        				});
+        				builder.show();
+        			}   
+        		}
+
+        		return true;
+        	}
+        });
+        
+        Preference buttonSave = findPreference(getString(R.string.pref_key_save_button));
+        buttonSave.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+        	@Override
+        	public boolean onPreferenceClick(Preference preference) {   
+        		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+    			builder.setTitle("Save Presets:");
+    			final EditText input = new EditText(getActivity());
+    			input.setInputType(InputType.TYPE_CLASS_TEXT); 
+    			input.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+    			builder.setView(input);
+    			builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+    				@Override
+    				public void onClick(DialogInterface dialog, int which)
+    				{
+    					final String fileName = input.getText().toString();  
+    					dialog.dismiss();
+    					if(!fileName.isEmpty())
+    					{
+    						File newFile = new File(getApplicationInfo().dataDir + "/shared_prefs/" + fileName + ".xml");
+    						if(newFile.exists())
+    						{
+    							new AlertDialog.Builder(getActivity())
+    							.setTitle("Presets Already Exist")
+    							.setMessage("Do you want to overwrite the existing file?")
+    							.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+    								public void onClick(DialogInterface dialog, int which) {
+    									saveConfig(fileName);
+    								}
+    							})
+    							.setNegativeButton("No", new DialogInterface.OnClickListener() {
+    								public void onClick(DialogInterface dialog, int which) {
+    									dialog.dismiss();
+    								}
+    							})
+    							.show();
+    						}
+    						else
+    						{
+    							saveConfig(fileName);
+    						}
+    					}
+    				}
+    			});
+    			AlertDialog alertToShow = builder.create();
+    			alertToShow.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+    			alertToShow.show();
+
+        		return true;
+        	}
+        });
+        
+        Preference buttonRemove = findPreference(getString(R.string.pref_key_remove_button));
+        buttonRemove.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+        	@Override
+        	public boolean onPreferenceClick(Preference preference) {   
+        		File prefsdir = new File(getApplicationInfo().dataDir,"shared_prefs");
+        		if(prefsdir.exists() && prefsdir.isDirectory()){
+        			ArrayList<String> filesArray = new ArrayList<String>(Arrays.asList(prefsdir.list()));
+        			ArrayList<String> newList = new ArrayList<String>();
+        			filesArray.remove("com.introlab.rtabmap_preferences.xml");
+        			for (String s : filesArray) {
+        				newList.add(s.substring(0, s.length()-4)); // rip off the ".xml"
+        			}
+        			final String[] files = newList.toArray(new String[filesArray.size()]);
+        			if(files.length > 0)
+        			{
+        				AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+        				builder.setTitle("Remove Presets:");
+        				builder.setItems(files, new DialogInterface.OnClickListener() {
+        					public void onClick(DialogInterface dialog, final int which) {
+        						File file = new File(getApplicationInfo().dataDir + "/shared_prefs/" + files[which] + ".xml");
+        						if(file.exists())
+        						{
+        							file.delete();
+        						}
+        						return;
+        					}
+        				});
+        				builder.show();
+        			}   
+        		}
+
+        		return true;
+        	}
+        });
+        
         
         ((Preference)findPreference(getString(R.string.pref_key_density))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_density))).getEntry() + ") "+getString(R.string.pref_summary_density));
         ((Preference)findPreference(getString(R.string.pref_key_depth))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_depth))).getEntry() + ") "+getString(R.string.pref_summary_depth));
@@ -134,5 +289,34 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         // Unregister the listener whenever a key changes
         getPreferenceScreen().getSharedPreferences()
                 .unregisterOnSharedPreferenceChangeListener(this);
+    }
+    
+    private void saveConfig(String fileName)
+    {
+    	//sp1 is the shared pref to copy to
+		SharedPreferences.Editor ed = getActivity().getSharedPreferences(fileName, MODE_PRIVATE).edit(); 
+		SharedPreferences sp = getPreferenceScreen().getSharedPreferences(); //The shared preferences to copy from
+		ed.clear(); // This clears the one we are copying to, but you don't necessarily need to do that.
+		//Cycle through all the entries in the sp
+		for(Entry<String,?> entry : sp.getAll().entrySet()){ 
+		 Object v = entry.getValue(); 
+		 String key = entry.getKey();
+		 //Now we just figure out what type it is, so we can copy it.
+		 // Note that i am using Boolean and Integer instead of boolean and int.
+		 // That's because the Entry class can only hold objects and int and boolean are primatives.
+		 if(v instanceof Boolean) 
+		 // Also note that i have to cast the object to a Boolean 
+		 // and then use .booleanValue to get the boolean
+		    ed.putBoolean(key, ((Boolean)v).booleanValue());
+		 else if(v instanceof Float)
+		    ed.putFloat(key, ((Float)v).floatValue());
+		 else if(v instanceof Integer)
+		    ed.putInt(key, ((Integer)v).intValue());
+		 else if(v instanceof Long)
+		    ed.putLong(key, ((Long)v).longValue());
+		 else if(v instanceof String)
+		    ed.putString(key, ((String)v));         
+		}
+		ed.commit(); //save it.
     }
 }

@@ -41,6 +41,9 @@
     <string name="pref_default_tags">rtabmap 3dscan tango</string>
     <string name="pref_key_rendering">pref_key_rendering</string>
     <string name="pref_default_rendering">2</string>
+    <string name="pref_key_open_button">pref_key_open_button</string>
+    <string name="pref_key_save_button">pref_key_save_button</string>
+    <string name="pref_key_remove_button">pref_key_remove_button</string>
     <string name="pref_key_reset_button">pref_key_reset_button</string>
     <string name="pref_key_density">pref_key_density</string>
     <string name="pref_default_density">1</string>
@@ -763,6 +766,10 @@
         <item>"0.01"</item>
     </string-array>
 
+    <string name="pref_title_presets">Presets</string>
+    <string name="pref_title_open_button">Open</string>
+    <string name="pref_title_save_button">Save</string>
+    <string name="pref_title_remove_button">Remove</string>
     <string name="pref_title_reset_button">Restore All Default Settings</string>
     <string name="title_activity_sketchfab">SketchfabActivity</string>
     <string name="hello_world">Hello world!</string>

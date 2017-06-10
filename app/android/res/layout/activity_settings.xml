@@ -286,8 +286,7 @@
 		        
 		       </PreferenceCategory>
 	 	</PreferenceScreen>
-        
-        <ListPreference 
+	 	<ListPreference 
             android:key="@string/pref_key_gain_max_radius"
     		android:title="@string/pref_title_gain_max_radius"
     		android:summary="@string/pref_summary_gain_max_radius"
@@ -301,7 +300,15 @@
    			android:entries="@array/pref_cluster_ratio_keys"
    			android:entryValues="@array/pref_cluster_ratio_values"
    			android:defaultValue="@string/pref_default_cluster_ratio"/>
-        
+    </PreferenceCategory>
+	<PreferenceCategory
+        android:title="@string/pref_title_presets">
+        <Preference android:title="@string/pref_title_open_button"
+	                android:key="@string/pref_key_open_button"/>
+        <Preference android:title="@string/pref_title_save_button"
+	                android:key="@string/pref_key_save_button"/>
+        <Preference android:title="@string/pref_title_remove_button"
+	                android:key="@string/pref_key_remove_button"/>
 	    <Preference android:title="@string/pref_title_reset_button"
 	                android:key="@string/pref_key_reset_button"/>
     </PreferenceCategory>
