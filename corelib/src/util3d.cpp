@@ -990,12 +990,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 		decimation = 1;
 	}
 
-	UASSERT(!sensorData.imageRaw().empty());
-	UASSERT((!sensorData.depthRaw().empty() && sensorData.cameraModels().size()) ||
-			(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection()));
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-	if(!sensorData.depthRaw().empty() && sensorData.cameraModels().size())
+	if(!sensorData.imageRaw().empty() && !sensorData.depthRaw().empty() && sensorData.cameraModels().size())
 	{
 		//depth
 		UDEBUG("");
@@ -1090,7 +1087,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 			}
 		}
 	}
-	else if(!sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
+	else if(!sensorData.imageRaw().empty() && !sensorData.rightRaw().empty() && sensorData.stereoCameraModel().isValidForProjection())
 	{
 		//stereo
 		UDEBUG("");

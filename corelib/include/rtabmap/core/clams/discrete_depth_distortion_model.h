@@ -32,6 +32,7 @@ RTAB-Map integration: Mathieu Labbe
 
 #include <assert.h>
 #include <vector>
+#include <set>
 #include <Eigen/Core>
 #include <opencv2/opencv.hpp>
 #include <rtabmap/utilite/UMutex.h>

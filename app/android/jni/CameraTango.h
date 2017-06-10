@@ -106,7 +106,8 @@ private:
 
 private:
 	void * tango_config_;
-	bool firstFrame_;
+	Transform previousPose_;
+	double previousStamp_;
 	UTimer cameraStartedTime_;
 	double stampEpochOffset_;
 	bool colorCamera_;

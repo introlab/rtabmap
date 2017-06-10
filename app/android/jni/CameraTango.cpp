@@ -107,7 +107,7 @@ const float CameraTango::bilateralFilteringSigmaR = 0.075f;
 CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, bool smoothing) :
 		Camera(0),
 		tango_config_(0),
-		firstFrame_(true),
+		previousStamp_(0.0),
 		stampEpochOffset_(0.0),
 		colorCamera_(colorCamera),
 		decimation_(decimation),
@@ -427,7 +427,8 @@ void CameraTango::close()
 		tango_config_ = nullptr;
 		TangoService_disconnect();
 	}
-	firstFrame_ = true;
+	previousPose_.setNull();
+	previousStamp_ = 0.0;
 	fisheyeRectifyMapX_ = cv::Mat();
 	fisheyeRectifyMapY_ = cv::Mat();
 }
@@ -866,14 +867,23 @@ void CameraTango::mainLoop()
 			rtabmap::Transform pose = data.groundTruth();
 			data.setGroundTruth(Transform());
 			// convert stamp to epoch
-			if(firstFrame_)
+			bool firstFrame = previousPose_.isNull();
+			if(firstFrame)
 			{
 				stampEpochOffset_ = UTimer::now()-data.stamp();
 			}
 			data.setStamp(stampEpochOffset_ + data.stamp());
-			LOGI("Publish odometry message (variance=%f)", firstFrame_?9999:0.000001);
-			this->post(new OdometryEvent(data, pose, firstFrame_?9999:0.000001, firstFrame_?9999:0.000001));
-			firstFrame_ = false;
+			OdometryInfo info;
+			if(!firstFrame)
+			{
+				info.interval = data.stamp()-previousStamp_;
+				info.transform = previousPose_.inverse() * pose;
+			}
+			info.covariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.000001);
+			LOGI("Publish odometry message (variance=%f)", firstFrame?9999:0.000001);
+			this->post(new OdometryEvent(data, pose, info));
+			previousPose_ = pose;
+			previousStamp_ = data.stamp();
 		}
 		else if(!this->isKilled())
 		{

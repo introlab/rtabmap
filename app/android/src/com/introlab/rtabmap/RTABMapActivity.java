@@ -56,6 +56,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Debug;
 import android.os.IBinder;
+import android.os.Message;
 import android.preference.PreferenceManager;
 import android.text.Editable;
 import android.text.Html;
@@ -120,6 +121,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	public static final String RTABMAP_WORKING_DIR_KEY = "com.introlab.rtabmap.WORKING_DIR";
 	public static final int SKETCHFAB_ACTIVITY_CODE = 999;
 	private String mAuthToken;
+	
+	public static final long NOTOUCH_TIMEOUT = 5000; // 5 sec
+	private boolean mHudVisible = true;
 
 	// UI states
 	private static enum State {
@@ -282,6 +286,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mGLView.setOnTouchListener(new OnTouchListener() {
 	        @Override
 	        public boolean onTouch(View v, MotionEvent event) {
+	        	
+	        	resetNoTouchTimer();
+	        	
 	            mGesDetect.onTouchEvent(event);
 	            
 	            // Pass the touch event to the native layer for camera control.
@@ -432,6 +439,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	@Override
 	protected void onPause() {
 		super.onPause();
+		stopDisconnectTimer();
 		
 		if(!DISABLE_LOG) Log.i(TAG, "onPause()");
 		mOnPause = true;
@@ -578,6 +586,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 		
 		TangoInitializationHelper.bindTangoService(getActivity(), mTangoServiceConnection);
+		resetNoTouchTimer();
 	}
 	
 	private void setCamera(int type)
@@ -628,6 +637,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		default:
 			return;
 		}
+		resetNoTouchTimer();
 	}
 	
 	private void setAndroidOrientation() {
@@ -1150,6 +1160,35 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		});
 		workingThread.start();
 	}
+	
+	private Handler notouchHandler = new Handler(){
+        public void handleMessage(Message msg) {
+        }
+    };
+
+    private Runnable notouchCallback = new Runnable() {
+        @Override
+        public void run() {
+        	mHudVisible = false;
+            updateState(mState);
+        }
+    };
+
+    public void resetNoTouchTimer(){
+    	if(!mHudVisible)
+    	{
+    		mHudVisible = true;
+    		updateState(mState);
+    	}
+    	mHudVisible = true;
+    	
+        notouchHandler.removeCallbacks(notouchCallback);
+        notouchHandler.postDelayed(notouchCallback, NOTOUCH_TIMEOUT);
+    }
+
+    public void stopDisconnectTimer(){
+        notouchHandler.removeCallbacks(notouchCallback);
+    }
 		
 	private void updateState(State state)
 	{	
@@ -1175,10 +1214,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mButtonPause.setVisibility(View.INVISIBLE);
 			break;
 		case STATE_VISUALIZING:
-			mButtonLighting.setVisibility(View.VISIBLE);
-			mButtonCloseVisualization.setVisibility(View.VISIBLE);
-			mButtonSaveOnDevice.setVisibility(View.VISIBLE);
-			mButtonShareOnSketchfab.setVisibility(View.VISIBLE);
+			mButtonLighting.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonCloseVisualization.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonSaveOnDevice.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonShareOnSketchfab.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
 			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
 			mItemOpen.setEnabled(false);
@@ -1201,11 +1240,15 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemSettings.setEnabled(true);
 			mItemReset.setEnabled(true);
 			mItemModes.setEnabled(true);
-			mButtonPause.setVisibility(View.VISIBLE);
+			mButtonPause.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
 			RTABMapLib.postExportation(false);
 			break;
 		}
+		mButtonFirst.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+		mButtonThird.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+		mButtonTop.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+		mButtonBackfaceShown.setVisibility(mHudVisible && (mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked())?View.VISIBLE:View.INVISIBLE);
 	}
 
 	private void pauseMapping() {
@@ -1800,6 +1843,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
 										mExportedOBJ = isOBJ;
+										resetNoTouchTimer();
 										updateState(State.STATE_VISUALIZING);
 										RTABMapLib.postExportation(true);
 										if(mButtonFirst.isChecked())

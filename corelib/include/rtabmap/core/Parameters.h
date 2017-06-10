@@ -327,7 +327,7 @@ class RTABMAP_EXP Parameters
 
     // Local/Proximity loop closure detection
     RTABMAP_PARAM(RGBD, ProximityByTime,              bool, false, "Detection over all locations in STM.");
-    RTABMAP_PARAM(RGBD, ProximityBySpace,             bool, true,  "Detection over locations (in Working Memory or STM) near in space.");
+    RTABMAP_PARAM(RGBD, ProximityBySpace,             bool, true,  "Detection over locations (in Working Memory) near in space.");
     RTABMAP_PARAM(RGBD, ProximityMaxGraphDepth,       int, 50,     "Maximum depth from the current/last loop closure location and the local loop closure hypotheses. Set 0 to ignore.");
     RTABMAP_PARAM(RGBD, ProximityMaxPaths,            int, 3,      "Maximum paths compared (from the most recent) for proximity detection by space. 0 means no limit.");
     RTABMAP_PARAM(RGBD, ProximityPathFilteringRadius, float, 0.5,  "Path filtering radius to reduce the number of nodes to compare in a path. A path should also be inside that radius to be considered for proximity detection.");

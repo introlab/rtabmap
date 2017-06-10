@@ -1914,7 +1914,7 @@ cv::Mat RTABMapApp::mergeTextures(
 		{
 			float scale = 0.0f;
 			std::vector<bool> materialsKept;
-			rtabmap::util3d::concatenateTextureMaterials(mesh, imageSize, textureSize, scale, &materialsKept);
+			rtabmap::util3d::concatenateTextureMaterials(mesh, imageSize, textureSize, 1, scale, &materialsKept);
 			LOGD("scale=%f materials=%d", scale, (int)mesh.tex_materials.size());
 			if(scale && mesh.tex_materials.size()==1)
 			{
@@ -2343,6 +2343,7 @@ bool RTABMapApp::exportMesh(
 				{
 					std::map<int, rtabmap::Transform> cameraPoses;
 					std::map<int, rtabmap::CameraModel> cameraModels;
+					std::map<int, cv::Mat> cameraDepths;
 
 					UTimer timer;
 					LOGI("Assemble clouds (%d)...", (int)poses.size());
@@ -2358,6 +2359,7 @@ bool RTABMapApp::exportMesh(
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 						pcl::IndicesPtr indices(new std::vector<int>);
 						rtabmap::CameraModel model;
+						cv::Mat depth;
 						float gains[3] = {1.0f};
 						if(jter != createdMeshes_.end())
 						{
@@ -2367,6 +2369,9 @@ bool RTABMapApp::exportMesh(
 							gains[0] = jter->second.gains[0];
 							gains[1] = jter->second.gains[1];
 							gains[2] = jter->second.gains[2];
+
+							rtabmap::SensorData data = rtabmap_->getMemory()->getNodeData(iter->first, false);
+							data.uncompressData(0, &depth);
 						}
 						else
 						{
@@ -2375,6 +2380,7 @@ bool RTABMapApp::exportMesh(
 							{
 								cloud = rtabmap::util3d::cloudRGBFromSensorData(data, meshDecimation_, maxCloudDepth_, minCloudDepth_, indices.get());
 								model = data.cameraModels()[0];
+								depth = data.depthRaw();
 							}
 						}
 						if(cloud->size() && indices->size() && model.isValidForProjection())
@@ -2422,6 +2428,10 @@ bool RTABMapApp::exportMesh(
 
 							cameraPoses.insert(std::make_pair(iter->first, iter->second));
 							cameraModels.insert(std::make_pair(iter->first, model));
+							if(!depth.empty())
+							{
+								cameraDepths.insert(std::make_pair(iter->first, depth));
+							}
 
 							LOGI("Assembled %d points (%d/%d total=%d)", (int)cloudWithNormals->size(), ++cloudCount, (int)poses.size(), (int)mergedClouds->size());
 						}
@@ -2733,7 +2743,10 @@ bool RTABMapApp::exportMesh(
 										mesh,
 										cameraPoses,
 										cameraModels,
+										cameraDepths,
 										optimizedMaxTextureDistance,
+										0.0f,
+										0.0f,
 										optimizedMinTextureClusterSize,
 										std::vector<float>(),
 										&progressionStatus_,

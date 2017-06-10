@@ -1327,7 +1327,7 @@ pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 
 				cv::Mat depth = cameras[current_cam].depth;
 				bool currentDepthSet = false;
-				float maxDepthError = max_depth_error_==0.0f?std::sqrt(iter->second.longestEdgeSqrd) : max_depth_error_;
+				float maxDepthError = max_depth_error_==0.0f?std::sqrt(iter->second.longestEdgeSqrd)*2.0f : max_depth_error_;
 				if(!cameras[current_cam].depth.empty() && maxDepthError > 0.0f)
 				{
 					float d1 = depth.type() == CV_32FC1?
