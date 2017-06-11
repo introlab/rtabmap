@@ -228,6 +228,14 @@
 	   			android:defaultValue="@string/pref_default_texture_size"/>
 	        
 	        <ListPreference 
+	            android:key="@string/pref_key_texture_count"
+	    		android:title="@string/pref_title_texture_count"
+	    		android:summary="@string/pref_summary_texture_count"
+	   			android:entries="@array/pref_texture_count_keys"
+	   			android:entryValues="@array/pref_texture_count_values"
+	   			android:defaultValue="@string/pref_default_texture_count"/>
+	        
+	        <ListPreference 
 	            android:key="@string/pref_key_normal_k"
 	    		android:title="@string/pref_title_normal_k"
 	    		android:summary="@string/pref_summary_normal_k"

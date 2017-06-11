@@ -97,6 +97,7 @@ public class RTABMapLib
     		boolean regenerateCloud,
     		boolean meshing,
     		int textureSize,
+    		int textureCount,
     		int normalK,
     		boolean optimized,
     		float optimizedVoxelSize,

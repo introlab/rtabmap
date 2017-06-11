@@ -109,7 +109,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	public static final String EXTRA_VALUE_ADF = "ADF_LOAD_SAVE_PERMISSION";
 	
 	public static final String RTABMAP_TMP_DB = "rtabmap.tmp.db";
-	public static final String RTABMAP_TMP_DIR = "tmp/";
+	public static final String RTABMAP_TMP_DIR = "tmp";
 	public static final String RTABMAP_TMP_FILENAME = "map";
 	public static final String RTABMAP_SDCARD_PATH = "/sdcard/";
 	public static final String RTABMAP_EXPORT_DIR = "Export/";
@@ -627,6 +627,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			break;
 		case R.id.close_visualization_button:
 			updateState(State.STATE_IDLE);
+			RTABMapLib.postExportation(false);
 			break;
 		case R.id.button_saveOnDevice:
 			saveOnDevice();
@@ -1094,7 +1095,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	private RTABMapActivity getActivity() {return this;}
 
-	private String[] loadFileList(String directory) {
+	private String[] loadFileList(String directory, final boolean databasesOnly) {
 		File path = new File(directory); 
 		String fileList[];
 		try {
@@ -1109,7 +1110,14 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				@Override
 				public boolean accept(File dir, String filename) {
 					File sel = new File(dir, filename);
-					return filename.compareTo(RTABMAP_TMP_DB) != 0 && filename.endsWith(".db");
+					if(databasesOnly)
+					{
+						return filename.compareTo(RTABMAP_TMP_DB) != 0 && filename.endsWith(".db");
+					}
+					else
+					{
+						return sel.isFile();
+					}
 				}
 
 			};
@@ -1242,7 +1250,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemModes.setEnabled(true);
 			mButtonPause.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
-			RTABMapLib.postExportation(false);
 			break;
 		}
 		mButtonFirst.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
@@ -1713,7 +1720,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 		else if(itemId == R.id.open)
 		{
-			final String[] files = loadFileList(mWorkingDirectory);
+			final String[] files = loadFileList(mWorkingDirectory, true);
 			if(files.length > 0)
 			{
 				String[] filesWithSize = new String[files.length];
@@ -1774,6 +1781,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		final String cloudVoxelSizeStr = sharedPref.getString(getString(R.string.pref_key_cloud_voxel), getString(R.string.pref_default_cloud_voxel));
 		final float cloudVoxelSize = Float.parseFloat(cloudVoxelSizeStr);
 		final int textureSize = isOBJ?Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_texture_size), getString(R.string.pref_default_texture_size))):0;
+		final int textureCount = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_texture_count), getString(R.string.pref_default_texture_count)));
 		final int normalK = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_normal_k), getString(R.string.pref_default_normal_k)));
 		final float maxTextureDistance = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_max_texture_distance), getString(R.string.pref_default_max_texture_distance)));
 		final int minTextureClusterSize = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_min_texture_cluster_size), getString(R.string.pref_default_min_texture_cluster_size)));
@@ -1793,10 +1801,24 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		
 		mExportProgressDialog.show();
 		updateState(State.STATE_PROCESSING);
-		final String tmpPath = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + extension;
+		final String tmpPath = mWorkingDirectory + RTABMAP_TMP_DIR + "/" + RTABMAP_TMP_FILENAME + extension;
 	
 		File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
 		tmpDir.mkdirs();
+		String[] fileNames = loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
+		if(!DISABLE_LOG) Log.i(TAG, String.format("Deleting %d files in \"%s\"", fileNames.length, mWorkingDirectory + RTABMAP_TMP_DIR));
+		for(int i=0; i<fileNames.length; ++i)
+		{
+			File f = new File(mWorkingDirectory + RTABMAP_TMP_DIR + "/" + fileNames[i]);
+			if(f.delete())
+			{
+				if(!DISABLE_LOG) Log.i(TAG, String.format("Deleted \"%s\"", f.getPath()));
+			}
+			else
+			{
+				if(!DISABLE_LOG) Log.i(TAG, String.format("Failed deleting \"%s\"", f.getPath()));
+			}
+		}
 		File exportDir = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR);
 		exportDir.mkdirs();
 		
@@ -1811,6 +1833,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 						regenerateCloud,
 						meshing,
 						textureSize,
+						textureCount,
 						normalK,
 						optimized,
 						optimizedVoxelSize,
@@ -2043,22 +2066,32 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
 			pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".zip";
 
-			String[] filesToZip = new String[3];
-			filesToZip[0] = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".obj";
-			filesToZip[1] = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".mtl";
-			filesToZip[2] = mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".jpg";
-
-			File toZIPFile = new File(zipOutput);
-			toZIPFile.delete();			
-			
-			try
+			String[] fileNames = loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
+			if(fileNames.length > 0)
 			{
-				Util.zip(filesToZip, zipOutput);
-				mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", pathHuman), mToast.LENGTH_LONG).show();
+				String[] filesToZip = new String[fileNames.length];
+				for(int i=0; i<fileNames.length; ++i)
+				{
+					filesToZip[i] = mWorkingDirectory + RTABMAP_TMP_DIR + "/" + fileNames[i];
+				}
+	
+				File toZIPFile = new File(zipOutput);
+				toZIPFile.delete();			
+				
+				try
+				{
+					Util.zip(filesToZip, zipOutput);
+					mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", pathHuman), mToast.LENGTH_LONG).show();
+				}
+				catch(IOException e)
+				{
+					mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! Error=%s", pathHuman, e.getMessage()), mToast.LENGTH_LONG).show();
+					success = false;
+				}
 			}
-			catch(IOException e)
+			else
 			{
-				mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! Error=%s", pathHuman, e.getMessage()), mToast.LENGTH_LONG).show();
+				mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! No files found in tmp directory!?", pathHuman), mToast.LENGTH_LONG).show();
 				success = false;
 			}
 		}
@@ -2069,7 +2102,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			
 			File toPLYFile = new File(path);
 			toPLYFile.delete();
-			File fromPLYFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + RTABMAP_TMP_FILENAME + ".ply");
+			File fromPLYFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + "/" + RTABMAP_TMP_FILENAME + ".ply");
 			
 			try
 			{

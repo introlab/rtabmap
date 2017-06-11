@@ -109,6 +109,8 @@
     <string name="pref_default_cloud_voxel">0.01</string>
     <string name="pref_key_texture_size">pref_key_texture_size</string>
     <string name="pref_default_texture_size">4096</string>
+    <string name="pref_key_texture_count">pref_key_texture_count</string>
+    <string name="pref_default_texture_count">1</string>
     <string name="pref_key_normal_k">pref_key_normal_k</string>
     <string name="pref_default_normal_k">18</string>
     <string name="pref_key_max_texture_distance">pref_key_max_texture_distance</string>
@@ -565,6 +567,8 @@
     <string name="pref_summary_cloud_voxel">If you don\'t need a very precise point cloud, you can set this to reduce the output point cloud size. This is also used for optimized mesh.</string>
     <string name="pref_title_texture_size">Texture Size</string>
     <string name="pref_summary_texture_size">If the map is large, you may want to increase this to maximize the texture resolution.</string>
+    <string name="pref_title_texture_count">Maximum Output Textures</string>
+    <string name="pref_summary_texture_count">Note that all textures are still merged into one for visualization, but exported in multiple files.</string>
     <string name="pref_title_normal_k">Normal K</string>
     <string name="pref_summary_normal_k">K-nearest neighbors used for normal computation when a mesh is created.</string>
     <string name="pref_title_max_texture_distance">Max Texture Distance</string>
@@ -605,6 +609,26 @@
         <item>"4096"</item>
         <item>"2048"</item>
         <item>"1024"</item>
+    </string-array>
+    <string-array name="pref_texture_count_keys">
+        <item>"8"</item>
+        <item>"7"</item>
+        <item>"6"</item>
+        <item>"5"</item>
+        <item>"4"</item>
+        <item>"3"</item>
+        <item>"2"</item>
+        <item>"1"</item>
+    </string-array>
+    <string-array name="pref_texture_count_values">
+        <item>"8"</item>
+        <item>"7"</item>
+        <item>"6"</item>
+        <item>"5"</item>
+        <item>"4"</item>
+        <item>"3"</item>
+        <item>"2"</item>
+        <item>"1"</item>
     </string-array>
     <string-array name="pref_normal_k_values">
         <item>"30"</item>

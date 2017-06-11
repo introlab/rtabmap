@@ -206,6 +206,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         
         ((Preference)findPreference(getString(R.string.pref_key_cloud_voxel))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_cloud_voxel))).getEntry() + ") "+getString(R.string.pref_summary_cloud_voxel));
         ((Preference)findPreference(getString(R.string.pref_key_texture_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_texture_size))).getEntry() + ") "+getString(R.string.pref_summary_texture_size));
+        ((Preference)findPreference(getString(R.string.pref_key_texture_count))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_texture_count))).getEntry() + ") "+getString(R.string.pref_summary_texture_count));
         ((Preference)findPreference(getString(R.string.pref_key_normal_k))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_normal_k))).getEntry() + ") "+getString(R.string.pref_summary_normal_k));
         ((Preference)findPreference(getString(R.string.pref_key_max_texture_distance))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_max_texture_distance))).getEntry() + ") "+getString(R.string.pref_summary_max_texture_distance));
         ((Preference)findPreference(getString(R.string.pref_key_min_texture_cluster_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_min_texture_cluster_size))).getEntry() + ") "+getString(R.string.pref_summary_min_texture_cluster_size));
@@ -262,6 +263,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	
         	if(key.compareTo(getString(R.string.pref_key_cloud_voxel))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_cloud_voxel));
         	if(key.compareTo(getString(R.string.pref_key_texture_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_texture_size));
+        	if(key.compareTo(getString(R.string.pref_key_texture_count))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_texture_count));
         	if(key.compareTo(getString(R.string.pref_key_normal_k))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_normal_k));
         	if(key.compareTo(getString(R.string.pref_key_max_texture_distance))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_max_texture_distance));
         	if(key.compareTo(getString(R.string.pref_key_min_texture_cluster_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_min_texture_cluster_size));

@@ -146,8 +146,9 @@ class RTABMapApp : public UEventsHandler {
 
   void resetMapping();
   void save(const std::string & databasePath);
-  cv::Mat mergeTextures(pcl::TextureMesh & mesh,
+  std::vector<cv::Mat> mergeTextures(pcl::TextureMesh & mesh,
 		  int textureSize,
+		  int textureCount,
 		  const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels) const;
   void cancelProcessing();
   bool exportMesh(
@@ -156,6 +157,7 @@ class RTABMapApp : public UEventsHandler {
 		  bool regenerateCloud,
 		  bool meshing,
 		  int textureSize,
+		  int textureCount,
 		  int normalK,
 		  bool optimized,
 		  float optimizedVoxelSize,

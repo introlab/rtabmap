@@ -1873,14 +1873,15 @@ double sqr(uchar v)
 	return double(v)*double(v);
 }
 
-cv::Mat RTABMapApp::mergeTextures(
+std::vector<cv::Mat> RTABMapApp::mergeTextures(
 		pcl::TextureMesh & mesh,
 		int textureSize,
+		int textureCount,
 		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels) const
 {
 	UASSERT(textureSize> 0);
-	LOGD("textureSize = %d materials=%d", textureSize, mesh.tex_materials.size());
-	cv::Mat globalTexture;
+	LOGD("textureSize = %d textureCount=%d materials=%d", textureSize, textureCount, mesh.tex_materials.size());
+	std::vector<cv::Mat> globalTextures;
 	if(mesh.tex_materials.size() >= 1)
 	{
 		std::vector<int> textures(mesh.tex_materials.size(), -1);
@@ -1914,14 +1915,19 @@ cv::Mat RTABMapApp::mergeTextures(
 		{
 			float scale = 0.0f;
 			std::vector<bool> materialsKept;
-			rtabmap::util3d::concatenateTextureMaterials(mesh, imageSize, textureSize, 1, scale, &materialsKept);
+			rtabmap::util3d::concatenateTextureMaterials(mesh, imageSize, textureSize, textureCount, scale, &materialsKept);
 			LOGD("scale=%f materials=%d", scale, (int)mesh.tex_materials.size());
-			if(scale && mesh.tex_materials.size()==1)
+			if(scale && mesh.tex_materials.size())
 			{
+				int materials = (int)mesh.tex_materials.size();
 				int cols = float(textureSize)/(scale*imageSize.width);
+				int rows = float(textureSize)/(scale*imageSize.height);
 
-				globalTexture = cv::Mat(textureSize, textureSize, imageType, cv::Scalar::all(255));
-				cv::Mat globalTextureMask = cv::Mat(textureSize, textureSize, CV_8UC1, cv::Scalar::all(0));
+				globalTextures.resize(materials);
+				for(int i=0; i<materials; ++i)
+				{
+					globalTextures[i] = cv::Mat(textureSize, textureSize, imageType, cv::Scalar::all(255));
+				}
 
 				// make a blank texture
 				cv::Mat emptyImage(int(imageSize.height*scale), int(imageSize.width*scale), imageType, cv::Scalar::all(255));
@@ -1933,8 +1939,11 @@ cv::Mat RTABMapApp::mergeTextures(
 				{
 					if(materialsKept.at(i))
 					{
+						int indexMaterial = oi / (cols*rows);
+						UASSERT(indexMaterial < materials);
+
 						int u = oi%cols * emptyImage.cols;
-						int v = oi/cols * emptyImage.rows;
+						int v = ((oi/cols) % rows ) * emptyImage.rows;
 						UASSERT(u < textureSize-emptyImage.cols);
 						UASSERT(v < textureSize-emptyImage.rows);
 						newCamIndex[i] = oi;
@@ -1967,13 +1976,12 @@ cv::Mat RTABMapApp::mergeTextures(
 								cv::cvtColor(resizedImage,resizedImageColor,CV_GRAY2RGB);
 								resizedImage = resizedImageColor;
 							}
-							UASSERT(resizedImage.type() == globalTexture.type());
-							resizedImage.copyTo(globalTexture(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
-							emptyImageMask.copyTo(globalTextureMask(cv::Rect(u, v, emptyImageMask.cols, emptyImageMask.rows)));
+							UASSERT(resizedImage.type() == globalTextures[indexMaterial].type());
+							resizedImage.copyTo(globalTextures[indexMaterial](cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
 						}
 						else
 						{
-							emptyImage.copyTo(globalTexture(cv::Rect(u, v, emptyImage.cols, emptyImage.rows)));
+							emptyImage.copyTo(globalTextures[indexMaterial](cv::Rect(u, v, emptyImage.cols, emptyImage.rows)));
 						}
 						++oi;
 					}
@@ -1988,6 +1996,7 @@ cv::Mat RTABMapApp::mergeTextures(
 
 				if(vertexToPixels.size())
 				{
+					LOGD("gain compensation");
 					// gain compensation
 					const int num_images = static_cast<int>(oi);
 					cv::Mat_<int> N(num_images, num_images); N.setTo(0);
@@ -2019,13 +2028,15 @@ cv::Mat RTABMapApp::mergeTextures(
 										N(i, j) += 1;
 										N(j, i) += 1;
 
+										int indexMaterial = i / (cols*rows);
+
 										// uv in globalTexture
 										int ui = iter->second.x*emptyImage.cols + imageOrigin[iter->first].x;
 										int vi = (1.0-iter->second.y)*emptyImage.rows + imageOrigin[iter->first].y;
 										int uj = jter->second.x*emptyImage.cols + imageOrigin[jter->first].x;
 										int vj = (1.0-jter->second.y)*emptyImage.rows + imageOrigin[jter->first].y;
-										cv::Vec3b * pt1 = globalTexture.ptr<cv::Vec3b>(vi,ui);
-										cv::Vec3b * pt2 = globalTexture.ptr<cv::Vec3b>(vj,uj);
+										cv::Vec3b * pt1 = globalTextures[indexMaterial].ptr<cv::Vec3b>(vi,ui);
+										cv::Vec3b * pt2 = globalTextures[indexMaterial].ptr<cv::Vec3b>(vj,uj);
 
 										I(i, j) += std::sqrt(static_cast<double>(sqr(pt1->val[0]) + sqr(pt1->val[1]) + sqr(pt1->val[2])));
 										I(j, i) += std::sqrt(static_cast<double>(sqr(pt2->val[0]) + sqr(pt2->val[1]) + sqr(pt2->val[2])));
@@ -2044,9 +2055,16 @@ cv::Mat RTABMapApp::mergeTextures(
 
 					for(int i=0; i<num_images; ++i)
 					{
-						for(int j=i+1; j<num_images; ++j)
+						for(int j=i; j<num_images; ++j)
 						{
-							if(N(i, j))
+							if(i == j)
+							{
+								if(N(i,j) == 0)
+								{
+									N(i,j) = 1;
+								}
+							}
+							else if(N(i, j))
 							{
 								I(i, j) /= N(i, j);
 								I(j, i) /= N(j, i);
@@ -2113,7 +2131,8 @@ cv::Mat RTABMapApp::mergeTextures(
 							int u = imageOrigin[t].x;
 							int v = imageOrigin[t].y;
 
-							cv::Mat roi = globalTexture(cv::Rect(u, v, emptyImage.cols, emptyImage.rows));
+							int indexMaterial = newCamIndex[t] / (cols*rows);
+							cv::Mat roi = globalTextures[indexMaterial](cv::Rect(u, v, emptyImage.cols, emptyImage.rows));
 
 							std::vector<cv::Mat> channels;
 							cv::split(roi, channels);
@@ -2127,6 +2146,7 @@ cv::Mat RTABMapApp::mergeTextures(
 					progressionStatus_.increment();
 
 					// blending BGR
+					LOGD("blending");
 					int decimation = 0;
 
 					// determinate decimation to apply
@@ -2168,7 +2188,13 @@ cv::Mat RTABMapApp::mergeTextures(
 
 					if(decimation>0)
 					{
-						cv::Mat blendGains(globalTexture.rows/decimation, globalTexture.cols/decimation, CV_32FC3, cv::Scalar::all(1.0f));
+						LOGD("blending decimation=%d", decimation);
+						std::vector<cv::Mat> blendGains(materials);
+						for(int i=0; i<materials;++i)
+						{
+							blendGains[i] = cv::Mat(globalTextures[i].rows/decimation, globalTextures[i].cols/decimation, CV_32FC3, cv::Scalar::all(1.0f));
+						}
+
 						for(unsigned int p=0; p<vertexToPixels.size(); ++p)
 						{
 							if(vertexToPixels[p].size() > 1)
@@ -2191,7 +2217,8 @@ cv::Mat RTABMapApp::mergeTextures(
 										{
 											weight = 0.0f;
 										}
-										cv::Vec3b * pt = globalTexture.ptr<cv::Vec3b>(v,u);
+										int indexMaterial = newCamIndex[iter->first] / (cols*rows);
+										cv::Vec3b * pt = globalTextures[indexMaterial].ptr<cv::Vec3b>(v,u);
 										gainsB[k] = static_cast<double>(pt->val[0]) * weight;
 										gainsG[k] = static_cast<double>(pt->val[1]) * weight;
 										gainsR[k] = static_cast<double>(pt->val[2]) * weight;
@@ -2215,11 +2242,12 @@ cv::Mat RTABMapApp::mergeTextures(
 										{
 											int u = iter->second.x*emptyImage.cols + imageOrigin[iter->first].x;
 											int v = (1.0-iter->second.y)*emptyImage.rows + imageOrigin[iter->first].y;
-											cv::Vec3b * pt = globalTexture.ptr<cv::Vec3b>(v,u);
+											int indexMaterial = newCamIndex[iter->first] / (cols*rows);
+											cv::Vec3b * pt = globalTextures[indexMaterial].ptr<cv::Vec3b>(v,u);
 											float gB = targetColor[0]/(pt->val[0]==0?1.0f:pt->val[0]);
 											float gG = targetColor[1]/(pt->val[1]==0?1.0f:pt->val[1]);
 											float gR = targetColor[2]/(pt->val[2]==0?1.0f:pt->val[2]);
-											cv::Vec3f * ptr = blendGains.ptr<cv::Vec3f>(v/decimation, u/decimation);
+											cv::Vec3f * ptr = blendGains[indexMaterial].ptr<cv::Vec3f>(v/decimation, u/decimation);
 											ptr->val[0] = (gB>1.3f)?1.3f:(gB<0.7f)?0.7f:gB;
 											ptr->val[1] = (gG>1.3f)?1.3f:(gG<0.7f)?0.7f:gG;
 											ptr->val[2] = (gR>1.3f)?1.3f:(gR<0.7f)?0.7f:gR;
@@ -2229,11 +2257,15 @@ cv::Mat RTABMapApp::mergeTextures(
 							}
 						}
 
-						cv::Mat dst;
-						cv::blur(blendGains, dst, cv::Size(3,3));
-						cv::resize(dst, blendGains, globalTexture.size(), 0, 0, cv::INTER_LINEAR);
+						LOGD("blending multiply");
+						for(int i=0; i<materials; ++i)
+						{
+							cv::Mat dst;
+							cv::blur(blendGains[i], dst, cv::Size(3,3));
+							cv::resize(dst, blendGains[i], globalTextures[i].size(), 0, 0, cv::INTER_LINEAR);
 
-						cv::multiply(globalTexture, blendGains, globalTexture, 1.0, CV_8UC3);
+							cv::multiply(globalTextures[i], blendGains[i], globalTextures[i], 1.0, CV_8UC3);
+						}
 					}
 					progressionStatus_.increment();
 				}
@@ -2252,7 +2284,7 @@ cv::Mat RTABMapApp::mergeTextures(
 			UERROR("No image size set!");
 		}
 	}
-	return globalTexture;
+	return globalTextures;
 }
 
 void RTABMapApp::cancelProcessing()
@@ -2267,6 +2299,7 @@ bool RTABMapApp::exportMesh(
 		bool regenerateCloud,
 		bool meshing,
 		int textureSize,
+		int textureCount,
 		int normalK,
 		bool optimized,
 		float optimizedVoxelSize,
@@ -2336,7 +2369,7 @@ bool RTABMapApp::exportMesh(
 			pcl::PolygonMesh::Ptr polygonMesh(new pcl::PolygonMesh);
 			pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 			std::vector<std::map<int, pcl::PointXY> > vertexToPixels;
-			cv::Mat globalTexture;
+			std::vector<cv::Mat> globalTextures;
 			int totalPolygons = 0;
 			{
 				if(optimized)
@@ -3046,7 +3079,7 @@ bool RTABMapApp::exportMesh(
 				if(textureSize>0 && totalPolygons && textureMesh->tex_materials.size())
 				{
 					LOGI("Merging %d textures...", (int)textureMesh->tex_materials.size());
-					globalTexture = mergeTextures(*textureMesh, textureSize, vertexToPixels);
+					globalTextures = mergeTextures(*textureMesh, textureSize, textureCount, vertexToPixels);
 
 					if(progressionStatus_.isCanceled())
 					{
@@ -3058,18 +3091,28 @@ bool RTABMapApp::exportMesh(
 						return false;
 					}
 
+					LOGD("Saving texture(s) (%d)", (int)globalTextures.size());
 					std::string baseName = uSplit(UFile::getName(filePath), '.').front();
 					std::string textureDirectory = UDirectory::getDir(filePath);
-					std::string fullPath = textureDirectory+UDirectory::separator()+baseName+".jpg";
-					textureMesh->tex_materials[0].tex_file = baseName+".jpg";
-					LOGI("Saving texture to %s.", fullPath.c_str());
-					if(!cv::imwrite(fullPath, globalTexture))
+					UASSERT(textureMesh->tex_materials.size() == globalTextures.size());
+					for(unsigned int i=0; i<textureMesh->tex_materials.size(); ++i)
 					{
-						LOGI("Failed saving %s!", fullPath.c_str());
-					}
-					else
-					{
-						LOGI("Saved %s (%d bytes).", fullPath.c_str(), globalTexture.total()*globalTexture.channels());
+						std::string baseNameNum = baseName;
+						if(textureMesh->tex_materials.size()>1)
+						{
+							baseNameNum+=uNumber2Str(i);
+						}
+						std::string fullPath = textureDirectory+UDirectory::separator()+baseNameNum+".jpg";
+						textureMesh->tex_materials[i].tex_file = baseNameNum+".jpg";
+						LOGI("Saving texture to %s.", fullPath.c_str());
+						if(!cv::imwrite(fullPath, globalTextures[i]))
+						{
+							LOGI("Failed saving %s!", fullPath.c_str());
+						}
+						else
+						{
+							LOGI("Saved %s (%d bytes).", fullPath.c_str(), globalTextures[i].total()*globalTextures[i].channels());
+						}
 					}
 				}
 				if(progressionStatus_.isCanceled())
@@ -3108,14 +3151,54 @@ bool RTABMapApp::exportMesh(
 				}
 				else if(textureMesh->tex_materials.size())
 				{
-					UASSERT(textureMesh->tex_polygons.size() && (int)textureMesh->tex_polygons[0].size() == totalPolygons);
 					LOGI("Saving obj (%d vertices, %d polygons) to %s.", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, totalPolygons, filePath.c_str());
 					success = pcl::io::saveOBJFile(filePath, *textureMesh) == 0;
 					if(success)
 					{
 						LOGI("Saved obj to %s!", filePath.c_str());
 						exportedMesh_ = textureMesh;
-						exportedTexture_ = globalTexture;
+						if(globalTextures.size() == 1)
+						{
+							exportedTexture_ = globalTextures[0];
+						}
+						else if(globalTextures.size() > 1)
+						{
+							// Visualization doesn't support more than one material, so concatenate to 1
+							std::vector<bool> materialsKept;
+							float scale = 0.0f;
+							cv::Size imageSize = globalTextures[0].size();
+							int imageType = CV_8UC3;
+							rtabmap::util3d::concatenateTextureMaterials(*exportedMesh_, imageSize, textureSize, 1, scale, &materialsKept);
+							if(scale && exportedMesh_->tex_materials.size() == 1)
+							{
+								int cols = float(textureSize)/(scale*imageSize.width);
+								int rows = float(textureSize)/(scale*imageSize.height);
+
+								exportedTexture_ = cv::Mat(textureSize, textureSize, imageType, cv::Scalar::all(255));
+
+								// make a blank texture
+								cv::Size resizedImageSize(int(imageSize.width*scale), int(imageSize.height*scale));
+								int oi=0;
+								for(int i=0; i<(int)globalTextures.size(); ++i)
+								{
+									if(materialsKept.at(i))
+									{
+										int u = oi%cols * resizedImageSize.width;
+										int v = ((oi/cols) % rows ) * resizedImageSize.height;
+										UASSERT(u < textureSize-resizedImageSize.width);
+										UASSERT(v < textureSize-resizedImageSize.height);
+
+										cv::Mat resizedImage;
+										cv::resize(globalTextures[i], resizedImage, resizedImageSize, 0.0f, 0.0f, cv::INTER_AREA);
+
+										UASSERT(resizedImage.type() == exportedTexture_.type());
+										resizedImage.copyTo(exportedTexture_(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
+
+										++oi;
+									}
+								}
+							}
+						}
 					}
 					else
 					{
