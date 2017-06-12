@@ -402,6 +402,15 @@ void ParametersToolBox::addParameter(QVBoxLayout * layout,
 		widget->setMinimum(def*1000000.0);
 		widget->setMaximum(0.0);
 	}
+
+	// set minimum for selected parameters
+	if(key.compare(Parameters::kGridMinGroundHeight().c_str()) == 0 ||
+		key.compare(Parameters::kGridMaxGroundHeight().c_str()) == 0 ||
+		key.compare(Parameters::kGridMaxObstacleHeight().c_str()) == 0)
+	{
+		widget->setMinimum(-1000000.0);
+	}
+
 	widget->setValue(value);
 	widget->setObjectName(key);
 	connect(widget, SIGNAL(editingFinished()), this, SLOT(changeParameter()));

@@ -98,8 +98,8 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridMaxObstacleHeight(), maxObstacleHeight_);
 	Parameters::parse(parameters, Parameters::kGridMinGroundHeight(), minGroundHeight_);
 	Parameters::parse(parameters, Parameters::kGridMaxGroundHeight(), maxGroundHeight_);
-	if(maxGroundHeight_ > 0 &&
-		maxObstacleHeight_ > 0 &&
+	if(maxGroundHeight_ != 0.0f &&
+		maxObstacleHeight_ != 0.0f &&
 		maxObstacleHeight_ < maxGroundHeight_)
 	{
 		UWARN("\"%s\" should be lower than \"%s\", setting \"%s\" to 0 (disabled).",
@@ -108,8 +108,8 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 				Parameters::kGridMaxObstacleHeight().c_str());
 		maxObstacleHeight_ = 0;
 	}
-	if(maxGroundHeight_ > 0 &&
-			minGroundHeight_ > 0 &&
+	if(maxGroundHeight_ != 0.0f &&
+		minGroundHeight_ != 0.0f &&
 		maxGroundHeight_ < minGroundHeight_)
 	{
 		UWARN("\"%s\" should be lower than \"%s\", setting \"%s\" to 0 (disabled).",
@@ -175,9 +175,9 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 		}
 	}
 
-	if(maxGroundHeight_ <= 0.0f && !normalsSegmentation_)
+	if(maxGroundHeight_ == 0.0f && !normalsSegmentation_)
 	{
-		UWARN("\"%s\" should be greater than 0 if not using normals "
+		UWARN("\"%s\" should be not equal to 0 if not using normals "
 				"segmentation approach. Setting it to cell size (%f).",
 				Parameters::kGridMaxGroundHeight().c_str(), cellSize_);
 		maxGroundHeight_ = cellSize_;

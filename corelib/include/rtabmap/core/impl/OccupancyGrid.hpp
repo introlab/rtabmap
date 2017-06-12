@@ -82,7 +82,7 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 	}
 
 	// filter ground/obstacles zone
-	if(minGroundHeight_ != 0.0f || maxObstacleHeight_ > 0.0f)
+	if(minGroundHeight_ != 0.0f || maxObstacleHeight_ != 0.0f)
 	{
 		indices = util3d::passThrough(cloud, indices, "z",
 				minGroundHeight_!=0.0f?minGroundHeight_:std::numeric_limits<int>::min(),
@@ -98,7 +98,7 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 			UDEBUG("maxGroundAngle=%f", maxGroundAngle_);
 			UDEBUG("Cluster radius=%f", clusterRadius_);
 			UDEBUG("flatObstaclesDetected=%d", flatObstaclesDetected_?1:0);
-			UDEBUG("maxGroundHeight=%f", maxGroundHeight_?1:0);
+			UDEBUG("maxGroundHeight=%f", maxGroundHeight_);
 			util3d::segmentObstaclesFromGround<PointT>(
 					cloud,
 					indices,
@@ -121,8 +121,15 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		{
 			UDEBUG("");
 			// passthrough filter
-			groundIndices = rtabmap::util3d::passThrough(cloud, indices, "z", minGroundHeight_<0.0f?minGroundHeight_:std::numeric_limits<int>::min(), maxGroundHeight_);
-			obstaclesIndices = rtabmap::util3d::extractIndices(cloud, groundIndices, true);
+			groundIndices = rtabmap::util3d::passThrough(cloud, indices, "z", minGroundHeight_!=0.0f?minGroundHeight_:std::numeric_limits<int>::min(), maxGroundHeight_);
+
+			pcl::IndicesPtr notObstacles = groundIndices;
+			if(indices->size())
+			{
+				notObstacles = util3d::extractIndices(cloud, indices, true);
+				notObstacles = util3d::concatenate(notObstacles, groundIndices);
+			}
+			obstaclesIndices = rtabmap::util3d::extractIndices(cloud, notObstacles, true);
 		}
 
 		UDEBUG("groundIndices=%d obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
