@@ -55,12 +55,13 @@ private:
 		  float gainG = 1.0f,
 		  float gainB = 1.0f);
   PointCloudDrawable(
-    	  const Mesh & mesh);
+    	  const Mesh & mesh,
+		  bool createWireframe = false);
   virtual ~PointCloudDrawable();
 
-  void updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes = std::vector<pcl::Vertices>());
+  void updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes = std::vector<pcl::Vertices>(), bool createWireframe = false);
   void updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices);
-  void updateMesh(const Mesh & mesh);
+  void updateMesh(const Mesh & mesh, bool createWireframe = false);
   void setPose(const rtabmap::Transform & pose);
   void setVisible(bool visible) {visible_=visible;}
   void setGains(float gainR, float gainG, float gainB) {gainR_ = gainR; gainG_ = gainG; gainB_ = gainB;}
@@ -93,7 +94,8 @@ private:
 		  int screenHeight = 0,    // nonnull if depthTexture>0
 		  float nearClipPlane = 0, // nonnull if depthTexture>0
 		  float farClipPlane = 0,  // nonnull if depthTexture>0
-		  bool packDepthToColorChannel = false) const;
+		  bool packDepthToColorChannel = false,
+		  bool wireFrame = false) const;
 
  private:
   template<class PointT>
@@ -114,6 +116,8 @@ private:
   GLuint textures_;
   std::vector<GLuint> polygons_;
   std::vector<GLuint> polygonsLowRes_;
+  std::vector<GLuint> polygonLines_;
+  std::vector<GLuint> polygonLinesLowRes_;
   std::vector<GLuint> verticesLowRes_;
   std::vector<GLuint> verticesLowLowRes_;
   int nPoints_;

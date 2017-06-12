@@ -127,6 +127,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	public static final long NOTOUCH_TIMEOUT = 5000; // 5 sec
 	private boolean mHudVisible = true;
 	private boolean mTipOrthoShown_ = false;
+	private int mSavedRenderingType = 0;
 
 	// UI states
 	private static enum State {
@@ -172,6 +173,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private ToggleButton mButtonTop;
 	private ToggleButton mButtonPause;
 	private ToggleButton mButtonLighting;
+	private ToggleButton mButtonWireframe;
 	private ToggleButton mButtonBackfaceShown;
 	private Button mButtonCloseVisualization;
 	private Button mButtonSaveOnDevice;
@@ -253,6 +255,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonTop = (ToggleButton)findViewById(R.id.top_down_button);
 		mButtonPause = (ToggleButton)findViewById(R.id.pause_button);
 		mButtonLighting = (ToggleButton)findViewById(R.id.light_button);
+		mButtonWireframe = (ToggleButton)findViewById(R.id.wireframe_button);
 		mButtonBackfaceShown = (ToggleButton)findViewById(R.id.backface_button);
 		mButtonCloseVisualization = (Button)findViewById(R.id.close_visualization_button);
 		mButtonSaveOnDevice = (Button)findViewById(R.id.button_saveOnDevice);
@@ -262,6 +265,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonTop.setOnClickListener(this);
 		mButtonPause.setOnClickListener(this);
 		mButtonLighting.setOnClickListener(this);
+		mButtonWireframe.setOnClickListener(this);
 		mButtonBackfaceShown.setOnClickListener(this);
 		mButtonCloseVisualization.setOnClickListener(this);
 		mButtonSaveOnDevice.setOnClickListener(this);
@@ -269,6 +273,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonFirst.setChecked(true);
 		mButtonLighting.setChecked(false);
 		mButtonLighting.setVisibility(View.INVISIBLE);
+		mButtonWireframe.setChecked(false);
+		mButtonWireframe.setVisibility(View.INVISIBLE);
 		mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 		mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
 		mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
@@ -289,7 +295,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				  }
 				  else if(mButtonTop.isChecked())
 				  {
-					  RTABMapLib.setOrthoCropFactor((float)progressValue/20.0f - 3.0f);
+					  RTABMapLib.setOrthoCropFactor((float)(120-progressValue)/20.0f - 3.0f);
 				  }
 				  resetNoTouchTimer();
 			  }
@@ -644,7 +650,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		if(type==3)
 		{
 			mSeekBarFov.setMax(120);
-			mSeekBarFov.setProgress(40);
+			mSeekBarFov.setProgress(80);
 		}
 		
 		if(type==2 && !mTipOrthoShown_)
@@ -677,7 +683,22 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		case R.id.backface_button:
 			RTABMapLib.setBackfaceCulling(!mButtonBackfaceShown.isChecked());
 			break;
+		case R.id.wireframe_button:
+			RTABMapLib.setWireframe(mButtonWireframe.isChecked());
+			break;
 		case R.id.close_visualization_button:
+			if(mSavedRenderingType==0)
+			{
+				mItemRenderingPointCloud.setChecked(true);
+			}
+			else if(mSavedRenderingType==1)
+			{
+				mItemRenderingMesh.setChecked(true);
+			}
+			else 
+			{
+				mItemRenderingTextureMesh.setChecked(true);
+			}
 			updateState(State.STATE_IDLE);
 			RTABMapLib.postExportation(false);
 			break;
@@ -1261,6 +1282,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		{
 		case STATE_PROCESSING:
 			mButtonLighting.setVisibility(View.INVISIBLE);
+			mButtonWireframe.setVisibility(View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
 			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
@@ -1274,7 +1296,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mButtonPause.setVisibility(View.INVISIBLE);
 			break;
 		case STATE_VISUALIZING:
-			mButtonLighting.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonLighting.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
+			mButtonWireframe.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mButtonSaveOnDevice.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mButtonShareOnSketchfab.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
@@ -1290,6 +1313,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			break;
 		default:
 			mButtonLighting.setVisibility(View.INVISIBLE);
+			mButtonWireframe.setVisibility(View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(View.INVISIBLE);
 			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
 			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
@@ -1500,15 +1524,18 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked(), 
 					mItemRenderingTextureMesh.isChecked());
 			
-			mButtonBackfaceShown.setVisibility(mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked()?View.VISIBLE:View.INVISIBLE);
-
-			// save preference
-			int type = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
-			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-			SharedPreferences.Editor editor = sharedPref.edit();
-			editor.putInt(getString(R.string.pref_key_rendering), type);
-			// Commit the edits!
-			editor.commit();
+			resetNoTouchTimer();
+			
+			if(mState != State.STATE_VISUALIZING)
+			{
+				// save preference
+				int type = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
+				SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
+				SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putInt(getString(R.string.pref_key_rendering), type);
+				// Commit the edits!
+				editor.commit();
+			}
 		}
 		else if(itemId == R.id.map_shown)
 		{
@@ -1920,6 +1947,19 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 									public void onClick(DialogInterface dialog, int which) {
 										mExportedOBJ = isOBJ;
 										resetNoTouchTimer();
+										mSavedRenderingType = !meshing?0:!isOBJ?1:2;
+										if(!meshing)
+										{
+											mItemRenderingPointCloud.setChecked(true);
+										}
+										else if(!isOBJ)
+										{
+											mItemRenderingMesh.setChecked(true);
+										}
+										else // isOBJ
+										{
+											mItemRenderingTextureMesh.setChecked(true);
+										}
 										updateState(State.STATE_VISUALIZING);
 										RTABMapLib.postExportation(true);
 										if(mButtonFirst.isChecked())

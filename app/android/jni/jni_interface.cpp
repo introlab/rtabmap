@@ -181,6 +181,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setBackfaceCulling(
 	return app.setBackfaceCulling(enabled);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setWireframe(
+		JNIEnv*, jobject, bool enabled)
+{
+	return app.setWireframe(enabled);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setLocalizationMode(
 		JNIEnv*, jobject, bool enabled)
 {

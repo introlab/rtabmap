@@ -123,6 +123,7 @@ class RTABMapApp : public UEventsHandler {
   void setOrthoCropFactor(float value);
   void setLighting(bool enabled);
   void setBackfaceCulling(bool enabled);
+  void setWireframe(bool enabled);
   void setLocalizationMode(bool enabled);
   void setTrajectoryMode(bool enabled);
   void setGraphOptimization(bool enabled);

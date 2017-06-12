@@ -17,6 +17,7 @@
     <string name="backface_off">Backface</string>
     <string name="light_on">Lighting</string>
     <string name="light_off">Lighting</string>
+    <string name="wireframe">Wireframe</string>
     <string name="close_visualization">Close Visualization</string>
     <string name="save_to_file">Export to File&#8230;</string>
     <string name="share_to_sketchfab">Share to Sketchfab&#8230;</string>

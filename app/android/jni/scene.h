@@ -108,7 +108,8 @@ class Scene {
   void addMesh(
   		int id,
   		const Mesh & mesh,
-  		const rtabmap::Transform & pose);
+  		const rtabmap::Transform & pose,
+		bool createWireframe = false);
 
   void setCloudPose(int id, const rtabmap::Transform & pose);
   void setCloudVisible(int id, bool visible);
@@ -128,6 +129,7 @@ class Scene {
   void setOrthoCropFactor(float value);
   void setLighting(bool enabled) {lighting_ = enabled;}
   void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
+  void setWireframe(bool enabled) {wireFrame_ = enabled;}
   void setBackgroundColor(float r, float g, float b) {r_=r; g_=g; b_=b;} // 0.0f <> 1.0f
   void setGridColor(float r, float g, float b);
 
@@ -179,6 +181,7 @@ class Scene {
   bool boundingBoxRendering_;
   bool lighting_;
   bool backfaceCulling_;
+  bool wireFrame_;
   float r_;
   float g_;
   float b_;

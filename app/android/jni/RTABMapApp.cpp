@@ -954,7 +954,7 @@ int RTABMapApp::Render()
 						mesh.texture = exportedTexture_;
 					}
 
-					main_scene_.addMesh(g_exportedMeshId, mesh, opengl_world_T_rtabmap_world);
+					main_scene_.addMesh(g_exportedMeshId, mesh, opengl_world_T_rtabmap_world, true);
 				}
 				else
 				{
@@ -1613,6 +1613,10 @@ void RTABMapApp::setLighting(bool enabled)
 void RTABMapApp::setBackfaceCulling(bool enabled)
 {
 	main_scene_.setBackfaceCulling(enabled);
+}
+void RTABMapApp::setWireframe(bool enabled)
+{
+	main_scene_.setWireframe(enabled);
 }
 
 void RTABMapApp::setLocalizationMode(bool enabled)

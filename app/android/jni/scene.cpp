@@ -86,6 +86,7 @@ Scene::Scene() :
 		boundingBoxRendering_(false),
 		lighting_(false),
 		backfaceCulling_(true),
+		wireFrame_(false),
 		r_(0.0f),
 		g_(0.0f),
 		b_(0.0f),
@@ -533,7 +534,7 @@ int Scene::Render() {
 				cloud->getPose().z() - openglCamera.z());
 		float distanceToCameraSqr = cloudToCamera[0]*cloudToCamera[0] + cloudToCamera[1]*cloudToCamera[1] + cloudToCamera[2]*cloudToCamera[2];
 
-		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane());
+		cloud->Render(projectionMatrix, viewMatrix, meshRendering_, pointSize_, meshRenderingTexture_, lighting_, distanceToCameraSqr, onlineBlending?depthTexture_:0, screenWidth_, screenHeight_, gesture_camera_->getNearClipPlane(), gesture_camera_->getFarClipPlane(), false, wireFrame_);
 	}
 
 	if(onlineBlending)
@@ -653,7 +654,8 @@ void Scene::addCloud(
 void Scene::addMesh(
 		int id,
 		const Mesh & mesh,
-		const rtabmap::Transform & pose)
+		const rtabmap::Transform & pose,
+		bool createWireframe)
 {
 	LOGI("add mesh %d", id);
 	std::map<int, PointCloudDrawable*>::iterator iter=pointClouds_.find(id);
@@ -664,7 +666,7 @@ void Scene::addMesh(
 	}
 
 	//create
-	PointCloudDrawable * drawable = new PointCloudDrawable(mesh);
+	PointCloudDrawable * drawable = new PointCloudDrawable(mesh, createWireframe);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
 }

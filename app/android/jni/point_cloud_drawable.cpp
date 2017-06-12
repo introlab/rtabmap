@@ -318,7 +318,8 @@ PointCloudDrawable::PointCloudDrawable(
 }
 
 PointCloudDrawable::PointCloudDrawable(
-		const Mesh & mesh) :
+		const Mesh & mesh,
+		bool createWireframe) :
 				vertex_buffers_(0),
 				textures_(0),
 				nPoints_(0),
@@ -330,7 +331,7 @@ PointCloudDrawable::PointCloudDrawable(
 				gainG_(1.0f),
 				gainB_(1.0f)
 {
-	updateMesh(mesh);
+	updateMesh(mesh, createWireframe);
 }
 
 PointCloudDrawable::~PointCloudDrawable()
@@ -351,22 +352,33 @@ PointCloudDrawable::~PointCloudDrawable()
 	}
 }
 
-void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes)
+void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polygons, const std::vector<pcl::Vertices> & polygonsLowRes, bool createWireframe)
 {
 	LOGD("Update polygons");
 	polygons_.clear();
+	polygonLines_.clear();
+	polygonsLowRes_.clear();
+	polygonLinesLowRes_.clear();
 	if(polygons.size() && organizedToDenseIndices_.size())
 	{
 		unsigned int polygonSize = polygons[0].vertices.size();
 		UASSERT(polygonSize == 3);
 		polygons_.resize(polygons.size() * polygonSize);
+		if(createWireframe)
+			polygonLines_.resize(polygons_.size()*2);
 		int oi = 0;
+		int li = 0;
 		for(unsigned int i=0; i<polygons.size(); ++i)
 		{
 			UASSERT(polygons[i].vertices.size() == polygonSize);
 			for(unsigned int j=0; j<polygonSize; ++j)
 			{
 				polygons_[oi++] = organizedToDenseIndices_.at(polygons[i].vertices[j]);
+				if(createWireframe)
+				{
+					polygonLines_[li++] = organizedToDenseIndices_.at(polygons[i].vertices[j]);
+					polygonLines_[li++] = organizedToDenseIndices_.at(polygons[i].vertices[(j+1) % polygonSize]);
+				}
 			}
 		}
 
@@ -375,13 +387,21 @@ void PointCloudDrawable::updatePolygons(const std::vector<pcl::Vertices> & polyg
 			unsigned int polygonSize = polygonsLowRes[0].vertices.size();
 			UASSERT(polygonSize == 3);
 			polygonsLowRes_.resize(polygonsLowRes.size() * polygonSize);
+			if(createWireframe)
+				polygonLinesLowRes_.resize(polygonsLowRes_.size()*2);
 			int oi = 0;
+			int li = 0;
 			for(unsigned int i=0; i<polygonsLowRes.size(); ++i)
 			{
 				UASSERT(polygonsLowRes[i].vertices.size() == polygonSize);
 				for(unsigned int j=0; j<polygonSize; ++j)
 				{
 					polygonsLowRes_[oi++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[j]);
+					if(createWireframe)
+					{
+						polygonLinesLowRes_[li++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[j]);
+						polygonLinesLowRes_[li++] = organizedToDenseIndices_.at(polygonsLowRes[i].vertices[(j+1)%polygonSize]);
+					}
 				}
 			}
 		}
@@ -505,7 +525,7 @@ void PointCloudDrawable::updateCloud(const pcl::PointCloud<pcl::PointXYZRGB>::Pt
 	nPoints_ = totalPoints;
 }
 
-void PointCloudDrawable::updateMesh(const Mesh & mesh)
+void PointCloudDrawable::updateMesh(const Mesh & mesh, bool createWireframe)
 {
 	UASSERT(mesh.cloud.get() && !mesh.cloud->empty());
 	nPoints_ = 0;
@@ -797,7 +817,7 @@ void PointCloudDrawable::updateMesh(const Mesh & mesh)
 
 	if(polygons_.size() != polygons.size())
 	{
-		updatePolygons(polygons, polygonsLowRes);
+		updatePolygons(polygons, polygonsLowRes, createWireframe);
 	}
 
 	if(!pose_.isNull())
@@ -857,7 +877,8 @@ void PointCloudDrawable::Render(
 		int screenHeight,
 		float nearClipPlane,
 	    float farClipPlane,
-		bool packDepthToColorChannel) const
+		bool packDepthToColorChannel,
+		bool wireFrame) const
 {
 	if(vertex_buffers_ && nPoints_ && visible_ && !shaderPrograms_.empty())
 	{
@@ -1021,22 +1042,38 @@ void PointCloudDrawable::Render(
 		{
 			if(distanceToCameraSqr<16.0f || polygonsLowRes_.empty())
 			{
-				glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
+				wireFrame = wireFrame && polygonLines_.size();
+				if(wireFrame)
+					glDrawElements(GL_LINES, polygonLines_.size(), GL_UNSIGNED_INT, polygonLines_.data());
+				else
+					glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
 			}
 			else
 			{
-				glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
+				wireFrame = wireFrame && polygonLinesLowRes_.size();
+				if(wireFrame)
+					glDrawElements(GL_LINES, polygonLinesLowRes_.size(), GL_UNSIGNED_INT, polygonLinesLowRes_.data());
+				else
+					glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
 			}
 		}
 		else if(meshRendering && polygons_.size())
 		{
 			if(distanceToCameraSqr<50.0f || polygonsLowRes_.empty())
 			{
-				glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
+				wireFrame = wireFrame && polygonLines_.size();
+				if(wireFrame)
+					glDrawElements(GL_LINES, polygonLines_.size(), GL_UNSIGNED_INT, polygonLines_.data());
+				else
+					glDrawElements(GL_TRIANGLES, polygons_.size(), GL_UNSIGNED_INT, polygons_.data());
 			}
 			else
 			{
-				glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
+				wireFrame = wireFrame && polygonLinesLowRes_.size();
+				if(wireFrame)
+					glDrawElements(GL_LINES, polygonLinesLowRes_.size(), GL_UNSIGNED_INT, polygonLinesLowRes_.data());
+				else
+					glDrawElements(GL_TRIANGLES, polygonsLowRes_.size(), GL_UNSIGNED_INT, polygonsLowRes_.data());
 			}
 		}
 		else if(!verticesLowRes_.empty())
