@@ -119,6 +119,8 @@ class RTABMapApp : public UEventsHandler {
   void setOdomCloudShown(bool shown);
   void setMeshRendering(bool enabled, bool withTexture);
   void setPointSize(float value);
+  void setFOV(float angle);
+  void setOrthoCropFactor(float value);
   void setLighting(bool enabled);
   void setBackfaceCulling(bool enabled);
   void setLocalizationMode(bool enabled);

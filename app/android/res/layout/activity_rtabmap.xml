@@ -122,5 +122,16 @@
         android:layout_centerHorizontal="true"
         android:paddingLeft="5dp"
         android:text="@string/close_visualization" />
+
+    <SeekBar
+        android:id="@+id/seekBar_fov"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:rotation="270"
+        android:layout_alignParentLeft="true"
+        android:layout_alignBaseline="@+id/first_person_button"
+        android:layout_gravity="center"
+        android:layout_marginLeft="-50dp" />
+
         
 </RelativeLayout>

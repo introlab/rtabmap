@@ -201,7 +201,7 @@ void Scene::SetupViewPort(int w, int h) {
 		LOGE("Setup graphic height not valid");
 	}
 	UASSERT(gesture_camera_ != 0);
-	gesture_camera_->SetAspectRatio(static_cast<float>(w) / static_cast<float>(h));
+	gesture_camera_->SetWindowSize(static_cast<float>(w), static_cast<float>(h));
 	glViewport(0, 0, w, h);
 	if(screenWidth_ != w || fboId_ == 0)
 	{
@@ -426,7 +426,7 @@ int Scene::Render() {
 
 	UTimer timer;
 
-	bool onlineBlending = blending_ && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1;
+	bool onlineBlending = blending_ && gesture_camera_->GetCameraType()!=tango_gl::GestureCamera::kTopOrtho && mapRendering_ && meshRendering_ && cloudsToDraw.size()>1;
 	if(onlineBlending && fboId_)
 	{
 		// set the rendering destination to FBO
@@ -556,6 +556,15 @@ void Scene::SetCameraPose(const rtabmap::Transform & pose)
 	*currentPose_ = pose;
 }
 
+void Scene::setFOV(float angle)
+{
+	gesture_camera_->SetFieldOfView(angle);
+}
+void Scene::setOrthoCropFactor(float value)
+{
+	gesture_camera_->SetOrthoCropFactor(value);
+}
+
 rtabmap::Transform Scene::GetOpenGLCameraPose(float * fov) const
 {
 	if(fov)
@@ -563,7 +572,6 @@ rtabmap::Transform Scene::GetOpenGLCameraPose(float * fov) const
 		*fov = gesture_camera_->getFOV();
 	}
 	return glmToTransform(gesture_camera_->GetTransformationMatrix());
-
 }
 
 void Scene::OnTouchEvent(int touch_count,

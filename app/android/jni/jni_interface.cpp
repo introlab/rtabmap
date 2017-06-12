@@ -157,6 +157,18 @@ Java_com_introlab_rtabmap_RTABMapLib_setPointSize(
 	return app.setPointSize(value);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setFOV(
+		JNIEnv*, jobject, float fov)
+{
+	return app.setFOV(fov);
+}
+JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setOrthoCropFactor(
+		JNIEnv*, jobject, float value)
+{
+	return app.setOrthoCropFactor(value);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setLighting(
 		JNIEnv*, jobject, bool enabled)
 {

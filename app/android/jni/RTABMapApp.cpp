@@ -1598,6 +1598,14 @@ void RTABMapApp::setPointSize(float value)
 {
 	main_scene_.setPointSize(value);
 }
+void RTABMapApp::setFOV(float angle)
+{
+	main_scene_.setFOV(angle);
+}
+void RTABMapApp::setOrthoCropFactor(float value)
+{
+	main_scene_.setOrthoCropFactor(value);
+}
 void RTABMapApp::setLighting(bool enabled)
 {
 	main_scene_.setLighting(enabled);

@@ -29,7 +29,8 @@ class GestureCamera : public Camera {
     kFirstPerson = 0,
     kThirdPersonFollow = 1,
     kTopDown = 2,
-    kThirdPerson = 3
+	kTopOrtho = 3,
+    kThirdPerson = 4
   };
 
   enum TouchEvent {
