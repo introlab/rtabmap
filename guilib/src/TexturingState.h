@@ -40,8 +40,9 @@ class TexturingState : public QObject, public ProgressState
 	Q_OBJECT
 
 public:
-	TexturingState(ProgressDialog * dialog): dialog_(dialog)
+	TexturingState(ProgressDialog * dialog, bool incrementOnMsgReceived): dialog_(dialog)
 	{
+		_increment = incrementOnMsgReceived;
 		connect(dialog_, SIGNAL(canceled()), this, SLOT(cancel()));
 	}
 	virtual ~TexturingState() {}
@@ -50,10 +51,17 @@ public:
 		if(!msg.empty())
 		{
 			dialog_->appendText(msg.c_str());
-			dialog_->incrementStep();
+			if(_increment)
+			{
+				dialog_->incrementStep();
+			}
 		}
 		QApplication::processEvents();
-		return !isCanceled();
+		if(!isCanceled())
+		{
+			return ProgressState::callback(msg);
+		}
+		return false;
 	}
 
 public slots:
@@ -64,6 +72,7 @@ public slots:
 
 private:
 	ProgressDialog * dialog_;
+	bool _increment;
 };
 
 }

@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_
 
+#include <rtabmap/utilite/ULogger.h>
 
 class ProgressState
 {
@@ -35,6 +36,8 @@ public:
 	ProgressState():canceled_(false){}
 	virtual bool callback(const std::string & msg) const
 	{
+		if(!msg.empty())
+			UDEBUG("msg=%s", msg.c_str());
 		return true;
 	}
 	virtual ~ProgressState(){}

@@ -121,16 +121,9 @@ private:
 	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
 	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, std::map<int, pcl::TextureMesh::Ptr> & textureMeshes, const QMap<int, Signature> & cachedSignatures, const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels);
-	std::vector<cv::Mat> mergeTextures(pcl::TextureMesh & mesh, const QMap<int, Signature> & cachedSignatures, const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels, int maxTextures) const;
 
 	void setSaveButton();
 	void setOkButton();
-
-	void denseMeshPostProcessing(
-			int id,
-			pcl::PolygonMeshPtr & mesh,
-			bool lostColors,
-			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud);
 
 private:
 	Ui_ExportCloudsDialog * _ui;
