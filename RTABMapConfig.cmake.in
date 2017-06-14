@@ -65,7 +65,7 @@ endif(@CONF_WITH_GUI@)
 if(@CONF_VTK_QT@)
    find_package(VTK COMPONENTS vtkGUISupportQt NO_MODULE) # to define vtkGUISupportQt target
 endif(@CONF_VTK_QT@)
-set(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} @CONF_DEPENDENCIES@)
+SET(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} "@CONF_DEPENDENCIES@")
 
 #backward compatibilities
 set(RTABMAP_CORE ${RTABMap_CORE})
@@ -74,3 +74,7 @@ if(RTABMap_GUI)
    set(RTABMAP_GUI ${RTABMap_GUI})
    set(RTABMAP_QT_VERSION @CONF_QT_VERSION@)
 endif(RTABMap_GUI)
+
+include(FindPackageHandleStandardArgs)
+#find_package_handle_standard_args(RTABMap DEFAULT_MSG RTABMap_LIBRARIES RTABMap_INCLUDE_DIRS)
+#mark_as_advanced(RTABMap_LIBRARIES RTABMap_INCLUDE_DIRS RTABMap_LIBRARY_DIRS)
