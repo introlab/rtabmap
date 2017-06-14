@@ -188,7 +188,8 @@ std::vector<cv::Mat> RTABMAP_EXP mergeTextures(
 		int blendingDecimation = 0,          //0=auto depending on projected polygon size and texture size
 		int brightnessContrastRatioLow = 0,  //0=disabled, values between 0 and 100
 		int brightnessContrastRatioHigh = 0, //0=disabled, values between 0 and 100
-		bool exposureFusion = false);  //Exposure fusion can be used only with OpenCV3
+		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
+		const ProgressState * state = 0);
 
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(

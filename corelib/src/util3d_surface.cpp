@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UDirectory.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
+#include "rtabmap/utilite/UTimer.h"
 #include <pcl/search/kdtree.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/features/normal_3d_omp.h>
@@ -1076,7 +1077,8 @@ std::vector<cv::Mat> mergeTextures(
 		int blendingDecimation,
 		int brightnessContrastRatioLow,
 		int brightnessContrastRatioHigh,
-		bool exposureFusion)
+		bool exposureFusion,
+		const ProgressState * state)
 {
 	//get texture size, if disabled use default 1024
 	UASSERT(textureSize%256 == 0);
@@ -1315,8 +1317,18 @@ std::vector<cv::Mat> mergeTextures(
 						}
 						++oi;
 					}
+
+					if(state)
+					{
+						if(state->isCanceled())
+						{
+							return std::vector<cv::Mat>();
+						}
+						state->callback(uFormat("Assembled texture %d/%d.", t+1, (int)textures.size()));
+					}
 				}
 
+				UTimer timer;
 				if(vertexToPixels.size())
 				{
 					//UWARN("Saving original.png", globalTexture);
@@ -1479,6 +1491,7 @@ std::vector<cv::Mat> mergeTextures(
 						}
 						//UWARN("Saving gain.png", globalTexture);
 						//cv::imwrite("gain.png", globalTexture);
+						if(state) state->callback(uFormat("Gain compensation %fs", timer.ticks()));
 					}
 
 					if(blending)
@@ -1637,6 +1650,8 @@ std::vector<cv::Mat> mergeTextures(
 							//UWARN("Saving blending.png", globalTexture);
 							//cv::imwrite("blending.png", globalTexture);
 						}
+
+						if(state) state->callback(uFormat("Blending (decimation=%d) %fs", decimation, timer.ticks()));
 					}
 				}
 
@@ -1676,6 +1691,7 @@ std::vector<cv::Mat> mergeTextures(
 								(float)brightnessContrastRatioHigh);
 						}
 					}
+					if(state) state->callback(uFormat("Brightness and contrast auto %fs", timer.ticks()));
 				}
 			}
 		}

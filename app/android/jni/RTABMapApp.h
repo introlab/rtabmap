@@ -149,10 +149,6 @@ class RTABMapApp : public UEventsHandler {
 
   void resetMapping();
   void save(const std::string & databasePath);
-  std::vector<cv::Mat> mergeTextures(pcl::TextureMesh & mesh,
-		  int textureSize,
-		  int textureCount,
-		  const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels) const;
   void cancelProcessing();
   bool exportMesh(
 		  const std::string & filePath,

@@ -70,7 +70,7 @@ public:
 			increment();
 		}
 
-		return !isCanceled();
+		return ProgressState::callback(msg);
 	}
 	virtual ~ProgressionStatus(){}
 
