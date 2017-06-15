@@ -161,6 +161,13 @@ pcl::TextureMesh::Ptr RTABMAP_EXP createTextureMesh(
 		const ProgressState * state = 0,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels = 0);
 
+/**
+ * Remove not textured polygon clusters. If minClusterSize<0, only the largest cluster is kept.
+ */
+void RTABMAP_EXP cleanTextureMesh(
+		pcl::TextureMesh & textureMesh,
+		int minClusterSize);
+
 pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
 		const std::list<pcl::TextureMesh::Ptr> & meshes);
 
@@ -168,7 +175,7 @@ void RTABMAP_EXP concatenateTextureMaterials(
 		pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, int maxTextures, float & scale, std::vector<bool> * materialsKept=0);
 
 
-/*
+/**
  * Merge all textures in the mesh into "textureCount" textures of size "textureSize".
  * @return merged textures corresponding to new materials set in TextureMesh
  */

@@ -840,6 +840,139 @@ pcl::TextureMesh::Ptr createTextureMesh(
 	return textureMesh;
 }
 
+void cleanTextureMesh(
+		pcl::TextureMesh & textureMesh,
+		int minClusterSize)
+{
+	UDEBUG("minClusterSize=%d", minClusterSize);
+	// Remove occluded polygons (polygons with no texture)
+	if(textureMesh.tex_coordinates.size())
+	{
+		// assume last texture is the occluded texture
+		textureMesh.tex_coordinates.pop_back();
+		textureMesh.tex_polygons.pop_back();
+		textureMesh.tex_materials.pop_back();
+
+		if(minClusterSize!=0)
+		{
+			// concatenate all polygons
+			unsigned int totalSize = 0;
+			for(unsigned int t=0; t<textureMesh.tex_polygons.size(); ++t)
+			{
+				totalSize+=textureMesh.tex_polygons[t].size();
+			}
+			std::vector<pcl::Vertices> allPolygons(totalSize);
+			int oi=0;
+			for(unsigned int t=0; t<textureMesh.tex_polygons.size(); ++t)
+			{
+				for(unsigned int i=0; i<textureMesh.tex_polygons[t].size(); ++i)
+				{
+					allPolygons[oi++] =  textureMesh.tex_polygons[t][i];
+				}
+			}
+
+			// filter polygons
+			std::vector<std::set<int> > neighbors;
+			std::vector<std::set<int> > vertexToPolygons;
+			util3d::createPolygonIndexes(allPolygons,
+					(int)textureMesh.cloud.data.size()/textureMesh.cloud.point_step,
+					neighbors,
+					vertexToPolygons);
+
+			std::list<std::list<int> > clusters = util3d::clusterPolygons(
+					neighbors,
+					minClusterSize<0?0:minClusterSize);
+
+			std::set<int> validPolygons;
+			if(minClusterSize < 0)
+			{
+				// only keep the biggest cluster
+				std::list<std::list<int> >::iterator biggestClusterIndex = clusters.end();
+				unsigned int biggestClusterSize = 0;
+				for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+				{
+					if(iter->size() > biggestClusterSize)
+					{
+						biggestClusterIndex = iter;
+						biggestClusterSize = iter->size();
+					}
+				}
+				if(biggestClusterIndex != clusters.end())
+				{
+					for(std::list<int>::iterator jter=biggestClusterIndex->begin(); jter!=biggestClusterIndex->end(); ++jter)
+					{
+						validPolygons.insert(*jter);
+					}
+				}
+			}
+			else
+			{
+				for(std::list<std::list<int> >::iterator iter=clusters.begin(); iter!=clusters.end(); ++iter)
+				{
+					for(std::list<int>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+					{
+						validPolygons.insert(*jter);
+					}
+				}
+			}
+
+			if(validPolygons.size() == 0)
+			{
+				UWARN("All %d polygons filtered after polygon cluster filtering. Cluster minimum size is %d.",totalSize, minClusterSize);
+			}
+
+			// for each texture
+			unsigned int allPolygonsIndex = 0;
+			for(unsigned int t=0; t<textureMesh.tex_polygons.size(); ++t)
+			{
+				std::vector<pcl::Vertices> filteredPolygons(textureMesh.tex_polygons[t].size());
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+				std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > filteredCoordinates(textureMesh->tex_coordinates[t].size());
+#else
+				std::vector<Eigen::Vector2f> filteredCoordinates(textureMesh.tex_coordinates[t].size());
+#endif
+
+				if(textureMesh.tex_polygons[t].size())
+				{
+					UASSERT_MSG(allPolygonsIndex < allPolygons.size(), uFormat("%d vs %d", (int)allPolygonsIndex, (int)allPolygons.size()).c_str());
+
+					// make index polygon to coordinate
+					std::vector<unsigned int> polygonToCoord(textureMesh.tex_polygons[t].size());
+					unsigned int totalCoord = 0;
+					for(unsigned int i=0; i<textureMesh.tex_polygons[t].size(); ++i)
+					{
+						polygonToCoord[i] = totalCoord;
+						totalCoord+=textureMesh.tex_polygons[t][i].vertices.size();
+					}
+					UASSERT_MSG(totalCoord == textureMesh.tex_coordinates[t].size(), uFormat("%d vs %d", totalCoord, (int)textureMesh.tex_coordinates[t].size()).c_str());
+
+					int oi=0;
+					int ci=0;
+					for(unsigned int i=0; i<textureMesh.tex_polygons[t].size(); ++i)
+					{
+						if(validPolygons.find(allPolygonsIndex) != validPolygons.end())
+						{
+							filteredPolygons[oi] = textureMesh.tex_polygons[t].at(i);
+							for(unsigned int j=0; j<filteredPolygons[oi].vertices.size(); ++j)
+							{
+								UASSERT(polygonToCoord[i] < textureMesh.tex_coordinates[t].size());
+								filteredCoordinates[ci] = textureMesh.tex_coordinates[t][polygonToCoord[i]+j];
+								++ci;
+							}
+							++oi;
+						}
+						++allPolygonsIndex;
+					}
+					filteredPolygons.resize(oi);
+					filteredCoordinates.resize(ci);
+					textureMesh.tex_polygons[t] = filteredPolygons;
+					textureMesh.tex_coordinates[t] = filteredCoordinates;
+				}
+			}
+		}
+	}
+}
+
 pcl::TextureMesh::Ptr concatenateTextureMeshes(const std::list<pcl::TextureMesh::Ptr> & meshes)
 {
 	pcl::TextureMesh::Ptr output(new pcl::TextureMesh);
