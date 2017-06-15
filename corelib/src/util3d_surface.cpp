@@ -927,7 +927,7 @@ void cleanTextureMesh(
 			{
 				std::vector<pcl::Vertices> filteredPolygons(textureMesh.tex_polygons[t].size());
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
-				std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > filteredCoordinates(textureMesh->tex_coordinates[t].size());
+				std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > filteredCoordinates(textureMesh.tex_coordinates[t].size());
 #else
 				std::vector<Eigen::Vector2f> filteredCoordinates(textureMesh.tex_coordinates[t].size());
 #endif
