@@ -1,4 +1,8 @@
 # - Config file for the RTABMap package
+# Components:
+#  core    (required)
+#  gui     (optional)
+#  utilite (required)
 # It defines the following variables
 #  RTABMap_INCLUDE_DIRS - include directories for RTABMap
 #  RTABMap_LIBRARIES    - libraries to link against
@@ -42,8 +46,18 @@ ENDIF()
 
 set(RTABMap_LIBRARIES ${RTABMap_CORE} ${RTABMap_UTILITE})
 
+list(LENGTH RTABMap_FIND_COMPONENTS RTABMap_FIND_COMPONENTS_LENGTH)
+set(WITH_GUI OFF)
+if(${RTABMap_FIND_COMPONENTS_LENGTH} GREATER 0)
+   list (FIND RTABMap_FIND_COMPONENTS "gui" _index)
+   if (${_index} GREATER -1)
+      set(WITH_GUI ON)
+   endif()
+endif(${RTABMap_FIND_COMPONENTS_LENGTH} GREATER 0)
+
+
 #gui lib (OFF if RTAB-Map is not built with Qt)
-if(@CONF_WITH_GUI@)
+if(@CONF_WITH_GUI@ AND ${WITH_GUI})
    find_library(RTABMap_GUI_RELEASE NAMES rtabmap_gui NO_DEFAULT_PATH HINTS @CONF_LIB_DIR@)
    find_library(RTABMap_GUI_DEBUG NAMES rtabmap_guid NO_DEFAULT_PATH HINTS @CONF_LIB_DIR@)
    
@@ -59,12 +73,14 @@ if(@CONF_WITH_GUI@)
    ENDIF()
    
    set(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} ${RTABMap_GUI})
-endif(@CONF_WITH_GUI@)
+elseif(${WITH_GUI})
+   MESSAGE(ERROR "Asked for \"gui\" module but RTABMap hasn't been built with gui support.")
+endif()
 
 # Dependencies
-if(@CONF_VTK_QT@)
+if(@CONF_VTK_QT@ AND ${WITH_GUI})
    find_package(VTK COMPONENTS vtkGUISupportQt NO_MODULE) # to define vtkGUISupportQt target
-endif(@CONF_VTK_QT@)
+endif(@CONF_VTK_QT@ AND ${WITH_GUI})
 SET(RTABMap_LIBRARIES ${RTABMap_LIBRARIES} "@CONF_DEPENDENCIES@")
 
 #backward compatibilities
@@ -76,5 +92,5 @@ if(RTABMap_GUI)
 endif(RTABMap_GUI)
 
 include(FindPackageHandleStandardArgs)
-#find_package_handle_standard_args(RTABMap DEFAULT_MSG RTABMap_LIBRARIES RTABMap_INCLUDE_DIRS)
-#mark_as_advanced(RTABMap_LIBRARIES RTABMap_INCLUDE_DIRS RTABMap_LIBRARY_DIRS)
+find_package_handle_standard_args(RTABMap DEFAULT_MSG RTABMap_LIBRARIES RTABMap_INCLUDE_DIRS)
+mark_as_advanced(RTABMap_LIBRARIES RTABMap_INCLUDE_DIRS RTABMap_LIBRARY_DIRS)
