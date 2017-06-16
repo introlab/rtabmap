@@ -50,6 +50,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         			ArrayList<String> filesArray = new ArrayList<String>(Arrays.asList(prefsdir.list()));
         			ArrayList<String> newList = new ArrayList<String>();
         			filesArray.remove("com.introlab.rtabmap_preferences.xml");
+				filesArray.remove("WebViewChromiumPrefs.xml");
         			for (String s : filesArray) {
         				newList.add(s.substring(0, s.length()-4)); // rip off the ".xml"
         			}
@@ -156,6 +157,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         			ArrayList<String> filesArray = new ArrayList<String>(Arrays.asList(prefsdir.list()));
         			ArrayList<String> newList = new ArrayList<String>();
         			filesArray.remove("com.introlab.rtabmap_preferences.xml");
+				filesArray.remove("WebViewChromiumPrefs.xml");
         			for (String s : filesArray) {
         				newList.add(s.substring(0, s.length()-4)); // rip off the ".xml"
         			}
