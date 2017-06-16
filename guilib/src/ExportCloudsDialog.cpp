@@ -1819,7 +1819,6 @@ bool ExportCloudsDialog::getExportedClouds(
 					iter!= cloudsWithNormals.end();
 					++iter)
 				{
-					bool lostColors = false;
 					pcl::PolygonMesh::Ptr mesh(new pcl::PolygonMesh);
 					if(_ui->comboBox_meshingApproach->currentIndex() == 0)
 					{
@@ -1842,8 +1841,6 @@ bool ExportCloudsDialog::getExportedClouds(
 						poisson.setScale(_ui->doubleSpinBox_poisson_scale->value());
 						poisson.setInputCloud(iter->second);
 						poisson.reconstruct(*mesh);
-
-						lostColors = true;
 					}
 
 					_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(++i).arg(clouds.size()));
