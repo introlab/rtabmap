@@ -2121,9 +2121,11 @@ bool RTABMapApp::exportMesh(
 
 						if(mesh->polygons.size())
 						{
-							if(textureSize > 0 && optimizedMaxPolygons > 0 && optimizedMaxPolygons < (int)mesh->polygons.size())
+							totalPolygons=(int)mesh->polygons.size();
+
+							if(optimizedMaxPolygons > 0 && optimizedMaxPolygons < (int)mesh->polygons.size())
 							{
-	#ifndef DISABLE_VTK
+#ifndef DISABLE_VTK
 								unsigned int count = mesh->polygons.size();
 								float factor = 1.0f-float(optimizedMaxPolygons)/float(count);
 								LOGI("Mesh decimation (max polygons %d/%d -> factor=%f)...", optimizedMaxPolygons, (int)count, factor);
@@ -2147,9 +2149,9 @@ bool RTABMapApp::exportMesh(
 								{
 									UWARN("Decimated mesh has more polygons than before!");
 								}
-	#else
+#else
 								UWARN("RTAB-Map is not built with PCL-VTK module so mesh decimation cannot be used!");
-	#endif
+#endif
 							}
 
 							if(progressionStatus_.isCanceled())
@@ -2164,206 +2166,18 @@ bool RTABMapApp::exportMesh(
 
 							progressionStatus_.increment();
 
-							if(textureSize == 0)
+							rtabmap::util3d::denseMeshPostProcessing<pcl::PointXYZRGBNormal>(
+									mesh,
+									0.0f,
+									0,
+									mergedClouds,
+									optimizedColorRadius,
+									textureSize == 0,
+									optimizedCleanWhitePolygons,
+									0);
+
+							if(textureSize>0)
 							{
-								// colored polygon mesh
-								if(optimizedColorRadius >= 0.0f)
-								{
-									LOGI("Transferring color from point cloud to mesh...");
-									// transfer color from point cloud to mesh
-									pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
-									tree->setInputCloud(mergedClouds);
-									pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr coloredCloud(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-									pcl::fromPCLPointCloud2(mesh->cloud, *coloredCloud);
-									std::vector<bool> coloredPts(coloredCloud->size());
-									for(unsigned int i=0; i<coloredCloud->size(); ++i)
-									{
-										std::vector<int> kIndices;
-										std::vector<float> kDistances;
-										pcl::PointXYZRGBNormal pt;
-										pt.x = coloredCloud->at(i).x;
-										pt.y = coloredCloud->at(i).y;
-										pt.z = coloredCloud->at(i).z;
-										if(optimizedColorRadius > 0.0f)
-										{
-											tree->radiusSearch(pt, optimizedColorRadius, kIndices, kDistances);
-										}
-										else
-										{
-											tree->nearestKSearch(pt, 1, kIndices, kDistances);
-										}
-										if(kIndices.size())
-										{
-											//compute average color
-											int r=0;
-											int g=0;
-											int b=0;
-											int a=0;
-											for(unsigned int j=0; j<kIndices.size(); ++j)
-											{
-												r+=(int)mergedClouds->at(kIndices[j]).r;
-												g+=(int)mergedClouds->at(kIndices[j]).g;
-												b+=(int)mergedClouds->at(kIndices[j]).b;
-												a+=(int)mergedClouds->at(kIndices[j]).a;
-											}
-											coloredCloud->at(i).r = r/kIndices.size();
-											coloredCloud->at(i).g = g/kIndices.size();
-											coloredCloud->at(i).b = b/kIndices.size();
-											coloredCloud->at(i).a = a/kIndices.size();
-											coloredPts.at(i) = true;
-										}
-										else
-										{
-											//white
-											coloredCloud->at(i).r = coloredCloud->at(i).g = coloredCloud->at(i).b = 255;
-											coloredPts.at(i) = false;
-										}
-									}
-
-									// recompute normals and remove polygons with no color
-									std::vector<pcl::Vertices> filteredPolygons(optimizedCleanWhitePolygons?mesh->polygons.size():0);
-									int oi=0;
-									for(unsigned int i=0; i<mesh->polygons.size(); ++i)
-									{
-										// recompute normals
-										pcl::Vertices & v = mesh->polygons[i];
-										UASSERT(v.vertices.size()>2);
-										Eigen::Vector3f v0(
-												coloredCloud->at(v.vertices[1]).x - coloredCloud->at(v.vertices[0]).x,
-												coloredCloud->at(v.vertices[1]).y - coloredCloud->at(v.vertices[0]).y,
-												coloredCloud->at(v.vertices[1]).z - coloredCloud->at(v.vertices[0]).z);
-										int last = v.vertices.size()-1;
-										Eigen::Vector3f v1(
-												coloredCloud->at(v.vertices[last]).x - coloredCloud->at(v.vertices[0]).x,
-												coloredCloud->at(v.vertices[last]).y - coloredCloud->at(v.vertices[0]).y,
-												coloredCloud->at(v.vertices[last]).z - coloredCloud->at(v.vertices[0]).z);
-										Eigen::Vector3f normal = v0.cross(v1);
-										normal.normalize();
-										// flat normal (per face)
-										for(unsigned int j=0; j<v.vertices.size(); ++j)
-										{
-											coloredCloud->at(v.vertices[j]).normal_x = normal[0];
-											coloredCloud->at(v.vertices[j]).normal_y = normal[1];
-											coloredCloud->at(v.vertices[j]).normal_z = normal[2];
-										}
-
-										if(optimizedCleanWhitePolygons)
-										{
-											bool coloredPolygon = true;
-											for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
-											{
-												if(!coloredPts.at(mesh->polygons[i].vertices[j]))
-												{
-													coloredPolygon = false;
-													break;
-												}
-											}
-											if(coloredPolygon)
-											{
-												filteredPolygons[oi++] = mesh->polygons[i];
-											}
-										}
-									}
-									if(optimizedCleanWhitePolygons)
-									{
-										filteredPolygons.resize(oi);
-										mesh->polygons = filteredPolygons;
-									}
-
-									pcl::toPCLPointCloud2(*coloredCloud, mesh->cloud);
-									LOGI("Transfering color from point cloud to mesh...done! %fs", timer.ticks());
-								}
-								else // recompute normals
-								{
-									pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud (new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-									pcl::fromPCLPointCloud2(mesh->cloud, *cloud);
-
-									for(unsigned int i=0; i<mesh->polygons.size(); ++i)
-									{
-										pcl::Vertices & v = mesh->polygons[i];
-										UASSERT(v.vertices.size()>2);
-										Eigen::Vector3f v0(
-												cloud->at(v.vertices[1]).x - cloud->at(v.vertices[0]).x,
-												cloud->at(v.vertices[1]).y - cloud->at(v.vertices[0]).y,
-												cloud->at(v.vertices[1]).z - cloud->at(v.vertices[0]).z);
-										int last = v.vertices.size()-1;
-										Eigen::Vector3f v1(
-												cloud->at(v.vertices[last]).x - cloud->at(v.vertices[0]).x,
-												cloud->at(v.vertices[last]).y - cloud->at(v.vertices[0]).y,
-												cloud->at(v.vertices[last]).z - cloud->at(v.vertices[0]).z);
-										Eigen::Vector3f normal = v0.cross(v1);
-										normal.normalize();
-										// flat normal (per face)
-										for(unsigned int j=0; j<v.vertices.size(); ++j)
-										{
-											cloud->at(v.vertices[j]).normal_x = normal[0];
-											cloud->at(v.vertices[j]).normal_y = normal[1];
-											cloud->at(v.vertices[j]).normal_z = normal[2];
-											cloud->at(v.vertices[j]).r = 255;
-											cloud->at(v.vertices[j]).g = 255;
-											cloud->at(v.vertices[j]).b = 255;
-										}
-									}
-									pcl::toPCLPointCloud2 (*cloud, mesh->cloud);
-								}
-								polygonMesh = mesh;
-								totalPolygons = mesh->polygons.size();
-							}
-							else
-							{
-								if(optimizedColorRadius > 0.0f && optimizedCleanWhitePolygons)
-								{
-									LOGI("Removing polygons too far from the cloud");
-									// transfer color from point cloud to mesh
-									pcl::search::KdTree<pcl::PointXYZRGBNormal>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGBNormal>(true));
-									tree->setInputCloud(mergedClouds);
-									pcl::PointCloud<pcl::PointXYZ>::Ptr optimizedCloud(new pcl::PointCloud<pcl::PointXYZ>);
-									pcl::fromPCLPointCloud2(mesh->cloud, *optimizedCloud);
-									std::vector<bool> closePts(optimizedCloud->size());
-									for(unsigned int i=0; i<optimizedCloud->size(); ++i)
-									{
-										std::vector<int> kIndices;
-										std::vector<float> kDistances;
-										pcl::PointXYZRGBNormal pt;
-										pt.x = optimizedCloud->at(i).x;
-										pt.y = optimizedCloud->at(i).y;
-										pt.z = optimizedCloud->at(i).z;
-										tree->radiusSearch(pt, optimizedColorRadius, kIndices, kDistances);
-										if(kIndices.size())
-										{
-											closePts.at(i) = true;
-										}
-										else
-										{
-											closePts.at(i) = false;
-										}
-									}
-
-									// remove far polygons
-									std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
-									int oi=0;
-									for(unsigned int i=0; i<mesh->polygons.size(); ++i)
-									{
-										bool keepPolygon = true;
-										for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
-										{
-											if(!closePts.at(mesh->polygons[i].vertices[j]))
-											{
-												keepPolygon = false;
-												break;
-											}
-										}
-										if(keepPolygon)
-										{
-											filteredPolygons[oi++] = mesh->polygons[i];
-										}
-									}
-									filteredPolygons.resize(oi);
-									mesh->polygons = filteredPolygons;
-
-									LOGI("Removing polygons too far from the cloud...done! %fs", timer.ticks());
-								}
-
 								LOGI("Texturing...");
 								textureMesh = rtabmap::util3d::createTextureMesh(
 										mesh,
@@ -2393,108 +2207,20 @@ bool RTABMapApp::exportMesh(
 								if(textureMesh->tex_coordinates.size() && optimizedCleanWhitePolygons)
 								{
 									LOGI("Cleanup mesh...");
-
-									// assume last texture is the occluded texture
-									textureMesh->tex_coordinates.pop_back();
-									textureMesh->tex_polygons.pop_back();
-									textureMesh->tex_materials.pop_back();
-
-									if(clusterRatio_>0.0f)
-									{
-										LOGI("Filter small polygon clusters...");
-
-										// concatenate all polygons
-										int totalSize = 0;
-										for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
-										{
-											totalSize+=textureMesh->tex_polygons[t].size();
-										}
-										std::vector<pcl::Vertices> allPolygons(totalSize);
-										int oi=0;
-										for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
-										{
-											for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
-											{
-												allPolygons[oi++] =  textureMesh->tex_polygons[t][i];
-											}
-										}
-
-										// filter polygons
-										std::vector<std::set<int> > neighbors;
-										std::vector<std::set<int> > vertexToPolygons;
-										rtabmap::util3d::createPolygonIndexes(allPolygons,
-												textureMesh->cloud.data.size()/textureMesh->cloud.point_step,
-												neighbors,
-												vertexToPolygons);
-										std::list<std::list<int> > clusters = rtabmap::util3d::clusterPolygons(
-												neighbors,
-												optimizedMinTextureClusterSize);
-
-										std::set<int> validPolygons;
-										for(std::list<std::list<int> >::iterator kter=clusters.begin(); kter!=clusters.end(); ++kter)
-										{
-											for(std::list<int>::iterator jter=kter->begin(); jter!=kter->end(); ++jter)
-											{
-												validPolygons.insert(*jter);
-											}
-										}
-
-										// for each texture
-										unsigned int allPolygonsIndex = 0;
-										for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
-										{
-											std::vector<pcl::Vertices> filteredPolygons(textureMesh->tex_polygons[t].size());
-	#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
-											std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > filteredCoordinates(textureMesh->tex_coordinates[t].size());
-	#else
-											std::vector<Eigen::Vector2f> filteredCoordinates(textureMesh->tex_coordinates[t].size());
-	#endif
-											int oi=0;
-											unsigned int polygonSize = 0;
-											if(textureMesh->tex_polygons[t].size())
-											{
-												UASSERT(allPolygonsIndex < allPolygons.size());
-
-												polygonSize = textureMesh->tex_polygons[t][0].vertices.size();
-
-												UASSERT(filteredCoordinates.size() == textureMesh->tex_polygons[t].size()*polygonSize);
-												for(unsigned int i=0; i<textureMesh->tex_polygons[t].size(); ++i)
-												{
-													if(validPolygons.find(allPolygonsIndex) != validPolygons.end())
-													{
-														filteredPolygons[oi] = textureMesh->tex_polygons[t].at(i);
-														for(unsigned int j=0; j<polygonSize; ++j)
-														{
-															filteredCoordinates[oi*polygonSize + j] = textureMesh->tex_coordinates[t][i*polygonSize + j];
-														}
-														++oi;
-													}
-													++allPolygonsIndex;
-												}
-												filteredPolygons.resize(oi);
-												filteredCoordinates.resize(oi*polygonSize);
-												textureMesh->tex_polygons[t] = filteredPolygons;
-												textureMesh->tex_coordinates[t] = filteredCoordinates;
-											}
-										}
-
-										LOGI("Filtered %d polygons.", (int)(allPolygons.size()-validPolygons.size()));
-									}
-
-									for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
-									{
-										totalPolygons+=textureMesh->tex_polygons[t].size();
-									}
-
-									LOGI("Cleanup mesh... done! %fs (total polygons=%d)", timer.ticks(), totalPolygons);
+									rtabmap::util3d::cleanTextureMesh(*textureMesh, 0);
+									LOGI("Cleanup mesh... done! %fs", timer.ticks());
 								}
-								else
+
+								totalPolygons = 0;
+								for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
 								{
-									for(unsigned int t=0; t<textureMesh->tex_polygons.size(); ++t)
-									{
-										totalPolygons+=textureMesh->tex_polygons[t].size();
-									}
+									totalPolygons+=textureMesh->tex_polygons[t].size();
 								}
+							}
+							else
+							{
+								totalPolygons = (int)mesh->polygons.size();
+								polygonMesh = mesh;
 							}
 						}
 					}

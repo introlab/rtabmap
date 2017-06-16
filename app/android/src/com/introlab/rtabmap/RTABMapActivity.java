@@ -1960,6 +1960,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 										{
 											mItemRenderingTextureMesh.setChecked(true);
 										}
+										if(!optimizedCleanWhitePolygons)
+										{
+											mButtonLighting.setChecked(true);
+											RTABMapLib.setLighting(true);
+										}
 										updateState(State.STATE_VISUALIZING);
 										RTABMapLib.postExportation(true);
 										if(mButtonFirst.isChecked())

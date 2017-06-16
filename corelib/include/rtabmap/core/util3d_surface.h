@@ -274,7 +274,6 @@ std::vector<pcl::Vertices> normalizePolygonsSide(
 template<typename pointRGBT>
 void denseMeshPostProcessing(
 		pcl::PolygonMeshPtr & mesh,
-		bool hasColors,                    // Tell if the mesh has colors
 		float meshDecimationFactor = 0.0f, // value between 0 and 1, 0=disabled
 		int maximumPolygons = 0,           // 0=disabled
 		const typename pcl::PointCloud<pointRGBT>::Ptr & cloud = pcl::PointCloud<pointRGBT>::Ptr(), // A RGB point cloud used to transfer colors back to mesh (needed for parameters below)

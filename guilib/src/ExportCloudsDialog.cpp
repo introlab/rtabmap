@@ -1854,7 +1854,6 @@ bool ExportCloudsDialog::getExportedClouds(
 						TexturingState texturingState(_progressDialog, false);
 						util3d::denseMeshPostProcessing<pcl::PointXYZRGBNormal>(
 								mesh,
-								!lostColors,
 								_ui->doubleSpinBox_meshDecimationFactor->isEnabled()?(float)_ui->doubleSpinBox_meshDecimationFactor->value():0.0f,
 								_ui->spinBox_meshMaxPolygons->isEnabled()?_ui->spinBox_meshMaxPolygons->value():0,
 								iter->second,
@@ -1965,7 +1964,6 @@ bool ExportCloudsDialog::getExportedClouds(
 				TexturingState texturingState(_progressDialog, false);
 				util3d::denseMeshPostProcessing<pcl::PointXYZRGBNormal>(
 						mesh,
-						true,
 						_ui->doubleSpinBox_meshDecimationFactor->isEnabled()?(float)_ui->doubleSpinBox_meshDecimationFactor->value():0.0f,
 						_ui->spinBox_meshMaxPolygons->isEnabled()?_ui->spinBox_meshMaxPolygons->value():0,
 						vertices,
