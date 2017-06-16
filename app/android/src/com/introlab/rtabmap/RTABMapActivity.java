@@ -1168,41 +1168,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	private RTABMapActivity getActivity() {return this;}
 
-	private String[] loadFileList(String directory, final boolean databasesOnly) {
-		File path = new File(directory); 
-		String fileList[];
-		try {
-			path.mkdirs();
-		}
-		catch(SecurityException e) {
-			Log.e(TAG, "unable to write on the sd card " + e.toString());
-		}
-		if(path.exists()) {
-			FilenameFilter filter = new FilenameFilter() {
-
-				@Override
-				public boolean accept(File dir, String filename) {
-					File sel = new File(dir, filename);
-					if(databasesOnly)
-					{
-						return filename.compareTo(RTABMAP_TMP_DB) != 0 && filename.endsWith(".db");
-					}
-					else
-					{
-						return sel.isFile();
-					}
-				}
-
-			};
-			fileList = path.list(filter);
-			Arrays.sort(fileList);
-		}
-		else {
-			fileList = new String[0];
-		}
-		return fileList;
-	}
-
 	private void standardOptimization() {
 		mExportProgressDialog.setTitle("Post-Processing");
 		mExportProgressDialog.setMessage(String.format("Please wait while optimizing..."));
@@ -1800,7 +1765,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 		else if(itemId == R.id.open)
 		{
-			final String[] files = loadFileList(mWorkingDirectory, true);
+			final String[] files = Util.loadFileList(mWorkingDirectory, true);
 			if(files.length > 0)
 			{
 				String[] filesWithSize = new String[files.length];
@@ -1885,7 +1850,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	
 		File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
 		tmpDir.mkdirs();
-		String[] fileNames = loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
+		String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
 		if(!DISABLE_LOG) Log.i(TAG, String.format("Deleting %d files in \"%s\"", fileNames.length, mWorkingDirectory + RTABMAP_TMP_DIR));
 		for(int i=0; i<fileNames.length; ++i)
 		{
@@ -2164,7 +2129,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
 			pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".zip";
 
-			String[] fileNames = loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
+			String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
 			if(fileNames.length > 0)
 			{
 				String[] filesToZip = new String[fileNames.length];

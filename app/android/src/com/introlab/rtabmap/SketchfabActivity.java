@@ -135,15 +135,14 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		// verify if we have all files
 		if(extension.compareTo(".obj") == 0)
 		{
-			File objFile = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + RTABMapActivity.RTABMAP_TMP_FILENAME + ".obj");
-			File mltFile = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + RTABMapActivity.RTABMAP_TMP_FILENAME + ".mtl");
-			File jpgFile = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + RTABMapActivity.RTABMAP_TMP_FILENAME + ".jpg");
-			if(objFile.exists() && mltFile.exists() && jpgFile.exists())
+			String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, false);
+			if(fileNames.length > 0)
 			{
-				files = new String[3];
-				files[0] = objFile.getAbsolutePath();
-				files[1] = mltFile.getAbsolutePath();
-				files[2] = jpgFile.getAbsolutePath();
+				files = new String[fileNames.length];
+				for(int i=0; i<fileNames.length; ++i)
+				{
+					files[i] = mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + "/" + fileNames[i];
+				}
 			}
 			else
 			{
@@ -152,7 +151,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		}
 		else if(extension.compareTo(".ply") == 0)
 		{
-			File plyFile = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + RTABMapActivity.RTABMAP_TMP_FILENAME + extension);
+			File plyFile = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + "/" + RTABMapActivity.RTABMAP_TMP_FILENAME + extension);
 			if(plyFile.exists())
 			{
 				files = new String[1];

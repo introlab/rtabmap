@@ -2,9 +2,12 @@ package com.introlab.rtabmap;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.FilenameFilter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -52,5 +55,39 @@ public class Util {
 		}
 	}
 
+	public static String[] loadFileList(String directory, final boolean databasesOnly) {
+		File path = new File(directory); 
+		String fileList[];
+		try {
+			path.mkdirs();
+		}
+		catch(SecurityException e) {
+			Log.e(RTABMapActivity.TAG, "unable to write on the sd card " + e.toString());
+		}
+		if(path.exists()) {
+			FilenameFilter filter = new FilenameFilter() {
+
+				@Override
+				public boolean accept(File dir, String filename) {
+					File sel = new File(dir, filename);
+					if(databasesOnly)
+					{
+						return filename.compareTo(RTABMapActivity.RTABMAP_TMP_DB) != 0 && filename.endsWith(".db");
+					}
+					else
+					{
+						return sel.isFile();
+					}
+				}
+
+			};
+			fileList = path.list(filter);
+			Arrays.sort(fileList);
+		}
+		else {
+			fileList = new String[0];
+		}
+		return fileList;
+	}
 	
 }

@@ -2480,8 +2480,15 @@ bool RTABMapApp::exportMesh(
 				}
 				else if(textureMesh->tex_materials.size())
 				{
+					// With Sketchfab, the OBJ models are rotated 90 degrees on x axis, so rotate -90 to have model in right position
+					pcl::PointCloud<pcl::PointNormal>::Ptr cloud(new pcl::PointCloud<pcl::PointNormal>);
+					pcl::fromPCLPointCloud2(textureMesh->cloud, *cloud);
+					pcl::PCLPointCloud2 tmp = textureMesh->cloud;
+					cloud = rtabmap::util3d::transformPointCloud(cloud, rtabmap::Transform(1,0,0,0, 0,0,1,0, 0,-1,0,0));
+					pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
 					LOGI("Saving obj (%d vertices, %d polygons) to %s.", (int)textureMesh->cloud.data.size()/textureMesh->cloud.point_step, totalPolygons, filePath.c_str());
 					success = pcl::io::saveOBJFile(filePath, *textureMesh) == 0;
+					textureMesh->cloud = tmp;
 					if(success)
 					{
 						LOGI("Saved obj to %s!", filePath.c_str());
