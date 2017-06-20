@@ -43,6 +43,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 
+namespace pcl
+{
+class TextureMesh;
+}
+
 namespace rtabmap {
 
 class Signature;
@@ -92,6 +97,19 @@ public:
 
 	int cleanup();
 	void saveStatistics(const Statistics & statistics);
+	void savePreviewImage(const cv::Mat & image) const;
+	cv::Mat loadPreviewImage() const;
+	void saveOptimizedMesh(
+			const cv::Mat & cloud,
+			const std::map<int, Transform> & poses = std::map<int, Transform>(), // if we want to do localization afterward using optimized mesh
+			const std::vector<std::vector<std::vector<unsigned int> > > & polygons = std::vector<std::vector<std::vector<unsigned int> > >(),      // Textures -> polygons -> vertices
+			const std::vector<std::vector<Eigen::Vector2f> > & texCoords = std::vector<std::vector<Eigen::Vector2f> >(), // Textures -> uv coords for each vertex of the polygons
+			const cv::Mat & textures = cv::Mat()) const; // concatenated textures (assuming square textures with all same size)
+	cv::Mat loadOptimizedMesh(
+			std::map<int, Transform> * poses = 0,
+			std::vector<std::vector<std::vector<unsigned int> > > * polygons = 0,
+			std::vector<std::vector<Eigen::Vector2f> > * texCoords = 0,
+			cv::Mat * textures = 0) const;
 	void emptyTrash();
 	void joinTrashThread();
 	bool addLink(const Link & link, bool addInDatabase = false);

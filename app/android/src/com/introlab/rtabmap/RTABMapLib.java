@@ -28,6 +28,7 @@ public class RTABMapLib
     public static native void setScreenRotation(int displayRotation, int cameraRotation);
     
     public static native int openDatabase(String databasePath, boolean databaseInMemory, boolean optimize);
+    public static native int openDatabase2(String databaseSource, String databasePath, boolean databaseInMemory, boolean optimize);
     
     /*
      * Called when the Tango service is connected.

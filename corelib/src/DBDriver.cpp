@@ -1024,6 +1024,45 @@ void DBDriver::addStatistics(const Statistics & statistics) const
 	_dbSafeAccessMutex.unlock();
 }
 
+void DBDriver::savePreviewImage(const cv::Mat & image) const
+{
+	_dbSafeAccessMutex.lock();
+	savePreviewImageQuery(image);
+	_dbSafeAccessMutex.unlock();
+}
+
+cv::Mat DBDriver::loadPreviewImage() const
+{
+	_dbSafeAccessMutex.lock();
+	cv::Mat image = loadPreviewImageQuery();
+	_dbSafeAccessMutex.unlock();
+	return image;
+}
+
+void DBDriver::saveOptimizedMesh(
+			const cv::Mat & cloud,
+			const std::map<int, Transform> & poses,
+			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+			const cv::Mat & textures) const
+{
+	_dbSafeAccessMutex.lock();
+	saveOptimizedMeshQuery(cloud, poses, polygons, texCoords, textures);
+	_dbSafeAccessMutex.unlock();
+}
+
+cv::Mat DBDriver::loadOptimizedMesh(
+				std::map<int, Transform> * poses,
+				std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+				std::vector<std::vector<Eigen::Vector2f> > * texCoords,
+				cv::Mat * textures) const
+{
+	_dbSafeAccessMutex.lock();
+	cv::Mat cloud = loadOptimizedMeshQuery(poses, polygons, texCoords, textures);
+	_dbSafeAccessMutex.unlock();
+	return cloud;
+}
+
 void DBDriver::generateGraph(
 		const std::string & fileName,
 		const std::set<int> & idsInput,

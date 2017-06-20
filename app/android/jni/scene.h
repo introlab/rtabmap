@@ -57,6 +57,8 @@ class Scene {
 
   // Setup GL view port.
   void SetupViewPort(int w, int h);
+  int getViewPortWidth() const {return screenWidth_;}
+  int getViewPortHeight() const {return screenHeight_;}
 
   void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {color_camera_to_display_rotation_ = colorCameraToDisplayRotation;}
 

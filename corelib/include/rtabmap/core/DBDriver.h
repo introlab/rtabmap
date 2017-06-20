@@ -98,6 +98,19 @@ public:
 public:
 	void addInfoAfterRun(int stMemSize, int lastSignAdded, int processMemUsed, int databaseMemUsed, int dictionarySize, const ParametersMap & parameters) const;
 	void addStatistics(const Statistics & statistics) const;
+	void savePreviewImage(const cv::Mat & image) const;
+	cv::Mat loadPreviewImage() const;
+	void saveOptimizedMesh(
+			const cv::Mat & cloud,
+			const std::map<int, Transform> & poses = std::map<int, Transform>(), // if we want to do localization afterward using optimized mesh
+			const std::vector<std::vector<std::vector<unsigned int> > > & polygons = std::vector<std::vector<std::vector<unsigned int> > >(),      // Textures -> polygons -> vertices
+			const std::vector<std::vector<Eigen::Vector2f> > & texCoords = std::vector<std::vector<Eigen::Vector2f> >(), // Textures -> uv coords for each vertex of the polygons
+			const cv::Mat & textures = cv::Mat()) const; // concatenated textures (assuming square textures with all same size);
+	cv::Mat loadOptimizedMesh(
+			std::map<int, Transform> * poses = 0,
+			std::vector<std::vector<std::vector<unsigned int> > > * polygons = 0,
+			std::vector<std::vector<Eigen::Vector2f> > * texCoords = 0,
+			cv::Mat * textures = 0) const;
 
 public:
 	// Mutex-protected methods of abstract versions below
@@ -200,6 +213,19 @@ private:
 					const cv::Mat & image) const = 0;
 
 	virtual void addStatisticsQuery(const Statistics & statistics) const = 0;
+	virtual void savePreviewImageQuery(const cv::Mat & image) const = 0;
+	virtual cv::Mat loadPreviewImageQuery() const = 0;
+	virtual void saveOptimizedMeshQuery(
+				const cv::Mat & cloud,
+				const std::map<int, Transform> & poses,
+				const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+				const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+				const cv::Mat & textures) const = 0;
+	virtual cv::Mat loadOptimizedMeshQuery(
+				std::map<int, Transform> * poses,
+				std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+				std::vector<std::vector<Eigen::Vector2f> > * texCoords,
+				cv::Mat * textures) const = 0;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const = 0;

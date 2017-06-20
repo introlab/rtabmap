@@ -56,7 +56,7 @@ class RTABMapApp : public UEventsHandler {
 
   void setScreenRotation(int displayRotation, int cameraRotation);
 
-  int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize);
+  int openDatabase(const std::string & databasePath, bool databaseInMemory, bool optimize, const std::string & databaseSource=std::string());
 
   bool onTangoServiceConnected(JNIEnv* env, jobject iBinder);
 
@@ -218,6 +218,7 @@ class RTABMapApp : public UEventsHandler {
   bool filterPolygonsOnNextRender_;
   int gainCompensationOnNextRender_;
   bool bilateralFilteringOnNextRender_;
+  bool takeScreenshotOnNextRender_;
   bool cameraJustInitialized_;
   int meshDecimation_;
   int totalPoints_;
@@ -233,6 +234,7 @@ class RTABMapApp : public UEventsHandler {
   bool exportedMeshUpdated_;
   pcl::TextureMesh::Ptr exportedMesh_;
   cv::Mat exportedTexture_;
+  std::map<int, rtabmap::Transform> exportedPoses_;
 
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.
@@ -249,6 +251,8 @@ class RTABMapApp : public UEventsHandler {
 	boost::mutex odomMutex_;
 	boost::mutex poseMutex_;
 	boost::mutex renderingMutex_;
+
+	USemaphore screenshotReady_;
 
 	std::map<int, Mesh> createdMeshes_;
 	std::map<int, rtabmap::Transform> rawPoses_;

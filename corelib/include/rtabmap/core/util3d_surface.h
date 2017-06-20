@@ -177,9 +177,9 @@ void RTABMAP_EXP concatenateTextureMaterials(
 
 /**
  * Merge all textures in the mesh into "textureCount" textures of size "textureSize".
- * @return merged textures corresponding to new materials set in TextureMesh
+ * @return merged textures corresponding to new materials set in TextureMesh (height=textureSize, width=textureSize*materials)
  */
-std::vector<cv::Mat> RTABMAP_EXP mergeTextures(
+cv::Mat RTABMAP_EXP mergeTextures(
 		pcl::TextureMesh & mesh,
 		const std::map<int, cv::Mat> & images, // raw or compressed, can be empty if memory or dbDriver should be used
 		const std::map<int, std::vector<CameraModel> > & calibrations, // Should match images

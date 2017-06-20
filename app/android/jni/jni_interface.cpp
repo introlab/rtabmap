@@ -71,6 +71,17 @@ Java_com_introlab_rtabmap_RTABMapLib_openDatabase(
 	return app.openDatabase(databasePathC, databaseInMemory, optimize);
 }
 
+JNIEXPORT int JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_openDatabase2(
+    JNIEnv* env, jobject, jstring databaseSource, jstring databasePath, bool databaseInMemory, bool optimize)
+{
+	std::string databasePathC;
+	GetJStringContent(env,databasePath,databasePathC);
+	std::string databaseSourceC;
+	GetJStringContent(env,databaseSource,databaseSourceC);
+	return app.openDatabase(databasePathC, databaseInMemory, optimize, databaseSourceC);
+}
+
 JNIEXPORT bool JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_onTangoServiceConnected(
 		JNIEnv* env, jobject, jobject iBinder) {

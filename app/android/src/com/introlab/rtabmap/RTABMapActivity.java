@@ -12,8 +12,10 @@ import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -38,6 +40,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -133,7 +137,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private static enum State {
 		STATE_IDLE,
 		STATE_PROCESSING,
-		STATE_VISUALIZING
+		STATE_VISUALIZING,
+		STATE_VISUALIZING_WHILE_LOADING
 	}
 	State mState = State.STATE_IDLE;
 
@@ -1264,6 +1269,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mButtonLighting.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
 			mButtonWireframe.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
 			mButtonCloseVisualization.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonCloseVisualization.setEnabled(true);
 			mButtonSaveOnDevice.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mButtonShareOnSketchfab.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
@@ -1275,6 +1281,22 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemModes.setEnabled(true);
 			mButtonPause.setVisibility(View.INVISIBLE);
 			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
+			break;
+		case STATE_VISUALIZING_WHILE_LOADING:
+			mButtonLighting.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
+			mButtonWireframe.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
+			mButtonCloseVisualization.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonCloseVisualization.setEnabled(false);
+			mButtonSaveOnDevice.setVisibility(View.INVISIBLE);
+			mButtonShareOnSketchfab.setVisibility(View.INVISIBLE);
+			mItemSave.setEnabled(false);
+			mItemExport.setEnabled(false);
+			mItemOpen.setEnabled(false);
+			mItemPostProcessing.setEnabled(false);
+			mItemSettings.setEnabled(false);
+			mItemReset.setEnabled(false);
+			mItemModes.setEnabled(false);
+			mButtonPause.setVisibility(View.INVISIBLE);
 			break;
 		default:
 			mButtonLighting.setVisibility(View.INVISIBLE);
@@ -1357,6 +1379,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	}
 
 	public boolean onOptionsItemSelected(MenuItem item) {
+		resetNoTouchTimer();
 		if(!DISABLE_LOG) Log.i(TAG, "called onOptionsItemSelected; selected item: " + item);
 		int itemId = item.getItemId();
 		if (itemId == R.id.post_processing_standard)
@@ -1775,9 +1798,22 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					long mb = filePath.length()/(1024*1024);
 					filesWithSize[i] = files[i] + " ("+mb+" MB)";
 				}
+				
+				ArrayList<HashMap<String, String> > arrayList = new ArrayList<HashMap<String, String> >();
+		        for (int i = 0; i < filesWithSize.length; i++) {
+		            HashMap<String, String> hashMap = new HashMap<String, String>();//create a hashmap to store the data in key value pair
+		            hashMap.put("name", filesWithSize[i]);
+		            hashMap.put("path", mWorkingDirectory + files[i]);
+		            arrayList.add(hashMap);//add the hashmap into arrayList
+		        }
+		        String[] from = {"name", "path"};//string array
+		        int[] to = {R.id.textView, R.id.imageView};//int array of views id's
+		        DatabaseListArrayAdapter simpleAdapter = new DatabaseListArrayAdapter(this, arrayList, R.layout.database_list, from, to);//Create object and set the parameters for simpleAdapter
+
 				AlertDialog.Builder builder = new AlertDialog.Builder(this);
 				builder.setTitle("Choose Your File (*.db)");
-				builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
+				builder.setAdapter(simpleAdapter, new DialogInterface.OnClickListener() {
+				//builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, final int which) {
 												
 						// Adjust color now?
@@ -1912,7 +1948,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 									public void onClick(DialogInterface dialog, int which) {
 										mExportedOBJ = isOBJ;
 										resetNoTouchTimer();
-										mSavedRenderingType = !meshing?0:!isOBJ?1:2;
+										mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
 										if(!meshing)
 										{
 											mItemRenderingPointCloud.setChecked(true);
@@ -2206,6 +2242,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	{
 		mOpenedDatabasePath = mWorkingDirectory + fileName;
 		
+		Log.i(TAG, "Open database " + mOpenedDatabasePath);
+		
 		SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
 		final boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));		
 		
@@ -2218,27 +2256,55 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		Thread openThread = new Thread(new Runnable() {
 			public void run() {
 
-				final String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
-				(new File(tmpDatabase)).delete();
-				try{
-					copy(new File(mOpenedDatabasePath), new File(tmpDatabase));
-				}
-				catch(IOException e)
-				{
-					mToast.makeText(getActivity(), String.format("Failed to create temp database from %s!", mOpenedDatabasePath), mToast.LENGTH_LONG).show();
-					updateState(State.STATE_IDLE);
-					mProgressDialog.dismiss();
-					return;
+				SQLiteDatabase db = null;
+				try {
+					db = SQLiteDatabase.openDatabase(mOpenedDatabasePath, null, SQLiteDatabase.OPEN_READONLY);
+					
+					// get version
+					Cursor c1 = db.rawQuery("SELECT version FROM Admin", null);    
+			        if(c1.moveToFirst()) {
+			        	String version = c1.getString(c1.getColumnIndex("version"));
+			        	Log.i(TAG, "Version="+version);
+			        	if(Util.versionCompare(version, "0.13.0") >= 0) {
+			        		Cursor c2 = db.rawQuery("SELECT version FROM Admin WHERE opt_cloud is not null", null); 
+			        		if(c2.moveToFirst()) {
+			        			Log.i(TAG, "Found optimized mesh");
+			        			runOnUiThread(new Runnable() {
+			    					public void run() {
+			    						mProgressDialog.dismiss();
+			    						updateState(State.STATE_VISUALIZING_WHILE_LOADING);
+			    						mToast.makeText(getActivity(), String.format("Optimized mesh detected in the database. It will be shown while the database is loading..."), mToast.LENGTH_LONG).show();
+			    					}
+			        			});
+			        		}
+			        		else
+			        		{
+			        			Log.i(TAG, "Not found optimized mesh");
+			        		}
+			        	}
+			        }
+			        else
+			        {
+			        	Log.e(TAG, "Failed getting version from database");
+			        }
+
+	            } catch (Exception e) {
+	                Log.e(TAG, e.getMessage());
+	            }
+				finally {
+					if(db != null && db.isOpen()) {
+	                	db.close();
+	                }
 				}
 				
-				final int status = RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, optimize);
+				final String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;				
+				final int status = RTABMapLib.openDatabase2(mOpenedDatabasePath, tmpDatabase, databaseInMemory, optimize);
 				
 				runOnUiThread(new Runnable() {
 					public void run() {
-						setCamera(1);
-						updateState(State.STATE_IDLE);
 						if(status == -1)
 						{
+							updateState(State.STATE_IDLE);
 							mProgressDialog.dismiss();
 							new AlertDialog.Builder(getActivity())
 							.setCancelable(false)
@@ -2262,6 +2328,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 						}
 						else if(status == -2)
 						{
+							updateState(State.STATE_IDLE);
 							mProgressDialog.dismiss();
 							new AlertDialog.Builder(getActivity())
 							.setCancelable(false)
@@ -2283,12 +2350,35 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 						}
 						else
 						{
-							// creating meshes...
-							if(!mItemTrajectoryMode.isChecked())
+							if(status >= 1 && status<=3)
 							{
+								mProgressDialog.dismiss();
+								resetNoTouchTimer();
+								mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
+								if(status==1)
+								{
+									mItemRenderingPointCloud.setChecked(true);
+								}
+								else if(status==2)
+								{
+									mItemRenderingMesh.setChecked(true);
+								}
+								else // isOBJ
+								{
+									mItemRenderingTextureMesh.setChecked(true);
+								}
+								updateState(State.STATE_VISUALIZING);
+								mToast.makeText(getActivity(), String.format("Database loaded!"), mToast.LENGTH_LONG).show();
+							}
+							else if(!mItemTrajectoryMode.isChecked())
+							{
+								setCamera(1);
+								// creating meshes...
+								updateState(State.STATE_IDLE);
 								mProgressDialog.setTitle("Loading");
 								mProgressDialog.setMessage(String.format("Database \"%s\" loaded. Please wait while rendering point clouds and meshes...", fileName));
 							}
+							
 						}
 					}
 				});

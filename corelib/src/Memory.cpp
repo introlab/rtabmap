@@ -1651,6 +1651,48 @@ void Memory::saveStatistics(const Statistics & statistics)
 	}
 }
 
+void Memory::savePreviewImage(const cv::Mat & image) const
+{
+	if(_dbDriver)
+	{
+		_dbDriver->savePreviewImage(image);
+	}
+}
+cv::Mat Memory::loadPreviewImage() const
+{
+	if(_dbDriver)
+	{
+		return _dbDriver->loadPreviewImage();
+	}
+	return cv::Mat();
+}
+
+void Memory::saveOptimizedMesh(
+		const cv::Mat & cloud,
+		const std::map<int, Transform> & poses,
+		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+		const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+		const cv::Mat & textures) const
+{
+	if(_dbDriver)
+	{
+		_dbDriver->saveOptimizedMesh(cloud, poses, polygons, texCoords, textures);
+	}
+}
+
+cv::Mat Memory::loadOptimizedMesh(
+			std::map<int, Transform> * poses,
+			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+			std::vector<std::vector<Eigen::Vector2f> > * texCoords,
+			cv::Mat * textures) const
+{
+	if(_dbDriver)
+	{
+		return _dbDriver->loadOptimizedMesh(poses, polygons, texCoords, textures);
+	}
+	return cv::Mat();
+}
+
 void Memory::emptyTrash()
 {
 	if(_dbDriver)

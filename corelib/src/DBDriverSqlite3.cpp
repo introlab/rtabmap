@@ -3728,6 +3728,477 @@ void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
 	}
 }
 
+void DBDriverSqlite3::savePreviewImageQuery(const cv::Mat & image) const
+{
+	UDEBUG("");
+	if(_ppDb && uStrNumCmp(_version, "0.12.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::string query;
+
+		// Update table Admin
+		query = uFormat("UPDATE Admin SET preview_image=? WHERE version='%s';", _version.c_str());
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		int index = 1;
+		cv::Mat compressedImage;
+		if(image.empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			// compress
+			if(image.rows == 1 && image.type() == CV_8UC1)
+			{
+				// already compressed
+				compressedImage = image;
+			}
+			else
+			{
+				compressedImage	= compressImage2(image, ".jpg");
+			}
+			rc = sqlite3_bind_blob(ppStmt, index++, compressedImage.data, compressedImage.cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		//execute query
+		rc=sqlite3_step(ppStmt);
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+cv::Mat DBDriverSqlite3::loadPreviewImageQuery() const
+{
+	UDEBUG("");
+	cv::Mat image;
+	if(_ppDb && uStrNumCmp(_version, "0.12.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT preview_image "
+			  << "FROM Admin "
+			  << "WHERE version='" << _version.c_str()
+			  <<"';";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		UASSERT_MSG(rc == SQLITE_ROW, uFormat("DB error (%s): Not found first Admin row: query=\"%s\"", _version.c_str(), query.str().c_str()).c_str());
+		if(rc == SQLITE_ROW)
+		{
+			const void * data = 0;
+			int dataSize = 0;
+			int index = 0;
+
+			//opt_cloud
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				image = uncompressImage(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+			}
+			UDEBUG("Image=%dx%d", image.cols, image.rows);
+
+			rc = sqlite3_step(ppStmt); // next result...
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+
+	}
+	return image;
+}
+
+void DBDriverSqlite3::saveOptimizedMeshQuery(
+			const cv::Mat & cloud,
+			const std::map<int, Transform> & poses,
+			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+			const cv::Mat & textures) const
+{
+	UDEBUG("");
+	if(_ppDb && uStrNumCmp(_version, "0.13.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::string query;
+
+		// Update table Admin
+		query = uFormat("UPDATE Admin SET opt_cloud=?, opt_ids=?, opt_poses=?, opt_polygons_size=?, opt_polygons=?, opt_tex_coords=?, opt_tex_materials=?, time_enter = DATETIME('NOW') WHERE version='%s';", _version.c_str());
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		if(cloud.empty())
+		{
+			// set all fields to null
+			for(int i=1; i<=7; ++i)
+			{
+				rc = sqlite3_bind_null(ppStmt, i);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
+
+			//execute query
+			rc=sqlite3_step(ppStmt);
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			int index = 1;
+
+			// compress and save cloud
+			cv::Mat compressedCloud;
+			if(cloud.rows == 1 && cloud.type() == CV_8UC1)
+			{
+				// already compressed
+				compressedCloud = cloud;
+			}
+			else
+			{
+				compressedCloud	= compressData2(cloud);
+			}
+			rc = sqlite3_bind_blob(ppStmt, index++, compressedCloud.data, compressedCloud.cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+			// opt ids and poses
+			cv::Mat compressedIds;
+			cv::Mat compressedPoses;
+			cv::Mat compressedPolygons;
+			cv::Mat compressedTexCoords;
+			cv::Mat compressedTextures;
+			if(poses.empty())
+			{
+				rc = sqlite3_bind_null(ppStmt, index++);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				rc = sqlite3_bind_null(ppStmt, index++);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
+			else
+			{
+				std::vector<int> serializedIds(poses.size());
+				std::vector<float> serializedPoses(poses.size()*12);
+				int i=0;
+				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+				{
+					serializedIds[i] = iter->first;
+					memcpy(serializedPoses.data()+(12*sizeof(float)*i), iter->second.data(), 12*sizeof(float));
+				}
+
+				compressedIds = compressData2(cv::Mat(1,serializedIds.size(), CV_32SC1, serializedIds.data()));
+				compressedPoses = compressData2(cv::Mat(1,serializedPoses.size(), CV_32FC1, serializedPoses.data()));
+
+				rc = sqlite3_bind_blob(ppStmt, index++, compressedIds.data, compressedIds.cols, SQLITE_STATIC);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				rc = sqlite3_bind_blob(ppStmt, index++, compressedPoses.data, compressedPoses.cols, SQLITE_STATIC);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
+
+			// polygons
+			if(polygons.empty())
+			{
+				//polygon size
+				rc = sqlite3_bind_null(ppStmt, index++);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				// polygons
+				rc = sqlite3_bind_null(ppStmt, index++);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				// tex_coords
+				rc = sqlite3_bind_null(ppStmt, index++);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				// materials
+				rc = sqlite3_bind_null(ppStmt, index++);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
+			else
+			{
+				std::vector<int> serializedPolygons;
+				std::vector<float> serializedTexCoords;
+				int polygonSize = 0;
+				int totalPolygonIndices = 0;
+				UASSERT(texCoords.empty() || polygons.size() == texCoords.size());
+				for(unsigned int t=0; t<polygons.size(); ++t)
+				{
+					unsigned int materialPolygonIndices = 0;
+					for(unsigned int p=0; p<polygons[t].size(); ++p)
+					{
+						if(polygonSize == 0)
+						{
+							UASSERT(polygons[t][p].size());
+							polygonSize = polygons[t][p].size();
+						}
+						else
+						{
+							UASSERT(polygonSize == (int)polygons[t][p].size());
+						}
+
+						materialPolygonIndices += polygons[t][p].size();
+					}
+					totalPolygonIndices += materialPolygonIndices;
+
+					if(!texCoords.empty())
+					{
+						UASSERT(materialPolygonIndices == texCoords[t].size());
+					}
+				}
+				UASSERT(totalPolygonIndices>0);
+				serializedPolygons.resize(totalPolygonIndices+polygons.size());
+				if(!texCoords.empty())
+				{
+					serializedTexCoords.resize(totalPolygonIndices*2+polygons.size());
+				}
+
+				int oi=0;
+				int ci=0;
+				for(unsigned int t=0; t<polygons.size(); ++t)
+				{
+					serializedPolygons[oi++] = polygons[t].size();
+					if(!texCoords.empty())
+					{
+						serializedTexCoords[ci++] = texCoords[t].size();
+					}
+					for(unsigned int p=0; p<polygons[t].size(); ++p)
+					{
+						int texIndex = p*polygonSize;
+						for(unsigned int i=0; i<polygons[t][p].size(); ++i)
+						{
+							serializedPolygons[oi++] = polygons[t][p][i];
+
+							if(!texCoords.empty())
+							{
+								serializedTexCoords[ci++] = texCoords[t][texIndex+i][0];
+								serializedTexCoords[ci++] = texCoords[t][texIndex+i][1];
+							}
+						}
+					}
+				}
+
+				compressedPolygons = compressData2(cv::Mat(1,serializedPolygons.size(), CV_32SC1, serializedPolygons.data()));
+
+				// polygon size
+				rc = sqlite3_bind_int(ppStmt, index++, polygonSize);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				rc = sqlite3_bind_blob(ppStmt, index++, compressedPolygons.data, compressedPolygons.cols, SQLITE_STATIC);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				// tex coords
+				if(texCoords.empty())
+				{
+					// tex coords
+					rc = sqlite3_bind_null(ppStmt, index++);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+					// materials
+					rc = sqlite3_bind_null(ppStmt, index++);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
+				else
+				{
+					compressedTexCoords = compressData2(cv::Mat(1,serializedTexCoords.size(), CV_32FC1, serializedTexCoords.data()));
+					rc = sqlite3_bind_blob(ppStmt, index++, compressedTexCoords.data, compressedTexCoords.cols, SQLITE_STATIC);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+					UASSERT(!textures.empty() && textures.cols % textures.rows == 0 && textures.cols/textures.rows == (int)texCoords.size());
+					if(textures.rows == 1 && textures.type() == CV_8UC1)
+					{
+						//already compressed
+						compressedTextures = textures;
+					}
+					else
+					{
+						compressedTextures = compressImage2(textures, ".jpg");
+					}
+					rc = sqlite3_bind_blob(ppStmt, index++, compressedTextures.data, compressedTextures.cols, SQLITE_STATIC);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
+			}
+
+			//execute query
+			rc=sqlite3_step(ppStmt);
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
+			std::map<int, Transform> * poses,
+			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+			std::vector<std::vector<Eigen::Vector2f> > * texCoords,
+			cv::Mat * textures) const
+{
+	UDEBUG("");
+	cv::Mat cloud;
+	if(_ppDb && uStrNumCmp(_version, "0.13.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT opt_cloud, opt_ids, opt_poses, opt_polygons_size, opt_polygons, opt_tex_coords, opt_tex_materials "
+			  << "FROM Admin "
+			  << "WHERE version='" << _version.c_str()
+			  <<"';";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		UASSERT_MSG(rc == SQLITE_ROW, uFormat("DB error (%s): Not found first Admin row: query=\"%s\"", _version.c_str(), query.str().c_str()).c_str());
+		if(rc == SQLITE_ROW)
+		{
+			const void * data = 0;
+			int dataSize = 0;
+			int index = 0;
+
+			//opt_cloud
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				cloud = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+			}
+			UDEBUG("Cloud=%d points", cloud.cols);
+
+			//opt_poses
+			cv::Mat serializedIds;
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				serializedIds = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+				UDEBUG("serializedIds=%d", serializedIds.cols);
+			}
+
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				cv::Mat serializedPoses = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+				UDEBUG("serializedPoses=%d", serializedPoses.cols);
+
+				if(poses)
+				{
+					UASSERT(serializedIds.cols == serializedPoses.cols/12);
+				}
+			}
+
+			//opt_polygons_size
+			int polygonSize = sqlite3_column_int(ppStmt, index++);
+			UDEBUG("polygonSize=%d", polygonSize);
+
+			//opt_polygons
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				UASSERT(polygonSize > 0);
+				if(polygons)
+				{
+					cv::Mat serializedPolygons = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+					UDEBUG("serializedPolygons=%d", serializedPolygons.cols);
+					UASSERT(serializedPolygons.total());
+					for(int t=0; t<serializedPolygons.cols; ++t)
+					{
+						UASSERT(serializedPolygons.at<int>(t) > 0);
+						std::vector<std::vector<unsigned int> > materialPolygons(serializedPolygons.at<int>(t), std::vector<unsigned int>(polygonSize));
+						++t;
+						UASSERT(t < serializedPolygons.cols);
+						UDEBUG("materialPolygons=%d", (int)materialPolygons.size());
+						for(int p=0; p<(int)materialPolygons.size(); ++p)
+						{
+							for(int i=0; i<polygonSize; ++i)
+							{
+								materialPolygons[p][i] = serializedPolygons.at<int>(t + p*polygonSize + i);
+							}
+						}
+						t+=materialPolygons.size()*polygonSize;
+						polygons->push_back(materialPolygons);
+					}
+				}
+
+				//opt_tex_coords
+				data = sqlite3_column_blob(ppStmt, index);
+				dataSize = sqlite3_column_bytes(ppStmt, index++);
+				if(dataSize>0 && data)
+				{
+					if(texCoords)
+					{
+						cv::Mat serializedTexCoords = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+						UDEBUG("serializedTexCoords=%d", serializedTexCoords.cols);
+						UASSERT(serializedTexCoords.total());
+						for(int t=0; t<serializedTexCoords.cols; ++t)
+						{
+							UASSERT(int(serializedTexCoords.at<float>(t)) > 0);
+							std::vector<Eigen::Vector2f> materialtexCoords(int(serializedTexCoords.at<float>(t)));
+							++t;
+							UASSERT(t < serializedTexCoords.cols);
+							UDEBUG("materialtexCoords=%d", (int)materialtexCoords.size());
+							for(int p=0; p<(int)materialtexCoords.size(); ++p)
+							{
+								materialtexCoords[p][0] = serializedTexCoords.at<float>(t + p*2);
+								materialtexCoords[p][1] = serializedTexCoords.at<float>(t + p*2 + 1);
+							}
+							t+=materialtexCoords.size()*2;
+							texCoords->push_back(materialtexCoords);
+						}
+					}
+
+					//opt_tex_materials
+					data = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize>0 && data)
+					{
+						if(textures)
+						{
+							*textures = uncompressImage(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+							UDEBUG("textures=%dx%d", textures->cols, textures->rows);
+						}
+					}
+				}
+			}
+
+			rc = sqlite3_step(ppStmt); // next result...
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+
+	}
+	return cloud;
+}
+
 std::string DBDriverSqlite3::queryStepNode() const
 {
 	if(uStrNumCmp(_version, "0.13.0") >= 0)

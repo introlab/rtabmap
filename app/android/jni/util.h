@@ -44,8 +44,8 @@ class LogHandler : public UEventsHandler
 public:
 	LogHandler()
 	{
-		ULogger::setLevel(ULogger::kWarning);
-		ULogger::setEventLevel(ULogger::kWarning);
+		ULogger::setLevel(ULogger::kDebug);
+		ULogger::setEventLevel(ULogger::kDebug);
 		ULogger::setPrintThreadId(true);
 
 		registerToEventsManager();

@@ -95,6 +95,19 @@ private:
 				const cv::Mat & image) const;
 
 	virtual void addStatisticsQuery(const Statistics & statistics) const;
+	virtual void savePreviewImageQuery(const cv::Mat & image) const;
+	virtual cv::Mat loadPreviewImageQuery() const;
+	virtual void saveOptimizedMeshQuery(
+			const cv::Mat & cloud,
+			const std::map<int, Transform> & poses,
+			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+			const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+			const cv::Mat & textures) const;
+	virtual cv::Mat loadOptimizedMeshQuery(
+			std::map<int, Transform> * poses,
+			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+			std::vector<std::vector<Eigen::Vector2f> > * texCoords,
+			cv::Mat * textures) const;
 
 	// Load objects
 	virtual void loadQuery(VWDictionary * dictionary) const;

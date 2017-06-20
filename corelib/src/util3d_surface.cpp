@@ -1194,7 +1194,8 @@ double sqr(uchar v)
 {
 	return double(v)*double(v);
 }
-std::vector<cv::Mat> mergeTextures(
+
+cv::Mat mergeTextures(
 		pcl::TextureMesh & mesh,
 		const std::map<int, cv::Mat> & images,
 		const std::map<int, std::vector<CameraModel> > & calibrations,
@@ -1216,7 +1217,7 @@ std::vector<cv::Mat> mergeTextures(
 	//get texture size, if disabled use default 1024
 	UASSERT(textureSize%256 == 0);
 	UDEBUG("textureSize = %d", textureSize);
-	std::vector<cv::Mat> globalTextures;
+	cv::Mat globalTextures;
 	if(mesh.tex_materials.size() > 1)
 	{
 		std::vector<std::pair<int, int> > textures(mesh.tex_materials.size(), std::pair<int, int>(-1,-1));
@@ -1346,13 +1347,8 @@ std::vector<cv::Mat> mergeTextures(
 				int cols = float(textureSize)/(scale*imageSize.width);
 				int rows = float(textureSize)/(scale*imageSize.height);
 
-				std::vector<cv::Mat> globalTextureMasks(materials);
-				globalTextures.resize(materials);
-				for(int i=0; i<materials; ++i)
-				{
-					globalTextures[i] = cv::Mat(textureSize, textureSize, imageType, cv::Scalar::all(255));
-					globalTextureMasks[i] = cv::Mat(textureSize, textureSize, CV_8UC1, cv::Scalar::all(0));
-				}
+				globalTextures = cv::Mat(textureSize, materials*textureSize, imageType, cv::Scalar::all(255));
+				cv::Mat globalTextureMasks = cv::Mat(textureSize, materials*textureSize, CV_8UC1, cv::Scalar::all(0));
 
 				// used for multi camera texturing, to avoid reloading same texture for sub cameras
 				cv::Mat previousImage;
@@ -1440,13 +1436,13 @@ std::vector<cv::Mat> mergeTextures(
 								cv::cvtColor(resizedImage, resizedImageColor, CV_GRAY2BGR);
 								resizedImage = resizedImageColor;
 							}
-							UASSERT(resizedImage.type() == globalTextures[indexMaterial].type());
-							resizedImage.copyTo(globalTextures[indexMaterial](cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
-							emptyImageMask.copyTo(globalTextureMasks[indexMaterial](cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
+							UASSERT(resizedImage.type() == globalTextures.type());
+							resizedImage.copyTo(globalTextures(cv::Rect(u+indexMaterial*globalTextures.rows, v, resizedImage.cols, resizedImage.rows)));
+							emptyImageMask.copyTo(globalTextureMasks(cv::Rect(u+indexMaterial*globalTextureMasks.rows, v, resizedImage.cols, resizedImage.rows)));
 						}
 						else
 						{
-							emptyImage.copyTo(globalTextures[indexMaterial](cv::Rect(u, v, emptyImage.cols, emptyImage.rows)));
+							emptyImage.copyTo(globalTextures(cv::Rect(u+indexMaterial*globalTextures.rows, v, emptyImage.cols, emptyImage.rows)));
 						}
 						++oi;
 					}
@@ -1455,7 +1451,7 @@ std::vector<cv::Mat> mergeTextures(
 					{
 						if(state->isCanceled())
 						{
-							return std::vector<cv::Mat>();
+							return cv::Mat();
 						}
 						state->callback(uFormat("Assembled texture %d/%d.", t+1, (int)textures.size()));
 					}
@@ -1510,8 +1506,8 @@ std::vector<cv::Mat> mergeTextures(
 											int vi = (1.0-iter->second.y)*emptyImage.rows + imageOrigin[iter->first].y;
 											int uj = jter->second.x*emptyImage.cols + imageOrigin[jter->first].x;
 											int vj = (1.0-jter->second.y)*emptyImage.rows + imageOrigin[jter->first].y;
-											cv::Vec3b * pt1 = globalTextures[indexMaterial].ptr<cv::Vec3b>(vi,ui);
-											cv::Vec3b * pt2 = globalTextures[indexMaterial].ptr<cv::Vec3b>(vj,uj);
+											cv::Vec3b * pt1 = globalTextures.ptr<cv::Vec3b>(vi,ui+indexMaterial*globalTextures.rows);
+											cv::Vec3b * pt2 = globalTextures.ptr<cv::Vec3b>(vj,uj+indexMaterial*globalTextures.rows);
 
 											I(i, j) += std::sqrt(static_cast<double>(sqr(pt1->val[0]) + sqr(pt1->val[1]) + sqr(pt1->val[2])));
 											I(j, i) += std::sqrt(static_cast<double>(sqr(pt2->val[0]) + sqr(pt2->val[1]) + sqr(pt2->val[2])));
@@ -1609,7 +1605,7 @@ std::vector<cv::Mat> mergeTextures(
 								UDEBUG("Gain cam%d = %f", newCamIndex[t], gainsGray(newCamIndex[t], 0));
 
 								int indexMaterial = newCamIndex[t] / (cols*rows);
-								cv::Mat roi = globalTextures[indexMaterial](cv::Rect(u, v, emptyImage.cols, emptyImage.rows));
+								cv::Mat roi = globalTextures(cv::Rect(u+indexMaterial*globalTextures.rows, v, emptyImage.cols, emptyImage.rows));
 
 								std::vector<cv::Mat> channels;
 								cv::split(roi, channels);
@@ -1689,7 +1685,7 @@ std::vector<cv::Mat> mergeTextures(
 						std::vector<cv::Mat> blendGains(materials);
 						for(int i=0; i<materials;++i)
 						{
-							blendGains[i] = cv::Mat(globalTextures[i].rows/decimation, globalTextures[i].cols/decimation, CV_32FC3, cv::Scalar::all(1.0f));
+							blendGains[i] = cv::Mat(globalTextures.rows/decimation, globalTextures.rows/decimation, CV_32FC3, cv::Scalar::all(1.0f));
 						}
 
 						for(unsigned int p=0; p<vertexToPixels.size(); ++p)
@@ -1715,7 +1711,7 @@ std::vector<cv::Mat> mergeTextures(
 											weight = 0.0f;
 										}
 										int indexMaterial = newCamIndex[iter->first] / (cols*rows);
-										cv::Vec3b * pt = globalTextures[indexMaterial].ptr<cv::Vec3b>(v,u);
+										cv::Vec3b * pt = globalTextures.ptr<cv::Vec3b>(v,u+indexMaterial*globalTextures.rows);
 										gainsB[k] = static_cast<double>(pt->val[0]) * weight;
 										gainsG[k] = static_cast<double>(pt->val[1]) * weight;
 										gainsR[k] = static_cast<double>(pt->val[2]) * weight;
@@ -1740,7 +1736,7 @@ std::vector<cv::Mat> mergeTextures(
 											int u = iter->second.x*emptyImage.cols + imageOrigin[iter->first].x;
 											int v = (1.0-iter->second.y)*emptyImage.rows + imageOrigin[iter->first].y;
 											int indexMaterial = newCamIndex[iter->first] / (cols*rows);
-											cv::Vec3b * pt = globalTextures[indexMaterial].ptr<cv::Vec3b>(v,u);
+											cv::Vec3b * pt = globalTextures.ptr<cv::Vec3b>(v,u+indexMaterial*globalTextures.rows);
 											float gB = targetColor[0]/(pt->val[0]==0?1.0f:pt->val[0]);
 											float gG = targetColor[1]/(pt->val[1]==0?1.0f:pt->val[1]);
 											float gR = targetColor[2]/(pt->val[2]==0?1.0f:pt->val[2]);
@@ -1766,9 +1762,10 @@ std::vector<cv::Mat> mergeTextures(
 							channels[2].convertTo(img,CV_8U,128.0,0);
 							cv::imwrite("blendSmallR.png", img);*/
 
+							cv::Mat globalTexturesROI = globalTextures(cv::Range::all(), cv::Range(i*globalTextures.rows, (i+1)*globalTextures.rows));
 							cv::Mat dst;
 							cv::blur(blendGains[i], dst, cv::Size(3,3));
-							cv::resize(dst, blendGains[i], globalTextures[i].size(), 0, 0, cv::INTER_LINEAR);
+							cv::resize(dst, blendGains[i], globalTexturesROI.size(), 0, 0, cv::INTER_LINEAR);
 
 							/*cv::split(blendGains, channels);
 							channels[0].convertTo(img,CV_8U,128.0,0);
@@ -1778,7 +1775,7 @@ std::vector<cv::Mat> mergeTextures(
 							channels[2].convertTo(img,CV_8U,128.0,0);
 							cv::imwrite("blendFullR.png", img);*/
 
-							cv::multiply(globalTextures[i], blendGains[i], globalTextures[i], 1.0, CV_8UC3);
+							cv::multiply(globalTexturesROI, blendGains[i], globalTexturesROI, 1.0, CV_8UC3);
 
 							//UWARN("Saving blending.png", globalTexture);
 							//cv::imwrite("blending.png", globalTexture);
@@ -1792,36 +1789,38 @@ std::vector<cv::Mat> mergeTextures(
 				{
 					for(int i=0; i<materials; ++i)
 					{
+						cv::Mat globalTexturesROI = globalTextures(cv::Range::all(), cv::Range(i*globalTextures.rows, (i+1)*globalTextures.rows));
+						cv::Mat globalTextureMasksROI = globalTextureMasks(cv::Range::all(), cv::Range(i*globalTextureMasks.rows, (i+1)*globalTextureMasks.rows));
 						if(exposureFusion)
 						{
 							std::vector<cv::Mat> images;
-							images.push_back(globalTextures[i]);
+							images.push_back(globalTexturesROI);
 							if (brightnessContrastRatioLow > 0)
 							{
 								images.push_back(util2d::brightnessAndContrastAuto(
-									globalTextures[i],
-									globalTextureMasks[i],
+									globalTexturesROI,
+									globalTextureMasksROI,
 									(float)brightnessContrastRatioLow,
 									0.0f));
 							}
 							if (brightnessContrastRatioHigh > 0)
 							{
 								images.push_back(util2d::brightnessAndContrastAuto(
-									globalTextures[i],
-									globalTextureMasks[i],
+									globalTexturesROI,
+									globalTextureMasksROI,
 									0.0f,
 									(float)brightnessContrastRatioHigh));
 							}
 
-							globalTextures[i] = util2d::exposureFusion(images);
+							util2d::exposureFusion(images).copyTo(globalTexturesROI);
 						}
 						else
 						{
-							globalTextures[i] = util2d::brightnessAndContrastAuto(
-								globalTextures[i],
-								globalTextureMasks[i],
+							util2d::brightnessAndContrastAuto(
+								globalTexturesROI,
+								globalTextureMasksROI,
 								(float)brightnessContrastRatioLow,
-								(float)brightnessContrastRatioHigh);
+								(float)brightnessContrastRatioHigh).copyTo(globalTexturesROI);
 						}
 					}
 					if(state) state->callback(uFormat("Brightness and contrast auto %fs", timer.ticks()));
@@ -1829,7 +1828,7 @@ std::vector<cv::Mat> mergeTextures(
 			}
 		}
 	}
-	UDEBUG("globalTextures=%d", (int)globalTextures.size());
+	UDEBUG("globalTextures=%d", globalTextures.cols / globalTextures.rows);
 	return globalTextures;
 }
 

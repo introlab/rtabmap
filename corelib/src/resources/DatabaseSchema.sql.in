@@ -104,7 +104,16 @@ CREATE TABLE Statistics (
 
 CREATE TABLE Admin (
 	version TEXT,
-	preview_image BLOB,
+	preview_image BLOB,      -- compressed image
+	
+	opt_cloud BLOB,          -- compressed data
+	opt_ids BLOB,            -- Node ids used to generate the optimized cloud/mesh
+	opt_poses BLOB,          -- compressed N*3x4 float 
+	opt_polygons_size INTEGER, -- e.g., 3
+	opt_polygons BLOB,       -- compressed data [length_v0, i0,i1,i3, length_v1, i0,i1,i3]
+	opt_tex_coords BLOB,     -- compressed data [length_v0, u0,v0,u1,v1,u2,v2, length_v1, u0,v0,u1,v1,u2,v2]
+	opt_tex_materials BLOB,  -- compressed image
+
 	time_enter DATE
 );
 
