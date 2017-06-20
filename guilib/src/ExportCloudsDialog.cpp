@@ -892,7 +892,7 @@ void ExportCloudsDialog::viewClouds(
 				cv::Mat globalTexture;
 				if (mesh->tex_materials.size() > 1)
 				{
-					std::vector<cv::Mat> globalTextures;
+					cv::Mat globalTextures;
 					globalTextures = util3d::mergeTextures(
 							*mesh,
 							images,
@@ -910,9 +910,9 @@ void ExportCloudsDialog::viewClouds(
 							_ui->spinBox_textureBrightnessContrastRatioLow->value(),
 							_ui->spinBox_textureBrightnessContrastRatioHigh->value(),
 							_ui->checkBox_exposureFusion->isEnabled() && _ui->checkBox_exposureFusion->isChecked());
-					if(globalTextures.size() == 1)
+					if(globalTextures.rows == globalTextures.cols)
 					{
-						globalTexture = globalTextures[0];
+						globalTexture = globalTextures;
 					}
 				}
 
@@ -3058,7 +3058,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 
 				pcl::TextureMesh::Ptr mesh = meshes.begin()->second;
 
-				std::vector<cv::Mat> globalTextures;
+				cv::Mat globalTextures;
 				bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
 				if(texturesMerged && mesh->tex_materials.size()>1)
 				{
@@ -3175,9 +3175,9 @@ void ExportCloudsDialog::saveTextureMeshes(
 								cv::Mat image = cv::Mat::ones(imageSize, CV_8UC1)*255;
 								cv::imwrite(fullPath.toStdString(), image);
 							}
-							else if(!globalTextures[i].empty())
+							else if(!globalTextures.empty())
 							{
-								if(!cv::imwrite(fullPath.toStdString(), globalTextures[i]))
+								if(!cv::imwrite(fullPath.toStdString(), globalTextures(cv::Range::all(), cv::Range(i*globalTextures.rows, (i+1)*globalTextures.rows))))
 								{
 									_progressDialog->appendText(tr("Failed saving texture \"%1\" to \"%2\".")
 											.arg(mesh->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
@@ -3241,7 +3241,7 @@ void ExportCloudsDialog::saveTextureMeshes(
 					if(iter->second->tex_materials.size())
 					{
 						pcl::TextureMesh::Ptr mesh = iter->second;
-						std::vector<cv::Mat> globalTextures;
+						cv::Mat globalTextures;
 						bool texturesMerged = _ui->comboBox_meshingTextureSize->isEnabled() && _ui->comboBox_meshingTextureSize->currentIndex() > 0;
 						if(texturesMerged && mesh->tex_materials.size()>1)
 						{
@@ -3362,9 +3362,9 @@ void ExportCloudsDialog::saveTextureMeshes(
 									cv::Mat image = cv::Mat::ones(imageSize, CV_8UC1)*255;
 									cv::imwrite(fullPath.toStdString(), image);
 								}
-								else if(!globalTextures[i].empty())
+								else if(!globalTextures.empty())
 								{
-									if(!cv::imwrite(fullPath.toStdString(), globalTextures[i]))
+									if(!cv::imwrite(fullPath.toStdString(), globalTextures(cv::Range::all(), cv::Range(i*globalTextures.rows, (i+1)*globalTextures.rows))))
 									{
 										_progressDialog->appendText(tr("Failed saving texture \"%1\" to \"%2\".")
 												.arg(mesh->tex_materials[i].tex_file.c_str()).arg(fullPath), Qt::darkRed);
