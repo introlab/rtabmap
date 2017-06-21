@@ -174,6 +174,16 @@ pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
 void RTABMAP_EXP concatenateTextureMaterials(
 		pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, int maxTextures, float & scale, std::vector<bool> * materialsKept=0);
 
+pcl::TextureMesh::Ptr RTABMAP_EXP assembleTextureMesh(
+		const cv::Mat & cloudMat,
+		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+		const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+		cv::Mat & textures,
+		bool mergeTextures = false);
+
+pcl::PolygonMesh::Ptr RTABMAP_EXP assemblePolygonMesh(
+		const cv::Mat & cloudMat,
+		const std::vector<std::vector<unsigned int> > & polygons);
 
 /**
  * Merge all textures in the mesh into "textureCount" textures of size "textureSize".

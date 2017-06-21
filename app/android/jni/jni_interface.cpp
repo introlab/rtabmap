@@ -359,7 +359,6 @@ Java_com_introlab_rtabmap_RTABMapLib_cancelProcessing(
 JNIEXPORT bool JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		JNIEnv* env, jobject,
-		jstring filePath,
 		float cloudVoxelSize,
 		bool regenerateCloud,
 		bool meshing,
@@ -377,10 +376,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		int optimizedMinTextureClusterSize,
 		bool blockRendering)
 {
-	std::string filePathC;
-	GetJStringContent(env,filePath,filePathC);
 	return app.exportMesh(
-			filePathC,
 			cloudVoxelSize,
 			regenerateCloud,
 			meshing,
@@ -405,6 +401,18 @@ Java_com_introlab_rtabmap_RTABMapLib_postExportation(
 {
 	return app.postExportation(visualize);
 }
+
+JNIEXPORT bool JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_writeExportedMesh(
+		JNIEnv* env, jobject, jstring directory, jstring name)
+{
+	std::string directoryC;
+	GetJStringContent(env,directory,directoryC);
+	std::string nameC;
+	GetJStringContent(env,name,nameC);
+	return app.writeExportedMesh(directoryC, nameC);
+}
+
 
 JNIEXPORT int JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_postProcessing(

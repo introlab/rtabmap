@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/util3d_surface.h"
 #include "rtabmap/core/util3d_filtering.h"
+#include "rtabmap/core/util3d.h"
 #include "rtabmap/core/util2d.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/DBDriver.h"
@@ -1188,6 +1189,163 @@ void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & image
 		mesh.tex_coordinates = outputMesh.tex_coordinates;
 		mesh.tex_polygons = outputMesh.tex_polygons;
 	}
+}
+
+pcl::TextureMesh::Ptr assembleTextureMesh(
+		const cv::Mat & cloudMat,
+		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+		const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+		cv::Mat & textures,
+		bool mergeTextures)
+{
+	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
+
+	if(cloudMat.channels() <= 3)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::laserScanToPointCloud(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
+	}
+	else if(cloudMat.channels() == 4)
+	{
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::laserScanToPointCloudRGB(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
+	}
+	else if(cloudMat.channels() == 6)
+	{
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloud = rtabmap::util3d::laserScanToPointCloudNormal(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
+	}
+	else if(cloudMat.channels() == 7)
+	{
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = rtabmap::util3d::laserScanToPointCloudRGBNormal(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, textureMesh->cloud);
+	}
+
+	if(textureMesh->cloud.data.size() && polygons.size())
+	{
+		textureMesh->tex_polygons.resize(polygons.size());
+		for(unsigned int t=0; t<polygons.size(); ++t)
+		{
+			textureMesh->tex_polygons[t].resize(polygons[t].size());
+			for(unsigned int p=0; p<polygons[t].size(); ++p)
+			{
+				textureMesh->tex_polygons[t][p].vertices = polygons[t][p];
+			}
+		}
+
+		if(!texCoords.empty() && !textures.empty())
+		{
+			textureMesh->tex_coordinates = texCoords;
+
+			textureMesh->tex_materials.resize (textureMesh->tex_coordinates.size());
+			for(unsigned int i = 0 ; i < textureMesh->tex_coordinates.size() ; ++i)
+			{
+				pcl::TexMaterial mesh_material;
+				mesh_material.tex_Ka.r = 0.2f;
+				mesh_material.tex_Ka.g = 0.2f;
+				mesh_material.tex_Ka.b = 0.2f;
+
+				mesh_material.tex_Kd.r = 0.8f;
+				mesh_material.tex_Kd.g = 0.8f;
+				mesh_material.tex_Kd.b = 0.8f;
+
+				mesh_material.tex_Ks.r = 1.0f;
+				mesh_material.tex_Ks.g = 1.0f;
+				mesh_material.tex_Ks.b = 1.0f;
+
+				mesh_material.tex_d = 1.0f;
+				mesh_material.tex_Ns = 75.0f;
+				mesh_material.tex_illum = 2;
+
+				std::stringstream tex_name;
+				tex_name << "material_" << i;
+				tex_name >> mesh_material.tex_name;
+
+				mesh_material.tex_file = uFormat("%d", i);
+
+				textureMesh->tex_materials[i] = mesh_material;
+			}
+
+			if(mergeTextures && textures.cols/textures.rows > 1)
+			{
+				UASSERT(textures.cols % textures.rows == 0 && textures.cols/textures.rows == (int)textureMesh->tex_coordinates.size());
+				std::vector<bool> materialsKept;
+				float scale = 0.0f;
+				cv::Size imageSize(textures.rows, textures.rows);
+				int imageType = textures.type();
+				rtabmap::util3d::concatenateTextureMaterials(*textureMesh, imageSize, textures.rows, 1, scale, &materialsKept);
+				if(scale && textureMesh->tex_materials.size() == 1)
+				{
+					int cols = float(textures.rows)/(scale*imageSize.width);
+					int rows = float(textures.rows)/(scale*imageSize.height);
+
+					cv::Mat mergedTextures = cv::Mat(textures.rows, textures.rows, imageType, cv::Scalar::all(255));
+
+					// make a blank texture
+					cv::Size resizedImageSize(int(imageSize.width*scale), int(imageSize.height*scale));
+					int oi=0;
+					for(int i=0; i<(int)materialsKept.size(); ++i)
+					{
+						if(materialsKept.at(i))
+						{
+							int u = oi%cols * resizedImageSize.width;
+							int v = ((oi/cols) % rows ) * resizedImageSize.height;
+							UASSERT(u < textures.rows-resizedImageSize.width);
+							UASSERT(v < textures.rows-resizedImageSize.height);
+
+							cv::Mat resizedImage;
+							cv::resize(textures(cv::Range::all(), cv::Range(i*textures.rows, (i+1)*textures.rows)), resizedImage, resizedImageSize, 0.0f, 0.0f, cv::INTER_AREA);
+
+							UASSERT(resizedImage.type() == mergedTextures.type());
+							resizedImage.copyTo(mergedTextures(cv::Rect(u, v, resizedImage.cols, resizedImage.rows)));
+
+							++oi;
+						}
+					}
+					textures = mergedTextures;
+				}
+			}
+		}
+	}
+	return textureMesh;
+}
+
+pcl::PolygonMesh::Ptr assemblePolygonMesh(
+		const cv::Mat & cloudMat,
+		const std::vector<std::vector<unsigned int> > & polygons)
+{
+	pcl::PolygonMesh::Ptr polygonMesh(new pcl::PolygonMesh);
+
+	if(cloudMat.channels() <= 3)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::laserScanToPointCloud(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, polygonMesh->cloud);
+	}
+	else if(cloudMat.channels() == 4)
+	{
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = rtabmap::util3d::laserScanToPointCloudRGB(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, polygonMesh->cloud);
+	}
+	else if(cloudMat.channels() == 6)
+	{
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloud = rtabmap::util3d::laserScanToPointCloudNormal(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, polygonMesh->cloud);
+	}
+	else if(cloudMat.channels() == 7)
+	{
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = rtabmap::util3d::laserScanToPointCloudRGBNormal(cloudMat);
+		pcl::toPCLPointCloud2(*cloud, polygonMesh->cloud);
+	}
+
+	if(polygonMesh->cloud.data.size() && polygons.size())
+	{
+		polygonMesh->polygons.resize(polygons.size());
+		for(unsigned int p=0; p<polygons.size(); ++p)
+		{
+			polygonMesh->polygons[p].vertices = polygons[p];
+		}
+	}
+	return polygonMesh;
 }
 
 double sqr(uchar v)

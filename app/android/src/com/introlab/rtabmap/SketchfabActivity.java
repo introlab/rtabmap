@@ -44,7 +44,6 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 	private Dialog mAuthDialog;
 	
 	private String mAuthToken;
-	private boolean mExportedOBJ;
 	private String mWorkingDirectory;
 	
 	EditText mFilename;
@@ -70,7 +69,6 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		mProgressDialog.setCanceledOnTouchOutside(false);
 		
 		mAuthToken = getIntent().getExtras().getString(RTABMapActivity.RTABMAP_AUTH_TOKEN_KEY);
-		mExportedOBJ = getIntent().getExtras().getBoolean(RTABMapActivity.RTABMAP_EXPORTED_OBJ_KEY);
 		mFilename.setText(getIntent().getExtras().getString(RTABMapActivity.RTABMAP_FILENAME_KEY));
 		mWorkingDirectory = getIntent().getExtras().getString(RTABMapActivity.RTABMAP_WORKING_DIR_KEY);
 		
@@ -129,50 +127,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 			editor.commit();
 		}
 		
-		final String extension  = mExportedOBJ?".obj":".ply";
-		
-		String[] files = new String[0];
-		// verify if we have all files
-		if(extension.compareTo(".obj") == 0)
-		{
-			String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, false);
-			if(fileNames.length > 0)
-			{
-				files = new String[fileNames.length];
-				for(int i=0; i<fileNames.length; ++i)
-				{
-					files[i] = mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + "/" + fileNames[i];
-				}
-			}
-			else
-			{
-				Toast.makeText(getActivity(), String.format("Missing OBJ files!"), Toast.LENGTH_LONG).show();
-			}
-		}
-		else if(extension.compareTo(".ply") == 0)
-		{
-			File plyFile = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + "/" + RTABMapActivity.RTABMAP_TMP_FILENAME + extension);
-			if(plyFile.exists())
-			{
-				files = new String[1];
-				files[0] = plyFile.getAbsolutePath();
-			}
-			else
-			{
-				Toast.makeText(getActivity(), String.format("Missing PLY file!"), Toast.LENGTH_LONG).show();
-			}
-		}
-		else
-		{
-			Toast.makeText(getActivity(), String.format("Unknown file extension \"%s\"!", extension), Toast.LENGTH_LONG).show();
-		}
-
-		if(files.length > 0)
-		{
-			final String[] filesToZip = files;
-			authorizeAndPublish(filesToZip, mFilename.getText().toString());
-		}
-	
+		authorizeAndPublish(mFilename.getText().toString());	
 	}
 	
 	private boolean isNetworkAvailable() {
@@ -182,7 +137,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 	    return activeNetworkInfo != null && activeNetworkInfo.isConnected();
 	}
 	
-	private void authorizeAndPublish(final String[] filesToZip, final String fileName)
+	private void authorizeAndPublish(final String fileName)
 	{
 		if(!isNetworkAvailable())
 		{
@@ -192,7 +147,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 			.setMessage("Network is not available. Make sure you have internet before continuing.")
 			.setPositiveButton("Try Again", new DialogInterface.OnClickListener() {
 				public void onClick(DialogInterface dialog, int which) {
-					authorizeAndPublish(filesToZip, fileName);
+					authorizeAndPublish(fileName);
 				}
 			})
 			.setNeutralButton("Abort", new DialogInterface.OnClickListener() {
@@ -239,7 +194,7 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 						
 						mAuthDialog.dismiss();
 
-						zipAndPublish(filesToZip, fileName);
+						zipAndPublish(fileName);
 					}
 				}
 			});
@@ -250,14 +205,12 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		}
 		else
 		{
-			zipAndPublish(filesToZip, fileName);
+			zipAndPublish(fileName);
 		}
 	}
 
-	private void zipAndPublish(final String[] filesToZip, final String fileName)
+	private void zipAndPublish(final String fileName)
 	{		
-		final String zipOutput = mWorkingDirectory+fileName+".zip";
-
 		mProgressDialog.setTitle("Upload to Sketchfab");
 		mProgressDialog.setMessage(String.format("Compressing the files..."));
 		mProgressDialog.show();
@@ -265,56 +218,110 @@ public class SketchfabActivity extends Activity implements OnClickListener {
 		Thread workingThread = new Thread(new Runnable() {
 			public void run() {
 				try{
-					Util.zip(filesToZip, zipOutput);
-					runOnUiThread(new Runnable() {
-						public void run() {
-							mProgressDialog.dismiss();
-
-							File f = new File(zipOutput);
-
-							// Continue?
-							AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-							builder.setTitle("File(s) compressed and ready to upload!");
-							
-							final int fileSizeMB = (int)f.length()/(1024 * 1024);
-							final int fileSizeKB = (int)f.length()/(1024);
-							if(fileSizeMB == 0)
+					
+					File tmpDir = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR);
+					tmpDir.mkdirs();
+					String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, false);
+					if(!RTABMapActivity.DISABLE_LOG) Log.i(RTABMapActivity.TAG, String.format("Deleting %d files in \"%s\"", fileNames.length, mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR));
+					for(int i=0; i<fileNames.length; ++i)
+					{
+						File f = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + "/" + fileNames[i]);
+						if(f.delete())
+						{
+							if(!RTABMapActivity.DISABLE_LOG) Log.i(RTABMapActivity.TAG, String.format("Deleted \"%s\"", f.getPath()));
+						}
+						else
+						{
+							if(!RTABMapActivity.DISABLE_LOG) Log.i(RTABMapActivity.TAG, String.format("Failed deleting \"%s\"", f.getPath()));
+						}
+					}
+					File exportDir = new File(mWorkingDirectory + RTABMapActivity.RTABMAP_EXPORT_DIR);
+					exportDir.mkdirs();
+					
+					if(RTABMapLib.writeExportedMesh(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, RTABMapActivity.RTABMAP_TMP_FILENAME))
+					{
+						String[] files = new String[0];
+						// verify if we have all files
+				
+						fileNames = Util.loadFileList(mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR, false);
+						if(fileNames.length > 0)
+						{
+							files = new String[fileNames.length];
+							for(int i=0; i<fileNames.length; ++i)
 							{
-								Log.i(RTABMapActivity.TAG, String.format("Zipped files = %d KB", fileSizeKB));
-								builder.setMessage(String.format("Total size to upload = %d KB. Do you want to continue?\n\n", fileSizeKB));
+								files[i] = mWorkingDirectory + RTABMapActivity.RTABMAP_TMP_DIR + "/" + fileNames[i];
 							}
-							else
-							{
-								Log.i(RTABMapActivity.TAG, String.format("Zipped files = %d MB", fileSizeMB));
-								builder.setMessage(String.format("Total size to upload = %d MB. %sDo you want to continue?\n\n"
-										+ "Tip: To reduce the model size, you can also look at the Settings->Exporting options.", fileSizeMB,
-										fileSizeMB>=50?"Note that for size over 50 MB, a Sketchfab PRO account is required, otherwise the upload may fail. ":""));
-							}
+						}
+						else
+						{
+							if(!RTABMapActivity.DISABLE_LOG) Log.i(RTABMapActivity.TAG, "Missing files!");
+						}
+				
+						if(files.length > 0)
+						{
+							final String[] filesToZip = files;
+							final String zipOutput = mWorkingDirectory+fileName+".zip";
+							Util.zip(filesToZip, zipOutput);
+							runOnUiThread(new Runnable() {
+								public void run() {
+									mProgressDialog.dismiss();
 
-							
-							builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog, int which) {
-									mProgressDialog.setTitle("Upload to Sketchfab");
+									File f = new File(zipOutput);
+
+									// Continue?
+									AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+									builder.setTitle("File(s) compressed and ready to upload!");
+									
+									final int fileSizeMB = (int)f.length()/(1024 * 1024);
+									final int fileSizeKB = (int)f.length()/(1024);
 									if(fileSizeMB == 0)
 									{
-										mProgressDialog.setMessage(String.format("Uploading model \"%s\" (%d KB) to Sketchfab...", fileName, fileSizeKB));
+										Log.i(RTABMapActivity.TAG, String.format("Zipped files = %d KB", fileSizeKB));
+										builder.setMessage(String.format("Total size to upload = %d KB. Do you want to continue?\n\n", fileSizeKB));
 									}
 									else
 									{
-										mProgressDialog.setMessage(String.format("Uploading model \"%s\" (%d MB) to Sketchfab...", fileName, fileSizeMB));
+										Log.i(RTABMapActivity.TAG, String.format("Zipped files = %d MB", fileSizeMB));
+										builder.setMessage(String.format("Total size to upload = %d MB. %sDo you want to continue?\n\n"
+												+ "Tip: To reduce the model size, you can also look at the Settings->Exporting options.", fileSizeMB,
+												fileSizeMB>=50?"Note that for size over 50 MB, a Sketchfab PRO account is required, otherwise the upload may fail. ":""));
 									}
-									mProgressDialog.show();
-									new uploadToSketchfabTask().execute(zipOutput, fileName);
+
+									
+									builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+										public void onClick(DialogInterface dialog, int which) {
+											mProgressDialog.setTitle("Upload to Sketchfab");
+											if(fileSizeMB == 0)
+											{
+												mProgressDialog.setMessage(String.format("Uploading model \"%s\" (%d KB) to Sketchfab...", fileName, fileSizeKB));
+											}
+											else
+											{
+												mProgressDialog.setMessage(String.format("Uploading model \"%s\" (%d MB) to Sketchfab...", fileName, fileSizeMB));
+											}
+											mProgressDialog.show();
+											new uploadToSketchfabTask().execute(zipOutput, fileName);
+										}
+									});
+									builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+										public void onClick(DialogInterface dialog, int which) {
+											// do nothing...
+										}
+									});
+									builder.show();
 								}
 							});
-							builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-								public void onClick(DialogInterface dialog, int which) {
-									// do nothing...
-								}
-							});
-							builder.show();
 						}
-					});
+					}
+					else
+					{
+						runOnUiThread(new Runnable() {
+							public void run() {
+								mProgressDialog.dismiss();
+								Toast.makeText(getActivity(), String.format("Failed writing files!"), Toast.LENGTH_LONG).show();
+							}
+						});
+					}
 				}
 				catch(IOException ex) {
 					Log.e(RTABMapActivity.TAG, "Failed to zip", ex);

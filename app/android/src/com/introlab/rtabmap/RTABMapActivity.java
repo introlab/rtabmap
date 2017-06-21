@@ -123,7 +123,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	public static final String RTABMAP_AUTH_TOKEN_KEY = "com.introlab.rtabmap.AUTH_TOKEN";
 	public static final String RTABMAP_FILENAME_KEY = "com.introlab.rtabmap.FILENAME";
 	public static final String RTABMAP_OPENED_DB_PATH_KEY = "com.introlab.rtabmap.OPENED_DB_PATH";
-	public static final String RTABMAP_EXPORTED_OBJ_KEY = "com.introlab.rtabmap.EXPORTED_OBJ";
 	public static final String RTABMAP_WORKING_DIR_KEY = "com.introlab.rtabmap.WORKING_DIR";
 	public static final int SKETCHFAB_ACTIVITY_CODE = 999;
 	private String mAuthToken;
@@ -198,7 +197,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	private int mTotalLoopClosures = 0;
 	private boolean mMapIsEmpty = false;
-	private boolean mExportedOBJ = false;
 	int mMapNodes = 0;
 
 	private Toast mToast = null;
@@ -818,11 +816,11 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	{
 		if(mItemStatusVisibility != null && mItemDebugVisibility != null)
 		{
-			if(mItemStatusVisibility.isChecked() && mItemDebugVisibility.isChecked())
+			if((mItemStatusVisibility.isChecked() || mState == State.STATE_VISUALIZING_WHILE_LOADING) && mItemDebugVisibility.isChecked())
 			{
 				mRenderer.updateTexts(mStatusTexts);
 			}
-			else if(mItemStatusVisibility.isChecked())
+			else if((mItemStatusVisibility.isChecked() || mState == State.STATE_VISUALIZING_WHILE_LOADING))
 			{
 				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 0, 3));
 			}
@@ -1040,6 +1038,46 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	{
 		if(!DISABLE_LOG) Log.i(TAG, String.format("rtabmapInitEventsUI() status=%d msg=%s", status, msg));
 
+		int optimizedMeshDetected = 0;
+	
+		if(msg.equals("Loading optimized cloud...done!"))
+		{
+			optimizedMeshDetected = 1;
+		}
+		else if(msg.equals("Loading optimized mesh...done!"))
+		{
+			optimizedMeshDetected = 2;
+		}
+		else if(msg.equals("Loading optimized texture mesh...done!"))
+		{
+			optimizedMeshDetected = 3;
+		}
+		if(optimizedMeshDetected > 0)
+		{
+			resetNoTouchTimer();
+			mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
+			if(optimizedMeshDetected==1)
+			{
+				mItemRenderingPointCloud.setChecked(true);
+			}
+			else if(optimizedMeshDetected==2)
+			{
+				mItemRenderingMesh.setChecked(true);
+			}
+			else // isOBJ
+			{
+				mItemRenderingTextureMesh.setChecked(true);
+			}
+			
+			updateState(State.STATE_VISUALIZING_WHILE_LOADING);
+			if(mButtonFirst.isChecked())
+			{
+				setCamera(1);
+			}
+			mToast.makeText(getActivity(), String.format("Optimized mesh detected in the database, it is shown while the database is loading..."), mToast.LENGTH_LONG).show();
+			mProgressDialog.dismiss();
+		}
+		
 		if(mButtonPause!=null)
 		{
 			if(mButtonPause.isChecked())
@@ -1339,7 +1377,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mDateOnPause = new Date();
 
 			long memoryFree = getFreeMemory();
-			if(!mOnPause && !mItemLocalizationMode.isChecked() && !mItemDataRecorderMode.isChecked() && memoryFree >= 100)
+			if(!mOnPause && !mItemLocalizationMode.isChecked() && !mItemDataRecorderMode.isChecked() && memoryFree >= 100 && mMapNodes>2)
 			{
 				// Do standard post processing?
 				new AlertDialog.Builder(getActivity())
@@ -1882,34 +1920,13 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		
 		mExportProgressDialog.show();
 		updateState(State.STATE_PROCESSING);
-		final String tmpPath = mWorkingDirectory + RTABMAP_TMP_DIR + "/" + RTABMAP_TMP_FILENAME + extension;
-	
-		File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
-		tmpDir.mkdirs();
-		String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
-		if(!DISABLE_LOG) Log.i(TAG, String.format("Deleting %d files in \"%s\"", fileNames.length, mWorkingDirectory + RTABMAP_TMP_DIR));
-		for(int i=0; i<fileNames.length; ++i)
-		{
-			File f = new File(mWorkingDirectory + RTABMAP_TMP_DIR + "/" + fileNames[i]);
-			if(f.delete())
-			{
-				if(!DISABLE_LOG) Log.i(TAG, String.format("Deleted \"%s\"", f.getPath()));
-			}
-			else
-			{
-				if(!DISABLE_LOG) Log.i(TAG, String.format("Failed deleting \"%s\"", f.getPath()));
-			}
-		}
-		File exportDir = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR);
-		exportDir.mkdirs();
-		
+				
 		Thread exportThread = new Thread(new Runnable() {
 			public void run() {
 
 				final long startTime = System.currentTimeMillis()/1000;
 
 				final boolean success = RTABMapLib.exportMesh(
-						tmpPath,
 						cloudVoxelSize,
 						regenerateCloud,
 						meshing,
@@ -1946,7 +1963,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								.setMessage(Html.fromHtml("Do you want visualize the result before saving to file or sharing to <a href=\"https://sketchfab.com/about\">Sketchfab</a>?"))
 								.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
-										mExportedOBJ = isOBJ;
 										resetNoTouchTimer();
 										mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
 										if(!meshing)
@@ -1976,7 +1992,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 								})
 								.setNegativeButton("No", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
-										mExportedOBJ = isOBJ;
 										updateState(State.STATE_IDLE);
 										RTABMapLib.postExportation(false);
 										
@@ -2091,8 +2106,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private void saveOnDevice()
 	{
 		AlertDialog.Builder builder = new AlertDialog.Builder(this);
-		final String extension  = mExportedOBJ?".obj":".ply";
-		builder.setTitle(String.format("File Name (*%s):", extension));
+		builder.setTitle("Model Name:");
 		final EditText input = new EditText(this);
 		input.setInputType(InputType.TYPE_CLASS_TEXT);        
 		builder.setView(input);
@@ -2126,7 +2140,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				dialog.dismiss();
 				if(!fileName.isEmpty())
 				{
-					File newFile = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR + fileName + (mExportedOBJ?".zip":".ply"));
+					File newFile = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR + fileName + ".zip");
 					if(newFile.exists())
 					{
 						new AlertDialog.Builder(getActivity())
@@ -2134,7 +2148,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 						.setMessage("Do you want to overwrite the existing file?")
 						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 							public void onClick(DialogInterface dialog, int which) {
-								writeExportedFiles(fileName, mExportedOBJ);
+								writeExportedFiles(fileName);
 							}
 						})
 						.setNegativeButton("No", new DialogInterface.OnClickListener() {
@@ -2146,7 +2160,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 					}
 					else
 					{
-						writeExportedFiles(fileName, mExportedOBJ);
+						writeExportedFiles(fileName);
 					}
 				}
 			}
@@ -2156,86 +2170,110 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		alertToShow.show();
 	}
 	
-	private void writeExportedFiles(String fileName, boolean isOBJ)
+	private void writeExportedFiles(final String fileName)
 	{		
-		String pathHuman;
-		boolean success = true;
-		if(mExportedOBJ)
-		{	
-			final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
-			pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".zip";
-
-			String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
-			if(fileNames.length > 0)
-			{
-				String[] filesToZip = new String[fileNames.length];
+		Log.i(TAG, String.format("Write exported mesh to \"%s\"", fileName));
+		
+		mProgressDialog.setTitle("Saving to sd-card");
+		mProgressDialog.setMessage(String.format("Compressing the files..."));
+		mProgressDialog.show();
+		
+		Thread workingThread = new Thread(new Runnable() {
+			public void run() {
+				boolean success = false;
+				
+				File tmpDir = new File(mWorkingDirectory + RTABMAP_TMP_DIR);
+				tmpDir.mkdirs();
+				String[] fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
+				if(!DISABLE_LOG) Log.i(TAG, String.format("Deleting %d files in \"%s\"", fileNames.length, mWorkingDirectory + RTABMAP_TMP_DIR));
 				for(int i=0; i<fileNames.length; ++i)
 				{
-					filesToZip[i] = mWorkingDirectory + RTABMAP_TMP_DIR + "/" + fileNames[i];
+					File f = new File(mWorkingDirectory + RTABMAP_TMP_DIR + "/" + fileNames[i]);
+					if(f.delete())
+					{
+						if(!DISABLE_LOG) Log.i(TAG, String.format("Deleted \"%s\"", f.getPath()));
+					}
+					else
+					{
+						if(!DISABLE_LOG) Log.i(TAG, String.format("Failed deleting \"%s\"", f.getPath()));
+					}
 				}
-	
-				File toZIPFile = new File(zipOutput);
-				toZIPFile.delete();			
+				File exportDir = new File(mWorkingDirectory + RTABMAP_EXPORT_DIR);
+				exportDir.mkdirs();
 				
-				try
+				final String pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".zip";
+				if(RTABMapLib.writeExportedMesh(mWorkingDirectory + RTABMAP_TMP_DIR, RTABMAP_TMP_FILENAME))
 				{
-					Util.zip(filesToZip, zipOutput);
-					mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", pathHuman), mToast.LENGTH_LONG).show();
+					final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
+							
+					fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
+					if(fileNames.length > 0)
+					{
+						String[] filesToZip = new String[fileNames.length];
+						for(int i=0; i<fileNames.length; ++i)
+						{
+							filesToZip[i] = mWorkingDirectory + RTABMAP_TMP_DIR + "/" + fileNames[i];
+						}
+			
+						File toZIPFile = new File(zipOutput);
+						toZIPFile.delete();			
+						
+						try
+						{
+							Util.zip(filesToZip, zipOutput);
+							success = true;
+						}
+						catch(IOException e)
+						{
+							final String msg = e.getMessage();
+							runOnUiThread(new Runnable() {
+								public void run() {
+									mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! Error=%s", pathHuman, msg), mToast.LENGTH_LONG).show();
+								}
+							});
+						}
+					}
 				}
-				catch(IOException e)
+				
+				if(success)
 				{
-					mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! Error=%s", pathHuman, e.getMessage()), mToast.LENGTH_LONG).show();
-					success = false;
+					runOnUiThread(new Runnable() {
+						public void run() {
+							mProgressDialog.dismiss();
+							mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", pathHuman), mToast.LENGTH_LONG).show();
+							Intent intent = new Intent(getActivity(), RTABMapActivity.class);
+							// use System.currentTimeMillis() to have a unique ID for the pending intent
+							PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
+				
+							// build notification
+							// the addAction re-use the same intent to keep the example short
+							Notification n  = new Notification.Builder(getActivity())
+							.setContentTitle(getString(R.string.app_name))
+							.setContentText(pathHuman + " exported!")
+							.setSmallIcon(R.drawable.ic_launcher)
+							.setContentIntent(pIntent)
+							.setAutoCancel(true).build();
+				
+				
+							NotificationManager notificationManager = 
+									(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+				
+							notificationManager.notify(0, n); 
+						}
+					});
+				}
+				else
+				{
+					runOnUiThread(new Runnable() {
+						public void run() {
+							mProgressDialog.dismiss();
+							mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! No files found in tmp directory!? Last export may have failed or have been canceled.", pathHuman), mToast.LENGTH_LONG).show();
+						}
+					});
 				}
 			}
-			else
-			{
-				mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! No files found in tmp directory!? Last export may have failed or have been canceled.", pathHuman), mToast.LENGTH_LONG).show();
-				success = false;
-			}
-		}
-		else
-		{
-			final String path = mWorkingDirectory + RTABMAP_EXPORT_DIR+ fileName + ".ply";
-			pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".ply";
-			
-			File toPLYFile = new File(path);
-			toPLYFile.delete();
-			File fromPLYFile = new File(mWorkingDirectory + RTABMAP_TMP_DIR + "/" + RTABMAP_TMP_FILENAME + ".ply");
-			
-			try
-			{
-				copy(fromPLYFile,toPLYFile);
-				mToast.makeText(getActivity(), String.format("Mesh/point cloud \"%s\" successfully exported!", pathHuman), mToast.LENGTH_LONG).show();
-			}
-			catch(Exception e)
-			{
-				mToast.makeText(getActivity(), String.format("Exporting mesh/point cloud \"%s\" failed! Error=%s", pathHuman, e.getMessage()), mToast.LENGTH_LONG).show();
-				success=false;
-			}
-		}
-		
-		if(success)
-		{
-			Intent intent = new Intent(getActivity(), RTABMapActivity.class);
-			// use System.currentTimeMillis() to have a unique ID for the pending intent
-			PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
-
-			// build notification
-			// the addAction re-use the same intent to keep the example short
-			Notification n  = new Notification.Builder(getActivity())
-			.setContentTitle(getString(R.string.app_name))
-			.setContentText(pathHuman + " exported!")
-			.setSmallIcon(R.drawable.ic_launcher)
-			.setContentIntent(pIntent)
-			.setAutoCancel(true).build();
-
-
-			NotificationManager notificationManager = 
-					(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-			notificationManager.notify(0, n); 
-		}
+		});
+		workingThread.start();
 	}
 	
 	private void openDatabase(final String fileName, final boolean optimize)
@@ -2255,48 +2293,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		
 		Thread openThread = new Thread(new Runnable() {
 			public void run() {
-
-				SQLiteDatabase db = null;
-				try {
-					db = SQLiteDatabase.openDatabase(mOpenedDatabasePath, null, SQLiteDatabase.OPEN_READONLY);
-					
-					// get version
-					Cursor c1 = db.rawQuery("SELECT version FROM Admin", null);    
-			        if(c1.moveToFirst()) {
-			        	String version = c1.getString(c1.getColumnIndex("version"));
-			        	Log.i(TAG, "Version="+version);
-			        	if(Util.versionCompare(version, "0.13.0") >= 0) {
-			        		Cursor c2 = db.rawQuery("SELECT version FROM Admin WHERE opt_cloud is not null", null); 
-			        		if(c2.moveToFirst()) {
-			        			Log.i(TAG, "Found optimized mesh");
-			        			runOnUiThread(new Runnable() {
-			    					public void run() {
-			    						mProgressDialog.dismiss();
-			    						updateState(State.STATE_VISUALIZING_WHILE_LOADING);
-			    						mToast.makeText(getActivity(), String.format("Optimized mesh detected in the database. It will be shown while the database is loading..."), mToast.LENGTH_LONG).show();
-			    					}
-			        			});
-			        		}
-			        		else
-			        		{
-			        			Log.i(TAG, "Not found optimized mesh");
-			        		}
-			        	}
-			        }
-			        else
-			        {
-			        	Log.e(TAG, "Failed getting version from database");
-			        }
-
-	            } catch (Exception e) {
-	                Log.e(TAG, e.getMessage());
-	            }
-				finally {
-					if(db != null && db.isOpen()) {
-	                	db.close();
-	                }
-				}
-				
+			
 				final String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;				
 				final int status = RTABMapLib.openDatabase2(mOpenedDatabasePath, tmpDatabase, databaseInMemory, optimize);
 				
@@ -2354,25 +2351,15 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							{
 								mProgressDialog.dismiss();
 								resetNoTouchTimer();
-								mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
-								if(status==1)
-								{
-									mItemRenderingPointCloud.setChecked(true);
-								}
-								else if(status==2)
-								{
-									mItemRenderingMesh.setChecked(true);
-								}
-								else // isOBJ
-								{
-									mItemRenderingTextureMesh.setChecked(true);
-								}
 								updateState(State.STATE_VISUALIZING);
 								mToast.makeText(getActivity(), String.format("Database loaded!"), mToast.LENGTH_LONG).show();
 							}
 							else if(!mItemTrajectoryMode.isChecked())
 							{
-								setCamera(1);
+								if(mButtonFirst.isChecked())
+								{
+									setCamera(1);
+								}
 								// creating meshes...
 								updateState(State.STATE_IDLE);
 								mProgressDialog.setTitle("Loading");
@@ -2406,7 +2393,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		Intent intent = new Intent(getActivity(), SketchfabActivity.class);
 		
 		intent.putExtra(RTABMAP_AUTH_TOKEN_KEY, mAuthToken);
-		intent.putExtra(RTABMAP_EXPORTED_OBJ_KEY, mExportedOBJ);
 		intent.putExtra(RTABMAP_WORKING_DIR_KEY, mWorkingDirectory);
 		
 		if(mOpenedDatabasePath.isEmpty())

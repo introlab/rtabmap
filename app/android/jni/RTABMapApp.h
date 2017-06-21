@@ -151,7 +151,6 @@ class RTABMapApp : public UEventsHandler {
   void save(const std::string & databasePath);
   void cancelProcessing();
   bool exportMesh(
-		  const std::string & filePath,
 		  float cloudVoxelSize,
 		  bool regenerateCloud,
 		  bool meshing,
@@ -169,6 +168,7 @@ class RTABMapApp : public UEventsHandler {
 		  int optimizedMinTextureClusterSize,
 		  bool blockRendering);
   bool postExportation(bool visualize);
+  bool writeExportedMesh(const std::string & directory, const std::string & name);
   int postProcessing(int approach);
 
  protected:
@@ -232,9 +232,8 @@ class RTABMapApp : public UEventsHandler {
 
   bool visualizingMesh_;
   bool exportedMeshUpdated_;
-  pcl::TextureMesh::Ptr exportedMesh_;
-  cv::Mat exportedTexture_;
-  std::map<int, rtabmap::Transform> exportedPoses_;
+  pcl::TextureMesh::Ptr optMesh_;
+  cv::Mat optTexture_;
 
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.

@@ -96,7 +96,6 @@ public class RTABMapLib
     public static native void save(String outputDatabasePath);
     public static native void cancelProcessing();
     public static native boolean exportMesh(
-    		String filePath,
     		float cloudVoxelSize,
     		boolean regenerateCloud,
     		boolean meshing,
@@ -113,6 +112,7 @@ public class RTABMapLib
     		float optimizedMaxTextureDistance,
     		int optimizedMinTextureClusterSize,
     		boolean blockRendering);
+    public static native boolean writeExportedMesh(String directory, String name);
     public static native boolean postExportation(boolean visualize);
     public static native int postProcessing(int approach);
     

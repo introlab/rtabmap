@@ -103,6 +103,7 @@ public class Renderer implements GLSurfaceView.Renderer {
 					public void run() {
 						if(!RTABMapActivity.DISABLE_LOG) Log.i("RTABMapActivity", "Renderer: dismiss dialog, value received=" + String.valueOf(value));
 						mProgressDialog.dismiss();
+						mActivity.resetNoTouchTimer();
 					}
 				});
 			}
