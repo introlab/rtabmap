@@ -5,12 +5,14 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.drawable.Drawable;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.SimpleAdapter;
 
 import java.io.ByteArrayInputStream;
@@ -22,11 +24,13 @@ public class DatabaseListArrayAdapter extends SimpleAdapter {
 	LayoutInflater inflater;
 	Context context;
 	ArrayList<HashMap<String, String>> arrayList;
+	int imageWidth;
 
 	public DatabaseListArrayAdapter(Context context, ArrayList<HashMap<String, String>> data, int resource, String[] from, int[] to) {
 		super(context, data, resource, from, to);
 		this.context = context;
 		this.arrayList = data;
+		this.imageWidth = (int)context.getResources().getDimension(R.dimen.image_width);
 		inflater.from(context);
 	}
 
@@ -35,6 +39,7 @@ public class DatabaseListArrayAdapter extends SimpleAdapter {
 		View view = super.getView(position, convertView, parent);
 		ImageView imageView = (ImageView) view.findViewById(R.id.imageView);
 		
+		boolean imageSet = false;
 		String path = this.arrayList.get(position).get("path");
 		if(!path.isEmpty())
 		{
@@ -56,7 +61,7 @@ public class DatabaseListArrayAdapter extends SimpleAdapter {
 		        			ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
 		        			Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
 		        			imageView.setImageBitmap(bitmap);
-		                    
+		        			imageSet = true;
 		        		}
 		        		else {
 		        			Log.i(RTABMapActivity.TAG, "Not found image preview for db " + path);
@@ -83,6 +88,14 @@ public class DatabaseListArrayAdapter extends SimpleAdapter {
 		{
 			Log.e(RTABMapActivity.TAG, "Database path empty for item " + position);
 		}
+		
+		if(!imageSet)
+		{
+			Drawable myDrawable = context.getResources().getDrawable(R.drawable.ic_launcher);
+			imageView.setImageDrawable(myDrawable);
+		}
+		LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(imageWidth,imageWidth/(!imageSet?2:1));
+		imageView.setLayoutParams(layoutParams);
 		return view;
 	}
 

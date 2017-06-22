@@ -6,8 +6,8 @@ android:background="#fff">
 
 <ImageView
 android:id="@+id/imageView"
-android:layout_width="150dp"
-android:layout_height="150dp"
+android:layout_width="@dimen/image_width"
+android:layout_height="@dimen/image_width"
 android:layout_marginLeft="10dp"
 android:padding="5dp"
 android:src="@drawable/ic_launcher" />
