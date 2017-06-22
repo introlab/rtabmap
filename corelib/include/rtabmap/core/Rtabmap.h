@@ -41,11 +41,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stack>
 #include <set>
 
-namespace pcl
-{
-class TextureMesh;
-}
-
 namespace rtabmap
 {
 
