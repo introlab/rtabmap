@@ -15,13 +15,18 @@
 -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
-    android:layout_height="wrap_content" >
+    android:layout_height="wrap_content">
 
     <android.opengl.GLSurfaceView
         android:id="@+id/gl_surface_view"
         android:layout_width="fill_parent"
         android:layout_height="fill_parent"
-        android:layout_gravity="top" />
+        android:layout_gravity="top"/>
+    
+    <RelativeLayout 
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fitsSystemWindows="true">
     
     <ToggleButton
         android:id="@+id/wireframe_button"
@@ -146,5 +151,5 @@
         android:layout_gravity="center"
         android:layout_marginLeft="-50dp" />
 
-        
+</RelativeLayout>        
 </RelativeLayout>

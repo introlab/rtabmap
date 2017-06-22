@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.ActivityManager.MemoryInfo;
@@ -46,6 +47,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.hardware.Camera;
 import android.graphics.Point;
@@ -67,9 +69,11 @@ import android.text.Html;
 import android.text.InputType;
 import android.text.SpannableString;
 import android.text.TextPaint;
+import android.text.method.HideReturnsTransformationMethod;
 import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Display;
 import android.view.GestureDetector;
 import android.view.Menu;
@@ -80,6 +84,7 @@ import android.view.Surface;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.View.OnTouchListener;
+import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.WebView;
@@ -131,6 +136,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private boolean mHudVisible = true;
 	private boolean mTipOrthoShown_ = false;
 	private int mSavedRenderingType = 0;
+	private boolean mMenuOpened = false;
 
 	// UI states
 	private static enum State {
@@ -143,8 +149,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 
 	// GLSurfaceView and renderer, all of the graphic content is rendered
 	// through OpenGL ES 2.0 in native code.
-	private Renderer mRenderer;
+	private Renderer mRenderer = null;
 	private GLSurfaceView mGLView;
+	
+	View mDecorView;
+	int mStatusBarHeight = 0;
+	int mActionBarHeight = 0;
 
 	ProgressDialog mProgressDialog;
 	ProgressDialog mExportProgressDialog;
@@ -245,13 +255,17 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		display.getSize(mScreenSize);
 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
+		
 		// Setting content view of this activity.
 		setContentView(R.layout.activity_rtabmap);
-
+		
 		// Make sure to initialize all default values
 		SettingsActivity settings;
-
+		
+		mDecorView = getWindow().getDecorView();
+		mStatusBarHeight = getStatusBarHeight();
+		mActionBarHeight = getActionBarHeight();
+	
 		// Buttons for selecting camera view and Set up button click listeners.
 		mButtonFirst = (ToggleButton)findViewById(R.id.first_person_button);
 		mButtonThird = (ToggleButton)findViewById(R.id.third_person_button);
@@ -359,7 +373,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	    		return true;
 	        }
 	    });
-
+		
 		// Configure the OpenGL renderer.
 		mRenderer = new Renderer(this);
 		mGLView.setRenderer(mRenderer);
@@ -368,6 +382,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mProgressDialog.setCanceledOnTouchOutside(false);
 		mRenderer.setProgressDialog(mProgressDialog);
 		mRenderer.setToast(mToast);
+		setNavVisibility(true);
 		
 		mExportProgressDialog = new ProgressDialog(this);
 		mExportProgressDialog.setCanceledOnTouchOutside(false);
@@ -438,8 +453,59 @@ public class RTABMapActivity extends Activity implements OnClickListener {
                 public void onDisplayRemoved(int displayId) {}
             }, null);
         }
-        
+                
        	DISABLE_LOG =  !( 0 != ( getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
+	}
+
+	public int getStatusBarHeight() {
+		int result = 0;
+		int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+		if (resourceId > 0) {
+			result = getResources().getDimensionPixelSize(resourceId);
+		}
+		return result;
+	}
+	public int getActionBarHeight() {
+		int result = 0;
+		TypedValue tv = new TypedValue();
+		if (getTheme().resolveAttribute(android.R.attr.actionBarSize, tv, true))
+		{
+			result = TypedValue.complexToDimensionPixelSize(tv.data,getResources().getDisplayMetrics());
+		}
+
+		return result;
+	}
+	
+	@Override
+	public void onWindowFocusChanged(boolean hasFocus) {
+
+		super.onWindowFocusChanged(hasFocus);
+
+		if(!mHudVisible)
+		{
+			mRenderer.setOffset(!hasFocus?-mStatusBarHeight:0);
+		}
+	}
+		
+	// This snippet hides the system bars.
+	private void setNavVisibility(boolean visible) {
+		int newVis = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+        if (!visible) {
+            newVis |= View.SYSTEM_UI_FLAG_LOW_PROFILE 
+            		| View.SYSTEM_UI_FLAG_FULLSCREEN       // hide status bar
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION  // hide nav bar
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE; 
+            mRenderer.setOffset(!hasWindowFocus()?-mStatusBarHeight:0);
+        }
+        else
+        {
+        	mRenderer.setOffset(-mStatusBarHeight-mActionBarHeight);
+        }
+
+        // Set the new desired visibility.
+        mDecorView.setSystemUiVisibility(newVis);
 	}
 
 	@Override
@@ -448,8 +514,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		if (requestCode == Tango.TANGO_INTENT_ACTIVITYCODE) {
 			// Make sure the request was successful
 			if (resultCode == RESULT_CANCELED) {
-				mToast.makeText(this, "Motion Tracking Permissions Required!",
-						mToast.LENGTH_SHORT).show();
+				mToast.makeText(this, "Motion Tracking Permissions Required!", mToast.LENGTH_SHORT).show();
 				finish();
 			}
 		}
@@ -459,6 +524,17 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 				mAuthToken = data.getStringExtra(RTABMAP_AUTH_TOKEN_KEY);
 			}
 		}
+	}
+	
+	@Override
+	public boolean onMenuOpened(int featureId, Menu menu) {
+		mMenuOpened = true;
+	    return super.onMenuOpened(featureId, menu);
+	}
+
+	@Override
+	public void onPanelClosed(int featureId, Menu menu) {
+		mMenuOpened = false;
 	}
 	
 	@Override
@@ -716,7 +792,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 		resetNoTouchTimer();
 	}
-	
+		
 	private void setAndroidOrientation() {
         Display display = getWindowManager().getDefaultDisplay();
         Camera.CameraInfo colorCameraInfo = new Camera.CameraInfo();
@@ -1258,14 +1334,23 @@ public class RTABMapActivity extends Activity implements OnClickListener {
     private Runnable notouchCallback = new Runnable() {
         @Override
         public void run() {
-        	mHudVisible = false;
-            updateState(mState);
+        	if(!mProgressDialog.isShowing() && !mMenuOpened)
+        	{
+	        	setNavVisibility(false);
+	        	mHudVisible = false;
+	            updateState(mState);
+        	}
+        	else
+        	{
+        		resetNoTouchTimer();
+        	}
         }
     };
 
     public void resetNoTouchTimer(){
     	if(!mHudVisible)
     	{
+    		setNavVisibility(true);
     		mHudVisible = true;
     		updateState(mState);
     	}
