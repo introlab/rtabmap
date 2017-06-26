@@ -1194,7 +1194,11 @@ void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & image
 pcl::TextureMesh::Ptr assembleTextureMesh(
 		const cv::Mat & cloudMat,
 		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+		const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
+#else
 		const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+#endif
 		cv::Mat & textures,
 		bool mergeTextures)
 {
