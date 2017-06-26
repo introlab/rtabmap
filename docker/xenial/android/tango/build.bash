@@ -37,5 +37,5 @@ cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDRO
 make
 
 # package with binaries of both architectures
-cp -r ../armeabi-v7a/app/android/libs/armeabi-v7a app/android/libs/armeabi-v7a
+cp -r ../armeabi-v7a/app/android/libs/armeabi-v7a app/android/libs/.
 make
