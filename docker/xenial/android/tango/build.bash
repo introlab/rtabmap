@@ -4,25 +4,25 @@
 git clone https://github.com/introlab/rtabmap.git rtabmap-tango
 
 # tango
-wget https://developers.google.com/tango/downloads/TangoSDK_Hopak_C.zip
-unzip -qq TangoSDK_Hopak_C.zip
-rm TangoSDK_Hopak_C.zip
+wget https://developers.google.com/tango/downloads/TangoSDK_Ikariotikos_C.zip
+unzip -qq TangoSDK_Ikariotikos_C.zip
+rm TangoSDK_Ikariotikos_C.zip
 cp -r lib_tango_client_api/include/* /opt/android/armeabi-v7a/include/.
 cp -r lib_tango_client_api/include/* /opt/android/arm64-v8a/include/.
 cp -r lib_tango_client_api/lib/armeabi-v7a/* /opt/android/armeabi-v7a/lib/.
 cp -r lib_tango_client_api/lib/arm64-v8a/* /opt/android/arm64-v8a/lib/.
 rm -r lib_tango_client_api
-wget https://developers.google.com/tango/downloads/TangoSupport_Hopak_C.zip
-unzip -qq TangoSupport_Hopak_C.zip
-rm TangoSupport_Hopak_C.zip
+wget https://developers.google.com/tango/downloads/TangoSupport_Ikariotikos_C.zip
+unzip -qq TangoSupport_Ikariotikos_C.zip
+rm TangoSupport_Ikariotikos_C.zip
 cp -r lib_tango_support_api/include/* /opt/android/armeabi-v7a/include/.
 cp -r lib_tango_support_api/include/* /opt/android/arm64-v8a/include/.
 cp -r lib_tango_support_api/lib/armeabi-v7a/* /opt/android/armeabi-v7a/lib/.
 cp -r lib_tango_support_api/lib/arm64-v8a/* /opt/android/arm64-v8a/lib/.
 cp -r lib_tango_support_api/lib/* rtabmap-tango/app/android/jni/third-party/lib/.
 rm -r lib_tango_support_api
-wget https://developers.google.com/tango/downloads/TangoSDK_Hopak_Java.jar
-mv TangoSDK_Hopak_Java.jar rtabmap-tango/app/android/libs/.
+wget https://developers.google.com/tango/downloads/TangoSDK_Ikariotikos_Java.jar
+mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 
 # rtabmap
 mkdir rtabmap-tango/build/armeabi-v7a
