@@ -2460,16 +2460,14 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
 					localTransform = Transform::getIdentity();
 					Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-					if(_ui->comboBox_frame->isEnabled() &&
-						_ui->comboBox_frame->currentIndex()!=3 &&
-						!data.laserScanInfo().localTransform().isNull())
+					if(!data.laserScanInfo().localTransform().isNull())
 					{
 						localTransform = data.laserScanInfo().localTransform();
 						viewPoint[0] = localTransform.x();
 						viewPoint[1] = localTransform.y();
 						viewPoint[2] = localTransform.z();
 					}
-					cloudWithoutNormals = util3d::laserScanToPointCloudRGB(scan, localTransform);
+					cloudWithoutNormals = util3d::laserScanToPointCloudRGB(scan, localTransform); // put in base frame by default
 					if(cloudWithoutNormals->size())
 					{
 						if(_ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
@@ -2600,20 +2598,14 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 
 				if(!info.localTransform().isNull())
 				{
-					if(_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex()!=3)
-					{
-						viewPoint[0] = localTransform.x();
-						viewPoint[1] = localTransform.y();
-						viewPoint[2] = localTransform.z();
-					}
-					else
-					{
-						localTransform = info.localTransform().inverse();
-					}
+					viewPoint[0] = localTransform.x();
+					viewPoint[1] = localTransform.y();
+					viewPoint[2] = localTransform.z();
+					localTransform = info.localTransform().inverse();
 				}
 
 				bool is2D = cachedScans.at(iter->first).channels() == 2;
-				cloudWithoutNormals = util3d::laserScanToPointCloudRGB(cachedScans.at(iter->first), localTransform);
+				cloudWithoutNormals = util3d::laserScanToPointCloudRGB(cachedScans.at(iter->first)); // already in base frame
 				if(cloudWithoutNormals->size())
 				{
 					if(_ui->doubleSpinBox_voxelSize_assembled->value()>0.0)
@@ -2677,6 +2669,10 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 				if((_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex()==2) && cloud->isOrganized())
 				{
 					cloud = util3d::transformPointCloud(cloud, localTransform.inverse()); // put back in camera frame
+				}
+				else if(_ui->comboBox_frame->isEnabled() && _ui->comboBox_frame->currentIndex()==3)
+				{
+					cloud = util3d::transformPointCloud(cloud, localTransform.inverse()); // put back in scan frame
 				}
 
 				clouds.insert(std::make_pair(iter->first, std::make_pair(cloud, indices)));
