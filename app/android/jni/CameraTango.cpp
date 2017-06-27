@@ -189,7 +189,7 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 {
 	close();
 
-	TangoSupport_initializeLibrary();
+	TangoSupport_initialize(TangoService_getPoseAtTime, TangoService_getCameraIntrinsics);
 
 	// Connect to Tango
 	LOGI("NativeRTABMap: Setup tango config");
