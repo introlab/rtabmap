@@ -8,9 +8,7 @@
     <string name="sketchfab">Upload to Sketchfab&#8230;</string>
     <string name="status">"Status: "</string>
     <string name="words">"Words: "</string>
-    <string name="first_person">First</string>
-    <string name="third_person">Third</string>
-    <string name="top_down">Top</string>
+    <string name="camera_button">First View</string>
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
     <string name="backface_on">Backface</string>
@@ -36,7 +34,7 @@
     <string name="memory">"Used Memory (MB): "</string>
     <string name="hypothesis">"Hypothesis (%): "</string>
     <string name="fps">"FPS (rendering): "</string>
-
+    
     <!-- Preference keys: BEGIN -->
     <string name="pref_key_tags">pref_key_tags</string>
     <string name="pref_default_tags">rtabmap 3dscan tango</string>

@@ -298,7 +298,11 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	optTexture_ = cv::Mat();
 	cv::Mat cloudMat;
 	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
+#else
 	std::vector<std::vector<Eigen::Vector2f> > texCoords;
+#endif
 	cv::Mat textures;
 	std::map<int, rtabmap::Transform> optPoses;
 	if(!databaseSource.empty())
@@ -1051,6 +1055,7 @@ int RTABMapApp::Render()
 					pcl::fromPCLPointCloud2(optMesh_->cloud, *mesh.cloud);
 					pcl::fromPCLPointCloud2(optMesh_->cloud, *mesh.normals);
 					mesh.polygons = optMesh_->tex_polygons[0];
+					mesh.pose.setIdentity();
 					if(optMesh_->tex_coordinates.size())
 					{
 						mesh.texCoords = optMesh_->tex_coordinates[0];
@@ -1568,7 +1573,7 @@ int RTABMapApp::Render()
 			if(rtabmapEvents.size())
 			{
 				// send statistics to GUI
-				LOGW("Posting PostRenderEvent! %fs", renderingTime_);
+				LOGI("New data added to map, rendering time: %fs", renderingTime_);
 				UEventsManager::post(new PostRenderEvent(rtabmapEvents.back()));
 				rtabmapEvents.pop_back();
 
@@ -1739,6 +1744,10 @@ void RTABMapApp::setFOV(float angle)
 void RTABMapApp::setOrthoCropFactor(float value)
 {
 	main_scene_.setOrthoCropFactor(value);
+}
+void RTABMapApp::setGridRotation(float value)
+{
+	main_scene_.setGridRotation(value);
 }
 void RTABMapApp::setLighting(bool enabled)
 {
@@ -2764,7 +2773,11 @@ bool RTABMapApp::postExportation(bool visualize)
 	{
 		cv::Mat cloudMat;
 		std::vector<std::vector<std::vector<unsigned int> > > polygons;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+		std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
+#else
 		std::vector<std::vector<Eigen::Vector2f> > texCoords;
+#endif
 		cv::Mat textures;
 		std::map<int, rtabmap::Transform> optPoses;
 		if(rtabmap_ && rtabmap_->getMemory())
@@ -2801,7 +2814,11 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 	pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);
 	cv::Mat cloudMat;
 	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
+#else
 	std::vector<std::vector<Eigen::Vector2f> > texCoords;
+#endif
 	cv::Mat textures;
 	std::map<int, rtabmap::Transform> optPoses;
 	if(rtabmap_ && rtabmap_->getMemory())

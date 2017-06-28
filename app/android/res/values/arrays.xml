@@ -1,0 +1,9 @@
+
+    <resources>
+        <string-array name="camera_view_array">
+        <item>First View</item>
+        <item>Third-P. View</item>
+        <item>Top View</item>
+        <item>Ortho View</item>
+    </string-array>
+    </resources>

@@ -70,6 +70,7 @@ private:
   bool isVisible() const {return visible_;}
   bool hasMesh() const {return polygons_.size()!=0;}
   bool hasTexture() const {return textures_ != 0;}
+  float getMinHeight() const {return minHeight_;}
   const pcl::PointXYZ & aabbMinModel() const {return aabbMinModel_;}
   const pcl::PointXYZ & aabbMaxModel() const {return aabbMaxModel_;}
   const pcl::PointXYZ & aabbMinWorld() const {return aabbMinWorld_;}
@@ -126,6 +127,7 @@ private:
   bool visible_;
   bool hasNormals_;
   std::vector<unsigned int> organizedToDenseIndices_;
+  float minHeight_; // odom frame
 
   float gainR_;
   float gainG_;

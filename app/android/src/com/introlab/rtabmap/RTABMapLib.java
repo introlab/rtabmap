@@ -80,6 +80,7 @@ public class RTABMapLib
     public static native void setPointSize(float value);
     public static native void setFOV(float value);
     public static native void setOrthoCropFactor(float value);
+    public static native void setGridRotation(float value);
     public static native void setLighting(boolean enabled);
     public static native void setBackfaceCulling(boolean enabled);
     public static native void setWireframe(boolean enabled);

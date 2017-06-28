@@ -180,6 +180,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setOrthoCropFactor(
 	return app.setOrthoCropFactor(value);
 }
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setGridRotation(
+		JNIEnv*, jobject, float value)
+{
+	return app.setGridRotation(value);
+}
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_setLighting(
 		JNIEnv*, jobject, bool enabled)
 {

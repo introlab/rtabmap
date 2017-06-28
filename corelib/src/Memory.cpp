@@ -1671,7 +1671,11 @@ void Memory::saveOptimizedMesh(
 		const cv::Mat & cloud,
 		const std::map<int, Transform> & poses,
 		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+		const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
+#else
 		const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+#endif
 		const cv::Mat & textures) const
 {
 	if(_dbDriver)
@@ -1683,7 +1687,11 @@ void Memory::saveOptimizedMesh(
 cv::Mat Memory::loadOptimizedMesh(
 			std::map<int, Transform> * poses,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>> > * texCoords,
+#else
 			std::vector<std::vector<Eigen::Vector2f> > * texCoords,
+#endif
 			cv::Mat * textures) const
 {
 	if(_dbDriver)

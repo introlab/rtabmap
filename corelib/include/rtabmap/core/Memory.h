@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <pcl/pcl_config.h>
 
 namespace rtabmap {
 
@@ -98,12 +99,20 @@ public:
 			const cv::Mat & cloud,
 			const std::map<int, Transform> & poses = std::map<int, Transform>(), // if we want to do localization afterward using optimized mesh
 			const std::vector<std::vector<std::vector<unsigned int> > > & polygons = std::vector<std::vector<std::vector<unsigned int> > >(),      // Textures -> polygons -> vertices
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords = std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > >(), // Textures -> uv coords for each vertex of the polygons
+#else
 			const std::vector<std::vector<Eigen::Vector2f> > & texCoords = std::vector<std::vector<Eigen::Vector2f> >(), // Textures -> uv coords for each vertex of the polygons
+#endif
 			const cv::Mat & textures = cv::Mat()) const; // concatenated textures (assuming square textures with all same size)
 	cv::Mat loadOptimizedMesh(
 			std::map<int, Transform> * poses = 0,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons = 0,
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords = 0,
+#else
 			std::vector<std::vector<Eigen::Vector2f> > * texCoords = 0,
+#endif
 			cv::Mat * textures = 0) const;
 	void emptyTrash();
 	void joinTrashThread();

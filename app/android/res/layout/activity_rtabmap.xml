@@ -25,7 +25,7 @@
     
     <RelativeLayout 
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:fitsSystemWindows="true">
     
     <ToggleButton
@@ -35,7 +35,7 @@
         android:layout_above="@+id/light_button"
         android:layout_alignLeft="@+id/light_button"
         android:layout_alignParentRight="true"
-        android:layout_marginBottom="15dp"
+        android:layout_marginBottom="5dp"
         android:layout_marginRight="5dp"
         android:paddingRight="5dp"
         android:textOff="@string/wireframe"
@@ -48,7 +48,7 @@
         android:layout_above="@+id/backface_button"
         android:layout_alignLeft="@+id/backface_button"
         android:layout_alignParentRight="true"
-        android:layout_marginBottom="15dp"
+        android:layout_marginBottom="5dp"
         android:layout_marginRight="5dp"
         android:paddingRight="5dp"
         android:textOff="@string/light_off"
@@ -58,56 +58,33 @@
         android:id="@+id/backface_button"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/first_person_button"
-        android:layout_alignLeft="@+id/first_person_button"
+        android:layout_above="@+id/camera_button"
+        android:layout_alignRight="@+id/camera_button"
         android:layout_alignParentRight="true"
-        android:layout_marginBottom="5dp"
+        android:layout_marginBottom="15dp"
         android:layout_marginRight="5dp"
         android:paddingRight="5dp"
         android:textOff="@string/backface_off"
         android:textOn="@string/backface_on" />
-      
-    <ToggleButton
-        android:id="@+id/first_person_button"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/third_person_button"
-        android:layout_alignLeft="@+id/third_person_button"
-        android:layout_alignParentRight="true"
-        android:layout_marginBottom="5dp"
-        android:layout_marginRight="5dp"
-        android:paddingRight="5dp"
-        android:textOff="@string/first_person"
-        android:textOn="@string/first_person" />
-    
-    <ToggleButton
-        android:id="@+id/third_person_button"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/top_down_button"
-        android:layout_alignParentRight="true"
-        android:layout_marginBottom="5dp"
-        android:layout_marginRight="5dp"
-        android:paddingRight="5dp"
-        android:textOff="@string/third_person"
-        android:textOn="@string/third_person" />
-
-    <ToggleButton
-        android:id="@+id/top_down_button"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
+ 
+    <com.introlab.rtabmap.NDSpinner
+        android:id="@+id/camera_button"
+        android:layout_width="140dp"
+        android:layout_height="40dp"
         android:layout_alignParentBottom="true"
         android:layout_alignParentRight="true"
         android:layout_marginRight="5dp"
+        android:layout_marginBottom="10dp"
         android:paddingRight="5dp"
-        android:textOff="@string/top_down"
-        android:textOn="@string/top_down" />
+        android:paddingBottom="10dp"
+        android:text="@string/camera_button"
+        android:spinnerMode="dropdown"/>
 
     <ToggleButton
         android:id="@+id/pause_button"
         android:layout_width="100dp"
         android:layout_height="wrap_content"
-        android:layout_alignLeft="@+id/first_person_button"
+		android:layout_marginRight="5dp"
         android:layout_alignParentTop="true"
         android:layout_marginTop="61dp"
         android:layout_alignParentRight="true"
@@ -135,10 +112,8 @@
         android:id="@+id/close_visualization_button"
         android:layout_width="200dp"
         android:layout_height="wrap_content"
-        android:layout_alignBaseline="@+id/top_down_button"
-        android:layout_alignBottom="@+id/top_down_button"
+        android:layout_above="@+id/camera_button"
         android:layout_centerHorizontal="true"
-        android:paddingLeft="5dp"
         android:text="@string/close_visualization" />
 
     <SeekBar
@@ -146,10 +121,23 @@
         android:layout_width="200dp"
         android:layout_height="wrap_content"
         android:rotation="270"
+        android:layout_above="@+id/light_button"
         android:layout_alignParentLeft="true"
-        android:layout_alignBaseline="@+id/first_person_button"
         android:layout_gravity="center"
-        android:layout_marginLeft="-50dp" />
+        android:layout_marginLeft="-50dp"
+        android:progressDrawable="@drawable/custom_seekbar" />
+    
+    <SeekBar
+        android:id="@+id/seekBar_grid"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignBottom="@+id/camera_button"
+        android:layout_marginLeft="35dp"
+        android:paddingBottom="10dp"
+        android:progressDrawable="@drawable/custom_seekbar" />
+
+
 
 </RelativeLayout>        
 </RelativeLayout>

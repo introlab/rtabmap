@@ -3833,7 +3833,11 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 			const cv::Mat & cloud,
 			const std::map<int, Transform> & poses,
 			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
+#else
 			const std::vector<std::vector<Eigen::Vector2f> > & texCoords,
+#endif
 			const cv::Mat & textures) const
 {
 	UDEBUG("");
@@ -4049,7 +4053,11 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 			std::map<int, Transform> * poses,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
+#else
 			std::vector<std::vector<Eigen::Vector2f> > * texCoords,
+#endif
 			cv::Mat * textures) const
 {
 	UDEBUG("");
@@ -4158,7 +4166,11 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 						for(int t=0; t<serializedTexCoords.cols; ++t)
 						{
 							UASSERT(int(serializedTexCoords.at<float>(t)) > 0);
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+							std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > materialtexCoords(int(serializedTexCoords.at<float>(t)));
+#else
 							std::vector<Eigen::Vector2f> materialtexCoords(int(serializedTexCoords.at<float>(t)));
+#endif
 							++t;
 							UASSERT(t < serializedTexCoords.cols);
 							UDEBUG("materialtexCoords=%d", (int)materialtexCoords.size());

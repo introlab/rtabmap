@@ -16,12 +16,16 @@
 
 #include <tango-gl/conversions.h>
 #include <tango-gl/gesture_camera.h>
+#include <tango-gl/util.h>
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_transforms.h>
+#include <rtabmap/core/util3d_surface.h>
 #include <pcl/common/transforms.h>
+#include <pcl/common/common.h>
 
 #include <glm/gtx/transform.hpp>
 
@@ -32,7 +36,7 @@
 // add an offset in z to our origin. We'll set this offset to 1.3 meters based
 // on the average height of a human standing with a Tango device. This allows us
 // to place a grid roughly on the ground for most users.
-const glm::vec3 kHeightOffset = glm::vec3(0.0f, 1.3f, 0.0f);
+const glm::vec3 kHeightOffset = glm::vec3(0.0f, -1.3f, 0.0f);
 
 // Color of the motion tracking trajectory.
 const tango_gl::Color kTraceColor(0.66f, 0.66f, 0.66f);
@@ -130,7 +134,7 @@ void Scene::InitGLContent()
 	trace_->ClearVertexArray();
 	trace_->SetColor(kTraceColor);
 	grid_->SetColor(kGridColor);
-	grid_->SetPosition(-kHeightOffset);
+	grid_->SetPosition(kHeightOffset);
 	box_->SetShader();
 	box_->SetColor(1,0,0);
 
@@ -194,6 +198,10 @@ void Scene::clear()
 		graph_ = 0;
 	}
 	pointClouds_.clear();
+	if(grid_)
+	{
+		grid_->SetPosition(kHeightOffset);
+	}
 }
 
 //Should only be called in OpenGL thread!
@@ -565,6 +573,15 @@ void Scene::setOrthoCropFactor(float value)
 {
 	gesture_camera_->SetOrthoCropFactor(value);
 }
+void Scene::setGridRotation(float angleDeg)
+{
+	float angleRad = angleDeg * DEGREE_2_RADIANS;
+	if(grid_)
+	{
+		glm::quat rot = glm::rotate(glm::quat(1,0,0,0), angleRad, glm::vec3(0, 1, 0));
+		grid_->SetRotation(rot);
+	}
+}
 
 rtabmap::Transform Scene::GetOpenGLCameraPose(float * fov) const
 {
@@ -669,6 +686,58 @@ void Scene::addMesh(
 	PointCloudDrawable * drawable = new PointCloudDrawable(mesh, createWireframe);
 	drawable->setPose(pose);
 	pointClouds_.insert(std::make_pair(id, drawable));
+
+	if(!mesh.pose.isNull() && mesh.cloud->size() && (!mesh.cloud->isOrganized() || mesh.indices->size()))
+	{
+		UTimer time;
+		float height = 0.0f;
+		Eigen::Affine3f affinePose = mesh.pose.toEigen3f();
+		if(mesh.polygons.size())
+		{
+			for(unsigned int i=0; i<mesh.polygons.size(); ++i)
+			{
+				for(unsigned int j=0; j<mesh.polygons[i].vertices.size(); ++j)
+				{
+					pcl::PointXYZRGB pt = pcl::transformPoint(mesh.cloud->at(mesh.polygons[i].vertices[j]), affinePose);
+					if(pt.z < height)
+					{
+						height = pt.z;
+					}
+				}
+			}
+		}
+		else
+		{
+			if(mesh.cloud->isOrganized())
+			{
+				for(unsigned int i=0; i<mesh.indices->size(); ++i)
+				{
+					pcl::PointXYZRGB pt = pcl::transformPoint(mesh.cloud->at(mesh.indices->at(i)), affinePose);
+					if(pt.z < height)
+					{
+						height = pt.z;
+					}
+				}
+			}
+			else
+			{
+				for(unsigned int i=0; i<mesh.cloud->size(); ++i)
+				{
+					pcl::PointXYZRGB pt = pcl::transformPoint(mesh.cloud->at(i), affinePose);
+					if(pt.z < height)
+					{
+						height = pt.z;
+					}
+				}
+			}
+		}
+
+		if(grid_->GetPosition().y == kHeightOffset.y || grid_->GetPosition().y > height)
+		{
+			grid_->SetPosition(glm::vec3(0,height,0));
+		}
+		LOGD("compute min height %f s", time.ticks());
+	}
 }
 
 

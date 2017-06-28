@@ -89,6 +89,9 @@ import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemSelectedListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -96,6 +99,7 @@ import android.widget.NumberPicker;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ToggleButton;
@@ -104,7 +108,7 @@ import com.google.atap.tangoservice.Tango;
 
 // The main activity of the application. This activity shows debug information
 // and a glSurfaceView that renders graphic content.
-public class RTABMapActivity extends Activity implements OnClickListener {
+public class RTABMapActivity extends Activity implements OnClickListener, OnItemSelectedListener {
 
 	// Tag for debug logging.
 	public static final String TAG = RTABMapActivity.class.getSimpleName();
@@ -134,7 +138,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	
 	public static final long NOTOUCH_TIMEOUT = 5000; // 5 sec
 	private boolean mHudVisible = true;
-	private boolean mTipOrthoShown_ = false;
 	private int mSavedRenderingType = 0;
 	private boolean mMenuOpened = false;
 
@@ -182,9 +185,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private MenuItem mItemStatusVisibility;
 	private MenuItem mItemDebugVisibility;
 
-	private ToggleButton mButtonFirst;
-	private ToggleButton mButtonThird;
-	private ToggleButton mButtonTop;
+	private NDSpinner mButtonCameraView;
 	private ToggleButton mButtonPause;
 	private ToggleButton mButtonLighting;
 	private ToggleButton mButtonWireframe;
@@ -193,6 +194,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 	private Button mButtonSaveOnDevice;
 	private Button mButtonShareOnSketchfab;
 	private SeekBar mSeekBarFov;
+	private SeekBar mSeekBarGrid;
 
 	private String mOpenedDatabasePath = "";
 	private String mWorkingDirectory = "";
@@ -267,9 +269,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mActionBarHeight = getActionBarHeight();
 	
 		// Buttons for selecting camera view and Set up button click listeners.
-		mButtonFirst = (ToggleButton)findViewById(R.id.first_person_button);
-		mButtonThird = (ToggleButton)findViewById(R.id.third_person_button);
-		mButtonTop = (ToggleButton)findViewById(R.id.top_down_button);
+		mButtonCameraView = (NDSpinner)findViewById(R.id.camera_button);
 		mButtonPause = (ToggleButton)findViewById(R.id.pause_button);
 		mButtonLighting = (ToggleButton)findViewById(R.id.light_button);
 		mButtonWireframe = (ToggleButton)findViewById(R.id.wireframe_button);
@@ -277,9 +277,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonCloseVisualization = (Button)findViewById(R.id.close_visualization_button);
 		mButtonSaveOnDevice = (Button)findViewById(R.id.button_saveOnDevice);
 		mButtonShareOnSketchfab = (Button)findViewById(R.id.button_shareToSketchfab);
-		mButtonFirst.setOnClickListener(this);
-		mButtonThird.setOnClickListener(this);
-		mButtonTop.setOnClickListener(this);
+		mButtonCameraView.setOnItemSelectedListener(this);
 		mButtonPause.setOnClickListener(this);
 		mButtonLighting.setOnClickListener(this);
 		mButtonWireframe.setOnClickListener(this);
@@ -287,7 +285,6 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		mButtonCloseVisualization.setOnClickListener(this);
 		mButtonSaveOnDevice.setOnClickListener(this);
 		mButtonShareOnSketchfab.setOnClickListener(this);
-		mButtonFirst.setChecked(true);
 		mButtonLighting.setChecked(false);
 		mButtonLighting.setVisibility(View.INVISIBLE);
 		mButtonWireframe.setChecked(false);
@@ -300,20 +297,50 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mButtonBackfaceShown.setVisibility(mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked()?View.VISIBLE:View.INVISIBLE);
 		}
 		
+		ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this, R.array.camera_view_array, android.R.layout.simple_spinner_item);
+		adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+		mButtonCameraView.setAdapter(adapter);
+		mButtonCameraView.setOnTouchListener(new OnTouchListener() {
+		    @Override
+		    public boolean onTouch(View v, MotionEvent event) {
+		        resetNoTouchTimer();
+		        return false;
+		    }
+		});
+		
 		mSeekBarFov = (SeekBar)findViewById(R.id.seekBar_fov);
 		mSeekBarFov.setMax(45);
 		mSeekBarFov.setProgress(20);
 		mSeekBarFov.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 			  @Override
 			  public void onProgressChanged(SeekBar seekBar, int progressValue, boolean fromUser) {
-				  if(mButtonFirst.isChecked())
+				  if(mButtonCameraView.getSelectedItemPosition() == 0)
 				  {
 					  RTABMapLib.setFOV((float)progressValue+45.0f);
 				  }
-				  else if(mButtonTop.isChecked())
+				  else if(mButtonCameraView.getSelectedItemPosition() == 3)
 				  {
 					  RTABMapLib.setOrthoCropFactor((float)(120-progressValue)/20.0f - 3.0f);
 				  }
+				  resetNoTouchTimer();
+			  }
+			
+			  @Override
+			  public void onStartTrackingTouch(SeekBar seekBar) {
+			  }
+			
+			  @Override
+			  public void onStopTrackingTouch(SeekBar seekBar) {
+			  }
+		   });
+		
+		mSeekBarGrid = (SeekBar)findViewById(R.id.seekBar_grid);
+		mSeekBarGrid.setMax(180);
+		mSeekBarGrid.setProgress(90);
+		mSeekBarGrid.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+			  @Override
+			  public void onProgressChanged(SeekBar seekBar, int progressValue, boolean fromUser) {
+				  RTABMapLib.setGridRotation(((float)progressValue-90.0f)/2.0f);
 				  resetNoTouchTimer();
 			  }
 			
@@ -714,13 +741,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		updateStatusTexts();
 				
 		RTABMapLib.setCamera(type);
-		mButtonFirst.setChecked(type==0);
-		mButtonThird.setChecked(type==1);
-		mButtonTop.setChecked(type==2 || type==3);
-		mButtonTop.setText(type==3?"Ortho":"Top");
-		mButtonTop.setTextOn(type==3?"Ortho":"Top");
-		mButtonTop.setTextOff(type==3?"Ortho":"Top");
+		mButtonCameraView.setSelection(type, true);
 		mSeekBarFov.setVisibility(type!=0 && type!=3?View.INVISIBLE:View.VISIBLE);
+		mSeekBarGrid.setVisibility(mSeekBarGrid.isEnabled() && type==3?View.VISIBLE:View.INVISIBLE);
 		if(type==0)
 		{
 			mSeekBarFov.setMax(45);
@@ -731,28 +754,12 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mSeekBarFov.setMax(120);
 			mSeekBarFov.setProgress(80);
 		}
-		
-		if(type==2 && !mTipOrthoShown_)
-		{
-			mToast.makeText(this, "Tip: Click again on Top to set Ortho mode.", mToast.LENGTH_LONG).show();
-			mTipOrthoShown_ = true;
-		}
 	}
 
 	@Override
 	public void onClick(View v) {
 		// Handle button clicks.
 		switch (v.getId()) {
-		case R.id.first_person_button:
-			setCamera(0);
-
-			break;
-		case R.id.third_person_button:
-			setCamera(1);
-			break;
-		case R.id.top_down_button:
-			setCamera(mButtonFirst.isChecked() || mButtonThird.isChecked() || mButtonTop.getTextOn().equals("Ortho")?2:3);
-			break;
 		case R.id.pause_button:
 			pauseMapping();
 			break;
@@ -792,6 +799,15 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		}
 		resetNoTouchTimer();
 	}
+	
+	public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
+		setCamera(pos);
+		resetNoTouchTimer();
+    }
+
+    public void onNothingSelected(AdapterView<?> parent) {
+    	resetNoTouchTimer();
+    }
 		
 	private void setAndroidOrientation() {
         Display display = getWindowManager().getDefaultDisplay();
@@ -1146,9 +1162,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			}
 			
 			updateState(State.STATE_VISUALIZING_WHILE_LOADING);
-			if(mButtonFirst.isChecked())
+			if(mButtonCameraView.getSelectedItemPosition() == 0)
 			{
-				setCamera(1);
+				setCamera(2);
 			}
 			mToast.makeText(getActivity(), String.format("Optimized mesh detected in the database, it is shown while the database is loading..."), mToast.LENGTH_LONG).show();
 			mProgressDialog.dismiss();
@@ -1438,11 +1454,10 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
 			break;
 		}
-		mButtonFirst.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
-		mButtonThird.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
-		mButtonTop.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+		mButtonCameraView.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 		mButtonBackfaceShown.setVisibility(mHudVisible && (mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked())?View.VISIBLE:View.INVISIBLE);
-		mSeekBarFov.setVisibility(mHudVisible && (mButtonFirst.isChecked() || (mButtonTop.isChecked() && mButtonTop.getTextOn().equals("Ortho")))?View.VISIBLE:View.INVISIBLE);
+		mSeekBarFov.setVisibility(mHudVisible && (mButtonCameraView.getSelectedItemPosition() == 0 || mButtonCameraView.getSelectedItemPosition() == 3)?View.VISIBLE:View.INVISIBLE);
+		mSeekBarGrid.setVisibility(mHudVisible && mSeekBarGrid.isEnabled() && mButtonCameraView.getSelectedItemPosition() == 3?View.VISIBLE:View.INVISIBLE);
 	}
 
 	private void pauseMapping() {
@@ -1682,6 +1697,8 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 		else if(itemId == R.id.grid_visible)
 		{
 			item.setChecked(!item.isChecked());
+			mSeekBarGrid.setEnabled(item.isChecked());
+			mSeekBarGrid.setVisibility(mHudVisible && mSeekBarGrid.isEnabled()&&mButtonCameraView.getSelectedItemPosition() == 3?View.VISIBLE:View.INVISIBLE);
 			RTABMapLib.setGridVisible(item.isChecked());
 		}
 		else if (itemId == R.id.save)
@@ -2069,7 +2086,7 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 										}
 										updateState(State.STATE_VISUALIZING);
 										RTABMapLib.postExportation(true);
-										if(mButtonFirst.isChecked())
+										if(mButtonCameraView.getSelectedItemPosition() == 0)
 										{
 											setCamera(2);
 										}
@@ -2441,9 +2458,9 @@ public class RTABMapActivity extends Activity implements OnClickListener {
 							}
 							else if(!mItemTrajectoryMode.isChecked())
 							{
-								if(mButtonFirst.isChecked())
+								if(mButtonCameraView.getSelectedItemPosition() == 0)
 								{
-									setCamera(1);
+									setCamera(2);
 								}
 								// creating meshes...
 								updateState(State.STATE_IDLE);

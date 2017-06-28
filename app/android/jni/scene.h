@@ -129,6 +129,7 @@ class Scene {
   void setPointSize(float size) {pointSize_ = size;}
   void setFOV(float angle);
   void setOrthoCropFactor(float value);
+  void setGridRotation(float angleDeg);
   void setLighting(bool enabled) {lighting_ = enabled;}
   void setBackfaceCulling(bool enabled) {backfaceCulling_ = enabled;}
   void setWireframe(bool enabled) {wireFrame_ = enabled;}

@@ -121,6 +121,7 @@ class RTABMapApp : public UEventsHandler {
   void setPointSize(float value);
   void setFOV(float angle);
   void setOrthoCropFactor(float value);
+  void setGridRotation(float value);
   void setLighting(bool enabled);
   void setBackfaceCulling(bool enabled);
   void setWireframe(bool enabled);
