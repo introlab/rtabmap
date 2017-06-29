@@ -2128,7 +2128,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							}
 							else
 							{
-								updateState(State.STATE_IDLE);
+								updateState(previousState);
 								mToast.makeText(getActivity(), String.format("Exporting map failed!"), mToast.LENGTH_LONG).show();
 							}
 							mExportProgressDialog.dismiss();
@@ -2159,6 +2159,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mProgressDialog.setMessage(String.format("Please wait while saving \"%s\"...", newDatabasePathHuman));
 		}
 		mProgressDialog.show();
+		final State previousState = mState;
 		updateState(State.STATE_PROCESSING);
 		Thread saveThread = new Thread(new Runnable() {
 			public void run() {
@@ -2197,7 +2198,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							mOpenedDatabasePath = newDatabasePath;
 						}
 						mProgressDialog.dismiss();
-						updateState(State.STATE_IDLE);
+						updateState(previousState);
 					}
 				});
 			} 

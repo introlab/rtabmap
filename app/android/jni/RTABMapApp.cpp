@@ -2020,8 +2020,10 @@ void RTABMapApp::save(const std::string & databasePath)
 		dataRecorderMode_ = dataRecorderModeBackup;
 	}
 
+	std::map<int, rtabmap::Transform> poses = rtabmap_->getLocalOptimizedPoses();
 	rtabmap_->close(true, databasePath);
 	rtabmap_->init(getRtabmapParameters(), dataRecorderMode_?"":databasePath);
+	rtabmap_->setOptimizedPoses(poses);
 	if(dataRecorderMode_)
 	{
 		clearSceneOnNextRender_ = true;
@@ -2057,6 +2059,13 @@ bool RTABMapApp::exportMesh(
 	// make sure createdMeshes_ is not modified while exporting! We don't
 	// lock the meshesMutex_ because we want to continue rendering.
 
+	std::map<int, rtabmap::Transform> poses = rtabmap_->getLocalOptimizedPoses();
+	if(poses.empty())
+	{
+		UERROR("Empty optimized poses!");
+		return false;
+	}
+
 	if(blockRendering)
 	{
 		renderingMutex_.lock();
@@ -2069,8 +2078,6 @@ bool RTABMapApp::exportMesh(
 
 	try
 	{
-		std::map<int, rtabmap::Transform> poses = rtabmap_->getLocalOptimizedPoses();
-
 		int totalSteps = 0;
 		totalSteps+=poses.size(); // assemble
 		if(meshing)
@@ -2372,6 +2379,10 @@ bool RTABMapApp::exportMesh(
 								polygonMesh = mesh;
 							}
 						}
+					}
+					else
+					{
+						UERROR("Merged cloud too small (%d points) to create polygons!", (int)mergedClouds->size());
 					}
 				}
 				else // organized meshes
@@ -2735,6 +2746,10 @@ bool RTABMapApp::exportMesh(
 					rtabmap_->getMemory()->saveOptimizedMesh(cloudMat, poses);
 					success = true;
 				}
+			}
+			else
+			{
+				UERROR("Merged cloud is empty!");
 			}
 		}
 
