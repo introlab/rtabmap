@@ -29,6 +29,12 @@ else()
     	IF(NOT Qt5_FOUND)
        		FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
     	ENDIF(NOT Qt5_FOUND)
+
+	# fix libproj.so not found on Xenial
+	if(NOT "${PCL_LIBRARIES}" STREQUAL "")
+   		list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
+	endif()
+
 endif()
 
 if(POLICY CMP0020)
