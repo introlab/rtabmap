@@ -2550,6 +2550,7 @@ bool Rtabmap::process(
 			id = _memory->getLastWorkingSignature()->id();
 			UDEBUG("Refresh local map from %d", id);
 		}
+		UDEBUG("id=%d _optimizedPoses=%d", id, (int)_optimizedPoses.size());
 		if(id > 0)
 		{
 			if(_lastLocalizationNodeId != 0)

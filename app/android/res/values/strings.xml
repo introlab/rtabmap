@@ -306,7 +306,7 @@
     <string name="pref_title_smoothing">Smoothing</string>
     <string name="pref_summary_smoothing">Smooth the point clouds.</string>
     <string name="pref_title_fisheye">Fish Eye Camera</string>
-    <string name="pref_summary_fisheye">Use fish eye camera instead of the color camera. Cannot be used on Yellowstone tablet.</string>
+    <string name="pref_summary_fisheye">Use fish eye camera instead of the color camera. May not work on some devices.</string>
     <string name="pref_title_update_rate">Update Rate</string>
     <string name="pref_summary_update_rate">Rate at which a new node is added to map.</string>
     <string name="pref_title_time_thr">Time Limit</string>

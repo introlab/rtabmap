@@ -2062,8 +2062,19 @@ bool RTABMapApp::exportMesh(
 	std::map<int, rtabmap::Transform> poses = rtabmap_->getLocalOptimizedPoses();
 	if(poses.empty())
 	{
-		UERROR("Empty optimized poses!");
-		return false;
+		// look if we just triggered new map without localizing afterward (pause/resume in append Mode)
+		std::multimap<int, rtabmap::Link> links;
+		rtabmap_->getGraph(
+				poses,
+				links,
+				true,
+				false);
+		if(poses.empty())
+		{
+			UERROR("Empty optimized poses!");
+			return false;
+		}
+		rtabmap_->setOptimizedPoses(poses);
 	}
 
 	if(blockRendering)
