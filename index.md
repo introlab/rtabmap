@@ -58,6 +58,13 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
 
 ## What's new 
 
+### July 2017
+* New version 0.13 of RTAB-Map Tango. See on [play store](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en).
+* I Uploaded a [presentation](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/3/31/Labbe2015ULaval.pdf) that I did in 2015. A summary of RTAB-Map as a RGBD-SLAM approach:
+
+    <img src="https://raw.githubusercontent.com/wiki/introlab/rtabmap/doc/Labbe2015ULavalOverview.jpg" alt="RTAB-Map overview">
+ 
+
 ### March 2017
 * New tutorial: [Multi-Session Mapping with RTAB-Map Tango](https://github.com/introlab/rtabmap/wiki/Multi-Session-Mapping-with-RTAB-Map-Tango)
 
