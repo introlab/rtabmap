@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-637</y>
+            <y>0</y>
             <width>678</width>
             <height>2739</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>18</number>
+                <number>11</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -7480,13 +7480,13 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                 </layout>
                </widget>
                <widget class="QWidget" name="page_23">
-                <layout class="QVBoxLayout" name="verticalLayout_2">
+                <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,1">
                  <item>
                   <widget class="QGroupBox" name="groupBox_bayes1">
                    <property name="title">
                     <string>Loop Closure Detection</string>
                    </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_22">
+                   <layout class="QVBoxLayout" name="verticalLayout_22" stretch="0,0,0,1,0,0">
                     <item>
                      <widget class="QLabel" name="label">
                       <property name="text">
@@ -7630,139 +7630,96 @@ see Sqlite3 doc 'PRAGMA temp_store'.</string>
                      </layout>
                     </item>
                     <item>
-                     <widget class="QGroupBox" name="groupBox_vh_strategy2">
-                      <property name="minimumSize">
-                       <size>
-                        <width>0</width>
-                        <height>0</height>
-                       </size>
-                      </property>
+                     <widget class="QGroupBox" name="groupBox_vh_epipolar2">
                       <property name="title">
                        <string>Hypothesis Verification</string>
                       </property>
-                      <layout class="QVBoxLayout" name="verticalLayout_3">
-                       <item>
-                        <layout class="QGridLayout" name="gridLayout_10" columnstretch="0,1">
-                         <item row="0" column="0">
-                          <widget class="QComboBox" name="comboBox_vh_strategy">
-                           <property name="sizeAdjustPolicy">
-                            <enum>QComboBox::AdjustToContents</enum>
-                           </property>
-                           <item>
-                            <property name="text">
-                             <string>No verification</string>
-                            </property>
-                           </item>
-                           <item>
-                            <property name="text">
-                             <string>Epipolar constraints</string>
-                            </property>
-                           </item>
-                          </widget>
-                         </item>
-                         <item row="0" column="1">
-                          <widget class="QLabel" name="label_50">
-                           <property name="text">
-                            <string>Hypothesis verification.</string>
-                           </property>
-                           <property name="textInteractionFlags">
-                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item>
-                        <widget class="QGroupBox" name="groupBox_vh_epipolar2">
-                         <property name="title">
-                          <string>Epipolar Constraints</string>
+                      <property name="checkable">
+                       <bool>true</bool>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout" columnstretch="0,10">
+                       <item row="0" column="0">
+                        <widget class="QSpinBox" name="surf_spinBox_matchCountMinAccepted">
+                         <property name="minimum">
+                          <number>8</number>
                          </property>
-                         <layout class="QGridLayout" name="gridLayout" columnstretch="0,10">
-                          <item row="0" column="0">
-                           <widget class="QSpinBox" name="surf_spinBox_matchCountMinAccepted">
-                            <property name="minimum">
-                             <number>8</number>
-                            </property>
-                            <property name="maximum">
-                             <number>100000</number>
-                            </property>
-                            <property name="value">
-                             <number>11</number>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="0" column="1">
-                           <widget class="QLabel" name="label_25">
-                            <property name="text">
-                             <string>Minimum match count to accept a loop closure.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                            <property name="textInteractionFlags">
-                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="0">
-                           <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam1">
-                            <property name="decimals">
-                             <number>1</number>
-                            </property>
-                            <property name="maximum">
-                             <double>10.000000000000000</double>
-                            </property>
-                            <property name="singleStep">
-                             <double>0.100000000000000</double>
-                            </property>
-                            <property name="value">
-                             <double>3.000000000000000</double>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="1" column="1">
-                           <widget class="QLabel" name="label_27">
-                            <property name="text">
-                             <string>Fundamental Matrix : Distance (pixels) for inliers.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                            <property name="textInteractionFlags">
-                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="0">
-                           <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam2">
-                            <property name="decimals">
-                             <number>2</number>
-                            </property>
-                            <property name="maximum">
-                             <double>0.990000000000000</double>
-                            </property>
-                            <property name="singleStep">
-                             <double>0.010000000000000</double>
-                            </property>
-                            <property name="value">
-                             <double>0.990000000000000</double>
-                            </property>
-                           </widget>
-                          </item>
-                          <item row="2" column="1">
-                           <widget class="QLabel" name="label_28">
-                            <property name="text">
-                             <string>Fundamental Matrix : Ransac performance.</string>
-                            </property>
-                            <property name="wordWrap">
-                             <bool>true</bool>
-                            </property>
-                            <property name="textInteractionFlags">
-                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                            </property>
-                           </widget>
-                          </item>
-                         </layout>
+                         <property name="maximum">
+                          <number>100000</number>
+                         </property>
+                         <property name="value">
+                          <number>11</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_25">
+                         <property name="text">
+                          <string>Minimum match count to accept a loop closure.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam1">
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="maximum">
+                          <double>10.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>3.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QLabel" name="label_27">
+                         <property name="text">
+                          <string>Fundamental Matrix : Distance (pixels) for inliers.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QDoubleSpinBox" name="surf_doubleSpinBox_ransacParam2">
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="maximum">
+                          <double>0.990000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>0.990000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_28">
+                         <property name="text">
+                          <string>Fundamental Matrix : Ransac performance.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
                         </widget>
                        </item>
                       </layout>

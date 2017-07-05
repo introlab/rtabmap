@@ -83,6 +83,7 @@ Rtabmap::Rtabmap() :
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
 	_loopRatio(Parameters::defaultRtabmapLoopRatio()),
+	_verifyLoopClosureHypothesis(Parameters::defaultVhEpEnabled()),
 	_maxRetrieved(Parameters::defaultRtabmapMaxRetrieved()),
 	_maxLocalRetrieved(Parameters::defaultRGBDMaxLocalRetrieved()),
 	_rawDataKept(Parameters::defaultMemImageKept()),
@@ -401,6 +402,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopRatio(), _loopRatio);
+	Parameters::parse(parameters, Parameters::kVhEpEnabled(), _verifyLoopClosureHypothesis);
 	Parameters::parse(parameters, Parameters::kRtabmapMaxRetrieved(), _maxRetrieved);
 	Parameters::parse(parameters, Parameters::kRGBDMaxLocalRetrieved(), _maxLocalRetrieved);
 	Parameters::parse(parameters, Parameters::kMemImageKept(), _rawDataKept);
@@ -470,22 +472,11 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 		_memory->parseParameters(parameters);
 	}
 
-	VhStrategy vhStrategy = kVhUndef;
-	// Verifying hypotheses strategy
-	if((iter=parameters.find(Parameters::kRtabmapVhStrategy())) != parameters.end())
-	{
-		vhStrategy = (VhStrategy)std::atoi((*iter).second.c_str());
-	}
-	if(!_epipolarGeometry && vhStrategy == kVhEpipolar)
+	if(!_epipolarGeometry)
 	{
 		_epipolarGeometry = new EpipolarGeometry(_parameters);
 	}
-	else if(_epipolarGeometry && vhStrategy == kVhNone)
-	{
-		delete _epipolarGeometry;
-		_epipolarGeometry = 0;
-	}
-	else if(_epipolarGeometry)
+	else
 	{
 		_epipolarGeometry->parseParameters(parameters);
 	}
@@ -1407,7 +1398,7 @@ bool Rtabmap::process(
 						// Ignore loop closure if there is only one loop closure hypothesis
 						UDEBUG("rejected hypothesis: single hypothesis");
 					}
-					else if(_epipolarGeometry && !_epipolarGeometry->check(signature, _memory->getSignature(_highestHypothesis.first)))
+					else if(_verifyLoopClosureHypothesis && !_epipolarGeometry->check(signature, _memory->getSignature(_highestHypothesis.first)))
 					{
 						UWARN("rejected hypothesis: by epipolar geometry");
 					}

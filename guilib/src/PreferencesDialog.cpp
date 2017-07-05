@@ -747,7 +747,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_BRISK_patterScale->setObjectName(Parameters::kBRISKPatternScale().c_str());
 
 	// verifyHypotheses
-	_ui->comboBox_vh_strategy->setObjectName(Parameters::kRtabmapVhStrategy().c_str());
+	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
 	_ui->surf_spinBox_matchCountMinAccepted->setObjectName(Parameters::kVhEpMatchCountMin().c_str());
 	_ui->surf_doubleSpinBox_ransacParam1->setObjectName(Parameters::kVhEpRansacParam1().c_str());
 	_ui->surf_doubleSpinBox_ransacParam2->setObjectName(Parameters::kVhEpRansacParam2().c_str());

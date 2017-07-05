@@ -168,7 +168,6 @@ typedef std::pair<std::string, std::string> ParametersPair;
 class RTABMAP_EXP Parameters
 {
     // Rtabmap parameters
-    RTABMAP_PARAM(Rtabmap, VhStrategy,                   int, 0,      "None 0, Similarity 1, Epipolar 2.");
     RTABMAP_PARAM(Rtabmap, PublishStats,                 bool, true,  "Publishing statistics.");
     RTABMAP_PARAM(Rtabmap, PublishLastSignature,         bool, true,  "Publishing last signature.");
     RTABMAP_PARAM(Rtabmap, PublishPdf,                   bool, true,  "Publishing pdf.");
@@ -301,9 +300,10 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Bayes, FullPredictionUpdate, bool, false, "Regenerate all the prediction matrix on each iteration (otherwise only removed/added ids are updated).");
 
     // Verify hypotheses
+    RTABMAP_PARAM(VhEp, Enabled, bool, false,       uFormat("Verify visual loop closure hypothesis by computing a fundamental matrix. This is done prior to transformation computation when %s is enabled.", kRGBDEnabled().c_str()));
     RTABMAP_PARAM(VhEp, MatchCountMin, int, 8,      "Minimum of matching visual words pairs to accept the loop hypothesis.");
     RTABMAP_PARAM(VhEp, RansacParam1,  float, 3,    "Fundamental matrix (see cvFindFundamentalMat()): Max distance (in pixels) from the epipolar line for a point to be inlier.");
-    RTABMAP_PARAM(VhEp, RansacParam2,  float, 0.99, "Fundamental matrix (see cvFindFundamentalMat()): Performance of the RANSAC.");
+    RTABMAP_PARAM(VhEp, RansacParam2,  float, 0.99, "Fundamental matrix (see cvFindFundamentalMat()): Performance of RANSAC.");
 
     // RGB-D SLAM
     RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "");

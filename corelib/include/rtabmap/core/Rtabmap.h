@@ -215,6 +215,7 @@ private:
 	unsigned int _maxMemoryAllowed; // signatures count in WM
 	float _loopThr;
 	float _loopRatio;
+	bool _verifyLoopClosureHypothesis;
 	unsigned int _maxRetrieved;
 	unsigned int _maxLocalRetrieved;
 	bool _rawDataKept;

@@ -224,6 +224,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.13.1
+		removedParameters_.insert(std::make_pair("Rtabmap/VhStrategy",            std::make_pair(true,  Parameters::kVhEpEnabled())));
+
 		// 0.12.5
 		removedParameters_.insert(std::make_pair("Grid/FullUpdate",               std::make_pair(true,  Parameters::kGridGlobalFullUpdate())));
 
