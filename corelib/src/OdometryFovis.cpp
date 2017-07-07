@@ -111,6 +111,7 @@ void OdometryFovis::reset(const Transform & initialPose)
 		stereoDepth_ = 0;
 	}
 	lost_ = false;
+	previousLocalTransform_.setNull();
 #endif
 }
 
@@ -341,12 +342,14 @@ Transform OdometryFovis::computeTransform(
 		t.setNull();
 		lost_ = true;
 		covariance = cv::Mat::eye(6,6, CV_64FC1)*9999.0;
+		previousLocalTransform_.setNull();
 	}
 	else if(lost_)
 	{
 		lost_ = false;
 		// we are not lost anymore but we don't know where we are now according to last valid pose
 		covariance = cv::Mat::eye(6,6, CV_64FC1)*9999.0;
+		previousLocalTransform_.setNull();
 	}
 	else
 	{
@@ -362,7 +365,15 @@ Transform OdometryFovis::computeTransform(
 	if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
 	{
 		// from camera frame to base frame
-		t = localTransform * t * localTransform.inverse();
+		if(!previousLocalTransform_.isNull())
+		{
+			t = previousLocalTransform_ * t * localTransform.inverse();
+		}
+		else
+		{
+			t = localTransform * t * localTransform.inverse();
+		}
+		previousLocalTransform_ = localTransform;
 	}
 
 	if(info)

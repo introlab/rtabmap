@@ -60,6 +60,7 @@ private:
 	fovis::StereoDepth * stereoDepth_;
 	ParametersMap fovisParameters_;
 	bool lost_;
+	Transform previousLocalTransform_;
 };
 
 }

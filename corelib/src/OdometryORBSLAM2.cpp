@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UDirectory.h"
 
 #ifdef RTABMAP_ORB_SLAM2
 #include <System.h>
@@ -495,6 +496,7 @@ public:
 		if(!vocabularyPath.empty())
 		{
 			//Load ORB Vocabulary
+			vocabularyPath = uReplaceChar(vocabularyPath, '~', UDirectory::homeDir());
 			UWARN("Loading ORB Vocabulary: \"%s\". This could take a while...", vocabularyPath.c_str());
 			mpVocabulary = new ORB_SLAM2::ORBVocabulary();
 			bool bVocLoad = mpVocabulary->loadFromTextFile(vocabularyPath);
@@ -773,6 +775,7 @@ void OdometryORBSLAM2::reset(const Transform & initialPose)
 		orbslam2_->shutdown();
 	}
 	firstFrame_ = true;
+	originLocalTransform_.setNull();
 #endif
 }
 
@@ -845,14 +848,17 @@ Transform OdometryORBSLAM2::computeTransform(
 	}
 	else if(Tcw.cols == 4 && Tcw.rows == 4)
 	{
-		t = Transform(cv::Mat(Tcw, cv::Range(0,3), cv::Range(0,4)).clone());
+		t = Transform(cv::Mat(Tcw, cv::Range(0,3), cv::Range(0,4)));
 
 		if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
 		{
-			// from camera frame to base frame
-			t = localTransform * t.inverse() * localTransform.inverse();
+			if(originLocalTransform_.isNull())
+			{
+				originLocalTransform_ = localTransform;
+			}
+			t = originLocalTransform_ * t.inverse() * localTransform.inverse();
+			t = this->getPose().inverse() * t;
 		}
-		t = this->getPose().inverse() * t;
 
 		if(firstFrame_)
 		{
@@ -916,12 +922,13 @@ Transform OdometryORBSLAM2::computeTransform(
 			}
 			info->wordMatches.resize(oi);
 			info->wordInliers.resize(oi);
+			info->inliers = oi;
 
 			std::vector<ORB_SLAM2::MapPoint*> mapPoints = orbslam2_->mpMap->GetAllMapPoints();
 			for (unsigned int i = 0; i < mapPoints.size(); ++i)
 			{
 				cv::Mat pt = mapPoints[i]->GetWorldPos();
-				info->localMap.insert(std::make_pair(mapPoints[i]->mnId, util3d::transformPoint(cv::Point3f(pt), localTransform)));
+				info->localMap.insert(std::make_pair(mapPoints[i]->mnId, util3d::transformPoint(cv::Point3f(pt), originLocalTransform_)));
 			}
 		}
 	}

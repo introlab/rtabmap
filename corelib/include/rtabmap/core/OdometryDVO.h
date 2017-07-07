@@ -58,6 +58,7 @@ private:
 	dvo::core::RgbdCameraPyramid * camera_;
 	bool lost_;
 	Transform motionFromKeyFrame_;
+	Transform previousLocalTransform_;
 
 };
 

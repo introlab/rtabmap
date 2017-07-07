@@ -54,6 +54,7 @@ private:
 	ORBSLAM2System * orbslam2_;
 	ORB_SLAM2::System * system_;
 	bool firstFrame_;
+	Transform originLocalTransform_;
 
 };
 

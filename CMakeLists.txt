@@ -369,7 +369,7 @@ IF(WITH_DVO)
     ENDIF(dvo_core_FOUND)
 ENDIF(WITH_DVO)
 
-IF(WITH_ORB_SLAM2 AND NOT G2O_FOUND AND NOT RealSense_FOUND)
+IF(WITH_ORB_SLAM2 AND NOT G2O_FOUND)
     FIND_PACKAGE(ORB_SLAM2 QUIET)
     IF(ORB_SLAM2_FOUND)
        MESSAGE(STATUS "Found ORB_SLAM2: ${ORB_SLAM2_INCLUDE_DIRS}")
@@ -381,12 +381,10 @@ IF(WITH_ORB_SLAM2 AND NOT G2O_FOUND AND NOT RealSense_FOUND)
           MESSAGE(STATUS "Found Pangolin: ${Pangolin_INCLUDE_DIRS}")
           SET(ORB_SLAM2_INCLUDE_DIRS ${ORB_SLAM2_INCLUDE_DIRS} ${Pangolin_INCLUDE_DIRS})
           SET(ORB_SLAM2_LIBRARIES ${ORB_SLAM2_LIBRARIES} ${Pangolin_LIBRARIES})
-          set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=native")
-          set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
-          # There could be crash issues if built with RealSense
+          MESSAGE(WARNING "Don't forget to build ORB_SLAM2 (and included g2o) without \"-march=native\" to avoid crash when ORB_SLAM2 starts.")
        ENDIF()
     ENDIF(ORB_SLAM2_FOUND)
-ENDIF(WITH_ORB_SLAM2 AND NOT G2O_FOUND AND NOT RealSense_FOUND)
+ENDIF(WITH_ORB_SLAM2 AND NOT G2O_FOUND)
 
 IF(G2O_FOUND OR GTSAM_FOUND OR ZED_FOUND OR ANDROID OR RealSense_FOUND OR ORB_SLAM2_FOUND)
    #Newest versions require std11

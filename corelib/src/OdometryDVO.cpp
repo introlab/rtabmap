@@ -90,6 +90,7 @@ void OdometryDVO::reset(const Transform & initialPose)
 	}
 	lost_ = false;
 	motionFromKeyFrame_.setIdentity();
+	previousLocalTransform_.setNull();
 #endif
 }
 
@@ -192,6 +193,7 @@ Transform OdometryDVO::computeTransform(
 
 	dvo::core::RgbdImagePyramid * current = new dvo::core::RgbdImagePyramid(*camera_, grey_s16, depth_float);
 
+	const Transform & localTransform = data.cameraModels()[0].localTransform();
 	cv::Mat covariance;
 	if(reference_ == 0)
 	{
@@ -245,16 +247,24 @@ Transform OdometryDVO::computeTransform(
 			reference_ = 0; // this will make restart from the next frame
 			motionFromKeyFrame_.setIdentity();
 			t.setNull();
+			previousLocalTransform_.setNull();
 			covariance = cv::Mat::eye(6,6,CV_64FC1) * 9999.0;
 			UWARN("dvo failed to estimate motion, tracking will be reinitialized on next frame.");
 		}
-	}
 
-	const Transform & localTransform = data.cameraModels()[0].localTransform();
-	if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
-	{
-		// from camera frame to base frame
-		t = localTransform * t * localTransform.inverse();
+		if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
+		{
+			// from camera frame to base frame
+			if(!previousLocalTransform_.isNull())
+			{
+				t = previousLocalTransform_ * t * localTransform.inverse();
+			}
+			else
+			{
+				t = localTransform * t * localTransform.inverse();
+			}
+			previousLocalTransform_ = localTransform;
+		}
 	}
 
 	if(info)
