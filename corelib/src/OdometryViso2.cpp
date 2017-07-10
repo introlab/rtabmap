@@ -86,6 +86,7 @@ void OdometryViso2::reset(const Transform & initialPose)
 	}
 	lost_ = false;
 	reference_motion_.setIdentity();
+	previousLocalTransform_.setNull();
 #endif
 }
 
@@ -253,10 +254,19 @@ Transform OdometryViso2::computeTransform(
 		}
 	}
 
-	if(!t.isNull() && !t.isIdentity() && !data.stereoCameraModel().localTransform().isIdentity() && !data.stereoCameraModel().localTransform().isNull())
+	const Transform & localTransform = data.stereoCameraModel().localTransform();
+	if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
 	{
 		// from camera frame to base frame
-		t = data.stereoCameraModel().localTransform() * t * data.stereoCameraModel().localTransform().inverse();
+		if(!previousLocalTransform_.isNull())
+		{
+			t = previousLocalTransform_ * t * localTransform.inverse();
+		}
+		else
+		{
+			t = localTransform * t * localTransform.inverse();
+		}
+		previousLocalTransform_ = localTransform;
 	}
 
 	if(info)
