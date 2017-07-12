@@ -718,7 +718,15 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 				if(!signature->getPose().isNull() &&
 				   !_signatures.at(*_stMem.rbegin())->getPose().isNull())
 				{
+					UASSERT(covariance.cols == 6 && covariance.rows == 6 && covariance.type() == CV_64FC1);
 					cv::Mat infMatrix = covariance.inv();
+					if((uIsFinite(covariance.at<double>(0,0) && covariance.at<double>(0,0)>0)) &&
+						!(uIsFinite(infMatrix.at<double>(0,0) && infMatrix.at<double>(0,0)>0)))
+					{
+						UERROR("Failed to invert the covariance matrix! Covariance matrix should be invertible!");
+						std::cout << "Covariance: " << covariance << std::endl;
+						infMatrix = cv::Mat::eye(6,6,CV_64FC1);
+					}
 					motionEstimate = _signatures.at(*_stMem.rbegin())->getPose().inverse() * signature->getPose();
 					_signatures.at(*_stMem.rbegin())->addLink(Link(*_stMem.rbegin(), signature->id(), Link::kNeighbor, motionEstimate, infMatrix));
 					signature->addLink(Link(signature->id(), *_stMem.rbegin(), Link::kNeighbor, motionEstimate.inverse(), infMatrix));
