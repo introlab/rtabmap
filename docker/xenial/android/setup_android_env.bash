@@ -22,9 +22,4 @@ echo "wget android-ndk..."
 wget -nv https://dl.google.com/android/repository/android-ndk-r14-linux-x86_64.zip
 unzip -qq android-ndk-r14-linux-x86_64.zip
 rm android-ndk-r14-linux-x86_64.zip
-mv android-ndk-r14 /opt/.
-
-# Install directory for all dependencies
-mkdir -p /opt/android/armeabi-v7a
-mkdir -p /opt/android/arm64-v8a
-wget -nv https://github.com/introlab/rtabmap/raw/master/cmake_modules/android.toolchain.cmake
+mv android-ndk-r14 $ANDROID_NDK

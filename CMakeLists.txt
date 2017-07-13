@@ -95,6 +95,14 @@ IF(APPLE)
    SET(CMAKE_LIBRARY_PATH "/opt/local/lib;${CMAKE_LIBRARY_PATH}")
 ENDIF()
 
+####### ANDROID_PREBUILD (early exit if true) #######
+OPTION( ANDROID_PREBUILD "Set to ON to build rtabmap resource build tool (required for android build)" OFF )
+IF(ANDROID_PREBUILD)
+   MESSAGE("Option ANDROID_PREBUILD is set, only rtabmap resource tool will be built. You can use android toolchain after that.")
+   ADD_SUBDIRECTORY( utilite )
+   return()
+ENDIF(ANDROID_PREBUILD)
+
 ####### Build libraries as shared or static #######
 OPTION( BUILD_SHARED_LIBS "Set to OFF to build static libraries" ON )
 

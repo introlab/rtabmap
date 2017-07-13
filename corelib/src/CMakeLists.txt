@@ -344,7 +344,7 @@ SET(RESOURCES_HEADERS
 IF(ANDROID)
 
    IF(NOT RTABMAP_RES_TOOL)
-      find_host_program(RTABMAP_RES_TOOL rtabmap-res_tool)
+      find_host_program(RTABMAP_RES_TOOL rtabmap-res_tool PATHS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
       IF(NOT RTABMAP_RES_TOOL)
          MESSAGE( FATAL_ERROR "RTABMAP_RES_TOOL is not defined (it is the path to \"rtabmap-res_tool\" application created by a non-Android build)." )
       ENDIF(NOT RTABMAP_RES_TOOL)
