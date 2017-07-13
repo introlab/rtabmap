@@ -35,6 +35,7 @@ mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 cd rtabmap-tango/build
 cmake --DANDROID_PREBUILD=ON ..
 make
+cd
 
 # rtabmap
 mkdir rtabmap-tango/build/armeabi-v7a

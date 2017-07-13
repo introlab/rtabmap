@@ -6,6 +6,7 @@ FROM ubuntu:16.04
 RUN apt-get update && apt-get install -y \
       git \
       cmake \
+      g++ \
       software-properties-common
 
 ENV ANDROID_HOME=/opt/android-sdk
