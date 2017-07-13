@@ -32,7 +32,6 @@ wget https://developers.google.com/tango/downloads/TangoSDK_Ikariotikos_Java.jar
 mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 
 # resource tool
-mkdir rtabmap-tango/build
 cd rtabmap-tango/build
 cmake --DANDROID_PREBUILD=ON ..
 make

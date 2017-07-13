@@ -17,7 +17,7 @@ WORKDIR /root/
 
 ADD setup_android_env.bash /root/setup_android_env.bash
 RUN chmod +x setup_android_env.bash
-RUN /bin/bash -c "./setup_android_env.bash /opt"
+RUN /bin/bash -c "./setup_android_env.bash"
 
 ADD install_deps.bash /root/install_deps.bash
 RUN chmod +x install_deps.bash
