@@ -720,8 +720,8 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 				{
 					UASSERT(covariance.cols == 6 && covariance.rows == 6 && covariance.type() == CV_64FC1);
 					cv::Mat infMatrix = covariance.inv();
-					if((uIsFinite(covariance.at<double>(0,0) && covariance.at<double>(0,0)>0)) &&
-						!(uIsFinite(infMatrix.at<double>(0,0) && infMatrix.at<double>(0,0)>0)))
+					if((uIsFinite(covariance.at<double>(0,0)) && covariance.at<double>(0,0)>0.0) &&
+						!(uIsFinite(infMatrix.at<double>(0,0)) && infMatrix.at<double>(0,0)>0.0))
 					{
 						UERROR("Failed to invert the covariance matrix! Covariance matrix should be invertible!");
 						std::cout << "Covariance: " << covariance << std::endl;
