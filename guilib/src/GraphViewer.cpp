@@ -1176,19 +1176,19 @@ void GraphViewer::setMaxLinkLength(float value)
 }
 void GraphViewer::setGraphVisible(bool visible)
 {
-	_graphRoot->setVisible(!_graphRoot->isVisible());
+	_graphRoot->setVisible(visible);
 }
 void GraphViewer::setGlobalPathVisible(bool visible)
 {
-	_globalPathRoot->setVisible(!_globalPathRoot->isVisible());
+	_globalPathRoot->setVisible(visible);
 }
 void GraphViewer::setLocalPathVisible(bool visible)
 {
-	_localPathRoot->setVisible(!_localPathRoot->isVisible());
+	_localPathRoot->setVisible(visible);
 }
 void GraphViewer::setGtGraphVisible(bool visible)
 {
-	_gtGraphRoot->setVisible(!_gtGraphRoot->isVisible());
+	_gtGraphRoot->setVisible(visible);
 }
 
 void GraphViewer::restoreDefaults()

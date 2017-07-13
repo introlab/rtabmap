@@ -4090,7 +4090,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					++iter;
 				}
 			}
-			UINFO("Update local maps list... done");
+			UINFO("Update local maps list... done (%d local maps, graph size=%d)", (int)localMaps.size(), (int)graph.size());
 		}
 
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
@@ -4098,7 +4098,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		ui_->graphViewer->clearMap();
 		occupancyGridViewer_->clear();
 		if(graph.size() && localMaps.size() &&
-			(ui_->graphViewer->isGridMapVisible() || ui_->dockWidget_occupancyGridView->isVisible()))
+			(ui_->dockWidget_graphView->isVisible() || ui_->dockWidget_occupancyGridView->isVisible()))
 		{
 			QTime time;
 			time.start();
@@ -4129,7 +4129,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 #endif
 
 			// Generate 2d grid map?
-			if((ui_->dockWidget_graphView->isVisible() && ui_->graphViewer->isGridMapVisible()) ||
+			if(ui_->dockWidget_graphView->isVisible() ||
 			   (ui_->dockWidget_occupancyGridView->isVisible() && ui_->checkBox_grid_2d->isChecked()))
 			{
 				float xMin, yMin;
@@ -4152,7 +4152,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				if(!map.empty())
 				{
 					cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map);
-					if(ui_->dockWidget_graphView->isVisible() && ui_->graphViewer->isGridMapVisible())
+					if(ui_->dockWidget_graphView->isVisible())
 					{
 						ui_->graphViewer->updateMap(map8U, cell, xMin, yMin);
 					}
