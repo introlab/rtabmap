@@ -296,6 +296,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->graphViewer, SIGNAL(mapShownRequested()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
 	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
@@ -4098,7 +4099,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		ui_->graphViewer->clearMap();
 		occupancyGridViewer_->clear();
 		if(graph.size() && localMaps.size() &&
-			(ui_->dockWidget_graphView->isVisible() || ui_->dockWidget_occupancyGridView->isVisible()))
+			(ui_->graphViewer->isGridMapVisible() || ui_->dockWidget_occupancyGridView->isVisible()))
 		{
 			QTime time;
 			time.start();
@@ -4129,7 +4130,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 #endif
 
 			// Generate 2d grid map?
-			if(ui_->dockWidget_graphView->isVisible() ||
+			if((ui_->dockWidget_graphView->isVisible() && ui_->graphViewer->isGridMapVisible()) ||
 			   (ui_->dockWidget_occupancyGridView->isVisible() && ui_->checkBox_grid_2d->isChecked()))
 			{
 				float xMin, yMin;
@@ -4152,7 +4153,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				if(!map.empty())
 				{
 					cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map);
-					if(ui_->dockWidget_graphView->isVisible())
+					if(ui_->dockWidget_graphView->isVisible() && ui_->graphViewer->isGridMapVisible())
 					{
 						ui_->graphViewer->updateMap(map8U, cell, xMin, yMin);
 					}

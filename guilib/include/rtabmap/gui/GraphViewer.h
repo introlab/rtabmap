@@ -135,6 +135,7 @@ public:
 
 signals:
 	void configChanged();
+	void mapShownRequested();
 
 public slots:
 	void restoreDefaults();

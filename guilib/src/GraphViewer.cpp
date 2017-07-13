@@ -1361,7 +1361,6 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		aShowHideGtGraph = menu.addAction(tr("Show ground truth graph"));
 	}
-	aShowHideGridMap->setEnabled(!_gridMap->pixmap().isNull());
 	aShowHideGraph->setEnabled(_nodeItems.size());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
@@ -1626,6 +1625,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aShowHideGridMap)
 	{
 		this->setGridMapVisible(!this->isGridMapVisible());
+		if(_gridMap->isVisible())
+		{
+			emit mapShownRequested();
+		}
 	}
 	else if(r == aShowHideOrigin)
 	{
