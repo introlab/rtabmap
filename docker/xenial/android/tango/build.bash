@@ -33,7 +33,7 @@ mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 
 # resource tool
 cd rtabmap-tango/build
-cmake --DANDROID_PREBUILD=ON ..
+cmake -DANDROID_PREBUILD=ON ..
 make
 cd
 
