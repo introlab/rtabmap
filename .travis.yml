@@ -1,6 +1,7 @@
 sudo: true
 dist: trusty
 language: cpp
+group: deprecated-2017Q3
 
 compiler:
   - gcc
