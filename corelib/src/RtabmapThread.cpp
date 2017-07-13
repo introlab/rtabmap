@@ -570,8 +570,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		}
 		if(!lastPose_.isIdentity() &&
 						(odomEvent.pose().isIdentity() ||
-						odomEvent.rotVariance()>=9999 ||
-						odomEvent.transVariance()>=9999))
+						odomEvent.info().covariance.at<double>(0,0)>=9999))
 		{
 			if(odomEvent.pose().isIdentity())
 			{
@@ -579,21 +578,21 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			}
 			else
 			{
-				UWARN("Odometry is reset (high variance (%f/%f >=9999 detected). Increment map id!", odomEvent.transVariance(), odomEvent.rotVariance());
+				UWARN("Odometry is reset (high variance (%f >=9999 detected). Increment map id!", odomEvent.info().covariance.at<double>(0,0));
 			}
 			pushNewState(kStateTriggeringMap);
 			covariance_ = cv::Mat();
 		}
 
-		double maxRotVar = odomEvent.rotVariance();
-		double maxTransVar = odomEvent.transVariance();
-		if(maxRotVar != 1.0f && maxTransVar != 1.0f && !covariance_.empty())
+		if(uIsFinite(odomEvent.info().covariance.at<double>(0,0)) &&
+			odomEvent.info().covariance.at<double>(0,0) != 1.0 &&
+			odomEvent.info().covariance.at<double>(0,0)>0.0)
 		{
-			covariance_ += odomEvent.covariance();
-		}
-		else
-		{
-			covariance_ = odomEvent.covariance();
+			// Use largest covariance error (to be independent of the odometry frame rate)
+			if(covariance_.empty() || odomEvent.info().covariance.at<double>(0,0) > covariance_.at<double>(0,0))
+			{
+				covariance_ = odomEvent.info().covariance;
+			}
 		}
 
 		if(ignoreFrame && !_createIntermediateNodes)

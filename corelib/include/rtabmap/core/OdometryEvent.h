@@ -86,8 +86,6 @@ public:
 		return std::vector<float>();
 	}
 	const OdometryInfo & info() const {return _info;}
-	double rotVariance() const {return uMax3(_info.covariance.at<double>(3,3), _info.covariance.at<double>(4,4), _info.covariance.at<double>(5,5));}
-	double transVariance() const {return uMax3(_info.covariance.at<double>(0,0), _info.covariance.at<double>(1,1), _info.covariance.at<double>(2,2));}
 
 private:
 	SensorData _data;
