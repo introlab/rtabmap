@@ -299,7 +299,8 @@ void OccupancyGrid::createLocalMap(
 			viewPoint.z = viewpointRotated.z();
 		}
 
-		if(cloud->size())
+		if((cloud->is_dense && cloud->size()) ||
+			(!cloud->is_dense && indices->size()))
 		{
 			pcl::IndicesPtr groundIndices(new std::vector<int>);
 			pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
