@@ -2560,6 +2560,7 @@ void DatabaseViewer::update(int value,
 							if(!data.imageRaw().empty())
 							{
 								pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
+								pcl::IndicesPtr indices(new std::vector<int>);
 								if(!data.depthRaw().empty() && data.cameraModels().size()==1)
 								{
 									cv::Mat depth = data.depthRaw();
@@ -2570,8 +2571,9 @@ void DatabaseViewer::update(int value,
 									cloud = util3d::cloudFromDepthRGB(
 											data.imageRaw(),
 											depth,
-											data.cameraModels()[0]);
-									if(cloud->size())
+											data.cameraModels()[0],
+											1,0,0,indices.get());
+									if(indices->size())
 									{
 										cloud = util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform());
 									}
@@ -2579,13 +2581,13 @@ void DatabaseViewer::update(int value,
 								}
 								else
 								{
-									cloud = util3d::cloudRGBFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
+									cloud = util3d::cloudRGBFromSensorData(data, 1, 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
 								}
-								if(cloud->size())
+								if(indices->size())
 								{
 									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 									{
-										cloud = util3d::voxelize(cloud, ui_->doubleSpinBox_voxelSize->value());
+										cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
 									}
 
 									if(ui_->checkBox_showMesh->isChecked() && !cloud->is_dense)
@@ -2646,12 +2648,13 @@ void DatabaseViewer::update(int value,
 							else if(ui_->checkBox_showCloud->isChecked())
 							{
 								pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-								cloud = util3d::cloudFromSensorData(data, 1, 0, 0, 0, ui_->parameters_toolbox->getParameters());
-								if(cloud->size())
+								pcl::IndicesPtr indices(new std::vector<int>);
+								cloud = util3d::cloudFromSensorData(data, 1, 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
+								if(indices->size())
 								{
 									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 									{
-										cloud = util3d::voxelize(cloud, ui_->doubleSpinBox_voxelSize->value());
+										cloud = util3d::voxelize(cloud, indices, ui_->doubleSpinBox_voxelSize->value());
 									}
 
 									cloudViewer_->addCloud("cloud", cloud, pose);
@@ -3521,7 +3524,7 @@ void DatabaseViewer::updateConstraintView(
 			{
 				if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 				{
-					cloudFrom = util3d::voxelize(cloudFrom, ui_->doubleSpinBox_voxelSize->value());
+					cloudFrom = util3d::voxelize(cloudFrom, indicesFrom, ui_->doubleSpinBox_voxelSize->value());
 				}
 				constraintsViewer_->addCloud("cloud0", cloudFrom, pose, Qt::red);
 			}
@@ -3529,7 +3532,7 @@ void DatabaseViewer::updateConstraintView(
 			{
 				if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 				{
-					cloudTo = util3d::voxelize(cloudTo, ui_->doubleSpinBox_voxelSize->value());
+					cloudTo = util3d::voxelize(cloudTo, indicesTo, ui_->doubleSpinBox_voxelSize->value());
 				}
 				constraintsViewer_->addCloud("cloud1", cloudTo, pose, Qt::cyan);
 			}
