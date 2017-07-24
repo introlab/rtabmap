@@ -97,8 +97,7 @@ void denseMeshPostProcessing(
 
 	if(cloud.get()!=0 &&
 		!hasColors &&
-		transferColorRadius >= 0.0 &&
-		coloredOutput)
+		transferColorRadius >= 0.0)
 	{
 		if(progressState) progressState->callback(uFormat("Transferring color from point cloud to mesh..."));
 
@@ -179,63 +178,8 @@ void denseMeshPostProcessing(
 		}
 		hasColors = true;
 	}
-	else if(cloud.get()!=0 &&
-			!hasColors &&
-			transferColorRadius > 0.0 &&
-			cleanMesh &&
-			!coloredOutput)
-	{
-		if(progressState) progressState->callback(uFormat("Removing polygons too far from the cloud..."));
 
-		// transfer color from point cloud to mesh
-		typename pcl::search::KdTree<pointRGBT>::Ptr tree (new pcl::search::KdTree<pointRGBT>(true));
-		tree->setInputCloud(cloud);
-		pcl::PointCloud<pcl::PointNormal>::Ptr optimizedCloud(new pcl::PointCloud<pcl::PointNormal>);
-		pcl::fromPCLPointCloud2(mesh->cloud, *optimizedCloud);
-		std::vector<bool> closePts(optimizedCloud->size());
-		for(unsigned int i=0; i<optimizedCloud->size(); ++i)
-		{
-			std::vector<int> kIndices;
-			std::vector<float> kDistances;
-			pointRGBT pt;
-			pt.x = optimizedCloud->at(i).x;
-			pt.y = optimizedCloud->at(i).y;
-			pt.z = optimizedCloud->at(i).z;
-			tree->radiusSearch(pt, transferColorRadius, kIndices, kDistances);
-			if(kIndices.size())
-			{
-				closePts.at(i) = true;
-			}
-			else
-			{
-				closePts.at(i) = false;
-			}
-		}
-
-		// remove far polygons
-		std::vector<pcl::Vertices> filteredPolygons(mesh->polygons.size());
-		int oi=0;
-		for(unsigned int i=0; i<mesh->polygons.size(); ++i)
-		{
-			bool keepPolygon = true;
-			for(unsigned int j=0; j<mesh->polygons[i].vertices.size(); ++j)
-			{
-				if(!closePts.at(mesh->polygons[i].vertices[j]))
-				{
-					keepPolygon = false;
-					break;
-				}
-			}
-			if(keepPolygon)
-			{
-				filteredPolygons[oi++] = mesh->polygons[i];
-			}
-		}
-		filteredPolygons.resize(oi);
-		mesh->polygons = filteredPolygons;
-	}
-
-	if(minClusterSize && coloredOutput && !cleanMesh)
+	if(minClusterSize)
 	{
 		if(progressState) progressState->callback(uFormat("Filter small polygon clusters..."));
 
@@ -290,7 +234,7 @@ void denseMeshPostProcessing(
 		int before = (int)mesh->polygons.size();
 		mesh->polygons = filteredPolygons;
 
-		if(progressState) progressState->callback(uFormat("Filtered %1 polygons.", before-(int)mesh->polygons.size()));
+		if(progressState) progressState->callback(uFormat("Filtered %d polygons.", before-(int)mesh->polygons.size()));
 	}
 
 	// compute normals for the mesh if not already here, add also white color if colored output is required

@@ -292,7 +292,7 @@ void denseMeshPostProcessing(
 		int maximumPolygons = 0,           // 0=disabled
 		const typename pcl::PointCloud<pointRGBT>::Ptr & cloud = pcl::PointCloud<pointRGBT>::Ptr(), // A RGB point cloud used to transfer colors back to mesh (needed for parameters below)
 		float transferColorRadius = 0.05f, // <0=disabled, 0=nearest color
-		bool coloredOutput = true,         // If output should be colored
+		bool coloredOutput = true,         // Not used anymore, output is colored if transferColorRadius>=0
 		bool cleanMesh = true,             // Remove polygons not colored (if coloredOutput is disabled, transferColorRadius is still used to clean the mesh)
 		int minClusterSize = 50,           // Remove small polygon clusters after the mesh has been cleaned (0=disabled)
 		ProgressState * progressState = 0);
