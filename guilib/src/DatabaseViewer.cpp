@@ -4839,6 +4839,15 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 				toS->sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
 			}
 		}
+		else if(!reextractVisualFeatures && fromS->getWords().empty() && toS->getWords().empty())
+		{
+			UWARN("\"%s\" is false and signatures (%d and %d) don't have words, "
+					"registration will not be possible. Set \"%s\" to true.",
+					Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
+					fromS->id(),
+					toS->id(),
+					Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+		}
 
 		t = reg->computeTransformationMod(*fromS, *toS, Transform(), &info);
 		delete reg;
