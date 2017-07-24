@@ -5008,9 +5008,11 @@ void MainWindow::postProcessing()
 	bool optimizeFromGraphEnd =  Parameters::defaultRGBDOptimizeFromGraphEnd();
 	float optimizeMaxError =  Parameters::defaultRGBDOptimizeMaxError();
 	int optimizeIterations =  Parameters::defaultOptimizerIterations();
+	bool reextractFeatures = Parameters::defaultRGBDLoopClosureReextractFeatures();
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeFromGraphEnd(), optimizeFromGraphEnd);
 	Parameters::parse(parameters, Parameters::kRGBDOptimizeMaxError(), optimizeMaxError);
 	Parameters::parse(parameters, Parameters::kOptimizerIterations(), optimizeIterations);
+	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), reextractFeatures);
 
 	bool warn = false;
 	int loopClosuresAdded = 0;
@@ -5089,6 +5091,40 @@ void MainWindow::postProcessing()
 									uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), "2"));
 								}
 								Registration * registration = Registration::create(parameters);
+
+								if(reextractFeatures)
+								{
+									signatureFrom.sensorData().uncompressData();
+									signatureTo.sensorData().uncompressData();
+
+									if(signatureFrom.sensorData().imageRaw().empty() &&
+									   signatureTo.sensorData().imageRaw().empty())
+									{
+										UWARN("\"%s\" is false and signatures (%d and %d) don't have raw "
+												"images. Update the cache.",
+											Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+									}
+									else
+									{
+										signatureFrom.setWords(std::multimap<int, cv::KeyPoint>());
+										signatureFrom.setWords3(std::multimap<int, cv::Point3f>());
+										signatureFrom.setWordsDescriptors(std::multimap<int, cv::Mat>());
+										signatureFrom.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+										signatureTo.setWords(std::multimap<int, cv::KeyPoint>());
+										signatureTo.setWords3(std::multimap<int, cv::Point3f>());
+										signatureTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
+										signatureTo.sensorData().setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());
+									}
+								}
+								else if(!reextractFeatures && signatureFrom.getWords().empty() && signatureTo.getWords().empty())
+								{
+									UWARN("\"%s\" is false and signatures (%d and %d) don't have words, "
+											"registration will not be possible. Set \"%s\" to true.",
+											Parameters::kRGBDLoopClosureReextractFeatures().c_str(),
+											signatureFrom.id(),
+											signatureTo.id(),
+											Parameters::kRGBDLoopClosureReextractFeatures().c_str());
+								}
 								transform = registration->computeTransformation(signatureFrom, signatureTo, Transform(), &info);
 								delete registration;
 								if(!transform.isNull())
@@ -5218,13 +5254,13 @@ void MainWindow::postProcessing()
 										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.covariance.inv())));
 										++loopClosuresAdded;
 										_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
-										QApplication::processEvents();
 									}
 								}
 							}
 						}
 					}
 				}
+				QApplication::processEvents();
 				_initProgressDialog->incrementStep();
 			}
 			_initProgressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
