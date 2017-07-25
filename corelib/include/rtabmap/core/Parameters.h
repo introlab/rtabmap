@@ -224,9 +224,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Kp, BadSignRatio,             float, 0.5,   "Bad signature ratio (less than Ratio x AverageWordsPerImage = bad).");
     RTABMAP_PARAM(Kp, NndrRatio,                float, 0.8,   "NNDR ratio (A matching pair is detected, if its distance is closer than X times the distance of the second nearest neighbor.)");
 #ifdef RTABMAP_NONFREE
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 0,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=FREAK.");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 0,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE.");
 #else
-    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 2,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=FREAK.");
+    RTABMAP_PARAM(Kp, DetectorStrategy,         int, 2,       "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE.");
 #endif
     RTABMAP_PARAM(Kp, TfIdfLikelihoodUsed,      bool, true,   "Use of the td-idf strategy to compute the likelihood.");
     RTABMAP_PARAM(Kp, Parallelized,             bool, true,   "If the dictionary update and signature creation were parallelized.");
@@ -293,6 +293,13 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(BRISK, Thresh,       int, 30, "FAST/AGAST detection threshold score.");
     RTABMAP_PARAM(BRISK, Octaves,      int, 3,  "Detection octaves. Use 0 to do single scale.");
     RTABMAP_PARAM(BRISK, PatternScale, float, 1,"Apply this scale to the pattern used for sampling the neighbourhood of a keypoint.");
+
+    RTABMAP_PARAM(KAZE, Extended,       bool, false,   "Set to enable extraction of extended (128-byte) descriptor.");
+    RTABMAP_PARAM(KAZE, Upright,        bool, false,   "Set to enable use of upright descriptors (non rotation-invariant).");
+    RTABMAP_PARAM(KAZE, Threshold,      float, 0.001,  "Detector response threshold to accept point.");
+    RTABMAP_PARAM(KAZE, NOctaves,       int, 4,        "Maximum octave evolution of the image.");
+    RTABMAP_PARAM(KAZE, NOctaveLayers,  int, 4,        "Default number of sublevels per scale level.");
+    RTABMAP_PARAM(KAZE, Diffusivity,    int, 1,        "Diffusivity type: 0=DIFF_PM_G1, 1=DIFF_PM_G2, 2=DIFF_WEICKERT or 3=DIFF_CHARBONNIER.");
 
     // BayesFilter
     RTABMAP_PARAM(Bayes, VirtualPlacePriorThr, float, 0.9,  "Virtual place prior");
@@ -469,12 +476,12 @@ class RTABMAP_EXP Parameters
 #ifndef RTABMAP_NONFREE
 #ifdef RTABMAP_OPENCV3
     // OpenCV 3 without xFeatures2D module doesn't have BRIEF
-    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=FREAK.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 8, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE.");
 #else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=FREAK.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE.");
 #endif
 #else
-    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=FREAK.");
+    RTABMAP_PARAM(Vis, FeatureType, int, 6, "0=SURF 1=SIFT 2=ORB 3=FAST/FREAK 4=FAST/BRIEF 5=GFTT/FREAK 6=GFTT/BRIEF 7=BRISK 8=GFTT/ORB 9=KAZE.");
 #endif
     RTABMAP_PARAM(Vis, MaxFeatures,              int, 1000,   "0 no limits.");
     RTABMAP_PARAM(Vis, MaxDepth,                  float, 0,   "Max depth of the features (0 means no limit).");

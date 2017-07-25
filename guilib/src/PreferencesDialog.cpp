@@ -197,8 +197,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #if CV_MAJOR_VERSION >= 3
 	_ui->groupBox_fast_opencv2->setEnabled(false);
 #else
-	_ui->comboBox_detector_strategy->setItemData(9, 0, Qt::UserRole - 1); // No FREAK (detector+descriptor version)
-	_ui->reextract_type->setItemData(9, 0, Qt::UserRole - 1); // No FREAK (detector+descriptor version)
+	_ui->comboBox_detector_strategy->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
+	_ui->reextract_type->setItemData(9, 0, Qt::UserRole - 1); // No KAZE
 #endif
 
 	_ui->comboBox_cameraImages_odomFormat->setItemData(4, 0, Qt::UserRole - 1);
@@ -745,6 +745,14 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_BRISK_thresh->setObjectName(Parameters::kBRISKThresh().c_str());
 	_ui->spinBox_BRISK_octaves->setObjectName(Parameters::kBRISKOctaves().c_str());
 	_ui->doubleSpinBox_BRISK_patterScale->setObjectName(Parameters::kBRISKPatternScale().c_str());
+
+	//KAZE
+	_ui->checkBox_kaze_extended->setObjectName(Parameters::kKAZEExtended().c_str());
+	_ui->checkBox_kaze_upright->setObjectName(Parameters::kKAZEUpright().c_str());
+	_ui->doubleSpinBox_kaze_threshold->setObjectName(Parameters::kKAZEThreshold().c_str());
+	_ui->spinBox_kaze_octaves->setObjectName(Parameters::kKAZENOctaves().c_str());
+	_ui->spinBox_kaze_octavelayers->setObjectName(Parameters::kKAZENOctaveLayers().c_str());
+	_ui->spinBox_kaze_diffusivity->setObjectName(Parameters::kKAZEDiffusivity().c_str());
 
 	// verifyHypotheses
 	_ui->groupBox_vh_epipolar2->setObjectName(Parameters::kVhEpEnabled().c_str());
@@ -2364,19 +2372,33 @@ bool PreferencesDialog::validateForm()
 #endif
 
 #if CV_MAJOR_VERSION < 3
-	if (_ui->comboBox_detector_strategy->currentIndex() == Feature2D::kFeatureFreak)
+	if (_ui->comboBox_detector_strategy->currentIndex() == Feature2D::kFeatureKaze)
 	{
+#ifdef RTABMAP_NONFREE
 		QMessageBox::warning(this, tr("Parameter warning"),
-			tr("Selected feature type (FREAK detector) is not available on OpenCV2. ORB is set instead "
+			tr("Selected feature type (KAZE) is not available on OpenCV2. SURF is set instead "
+				"for the bag-of-words dictionary."));
+		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureSurf);
+#else
+		QMessageBox::warning(this, tr("Parameter warning"),
+			tr("Selected feature type (KAZE) is not available on OpenCV2. ORB is set instead "
 				"for the bag-of-words dictionary."));
 		_ui->comboBox_detector_strategy->setCurrentIndex(Feature2D::kFeatureOrb);
+#endif
 	}
-	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureFreak)
+	if (_ui->reextract_type->currentIndex() == Feature2D::kFeatureKaze)
 	{
+#ifdef RTABMAP_NONFREE
 		QMessageBox::warning(this, tr("Parameter warning"),
-			tr("Selected feature type (FREAK detector) is not available on OpenCV2. ORB is set instead "
+			tr("Selected feature type (KAZE) is not available on OpenCV2. SURF is set instead "
+				"for the re-extraction of features on loop closure."));
+				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureSurf);
+#else
+		QMessageBox::warning(this, tr("Parameter warning"),
+			tr("Selected feature type (KAZE) is not available on OpenCV2. ORB is set instead "
 				"for the re-extraction of features on loop closure."));
 				_ui->reextract_type->setCurrentIndex(Feature2D::kFeatureOrb);
+#endif
 	}
 #endif
 

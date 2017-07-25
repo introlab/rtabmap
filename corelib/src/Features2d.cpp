@@ -414,8 +414,7 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 	if(type == Feature2D::kFeatureFastBrief ||
 	   type == Feature2D::kFeatureFastFreak ||
 	   type == Feature2D::kFeatureGfttBrief ||
-	   type == Feature2D::kFeatureGfttFreak ||
-	   type == Feature2D::kFeatureFreak)
+	   type == Feature2D::kFeatureGfttFreak)
 	{
 		UWARN("BRIEF and FREAK features cannot be used because OpenCV was not built with xfeatures2d module. ORB is used instead.");
 		type = Feature2D::kFeatureOrb;
@@ -424,10 +423,15 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 #endif
 
 #if CV_MAJOR_VERSION < 3
-	if(type == Feature2D::kFeatureFreak)
+	if(type == Feature2D::kFeatureKaze)
 	{
-		UWARN("FREAK detector/descriptor can be used only with OpenCV3. GFTT/FREAK is used instead.");
-		type = Feature2D::kFeatureGfttFreak;
+#ifdef RTABMAP_NONFREE
+		UWARN("KAZE detector/descriptor can be used only with OpenCV3. SURF is used instead.");
+		type = Feature2D::kFeatureSurf;
+#else
+		UWARN("KAZE detector/descriptor can be used only with OpenCV3. ORB is used instead.");
+		type = Feature2D::kFeatureOrb;
+#endif
 	}
 #endif
 
@@ -460,6 +464,9 @@ Feature2D * Feature2D::create(Feature2D::Type type, const ParametersMap & parame
 		break;
 	case Feature2D::kFeatureBrisk:
 		feature2D = new BRISK(parameters);
+		break;
+	case Feature2D::kFeatureKaze:
+		feature2D = new KAZE(parameters);
 		break;
 #ifdef RTABMAP_NONFREE
 	default:
@@ -1469,71 +1476,66 @@ cv::Mat BRISK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::Ke
 	return descriptors;
 }
 
-
 //////////////////////////
-//FREAK
+//KAZE
 //////////////////////////
-FREAK::FREAK(const ParametersMap & parameters) :
-	orientationNormalized_(Parameters::defaultFREAKOrientationNormalized()),
-	scaleNormalized_(Parameters::defaultFREAKScaleNormalized()),
-	patternScale_(Parameters::defaultFREAKPatternScale()),
-	nOctaves_(Parameters::defaultFREAKNOctaves())
+KAZE::KAZE(const ParametersMap & parameters) :
+		extended_(Parameters::defaultKAZEExtended()),
+		upright_(Parameters::defaultKAZEUpright()),
+		threshold_(Parameters::defaultKAZEThreshold()),
+		nOctaves_(Parameters::defaultKAZENOctaves()),
+		nOctaveLayers_(Parameters::defaultKAZENOctaveLayers()),
+		diffusivity_(Parameters::defaultKAZEDiffusivity())
 {
 	parseParameters(parameters);
 }
 
-FREAK::~FREAK()
+KAZE::~KAZE()
 {
 }
 
-void FREAK::parseParameters(const ParametersMap & parameters)
+void KAZE::parseParameters(const ParametersMap & parameters)
 {
-	Parameters::parse(parameters, Parameters::kFREAKOrientationNormalized(), orientationNormalized_);
-	Parameters::parse(parameters, Parameters::kFREAKScaleNormalized(), scaleNormalized_);
-	Parameters::parse(parameters, Parameters::kFREAKPatternScale(), patternScale_);
-	Parameters::parse(parameters, Parameters::kFREAKNOctaves(), nOctaves_);
+	Parameters::parse(parameters, Parameters::kKAZEExtended(), extended_);
+	Parameters::parse(parameters, Parameters::kKAZEUpright(), upright_);
+	Parameters::parse(parameters, Parameters::kKAZEThreshold(), threshold_);
+	Parameters::parse(parameters, Parameters::kKAZENOctaves(), nOctaves_);
+	Parameters::parse(parameters, Parameters::kKAZENOctaveLayers(), nOctaveLayers_);
+	Parameters::parse(parameters, Parameters::kKAZEDiffusivity(), diffusivity_);
 
-#if CV_MAJOR_VERSION < 3
-	_freak = cv::Ptr<CV_FREAK>(new CV_FREAK(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_));
+#if CV_MAJOR_VERSION > 2
+	kaze_ = cv::KAZE::create(extended_, upright_, threshold_, nOctaves_, nOctaveLayers_, diffusivity_);
 #else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_freak = CV_FREAK::create(orientationNormalized_, scaleNormalized_, patternScale_, nOctaves_);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
-#endif
+	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");
 #endif
 }
 
-std::vector<cv::KeyPoint> FREAK::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
+std::vector<cv::KeyPoint> KAZE::generateKeypointsImpl(const cv::Mat & image, const cv::Rect & roi, const cv::Mat & mask) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	std::vector<cv::KeyPoint> keypoints;
-#ifdef HAVE_OPENCV_XFEATURES2D
+#if CV_MAJOR_VERSION > 2
 	cv::Mat imgRoi(image, roi);
 	cv::Mat maskRoi;
 	if (!mask.empty())
 	{
 		maskRoi = cv::Mat(mask, roi);
 	}
-	_freak->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
+	kaze_->detect(imgRoi, keypoints, maskRoi); // Opencv keypoints
 #else
-	UWARN("RTAB-Map is not built with OpenCV3 xfeatures2d module so Freak (for keypoint detection) cannot be used!");
+	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");
 #endif
 	return keypoints;
 }
 
-cv::Mat FREAK::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
+cv::Mat KAZE::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyPoint> & keypoints) const
 {
 	UASSERT(!image.empty() && image.channels() == 1 && image.depth() == CV_8U);
 	cv::Mat descriptors;
-#if CV_MAJOR_VERSION < 3
-	_freak->compute(image, keypoints, descriptors);
+#if CV_MAJOR_VERSION > 2
+	kaze_->compute(image, keypoints, descriptors);
 #else
-#ifdef HAVE_OPENCV_XFEATURES2D
-	_freak->compute(image, keypoints, descriptors);
-#else
-	UWARN("RTAB-Map is not built with OpenCV xfeatures2d module so Freak cannot be used!");
-#endif
+	UWARN("RTAB-Map is not built with OpenCV3 so Kaze feature cannot be used!");
 #endif
 	return descriptors;
 }
