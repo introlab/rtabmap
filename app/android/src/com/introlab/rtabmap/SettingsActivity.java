@@ -215,7 +215,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
         ((Preference)findPreference(getString(R.string.pref_key_opt_depth))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_opt_depth))).getEntry() + ") "+getString(R.string.pref_summary_opt_depth));
         ((Preference)findPreference(getString(R.string.pref_key_opt_color_radius))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_opt_color_radius))).getEntry() + ") "+getString(R.string.pref_summary_opt_color_radius));
-    
+        ((Preference)findPreference(getString(R.string.pref_key_opt_min_cluster_size))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_opt_min_cluster_size))).getEntry() + ") "+getString(R.string.pref_summary_opt_min_cluster_size));
+
         ((Preference)findPreference(getString(R.string.pref_key_cluster_ratio))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_cluster_ratio))).getEntry() + ") "+getString(R.string.pref_summary_cluster_ratio));
         ((Preference)findPreference(getString(R.string.pref_key_gain_max_radius))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_gain_max_radius))).getEntry() + ") "+getString(R.string.pref_summary_gain_max_radius));
     }
@@ -272,6 +273,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
         	if(key.compareTo(getString(R.string.pref_key_opt_depth))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_opt_depth));
         	if(key.compareTo(getString(R.string.pref_key_opt_color_radius))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_opt_color_radius));
+        	if(key.compareTo(getString(R.string.pref_key_opt_min_cluster_size))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_opt_min_cluster_size));
         	
         	if(key.compareTo(getString(R.string.pref_key_cluster_ratio))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_cluster_ratio));
         	if(key.compareTo(getString(R.string.pref_key_gain_max_radius))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_gain_max_radius));

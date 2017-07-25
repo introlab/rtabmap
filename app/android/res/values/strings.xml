@@ -124,10 +124,14 @@
     <string name="pref_default_opt_color_radius">0.05</string>
     <string name="pref_key_opt_clean_white">pref_key_opt_clean_white</string>
     <string name="pref_default_opt_clean_white">true</string>
+    <string name="pref_key_opt_min_cluster_size">pref_key_opt_min_cluster_size</string>
+    <string name="pref_default_opt_min_cluster_size">0</string>
     <string name="pref_key_gain_max_radius">pref_key_gain_max_radius</string>
     <string name="pref_default_gain_max_radius">0.02</string>
     <string name="pref_key_cluster_ratio">pref_key_cluster_ratio</string>
     <string name="pref_default_cluster_ratio">0.05</string>
+    <string name="pref_key_notification_sound">pref_key_notification_sound</string>
+    <string name="pref_default_notification_sound">true</string>
     <!-- Preference keys: END -->
 
     <string name="pref_title_rendering">Rendering</string>
@@ -657,22 +661,22 @@
         <item>"2"</item>
     </string-array>
     <string-array name="pref_min_texture_cluster_size_keys">
-        <item>"Disabled"</item>
         <item>"1000"</item>
         <item>"500"</item>
         <item>"200"</item>
         <item>"100"</item>
         <item>"50"</item>
         <item>"10"</item>
+        <item>"Disabled"</item>
     </string-array>
     <string-array name="pref_min_texture_cluster_size_values">
-        <item>"0"</item>
         <item>"1000"</item>
         <item>"500"</item>
         <item>"200"</item>
         <item>"100"</item>
         <item>"50"</item>
         <item>"10"</item>
+        <item>"0"</item>
     </string-array>
     
     <string name="pref_title_optimized">Optimized</string>
@@ -684,7 +688,9 @@
     <string name="pref_summary_opt_color_radius">Radius used to transfer nearest color from the point cloud to reconstructed mesh. When exporting with texture, if Clean Mesh is also enabled, this will limit the number of polygons textured in holes.</string>
     <string name="pref_title_opt_clean_white">Clean Mesh</string>
     <string name="pref_summary_opt_clean_white">Clean mesh from textureless or colorless reconstructed polygons.</string>
-
+	<string name="pref_summary_opt_min_cluster_size">This can be used to filter polygons before texturing.</string>
+    <string name="pref_title_opt_min_cluster_size">Polygon Filtering</string>
+    
     <string-array name="pref_opt_depth_keys">
         <item>"Auto"</item>
         <item>"12"</item>
@@ -733,12 +739,22 @@
         <item>"0.01"</item>
         <item>"-1"</item>
     </string-array>
+    <string-array name="pref_opt_min_cluster_size_keys">
+        <item>"Only biggest cluster kept"</item>
+        <item>"Keep all polygons"</item>
+    </string-array>
+    <string-array name="pref_opt_min_cluster_size_values">
+        <item>"-1"</item>
+        <item>"0"</item>
+    </string-array>
 
     <string name="pref_title_general">General</string>
     <string name="pref_title_gain_max_radius">Color Correction Radius</string>
     <string name="pref_summary_gain_max_radius">Radius used to find pixel correspondences for Adjust Colors optimization.</string>
     <string name="pref_title_cluster_ratio">Noise Filtering Ratio</string>
     <string name="pref_summary_cluster_ratio">Polygon clusters with size smaller than this ratio of the largest cluster are removed by the Noise Filtering optimization.</string>
+    <string name="pref_title_notification_sound">Notification Sound</string>
+    <string name="pref_summary_notification_sound">After saving database or preparing data to export, a notification sound is played.</string>
 
     <string-array name="pref_gain_max_radius_keys">
         <item>"0.3 m"</item>

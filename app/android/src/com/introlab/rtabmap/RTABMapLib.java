@@ -109,7 +109,7 @@ public class RTABMapLib
     		int optimizedMaxPolygons,
     		float optimizedColorRadius,
     		boolean optimizedCleanWhitePolygons,
-    		boolean optimizedColorWhitePolygons,
+    		int optimizedMinClusterSize,
     		float optimizedMaxTextureDistance,
     		int optimizedMinTextureClusterSize,
     		boolean blockRendering);

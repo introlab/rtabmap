@@ -257,6 +257,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		display.getSize(mScreenSize);
 
 		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
 		
 		// Setting content view of this activity.
 		setContentView(R.layout.activity_rtabmap);
@@ -367,7 +368,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	        @Override
 	        public boolean onTouch(View v, MotionEvent event) {
 	        	
-	        	resetNoTouchTimer();
+	        	resetNoTouchTimer(getActionBar().isShowing() && mHudVisible == false);
 	        	
 	            mGesDetect.onTouchEvent(event);
 	            
@@ -728,7 +729,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 		
 		TangoInitializationHelper.bindTangoService(getActivity(), mTangoServiceConnection);
-		resetNoTouchTimer();
+		resetNoTouchTimer(true);
 	}
 	
 	private void setCamera(int type)
@@ -822,9 +823,29 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
         @Override
         public boolean onDoubleTap(MotionEvent event) {
+        	if(!DISABLE_LOG) Log.i(TAG, "onDoubleTap");
         	float normalizedX = event.getX(0) / mScreenSize.x;
 			float normalizedY = event.getY(0) / mScreenSize.y;
         	RTABMapLib.onTouchEvent(3, event.getActionMasked(), normalizedX, normalizedY, 0.0f, 0.0f);
+            return true;
+        }
+        @Override
+        public boolean onFling(
+        		MotionEvent e1, 
+                MotionEvent e2, 
+                float velocityX, 
+                float velocityY) {
+        	if(!DISABLE_LOG) Log.i(TAG, String.format("onFling velocityY=%f", velocityY));
+        	if(velocityY < -1000)
+        	{
+	        	notouchHandler.removeCallbacks(notouchCallback);
+	            notouchHandler.postDelayed(notouchCallback, 0);
+        	}
+        	else if(velocityY > 1000)
+        	{
+        		resetNoTouchTimer(true);
+        	}
+            
             return true;
         }
     }
@@ -1364,14 +1385,20 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
     };
 
     public void resetNoTouchTimer(){
-    	if(!mHudVisible)
+    	resetNoTouchTimer(false);
+    }
+    
+    public void resetNoTouchTimer(boolean showHud){
+    	if(showHud)
     	{
-    		setNavVisibility(true);
     		mHudVisible = true;
-    		updateState(mState);
+			setNavVisibility(true);
+			if(mItemSave != null)
+			{
+				updateState(mState);
+			}
     	}
-    	mHudVisible = true;
-    	
+    		
         notouchHandler.removeCallbacks(notouchCallback);
         notouchHandler.postDelayed(notouchCallback, NOTOUCH_TIMEOUT);
     }
@@ -1387,6 +1414,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mToast.makeText(getActivity(), String.format("Re-adding %d online clouds, this may take some time...", mMapNodes), mToast.LENGTH_LONG).show();
 		}
 		mState = state;
+		if(!DISABLE_LOG) Log.i(TAG, String.format("updateState() state=%s hud=%d", state.toString(), mHudVisible?1:0));
 		switch(state)
 		{
 		case STATE_PROCESSING:
@@ -1744,6 +1772,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							.setNegativeButton("No", new DialogInterface.OnClickListener() {
 								public void onClick(DialogInterface dialog, int which) {
 									dialog.dismiss();
+									resetNoTouchTimer(true);
 								}
 							})
 							.show();
@@ -2010,7 +2039,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		final int optimizedDepth = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_opt_depth), getString(R.string.pref_default_opt_depth)));
 		final float optimizedColorRadius = Float.parseFloat(sharedPref.getString(getString(R.string.pref_key_opt_color_radius), getString(R.string.pref_default_opt_color_radius)));
 		final boolean optimizedCleanWhitePolygons = sharedPref.getBoolean(getString(R.string.pref_key_opt_clean_white), Boolean.parseBoolean(getString(R.string.pref_default_opt_clean_white)));
-		final boolean optimizedColorWhitePolygons = false;//sharedPref.getBoolean("pref_key_opt_color_white", false); // not used
+		final int optimizedMinClusterSize = Integer.parseInt(sharedPref.getString(getString(R.string.pref_key_opt_min_cluster_size), getString(R.string.pref_default_opt_min_cluster_size)));
 		final boolean blockRendering = sharedPref.getBoolean(getString(R.string.pref_key_block_render), Boolean.parseBoolean(getString(R.string.pref_default_block_render)));
 
 		
@@ -2041,22 +2070,41 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 						optimizedMaxPolygons,
 						optimizedColorRadius,
 						optimizedCleanWhitePolygons,
-						optimizedColorWhitePolygons,
+						optimizedMinClusterSize,
 						maxTextureDistance,
 						minTextureClusterSize,
 						blockRendering);
 				runOnUiThread(new Runnable() {
 					public void run() {
 						if(mExportProgressDialog.isShowing())
-						{
+						{							
 							if(success)
-							{
+							{								
 								if(!meshing && cloudVoxelSize>0.0f)
 								{
 									mToast.makeText(getActivity(), String.format("Cloud assembled and voxelized at %s m.", cloudVoxelSizeStr), mToast.LENGTH_LONG).show();
 								}
 								
 								final long endTime = System.currentTimeMillis()/1000;
+								
+								if(endTime-startTime > 10)
+								{
+									// build notification
+									// the addAction re-use the same intent to keep the example short
+									SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+									boolean notifySound = sharedPref.getBoolean(getString(R.string.pref_key_notification_sound), Boolean.parseBoolean(getString(R.string.pref_default_notification_sound)));
+									Notification n  = new Notification.Builder(getActivity())
+									.setContentTitle(getString(R.string.app_name))
+									.setContentText("Data generated and ready to be exported!")
+									.setSmallIcon(R.drawable.ic_launcher)
+									.setDefaults(notifySound?Notification.DEFAULT_SOUND:0)
+									.setAutoCancel(true).build();
+						
+									NotificationManager notificationManager = 
+											(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+						
+									notificationManager.notify(0, n); 
+								}
 
 								// Visualize the result?
 								AlertDialog d = new AlertDialog.Builder(getActivity())
@@ -2065,7 +2113,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 								.setMessage(Html.fromHtml("Do you want visualize the result before saving to file or sharing to <a href=\"https://sketchfab.com/about\">Sketchfab</a>?"))
 								.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 									public void onClick(DialogInterface dialog, int which) {
-										resetNoTouchTimer();
+										resetNoTouchTimer(true);
 										mSavedRenderingType = mItemRenderingPointCloud.isChecked()?0:mItemRenderingMesh.isChecked()?1:2;
 										if(!meshing)
 										{
@@ -2113,6 +2161,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 										})
 										.setNeutralButton("Cancel", new DialogInterface.OnClickListener() {
 											public void onClick(DialogInterface dialog, int which) {
+												resetNoTouchTimer(true);
 											}
 										})
 										.create();
@@ -2166,33 +2215,38 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				RTABMapLib.save(newDatabasePath); // save
 				runOnUiThread(new Runnable() {
 					public void run() {
+						String msg;
 						if(mOpenedDatabasePath.equals(newDatabasePath))
 						{
-							mToast.makeText(getActivity(), String.format("Database \"%s\" updated.", newDatabasePathHuman), mToast.LENGTH_LONG).show();
+							msg = String.format("Database \"%s\" updated.", newDatabasePathHuman);	
 						}
 						else
 						{
-							mToast.makeText(getActivity(), String.format("Database saved to \"%s\".", newDatabasePathHuman), mToast.LENGTH_LONG).show();
-
-							Intent intent = new Intent(getActivity(), RTABMapActivity.class);
-							// use System.currentTimeMillis() to have a unique ID for the pending intent
-							PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
-
-							// build notification
-							// the addAction re-use the same intent to keep the example short
-							Notification n  = new Notification.Builder(getActivity())
-							.setContentTitle(getString(R.string.app_name))
-							.setContentText(newDatabasePathHuman + " saved!")
-							.setSmallIcon(R.drawable.ic_launcher)
-							.setContentIntent(pIntent)
-							.setAutoCancel(true).build();
-
-
-							NotificationManager notificationManager = 
-									(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-
-							notificationManager.notify(0, n); 
+							msg = String.format("Database saved to \"%s\".", newDatabasePathHuman);	
 						}
+						
+						mToast.makeText(getActivity(), msg, mToast.LENGTH_LONG).show();
+						
+						// build notification
+						Intent intent = new Intent(getActivity(), RTABMapActivity.class);
+						// use System.currentTimeMillis() to have a unique ID for the pending intent
+						PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
+						SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
+						boolean notifySound = sharedPref.getBoolean(getString(R.string.pref_key_notification_sound), Boolean.parseBoolean(getString(R.string.pref_default_notification_sound)));
+						Notification n  = new Notification.Builder(getActivity())
+						.setContentTitle(getString(R.string.app_name))
+						.setContentText(msg)
+						.setSmallIcon(R.drawable.ic_launcher)
+						.setContentIntent(pIntent)
+						.setDefaults(notifySound?Notification.DEFAULT_SOUND:0)
+						.setAutoCancel(true).build();
+						
+						NotificationManager notificationManager = 
+								(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+
+						notificationManager.notify(0, n);
+						
+						resetNoTouchTimer(true);
 						if(!mItemDataRecorderMode.isChecked())
 						{
 							mOpenedDatabasePath = newDatabasePath;
@@ -2233,6 +2287,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			public void onClick(DialogInterface dialog, int which)
 			{
 				dialog.dismiss();
+				resetNoTouchTimer(true);
 			}
 		});
 		builder.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
@@ -2357,11 +2412,12 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							.setContentIntent(pIntent)
 							.setAutoCancel(true).build();
 				
-				
 							NotificationManager notificationManager = 
 									(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 				
 							notificationManager.notify(0, n); 
+							
+							resetNoTouchTimer(true);
 						}
 					});
 				}
@@ -2371,6 +2427,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 						public void run() {
 							mProgressDialog.dismiss();
 							mToast.makeText(getActivity(), String.format("Exporting mesh \"%s\" failed! No files found in tmp directory!? Last export may have failed or have been canceled.", pathHuman), mToast.LENGTH_LONG).show();
+							resetNoTouchTimer(true);
 						}
 					});
 				}
@@ -2453,7 +2510,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							if(status >= 1 && status<=3)
 							{
 								mProgressDialog.dismiss();
-								resetNoTouchTimer();
+								resetNoTouchTimer(true);
 								updateState(State.STATE_VISUALIZING);
 								mToast.makeText(getActivity(), String.format("Database loaded!"), mToast.LENGTH_LONG).show();
 							}

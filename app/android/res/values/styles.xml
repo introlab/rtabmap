@@ -1,0 +1,10 @@
+<resources>
+    <style name="ThemeActionBar" parent="@android:style/Widget.DeviceDefault.ActionBar.Solid">
+        <item name="android:background">#20000000</item>
+    </style>
+
+    <style name="ThemeApp" parent="@android:style/Theme.DeviceDefault">
+        <item name="android:actionBarStyle">@style/ThemeActionBar</item>
+        <item name="android:windowActionBarOverlay">true</item>
+    </style>
+</resources>

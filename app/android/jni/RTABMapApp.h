@@ -164,7 +164,7 @@ class RTABMapApp : public UEventsHandler {
 		  int optimizedMaxPolygons,
 		  float optimizedColorRadius,
 		  bool optimizedCleanWhitePolygons,
-		  bool optimizedColorWhitePolygons,
+		  int optimizedMinClusterSize,
 		  float optimizedMaxTextureDistance,
 		  int optimizedMinTextureClusterSize,
 		  bool blockRendering);

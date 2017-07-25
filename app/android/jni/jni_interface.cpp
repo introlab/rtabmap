@@ -377,7 +377,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 		int optimizedMaxPolygons,
 		float optimizedColorRadius,
 		bool optimizedCleanWhitePolygons,
-		bool optimizedColorWhitePolygons,
+		int optimizedMinClusterSize,
 		float optimizedMaxTextureDistance,
 		int optimizedMinTextureClusterSize,
 		bool blockRendering)
@@ -395,7 +395,7 @@ Java_com_introlab_rtabmap_RTABMapLib_exportMesh(
 			optimizedMaxPolygons,
 			optimizedColorRadius,
 			optimizedCleanWhitePolygons,
-			optimizedColorWhitePolygons,
+			optimizedMinClusterSize,
 			optimizedMaxTextureDistance,
 			optimizedMinTextureClusterSize,
 			blockRendering);

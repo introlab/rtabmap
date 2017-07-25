@@ -292,6 +292,14 @@
 		            android:summary="@string/pref_summary_opt_clean_white"
 		            android:defaultValue="@string/pref_default_opt_clean_white"/>
 		        
+		        <ListPreference 
+		            android:key="@string/pref_key_opt_min_cluster_size"
+		    		android:title="@string/pref_title_opt_min_cluster_size"
+		    		android:summary="@string/pref_summary_opt_min_cluster_size"
+		   			android:entries="@array/pref_opt_min_cluster_size_keys"
+		   			android:entryValues="@array/pref_opt_min_cluster_size_values"
+		   			android:defaultValue="@string/pref_default_opt_min_cluster_size"/>
+		        
 		       </PreferenceCategory>
 	 	</PreferenceScreen>
 	 	<ListPreference 
@@ -308,6 +316,11 @@
    			android:entries="@array/pref_cluster_ratio_keys"
    			android:entryValues="@array/pref_cluster_ratio_values"
    			android:defaultValue="@string/pref_default_cluster_ratio"/>
+        <SwitchPreference 
+            android:key="@string/pref_key_notification_sound"
+    		android:title="@string/pref_title_notification_sound"
+    		android:summary="@string/pref_summary_notification_sound"
+   			android:defaultValue="@string/pref_default_notification_sound"/>
     </PreferenceCategory>
 	<PreferenceCategory
         android:title="@string/pref_title_presets">

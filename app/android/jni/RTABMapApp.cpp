@@ -2051,7 +2051,7 @@ bool RTABMapApp::exportMesh(
 		int optimizedMaxPolygons,
 		float optimizedColorRadius,
 		bool optimizedCleanWhitePolygons,
-		bool optimizedColorWhitePolygons, // not yet used
+		int optimizedMinClusterSize,
 		float optimizedMaxTextureDistance,
 		int optimizedMinTextureClusterSize,
 		bool blockRendering)
@@ -2341,7 +2341,7 @@ bool RTABMapApp::exportMesh(
 									optimizedColorRadius,
 									textureSize == 0,
 									optimizedCleanWhitePolygons,
-									0);
+									optimizedMinClusterSize);
 
 							if(textureSize>0)
 							{
