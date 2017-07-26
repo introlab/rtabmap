@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef REGISTRATION_H_
-#define REGISTRATION_H_
+#ifndef RTABMAP_REGISTRATION_H_
+#define RTABMAP_REGISTRATION_H_
 
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 
@@ -76,7 +76,7 @@ public:
 	Transform computeTransformation(
 			const SensorData & from,
 			const SensorData & to,
-			Transform SensorData = Transform::getIdentity(),
+			Transform guess = Transform::getIdentity(),
 			RegistrationInfo * info = 0) const;
 
 	Transform computeTransformationMod(
@@ -115,4 +115,4 @@ private:
 
 }
 
-#endif /* REGISTRATION_H_ */
+#endif /* RTABMAP_REGISTRATION_H_ */
