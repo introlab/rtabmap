@@ -428,7 +428,7 @@ void DBDriverSqlite3::disconnectDatabaseQuery(bool save, const std::string & out
 			}
 			if(outputFile.empty())
 			{
-				UERROR("Database was initialized with an empty url (in memory). To save it "
+				UERROR("Database was initialized with an empty url (in memory). To save it, "
 						"the output url should not be empty. The database is thus closed without being saved!");
 			}
 			else

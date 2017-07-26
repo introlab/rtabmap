@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/filters/filter.h>
 
 #include "MapBuilder.h"
 
@@ -216,8 +217,14 @@ int main(int argc, char * argv[])
 				node.sensorData(),
 				4,           // image decimation before creating the clouds
 				4.0f,        // maximum depth of the cloud
-				0.01f);  // Voxel grid filtering
-		*cloud += *util3d::transformPointCloud(tmp, iter->second); // transform the point cloud to its pose
+				0.0f);
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr tmpNoNaN(new pcl::PointCloud<pcl::PointXYZRGB>);
+		std::vector<int> index;
+		pcl::removeNaNFromPointCloud(*tmp, *tmpNoNaN, index);
+		if(!tmpNoNaN->empty())
+		{
+			*cloud += *util3d::transformPointCloud(tmpNoNaN, iter->second); // transform the point cloud to its pose
+		}
 	}
 	if(cloud->size())
 	{
