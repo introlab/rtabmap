@@ -1234,6 +1234,20 @@ Transform RegistrationVis::computeTransformationImpl(
 					UINFO(msg.c_str());
 				}
 			}
+
+			double epsilon = 0.000001;
+			if(covariances[dir].at<double>(0,0)<=epsilon)
+				covariances[dir].at<double>(0,0) = epsilon; // epsilon if exact transform
+			if(covariances[dir].at<double>(1,1)<=epsilon)
+				covariances[dir].at<double>(1,1) = epsilon; // epsilon if exact transform
+			if(covariances[dir].at<double>(2,2)<=epsilon)
+				covariances[dir].at<double>(2,2) = epsilon; // epsilon if exact transform
+			if(covariances[dir].at<double>(3,3)<=epsilon)
+				covariances[dir].at<double>(3,3) = epsilon; // epsilon if exact transform
+			if(covariances[dir].at<double>(4,4)<=epsilon)
+				covariances[dir].at<double>(4,4) = epsilon; // epsilon if exact transform
+			if(covariances[dir].at<double>(5,5)<=epsilon)
+				covariances[dir].at<double>(5,5) = epsilon; // epsilon if exact transform
 		}
 
 		if(!_forwardEstimateOnly)
@@ -1292,13 +1306,13 @@ Transform RegistrationVis::computeTransformationImpl(
 			poses.insert(std::make_pair(2, transforms[0]));
 
 			cv::Mat cov = covariances[0].clone();
-			normalizeCovariance(cov, transform);
+			normalizeCovariance(cov, transforms[0]);
 
 			links.insert(std::make_pair(1, Link(1, 2, Link::kNeighbor, transforms[0], cov.inv())));
 			if(!transforms[1].isNull() && inliers[1].size())
 			{
 				cov = covariances[1].clone();
-				normalizeCovariance(cov, transform);
+				normalizeCovariance(cov, transforms[1]);
 				links.insert(std::make_pair(2, Link(2, 1, Link::kNeighbor, transforms[1], cov.inv())));
 			}
 

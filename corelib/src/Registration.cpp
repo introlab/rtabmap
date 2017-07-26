@@ -257,17 +257,17 @@ void Registration::normalizeCovariance(cv::Mat & covariance, const Transform & t
 	}
 
 	double epsilon = 0.000001;
-	if(covariance.at<double>(0,0)<=0.0)
+	if(covariance.at<double>(0,0)<=epsilon)
 		covariance.at<double>(0,0) = epsilon; // epsilon if exact transform
-	if(covariance.at<double>(1,1)<=0.0)
+	if(covariance.at<double>(1,1)<=epsilon)
 		covariance.at<double>(1,1) = epsilon; // epsilon if exact transform
-	if(covariance.at<double>(2,2)<=0.0)
+	if(covariance.at<double>(2,2)<=epsilon)
 		covariance.at<double>(2,2) = epsilon; // epsilon if exact transform
-	if(covariance.at<double>(3,3)<=0.0)
+	if(covariance.at<double>(3,3)<=epsilon)
 		covariance.at<double>(3,3) = epsilon; // epsilon if exact transform
-	if(covariance.at<double>(4,4)<=0.0)
+	if(covariance.at<double>(4,4)<=epsilon)
 		covariance.at<double>(4,4) = epsilon; // epsilon if exact transform
-	if(covariance.at<double>(5,5)<=0.0)
+	if(covariance.at<double>(5,5)<=epsilon)
 		covariance.at<double>(5,5) = epsilon; // epsilon if exact transform
 }
 
