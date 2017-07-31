@@ -988,11 +988,7 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_ZED
-	sl::RuntimeParameters rparam;
-	rparam.sensing_mode=(sl::SENSING_MODE)sensingMode_;
-	rparam.enable_depth=quality_ > 0;
-	rparam.enable_point_cloud=quality_ > 0;
-	rparam.move_point_cloud_to_world_frame=false;
+	sl::RuntimeParameters rparam((sl::SENSING_MODE)sensingMode_, quality_ > 0, quality_ > 0, sl::REFERENCE_FRAME_CAMERA);
 	if(zed_)
 	{
 		UTimer timer;
