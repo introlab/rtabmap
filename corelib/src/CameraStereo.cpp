@@ -860,18 +860,27 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	param.depth_minimum_distance=-1;
 	param.camera_disable_self_calib=!selfCalibration_;
 
+	sl::ERROR_CODE r = sl::ERROR_CODE::SUCCESS;
 	if(src_ == CameraVideo::kVideoFile)
 	{
 		UINFO("svo file = %s", svoFilePath_.c_str());
 		zed_ = new sl::Camera(); // Use in SVO playback mode
 		param.svo_input_filename=svoFilePath_.c_str();
-		zed_->open(param);
+		r = zed_->open(param);
 	}
 	else
 	{
 		UINFO("Resolution=%d imagerate=%f device=%d", resolution_, getImageRate(), usbDevice_);
 		zed_ = new sl::Camera(); // Use in Live Mode
-		zed_->open(param);
+		r = zed_->open(param);
+	}
+
+	if(r!=sl::ERROR_CODE::SUCCESS)
+	{
+		UERROR("Camera initialization failed: \"%s\"", errorCode2str(r).c_str());
+		delete zed_;
+		zed_ = 0;
+		return false;
 	}
 
 

@@ -47,6 +47,7 @@ public:
 	float getMinMapSize() const {return minMapSize_;}
 	bool isGridFromDepth() const {return occupancyFromCloud_;}
 	bool isFullUpdate() const {return fullUpdate_;}
+	bool isMapFrameProjection() const {return projMapFrame_;}
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	int cacheSize() const {return (int)cache_.size();}
 
