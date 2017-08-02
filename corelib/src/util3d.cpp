@@ -957,9 +957,40 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromSensorData(
 			leftMono = sensorData.imageRaw();
 		}
 
+		cv::Mat right(sensorData.rightRaw());
+		StereoCameraModel model = sensorData.stereoCameraModel();
+		if( roiRatios.size() == 4 &&
+			((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
+			 (roiRatios[1] > 0.0f && roiRatios[1] <= 1.0f) ||
+			 (roiRatios[2] > 0.0f && roiRatios[2] <= 1.0f) ||
+			 (roiRatios[3] > 0.0f && roiRatios[3] <= 1.0f)))
+		{
+			cv::Rect roi = util2d::computeRoi(leftMono, roiRatios);
+			if(	roi.width%decimation==0 &&
+				roi.height%decimation==0)
+			{
+				leftMono = cv::Mat(leftMono, roi);
+				right = cv::Mat(right, roi);
+				model.roi(roi);
+			}
+			else
+			{
+				UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
+					  "dimension (left=%dx%d) cannot be divided exactly "
+					  "by decimation parameter (%d). Ignoring ROI ratios...",
+					  roiRatios[0],
+					  roiRatios[1],
+					  roiRatios[2],
+					  roiRatios[3],
+					  roi.width,
+					  roi.height,
+					  decimation);
+			}
+		}
+
 		cloud = cloudFromDisparity(
-				util2d::disparityFromStereoImages(leftMono, sensorData.rightRaw(), stereoParameters),
-				sensorData.stereoCameraModel(),
+				util2d::disparityFromStereoImages(leftMono, right, stereoParameters),
+				model,
 				decimation,
 				maxDepth,
 				minDepth,
@@ -1091,10 +1122,43 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP cloudRGBFromSensorData(
 	{
 		//stereo
 		UDEBUG("");
+
+		cv::Mat left(sensorData.imageRaw());
+		cv::Mat right(sensorData.rightRaw());
+		StereoCameraModel model = sensorData.stereoCameraModel();
+		if( roiRatios.size() == 4 &&
+			((roiRatios[0] > 0.0f && roiRatios[0] <= 1.0f) ||
+			 (roiRatios[1] > 0.0f && roiRatios[1] <= 1.0f) ||
+			 (roiRatios[2] > 0.0f && roiRatios[2] <= 1.0f) ||
+			 (roiRatios[3] > 0.0f && roiRatios[3] <= 1.0f)))
+		{
+			cv::Rect roi = util2d::computeRoi(left, roiRatios);
+			if(	roi.width%decimation==0 &&
+				roi.height%decimation==0)
+			{
+				left = cv::Mat(left, roi);
+				right = cv::Mat(right, roi);
+				model.roi(roi);
+			}
+			else
+			{
+				UERROR("Cannot apply ROI ratios [%f,%f,%f,%f] because resulting "
+					  "dimension (left=%dx%d) cannot be divided exactly "
+					  "by decimation parameter (%d). Ignoring ROI ratios...",
+					  roiRatios[0],
+					  roiRatios[1],
+					  roiRatios[2],
+					  roiRatios[3],
+					  roi.width,
+					  roi.height,
+					  decimation);
+			}
+		}
+
 		cloud = cloudFromStereoImages(
-				sensorData.imageRaw(),
-				sensorData.rightRaw(),
-				sensorData.stereoCameraModel(),
+				left,
+				right,
+				model,
 				decimation,
 				maxDepth,
 				minDepth,
