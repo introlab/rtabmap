@@ -63,11 +63,8 @@ GestureCamera::~GestureCamera() { delete cam_parent_transform_; }
 
 void GestureCamera::OnTouchEvent(int touch_count, TouchEvent event, float x0,
 		float y0, float x1, float y1) {
-	if (camera_type_ == kFirstPerson) {
-		return;
-	}
 
-	if (touch_count == 1) {
+	if (camera_type_!=kFirstPerson && touch_count == 1) {
 		switch (event) {
 		case kTouch0Down: {
 			cam_start_angle_ = cam_cur_angle_;
@@ -100,6 +97,7 @@ void GestureCamera::OnTouchEvent(int touch_count, TouchEvent event, float x0,
 			float abs_y = y0 - y1;
 			start_touch_dist_ = std::sqrt(abs_x * abs_x + abs_y * abs_y);
 			cam_start_dist_ = GetPosition().z;
+			cam_start_fov_ = this->getFOV();
 
 			// center touch
 			touch0_start_position_.x = (x0+x1)/2.0f;
@@ -111,25 +109,31 @@ void GestureCamera::OnTouchEvent(int touch_count, TouchEvent event, float x0,
 			float abs_y = y0 - y1;
 			float dist = start_touch_dist_ - std::sqrt(abs_x * abs_x + abs_y * abs_y);
 
-			cam_cur_dist_ = tango_gl::util::Clamp(cam_start_dist_ + dist * kZoomSpeed,
-					kCamViewMinDist, kCamViewMaxDist);
-
-			this->SetOrthoMode(camera_type_ == kTopOrtho);
-			if(camera_type_ == kTopOrtho)
+			if(camera_type_ == kFirstPerson)
 			{
-				this->SetOrthoScale(cam_cur_dist_);
+				this->SetFieldOfView(tango_gl::util::Clamp(cam_start_fov_ + dist * kZoomSpeed*10.0f, 45, 90));
 			}
+			else
+			{
+				cam_cur_dist_ = tango_gl::util::Clamp(cam_start_dist_ + dist * kZoomSpeed,
+								kCamViewMinDist, kCamViewMaxDist);
 
-			glm::vec2 touch_center_position((x0+x1)/2.0f, (y0+y1)/2.0f);
-			glm::vec2 offset;
-			offset.x = (touch_center_position.x - touch0_start_position_.x) * kMoveSpeed;
-			offset.y = (touch_center_position.y - touch0_start_position_.y) * kMoveSpeed;
-			touch0_start_position_ = touch_center_position;
+				this->SetOrthoMode(camera_type_ == kTopOrtho);
+				if(camera_type_ == kTopOrtho)
+				{
+					this->SetOrthoScale(cam_cur_dist_);
+				}
 
-			StartCameraToCurrentTransform();
+				glm::vec2 touch_center_position((x0+x1)/2.0f, (y0+y1)/2.0f);
+				glm::vec2 offset;
+				offset.x = (touch_center_position.x - touch0_start_position_.x) * kMoveSpeed;
+				offset.y = (touch_center_position.y - touch0_start_position_.y) * kMoveSpeed;
+				touch0_start_position_ = touch_center_position;
 
-			anchor_offset_ += glm::rotate(cam_parent_transform_->GetRotation(), glm::vec3(-offset.x, offset.y, 0));
+				StartCameraToCurrentTransform();
 
+				anchor_offset_ += glm::rotate(cam_parent_transform_->GetRotation(), glm::vec3(-offset.x, offset.y, 0));
+			}
 			break;
 		}
 		default: { break; }

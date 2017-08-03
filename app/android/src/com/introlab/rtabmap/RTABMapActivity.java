@@ -193,7 +193,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private Button mButtonCloseVisualization;
 	private Button mButtonSaveOnDevice;
 	private Button mButtonShareOnSketchfab;
-	private SeekBar mSeekBarFov;
+	private SeekBar mSeekBarOrthoCut;
 	private SeekBar mSeekBarGrid;
 
 	private String mOpenedDatabasePath = "";
@@ -309,20 +309,13 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		    }
 		});
 		
-		mSeekBarFov = (SeekBar)findViewById(R.id.seekBar_fov);
-		mSeekBarFov.setMax(45);
-		mSeekBarFov.setProgress(20);
-		mSeekBarFov.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+		mSeekBarOrthoCut = (SeekBar)findViewById(R.id.seekBar_ortho_cut);
+		mSeekBarOrthoCut.setMax(120);
+		mSeekBarOrthoCut.setProgress(80);
+		mSeekBarOrthoCut.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
 			  @Override
 			  public void onProgressChanged(SeekBar seekBar, int progressValue, boolean fromUser) {
-				  if(mButtonCameraView.getSelectedItemPosition() == 0)
-				  {
-					  RTABMapLib.setFOV((float)progressValue+45.0f);
-				  }
-				  else if(mButtonCameraView.getSelectedItemPosition() == 3)
-				  {
-					  RTABMapLib.setOrthoCropFactor((float)(120-progressValue)/20.0f - 3.0f);
-				  }
+				  RTABMapLib.setOrthoCropFactor((float)(120-progressValue)/20.0f - 3.0f);
 				  resetNoTouchTimer();
 			  }
 			
@@ -743,17 +736,12 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				
 		RTABMapLib.setCamera(type);
 		mButtonCameraView.setSelection(type, true);
-		mSeekBarFov.setVisibility(type!=0 && type!=3?View.INVISIBLE:View.VISIBLE);
+		mSeekBarOrthoCut.setVisibility(type!=3?View.INVISIBLE:View.VISIBLE);
 		mSeekBarGrid.setVisibility(mSeekBarGrid.isEnabled() && type==3?View.VISIBLE:View.INVISIBLE);
-		if(type==0)
-		{
-			mSeekBarFov.setMax(45);
-			mSeekBarFov.setProgress(20);
-		}
 		if(type==3)
 		{
-			mSeekBarFov.setMax(120);
-			mSeekBarFov.setProgress(80);
+			mSeekBarOrthoCut.setMax(120);
+			mSeekBarOrthoCut.setProgress(80);
 		}
 	}
 
@@ -761,6 +749,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	public void onClick(View v) {
 		// Handle button clicks.
 		switch (v.getId()) {
+		case R.id.gl_surface_view:
+
+			break;
 		case R.id.pause_button:
 			pauseMapping();
 			break;
@@ -830,22 +821,17 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
             return true;
         }
         @Override
-        public boolean onFling(
-        		MotionEvent e1, 
-                MotionEvent e2, 
-                float velocityX, 
-                float velocityY) {
-        	if(!DISABLE_LOG) Log.i(TAG, String.format("onFling velocityY=%f", velocityY));
-        	if(velocityY < -1000)
-        	{
-	        	notouchHandler.removeCallbacks(notouchCallback);
-	            notouchHandler.postDelayed(notouchCallback, 0);
-        	}
-        	else if(velocityY > 1000)
-        	{
-        		resetNoTouchTimer(true);
-        	}
-            
+        public boolean onSingleTapConfirmed(MotionEvent event) {
+        	if(!DISABLE_LOG) Log.i(TAG, "onSingleTapConfirmed");
+        	if(mHudVisible)
+			{
+				notouchHandler.removeCallbacks(notouchCallback);
+				notouchHandler.postDelayed(notouchCallback, 0);
+			}
+			else
+			{
+				resetNoTouchTimer(true);
+			}
             return true;
         }
     }
@@ -1484,7 +1470,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 		mButtonCameraView.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
 		mButtonBackfaceShown.setVisibility(mHudVisible && (mItemRenderingMesh.isChecked() || mItemRenderingTextureMesh.isChecked())?View.VISIBLE:View.INVISIBLE);
-		mSeekBarFov.setVisibility(mHudVisible && (mButtonCameraView.getSelectedItemPosition() == 0 || mButtonCameraView.getSelectedItemPosition() == 3)?View.VISIBLE:View.INVISIBLE);
+		mSeekBarOrthoCut.setVisibility(mHudVisible && mButtonCameraView.getSelectedItemPosition() == 3?View.VISIBLE:View.INVISIBLE);
 		mSeekBarGrid.setVisibility(mHudVisible && mSeekBarGrid.isEnabled() && mButtonCameraView.getSelectedItemPosition() == 3?View.VISIBLE:View.INVISIBLE);
 	}
 

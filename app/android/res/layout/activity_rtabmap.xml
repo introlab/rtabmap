@@ -118,7 +118,7 @@
         android:text="@string/close_visualization" />
 
     <SeekBar
-        android:id="@+id/seekBar_fov"
+        android:id="@+id/seekBar_ortho_cut"
         android:layout_width="200dp"
         android:layout_height="wrap_content"
         android:rotation="270"
