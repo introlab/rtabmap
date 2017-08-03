@@ -37,7 +37,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtGui/QDesktopServices>
 #include <QtGui/QContextMenuEvent>
 #include <QColorDialog>
+#ifdef QT_SVG_LIB
 #include <QtSvg/QSvgGenerator>
+#endif
 #include <QInputDialog>
 #include <QMessageBox>
 
@@ -1233,6 +1235,9 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QMenu menu;
 	QAction * aScreenShotPNG = menu.addAction(tr("Take a screenshot (PNG)"));
 	QAction * aScreenShotSVG = menu.addAction(tr("Take a screenshot (SVG)"));
+#ifndef QT_SVG_LIB
+	aScreenShotSVG->setEnabled(false);
+#endif
 	menu.addSeparator();
 
 	QAction * aChangeNodeColor = menu.addAction(createIcon(_nodeColor), tr("Set node color..."));
@@ -1422,6 +1427,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			}
 			else
 			{
+#ifdef QT_SVG_LIB
 				QSvgGenerator svgGen;
 
 				svgGen.setFileName( targetDir + name );
@@ -1433,6 +1439,9 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 				QPainter painter( &svgGen );
 
 				this->scene()->render(&painter);
+#else
+				UERROR("RTAB-MAp is not built with Qt's SVG library, cannot save picture in svg format.");
+#endif
 			}
 
 			//reset scale

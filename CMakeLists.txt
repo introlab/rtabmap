@@ -171,9 +171,11 @@ FIND_PACKAGE(OpenCV REQUIRED QUIET)
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET)
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
 
-# fix libproj.so not found on Xenial
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")
+   # fix libproj.so not found on Xenial
    list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
+   # fix libmpi.so not found on Zesty
+   list(REMOVE_ITEM PCL_LIBRARIES "/usr/lib/libmpi.so")
 endif()
 
 # OpenMP ("-fopenmp" should be added for flann included in PCL)
@@ -214,12 +216,12 @@ IF(WITH_QT)
     IF("${VTK_MAJOR_VERSION}" GREATER 5)
         FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui QUIET)
         IF(Qt5_FOUND)
-             FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui Svg)
+             FIND_PACKAGE(Qt5 COMPONENTS Widgets Core Gui OPTIONAL_COMPONENTS Svg)
         ENDIF(Qt5_FOUND)
     ENDIF("${VTK_MAJOR_VERSION}" GREATER 5)
 
     IF(NOT Qt5_FOUND)
-        FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui QtSvg)
+        FIND_PACKAGE(Qt4 COMPONENTS QtCore QtGui OPTIONAL_COMPONENTS QtSvg)
     ENDIF(NOT Qt5_FOUND)
         
     IF(QT4_FOUND OR Qt5_FOUND)

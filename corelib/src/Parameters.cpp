@@ -811,7 +811,7 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 	{
 		ULOGGER_WARN("Section \"Core\" in %s doesn't exist... "
 				    "Ignore this warning if the ini file does not exist yet. "
-				    "The ini file will be automatically created when this node will close.", configFile.c_str());
+				    "The ini file will be automatically created when rtabmap will close.", configFile.c_str());
 	}
 }
 
