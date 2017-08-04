@@ -142,7 +142,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
 		float voxelSize)
 {
 	UASSERT(voxelSize > 0.0f);
-	UASSERT((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()));
+	UASSERT_MSG((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()),
+			uFormat("Cloud size=%d indices=%d is_dense=%s", (int)cloud->size(), (int)indices->size(), cloud->is_dense?"true":"false").c_str());
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	pcl::VoxelGrid<pcl::PointXYZ> filter;
 	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
@@ -160,7 +161,8 @@ pcl::PointCloud<pcl::PointNormal>::Ptr voxelize(
 		float voxelSize)
 {
 	UASSERT(voxelSize > 0.0f);
-	UASSERT((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()));
+	UASSERT_MSG((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()),
+			uFormat("Cloud size=%d indices=%d is_dense=%s", (int)cloud->size(), (int)indices->size(), cloud->is_dense?"true":"false").c_str());
 	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
 	pcl::VoxelGrid<pcl::PointNormal> filter;
 	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
@@ -178,7 +180,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(
 		float voxelSize)
 {
 	UASSERT(voxelSize > 0.0f);
-	UASSERT((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()));
+	UASSERT_MSG((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()),
+			uFormat("Cloud size=%d indices=%d is_dense=%s", (int)cloud->size(), (int)indices->size(), cloud->is_dense?"true":"false").c_str());
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	pcl::VoxelGrid<pcl::PointXYZRGB> filter;
 	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
@@ -196,7 +199,8 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(
 		float voxelSize)
 {
 	UASSERT(voxelSize > 0.0f);
-	UASSERT((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()));
+	UASSERT_MSG((cloud->is_dense && cloud->size()) || (!cloud->is_dense && indices->size()),
+			uFormat("Cloud size=%d indices=%d is_dense=%s", (int)cloud->size(), (int)indices->size(), cloud->is_dense?"true":"false").c_str());
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 	pcl::VoxelGrid<pcl::PointXYZRGBNormal> filter;
 	filter.setLeafSize(voxelSize, voxelSize, voxelSize);
