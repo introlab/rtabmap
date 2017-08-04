@@ -121,7 +121,9 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		{
 			UDEBUG("");
 			// passthrough filter
-			groundIndices = rtabmap::util3d::passThrough(cloud, indices, "z", minGroundHeight_!=0.0f?minGroundHeight_:std::numeric_limits<int>::min(), maxGroundHeight_);
+			groundIndices = rtabmap::util3d::passThrough(cloud, indices, "z",
+					minGroundHeight_!=0.0f?minGroundHeight_:std::numeric_limits<int>::min(),
+					maxGroundHeight_!=0.0f?maxGroundHeight_:std::numeric_limits<int>::max());
 
 			pcl::IndicesPtr notObstacles = groundIndices;
 			if(indices->size())

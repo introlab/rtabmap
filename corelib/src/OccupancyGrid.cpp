@@ -98,26 +98,6 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridMaxObstacleHeight(), maxObstacleHeight_);
 	Parameters::parse(parameters, Parameters::kGridMinGroundHeight(), minGroundHeight_);
 	Parameters::parse(parameters, Parameters::kGridMaxGroundHeight(), maxGroundHeight_);
-	if(maxGroundHeight_ != 0.0f &&
-		maxObstacleHeight_ != 0.0f &&
-		maxObstacleHeight_ < maxGroundHeight_)
-	{
-		UWARN("\"%s\" should be lower than \"%s\", setting \"%s\" to 0 (disabled).",
-				Parameters::kGridMaxGroundHeight().c_str(),
-				Parameters::kGridMaxObstacleHeight().c_str(),
-				Parameters::kGridMaxObstacleHeight().c_str());
-		maxObstacleHeight_ = 0;
-	}
-	if(maxGroundHeight_ != 0.0f &&
-		minGroundHeight_ != 0.0f &&
-		maxGroundHeight_ < minGroundHeight_)
-	{
-		UWARN("\"%s\" should be lower than \"%s\", setting \"%s\" to 0 (disabled).",
-				Parameters::kGridMinGroundHeight().c_str(),
-				Parameters::kGridMaxGroundHeight().c_str(),
-				Parameters::kGridMinGroundHeight().c_str());
-		minGroundHeight_ = 0;
-	}
 	Parameters::parse(parameters, Parameters::kGridNormalK(), normalKSearch_);
 	if(Parameters::parse(parameters, Parameters::kGridMaxGroundAngle(), maxGroundAngle_))
 	{
@@ -181,6 +161,26 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 				"segmentation approach. Setting it to cell size (%f).",
 				Parameters::kGridMaxGroundHeight().c_str(), cellSize_);
 		maxGroundHeight_ = cellSize_;
+	}
+	if(maxGroundHeight_ != 0.0f &&
+		maxObstacleHeight_ != 0.0f &&
+		maxObstacleHeight_ < maxGroundHeight_)
+	{
+		UWARN("\"%s\" should be lower than \"%s\", setting \"%s\" to 0 (disabled).",
+				Parameters::kGridMaxGroundHeight().c_str(),
+				Parameters::kGridMaxObstacleHeight().c_str(),
+				Parameters::kGridMaxObstacleHeight().c_str());
+		maxObstacleHeight_ = 0;
+	}
+	if(maxGroundHeight_ != 0.0f &&
+		minGroundHeight_ != 0.0f &&
+		maxGroundHeight_ < minGroundHeight_)
+	{
+		UWARN("\"%s\" should be lower than \"%s\", setting \"%s\" to 0 (disabled).",
+				Parameters::kGridMinGroundHeight().c_str(),
+				Parameters::kGridMaxGroundHeight().c_str(),
+				Parameters::kGridMinGroundHeight().c_str());
+		minGroundHeight_ = 0;
 	}
 }
 

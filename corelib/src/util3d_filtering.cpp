@@ -274,7 +274,7 @@ pcl::IndicesPtr passThrough(
 		float max,
 		bool negative)
 {
-	UASSERT(max > min);
+	UASSERT_MSG(max > min, uFormat("cloud=%d, max=%f min=%f axis=%s", (int)cloud->size(), max, min, axis.c_str()).c_str());
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
 	pcl::IndicesPtr output(new std::vector<int>);
@@ -295,7 +295,7 @@ pcl::IndicesPtr passThrough(
 		float max,
 		bool negative)
 {
-	UASSERT(max > min);
+	UASSERT_MSG(max > min, uFormat("cloud=%d, max=%f min=%f axis=%s", (int)cloud->size(), max, min, axis.c_str()).c_str());
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
 	pcl::IndicesPtr output(new std::vector<int>);
@@ -316,7 +316,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr passThrough(
 		float max,
 		bool negative)
 {
-	UASSERT(max > min);
+	UASSERT_MSG(max > min, uFormat("cloud=%d, max=%f min=%f axis=%s", (int)cloud->size(), max, min, axis.c_str()).c_str());
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
@@ -336,7 +336,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr passThrough(
 		float max,
 		bool negative)
 {
-	UASSERT(max > min);
+	UASSERT_MSG(max > min, uFormat("cloud=%d, max=%f min=%f axis=%s", (int)cloud->size(), max, min, axis.c_str()).c_str());
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -356,7 +356,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr passThrough(
 		float max,
 		bool negative)
 {
-	UASSERT(max > min);
+	UASSERT_MSG(max > min, uFormat("cloud=%d, max=%f min=%f axis=%s", (int)cloud->size(), max, min, axis.c_str()).c_str());
 	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
