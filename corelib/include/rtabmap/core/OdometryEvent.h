@@ -82,6 +82,7 @@ public:
 			velocity[3] = roll/_info.interval;
 			velocity[4] = pitch/_info.interval;
 			velocity[5] = yaw/_info.interval;
+			return velocity;
 		}
 		return std::vector<float>();
 	}

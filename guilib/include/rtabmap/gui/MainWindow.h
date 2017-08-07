@@ -67,6 +67,7 @@ class StatsToolBox;
 class ProgressDialog;
 class TwistGridWidget;
 class ExportCloudsDialog;
+class ExportBundlerDialog;
 class PostProcessingDialog;
 class DepthCalibrationDialog;
 class DataRecorder;
@@ -265,6 +266,7 @@ private:
 	PreferencesDialog * _preferencesDialog;
 	AboutDialog * _aboutDialog;
 	ExportCloudsDialog * _exportCloudsDialog;
+	ExportBundlerDialog * _exportBundlerDialog;
 	PostProcessingDialog * _postProcessingDialog;
 	DepthCalibrationDialog * _depthCalibrationDialog;
 	DataRecorder * _dataRecorder;

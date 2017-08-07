@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-2146</y>
+        <y>-2684</y>
         <width>773</width>
-        <height>4045</height>
+        <height>4103</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1778,7 +1778,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                <item row="8" column="1">
                 <widget class="QLabel" name="label_meshingTextureSize_3">
                  <property name="text">
-                  <string>Camera filtering. By comparing poses in the same area, only one camera in a fixed radius and angle is used for texturing.</string>
+                  <string>Camera filtering. Some criteria to select which cameras are used for texturing.</string>
                  </property>
                  <property name="wordWrap">
                   <bool>true</bool>
@@ -1876,24 +1876,24 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                <property name="title">
                 <string>Camera Filtering</string>
                </property>
-               <layout class="QGridLayout" name="gridLayout_16" columnstretch="0,1">
+               <layout class="QGridLayout" name="gridLayout_16" columnstretch="0,0,1">
                 <item row="0" column="0">
                  <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraFilterRadius">
                   <property name="suffix">
                    <string> m</string>
                   </property>
                   <property name="minimum">
-                   <double>0.010000000000000</double>
+                   <double>0.000000000000000</double>
                   </property>
                   <property name="value">
                    <double>0.100000000000000</double>
                   </property>
                  </widget>
                 </item>
-                <item row="0" column="1">
+                <item row="0" column="2">
                  <widget class="QLabel" name="label_37">
                   <property name="text">
-                   <string>Radius.</string>
+                   <string>Only one camera in a fixed radius and angle is used for texturing. Radius of 0 m means disabled.</string>
                   </property>
                   <property name="wordWrap">
                    <bool>true</bool>
@@ -1903,7 +1903,26 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="0">
+                <item row="1" column="1">
+                 <widget class="QDoubleSpinBox" name="doubleSpinBox_laplacianVariance">
+                  <property name="suffix">
+                   <string/>
+                  </property>
+                  <property name="decimals">
+                   <number>0</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>9999.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.000000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
                  <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraFilterAngle">
                   <property name="suffix">
                    <string> deg</string>
@@ -1919,10 +1938,49 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                   </property>
                  </widget>
                 </item>
-                <item row="1" column="1">
-                 <widget class="QLabel" name="label_48">
+                <item row="1" column="2">
+                 <widget class="QLabel" name="label_38">
                   <property name="text">
-                   <string>Angle.</string>
+                   <string>Laplacian variance threshold. Below this threshold, the image is considered blurred. 0 means disabled. 50 can be good default.</string>
+                  </property>
+                  <property name="wordWrap">
+                   <bool>true</bool>
+                  </property>
+                  <property name="textInteractionFlags">
+                   <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraFilterVelRad">
+                  <property name="suffix">
+                   <string> rad/s</string>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.100000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraFilterVel">
+                  <property name="suffix">
+                   <string> m/s</string>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.100000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QLabel" name="label_39">
+                  <property name="text">
+                   <string>Maximum speed to keep a camera view for texturing. Images taken on fast motions would be more blurry. 0 means disabled. 0.1 m/s and 0.4 rad/s can be good defaults.</string>
                   </property>
                   <property name="wordWrap">
                    <bool>true</bool>

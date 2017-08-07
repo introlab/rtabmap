@@ -178,6 +178,9 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_cameraFilter, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->doubleSpinBox_cameraFilterRadius, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->doubleSpinBox_cameraFilterAngle, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_cameraFilterVel, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_cameraFilterVelRad, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_laplacianVariance, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 
 	connect(_ui->checkBox_poisson_outputPolygons, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->checkBox_poisson_manifold, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
@@ -319,6 +322,9 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked());
 	settings.setValue("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value());
 	settings.setValue("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value());
+	settings.setValue("mesh_textureCameraFilteringVel", _ui->doubleSpinBox_cameraFilterVel->value());
+	settings.setValue("mesh_textureCameraFilteringVelRad", _ui->doubleSpinBox_cameraFilterVelRad->value());
+	settings.setValue("mesh_textureCameraFilteringLaplacian", _ui->doubleSpinBox_laplacianVariance->value());
 	settings.setValue("mesh_textureBrightnessConstrastRatioLow", _ui->spinBox_textureBrightnessContrastRatioLow->value());
 	settings.setValue("mesh_textureBrightnessConstrastRatioHigh", _ui->spinBox_textureBrightnessContrastRatioHigh->value());
 	settings.setValue("mesh_textureExposureFusion", _ui->checkBox_exposureFusion->isChecked());
@@ -432,6 +438,9 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_cameraFilter->setChecked(settings.value("mesh_textureCameraFiltering", _ui->checkBox_cameraFilter->isChecked()).toBool());
 	_ui->doubleSpinBox_cameraFilterRadius->setValue(settings.value("mesh_textureCameraFilteringRadius", _ui->doubleSpinBox_cameraFilterRadius->value()).toDouble());
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(settings.value("mesh_textureCameraFilteringAngle", _ui->doubleSpinBox_cameraFilterAngle->value()).toDouble());
+	_ui->doubleSpinBox_cameraFilterVel->setValue(settings.value("mesh_textureCameraFilteringVel", _ui->doubleSpinBox_cameraFilterVel->value()).toDouble());
+	_ui->doubleSpinBox_cameraFilterVelRad->setValue(settings.value("mesh_textureCameraFilteringVelRad", _ui->doubleSpinBox_cameraFilterVelRad->value()).toDouble());
+	_ui->doubleSpinBox_laplacianVariance->setValue(settings.value("mesh_textureCameraFilteringLaplacian", _ui->doubleSpinBox_laplacianVariance->value()).toDouble());
 	_ui->spinBox_textureBrightnessContrastRatioLow->setValue(settings.value("mesh_textureBrightnessConstrastRatioLow", _ui->spinBox_textureBrightnessContrastRatioLow->value()).toDouble());
 	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(settings.value("mesh_textureBrightnessConstrastRatioHigh", _ui->spinBox_textureBrightnessContrastRatioHigh->value()).toDouble());
 	if(_ui->checkBox_exposureFusion->isEnabled())
@@ -543,8 +552,11 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->spinBox_mesh_minTextureClusterSize->setValue(50);
 	_ui->lineEdit_meshingTextureRoiRatios->setText("0.0 0.0 0.0 0.0");
 	_ui->checkBox_cameraFilter->setChecked(false);
-	_ui->doubleSpinBox_cameraFilterRadius->setValue(0.1);
+	_ui->doubleSpinBox_cameraFilterRadius->setValue(0);
 	_ui->doubleSpinBox_cameraFilterAngle->setValue(30);
+	_ui->doubleSpinBox_cameraFilterVel->setValue(0);
+	_ui->doubleSpinBox_cameraFilterVelRad->setValue(0);
+	_ui->doubleSpinBox_laplacianVariance->setValue(0);
 	_ui->spinBox_textureBrightnessContrastRatioLow->setValue(0);
 	_ui->spinBox_textureBrightnessContrastRatioHigh->setValue(0);
 	_ui->checkBox_exposureFusion->setChecked(false);
@@ -2012,6 +2024,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				std::map<int, Transform> cameraPoses;
 				std::map<int, std::vector<CameraModel> > cameraModels;
 				std::map<int, cv::Mat > cameraDepths;
+				int ignoredCameras = 0;
 				for(std::map<int, Transform>::iterator jter=cameras.begin(); jter!=cameras.end(); ++jter)
 				{
 					if(validCameras.find(jter->first) != validCameras.end())
@@ -2046,21 +2059,34 @@ bool ExportCloudsDialog::getExportedClouds(
 						if(!jter->second.isNull() && models.size())
 						{
 							cv::Mat depth;
+							bool blurryImage = false;
 							bool getDepth = !stereo && _ui->doubleSpinBox_meshingTextureMaxDepthError->value() >= 0.0f;
+							cv::Mat img;
+							std::vector<float> velocity;
 							if(models[0].imageWidth() == 0 || models[0].imageHeight() == 0)
 							{
 								// we are using an old database format (image size not saved in calibrations), we should
 								// uncompress images to get their size
-								cv::Mat img;
 								if(cacheHasCompressedImage)
 								{
 									cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(&img, getDepth?&depth:0);
+									velocity = cachedSignatures.find(jter->first)->getVelocity();
 								}
 								else if(_dbDriver)
 								{
 									SensorData data;
 									_dbDriver->getNodeData(jter->first, data, true, false, false, false);
 									data.uncompressDataConst(&img, getDepth?&depth:0);
+
+									if(_ui->checkBox_cameraFilter->isChecked() &&
+										(_ui->doubleSpinBox_cameraFilterVel->value()>0.0 || _ui->doubleSpinBox_cameraFilterVelRad->value()>0.0))
+									{
+										Transform p,gt;
+										int m,w;
+										std::string l;
+										double s;
+										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity);
+									}
 								}
 								cv::Size imageSize = img.size();
 								imageSize.width /= models.size();
@@ -2071,20 +2097,80 @@ bool ExportCloudsDialog::getExportedClouds(
 							}
 							else
 							{
+								bool getImg = _ui->checkBox_cameraFilter->isChecked() && _ui->doubleSpinBox_laplacianVariance->value()>0.0;
 								// get just the depth
 								if(cacheHasCompressedImage)
 								{
-									cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(0, getDepth?&depth:0);
+									cachedSignatures.find(jter->first)->sensorData().uncompressDataConst(getImg?&img:0, getDepth?&depth:0);
+									velocity = cachedSignatures.find(jter->first)->getVelocity();
 								}
 								else if(_dbDriver)
 								{
 									SensorData data;
 									_dbDriver->getNodeData(jter->first, data, true, false, false, false);
-									data.uncompressDataConst(0, getDepth?&depth:0);
+									data.uncompressDataConst(getImg?&img:0, getDepth?&depth:0);
+
+									if(_ui->checkBox_cameraFilter->isChecked() &&
+										(_ui->doubleSpinBox_cameraFilterVel->value()>0.0 || _ui->doubleSpinBox_cameraFilterVelRad->value()>0.0))
+									{
+										Transform p,gt;
+										int m,w;
+										std::string l;
+										double s;
+										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity);
+									}
+								}
+							}
+							if(_ui->checkBox_cameraFilter->isChecked())
+							{
+								std::string msg;
+								if(!blurryImage &&
+									(_ui->doubleSpinBox_cameraFilterVel->value()>0.0 || _ui->doubleSpinBox_cameraFilterVelRad->value()>0.0))
+								{
+									if(velocity.size() == 6)
+									{
+										float transVel = uMax3(fabs(velocity[0]), fabs(velocity[1]), fabs(velocity[2]));
+										float rotVel = uMax3(fabs(velocity[3]), fabs(velocity[4]), fabs(velocity[5]));
+										if(_ui->doubleSpinBox_cameraFilterVel->value()>0.0 && transVel > _ui->doubleSpinBox_cameraFilterVel->value())
+										{
+											msg = uFormat("Fast motion detected for camera %d (speed=%f m/s > thr=%f m/s), camera is ignored for texturing.", jter->first, transVel, _ui->doubleSpinBox_cameraFilterVel->value());
+											blurryImage = true;
+										}
+										else if(_ui->doubleSpinBox_cameraFilterVelRad->value()>0.0 && rotVel > _ui->doubleSpinBox_cameraFilterVelRad->value())
+										{
+											msg = uFormat("Fast motion detected for camera %d (speed=%f rad/s > thr=%f rad/s), camera is ignored for texturing.", jter->first, rotVel, _ui->doubleSpinBox_cameraFilterVelRad->value());
+											blurryImage = true;
+										}
+									}
+									else
+									{
+										UWARN("Camera motion filtering is set, but velocity of camera %d is not available.", jter->first);
+									}
+								}
+
+								if(!blurryImage && !img.empty() && _ui->doubleSpinBox_laplacianVariance->value()>0.0)
+								{
+									cv::Mat imgLaplacian;
+									cv::Laplacian(img, imgLaplacian, CV_16S);
+									cv::Mat m, s;
+									cv::meanStdDev(imgLaplacian, m, s);
+									double stddev_pxl = s.at<double>(0);
+									double var = stddev_pxl*stddev_pxl;
+									if(var < _ui->doubleSpinBox_laplacianVariance->value())
+									{
+										blurryImage = true;
+										msg = uFormat("Camera's image %d is detected as blurry (var=%f < thr=%f), camera is ignored for texturing.", jter->first, var, _ui->doubleSpinBox_laplacianVariance->value());
+									}
+								}
+								if(blurryImage)
+								{
+									_progressDialog->appendText(msg.c_str());
+									QApplication::processEvents();
+									++ignoredCameras;
 								}
 							}
 
-							if(models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
+							if(!blurryImage && models[0].imageWidth() != 0 && models[0].imageHeight() != 0)
 							{
 								cameraPoses.insert(std::make_pair(jter->first, jter->second));
 								cameraModels.insert(std::make_pair(jter->first, models));
@@ -2096,6 +2182,17 @@ bool ExportCloudsDialog::getExportedClouds(
 						}
 					}
 				}
+				if(ignoredCameras > validCameras.size()/2)
+				{
+					std::string msg = uFormat("More than 50%% of the cameras (%d/%d) have been filtered for "
+							"too fast motion and/or blur level. You may adjust the corresponding thresholds.",
+							ignoredCameras, (int)validCameras.size());
+					UWARN(msg.c_str());
+					_progressDialog->appendText(msg.c_str(), Qt::darkYellow);
+					_progressDialog->setAutoClose(false);
+					QApplication::processEvents();
+				}
+
 				if(cameraPoses.size() && iter->second->polygons.size())
 				{
 					pcl::TextureMesh::Ptr textureMesh(new pcl::TextureMesh);

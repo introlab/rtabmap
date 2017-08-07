@@ -69,6 +69,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/GraphViewer.h"
 #include "ExportCloudsDialog.h"
+#include "ExportBundlerDialog.h"
 #include "PostProcessingDialog.h"
 #include "CreateSimpleCalibrationDialog.h"
 #include "DepthCalibrationDialog.h"
@@ -2789,6 +2790,7 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		const CloudViewer * cloudViewer = qobject_cast<const CloudViewer*>(widget);
 		const ImageView * imageView = qobject_cast<const ImageView*>(widget);
 		const ExportCloudsDialog * exportCloudsDialog = qobject_cast<const ExportCloudsDialog*>(widget);
+		const ExportBundlerDialog * exportBundlerDialog = qobject_cast<const ExportBundlerDialog*>(widget);
 		const PostProcessingDialog * postProcessingDialog = qobject_cast<const PostProcessingDialog *>(widget);
 		const GraphViewer * graphViewer = qobject_cast<const GraphViewer *>(widget);
 		const CalibrationDialog * calibrationDialog = qobject_cast<const CalibrationDialog *>(widget);
@@ -2808,6 +2810,11 @@ void PreferencesDialog::saveWidgetState(const QWidget * widget)
 		{
 			exportCloudsDialog->saveSettings(settings);
 			exportCloudsDialog->saveSettings(settingsTmp);
+		}
+		else if(exportBundlerDialog)
+		{
+			exportBundlerDialog->saveSettings(settings);
+			exportBundlerDialog->saveSettings(settingsTmp);
 		}
 		else if(postProcessingDialog)
 		{
@@ -2857,6 +2864,7 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		CloudViewer * cloudViewer = qobject_cast<CloudViewer*>(widget);
 		ImageView * imageView = qobject_cast<ImageView*>(widget);
 		ExportCloudsDialog * exportCloudsDialog = qobject_cast<ExportCloudsDialog*>(widget);
+		ExportBundlerDialog * exportBundlerDialog = qobject_cast<ExportBundlerDialog*>(widget);
 		PostProcessingDialog * postProcessingDialog = qobject_cast<PostProcessingDialog *>(widget);
 		GraphViewer * graphViewer = qobject_cast<GraphViewer *>(widget);
 		CalibrationDialog * calibrationDialog = qobject_cast<CalibrationDialog *>(widget);
@@ -2876,6 +2884,11 @@ void PreferencesDialog::loadWidgetState(QWidget * widget)
 		{
 			exportCloudsDialog->loadSettings(settings);
 			exportCloudsDialog->saveSettings(settingsTmp);
+		}
+		else if(exportBundlerDialog)
+		{
+			exportBundlerDialog->loadSettings(settings);
+			exportBundlerDialog->saveSettings(settingsTmp);
 		}
 		else if(postProcessingDialog)
 		{

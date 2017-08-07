@@ -22,6 +22,7 @@ SET(headers_ui
 	./ExportDialog.h
 	./PostProcessingDialog.h
 	./ExportCloudsDialog.h
+	./ExportBundlerDialog.h
 	./MapVisibilityWidget.h
 	../include/${PROJECT_PREFIX}/gui/GraphViewer.h
 	./CreateSimpleCalibrationDialog.h
@@ -45,6 +46,7 @@ SET(uis
     ./ui/calibrationDialog.ui
     ./ui/createSimpleCalibrationDialog.ui
     ./ui/depthCalibrationDialog.ui
+    ./ui/exportBundlerDialog.ui
 )
 
 SET(qrc 
@@ -87,6 +89,7 @@ SET(SRC_FILES
 	./CameraViewer.cpp
 	./CalibrationDialog.cpp
 	./ExportDialog.cpp
+	./ExportBundlerDialog.cpp
 	./PostProcessingDialog.cpp
 	./ExportCloudsDialog.cpp
 	./MapVisibilityWidget.cpp

@@ -142,7 +142,7 @@
    <item>
     <widget class="QCheckBox" name="checkBox_depth2d">
      <property name="text">
-      <string>Depth 2D (laser scans)</string>
+      <string>Laser scans</string>
      </property>
      <property name="checked">
       <bool>true</bool>

@@ -62,6 +62,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UCv2Qt.h"
 
 #include "ExportCloudsDialog.h"
+#include "ExportBundlerDialog.h"
 #include "AboutDialog.h"
 #include "PostProcessingDialog.h"
 #include "DepthCalibrationDialog.h"
@@ -136,6 +137,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog(0),
 	_aboutDialog(0),
 	_exportCloudsDialog(0),
+	_exportBundlerDialog(0),
 	_dataRecorder(0),
 	_lastId(0),
 	_firstStamp(0.0f),
@@ -183,6 +185,8 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_aboutDialog->setObjectName("AboutDialog");
 	_exportCloudsDialog = new ExportCloudsDialog(this);
 	_exportCloudsDialog->setObjectName("ExportCloudsDialog");
+	_exportBundlerDialog = new ExportBundlerDialog(this);
+	_exportBundlerDialog->setObjectName("ExportBundlerDialog");
 	_postProcessingDialog = new PostProcessingDialog(this);
 	_postProcessingDialog->setObjectName("PostProcessingDialog");
 	_depthCalibrationDialog = new DepthCalibrationDialog(this);
@@ -234,6 +238,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_preferencesDialog->loadMainWindowState(this, _savedMaximized, statusBarShown);
 	_preferencesDialog->loadWindowGeometry(_preferencesDialog);
 	_preferencesDialog->loadWindowGeometry(_exportCloudsDialog);
+	_preferencesDialog->loadWindowGeometry(_exportBundlerDialog);
 	_preferencesDialog->loadWindowGeometry(_postProcessingDialog);
 	_preferencesDialog->loadWindowGeometry(_depthCalibrationDialog);
 	_preferencesDialog->loadWindowGeometry(_aboutDialog);
@@ -460,6 +465,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->graphicsView_graphView, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_exportCloudsDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+	connect(_exportBundlerDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_postProcessingDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_depthCalibrationDialog, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
 	connect(_ui->toolBar->toggleViewAction(), SIGNAL(toggled(bool)), this, SLOT(configGUIModified()));
@@ -515,11 +521,13 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->setNewFigureMaxItems(50);
 	_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+	_exportBundlerDialog->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 	_cloudViewer->setBackfaceCulling(true, false);
 	_preferencesDialog->loadWidgetState(_cloudViewer);
 
 	//dialog states
 	_preferencesDialog->loadWidgetState(_exportCloudsDialog);
+	_preferencesDialog->loadWidgetState(_exportBundlerDialog);
 	_preferencesDialog->loadWidgetState(_postProcessingDialog);
 	_preferencesDialog->loadWidgetState(_depthCalibrationDialog);
 
@@ -3740,6 +3748,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 		{
 			_ui->statsToolBox->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 			_ui->graphicsView_graphView->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
+			_exportBundlerDialog->setWorkingDirectory(_preferencesDialog->getWorkingDirectory());
 		}
 
 		if(_state != kIdle && parametersModified.size())
@@ -4126,6 +4135,7 @@ void MainWindow::saveConfigGUI()
 	_preferencesDialog->saveWidgetState(_ui->imageView_loopClosure);
 	_preferencesDialog->saveWidgetState(_ui->imageView_odometry);
 	_preferencesDialog->saveWidgetState(_exportCloudsDialog);
+	_preferencesDialog->saveWidgetState(_exportBundlerDialog);
 	_preferencesDialog->saveWidgetState(_postProcessingDialog);
 	_preferencesDialog->saveWidgetState(_depthCalibrationDialog);
 	_preferencesDialog->saveWidgetState(_ui->graphicsView_graphView);
@@ -6497,6 +6507,11 @@ void MainWindow::exportImages()
 
 void MainWindow::exportBundlerFormat()
 {
+	if(_exportBundlerDialog->isVisible())
+	{
+		return;
+	}
+
 	std::map<int, Transform> posesIn = _ui->widget_mapVisibility->getVisiblePoses();
 
 	// Use ground truth poses if current clouds are using them
@@ -6544,9 +6559,18 @@ void MainWindow::exportBundlerFormat()
 
 	if(poses.size())
 	{
-		QString path = QFileDialog::getExistingDirectory(this, tr("Exporting cameras in Bundler format..."), _preferencesDialog->getWorkingDirectory());
+		if(_exportBundlerDialog->exec() != QDialog::Accepted)
+		{
+			return;
+		}
+		QString path = _exportBundlerDialog->outputPath();
 		if(!path.isEmpty())
 		{
+			if(!QDir(path).mkpath("."))
+			{
+				QMessageBox::warning(this, tr("Exporting cameras..."), tr("Failed creating directory %1.").arg(path));
+				return;
+			}
 			// export cameras and images
 			QFile fileOut(path+QDir::separator()+"cameras.out");
 			QFile fileList(path+QDir::separator()+"list.txt");
@@ -6555,15 +6579,10 @@ void MainWindow::exportBundlerFormat()
 			{
 				if(fileList.open(QIODevice::WriteOnly | QIODevice::Text))
 				{
-					QTextStream out(&fileOut);
-					QTextStream list(&fileList);
-					out << "# Bundle file v0.3\n";
-					out << poses.size() << " 0\n";
-
+					std::set<int> ignoredCameras;
 					for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 					{
 						QString p = QString("images")+QDir::separator()+tr("%1.jpg").arg(iter->first);
-						list << p << "\n";
 						p = path+QDir::separator()+p;
 						cv::Mat image = _cachedSignatures[iter->first].sensorData().imageRaw();
 						if(image.empty())
@@ -6571,56 +6590,133 @@ void MainWindow::exportBundlerFormat()
 							_cachedSignatures[iter->first].sensorData().uncompressDataConst(&image, 0, 0, 0);
 						}
 
-						if(cv::imwrite(p.toStdString(), image))
+						double maxLinearVel = _exportBundlerDialog->maxLinearSpeed();
+						double maxAngularVel = _exportBundlerDialog->maxAngularSpeed();
+						double laplacianThr = _exportBundlerDialog->laplacianThreshold();
+						bool blurryImage = false;
+						const std::vector<float> & velocity = _cachedSignatures[iter->first].getVelocity();
+						if(maxLinearVel>0.0 || maxAngularVel>0.0)
 						{
-							UINFO("saved image %s", p.toStdString().c_str());
+							if(velocity.size() == 6)
+							{
+								float transVel = uMax3(fabs(velocity[0]), fabs(velocity[1]), fabs(velocity[2]));
+								float rotVel = uMax3(fabs(velocity[3]), fabs(velocity[4]), fabs(velocity[5]));
+								if(maxLinearVel>0.0 && transVel > maxLinearVel)
+								{
+									UWARN("Fast motion detected for camera %d (speed=%f m/s > thr=%f m/s), camera is ignored for texturing.", iter->first, transVel, maxLinearVel);
+									blurryImage = true;
+								}
+								else if(maxAngularVel>0.0 && rotVel > maxAngularVel)
+								{
+									UWARN("Fast motion detected for camera %d (speed=%f rad/s > thr=%f rad/s), camera is ignored for texturing.", iter->first, rotVel, maxAngularVel);
+									blurryImage = true;
+								}
+							}
+							else
+							{
+								UWARN("Camera motion filtering is set, but velocity of camera %d is not available.", iter->first);
+							}
+						}
+
+						if(!blurryImage && !image.empty() && laplacianThr>0.0)
+						{
+							cv::Mat imgLaplacian;
+							cv::Laplacian(image, imgLaplacian, CV_16S);
+							cv::Mat m, s;
+							cv::meanStdDev(imgLaplacian, m, s);
+							double stddev_pxl = s.at<double>(0);
+							double var = stddev_pxl*stddev_pxl;
+							if(var < laplacianThr)
+							{
+								blurryImage = true;
+								UWARN("Camera's image %d is detected as blurry (var=%f < thr=%f), camera is ignored for texturing.", iter->first, var, laplacianThr);
+							}
+						}
+						if(blurryImage)
+						{
+							ignoredCameras.insert(iter->first);
 						}
 						else
 						{
-							UERROR("Failed to save image %s", p.toStdString().c_str());
+							if(cv::imwrite(p.toStdString(), image))
+							{
+								UINFO("saved image %s", p.toStdString().c_str());
+							}
+							else
+							{
+								UERROR("Failed to save image %s", p.toStdString().c_str());
+							}
 						}
-
-						Transform localTransform;
-						if(_cachedSignatures[iter->first].sensorData().cameraModels().size())
-						{
-							out << _cachedSignatures[iter->first].sensorData().cameraModels().at(0).fx() << " 0 0\n";
-							localTransform = _cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform();
-						}
-						else
-						{
-							out << _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().fx() << " 0 0\n";
-							localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().localTransform();
-						}
-
-						static const Transform opengl_world_T_rtabmap_world(
-								 0.0f, -1.0f, 0.0f, 0.0f,
-								 0.0f,  0.0f, 1.0f, 0.0f,
-								-1.0f,  0.0f, 0.0f, 0.0f);
-
-						static const Transform optical_rotation_inv(
-								 0.0f, -1.0f,  0.0f, 0.0f,
-								 0.0f,  0.0f, -1.0f, 0.0f,
-							     1.0f,  0.0f,  0.0f, 0.0f);
-
-						Transform pose = iter->second;
-						if(!localTransform.isNull())
-						{
-							pose*=localTransform*optical_rotation_inv;
-						}
-						Transform poseGL = opengl_world_T_rtabmap_world*pose.inverse();
-
-						out << poseGL.r11() << " " << poseGL.r12() << " " << poseGL.r13() << "\n";
-						out << poseGL.r21() << " " << poseGL.r22() << " " << poseGL.r23() << "\n";
-						out << poseGL.r31() << " " << poseGL.r32() << " " << poseGL.r33() << "\n";
-						out << poseGL.x()   << " " << poseGL.y()   << " " << poseGL.z()   << "\n";
 					}
 
-					QMessageBox::question(this,
-							tr("Exporting cameras in Bundler format..."),
-							tr("%1 cameras/images exported to directory \"%2\".").arg(poses.size()).arg(path));
+					QTextStream out(&fileOut);
+					QTextStream list(&fileList);
+					out << "# Bundle file v0.3\n";
+					out << poses.size()-ignoredCameras.size() << " 0\n";
+
+					for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+					{
+						if(ignoredCameras.find(iter->first) == ignoredCameras.end())
+						{
+							QString p = QString("images")+QDir::separator()+tr("%1.jpg").arg(iter->first);
+							list << p << "\n";
+
+							Transform localTransform;
+							if(_cachedSignatures[iter->first].sensorData().cameraModels().size())
+							{
+								out << _cachedSignatures[iter->first].sensorData().cameraModels().at(0).fx() << " 0 0\n";
+								localTransform = _cachedSignatures[iter->first].sensorData().cameraModels().at(0).localTransform();
+							}
+							else
+							{
+								out << _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().fx() << " 0 0\n";
+								localTransform = _cachedSignatures[iter->first].sensorData().stereoCameraModel().left().localTransform();
+							}
+
+							static const Transform opengl_world_T_rtabmap_world(
+									 0.0f, -1.0f, 0.0f, 0.0f,
+									 0.0f,  0.0f, 1.0f, 0.0f,
+									-1.0f,  0.0f, 0.0f, 0.0f);
+
+							static const Transform optical_rotation_inv(
+									 0.0f, -1.0f,  0.0f, 0.0f,
+									 0.0f,  0.0f, -1.0f, 0.0f,
+									 1.0f,  0.0f,  0.0f, 0.0f);
+
+							Transform pose = iter->second;
+							if(!localTransform.isNull())
+							{
+								pose*=localTransform*optical_rotation_inv;
+							}
+							Transform poseGL = opengl_world_T_rtabmap_world*pose.inverse();
+
+							out << poseGL.r11() << " " << poseGL.r12() << " " << poseGL.r13() << "\n";
+							out << poseGL.r21() << " " << poseGL.r22() << " " << poseGL.r23() << "\n";
+							out << poseGL.r31() << " " << poseGL.r32() << " " << poseGL.r33() << "\n";
+							out << poseGL.x()   << " " << poseGL.y()   << " " << poseGL.z()   << "\n";
+
+						}
+					}
+
 					fileList.close();
+					fileOut.close();
+
+					QMessageBox::information(this,
+							tr("Exporting cameras in Bundler format..."),
+							tr("%1 cameras/images exported to directory \"%2\".%3")
+							.arg(poses.size())
+							.arg(path)
+							.arg(ignoredCameras.size()>0?tr(" %1/%2 cameras ignored for too fast motion and/or blur level.").arg(ignoredCameras.size()).arg(poses.size()):""));
 				}
-				fileOut.close();
+				else
+				{
+					fileOut.close();
+					QMessageBox::warning(this, tr("Exporting cameras..."), tr("Failed opening file %1 for writing.").arg(path+QDir::separator()+"list.txt"));
+				}
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Exporting cameras..."), tr("Failed opening file %1 for writing.").arg(path+QDir::separator()+"cameras.out"));
 			}
 		}
 	}
