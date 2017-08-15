@@ -104,11 +104,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 	SensorData & dataFrom = fromSignature.sensorData();
 	SensorData & dataTo = toSignature.sensorData();
 
-	UDEBUG("size from=%d (channels=%d) to=%d (channels=%d)",
+	UDEBUG("size from=%d (channels=%d, max pts=%d) to=%d (channels=%d, max pts=%d)",
 			dataFrom.laserScanRaw().cols,
 			dataFrom.laserScanRaw().channels(),
+			dataFrom.laserScanInfo().maxPoints(),
 			dataTo.laserScanRaw().cols,
-			dataTo.laserScanRaw().channels());
+			dataTo.laserScanRaw().channels(),
+			dataTo.laserScanInfo().maxPoints());
 
 	if(!guess.isNull() && !dataFrom.laserScanRaw().empty() && !dataTo.laserScanRaw().empty())
 	{
@@ -164,20 +166,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 							_maxCorrespondenceDistance,
 							variance,
 							correspondences);
-					/*
-					UWARN("icpT=%s", icpT.prettyPrint().c_str());
-					pcl::io::savePCDFile("fromCloud.pcd", *fromCloudNormals);
-					pcl::io::savePCDFile("toCloud.pcd", *toCloudNormals);
-					UWARN("saved fromCloud.pcd and toCloud.pcd");
-					if(!icpT.isNull())
-					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudTmp = util3d::transformPointCloud(fromCloudNormals, icpT);
-						pcl::io::savePCDFile("fromCloudFinal.pcd", *fromCloudTmp);
-						pcl::io::savePCDFile("fromCloudFinal2.pcd", *fromCloudNormalsRegistered);
-						UWARN("saved fromCloudFinal.pcd");
-					}
-					*/
-
 				}
 			}
 			else
@@ -188,7 +176,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudFiltered = fromCloud;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
-				bool filtered = false;
 				if(_voxelSize > 0.0f)
 				{
 					int pointsBeforeFiltering = fromCloudFiltered->size();
@@ -199,14 +186,13 @@ Transform RegistrationIcp::computeTransformationImpl(
 					toCloudFiltered = util3d::voxelize(toCloudFiltered, _voxelSize);
 					maxLaserScansTo = maxLaserScansTo * toCloudFiltered->size() / pointsBeforeFiltering;
 
-					filtered = true;
-					UDEBUG("Voxel filtering time (voxel=%f m) = %f s", _voxelSize, timer.ticks());
-
-					//Adjust maxLaserScans
-
+					UDEBUG("Voxel filtering time (voxel=%f m, ratioFrom=%f ratioTo=%f) = %f s",
+							_voxelSize,
+							float(fromCloudFiltered->size()) / float(pointsBeforeFiltering),
+							float(toCloudFiltered->size()) / float(pointsBeforeFiltering),
+							timer.ticks());
 				}
 
-				bool correspondencesComputed = false;
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 				if(_pointToPlane) // ICP Point To Plane, only in 3D
 				{
@@ -242,9 +228,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 							   *fromCloudNormalsRegistered,
 							   _epsilon,
 							   this->force3DoF());
-						if(!filtered &&
-							!icpT.isNull() &&
-							hasConverged)
+						if(!icpT.isNull() && hasConverged)
 						{
 							util3d::computeVarianceAndCorrespondences(
 									fromCloudNormalsRegistered,
@@ -252,7 +236,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 									_maxCorrespondenceDistance,
 									variance,
 									correspondences);
-							correspondencesComputed = true;
 						}
 					}
 				}
@@ -274,43 +257,21 @@ Transform RegistrationIcp::computeTransformationImpl(
 						   *fromCloudRegistered,
 						   _epsilon,
 						   this->force3DoF()); // icp2D
-				}
 
-				/*pcl::io::savePCDFile("fromCloud.pcd", *fromCloud);
-				pcl::io::savePCDFile("toCloud.pcd", *toCloud);
-				UWARN("saved fromCloud.pcd and toCloud.pcd");
-				if(!icpT.isNull())
-				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudTmp = util3d::transformPointCloud(fromCloud, icpT);
-					pcl::io::savePCDFile("fromCloudFinal.pcd", *fromCloudTmp);
-					UWARN("saved fromCloudFinal.pcd");
-				}*/
-
-				if(!icpT.isNull() &&
-					hasConverged &&
-					!correspondencesComputed)
-				{
-					if(filtered)
+					if(!icpT.isNull() && hasConverged)
 					{
-						fromCloud = util3d::transformPointCloud(fromCloud, icpT);
+						util3d::computeVarianceAndCorrespondences(
+								fromCloudRegistered,
+								toCloudFiltered,
+								_maxCorrespondenceDistance,
+								variance,
+								correspondences);
 					}
-					else
-					{
-						fromCloud = fromCloudRegistered;
-					}
-
-					util3d::computeVarianceAndCorrespondences(
-							fromCloud,
-							toCloud,
-							_maxCorrespondenceDistance,
-							variance,
-							correspondences);
 				}
 			}
 			UDEBUG("ICP (iterations=%d) time = %f s", _maxIterations, timer.ticks());
 
-			if(!icpT.isNull() &&
-				hasConverged)
+			if(!icpT.isNull() && hasConverged)
 			{
 				float ix,iy,iz, iroll,ipitch,iyaw;
 				Transform icpInTargetReferential = guess.inverse() * icpT.inverse() * guess; // actual local ICP refinement
@@ -332,8 +293,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 				}
 				else
 				{
-					// verify if there are enough correspondences
+					// verify if there are enough correspondences (using "To" by default if set, in case if "From" is merged from multiple scans)
 					int maxLaserScans = maxLaserScansTo?maxLaserScansTo:maxLaserScansFrom;
+					UDEBUG("Max scans=%d (from=%d, to=%d)", maxLaserScans, maxLaserScansFrom, maxLaserScansTo);
 					if(maxLaserScans)
 					{
 						correspondencesRatio = float(correspondences)/float(maxLaserScans);

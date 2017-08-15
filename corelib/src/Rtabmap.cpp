@@ -1247,7 +1247,7 @@ bool Rtabmap::process(
 					Transform guess;
 					if(_optimizedPoses.find(*iter) != _optimizedPoses.end())
 					{
-						guess = newPose.inverse() * _optimizedPoses.at(*iter);
+						guess = _optimizedPoses.at(*iter).inverse() * newPose;
 					}
 
 					// For proximity by time, correspondences should be already enough precise, so don't recompute them

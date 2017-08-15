@@ -97,9 +97,12 @@ private:
 class OdometryResetEvent : public UEvent
 {
 public:
-	OdometryResetEvent(){}
+	OdometryResetEvent(const Transform & pose = Transform::getIdentity()){_pose = pose;}
 	virtual ~OdometryResetEvent() {}
 	virtual std::string getClassName() const {return "OdometryResetEvent";}
+	const Transform & getPose() const {return _pose;}
+private:
+	Transform _pose;
 };
 
 }

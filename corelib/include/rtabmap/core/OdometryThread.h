@@ -65,6 +65,7 @@ private:
 	Odometry * _odometry;
 	unsigned int _dataBufferMaxSize;
 	bool _resetOdometry;
+	Transform _resetPose;
 };
 
 } // namespace rtabmap

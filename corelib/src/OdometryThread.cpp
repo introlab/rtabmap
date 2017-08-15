@@ -39,7 +39,8 @@ namespace rtabmap {
 OdometryThread::OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize) :
 	_odometry(odometry),
 	_dataBufferMaxSize(dataBufferMaxSize),
-	_resetOdometry(false)
+	_resetOdometry(false),
+	_resetPose(Transform::getIdentity())
 {
 	UASSERT(_odometry != 0);
 }
@@ -67,10 +68,16 @@ bool OdometryThread::handleEvent(UEvent * event)
 				this->addData(cameraEvent->data());
 			}
 		}
-		else if(event->getClassName().compare("OdometryResetEvent") == 0)
+	}
+	if(event->getClassName().compare("OdometryResetEvent") == 0)
+	{
+		OdometryResetEvent * odomEvent = (OdometryResetEvent*)event;
+		_resetPose.setIdentity();
+		if(!odomEvent->getPose().isNull())
 		{
-			_resetOdometry = true;
+			_resetPose = odomEvent->getPose();
 		}
+		_resetOdometry = true;
 	}
 	return false;
 }
@@ -92,7 +99,7 @@ void OdometryThread::mainLoop()
 {
 	if(_resetOdometry)
 	{
-		_odometry->reset();
+		_odometry->reset(_resetPose);
 		_resetOdometry = false;
 	}
 
