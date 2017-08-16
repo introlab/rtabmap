@@ -251,5 +251,7 @@ int main(int argc, char * argv[])
 		printf("Saving rtabmap_trajectory.txt... failed!\n");
 	}
 
+	rtabmap->close(false);
+
 	return 0;
 }
