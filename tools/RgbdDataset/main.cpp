@@ -57,7 +57,7 @@ void showUsage()
 			"  --output           Output directory. By default, results are saved in \"path\".\n\n"
 			"%s\n"
 			"Example:\n\n"
-			"   $ rtabmap-kitti_dataset \\\n"
+			"   $ rtabmap-rgbd_dataset \\\n"
 			"       --Vis/EstimationType 1\\\n"
 			"       --Vis/BundleAdjustment 1\\\n"
 			"       --Vis/PnPReprojError 1.5\\\n"
