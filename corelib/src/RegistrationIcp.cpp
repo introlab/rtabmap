@@ -439,8 +439,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 				}
 				else
-				{
 #endif
+				{
 					icpT = util3d::icpPointToPlane(
 							fromCloudNormals,
 							toCloudNormals,
