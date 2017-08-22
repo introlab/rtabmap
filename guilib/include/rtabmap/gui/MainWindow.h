@@ -173,6 +173,7 @@ private slots:
 	void downloadPoseGraph();
 	void anchorCloudsToGroundTruth();
 	void clearTheCache();
+	void openHelp();
 	void openPreferences();
 	void openPreferencesSource();
 	void setDefaultViews();

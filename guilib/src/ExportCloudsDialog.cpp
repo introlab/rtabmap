@@ -2182,7 +2182,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						}
 					}
 				}
-				if(ignoredCameras > validCameras.size()/2)
+				if(ignoredCameras > (int)validCameras.size()/2)
 				{
 					std::string msg = uFormat("More than 50%% of the cameras (%d/%d) have been filtered for "
 							"too fast motion and/or blur level. You may adjust the corresponding thresholds.",

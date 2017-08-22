@@ -346,6 +346,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	connect(_ui->actionLabel_current_location, SIGNAL(triggered()), this, SLOT(label()));
 	connect(_ui->actionClear_cache, SIGNAL(triggered()), this, SLOT(clearTheCache()));
 	connect(_ui->actionAbout, SIGNAL(triggered()), _aboutDialog , SLOT(exec()));
+	connect(_ui->actionHelp, SIGNAL(triggered()), this , SLOT(openHelp()));
 	connect(_ui->actionPrint_loop_closure_IDs_to_console, SIGNAL(triggered()), this, SLOT(printLoopClosureIds()));
 	connect(_ui->actionGenerate_map, SIGNAL(triggered()), this , SLOT(generateGraphDOT()));
 	connect(_ui->actionRaw_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesRaw()));
@@ -5902,6 +5903,18 @@ void MainWindow::clearTheCache()
 			_preferencesDialog->isOctomapFullUpdate());
 #endif
 	_occupancyGrid->clear();
+}
+
+void MainWindow::openHelp()
+{
+	if(_state == kMonitoringPaused || _state == kMonitoring)
+	{
+		QDesktopServices::openUrl(QUrl("http://wiki.ros.org/rtabmap_ros"));
+	}
+	else
+	{
+		QDesktopServices::openUrl(QUrl("https://github.com/introlab/rtabmap/wiki"));
+	}
 }
 
 void MainWindow::updateElapsedTime()
