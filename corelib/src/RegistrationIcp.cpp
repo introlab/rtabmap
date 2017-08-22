@@ -47,6 +47,7 @@ typedef PM::DataPoints DP;
 
 DP pclToDP(const pcl::PointCloud<pcl::PointXYZ>::Ptr & pclCloud)
 {
+	UDEBUG("");
 	typedef DP::Label Label;
 	typedef DP::Labels Labels;
 	typedef DP::View View;
@@ -88,6 +89,7 @@ DP pclToDP(const pcl::PointCloud<pcl::PointXYZ>::Ptr & pclCloud)
 
 DP pclToDP(const pcl::PointCloud<pcl::PointNormal>::Ptr & pclCloud)
 {
+	UDEBUG("");
 	typedef DP::Label Label;
 	typedef DP::Labels Labels;
 	typedef DP::View View;
@@ -141,6 +143,7 @@ DP pclToDP(const pcl::PointCloud<pcl::PointNormal>::Ptr & pclCloud)
 
 void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointXYZ> & pclCloud)
 {
+	UDEBUG("");
 	typedef DP::ConstView ConstView;
 
 	if (cloud.features.cols() == 0)
@@ -163,6 +166,7 @@ void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointXYZ> & pclCloud)
 
 void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointNormal> & pclCloud)
 {
+	UDEBUG("");
 	typedef DP::ConstView ConstView;
 
 	if (cloud.features.cols() == 0)
@@ -421,7 +425,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 					{
 						UASSERT(_libpointmatcherICP != 0);
 						PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
+						UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
 						T = icp(data, ref);
+						UDEBUG("libpointmatcher icp...done!");
 						icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
 
 						float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
@@ -527,7 +533,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 							{
 								UASSERT(_libpointmatcherICP != 0);
 								PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
+								UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
 								T = icp(data, ref);
+								UDEBUG("libpointmatcher icp...done!");
 								icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
 
 								float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
@@ -592,7 +600,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 						{
 							UASSERT(_libpointmatcherICP != 0);
 							PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
+							UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
 							T = icp(data, ref);
+							UDEBUG("libpointmatcher icp...done!");
 							icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
 
 							float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
