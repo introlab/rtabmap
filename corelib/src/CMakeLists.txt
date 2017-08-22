@@ -243,6 +243,17 @@ IF(cvsba_FOUND)
 	)
 ENDIF(cvsba_FOUND)
 
+IF(libpointmatcher_FOUND)
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${libpointmatcher_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${libpointmatcher_LIBRARIES}
+	)
+ENDIF(libpointmatcher_FOUND)
+
 IF(ZED_FOUND)
 	SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}

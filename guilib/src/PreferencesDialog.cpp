@@ -238,6 +238,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->graphOptimization_robust->setEnabled(false);
 	}
+#ifndef RTABMAP_POINTMATCHER
+	_ui->groupBox_libpointmatcher->setEnabled(false);
+#endif
 	if(!CameraOpenni::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(0, 0, Qt::UserRole - 1);
@@ -855,6 +858,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpRatio->setObjectName(Parameters::kIcpCorrespondenceRatio().c_str());
 	_ui->loopClosure_icpPointToPlane->setObjectName(Parameters::kIcpPointToPlane().c_str());
 	_ui->loopClosure_icpPointToPlaneNormals->setObjectName(Parameters::kIcpPointToPlaneNormalNeighbors().c_str());
+
+	_ui->groupBox_libpointmatcher->setObjectName(Parameters::kIcpPM().c_str());
+	_ui->lineEdit_IcpPMConfigPath->setObjectName(Parameters::kIcpPMConfig().c_str());
+	connect(_ui->toolButton_IcpConfigPath, SIGNAL(clicked()), this, SLOT(changeIcpPMConfigPath()));
 
 	// Occupancy grid
 	_ui->groupBox_grid_3d->setObjectName(Parameters::kGrid3D().c_str());
@@ -4048,6 +4055,23 @@ void PreferencesDialog::changeOdometryORBSLAM2Vocabulary()
 	if(!path.isEmpty())
 	{
 		_ui->lineEdit_OdomORBSLAM2VocPath->setText(path);
+	}
+}
+
+void PreferencesDialog::changeIcpPMConfigPath()
+{
+	QString path;
+	if(_ui->lineEdit_IcpPMConfigPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), this->getWorkingDirectory(), tr("libpointmatcher (*.yaml)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("Select file"), _ui->lineEdit_IcpPMConfigPath->text(), tr("libpointmatcher (*.yaml)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_IcpPMConfigPath->setText(path);
 	}
 }
 

@@ -306,6 +306,7 @@ private slots:
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void changeOdometryORBSLAM2Vocabulary();
+	void changeIcpPMConfigPath();
 	void readSettingsEnd();
 	void setupTreeView();
 	void updateBasicParameter();

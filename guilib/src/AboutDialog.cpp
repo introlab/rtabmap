@@ -95,6 +95,14 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_cvsba->setText(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?"Yes":"No");
 	_ui->label_cvsba_license->setEnabled(Optimizer::isAvailable(Optimizer::kTypeCVSBA)?true:false);
 
+#ifdef RTABMAP_POINTMATCHER
+	_ui->label_libpointmatcher->setText("Yes");
+	_ui->label_libpointmatcher_license->setEnabled(true);
+#else
+	_ui->label_libpointmatcher->setText("No");
+	_ui->label_libpointmatcher_license->setEnabled(false);
+#endif
+
 #ifdef RTABMAP_FOVIS
 	_ui->label_fovis->setText("Yes");
 	_ui->label_fovis_license->setEnabled(true);

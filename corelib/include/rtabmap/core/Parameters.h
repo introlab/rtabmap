@@ -512,6 +512,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
     RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");
 
+    RTABMAP_PARAM(Icp, PM,                       bool, false,   "Use libpointmatcher for ICP registration instead of PCL's implementation.");
+    RTABMAP_PARAM_STR(Icp, PMConfig,             "",            uFormat("Configuration file (*.yaml) used by libpointmatcher. Note that data filters set for libpointmatcher are done after filtering done by rtabmap (i.e., %s, %s), so make sure to disable those in rtabmap if you want to use only those from libpointmatcher. Parameters %s, %s and %s are also ignored if configuration file is set.", kIcpVoxelSize().c_str(), kIcpDownsamplingStep().c_str(), kIcpIterations().c_str(), kIcpEpsilon().c_str(), kIcpMaxCorrespondenceDistance().c_str()).c_str());
+
     // Stereo disparity
     RTABMAP_PARAM(Stereo, WinWidth,              int, 15,       "Window width.");
     RTABMAP_PARAM(Stereo, WinHeight,             int, 3,        "Window height.");

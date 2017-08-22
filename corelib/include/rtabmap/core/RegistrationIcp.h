@@ -41,7 +41,7 @@ class RTABMAP_EXP RegistrationIcp : public Registration
 public:
 	// take ownership of child
 	RegistrationIcp(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
-	virtual ~RegistrationIcp() {}
+	virtual ~RegistrationIcp();
 
 	virtual void parseParameters(const ParametersMap & parameters);
 
@@ -65,6 +65,9 @@ private:
 	float _correspondenceRatio;
 	bool _pointToPlane;
 	int _pointToPlaneNormalNeighbors;
+	bool _libpointmatcher;
+	std::string _libpointmatcherConfig;
+	void * _libpointmatcherICP;
 };
 
 }
