@@ -63,16 +63,25 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-310</y>
+            <y>0</y>
             <width>678</width>
-            <height>2736</height>
+            <height>2739</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -4521,7 +4530,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="margin">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
                         <number>0</number>
                        </property>
                        <item>
@@ -12473,7 +12491,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12613,7 +12640,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12771,7 +12807,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12851,7 +12896,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12963,7 +13017,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13640,7 +13703,10 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                          <number>3</number>
                         </property>
                         <property name="minimum">
-                         <double>0.010000000000000</double>
+                         <double>0.001000000000000</double>
+                        </property>
+                        <property name="maximum">
+                         <double>9999.989999999999782</double>
                         </property>
                         <property name="singleStep">
                          <double>0.010000000000000</double>
@@ -13741,6 +13807,45 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                           <widget class="QLabel" name="label_423">
                            <property name="text">
                             <string>Configuration file (*.yaml).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="0,1">
+                         <item>
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_icpPMOutlierRatio">
+                           <property name="suffix">
+                            <string/>
+                           </property>
+                           <property name="decimals">
+                            <number>2</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.010000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.850000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_424">
+                           <property name="text">
+                            <string>TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.</string>
                            </property>
                            <property name="wordWrap">
                             <bool>true</bool>

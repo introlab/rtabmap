@@ -228,6 +228,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_pointToPlaneNormalNeighbors(Parameters::defaultIcpPointToPlaneNormalNeighbors()),
 	_libpointmatcher(Parameters::defaultIcpPM()),
 	_libpointmatcherConfig(Parameters::defaultIcpPMConfig()),
+	_libpointmatcherOutlierRatio(Parameters::defaultIcpPMOutlierRatio()),
 	_libpointmatcherICP(0)
 {
 	this->parseParameters(parameters);
@@ -260,6 +261,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 
 	Parameters::parse(parameters, Parameters::kIcpPM(), _libpointmatcher);
 	Parameters::parse(parameters, Parameters::kIcpPMConfig(), _libpointmatcherConfig);
+	Parameters::parse(parameters, Parameters::kIcpPMOutlierRatio(), _libpointmatcherOutlierRatio);
+
 #ifndef RTABMAP_POINTMATCHER
 	if(_libpointmatcher)
 	{
@@ -312,7 +315,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			icp->matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
 			params.clear();
 
-			params["ratio"] = uNumber2Str(0.65); // For kinect cloud, 0.65 is better than 0.85
+			params["ratio"] = uNumber2Str(_libpointmatcherOutlierRatio);
 			icp->outlierFilters.clear();
 			icp->outlierFilters.push_back(PM::get().OutlierFilterRegistrar.create("TrimmedDistOutlierFilter", params));
 			params.clear();
@@ -358,7 +361,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Max translation=%f", _maxTranslation);
 	UDEBUG("Max rotation=%f", _maxRotation);
 	UDEBUG("Downsampling step=%d", _downsamplingStep);
-	UDEBUG("libpointmatcher=%d", _libpointmatcher?1:0);
+	UDEBUG("libpointmatcher=%d (outlier ratio=%f)", _libpointmatcher?1:0, _libpointmatcherOutlierRatio);
 
 	UTimer timer;
 	std::string msg;

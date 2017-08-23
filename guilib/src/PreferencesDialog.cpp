@@ -862,6 +862,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->groupBox_libpointmatcher->setObjectName(Parameters::kIcpPM().c_str());
 	_ui->lineEdit_IcpPMConfigPath->setObjectName(Parameters::kIcpPMConfig().c_str());
 	connect(_ui->toolButton_IcpConfigPath, SIGNAL(clicked()), this, SLOT(changeIcpPMConfigPath()));
+	_ui->doubleSpinBox_icpPMOutlierRatio->setObjectName(Parameters::kIcpPMOutlierRatio().c_str());
 
 	// Occupancy grid
 	_ui->groupBox_grid_3d->setObjectName(Parameters::kGrid3D().c_str());

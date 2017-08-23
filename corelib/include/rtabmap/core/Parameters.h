@@ -512,8 +512,10 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
     RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");
 
+    // libpointmatcher
     RTABMAP_PARAM(Icp, PM,                       bool, false,   "Use libpointmatcher for ICP registration instead of PCL's implementation.");
     RTABMAP_PARAM_STR(Icp, PMConfig,             "",            uFormat("Configuration file (*.yaml) used by libpointmatcher. Note that data filters set for libpointmatcher are done after filtering done by rtabmap (i.e., %s, %s), so make sure to disable those in rtabmap if you want to use only those from libpointmatcher. Parameters %s, %s and %s are also ignored if configuration file is set.", kIcpVoxelSize().c_str(), kIcpDownsamplingStep().c_str(), kIcpIterations().c_str(), kIcpEpsilon().c_str(), kIcpMaxCorrespondenceDistance().c_str()).c_str());
+    RTABMAP_PARAM(Icp, PMOutlierRatio,           float, 0.85,   "TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.");
 
     // Stereo disparity
     RTABMAP_PARAM(Stereo, WinWidth,              int, 15,       "Window width.");

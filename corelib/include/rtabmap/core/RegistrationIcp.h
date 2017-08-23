@@ -67,6 +67,7 @@ private:
 	int _pointToPlaneNormalNeighbors;
 	bool _libpointmatcher;
 	std::string _libpointmatcherConfig;
+	float _libpointmatcherOutlierRatio;
 	void * _libpointmatcherICP;
 };
 
