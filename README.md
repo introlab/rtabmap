@@ -1,6 +1,8 @@
 rtabmap [![Build Status](https://travis-ci.org/introlab/rtabmap.svg?branch=master)](https://travis-ci.org/introlab/rtabmap)
 =======
 
+<img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" align="center" height="100">
+
 [![Release][release-image]][releases]
 [![License][license-image]][license]
 
