@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
+            <y>-831</y>
             <width>678</width>
             <height>2739</height>
            </rect>
@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>21</number>
+                <number>1</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -512,6 +512,31 @@ Show a yellow background when the number of odometry inliers goes under this thr
                       <layout class="QVBoxLayout" name="verticalLayout_112">
                        <item>
                         <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,0,1">
+                         <item row="3" column="1">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_maxDepth_odom">
+                           <property name="suffix">
+                            <string> m</string>
+                           </property>
+                           <property name="decimals">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <double>100.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="5" column="1">
+                          <widget class="QLineEdit" name="lineEdit_roiRatios_odom"/>
+                         </item>
+                         <item row="5" column="0">
+                          <widget class="QLineEdit" name="lineEdit_roiRatios"/>
+                         </item>
                          <item row="0" column="0">
                           <widget class="QLabel" name="label_154">
                            <property name="text">
@@ -597,7 +622,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="12" column="0">
+                         <item row="13" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity">
                            <property name="suffix">
                             <string/>
@@ -616,7 +641,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="12" column="1">
+                         <item row="13" column="1">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom">
                            <property name="suffix">
                             <string/>
@@ -635,7 +660,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="12" column="2">
+                         <item row="13" column="2">
                           <widget class="QLabel" name="label_155">
                            <property name="text">
                             <string>Opacity.</string>
@@ -648,7 +673,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="13" column="2">
+                         <item row="14" column="2">
                           <widget class="QLabel" name="label_157">
                            <property name="text">
                             <string>Point size (1..64).</string>
@@ -709,25 +734,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                            <property name="value">
                             <double>4.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="3" column="1">
-                          <widget class="QDoubleSpinBox" name="doubleSpinBox_maxDepth_odom">
-                           <property name="suffix">
-                            <string> m</string>
-                           </property>
-                           <property name="decimals">
-                            <number>1</number>
-                           </property>
-                           <property name="maximum">
-                            <double>100.000000000000000</double>
-                           </property>
-                           <property name="singleStep">
-                            <double>0.100000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>0.000000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -798,12 +804,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="5" column="0">
-                          <widget class="QLineEdit" name="lineEdit_roiRatios"/>
-                         </item>
-                         <item row="5" column="1">
-                          <widget class="QLineEdit" name="lineEdit_roiRatios_odom"/>
-                         </item>
                          <item row="5" column="2">
                           <widget class="QLabel" name="label_353">
                            <property name="text">
@@ -858,7 +858,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="13" column="0">
+                         <item row="14" column="0">
                           <widget class="QSpinBox" name="spinBox_ptsize">
                            <property name="minimum">
                             <number>1</number>
@@ -871,7 +871,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
-                         <item row="13" column="1">
+                         <item row="14" column="1">
                           <widget class="QSpinBox" name="spinBox_ptsize_odom">
                            <property name="minimum">
                             <number>1</number>
@@ -1010,6 +1010,26 @@ Show a yellow background when the number of odometry inliers goes under this thr
                            </property>
                           </widget>
                          </item>
+                         <item row="12" column="2">
+                          <widget class="QLabel" name="label_427">
+                           <property name="text">
+                            <string>Normal radius search. If not 0, normals will be computed and added to created cloud for visualization (keys  7, 8 and 9).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="12" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_normalRadiusSearch">
+                           <property name="singleStep">
+                            <double>0.010000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
                         </layout>
                        </item>
                        <item>
@@ -1117,7 +1137,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                        <string>Laser Scan</string>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_79" columnstretch="0,0,1">
-                       <item row="8" column="1">
+                       <item row="9" column="1">
                         <widget class="QSpinBox" name="spinBox_ptsize_odom_scan">
                          <property name="minimum">
                           <number>1</number>
@@ -1127,7 +1147,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="2">
+                       <item row="9" column="2">
                         <widget class="QLabel" name="label_158">
                          <property name="text">
                           <string>Scan point size (1..64).</string>
@@ -1169,7 +1189,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="2">
+                       <item row="8" column="2">
                         <widget class="QLabel" name="label_156">
                          <property name="text">
                           <string>Scan opacity.</string>
@@ -1195,7 +1215,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="8" column="0">
+                       <item row="9" column="0">
                         <widget class="QSpinBox" name="spinBox_ptsize_scan">
                          <property name="minimum">
                           <number>1</number>
@@ -1235,7 +1255,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="0">
+                       <item row="8" column="0">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_scan">
                          <property name="suffix">
                           <string/>
@@ -1267,7 +1287,7 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                         </widget>
                        </item>
-                       <item row="7" column="1">
+                       <item row="8" column="1">
                         <widget class="QDoubleSpinBox" name="doubleSpinBox_opacity_odom_scan">
                          <property name="suffix">
                           <string/>
@@ -1437,6 +1457,26 @@ Show a yellow background when the number of odometry inliers goes under this thr
                          </property>
                          <property name="value">
                           <number>10</number>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="2">
+                        <widget class="QLabel" name="label_428">
+                         <property name="text">
+                          <string>Normal radius search. If not 0, normals will be computed and added to created cloud for visualization (keys  7, 8 and 9).</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="7" column="0">
+                        <widget class="QDoubleSpinBox" name="doubleSpinBox_normalRadiusSearch_scan">
+                         <property name="singleStep">
+                          <double>0.010000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -5283,6 +5323,29 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
+                         <item row="3" column="1">
+                          <widget class="QLabel" name="label_425">
+                           <property name="text">
+                            <string>Search radius for normals computation (0=disabled). Useful if the ICP registration approach is point to plane.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="3" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraImages_scanNormalsRadius">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.010000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
                         </layout>
                        </item>
                       </layout>
@@ -5995,6 +6058,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                    <layout class="QVBoxLayout" name="verticalLayout_10">
                     <item>
                      <layout class="QGridLayout" name="gridLayout_42" columnstretch="0,1">
+                      <item row="15" column="0">
+                       <widget class="QSpinBox" name="spinBox_imagePostDecimation">
+                        <property name="minimum">
+                         <number>-16</number>
+                        </property>
+                        <property name="maximum">
+                         <number>16</number>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="0" column="0">
                        <widget class="QSpinBox" name="general_spinBox_maxStMemSize">
                         <property name="minimum">
@@ -6066,19 +6139,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="1">
-                       <widget class="QLabel" name="label_retrieved_3">
-                        <property name="text">
-                         <string>Bad signatures are ignored.</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                        <property name="textInteractionFlags">
-                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="8" column="0">
                        <widget class="QCheckBox" name="general_checkBox_initWMWithAllNodes">
                         <property name="text">
@@ -6089,10 +6149,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="9" column="1">
-                       <widget class="QLabel" name="label_retrieved_5">
+                      <item row="6" column="1">
+                       <widget class="QLabel" name="label_retrieved_3">
                         <property name="text">
-                         <string>Keep raw sensor data. Only useful to save loop closure computation time when features re-extraction is enabled. Disable to save RAM memory.</string>
+                         <string>Bad signatures are ignored.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -6122,10 +6182,10 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="5" column="1">
-                       <widget class="QLabel" name="label_retrieved_11">
+                      <item row="9" column="1">
+                       <widget class="QLabel" name="label_retrieved_5">
                         <property name="text">
-                         <string>Create map labels. The first node of a map will be labelled as &quot;map#&quot; where # is the map ID.</string>
+                         <string>Keep raw sensor data. Only useful to save loop closure computation time when features re-extraction is enabled. Disable to save RAM memory.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -6145,6 +6205,19 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_retrieved_11">
+                        <property name="text">
+                         <string>Create map labels. The first node of a map will be labelled as &quot;map#&quot; where # is the map ID.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="16" column="0">
                        <widget class="QSpinBox" name="general_spinBox_laserScanDownsample">
                         <property name="minimumSize">
@@ -6161,6 +6234,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="11" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_keepDescriptors">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="11" column="1">
                        <widget class="QLabel" name="label_retrieved_12">
                         <property name="text">
@@ -6171,16 +6254,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="11" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_keepDescriptors">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -6256,13 +6329,13 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="15" column="0">
-                       <widget class="QSpinBox" name="spinBox_imagePostDecimation">
-                        <property name="minimum">
-                         <number>-16</number>
+                      <item row="6" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_badSignaturesIgnored">
+                        <property name="text">
+                         <string/>
                         </property>
-                        <property name="maximum">
-                         <number>16</number>
+                        <property name="checked">
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -6292,16 +6365,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="6" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_badSignaturesIgnored">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>false</bool>
-                        </property>
-                       </widget>
-                      </item>
                       <item row="15" column="1">
                        <widget class="QLabel" name="label_retrieved_6">
                         <property name="text">
@@ -6312,6 +6375,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="12" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_saveDepth16bits">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -6338,16 +6411,6 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                         <property name="textInteractionFlags">
                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="12" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_saveDepth16bits">
-                        <property name="text">
-                         <string/>
-                        </property>
-                        <property name="checked">
-                         <bool>false</bool>
                         </property>
                        </widget>
                       </item>
@@ -6380,10 +6443,20 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="13" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_compressionParallelized">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="17" column="1">
                        <widget class="QLabel" name="label_retrieved_14">
                         <property name="text">
-                         <string>If &gt; 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.</string>
+                         <string>If &gt; 0 and laser scans don't have normals, normals will be computed with K search neighbors when creating a signature.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>
@@ -6406,8 +6479,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="13" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_compressionParallelized">
+                      <item row="10" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_saveIntermediateNodeData">
                         <property name="text">
                          <string/>
                         </property>
@@ -6429,13 +6502,29 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="10" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_saveIntermediateNodeData">
+                      <item row="18" column="1">
+                       <widget class="QLabel" name="label_retrieved_17">
                         <property name="text">
-                         <string/>
+                         <string>If &gt; 0 and laser scans don't have normals, normals will be computed with radius search when creating a signature.</string>
                         </property>
-                        <property name="checked">
-                         <bool>false</bool>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="18" column="0">
+                       <widget class="QDoubleSpinBox" name="general_doubleSpinBox_laserScanNormalRadius">
+                        <property name="minimumSize">
+                         <size>
+                          <width>50</width>
+                          <height>0</height>
+                         </size>
+                        </property>
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
                         </property>
                        </widget>
                       </item>
@@ -13761,6 +13850,26 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </property>
                         <property name="value">
                          <double>0.000000000000000</double>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="1">
+                       <widget class="QLabel" name="label_426">
+                        <property name="text">
+                         <string>Search radius to compute normals for point to plane. Normals won't be recomputed if uniform sampling is disabled and that there are already normals in the laser scans.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="10" column="0">
+                       <widget class="QDoubleSpinBox" name="loopClosure_icpPointToPlaneNormalsRadius">
+                        <property name="singleStep">
+                         <double>0.010000000000000</double>
                         </property>
                        </widget>
                       </item>

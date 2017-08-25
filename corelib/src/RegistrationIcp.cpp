@@ -36,8 +36,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UTimer.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/io/vtk_io.h>
 #include <pcl/conversions.h>
 
 #ifdef RTABMAP_POINTMATCHER
@@ -225,7 +223,8 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_epsilon(Parameters::defaultIcpEpsilon()),
 	_correspondenceRatio(Parameters::defaultIcpCorrespondenceRatio()),
 	_pointToPlane(Parameters::defaultIcpPointToPlane()),
-	_pointToPlaneNormalNeighbors(Parameters::defaultIcpPointToPlaneNormalNeighbors()),
+	_pointToPlaneK(Parameters::defaultIcpPointToPlaneK()),
+	_pointToPlaneRadius(Parameters::defaultIcpPointToPlaneRadius()),
 	_libpointmatcher(Parameters::defaultIcpPM()),
 	_libpointmatcherConfig(Parameters::defaultIcpPMConfig()),
 	_libpointmatcherOutlierRatio(Parameters::defaultIcpPMOutlierRatio()),
@@ -257,7 +256,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpEpsilon(), _epsilon);
 	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), _correspondenceRatio);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _pointToPlane);
-	Parameters::parse(parameters, Parameters::kIcpPointToPlaneNormalNeighbors(), _pointToPlaneNormalNeighbors);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), _pointToPlaneK);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneRadius(), _pointToPlaneRadius);
 
 	Parameters::parse(parameters, Parameters::kIcpPM(), _libpointmatcher);
 	Parameters::parse(parameters, Parameters::kIcpPMConfig(), _libpointmatcherConfig);
@@ -342,7 +342,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	UASSERT_MSG(_maxIterations > 0, uFormat("value=%d", _maxIterations).c_str());
 	UASSERT(_epsilon >= 0.0f);
 	UASSERT_MSG(_correspondenceRatio >=0.0f && _correspondenceRatio <=1.0f, uFormat("value=%f", _correspondenceRatio).c_str());
-	UASSERT_MSG(_pointToPlaneNormalNeighbors > 0, uFormat("value=%d", _pointToPlaneNormalNeighbors).c_str());
+	UASSERT_MSG(!_pointToPlane || (_pointToPlane && (_pointToPlaneK > 0 || _pointToPlaneRadius > 0.0f)), uFormat("_pointToPlaneK=%d _pointToPlaneRadius=%f", _pointToPlaneK, _pointToPlaneRadius).c_str());
 }
 
 Transform RegistrationIcp::computeTransformationImpl(
@@ -354,7 +354,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Guess transform = %s", guess.prettyPrint().c_str());
 	UDEBUG("Voxel size=%f", _voxelSize);
 	UDEBUG("PointToPlane=%d", _pointToPlane?1:0);
-	UDEBUG("Normal neighborhood=%d", _pointToPlaneNormalNeighbors);
+	UDEBUG("Normal neighborhood=%d", _pointToPlaneK);
+	UDEBUG("Normal radius=%d", _pointToPlaneRadius);
 	UDEBUG("Max correspondence distance=%f", _maxCorrespondenceDistance);
 	UDEBUG("Max Iterations=%d", _maxIterations);
 	UDEBUG("Correspondence Ratio=%f", _correspondenceRatio);
@@ -406,8 +407,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 			if( _pointToPlane &&
 				_voxelSize == 0.0f &&
-				fromScan.channels() == 6 &&
-				toScan.channels() == 6)
+				fromScan.channels() >= 6 &&
+				toScan.channels() >= 6)
 			{
 				//special case if we have already normals computed and there is no filtering
 				pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::laserScanToPointCloudNormal(fromScan, fromLocalTransform);
@@ -450,6 +451,9 @@ Transform RegistrationIcp::computeTransformationImpl(
 				else
 #endif
 				{
+					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
+					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
+
 					icpT = util3d::icpPointToPlane(
 							fromCloudNormals,
 							toCloudNormals,
@@ -497,15 +501,41 @@ Transform RegistrationIcp::computeTransformationImpl(
 				}
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
-				if(_pointToPlane) // ICP Point To Plane, only in 3D
+				if(_pointToPlane && // ICP Point To Plane
+					!((fromScan.channels() == 2 || toScan.channels() == 2) && !_libpointmatcher)) // PCL crashes if 2D
 				{
 					pcl::PointCloud<pcl::Normal>::Ptr normals;
+					Eigen::Vector3f viewpointFrom(fromLocalTransform.x(), fromLocalTransform.y(), fromLocalTransform.z());
+					Transform toT = guess * toLocalTransform;
+					Eigen::Vector3f viewpointTo(toT.x(), toT.y(), toT.z());
 
-					normals = util3d::computeNormals(fromCloudFiltered, _pointToPlaneNormalNeighbors);
+					if(fromScan.channels() == 2)
+					{
+						normals = util3d::computeFastOrganizedNormals2D(
+								fromCloudFiltered,
+								_pointToPlaneK,
+								_pointToPlaneRadius,
+								viewpointFrom);
+					}
+					else
+					{
+						normals = util3d::computeNormals(fromCloudFiltered, _pointToPlaneK, _pointToPlaneRadius, viewpointFrom);
+					}
 					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 					pcl::concatenateFields(*fromCloudFiltered, *normals, *fromCloudNormals);
 
-					normals = util3d::computeNormals(toCloudFiltered, _pointToPlaneNormalNeighbors);
+					if(toScan.channels() == 2)
+					{
+						normals = util3d::computeFastOrganizedNormals2D(
+								toCloudFiltered,
+								_pointToPlaneK,
+								_pointToPlaneRadius,
+								viewpointTo);
+					}
+					else
+					{
+						normals = util3d::computeNormals(toCloudFiltered, _pointToPlaneK, _pointToPlaneRadius, viewpointTo);
+					}
 					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 					pcl::concatenateFields(*toCloudFiltered, *normals, *toCloudNormals);
 
@@ -517,7 +547,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					fromSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
 					toSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
 
-					UDEBUG("Compute normals time = %f s", timer.ticks());
+					UDEBUG("Compute normals (%d,%d) time = %f s", (int)fromCloudNormals->size(), (int)toCloudNormals->size(), timer.ticks());
 
 					if(toCloudNormals->size() && fromCloudNormals->size())
 					{
@@ -569,7 +599,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 								   this->force3DoF());
 						}
 
-
 						if(!icpT.isNull() && hasConverged)
 						{
 							util3d::computeVarianceAndCorrespondences(
@@ -583,6 +612,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 				}
 				else // ICP Point to Point
 				{
+					if(_pointToPlane && ((fromScan.channels() == 2 || toScan.channels() == 2) && !_libpointmatcher))
+					{
+						UWARN("ICP PointToPlane ignored for 2d scans with PCL registration (some crash issues). Use libpointmatcher (%s) or disable %s to avoid this warning.", Parameters::kIcpPM().c_str(), Parameters::kIcpPointToPlane().c_str());
+					}
+
 					if(_voxelSize > 0.0f)
 					{
 						// update output scans

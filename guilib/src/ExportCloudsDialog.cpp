@@ -88,6 +88,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	connect(_ui->checkBox_fromDepth, SIGNAL(stateChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->checkBox_binary, SIGNAL(stateChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SIGNAL(configChanged()));
+	connect(_ui->doubleSpinBox_normalRadiusSearch, SIGNAL(valueChanged(double)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_pipeline, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
 	connect(_ui->comboBox_pipeline, SIGNAL(currentIndexChanged(int)), this, SLOT(updateReconstructionFlavor()));
 	connect(_ui->comboBox_meshingApproach, SIGNAL(currentIndexChanged(int)), this, SIGNAL(configChanged()));
@@ -255,6 +256,7 @@ void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & grou
 	settings.setValue("from_depth", _ui->checkBox_fromDepth->isChecked());
 	settings.setValue("binary", _ui->checkBox_binary->isChecked());
 	settings.setValue("normals_k", _ui->spinBox_normalKSearch->value());
+	settings.setValue("normals_radius", _ui->doubleSpinBox_normalRadiusSearch->value());
 
 	settings.setValue("regenerate", _ui->checkBox_regenerate->isChecked());
 	settings.setValue("regenerate_decimation", _ui->spinBox_decimation->value());
@@ -371,6 +373,7 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->checkBox_fromDepth->setChecked(settings.value("from_depth", _ui->checkBox_fromDepth->isChecked()).toBool());
 	_ui->checkBox_binary->setChecked(settings.value("binary", _ui->checkBox_binary->isChecked()).toBool());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normals_k", _ui->spinBox_normalKSearch->value()).toInt());
+	_ui->doubleSpinBox_normalRadiusSearch->setValue(settings.value("normals_radius", _ui->doubleSpinBox_normalRadiusSearch->value()).toDouble());
 
 	_ui->checkBox_regenerate->setChecked(settings.value("regenerate", _ui->checkBox_regenerate->isChecked()).toBool());
 	_ui->spinBox_decimation->setValue(settings.value("regenerate_decimation", _ui->spinBox_decimation->value()).toInt());
@@ -487,6 +490,7 @@ void ExportCloudsDialog::restoreDefaults()
 	_ui->checkBox_fromDepth->setChecked(true);
 	_ui->checkBox_binary->setChecked(true);
 	_ui->spinBox_normalKSearch->setValue(20);
+	_ui->doubleSpinBox_normalRadiusSearch->setValue(0.0);
 
 	_ui->checkBox_regenerate->setChecked(_dbDriver!=0?true:false);
 	_ui->spinBox_decimation->setValue(1);
@@ -1384,7 +1388,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				// recompute normals
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWithoutNormals(new pcl::PointCloud<pcl::PointXYZ>);
 				pcl::copyPointCloud(*assembledCloud, *cloudWithoutNormals);
-				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value());
+				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value());
 
 				UASSERT(assembledCloud->size() == normals->size());
 				for(unsigned int i=0; i<normals->size(); ++i)
@@ -2521,7 +2525,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 							viewPoint[2] = data.stereoCameraModel().localTransform().z();
 						}
 
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
 						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 
 						if(_ui->checkBox_subtraction->isChecked() &&
@@ -2592,7 +2596,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						}
 						else
 						{
-							normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+							normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
 						}
 						pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 					}
@@ -2673,7 +2677,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					_progressDialog->appendText(tr("Cached cloud %1 is not found in cached data, the view point for normal computation will not be set (%2/%3).").arg(iter->first).arg(index).arg(poses.size()), Qt::darkYellow);
 				}
 
-				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
 				pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 			}
 			else if(!_ui->checkBox_fromDepth->isChecked() && uContains(cachedScans, iter->first))
@@ -2731,7 +2735,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 					}
 					else
 					{
-						normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), viewPoint);
+						normals = util3d::computeNormals(cloudWithoutNormals, indices, _ui->spinBox_normalKSearch->value(), _ui->doubleSpinBox_normalRadiusSearch->value(), viewPoint);
 					}
 					pcl::concatenateFields(*cloudWithoutNormals, *normals, *cloud);
 				}

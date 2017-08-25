@@ -89,6 +89,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
 	_laserScanNormalK(Parameters::defaultMemLaserScanNormalK()),
+	_laserScanNormalRadius(Parameters::defaultMemLaserScanNormalRadius()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
@@ -440,6 +441,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemCompressionParallelized(), _compressionParallelized);
 	Parameters::parse(parameters, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
 	Parameters::parse(parameters, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
+	Parameters::parse(parameters, Parameters::kMemLaserScanNormalRadius(), _laserScanNormalRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
@@ -3718,13 +3720,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		if(stats) stats->addStatistic(Statistics::kTimingMemScan_downsampling(), t*1000.0f);
 		UDEBUG("time downsampling scan = %fs", t);
 	}
-	if(!laserScan.empty() && _laserScanNormalK > 0 && laserScan.channels() == 3 && !isIntermediateNode)
+	if(!laserScan.empty() &&
+		(_laserScanNormalK > 0 || _laserScanNormalRadius>0.0f) &&
+		laserScan.channels() > 1 && laserScan.channels() < 5 &&
+		!isIntermediateNode)
 	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
-		float x,y,z;
-		data.laserScanInfo().localTransform().getTranslation(x,y,z);
-		pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _laserScanNormalK, Eigen::Vector3f(x,y,z));
-		laserScan = util3d::laserScanFromPointCloud(*cloud, *normals);
+		laserScan = util3d::computeNormals(laserScan, _laserScanNormalK, _laserScanNormalRadius);
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemScan_normals(), t*1000.0f);
 		UDEBUG("time normals scan = %fs", t);

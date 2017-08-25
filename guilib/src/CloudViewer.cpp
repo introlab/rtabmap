@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/CloudViewer.h"
 
 #include <rtabmap/core/Version.h>
+#include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
@@ -190,6 +191,9 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_aShowGrid(0),
 		_aSetGridCellCount(0),
 		_aSetGridCellSize(0),
+		_aShowNormals(0),
+		_aSetNormalsStep(0),
+		_aSetNormalsScale(0),
 		_aSetBackgroundColor(0),
 		_aSetRenderingRate(0),
 		_aSetLighting(0),
@@ -203,6 +207,8 @@ CloudViewer::CloudViewer(QWidget *parent) :
 		_frustumColor(Qt::gray),
 		_gridCellCount(50),
 		_gridCellSize(1),
+		_normalsStep(1),
+		_normalsScale(0.2),
 		_lastCameraOrientation(0,0,0),
 		_lastCameraPose(0,0,0),
 		_defaultBgColor(Qt::black),
@@ -310,6 +316,10 @@ void CloudViewer::createMenu()
 	_aShowGrid->setCheckable(true);
 	_aSetGridCellCount = new QAction("Set cell count...", this);
 	_aSetGridCellSize = new QAction("Set cell size...", this);
+	_aShowNormals = new QAction("Show normals", this);
+	_aShowNormals->setCheckable(true);
+	_aSetNormalsStep = new QAction("Set normals step...", this);
+	_aSetNormalsScale = new QAction("Set normals scale...", this);
 	_aSetBackgroundColor = new QAction("Set background color...", this);	
 	_aSetRenderingRate = new QAction("Set rendering rate...", this);
 	_aSetLighting = new QAction("Lighting", this);
@@ -352,12 +362,18 @@ void CloudViewer::createMenu()
 	gridMenu->addAction(_aSetGridCellCount);
 	gridMenu->addAction(_aSetGridCellSize);
 
+	QMenu * normalsMenu = new QMenu("Normals", this);
+	normalsMenu->addAction(_aShowNormals);
+	normalsMenu->addAction(_aSetNormalsStep);
+	normalsMenu->addAction(_aSetNormalsScale);
+
 	//menus
 	_menu = new QMenu(this);
 	_menu->addMenu(cameraMenu);
 	_menu->addMenu(trajectoryMenu);
 	_menu->addMenu(frustumMenu);
 	_menu->addMenu(gridMenu);
+	_menu->addMenu(normalsMenu);
 	_menu->addAction(_aSetBackgroundColor);
 	_menu->addAction(_aSetRenderingRate);
 	_menu->addAction(_aSetLighting);
@@ -400,6 +416,10 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("grid_cell_count", this->getGridCellCount());
 	settings.setValue("grid_cell_size", (double)this->getGridCellSize());
 
+	settings.setValue("normals", this->isNormalsShown());
+	settings.setValue("normals_step", this->getNormalsStep());
+	settings.setValue("normals_scale", (double)this->getNormalsScale());
+
 	settings.setValue("trajectory_shown", this->isTrajectoryShown());
 	settings.setValue("trajectory_size", this->getTrajectorySize());
 
@@ -439,6 +459,10 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setGridCellCount(settings.value("grid_cell_count", this->getGridCellCount()).toUInt());
 	this->setGridCellSize(settings.value("grid_cell_size", this->getGridCellSize()).toFloat());
 
+	this->setNormalsShown(settings.value("normals", this->isNormalsShown()).toBool());
+	this->setNormalsStep(settings.value("normals_step", this->getNormalsStep()).toInt());
+	this->setNormalsScale(settings.value("normals_scale", this->getNormalsScale()).toFloat());
+
 	this->setTrajectoryShown(settings.value("trajectory_shown", this->isTrajectoryShown()).toBool());
 	this->setTrajectorySize(settings.value("trajectory_size", this->getTrajectorySize()).toUInt());
 
@@ -473,10 +497,21 @@ bool CloudViewer::updateCloudPose(
 	if(_addedClouds.contains(id))
 	{
 		UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
-		if(_addedClouds.find(id).value() == pose ||
-		   _visualizer->updatePointCloudPose(id, pose.toEigen3f()))
+		bool samePose = _addedClouds.find(id).value() == pose;
+		Eigen::Affine3f posef = pose.toEigen3f();
+		if(samePose ||
+		   _visualizer->updatePointCloudPose(id, posef))
 		{
 			_addedClouds.find(id).value() = pose;
+			if(!samePose)
+			{
+				std::string idNormals = id+"-normals";
+				if(_addedClouds.find(idNormals)!=_addedClouds.end())
+				{
+					_visualizer->updatePointCloudPose(idNormals, posef);
+					_addedClouds.find(idNormals).value() = pose;
+				}
+			}
 			return true;
 		}
 	}
@@ -500,6 +535,18 @@ bool CloudViewer::addCloud(
 
 	Eigen::Vector4f origin(pose.x(), pose.y(), pose.z(), 0.0f);
 	Eigen::Quaternionf orientation = Eigen::Quaternionf(pose.toEigen3f().rotation());
+
+	if(haveNormals && _aShowNormals->isChecked())
+	{
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloud_xyz (new pcl::PointCloud<pcl::PointNormal>);
+		pcl::fromPCLPointCloud2 (*binaryCloud, *cloud_xyz);
+		std::string idNormals = id + "-normals";
+		if(_visualizer->addPointCloudNormals<pcl::PointNormal>(cloud_xyz, _normalsStep, _normalsScale, idNormals, 0))
+		{
+			_visualizer->updatePointCloudPose(idNormals, pose.toEigen3f());
+			_addedClouds.insert(idNormals, pose);
+		}
+	}
 
 	// add random color channel
 	 pcl::visualization::PointCloudColorHandler<pcl::PCLPointCloud2>::Ptr colorHandler;
@@ -1626,7 +1673,9 @@ void CloudViewer::removeAllClouds()
 bool CloudViewer::removeCloud(const std::string & id)
 {
 	bool success = _visualizer->removePointCloud(id);
+	_visualizer->removePointCloud(id+"-normals");
 	_addedClouds.remove(id); // remove after visualizer
+	_addedClouds.remove(id+"-normals");
 	return success;
 }
 
@@ -1929,6 +1978,12 @@ void CloudViewer::setCloudVisibility(const std::string & id, bool isVisible)
 	if(iter != cloudActorMap->end())
 	{
 		iter->second.actor->SetVisibility(isVisible?1:0);
+
+		iter = cloudActorMap->find(id+"-normals");
+		if(iter != cloudActorMap->end())
+		{
+			iter->second.actor->SetVisibility(isVisible&&_aShowNormals->isChecked()?1:0);
+		}
 	}
 	else
 	{
@@ -1992,20 +2047,6 @@ void CloudViewer::setCameraLockZ(bool enabled)
 	_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
 	_aLockViewZ->setChecked(enabled);
 }
-
-void CloudViewer::setGridShown(bool shown)
-{
-	_aShowGrid->setChecked(shown);
-	if(shown)
-	{
-		this->addGrid();
-	}
-	else
-	{
-		this->removeGrid();
-	}
-}
-
 bool CloudViewer::isCameraTargetLocked() const
 {
 	return _aLockCamera->isChecked();
@@ -2022,6 +2063,23 @@ bool CloudViewer::isCameraLockZ() const
 {
 	return _aLockViewZ->isChecked();
 }
+double CloudViewer::getRenderingRate() const
+{
+	return _renderingRate;
+}
+
+void CloudViewer::setGridShown(bool shown)
+{
+	_aShowGrid->setChecked(shown);
+	if(shown)
+	{
+		this->addGrid();
+	}
+	else
+	{
+		this->removeGrid();
+	}
+}
 bool CloudViewer::isGridShown() const
 {
 	return _aShowGrid->isChecked();
@@ -2034,11 +2092,6 @@ float CloudViewer::getGridCellSize() const
 {
 	return _gridCellSize;
 }
-double CloudViewer::getRenderingRate() const
-{
-	return _renderingRate;
-}
-
 void CloudViewer::setGridCellCount(unsigned int count)
 {
 	if(count > 0)
@@ -2108,6 +2161,54 @@ void CloudViewer::removeGrid()
 		_visualizer->removeShape(*iter);
 	}
 	_gridLines.clear();
+}
+
+void CloudViewer::setNormalsShown(bool shown)
+{
+	_aShowNormals->setChecked(shown);
+	QList<std::string> ids = _addedClouds.keys();
+	for(QList<std::string>::iterator iter = ids.begin(); iter!=ids.end(); ++iter)
+	{
+		std::string idNormals = *iter + "-normals";
+		if(_addedClouds.find(idNormals) != _addedClouds.end())
+		{
+			this->setCloudVisibility(idNormals, this->getCloudVisibility(*iter) && shown);
+		}
+	}
+}
+bool CloudViewer::isNormalsShown() const
+{
+	return _aShowNormals->isChecked();
+}
+int CloudViewer::getNormalsStep() const
+{
+	return _normalsStep;
+}
+float CloudViewer::getNormalsScale() const
+{
+	return _normalsScale;
+}
+void CloudViewer::setNormalsStep(int step)
+{
+	if(step > 0)
+	{
+		_normalsStep = step;
+	}
+	else
+	{
+		UERROR("Cannot set normals step <= 0, step=%d", step);
+	}
+}
+void CloudViewer::setNormalsScale(float scale)
+{
+	if(scale > 0)
+	{
+		_normalsScale= scale;
+	}
+	else
+	{
+		UERROR("Cannot set normals scale <= 0, value=%f", scale);
+	}
 }
 
 Eigen::Vector3f rotatePointAroundAxe(
@@ -2403,6 +2504,29 @@ void CloudViewer::handleAction(QAction * a)
 		if(ok)
 		{
 			this->setGridCellSize(value);
+		}
+	}
+	else if(a == _aShowNormals)
+	{
+		this->setNormalsShown(_aShowNormals->isChecked());
+		this->update();
+	}
+	else if(a == _aSetNormalsStep)
+	{
+		bool ok;
+		int value = QInputDialog::getInt(this, tr("Set normals step"), tr("Step"), _normalsStep, 1, 10000, 1, &ok);
+		if(ok)
+		{
+			this->setNormalsStep(value);
+		}
+	}
+	else if(a == _aSetNormalsScale)
+	{
+		bool ok;
+		double value = QInputDialog::getDouble(this, tr("Set normals scale"), tr("Scale (m)"), _normalsScale, 0.01, 10, 2, &ok);
+		if(ok)
+		{
+			this->setNormalsScale(value);
 		}
 	}
 	else if(a == _aSetBackgroundColor)

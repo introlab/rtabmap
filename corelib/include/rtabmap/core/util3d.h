@@ -198,6 +198,8 @@ cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ>
 // return CV_32FC4 (x,y,z,rgb)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const Transform & transform = Transform());
 // return CV_32FC7 (x,y,z,rgb,normal_z,normal_y,normalz)
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
+// return CV_32FC7 (x,y,z,rgb,normal_z,normal_y,normalz)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const Transform & transform = Transform());
 // return CV_32FC2  (x,y)
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());

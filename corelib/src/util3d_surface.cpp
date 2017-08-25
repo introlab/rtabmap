@@ -1994,18 +1994,51 @@ cv::Mat mergeTextures(
 	return globalTextures;
 }
 
+cv::Mat computeNormals(
+		const cv::Mat & laserScan,
+		int searchK,
+		float searchRadius)
+{
+	if(laserScan.empty() || laserScan.channels()<2 || laserScan.channels()>4)
+	{
+		return laserScan;
+	}
+
+	pcl::PointCloud<pcl::Normal>::Ptr normals;
+	if(laserScan.channels() < 4)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
+		if(laserScan.channels() == 2)
+		{
+			normals = util3d::computeNormals2D(cloud, searchK, searchRadius);
+		}
+		else
+		{
+			normals = util3d::computeNormals(cloud, searchK, searchRadius);
+		}
+		return util3d::laserScanFromPointCloud(*cloud, *normals);
+	}
+	else // 4 channels
+	{
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(laserScan);
+		normals = util3d::computeNormals(cloud, searchK, searchRadius);
+		return util3d::laserScanFromPointCloud(*cloud, *normals);
+	}
+}
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return computeNormals(cloud, indices, normalKSearch, viewPoint);
+	return computeNormals(cloud, indices, searchK, searchRadius, viewPoint);
 }
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
@@ -2032,7 +2065,8 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 	//	n.setIndices(indices);
 	//}
 	n.setSearchMethod (tree);
-	n.setKSearch (normalKSearch);
+	n.setKSearch (searchK);
+	n.setRadiusSearch (searchRadius);
 	n.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
 	n.compute (*normals);
 
@@ -2041,16 +2075,18 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return computeNormals(cloud, indices, normalKSearch, viewPoint);
+	return computeNormals(cloud, indices, searchK, searchRadius, viewPoint);
 }
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
@@ -2077,9 +2113,178 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 	//	n.setIndices(indices);
 	//}
 	n.setSearchMethod (tree);
-	n.setKSearch (normalKSearch);
+	n.setKSearch (searchK);
+	n.setRadiusSearch(searchRadius);
 	n.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
 	n.compute (*normals);
+
+	return normals;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr computeNormals2D(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int searchK,
+		float searchRadius,
+		const Eigen::Vector3f & viewPoint)
+{
+	UASSERT(searchK>0 || searchRadius>0.0f);
+	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+	tree->setInputCloud (cloud);
+
+	normals->resize(cloud->size());
+
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+
+	// assuming that points are ordered
+	for(unsigned int i=0; i<cloud->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = cloud->at(i);
+		std::vector<Eigen::Vector3f> neighborNormals;
+		Eigen::Vector3f direction;
+		direction[0] = viewPoint[0] - pt.x;
+		direction[1] = viewPoint[1] - pt.y;
+		direction[2] = viewPoint[2] - pt.z;
+
+		std::vector<int> k_indices;
+		std::vector<float> k_sqr_distances;
+		if(searchRadius>0.0f)
+		{
+			tree->radiusSearch(cloud->at(i), searchRadius, k_indices, k_sqr_distances, searchK);
+		}
+		else
+		{
+			tree->nearestKSearch(cloud->at(i), searchK, k_indices, k_sqr_distances);
+		}
+
+		for(unsigned int j=0; j<k_indices.size(); ++j)
+		{
+			if(k_indices.at(j) != (int)i)
+			{
+				const pcl::PointXYZ & pt2 = cloud->at(k_indices.at(j));
+				Eigen::Vector3f v(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+				Eigen::Vector3f up = v.cross(direction);
+				Eigen::Vector3f n = up.cross(v);
+				n.normalize();
+				neighborNormals.push_back(n);
+			}
+		}
+
+		if(neighborNormals.empty())
+		{
+			normals->at(i).normal_x = bad_point;
+			normals->at(i).normal_y = bad_point;
+			normals->at(i).normal_z = bad_point;
+		}
+		else
+		{
+			Eigen::Vector3f meanNormal(0,0,0);
+			for(unsigned int j=0; j<neighborNormals.size(); ++j)
+			{
+				meanNormal+=neighborNormals[j];
+			}
+			meanNormal /= (float)neighborNormals.size();
+			meanNormal.normalize();
+			normals->at(i).normal_x = meanNormal[0];
+			normals->at(i).normal_y = meanNormal[1];
+			normals->at(i).normal_z = meanNormal[2];
+		}
+	}
+
+	return normals;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals2D(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int searchK,
+		float searchRadius,
+		const Eigen::Vector3f & viewPoint)
+{
+	UASSERT(searchK>0);
+	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+
+	normals->resize(cloud->size());
+	searchRadius *= searchRadius; // squared distance
+
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+
+	// assuming that points are ordered
+	for(int i=0; i<(int)cloud->size(); ++i)
+	{
+		int li = i-searchK;
+		if(li<0)
+		{
+			li=0;
+		}
+		int hi = i+searchK;
+		if(hi>=(int)cloud->size())
+		{
+			hi=(int)cloud->size()-1;
+		}
+
+		// get points before not too far
+		const pcl::PointXYZ & pt = cloud->at(i);
+		std::vector<Eigen::Vector3f> neighborNormals;
+		Eigen::Vector3f direction;
+		direction[0] = viewPoint[0] - cloud->at(i).x;
+		direction[1] = viewPoint[1] - cloud->at(i).y;
+		direction[2] = viewPoint[2] - cloud->at(i).z;
+		for(int j=i-1; j>=li; --j)
+		{
+			const pcl::PointXYZ & pt2 = cloud->at(j);
+			Eigen::Vector3f vd(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+			if(searchRadius<=0.0f || (vd[0]*vd[0] + vd[1]*vd[1] + vd[2]*vd[2]) < searchRadius)
+			{
+				Eigen::Vector3f v(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+				Eigen::Vector3f up = v.cross(direction);
+				Eigen::Vector3f n = up.cross(v);
+				n.normalize();
+				neighborNormals.push_back(n);
+			}
+			else
+			{
+				break;
+			}
+		}
+		for(int j=i+1; j<=hi; ++j)
+		{
+			const pcl::PointXYZ & pt2 = cloud->at(j);
+			Eigen::Vector3f vd(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+			if(searchRadius<=0.0f || (vd[0]*vd[0] + vd[1]*vd[1] + vd[2]*vd[2]) < searchRadius)
+			{
+				Eigen::Vector3f v(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+				Eigen::Vector3f up = v[2]==0.0f?Eigen::Vector3f(0,0,1):v.cross(direction);
+				Eigen::Vector3f n = up.cross(v);
+				n.normalize();
+				neighborNormals.push_back(n);
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if(neighborNormals.empty())
+		{
+			normals->at(i).normal_x = bad_point;
+			normals->at(i).normal_y = bad_point;
+			normals->at(i).normal_z = bad_point;
+		}
+		else
+		{
+			Eigen::Vector3f meanNormal(0,0,0);
+			for(unsigned int j=0; j<neighborNormals.size(); ++j)
+			{
+				meanNormal+=neighborNormals[j];
+			}
+			meanNormal /= (float)neighborNormals.size();
+			meanNormal.normalize();
+			normals->at(i).normal_x = meanNormal[0];
+			normals->at(i).normal_y = meanNormal[1];
+			normals->at(i).normal_z = meanNormal[2];
+		}
+	}
 
 	return normals;
 }

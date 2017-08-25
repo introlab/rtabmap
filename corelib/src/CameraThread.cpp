@@ -58,6 +58,7 @@ CameraThread::CameraThread(Camera * camera, const ParametersMap & parameters) :
 		_scanMinDepth(0.0f),
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
+		_scanNormalsRadius(0.0f),
 		_stereoDense(new StereoBM(parameters)),
 		_distortionModel(0),
 		_bilateralFiltering(false),
@@ -323,10 +324,10 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 
 				if(cloud->size())
 				{
-					if(_scanNormalsK>0)
+					if(_scanNormalsK>0 || _scanNormalsRadius>0.0f)
 					{
 						Eigen::Vector3f viewPoint(baseToScan.x(), baseToScan.y(), baseToScan.z());
-						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, viewPoint);
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, _scanNormalsRadius, viewPoint);
 						pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 						pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 						scan = util3d::laserScanFromPointCloud(*cloudNormals, baseToScan.inverse());

@@ -141,6 +141,12 @@ pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP passThrough(
 		float min,
 		float max,
 		bool negative = false);
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP passThrough(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const std::string & axis,
+		float min,
+		float max,
+		bool negative = false);
 
 pcl::IndicesPtr RTABMAP_EXP cropBox(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

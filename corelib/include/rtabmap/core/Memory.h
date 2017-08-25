@@ -283,6 +283,7 @@ private:
 	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
 	int _laserScanNormalK;
+	int _laserScanNormalRadius;
 	bool _reextractLoopClosureFeatures;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;

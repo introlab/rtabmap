@@ -164,9 +164,11 @@ public:
 	double getCeilingFilteringHeight() const;
 	double getFloorFilteringHeight() const;
 	int getNormalKSearch() const;
+	double getNormalRadiusSearch() const;
 	double getScanCeilingFilteringHeight() const;
 	double getScanFloorFilteringHeight() const;
 	int getScanNormalKSearch() const;
+	double getScanNormalRadiusSearch() const;
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	bool isOctomapUpdated() const;
 	bool isOctomapShown() const;
@@ -241,6 +243,7 @@ public:
 	double getSourceScanFromDepthMaxDepth() const;
 	double getSourceScanVoxelSize() const;
 	int getSourceScanNormalsK() const;
+	double getSourceScanNormalsRadius() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
 	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null

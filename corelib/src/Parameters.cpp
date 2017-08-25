@@ -225,6 +225,10 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.13.3
+		removedParameters_.insert(std::make_pair("Icp/PointToPlaneNormalNeighbors", std::make_pair(true,  Parameters::kIcpPointToPlaneK())));
+
+
 		// 0.13.1
 		removedParameters_.insert(std::make_pair("Rtabmap/VhStrategy",            std::make_pair(true,  Parameters::kVhEpEnabled())));
 
@@ -326,7 +330,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("LccIcp3/Iterations",                  std::make_pair(false, Parameters::kIcpIterations())));
 		removedParameters_.insert(std::make_pair("LccIcp3/CorrespondenceRatio",         std::make_pair(false, Parameters::kIcpCorrespondenceRatio())));
 		removedParameters_.insert(std::make_pair("LccIcp3/PointToPlane",                std::make_pair(true,  Parameters::kIcpPointToPlane())));
-		removedParameters_.insert(std::make_pair("LccIcp3/PointToPlaneNormalNeighbors", std::make_pair(true,  Parameters::kIcpPointToPlaneNormalNeighbors())));
+		removedParameters_.insert(std::make_pair("LccIcp3/PointToPlaneNormalNeighbors", std::make_pair(true,  Parameters::kIcpPointToPlaneK())));
 
 		removedParameters_.insert(std::make_pair("LccIcp2/MaxCorrespondenceDistance",   std::make_pair(true,  Parameters::kIcpMaxCorrespondenceDistance())));
 		removedParameters_.insert(std::make_pair("LccIcp2/Iterations",                  std::make_pair(true,  Parameters::kIcpIterations())));

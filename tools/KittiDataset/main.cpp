@@ -60,6 +60,7 @@ void showUsage()
 			"  --scan_step #      Scan downsample step (default=10).\n"
 			"  --scan_voxel #.#   Scan voxel size (default 0.3 m).\n"
 			"  --scan_k           Scan normal K (default 20).\n"
+			"  --scan_radius      Scan normal radius (default 0).\n"
 			"  --map_update  #    Do map update each X odometry frames (default=10, which\n"
 			"                        gives 1 Hz map update assuming images are at 10 Hz).\n\n"
 			"%s\n"
@@ -104,6 +105,7 @@ int main(int argc, char * argv[])
 	int scanStep = 10;
 	float scanVoxel = 0.3f;
 	int scanNormalK = 20;
+	float scanNormalRadius = 0.0f;
 	std::string gtPath;
 	if(argc < 2)
 	{
@@ -150,6 +152,15 @@ int main(int argc, char * argv[])
 				if(scanNormalK < 0)
 				{
 					printf("scanNormalK should be >= 0\n");
+					showUsage();
+				}
+			}
+			else if(std::strcmp(argv[i], "--scan_radius") == 0)
+			{
+				scanNormalRadius = atof(argv[++i]);
+				if(scanNormalRadius < 0.0f)
+				{
+					printf("scanNormalRadius should be >= 0\n");
 					showUsage();
 				}
 			}
@@ -233,10 +244,11 @@ int main(int argc, char * argv[])
 	if(scan)
 	{
 		pathScan = path+"/velodyne";
-		printf("   Scan:              %s\n", pathScan.c_str());
-		printf("   Scan step:         %d\n", scanStep);
-		printf("   Scan voxel:        %fm\n", scanVoxel);
-		printf("   Scan normal k:     %d\n", scanNormalK);
+		printf("   Scan:               %s\n", pathScan.c_str());
+		printf("   Scan step:          %d\n", scanStep);
+		printf("   Scan voxel:         %fm\n", scanVoxel);
+		printf("   Scan normal k:      %d\n", scanNormalK);
+		printf("   Scan normal radius: %f\n", scanNormalRadius);
 	}
 	if(!parameters.empty())
 	{
@@ -338,6 +350,7 @@ int main(int argc, char * argv[])
 						scanStep,
 						scanVoxel,
 						scanNormalK,
+						scanNormalRadius,
 						Transform(-0.27f, 0.0f, 0.08, 0.0f, 0.0f, 0.0f));
 	}
 
