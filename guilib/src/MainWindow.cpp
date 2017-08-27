@@ -2888,7 +2888,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		{
 			cloudRGBWithNormals = util3d::laserScanToPointCloudRGBNormal(scan, iter->sensorData().laserScanInfo().localTransform());
 		}
-		else if(scan.channels() == 6 && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
+		else if((scan.channels() == 5 || scan.channels() == 6) && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
 		{
 			cloudWithNormals = util3d::laserScanToPointCloudNormal(scan, iter->sensorData().laserScanInfo().localTransform());
 		}
@@ -2983,7 +2983,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			pcl::PointCloud<pcl::Normal>::Ptr normals;
 			if(cloud->size())
 			{
-				if(scan.channels() == 2)
+				if(scan.channels() == 2 || scan.channels() == 5)
 				{
 					normals = util3d::computeFastOrganizedNormals2D(cloud, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
 				}
@@ -3024,7 +3024,14 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudWithNormals, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = util3d::laserScanFromPointCloud(*cloudWithNormals);
+				if(scan.channels() == 5)
+				{
+					scan = util3d::laserScan2dFromPointCloud(*cloudWithNormals);
+				}
+				else
+				{
+					scan = util3d::laserScanFromPointCloud(*cloudWithNormals);
+				}
 			}
 		}
 		else if(cloudRGB.get())

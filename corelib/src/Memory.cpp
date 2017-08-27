@@ -2438,6 +2438,7 @@ Transform Memory::computeIcpTransformMulti(
 		std::string msg;
 		int maxPoints = fromScan.cols;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
+		bool is2D = true;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first != fromId)
@@ -2447,14 +2448,21 @@ Transform Memory::computeIcpTransformMulti(
 				{
 					cv::Mat scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
-							scan,
-							s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
-					if(scan.cols > maxPoints)
+					if(!scan.empty())
 					{
-						maxPoints = scan.cols;
+						if(scan.channels() != 2 && scan.channels() != 5)
+						{
+							is2D = false;
+						}
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
+								scan,
+								s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
+						if(scan.cols > maxPoints)
+						{
+							maxPoints = scan.cols;
+						}
+						*assembledToClouds += *cloud;
 					}
-					*assembledToClouds += *cloud;
 				}
 				else
 				{
@@ -2464,12 +2472,25 @@ Transform Memory::computeIcpTransformMulti(
 		}
 		if(assembledToClouds->size())
 		{
-			assembledData.setLaserScanRaw(
-					util3d::laserScanFromPointCloud(*assembledToClouds),
-					LaserScanInfo(
-							fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
-							fromS->sensorData().laserScanInfo().maxRange(),
-							Transform::getIdentity())); // scans are in base frame
+			if(is2D)
+			{
+				assembledData.setLaserScanRaw(
+						util3d::laserScan2dFromPointCloud(*assembledToClouds),
+						LaserScanInfo(
+								fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
+								fromS->sensorData().laserScanInfo().maxRange(),
+								Transform::getIdentity())); // scans are in base frame
+
+			}
+			else
+			{
+				assembledData.setLaserScanRaw(
+						util3d::laserScanFromPointCloud(*assembledToClouds),
+						LaserScanInfo(
+								fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
+								fromS->sensorData().laserScanInfo().maxRange(),
+								Transform::getIdentity())); // scans are in base frame
+			}
 		}
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);

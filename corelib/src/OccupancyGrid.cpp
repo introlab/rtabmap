@@ -207,7 +207,7 @@ void OccupancyGrid::createLocalMap(
 	UDEBUG("scan channels=%d, occupancyFromCloud_=%d normalsSegmentation_=%d grid3D_=%d",
 			node.sensorData().laserScanRaw().empty()?0:node.sensorData().laserScanRaw().channels(), occupancyFromCloud_?1:0, normalsSegmentation_?1:0, grid3D_?1:0);
 
-	if(node.sensorData().laserScanRaw().channels() == 2 && !occupancyFromCloud_)
+	if((node.sensorData().laserScanRaw().channels() == 2 || node.sensorData().laserScanRaw().channels() == 5) && !occupancyFromCloud_)
 	{
 		UDEBUG("2D laser scan");
 		//2D

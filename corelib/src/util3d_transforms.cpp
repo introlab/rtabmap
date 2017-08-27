@@ -38,61 +38,65 @@ namespace util3d
 
 cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transform)
 {
-	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6));
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6));
 
 	cv::Mat output = laserScan.clone();
 
 	if(!transform.isNull() && !transform.isIdentity())
 	{
+		Eigen::Affine3f transform3f = transform.toEigen3f();
 		for(int i=0; i<laserScan.cols; ++i)
 		{
+			const float * ptr = laserScan.ptr<float>(0, i);
+			float * out = output.ptr<float>(0, i);
 			if(laserScan.type() == CV_32FC2)
 			{
-				pcl::PointXYZ pt(
-						laserScan.at<cv::Vec2f>(i)[0],
-						laserScan.at<cv::Vec2f>(i)[1], 0);
-				pt = util3d::transformPoint(pt, transform);
-				output.at<cv::Vec2f>(i)[0] = pt.x;
-				output.at<cv::Vec2f>(i)[1] = pt.y;
+				pcl::PointXYZ pt(ptr[0], ptr[1], 0);
+				pt = pcl::transformPoint(pt, transform3f);
+				out[0] = pt.x;
+				out[1] = pt.y;
 			}
-			else if(laserScan.type() == CV_32FC3)
+			else if(laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4))
 			{
-				pcl::PointXYZ pt(
-						laserScan.at<cv::Vec3f>(i)[0],
-						laserScan.at<cv::Vec3f>(i)[1],
-						laserScan.at<cv::Vec3f>(i)[2]);
-				pt = util3d::transformPoint(pt, transform);
-				output.at<cv::Vec3f>(i)[0] = pt.x;
-				output.at<cv::Vec3f>(i)[1] = pt.y;
-				output.at<cv::Vec3f>(i)[2] = pt.z;
+				const float * ptr = laserScan.ptr<float>(0, i);
+				pcl::PointXYZ pt(ptr[0], ptr[1], ptr[2]);
+				pt = pcl::transformPoint(pt, transform3f);
+				out[0] = pt.x;
+				out[1] = pt.y;
+				out[2] = pt.z;
 			}
-			else if(laserScan.type() == CV_32FC(4))
-			{
-				pcl::PointXYZ pt(
-						laserScan.at<cv::Vec4f>(i)[0],
-						laserScan.at<cv::Vec4f>(i)[1],
-						laserScan.at<cv::Vec4f>(i)[2]);
-				pt = util3d::transformPoint(pt, transform);
-				output.at<cv::Vec4f>(i)[0] = pt.x;
-				output.at<cv::Vec4f>(i)[1] = pt.y;
-				output.at<cv::Vec4f>(i)[2] = pt.z;
-			}
-			else
+			else if(laserScan.type() == CV_32FC(5))
 			{
 				pcl::PointNormal pt;
-				pt.x=laserScan.at<cv::Vec6f>(i)[0];
-				pt.y=laserScan.at<cv::Vec6f>(i)[1];
-				pt.z=laserScan.at<cv::Vec6f>(i)[2];
-				pt.normal_x=laserScan.at<cv::Vec6f>(i)[3];
-				pt.normal_y=laserScan.at<cv::Vec6f>(i)[4];
-				pt.normal_z=laserScan.at<cv::Vec6f>(i)[5];
+				pt.x=ptr[0];
+				pt.y=ptr[1];
+				pt.z=0;
+				pt.normal_x=ptr[2];
+				pt.normal_y=ptr[3];
+				pt.normal_z=ptr[4];
 				pt = util3d::transformPoint(pt, transform);
-				output.at<cv::Vec6f>(i)[0] = pt.x;
-				output.at<cv::Vec6f>(i)[1] = pt.y;
-				output.at<cv::Vec6f>(i)[2] = pt.z;
-				output.at<cv::Vec6f>(i)[3] = pt.normal_x;
-				output.at<cv::Vec6f>(i)[4] = pt.normal_y;
-				output.at<cv::Vec6f>(i)[5] = pt.normal_z;
+				out[0] = pt.x;
+				out[1] = pt.y;
+				out[2] = pt.normal_x;
+				out[3] = pt.normal_y;
+				out[4] = pt.normal_z;
+			}
+			else // 6 and 7 channels
+			{
+				pcl::PointNormal pt;
+				pt.x=ptr[0];
+				pt.y=ptr[1];
+				pt.z=ptr[2];
+				pt.normal_x=ptr[3];
+				pt.normal_y=ptr[4];
+				pt.normal_z=ptr[5];
+				pt = util3d::transformPoint(pt, transform);
+				out[0] = pt.x;
+				out[1] = pt.y;
+				out[2] = pt.z;
+				out[3] = pt.normal_x;
+				out[4] = pt.normal_y;
+				out[5] = pt.normal_z;
 			}
 		}
 	}

@@ -63,25 +63,16 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-831</y>
+            <y>0</y>
             <width>678</width>
-            <height>2739</height>
+            <height>2736</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -95,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>21</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -4570,16 +4561,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -12580,16 +12562,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12729,16 +12702,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12896,16 +12860,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12985,16 +12940,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13106,16 +13052,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13808,7 +13745,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       <item row="8" column="1">
                        <widget class="QLabel" name="label_144">
                         <property name="text">
-                         <string>Point to plane ICP. Only for ICP 3D.</string>
+                         <string>Point to plane ICP.</string>
                         </property>
                         <property name="wordWrap">
                          <bool>true</bool>

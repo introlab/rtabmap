@@ -3757,7 +3757,7 @@ void DatabaseViewer::updateConstraintView(
 			constraintsViewer_->removeCloud("scan1");
 			if(!dataFrom.laserScanRaw().empty())
 			{
-				if(dataFrom.laserScanRaw().channels() == 6)
+				if(dataFrom.laserScanRaw().channels() >= 5)
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
@@ -3780,7 +3780,7 @@ void DatabaseViewer::updateConstraintView(
 			}
 			if(!dataTo.laserScanRaw().empty())
 			{
-				if(dataTo.laserScanRaw().channels() == 6)
+				if(dataTo.laserScanRaw().channels() >= 5)
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());

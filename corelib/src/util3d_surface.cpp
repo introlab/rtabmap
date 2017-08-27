@@ -2011,12 +2011,13 @@ cv::Mat computeNormals(
 		if(laserScan.channels() == 2)
 		{
 			normals = util3d::computeNormals2D(cloud, searchK, searchRadius);
+			return util3d::laserScan2dFromPointCloud(*cloud, *normals);
 		}
 		else
 		{
 			normals = util3d::computeNormals(cloud, searchK, searchRadius);
+			return util3d::laserScanFromPointCloud(*cloud, *normals);
 		}
-		return util3d::laserScanFromPointCloud(*cloud, *normals);
 	}
 	else // 4 channels
 	{

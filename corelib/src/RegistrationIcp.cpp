@@ -39,11 +39,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/conversions.h>
 
 #ifdef RTABMAP_POINTMATCHER
+#include <fstream>
 #include "pointmatcher/PointMatcher.h"
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
 
-DP pclToDP(const pcl::PointCloud<pcl::PointXYZ>::Ptr & pclCloud)
+DP pclToDP(const pcl::PointCloud<pcl::PointXYZ>::Ptr & pclCloud, bool is2D)
 {
 	UDEBUG("");
 	typedef DP::Label Label;
@@ -63,8 +64,11 @@ DP pclToDP(const pcl::PointCloud<pcl::PointXYZ>::Ptr & pclCloud)
 	isFeature.push_back(true);
 	featLabels.push_back(Label("y", 1));
 	isFeature.push_back(true);
-	featLabels.push_back(Label("z", 1));
-	isFeature.push_back(true);
+	if(!is2D)
+	{
+		featLabels.push_back(Label("z", 1));
+		isFeature.push_back(true);
+	}
 	featLabels.push_back(Label("pad", 1));
 
 	// create cloud
@@ -72,20 +76,21 @@ DP pclToDP(const pcl::PointCloud<pcl::PointXYZ>::Ptr & pclCloud)
 	cloud.getFeatureViewByName("pad").setConstant(1);
 
 	// fill cloud
-	View viewX(cloud.getFeatureViewByName("x"));
-	View viewY(cloud.getFeatureViewByName("y"));
-	View viewZ(cloud.getFeatureViewByName("z"));
+	View view(cloud.getFeatureViewByName("x"));
 	for(unsigned int i=0; i<pclCloud->size(); ++i)
 	{
-		viewX(0, i) = pclCloud->at(i).x;
-		viewY(0, i) = pclCloud->at(i).y;
-		viewZ(0, i) = pclCloud->at(i).z;
+		view(0, i) = pclCloud->at(i).x;
+		view(1, i) = pclCloud->at(i).y;
+		if(!is2D)
+		{
+			view(2, i) = pclCloud->at(i).z;
+		}
 	}
 
 	return cloud;
 }
 
-DP pclToDP(const pcl::PointCloud<pcl::PointNormal>::Ptr & pclCloud)
+DP pclToDP(const pcl::PointCloud<pcl::PointNormal>::Ptr & pclCloud, bool is2D)
 {
 	UDEBUG("");
 	typedef DP::Label Label;
@@ -105,8 +110,11 @@ DP pclToDP(const pcl::PointCloud<pcl::PointNormal>::Ptr & pclCloud)
 	isFeature.push_back(true);
 	featLabels.push_back(Label("y", 1));
 	isFeature.push_back(true);
-	featLabels.push_back(Label("z", 1));
-	isFeature.push_back(true);
+	if(!is2D)
+	{
+		featLabels.push_back(Label("z", 1));
+		isFeature.push_back(true);
+	}
 
 	descLabels.push_back(Label("normals", 3));
 	isFeature.push_back(false);
@@ -120,17 +128,18 @@ DP pclToDP(const pcl::PointCloud<pcl::PointNormal>::Ptr & pclCloud)
 	cloud.getFeatureViewByName("pad").setConstant(1);
 
 	// fill cloud
-	View viewX(cloud.getFeatureViewByName("x"));
-	View viewY(cloud.getFeatureViewByName("y"));
-	View viewZ(cloud.getFeatureViewByName("z"));
+	View view(cloud.getFeatureViewByName("x"));
 	View viewNormalX(cloud.getDescriptorRowViewByName("normals",0));
 	View viewNormalY(cloud.getDescriptorRowViewByName("normals",1));
 	View viewNormalZ(cloud.getDescriptorRowViewByName("normals",2));
 	for(unsigned int i=0; i<pclCloud->size(); ++i)
 	{
-		viewX(0, i) = pclCloud->at(i).x;
-		viewY(0, i) = pclCloud->at(i).y;
-		viewZ(0, i) = pclCloud->at(i).z;
+		view(0, i) = pclCloud->at(i).x;
+		view(1, i) = pclCloud->at(i).y;
+		if(!is2D)
+		{
+			view(2, i) = pclCloud->at(i).z;
+		}
 		viewNormalX(0, i) = pclCloud->at(i).normal_x;
 		viewNormalY(0, i) = pclCloud->at(i).normal_y;
 		viewNormalZ(0, i) = pclCloud->at(i).normal_z;
@@ -151,14 +160,13 @@ void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointXYZ> & pclCloud)
 	pclCloud.is_dense = true;
 
 		// fill cloud
-	ConstView viewX(cloud.getFeatureViewByName("x"));
-	ConstView viewY(cloud.getFeatureViewByName("y"));
-	ConstView viewZ(cloud.getFeatureViewByName("z"));
+	ConstView view(cloud.getFeatureViewByName("x"));
+	bool is3D = cloud.featureExists("z");
 	for(unsigned int i=0; i<pclCloud.size(); ++i)
 	{
-		pclCloud.at(i).x = viewX(0, i);
-		pclCloud.at(i).y = viewY(0, i);
-		pclCloud.at(i).z = viewZ(0, i);
+		pclCloud.at(i).x = view(0, i);
+		pclCloud.at(i).y = view(1, i);
+		pclCloud.at(i).z = is3D?view(2, i):0;
 	}
 }
 
@@ -174,17 +182,16 @@ void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointNormal> & pclCloud)
 	pclCloud.is_dense = true;
 
 		// fill cloud
-	ConstView viewX(cloud.getFeatureViewByName("x"));
-	ConstView viewY(cloud.getFeatureViewByName("y"));
-	ConstView viewZ(cloud.getFeatureViewByName("z"));
+	ConstView view(cloud.getFeatureViewByName("x"));
+	bool is3D = cloud.featureExists("z");
 	ConstView viewNormalX(cloud.getDescriptorRowViewByName("normals",0));
 	ConstView viewNormalY(cloud.getDescriptorRowViewByName("normals",1));
 	ConstView viewNormalZ(cloud.getDescriptorRowViewByName("normals",2));
 	for(unsigned int i=0; i<pclCloud.size(); ++i)
 	{
-		pclCloud.at(i).x = viewX(0, i);
-		pclCloud.at(i).y = viewY(0, i);
-		pclCloud.at(i).z = viewZ(0, i);
+		pclCloud.at(i).x = view(0, i);
+		pclCloud.at(i).y = view(1, i);
+		pclCloud.at(i).z = is3D?view(2, i):0;
 		pclCloud.at(i).normal_x = viewNormalX(0, i);
 		pclCloud.at(i).normal_y = viewNormalY(0, i);
 		pclCloud.at(i).normal_z = viewNormalZ(0, i);
@@ -319,6 +326,12 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			icp->outlierFilters.clear();
 			icp->outlierFilters.push_back(PM::get().OutlierFilterRegistrar.create("TrimmedDistOutlierFilter", params));
 			params.clear();
+			if(_pointToPlane)
+			{
+				params["maxAngle"] = uNumber2Str(_maxRotation<=0.0f?M_PI:_maxRotation);
+				icp->outlierFilters.push_back(PM::get().OutlierFilterRegistrar.create("SurfaceNormalOutlierFilter", params));
+				params.clear();
+			}
 
 			icp->errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create(_pointToPlane?"PointToPlaneErrorMinimizer":"PointToPointErrorMinimizer"));
 
@@ -331,6 +344,11 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 			params["minDiffTransErr"] = uNumber2Str(_epsilon*_epsilon);
 			params["smoothLength"] =    uNumber2Str(4);
 			icp->transformationCheckers.push_back(PM::get().TransformationCheckerRegistrar.create("DifferentialTransformationChecker", params));
+			params.clear();
+
+			params["maxRotationNorm"] = uNumber2Str(_maxRotation<=0.0f?M_PI:_maxRotation);
+			params["maxTranslationNorm"] =    uNumber2Str(_maxTranslation<=0.0f?std::numeric_limits<float>::max():_maxTranslation);
+			icp->transformationCheckers.push_back(PM::get().TransformationCheckerRegistrar.create("BoundTransformationChecker", params));
 			params.clear();
 		}
 	}
@@ -408,11 +426,16 @@ Transform RegistrationIcp::computeTransformationImpl(
 			if( _pointToPlane &&
 				_voxelSize == 0.0f &&
 				fromScan.channels() >= 6 &&
-				toScan.channels() >= 6)
+				toScan.channels() >= 6 &&
+				!((fromScan.channels() == 5 || toScan.channels() == 5) && !_libpointmatcher)) // PCL crashes if 2D)
 			{
 				//special case if we have already normals computed and there is no filtering
 				pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::laserScanToPointCloudNormal(fromScan, fromLocalTransform);
 				pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toLocalTransform);
+
+				fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
+				toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
+
 
 				UDEBUG("Conversion time = %f s", timer.ticks());
 				pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
@@ -420,8 +443,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 				if(_libpointmatcher)
 				{
 					// Load point clouds
-					DP data = pclToDP(fromCloudNormals);
-					DP ref = pclToDP(toCloudNormals);
+					DP data = pclToDP(fromCloudNormals, fromScan.channels() == 5);
+					DP ref = pclToDP(toCloudNormals, toScan.channels() == 5);
 
 					// Compute the transformation to express data in ref
 					PM::TransformationParameters T;
@@ -451,9 +474,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 				else
 #endif
 				{
-					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
-					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
-
 					icpT = util3d::icpPointToPlane(
 							fromCloudNormals,
 							toCloudNormals,
@@ -502,14 +522,14 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 				if(_pointToPlane && // ICP Point To Plane
-					!((fromScan.channels() == 2 || toScan.channels() == 2) && !_libpointmatcher)) // PCL crashes if 2D
+					!((fromScan.channels() == 2 || fromScan.channels() == 5 || toScan.channels() == 2 || toScan.channels() == 5) && !_libpointmatcher)) // PCL crashes if 2D
 				{
 					pcl::PointCloud<pcl::Normal>::Ptr normals;
 					Eigen::Vector3f viewpointFrom(fromLocalTransform.x(), fromLocalTransform.y(), fromLocalTransform.z());
 					Transform toT = guess * toLocalTransform;
 					Eigen::Vector3f viewpointTo(toT.x(), toT.y(), toT.z());
 
-					if(fromScan.channels() == 2)
+					if(fromScan.channels() == 2 || fromScan.channels() == 5)
 					{
 						normals = util3d::computeFastOrganizedNormals2D(
 								fromCloudFiltered,
@@ -524,7 +544,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 					pcl::concatenateFields(*fromCloudFiltered, *normals, *fromCloudNormals);
 
-					if(toScan.channels() == 2)
+					if(toScan.channels() == 2 || toScan.channels() == 5)
 					{
 						normals = util3d::computeFastOrganizedNormals2D(
 								toCloudFiltered,
@@ -544,8 +564,22 @@ Transform RegistrationIcp::computeTransformationImpl(
 					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
 
 					// update output scans
-					fromSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
-					toSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+					if(fromScan.channels() == 2 || toScan.channels() == 5)
+					{
+						fromSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
+					}
+					else
+					{
+						fromSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
+					}
+					if(toScan.channels() == 2 || toScan.channels() == 5)
+					{
+						toSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+					}
+					else
+					{
+						toSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+					}
 
 					UDEBUG("Compute normals (%d,%d) time = %f s", (int)fromCloudNormals->size(), (int)toCloudNormals->size(), timer.ticks());
 
@@ -557,8 +591,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 						if(_libpointmatcher)
 						{
 							// Load point clouds
-							DP data = pclToDP(fromCloudNormals);
-							DP ref = pclToDP(toCloudNormals);
+							DP data = pclToDP(fromCloudNormals, fromScan.channels() == 2 || fromScan.channels() == 5);
+							DP ref = pclToDP(toCloudNormals, toScan.channels() == 2 || toScan.channels() == 5);
 
 							// Compute the transformation to express data in ref
 							PM::TransformationParameters T;
@@ -612,7 +646,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 				}
 				else // ICP Point to Point
 				{
-					if(_pointToPlane && ((fromScan.channels() == 2 || toScan.channels() == 2) && !_libpointmatcher))
+					if(_pointToPlane && ((fromScan.channels() == 2 || fromScan.channels() == 5 || toScan.channels() == 2 || toScan.channels() == 5) && !_libpointmatcher))
 					{
 						UWARN("ICP PointToPlane ignored for 2d scans with PCL registration (some crash issues). Use libpointmatcher (%s) or disable %s to avoid this warning.", Parameters::kIcpPM().c_str(), Parameters::kIcpPointToPlane().c_str());
 					}
@@ -628,8 +662,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 					if(_libpointmatcher)
 					{
 						// Load point clouds
-						DP data = pclToDP(fromCloudFiltered);
-						DP ref = pclToDP(toCloudFiltered);
+						DP data = pclToDP(fromCloudFiltered, fromScan.channels() == 2 || fromScan.channels() == 5);
+						DP ref = pclToDP(toCloudFiltered, toScan.channels() == 2 || toScan.channels() == 5);
 
 						// Compute the transformation to express data in ref
 						PM::TransformationParameters T;
