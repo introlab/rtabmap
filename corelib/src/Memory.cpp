@@ -3310,7 +3310,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
 						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
-	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3 || data.laserScanRaw().type() == CV_32FC(4) || data.laserScanRaw().type() == CV_32FC(6));
+	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3 || data.laserScanRaw().type() == CV_32FC(4) || data.laserScanRaw().type() == CV_32FC(5) || data.laserScanRaw().type() == CV_32FC(6) || data.laserScanRaw().type() == CV_32FC(7));
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().size() == 0 &&

@@ -195,7 +195,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3  || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6))
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3  || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7))
 	{
 		_laserScanRaw = laserScan;
 	}
@@ -300,7 +300,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6))
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3  || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7))
 	{
 		_laserScanRaw = laserScan;
 	}
@@ -406,7 +406,7 @@ SensorData::SensorData(
 		_depthOrRightRaw = right;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(6))
+	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3  || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7))
 	{
 		_laserScanRaw = laserScan;
 	}
@@ -496,7 +496,7 @@ void SensorData::setOccupancyGrid(
 
 	if(!ground.empty())
 	{
-		if(ground.type() == CV_32FC2 || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(6))
+		if(ground.type() == CV_32FC2 || ground.type() == CV_32FC3 || ground.type() == CV_32FC(4) || ground.type() == CV_32FC(5) || ground.type() == CV_32FC(6) || ground.type() == CV_32FC(7))
 		{
 			_groundCellsRaw = ground;
 			ctGround.start();
@@ -509,7 +509,7 @@ void SensorData::setOccupancyGrid(
 	}
 	if(!obstacles.empty())
 	{
-		if(obstacles.type() == CV_32FC2 || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(6))
+		if(obstacles.type() == CV_32FC2 || obstacles.type() == CV_32FC3 || obstacles.type() == CV_32FC(4) || obstacles.type() == CV_32FC(5) || obstacles.type() == CV_32FC(6) || obstacles.type() == CV_32FC(7))
 		{
 			_obstacleCellsRaw = obstacles;
 			ctObstacles.start();
