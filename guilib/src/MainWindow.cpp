@@ -3309,35 +3309,35 @@ Transform MainWindow::alignPosesToGroundTruth(
 
 			if((_preferencesDialog->isTimeUsedInFigures() && stamp > 0.0) || (refId && refId>=0))
 			{
-				_ui->statsToolBox->updateStat("GT/translational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_max, _preferencesDialog->isCacheSavedInFigures());
 
-				_ui->statsToolBox->updateStat("GT/rotational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_max, _preferencesDialog->isCacheSavedInFigures());
 			}
 			else
 			{
-				_ui->statsToolBox->updateStat("GT/translational_rmse/", translational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_mean/", translational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_median/", translational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_std/", translational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_min/", translational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_max/", translational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational rmse/", translational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational mean/", translational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational median/", translational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational std/", translational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational min/", translational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational max/", translational_max, _preferencesDialog->isCacheSavedInFigures());
 
-				_ui->statsToolBox->updateStat("GT/rotational_rmse/", rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_mean/", rotational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_median/", rotational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_std/", rotational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_min/", rotational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_max/", rotational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational rmse/", rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational mean/", rotational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational median/", rotational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational std/", rotational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational min/", rotational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational max/", rotational_max, _preferencesDialog->isCacheSavedInFigures());
 			}
 		}
 	}
@@ -3348,43 +3348,58 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 {
 	UINFO("Update visibility %d", nodeId);
 	QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
-	if(_preferencesDialog->isCloudsShown(0))
+	Transform pose;
+	if(_currentGTPosesMap.size() &&
+		_ui->actionAnchor_clouds_to_ground_truth->isChecked() &&
+		_currentGTPosesMap.find(nodeId)!=_currentGTPosesMap.end())
 	{
-		std::string cloudName = uFormat("cloud%d", nodeId);
-		if(visible && !viewerClouds.contains(cloudName) && _cachedSignatures.contains(nodeId) && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
-		{
-			createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
-		}
-		else if(viewerClouds.contains(cloudName))
-		{
-			if(visible && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
-			{
-				//make sure the transformation was done
-				_cloudViewer->updateCloudPose(cloudName, _currentPosesMap.find(nodeId)->second);
-			}
-			_cloudViewer->setCloudVisibility(cloudName, visible);
-		}
+		pose = _currentGTPosesMap.at(nodeId);
+	}
+	else if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
+	{
+		pose = _currentPosesMap.at(nodeId);
 	}
 
-	if(_preferencesDialog->isScansShown(0))
+	if(!pose.isNull() || !visible)
 	{
-		std::string scanName = uFormat("scan%d", nodeId);
-		if(visible && !viewerClouds.contains(scanName) && _cachedSignatures.contains(nodeId) && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
+		if(_preferencesDialog->isCloudsShown(0))
 		{
-			createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
-		}
-		else if(viewerClouds.contains(scanName))
-		{
-			if(visible && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
+			std::string cloudName = uFormat("cloud%d", nodeId);
+			if(visible && !viewerClouds.contains(cloudName) && _cachedSignatures.contains(nodeId))
 			{
-				//make sure the transformation was done
-				_cloudViewer->updateCloudPose(scanName, _currentPosesMap.find(nodeId)->second);
+				createAndAddCloudToMap(nodeId, pose, uValue(_currentMapIds, nodeId, -1));
 			}
-			_cloudViewer->setCloudVisibility(scanName, visible);
+			else if(viewerClouds.contains(cloudName))
+			{
+				if(visible)
+				{
+					//make sure the transformation was done
+					_cloudViewer->updateCloudPose(cloudName, pose);
+				}
+				_cloudViewer->setCloudVisibility(cloudName, visible);
+			}
 		}
-	}
 
-	_cloudViewer->update();
+		if(_preferencesDialog->isScansShown(0))
+		{
+			std::string scanName = uFormat("scan%d", nodeId);
+			if(visible && !viewerClouds.contains(scanName) && _cachedSignatures.contains(nodeId))
+			{
+				createAndAddScanToMap(nodeId, pose, uValue(_currentMapIds, nodeId, -1));
+			}
+			else if(viewerClouds.contains(scanName))
+			{
+				if(visible)
+				{
+					//make sure the transformation was done
+					_cloudViewer->updateCloudPose(scanName, pose);
+				}
+				_cloudViewer->setCloudVisibility(scanName, visible);
+			}
+		}
+
+		_cloudViewer->update();
+	}
 }
 
 void MainWindow::updateGraphView()

@@ -425,8 +425,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 			if( _pointToPlane &&
 				_voxelSize == 0.0f &&
-				fromScan.channels() >= 6 &&
-				toScan.channels() >= 6 &&
+				fromScan.channels() >= 5 &&
+				toScan.channels() >= 5 &&
 				!((fromScan.channels() == 5 || toScan.channels() == 5) && !_libpointmatcher)) // PCL crashes if 2D)
 			{
 				//special case if we have already normals computed and there is no filtering
@@ -454,8 +454,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 						PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
 						UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
 						T = icp(data, ref);
-						UDEBUG("libpointmatcher icp...done!");
 						icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
+						UDEBUG("libpointmatcher icp...done! T=%s", icpT.prettyPrint().c_str());
 
 						float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
 						UDEBUG("match ratio: %f", matchRatio);

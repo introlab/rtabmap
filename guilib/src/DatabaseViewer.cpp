@@ -4020,19 +4020,19 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				UINFO("rotational_min=%f", rotational_min);
 				UINFO("rotational_max=%f", rotational_max);
 
-				ui_->toolBox_statistics->updateStat("GT/translational_rmse/", translational_rmse, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_mean/", translational_mean, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_median/", translational_median, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_std/", translational_std, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_min/", translational_min, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_max/", translational_max, false);
+				ui_->toolBox_statistics->updateStat("GT/translational rmse/", translational_rmse, false);
+				ui_->toolBox_statistics->updateStat("GT/translational mean/", translational_mean, false);
+				ui_->toolBox_statistics->updateStat("GT/translational median/", translational_median, false);
+				ui_->toolBox_statistics->updateStat("GT/translational std/", translational_std, false);
+				ui_->toolBox_statistics->updateStat("GT/translational min/", translational_min, false);
+				ui_->toolBox_statistics->updateStat("GT/translational max/", translational_max, false);
 
-				ui_->toolBox_statistics->updateStat("GT/rotational_rmse/", rotational_rmse, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_mean/", rotational_mean, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_median/", rotational_median, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_std/", rotational_std, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_min/", rotational_min, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_max/", rotational_max, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational rmse/", rotational_rmse, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational mean/", rotational_mean, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational median/", rotational_median, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational std/", rotational_std, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational min/", rotational_min, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational max/", rotational_max, false);
 			}
 		}
 

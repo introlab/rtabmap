@@ -496,7 +496,7 @@ bool CloudViewer::updateCloudPose(
 {
 	if(_addedClouds.contains(id))
 	{
-		UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
+		//UDEBUG("Updating pose %s to %s", id.c_str(), pose.prettyPrint().c_str());
 		bool samePose = _addedClouds.find(id).value() == pose;
 		Eigen::Affine3f posef = pose.toEigen3f();
 		if(samePose ||

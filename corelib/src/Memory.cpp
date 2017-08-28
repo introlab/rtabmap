@@ -2406,6 +2406,18 @@ Transform Memory::computeIcpTransformMulti(
 	UASSERT(uContains(poses, toId) && uContains(_signatures, toId));
 
 	UDEBUG("Guess=%s", (poses.at(fromId).inverse() * poses.at(toId)).prettyPrint().c_str());
+	if(ULogger::level() == ULogger::kDebug)
+	{
+		std::string ids;
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(iter->first != fromId)
+			{
+				ids += uNumber2Str(iter->first) + " ";
+			}
+		}
+		UDEBUG("%d vs %s", fromId, ids.c_str());
+	}
 
 	// make sure that all laser scans are loaded
 	std::list<Signature*> depthToLoad;
@@ -2438,6 +2450,7 @@ Transform Memory::computeIcpTransformMulti(
 		std::string msg;
 		int maxPoints = fromScan.cols;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
 		bool is2D = true;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
@@ -2454,14 +2467,26 @@ Transform Memory::computeIcpTransformMulti(
 						{
 							is2D = false;
 						}
-						pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
-								scan,
-								s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
+
+						if(scan.channels() >= 5)
+						{
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormal = util3d::laserScanToPointCloudNormal(
+									scan,
+									s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
+							*assembledToNormalClouds += *cloudNormal;
+						}
+						else
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
+									scan,
+									s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
+							*assembledToClouds += *cloud;
+						}
+
 						if(scan.cols > maxPoints)
 						{
 							maxPoints = scan.cols;
 						}
-						*assembledToClouds += *cloud;
 					}
 				}
 				else
@@ -2470,28 +2495,22 @@ Transform Memory::computeIcpTransformMulti(
 				}
 			}
 		}
-		if(assembledToClouds->size())
-		{
-			if(is2D)
-			{
-				assembledData.setLaserScanRaw(
-						util3d::laserScan2dFromPointCloud(*assembledToClouds),
-						LaserScanInfo(
-								fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
-								fromS->sensorData().laserScanInfo().maxRange(),
-								Transform::getIdentity())); // scans are in base frame
 
-			}
-			else
-			{
-				assembledData.setLaserScanRaw(
-						util3d::laserScanFromPointCloud(*assembledToClouds),
-						LaserScanInfo(
-								fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
-								fromS->sensorData().laserScanInfo().maxRange(),
-								Transform::getIdentity())); // scans are in base frame
-			}
+		cv::Mat assembledScan;
+		if(assembledToNormalClouds->size())
+		{
+			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
 		}
+		else if(assembledToClouds->size())
+		{
+			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToClouds):util3d::laserScanFromPointCloud(*assembledToClouds);
+		}
+		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
+		assembledData.setLaserScanRaw(assembledScan,
+				LaserScanInfo(
+					fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
+					fromS->sensorData().laserScanInfo().maxRange(),
+					is2D?Transform(0,0,fromS->sensorData().laserScanInfo().localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		std::vector<int> inliersV;
