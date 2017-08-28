@@ -174,8 +174,6 @@ FIND_PACKAGE(ZLIB REQUIRED QUIET)
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")
    # fix libproj.so not found on Xenial
    list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
-   # fix libmpi.so not found on Zesty
-   list(REMOVE_ITEM PCL_LIBRARIES "/usr/lib/libmpi.so")
 endif()
 
 # OpenMP ("-fopenmp" should be added for flann included in PCL)
