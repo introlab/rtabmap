@@ -1496,6 +1496,8 @@ KAZE::~KAZE()
 
 void KAZE::parseParameters(const ParametersMap & parameters)
 {
+	Feature2D::parseParameters(parameters);
+	
 	Parameters::parse(parameters, Parameters::kKAZEExtended(), extended_);
 	Parameters::parse(parameters, Parameters::kKAZEUpright(), upright_);
 	Parameters::parse(parameters, Parameters::kKAZEThreshold(), threshold_);
