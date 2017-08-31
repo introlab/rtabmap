@@ -2346,10 +2346,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				exportDir.mkdirs();
 				
 				final String pathHuman = mWorkingDirectoryHuman + RTABMAP_EXPORT_DIR + fileName + ".zip";
+				final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
 				if(RTABMapLib.writeExportedMesh(mWorkingDirectory + RTABMAP_TMP_DIR, RTABMAP_TMP_FILENAME))
-				{
-					final String zipOutput = mWorkingDirectory+RTABMAP_EXPORT_DIR+fileName+".zip";
-							
+				{							
 					fileNames = Util.loadFileList(mWorkingDirectory + RTABMAP_TMP_DIR, false);
 					if(fileNames.length > 0)
 					{
@@ -2384,25 +2383,14 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 					runOnUiThread(new Runnable() {
 						public void run() {
 							mProgressDialog.dismiss();
-							mToast.makeText(getActivity(), String.format("Mesh \"%s\" successfully exported!", pathHuman), mToast.LENGTH_LONG).show();
-							Intent intent = new Intent(getActivity(), RTABMapActivity.class);
-							// use System.currentTimeMillis() to have a unique ID for the pending intent
-							PendingIntent pIntent = PendingIntent.getActivity(getActivity(), (int) System.currentTimeMillis(), intent, 0);
-				
-							// build notification
-							// the addAction re-use the same intent to keep the example short
-							Notification n  = new Notification.Builder(getActivity())
-							.setContentTitle(getString(R.string.app_name))
-							.setContentText(pathHuman + " exported!")
-							.setSmallIcon(R.drawable.ic_launcher)
-							.setContentIntent(pIntent)
-							.setAutoCancel(true).build();
-				
-							NotificationManager notificationManager = 
-									(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-				
-							notificationManager.notify(0, n); 
 							
+							// Send to...
+							Intent shareIntent = new Intent();
+							shareIntent.setAction(Intent.ACTION_SEND);
+							shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(zipOutput)));
+							shareIntent.setType("application/zip");
+							startActivity(Intent.createChooser(shareIntent, String.format("Mesh \"%s\" successfully exported! Share it?", pathHuman)));
+														
 							resetNoTouchTimer(true);
 						}
 					});
