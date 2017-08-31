@@ -198,8 +198,6 @@ public:
 
 	bool getGridMapShown() const;
 	double getGridMapResolution() const;;
-	bool isGridMapEroded() const;
-	double getGridMapFootprintRadius() const;
 	bool isGridMapFrom3DCloud() const;
 	bool projMapFrame() const;
 	double projMaxGroundAngle() const;

@@ -44,6 +44,7 @@ public:
 	void parseParameters(const ParametersMap & parameters);
 	void setCellSize(float cellSize);
 	float getCellSize() const {return cellSize_;}
+	float getMinMapSize() const {return minMapSize_;}
 	bool isGridFromDepth() const {return occupancyFromCloud_;}
 	bool isFullUpdate() const {return fullUpdate_;}
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
@@ -69,13 +70,8 @@ public:
 			int nodeId,
 			const cv::Mat & ground,
 			const cv::Mat & obstacles);
-	void update(const std::map<int, Transform> & poses, float minMapSize = 0.0f, float footprintRadius = 0.0f);
-	const cv::Mat & getMap(float & xMin, float & yMin) const
-	{
-		xMin = xMin_;
-		yMin = yMin_;
-		return map_;
-	}
+	void update(const std::map<int, Transform> & poses);
+	const cv::Mat getMap(float & xMin, float & yMin) const;
 
 private:
 	ParametersMap parameters_;
@@ -107,6 +103,9 @@ private:
 	double scan2dMaxUnknownSpaceFilledRange_;
 	bool projRayTracing_;
 	bool fullUpdate_;
+	float minMapSize_;
+	bool erode_;
+	float footprintRadius_;
 
 	std::map<int, std::pair<cv::Mat, cv::Mat> > cache_;
 	cv::Mat map_;

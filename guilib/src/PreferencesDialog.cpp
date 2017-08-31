@@ -402,10 +402,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_subtractFilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_map_shown, SIGNAL(clicked(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->doubleSpinBox_map_resolution, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_map_opacity, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->checkBox_map_erode, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->doubleSpinBox_map_footprintRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->groupBox_octomap, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_octomap_treeDepth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -843,7 +840,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_grid_flatObstaclesDetected->setObjectName(Parameters::kGridFlatObstacleDetected().c_str());
 	_ui->groupBox_grid_fromDepthImage->setObjectName(Parameters::kGridFromDepth().c_str());
 	_ui->checkBox_grid_projMapFrame->setObjectName(Parameters::kGridMapFrameProjection().c_str());
-	_ui->checkBox_grid_fullUpdate->setObjectName(Parameters::kGridFullUpdate().c_str());
 	_ui->doubleSpinBox_grid_maxGroundAngle->setObjectName(Parameters::kGridMaxGroundAngle().c_str());
 	_ui->spinBox_grid_normalK->setObjectName(Parameters::kGridNormalK().c_str());
 	_ui->doubleSpinBox_grid_maxGroundHeight->setObjectName(Parameters::kGridMaxGroundHeight().c_str());
@@ -857,6 +853,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkBox_grid_unknownSpaceFilled->setObjectName(Parameters::kGridScan2dUnknownSpaceFilled().c_str());
 	_ui->doubleSpinBox_grid_unknownSpaceFilledMaxRange->setObjectName(Parameters::kGridScan2dMaxFilledRange().c_str());
 	_ui->spinBox_grid_scanDecimation->setObjectName(Parameters::kGridScanDecimation().c_str());
+
+	_ui->checkBox_grid_fullUpdate->setObjectName(Parameters::kGridGlobalFullUpdate().c_str());
+	_ui->doubleSpinBox_grid_minMapSize->setObjectName(Parameters::kGridGlobalMinSize().c_str());
+	_ui->doubleSpinBox_grid_footprintRadius->setObjectName(Parameters::kGridGlobalFootprintRadius().c_str());
+	_ui->checkBox_grid_erode->setObjectName(Parameters::kGridGlobalEroded().c_str());
 
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
@@ -1306,9 +1307,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 	else if(groupBox->objectName() == _ui->groupBox_gridMap2->objectName())
 	{
 		_ui->checkBox_map_shown->setChecked(false);
-		_ui->doubleSpinBox_map_resolution->setValue(0.05);
-		_ui->checkBox_map_erode->setChecked(false);
-		_ui->doubleSpinBox_map_footprintRadius->setValue(0);
 		_ui->doubleSpinBox_map_opacity->setValue(0.75);
 
 		_ui->groupBox_octomap->setChecked(false);
@@ -1685,9 +1683,6 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_subtractFilteringAngle->setValue(settings.value("subtractFilteringAngle", _ui->doubleSpinBox_subtractFilteringAngle->value()).toDouble());
 
 	_ui->checkBox_map_shown->setChecked(settings.value("gridMapShown", _ui->checkBox_map_shown->isChecked()).toBool());
-	_ui->doubleSpinBox_map_resolution->setValue(settings.value("gridMapResolution", _ui->doubleSpinBox_map_resolution->value()).toDouble());
-	_ui->checkBox_map_erode->setChecked(settings.value("gridMapEroded", _ui->checkBox_map_erode->isChecked()).toBool());
-	_ui->doubleSpinBox_map_footprintRadius->setValue(settings.value("gridMapFootprintRadius", _ui->doubleSpinBox_map_footprintRadius->value()).toDouble());
 	_ui->doubleSpinBox_map_opacity->setValue(settings.value("gridMapOpacity", _ui->doubleSpinBox_map_opacity->value()).toDouble());
 
 	_ui->groupBox_octomap->setChecked(settings.value("octomap", _ui->groupBox_octomap->isChecked()).toBool());
@@ -2071,9 +2066,6 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("subtractFilteringAngle",  _ui->doubleSpinBox_subtractFilteringAngle->value());
 
 	settings.setValue("gridMapShown",                _ui->checkBox_map_shown->isChecked());
-	settings.setValue("gridMapResolution",           _ui->doubleSpinBox_map_resolution->value());
-	settings.setValue("gridMapEroded",               _ui->checkBox_map_erode->isChecked());
-	settings.setValue("gridMapFootprintRadius",      _ui->doubleSpinBox_map_footprintRadius->value());
 	settings.setValue("gridMapOpacity",              _ui->doubleSpinBox_map_opacity->value());
 
 	settings.setValue("octomap",                     _ui->groupBox_octomap->isChecked());
@@ -4251,15 +4243,7 @@ bool PreferencesDialog::getGridMapShown() const
 }
 double PreferencesDialog::getGridMapResolution() const
 {
-	return _ui->doubleSpinBox_map_resolution->value();
-}
-bool PreferencesDialog::isGridMapEroded() const
-{
-	return _ui->checkBox_map_erode->isChecked();
-}
-double PreferencesDialog::getGridMapFootprintRadius() const
-{
-	return _ui->doubleSpinBox_map_footprintRadius->value();
+	return _ui->doubleSpinBox_grid_resolution->value();
 }
 bool PreferencesDialog::isGridMapFrom3DCloud() const
 {

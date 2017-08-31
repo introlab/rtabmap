@@ -65,7 +65,10 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	scan2dUnknownSpaceFilled_(Parameters::defaultGridScan2dUnknownSpaceFilled()),
 	scan2dMaxUnknownSpaceFilledRange_(Parameters::defaultGridScan2dMaxFilledRange()),
 	projRayTracing_(Parameters::defaultGridProjRayTracing()),
-	fullUpdate_(Parameters::defaultGridFullUpdate()),
+	fullUpdate_(Parameters::defaultGridGlobalFullUpdate()),
+	minMapSize_(Parameters::defaultGridGlobalMinSize()),
+	erode_(Parameters::defaultGridGlobalEroded()),
+	footprintRadius_(Parameters::defaultGridGlobalFootprintRadius()),
 	xMin_(0.0f),
 	yMin_(0.0f)
 {
@@ -132,7 +135,12 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridScan2dUnknownSpaceFilled(), scan2dUnknownSpaceFilled_);
 	Parameters::parse(parameters, Parameters::kGridScan2dMaxFilledRange(), scan2dMaxUnknownSpaceFilledRange_);
 	Parameters::parse(parameters, Parameters::kGridProjRayTracing(), projRayTracing_);
-	Parameters::parse(parameters, Parameters::kGridFullUpdate(), fullUpdate_);
+	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
+	Parameters::parse(parameters, Parameters::kGridGlobalMinSize(), minMapSize_);
+	Parameters::parse(parameters, Parameters::kGridGlobalEroded(), erode_);
+	Parameters::parse(parameters, Parameters::kGridGlobalFootprintRadius(), footprintRadius_);
+
+	UASSERT(minMapSize_ >= 0.0f);
 
 	// convert ROI from string to vector
 	ParametersMap::const_iterator iter;
@@ -379,6 +387,17 @@ void OccupancyGrid::clear()
 	addedNodes_.clear();
 }
 
+const cv::Mat OccupancyGrid::getMap(float & xMin, float & yMin) const
+{
+	xMin = xMin_;
+	yMin = yMin_;
+	if(erode_ && !map_.empty())
+	{
+		return util3d::erodeMap(map_);
+	}
+	return map_;
+}
+
 void OccupancyGrid::addToCache(
 		int nodeId,
 		const cv::Mat & ground,
@@ -388,18 +407,18 @@ void OccupancyGrid::addToCache(
 	uInsert(cache_, std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 }
 
-void OccupancyGrid::update(const std::map<int, Transform> & posesIn, float minMapSize, float footprintRadius)
+void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 {
 	UTimer timer;
 	UDEBUG("Update (poses=%d addedNodes_=%d)", (int)posesIn.size(), (int)addedNodes_.size());
 
-	float margin = cellSize_*10.0f+(footprintRadius>cellSize_*1.5f?float(int(footprintRadius/cellSize_)+1):0.0f)*cellSize_;
+	float margin = cellSize_*10.0f+(footprintRadius_>cellSize_*1.5f?float(int(footprintRadius_/cellSize_)+1):0.0f)*cellSize_;
 
-	float minX=-minMapSize/2.0f;
-	float minY=-minMapSize/2.0f;
-	float maxX=minMapSize/2.0f;
-	float maxY=minMapSize/2.0f;
-	bool undefinedSize = minMapSize == 0.0f;
+	float minX=-minMapSize_/2.0f;
+	float minY=-minMapSize_/2.0f;
+	float maxX=minMapSize_/2.0f;
+	float maxY=minMapSize_/2.0f;
+	bool undefinedSize = minMapSize_ == 0.0f;
 	std::map<int, cv::Mat> emptyLocalMaps;
 	std::map<int, cv::Mat> occupiedLocalMaps;
 
@@ -714,10 +733,10 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn, float minMa
 				}
 				else
 				{
-					UASSERT(xMin <= xMin_);
-					UASSERT(yMin <= yMin_);
-					UASSERT(xMax >= xMin_+float(map_.cols)*cellSize_);
-					UASSERT(yMax >= yMin_+float(map_.rows)*cellSize_);
+					UASSERT_MSG(xMin <= xMin_+cellSize_/2, uFormat("xMin=%f, xMin_=%f, cellSize_=%f", xMin, xMin_, cellSize_).c_str());
+					UASSERT_MSG(yMin <= yMin_+cellSize_/2, uFormat("yMin=%f, yMin_=%f, cellSize_=%f", yMin, yMin_, cellSize_).c_str());
+					UASSERT_MSG(xMax >= xMin_+float(map_.cols)*cellSize_ - cellSize_/2, uFormat("xMin=%f, xMin_=%f, cols=%d cellSize_=%f", xMin, xMin_, map_.cols, cellSize_).c_str());
+					UASSERT_MSG(yMax >= yMin_+float(map_.rows)*cellSize_ - cellSize_/2, uFormat("yMin=%f, yMin_=%f, cols=%d cellSize_=%f", yMin, yMin_, map_.rows, cellSize_).c_str());
 
 					UDEBUG("Copy map");
 					// copy the old map in the new map
@@ -815,11 +834,11 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn, float minMa
 					}
 				}
 
-				if(footprintRadius >= cellSize_*1.5f)
+				if(footprintRadius_ >= cellSize_*1.5f)
 				{
 					// place free space under the footprint of the robot
-					cv::Point2i ptBegin((kter->second.x()-footprintRadius-xMin)/cellSize_, (kter->second.y()-footprintRadius-yMin)/cellSize_);
-					cv::Point2i ptEnd((kter->second.x()+footprintRadius-xMin)/cellSize_, (kter->second.y()+footprintRadius-yMin)/cellSize_);
+					cv::Point2i ptBegin((kter->second.x()-footprintRadius_-xMin)/cellSize_, (kter->second.y()-footprintRadius_-yMin)/cellSize_);
+					cv::Point2i ptEnd((kter->second.x()+footprintRadius_-xMin)/cellSize_, (kter->second.y()+footprintRadius_-yMin)/cellSize_);
 					if(ptBegin.x < 0)
 						ptBegin.x = 0;
 					if(ptEnd.x >= map.cols)
@@ -926,7 +945,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn, float minMa
 				}
 			}
 
-			if(footprintRadius >= cellSize_*1.5f || incrementalGraphUpdate)
+			if(footprintRadius_ >= cellSize_*1.5f || incrementalGraphUpdate)
 			{
 				for(int i=1; i<map.rows-1; ++i)
 				{

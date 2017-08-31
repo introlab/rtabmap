@@ -2153,16 +2153,22 @@ void MainWindow::updateMapCloud(
 	for(QMap<std::string, Transform>::iterator iter = viewerClouds.begin(); iter!=viewerClouds.end(); ++iter)
 	{
 		std::list<std::string> splitted = uSplitNumChar(iter.key());
+		int id = 0;
 		if(splitted.size() == 2)
 		{
-			int id = std::atoi(splitted.back().c_str());
-			if(poses.find(id) == poses.end())
+			id = std::atoi(splitted.back().c_str());
+			if(splitted.front().at(splitted.front().size()-1) == '-')
 			{
-				if(_cloudViewer->getCloudVisibility(iter.key()))
-				{
-					UDEBUG("Hide %s", iter.key().c_str());
-					_cloudViewer->setCloudVisibility(iter.key(), false);
-				}
+				id*=-1;
+			}
+		}
+
+		if(id != 0 && poses.find(id) == poses.end())
+		{
+			if(_cloudViewer->getCloudVisibility(iter.key()))
+			{
+				UDEBUG("Hide %s", iter.key().c_str());
+				_cloudViewer->setCloudVisibility(iter.key(), false);
 			}
 		}
 	}
@@ -2378,7 +2384,7 @@ void MainWindow::updateMapCloud(
 		else
 #endif
 		{
-			_occupancyGrid->update(poses, 0, _preferencesDialog->getGridMapFootprintRadius());
+			_occupancyGrid->update(poses);
 			if(stats)
 			{
 				stats->insert(std::make_pair("GUI/Grid Update/ms", (float)timer.restart()*1000.0f));
@@ -2387,11 +2393,6 @@ void MainWindow::updateMapCloud(
 		}
 		if(!map8S.empty())
 		{
-			if(_preferencesDialog->isGridMapEroded())
-			{
-				map8S = util3d::erodeMap(map8S);
-			}
-
 			//convert to gray scaled map
 			map8U = util3d::convertMap2Image8U(map8S);
 
@@ -2530,7 +2531,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 		pcl::IndicesPtr indices(new std::vector<int>);
-		UASSERT(nodeId == data.id());
+		UASSERT_MSG(nodeId == -1 || nodeId == data.id(), uFormat("nodeId=%d data.id()=%d", nodeId, data.id()).c_str());
 
 		// Create organized cloud
 		cloud = util3d::cloudRGBFromSensorData(data,
@@ -2597,7 +2598,8 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 		if(_preferencesDialog->isSubtractFiltering() &&
-		   _preferencesDialog->getSubtractFilteringRadius() > 0.0)
+		   _preferencesDialog->getSubtractFilteringRadius() > 0.0 &&
+		   nodeId > 0)
 		{
 			pcl::IndicesPtr beforeFiltering = indices;
 			if(	cloud->size() &&
@@ -2801,7 +2803,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 			{
 				outputPair.first = output;
 				outputPair.second = indices;
-				if(_preferencesDialog->isCloudsKept())
+				if(_preferencesDialog->isCloudsKept() && nodeId > 0)
 				{
 					_cachedClouds.insert(std::make_pair(nodeId, outputPair));
 					_createdCloudsMemoryUsage += (long)(output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int));
@@ -2809,12 +2811,12 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 				_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 				_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 			}
-			else
+			else if(nodeId>0)
 			{
 				_cachedEmptyClouds.insert(nodeId);
 			}
 		}
-		else
+		else if(nodeId>0)
 		{
 			_cachedEmptyClouds.insert(nodeId);
 		}
@@ -2869,17 +2871,19 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			}
 			else
 			{
-				if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+				if(nodeId > 0)
 				{
-					//reconvert the voxelized cloud
-					scan = util3d::laserScanFromPointCloud(*cloud);
+					if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+					{
+						//reconvert the voxelized cloud
+						scan = util3d::laserScanFromPointCloud(*cloud);
+					}
+					else
+					{
+						scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
+					}
+					_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
 				}
-				else
-				{
-					scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
-				}
-				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
-
 				_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 				_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 			}
@@ -2903,16 +2907,19 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			}
 			else
 			{
-				if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+				if(nodeId > 0)
 				{
-					//reconvert the voxelized cloud
-					scan = util3d::laserScanFromPointCloud(*cloud);
+					if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+					{
+						//reconvert the voxelized cloud
+						scan = util3d::laserScanFromPointCloud(*cloud);
+					}
+					else
+					{
+						scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
+					}
+					_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
 				}
-				else
-				{
-					scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
-				}
-				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
 
 				_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 				_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
@@ -2999,7 +3006,7 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		{
 			UERROR("Adding features cloud %d to viewer failed!", nodeId);
 		}
-		else
+		else if(nodeId > 0)
 		{
 			_createdFeatures.insert(std::make_pair(nodeId, cloud));
 		}
@@ -5921,11 +5928,6 @@ void MainWindow::exportGridMap()
 
 	if(!pixels.empty())
 	{
-		if(_preferencesDialog->isGridMapEroded())
-		{
-			pixels = util3d::erodeMap(pixels);
-		}
-
 		cv::Mat map8U(pixels.rows, pixels.cols, CV_8U);
 		//convert to gray scaled map
 		for (int i = 0; i < pixels.rows; ++i)
