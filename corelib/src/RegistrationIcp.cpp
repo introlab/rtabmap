@@ -505,18 +505,24 @@ Transform RegistrationIcp::computeTransformationImpl(
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloudFiltered = toCloud;
 				if(_voxelSize > 0.0f)
 				{
-					int pointsBeforeFiltering = fromCloudFiltered->size();
+					float pointsBeforeFiltering = (float)fromCloudFiltered->size();
 					fromCloudFiltered = util3d::voxelize(fromCloudFiltered, _voxelSize);
-					maxLaserScansFrom = maxLaserScansFrom * fromCloudFiltered->size() / pointsBeforeFiltering;
+					float ratioFrom = float(fromCloudFiltered->size()) / pointsBeforeFiltering;
+					maxLaserScansFrom = int(float(maxLaserScansFrom) * ratioFrom);
 
-					pointsBeforeFiltering = toCloudFiltered->size();
+					pointsBeforeFiltering = (float)toCloudFiltered->size();
 					toCloudFiltered = util3d::voxelize(toCloudFiltered, _voxelSize);
-					maxLaserScansTo = maxLaserScansTo * toCloudFiltered->size() / pointsBeforeFiltering;
+					float ratioTo = float(toCloudFiltered->size()) / pointsBeforeFiltering;
+					maxLaserScansTo = int(float(maxLaserScansTo) * ratioTo);
 
-					UDEBUG("Voxel filtering time (voxel=%f m, ratioFrom=%f ratioTo=%f) = %f s",
+					UDEBUG("Voxel filtering time (voxel=%f m, ratioFrom=%f->%d/%d ratioTo=%f->%d/%d) = %f s",
 							_voxelSize,
-							float(fromCloudFiltered->size()) / float(pointsBeforeFiltering),
-							float(toCloudFiltered->size()) / float(pointsBeforeFiltering),
+							ratioFrom,
+							(int)fromCloudFiltered->size(),
+							maxLaserScansFrom,
+							ratioTo,
+							(int)toCloudFiltered->size(),
+							maxLaserScansTo,
 							timer.ticks());
 				}
 
@@ -531,11 +537,22 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 					if(fromScan.channels() == 2 || fromScan.channels() == 5)
 					{
-						normals = util3d::computeFastOrganizedNormals2D(
-								fromCloudFiltered,
-								_pointToPlaneK,
-								_pointToPlaneRadius,
-								viewpointFrom);
+						if(_voxelSize > 0.0f)
+						{
+							normals = util3d::computeNormals2D(
+									fromCloudFiltered,
+									_pointToPlaneK,
+									_pointToPlaneRadius,
+									viewpointFrom);
+						}
+						else
+						{
+							normals = util3d::computeFastOrganizedNormals2D(
+									fromCloudFiltered,
+									_pointToPlaneK,
+									_pointToPlaneRadius,
+									viewpointFrom);
+						}
 					}
 					else
 					{
@@ -546,11 +563,22 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 					if(toScan.channels() == 2 || toScan.channels() == 5)
 					{
-						normals = util3d::computeFastOrganizedNormals2D(
-								toCloudFiltered,
-								_pointToPlaneK,
-								_pointToPlaneRadius,
-								viewpointTo);
+						if(_voxelSize > 0.0f)
+						{
+							normals = util3d::computeNormals2D(
+									toCloudFiltered,
+									_pointToPlaneK,
+									_pointToPlaneRadius,
+									viewpointTo);
+						}
+						else
+						{
+							normals = util3d::computeFastOrganizedNormals2D(
+									toCloudFiltered,
+									_pointToPlaneK,
+									_pointToPlaneRadius,
+									viewpointTo);
+						}
 					}
 					else
 					{
@@ -564,7 +592,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
 
 					// update output scans
-					if(fromScan.channels() == 2 || toScan.channels() == 5)
+					if(fromScan.channels() == 2 || fromScan.channels() == 5)
 					{
 						fromSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
 					}
@@ -654,8 +682,22 @@ Transform RegistrationIcp::computeTransformationImpl(
 					if(_voxelSize > 0.0f)
 					{
 						// update output scans
-						fromSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*fromCloudFiltered, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
-						toSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*toCloudFiltered, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+						if(fromScan.channels() == 2 || fromScan.channels() == 5)
+						{
+							fromSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*fromCloudFiltered, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
+						}
+						else
+						{
+							fromSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*fromCloudFiltered, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
+						}
+						if(toScan.channels() == 2 || toScan.channels() == 5)
+						{
+							toSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*toCloudFiltered, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+						}
+						else
+						{
+							toSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*toCloudFiltered, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+						}
 					}
 
 #ifdef RTABMAP_POINTMATCHER

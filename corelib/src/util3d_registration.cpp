@@ -244,8 +244,8 @@ void computeVarianceAndCorrespondences(
 	correspondencesOut = 0;
 	pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>::Ptr est;
 	est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>);
-	est->setInputTarget(cloudB);
-	est->setInputSource(cloudA);
+	est->setInputTarget(cloudA->size()>cloudB->size()?cloudA:cloudB);
+	est->setInputSource(cloudA->size()>cloudB->size()?cloudB:cloudA);
 	pcl::Correspondences correspondences;
 	est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
 
@@ -277,8 +277,8 @@ void computeVarianceAndCorrespondences(
 	correspondencesOut = 0;
 	pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>::Ptr est;
 	est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointXYZ, pcl::PointXYZ>);
-	est->setInputTarget(cloudB);
-	est->setInputSource(cloudA);
+	est->setInputTarget(cloudA->size()>cloudB->size()?cloudA:cloudB);
+	est->setInputSource(cloudA->size()>cloudB->size()?cloudB:cloudA);
 	pcl::Correspondences correspondences;
 	est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
 

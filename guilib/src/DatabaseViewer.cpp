@@ -2469,7 +2469,8 @@ void DatabaseViewer::update(int value,
 				labelPose->setText(QString("%1xyz=(%2,%3,%4)\nrpy=(%5,%6,%7)").arg(odomPose.isIdentity()?"* ":"").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
 				if(s!=0.0)
 				{
-					stamp->setText(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+					stamp->setText(QString::number(s, 'f'));
+					stamp->setToolTip(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{

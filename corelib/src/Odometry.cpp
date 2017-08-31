@@ -102,7 +102,8 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
-		distanceTravelled_(0)
+		distanceTravelled_(0),
+		framesProcessed_(0)
 {
 	Parameters::parse(parameters, Parameters::kOdomResetCountdown(), _resetCountdown);
 
@@ -168,6 +169,7 @@ void Odometry::reset(const Transform & initialPose)
 	_resetCurrentCount = 0;
 	previousStamp_ = 0;
 	distanceTravelled_ = 0;
+	framesProcessed_ = 0;
 	if(_force3DoF || particleFilters_.size())
 	{
 		float x,y,z, roll,pitch,yaw;
@@ -544,6 +546,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			distanceTravelled_ += t.getNorm();
 			info->distanceTravelled = distanceTravelled_;
 		}
+		++framesProcessed_;
 
 		return _pose *= t; // update
 	}
