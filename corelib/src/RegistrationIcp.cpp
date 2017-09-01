@@ -331,9 +331,15 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 				params["maxAngle"] = uNumber2Str(_maxRotation<=0.0f?M_PI:_maxRotation);
 				icp->outlierFilters.push_back(PM::get().OutlierFilterRegistrar.create("SurfaceNormalOutlierFilter", params));
 				params.clear();
-			}
 
-			icp->errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create(_pointToPlane?"PointToPlaneErrorMinimizer":"PointToPointErrorMinimizer"));
+				params["force2D"] = force3DoF()?"1":"0";
+				icp->errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create("PointToPlaneErrorMinimizer", params));
+				params.clear();
+			}
+			else
+			{
+				icp->errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer"));
+			}
 
 			icp->transformationCheckers.clear();
 			params["maxIterationCount"] = uNumber2Str(_maxIterations);
