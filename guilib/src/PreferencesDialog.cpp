@@ -907,7 +907,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
 	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odometryType, SLOT(setCurrentIndex(int)));
-	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOdometryVisibility()));
 	_ui->odom_strategy->setCurrentIndex(Parameters::defaultOdomStrategy());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
 	_ui->odom_holonomic->setObjectName(Parameters::kOdomHolonomic().c_str());
@@ -1628,7 +1627,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		if(groupBox->objectName() == _ui->groupBox_odometry1->objectName())
 		{
 			_ui->odom_registration->setCurrentIndex(3);
-			updateOdometryVisibility();
 		}
 	}
 }
@@ -3948,18 +3946,6 @@ void PreferencesDialog::setupKpRoiPanel()
 	_ui->doubleSpinBox_kp_roi1->setValue(strings[1].toDouble()*100.0);
 	_ui->doubleSpinBox_kp_roi2->setValue(strings[2].toDouble()*100.0);
 	_ui->doubleSpinBox_kp_roi3->setValue(strings[3].toDouble()*100.0);
-}
-
-void PreferencesDialog::updateOdometryVisibility()
-{
-	UASSERT(_ui->odom_strategy->count() == 6);
-	_ui->groupBox_odomF2M->setVisible(_ui->odom_strategy->currentIndex()==0);
-	_ui->groupBox_odomF2F->setVisible(_ui->odom_strategy->currentIndex()==1);
-	_ui->groupBox_odomFovis->setVisible(_ui->odom_strategy->currentIndex()==2);
-	_ui->groupBox_odomViso2->setVisible(_ui->odom_strategy->currentIndex()==3);
-	_ui->groupBox_odomDVO->setVisible(_ui->odom_strategy->currentIndex()==4);
-	_ui->groupBox_odomORBSLAM2->setVisible(_ui->odom_strategy->currentIndex()==5);
-	_ui->groupBox_odomMono->setVisible(_ui->odom_strategy->currentIndex()==6);
 }
 
 void PreferencesDialog::updateKpROI()
