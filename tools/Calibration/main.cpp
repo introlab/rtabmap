@@ -135,7 +135,14 @@ int main(int argc, char * argv[])
 	rtabmap::Camera * camera = 0;
 	if(driver == -1)
 	{
-		camera = new rtabmap::CameraVideo(device);
+		if(stereo)
+		{
+			camera = new rtabmap::CameraStereoVideo(device);
+		}
+		else
+		{
+			camera = new rtabmap::CameraVideo(device);
+		}
 		dialog.setStereoMode(stereo);
 	}
 	else if(driver == 0)
