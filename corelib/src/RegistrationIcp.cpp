@@ -444,7 +444,6 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				double fromComplexity = util3d::computeNormalsComplexity(fromScan);
 				double toComplexity = util3d::computeNormalsComplexity(toScan);
-				UWARN("%d->%d %f %f", fromSignature.id(), toSignature.id(), fromComplexity, toComplexity);
 				float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
 				info.icpStructuralComplexity = complexity;
 				if(complexity < _pointToPlaneMinComplexity)
