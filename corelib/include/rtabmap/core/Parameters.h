@@ -387,7 +387,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Odom, GuessMotion,            bool, false,  "Guess next transformation from the last motion computed.");
     RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,   "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
     RTABMAP_PARAM(Odom, VisKeyFrameThr,         int, 100,     "[Visual] Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
-    RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,   "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
+    RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.9,   "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
     RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,       "Decimation of the images before registration. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
     RTABMAP_PARAM(Odom, AlignWithGround,        bool, false,  "Align odometry with the ground on initialization.");
 
@@ -513,7 +513,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
     RTABMAP_PARAM(Icp, PointToPlaneK,             int, 20,      "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
     RTABMAP_PARAM(Icp, PointToPlaneRadius,        float, 0.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
-    RTABMAP_PARAM(Icp, PointToPlaneMinComplexity, float, 0.0,   "Minimum structural complexity (0.0=low, 1.0=high) of the scan to do point to plane registration, otherwise point to point registration is done instead.");
+    RTABMAP_PARAM(Icp, PointToPlaneMinComplexity, float, 0.02,  "Minimum structural complexity (0.0=low, 1.0=high) of the scan to do point to plane registration, otherwise point to point registration is done instead.");
 
     // libpointmatcher
     RTABMAP_PARAM(Icp, PM,                       bool, false,   "Use libpointmatcher for ICP registration instead of PCL's implementation.");

@@ -7108,6 +7108,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		if(_camera)
 		{
 			_camera->start();
+			ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 		}
 		break;
 
@@ -7139,6 +7140,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			if(_camera)
 			{
 				_camera->start();
+				ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 			}
 		}
 		else if(_state == kDetecting)
