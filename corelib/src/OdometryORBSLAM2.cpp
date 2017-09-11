@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryORBSLAM2.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util2d.h"
-#include "rtabmap/core/Version.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
@@ -746,10 +745,13 @@ public:
 namespace rtabmap {
 
 OdometryORBSLAM2::OdometryORBSLAM2(const ParametersMap & parameters) :
-	Odometry(parameters),
+	Odometry(parameters)
+#ifdef RTABMAP_ORB_SLAM2
+    ,
 	orbslam2_(0),
 	system_(0),
 	firstFrame_(true)
+#endif
 {
 #ifdef RTABMAP_ORB_SLAM2
 	orbslam2_ = new ORBSLAM2System(parameters);

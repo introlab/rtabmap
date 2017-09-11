@@ -47,12 +47,14 @@ private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
+#ifdef RTABMAP_VISO2
 	VisualOdometryStereo * viso2_;
 	int ref_frame_change_method_;       // Reference frame method (defautl 0): 0=under inliers threshold, 1=min pixel motion,
 	int ref_frame_inlier_threshold_;    // method 0. Change the reference frame if the number of inliers is low
 	double ref_frame_motion_threshold_; // method 1. Change the reference frame if last motion is small
 	bool lost_;
 	bool keep_reference_frame_;
+#endif
 	Transform reference_motion_;
 	Transform previousLocalTransform_;
 	ParametersMap viso2Parameters_;
