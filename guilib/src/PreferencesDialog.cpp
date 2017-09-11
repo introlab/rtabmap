@@ -863,6 +863,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpPointToPlane->setObjectName(Parameters::kIcpPointToPlane().c_str());
 	_ui->loopClosure_icpPointToPlaneNormals->setObjectName(Parameters::kIcpPointToPlaneK().c_str());
 	_ui->loopClosure_icpPointToPlaneNormalsRadius->setObjectName(Parameters::kIcpPointToPlaneRadius().c_str());
+	_ui->loopClosure_icpPointToPlaneNormalsMinComplexity->setObjectName(Parameters::kIcpPointToPlaneMinComplexity().c_str());
 
 	_ui->groupBox_libpointmatcher->setObjectName(Parameters::kIcpPM().c_str());
 	_ui->lineEdit_IcpPMConfigPath->setObjectName(Parameters::kIcpPMConfig().c_str());

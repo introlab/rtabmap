@@ -246,13 +246,17 @@ Transform OdometryF2F::computeTransform(
 
 	if(info)
 	{
-		info->type = 1;
-		info->covariance = regInfo.covariance;
-		info->inliers = regInfo.inliers;
-		info->icpInliersRatio = regInfo.icpInliersRatio;
-		info->matches = regInfo.matches;
+		info->type = kTypeF2F;
 		info->features = newFrame.sensorData().keypoints().size();
 		info->keyFrameAdded = addKeyFrame;
+		if(this->isInfoDataFilled())
+		{
+			info->reg = regInfo;
+		}
+		else
+		{
+			info->reg = regInfo.copyWithoutData();
+		}
 	}
 
 	UINFO("Odom update time = %fs lost=%s inliers=%d, ref frame corners=%d, transform accepted=%s",

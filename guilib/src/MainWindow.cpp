@@ -560,6 +560,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->updateStat("Odometry/Inliers/", false);
 	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", false);
@@ -812,7 +815,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 			if (_odomThread == 0 && _camera->camera()->odomProvided() && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
-				odomInfo.covariance = cameraEvent->info().odomCovariance;
+				odomInfo.reg.covariance = cameraEvent->info().odomCovariance;
 				if (!_processingOdometry && !_processingStatistics)
 				{
 					_processingOdometry = true; // if we receive too many odometry events!
@@ -927,11 +930,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		pose = _lastOdomPose;
 		lost = true;
 	}
-	else if(odom.info().inliers>0 &&
+	else if(odom.info().reg.inliers>0 &&
 			_preferencesDialog->getOdomQualityWarnThr() &&
-			odom.info().inliers < _preferencesDialog->getOdomQualityWarnThr())
+			odom.info().reg.inliers < _preferencesDialog->getOdomQualityWarnThr())
 	{
-		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, _preferencesDialog->getOdomQualityWarnThr());
+		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().reg.inliers, _preferencesDialog->getOdomQualityWarnThr());
 		lostStateChanged = _cloudViewer->getBackgroundColor() == Qt::darkRed;
 		_cloudViewer->setBackgroundColor(Qt::darkYellow);
 		_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
@@ -1202,9 +1205,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				if(_preferencesDialog->isOdomOnlyInliersShown())
 				{
 					std::multimap<int, cv::KeyPoint> kpInliers;
-					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.inliersIDs.size(); ++i)
 					{
-						kpInliers.insert(*odom.info().words.find(odom.info().wordInliers[i]));
+						kpInliers.insert(*odom.info().words.find(odom.info().reg.inliersIDs[i]));
 					}
 					_ui->imageView_odometry->setFeatures(
 							kpInliers,
@@ -1271,13 +1274,13 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{
-					for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.matchesIDs.size(); ++i)
 					{
-						_ui->imageView_odometry->setFeatureColor(odom.info().wordMatches[i], Qt::red); // outliers
+						_ui->imageView_odometry->setFeatureColor(odom.info().reg.matchesIDs[i], Qt::red); // outliers
 					}
-					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.inliersIDs.size(); ++i)
 					{
-						_ui->imageView_odometry->setFeatureColor(odom.info().wordInliers[i], Qt::green); // inliers
+						_ui->imageView_odometry->setFeatureColor(odom.info().reg.inliersIDs[i], Qt::green); // inliers
 					}
 				}
 			}
@@ -1323,15 +1326,18 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	}
 
 	//Process info
-	_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().inliers, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().matches, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.inliers, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().reg.inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpRotation, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpTranslation, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpStructuralComplexity, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.matches, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().reg.matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().reg.covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().reg.covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/Features/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().features, _preferencesDialog->isCacheSavedInFigures());

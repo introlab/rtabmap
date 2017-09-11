@@ -894,10 +894,6 @@ Transform OdometryF2M::computeTransform(
 
 	if(info)
 	{
-		info->covariance = regInfo.covariance;
-		info->inliers = regInfo.inliers;
-		info->matches = regInfo.matches;
-		info->icpInliersRatio = regInfo.icpInliersRatio;
 		info->features = nFeatures;
 		info->localKeyFrames = (int)bundlePoses_.size();
 		info->keyFrameAdded = addKeyFrame;
@@ -907,8 +903,11 @@ Transform OdometryF2M::computeTransform(
 
 		if(this->isInfoDataFilled())
 		{
-			info->wordMatches = regInfo.matchesIDs;
-			info->wordInliers = regInfo.inliersIDs;
+			info->reg = regInfo;
+		}
+		else
+		{
+			info->reg = regInfo.copyWithoutData();
 		}
 	}
 

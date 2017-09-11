@@ -400,8 +400,8 @@ int main(int argc, char * argv[])
 			if(odomInfo.interval>0.0)
 				speed = odomInfo.transform.x()/odomInfo.interval*3.6;
 			externalStats.insert(std::make_pair("Odometry/Speed/kph", speed));
-			externalStats.insert(std::make_pair("Odometry/Inliers/ms", odomInfo.inliers));
-			externalStats.insert(std::make_pair("Odometry/Features/ms", odomInfo.features));
+			externalStats.insert(std::make_pair("Odometry/Inliers/", odomInfo.reg.inliers));
+			externalStats.insert(std::make_pair("Odometry/Features/", odomInfo.features));
 
 			bool processData = true;
 			if(iteration % mapUpdate != 0)
@@ -413,11 +413,11 @@ int main(int argc, char * argv[])
 			}
 			if(covariance.empty())
 			{
-				covariance = odomInfo.covariance;
+				covariance = odomInfo.reg.covariance;
 			}
 			else
 			{
-				covariance += odomInfo.covariance;
+				covariance += odomInfo.reg.covariance;
 			}
 
 			timer.restart();
@@ -431,7 +431,7 @@ int main(int argc, char * argv[])
 
 			++iteration;
 			printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms",
-					iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+					iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
 			if(processData && rtabmap.getLoopClosureId()>0)
 			{
 				printf(" *");

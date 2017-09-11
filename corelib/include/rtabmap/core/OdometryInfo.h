@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <map>
 #include "rtabmap/core/Transform.h"
+#include "rtabmap/core/RegistrationInfo.h"
 #include <opencv2/features2d/features2d.hpp>
 
 namespace rtabmap {
@@ -39,9 +40,6 @@ class OdometryInfo
 public:
 	OdometryInfo() :
 		lost(true),
-		matches(0),
-		inliers(0),
-		icpInliersRatio(0.0f),
 		features(0),
 		localMapSize(0),
 		localScanMapSize(0),
@@ -62,10 +60,7 @@ public:
 	{
 		OdometryInfo output;
 		output.lost = lost;
-		output.matches = matches;
-		output.inliers = inliers;
-		output.icpInliersRatio = icpInliersRatio;
-		output.covariance = covariance.clone();
+		output.reg = reg.copyWithoutData();
 		output.features = features;
 		output.localMapSize = localMapSize;
 		output.localScanMapSize = localScanMapSize;
@@ -87,10 +82,7 @@ public:
 	}
 
 	bool lost;
-	int matches;
-	int inliers;
-	float icpInliersRatio;
-	cv::Mat covariance;
+	RegistrationInfo reg;
 	int features;
 	int localMapSize;
 	int localScanMapSize;
@@ -108,12 +100,10 @@ public:
 	Transform transformGroundTruth;
 	float distanceTravelled;
 
-	int type; // 0=F2M, 1=F2F
+	int type;
 
 	// F2M
 	std::multimap<int, cv::KeyPoint> words;
-	std::vector<int> wordMatches;
-	std::vector<int> wordInliers;
 	std::map<int, cv::Point3f> localMap;
 	cv::Mat localScanMap;
 

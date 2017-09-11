@@ -381,9 +381,9 @@ Transform OdometryFovis::computeTransform(
 		info->type = (int)kTypeFovis;
 		info->keyFrameAdded = fovis_->getChangeReferenceFrames();
 		info->features = fovis_->getTargetFrame()->getNumDetectedKeypoints();
-		info->matches = fovis_->getMotionEstimator()->getNumMatches();
-		info->inliers = fovis_->getMotionEstimator()->getNumInliers();
-		info->covariance = covariance;
+		info->reg.matches = fovis_->getMotionEstimator()->getNumMatches();
+		info->reg.inliers = fovis_->getMotionEstimator()->getNumInliers();
+		info->reg.covariance = covariance;
 
 		if(this->isInfoDataFilled())
 		{

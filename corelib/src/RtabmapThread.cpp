@@ -336,7 +336,7 @@ bool RtabmapThread::handleEvent(UEvent* event)
 					if (!e->info().odomPose.isNull() || (_rtabmap->getMemory() && !_rtabmap->getMemory()->isIncremental()))
 					{
 						OdometryInfo infoCov;
-						infoCov.covariance = e->info().odomCovariance;
+						infoCov.reg.covariance = e->info().odomCovariance;
 						this->addData(OdometryEvent(e->data(), e->info().odomPose, infoCov));
 					}
 					else
@@ -347,7 +347,7 @@ bool RtabmapThread::handleEvent(UEvent* event)
 				else
 				{ 
 					OdometryInfo infoCov;
-					infoCov.covariance = e->info().odomCovariance;
+					infoCov.reg.covariance = e->info().odomCovariance;
 					this->addData(OdometryEvent(e->data(), e->info().odomPose, infoCov));
 				}
 				
@@ -570,7 +570,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		}
 		if(!lastPose_.isIdentity() &&
 						(odomEvent.pose().isIdentity() ||
-						odomEvent.info().covariance.at<double>(0,0)>=9999))
+						odomEvent.info().reg.covariance.at<double>(0,0)>=9999))
 		{
 			if(odomEvent.pose().isIdentity())
 			{
@@ -578,20 +578,20 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			}
 			else
 			{
-				UWARN("Odometry is reset (high variance (%f >=9999 detected). Increment map id!", odomEvent.info().covariance.at<double>(0,0));
+				UWARN("Odometry is reset (high variance (%f >=9999 detected). Increment map id!", odomEvent.info().reg.covariance.at<double>(0,0));
 			}
 			pushNewState(kStateTriggeringMap);
 			covariance_ = cv::Mat();
 		}
 
-		if(uIsFinite(odomEvent.info().covariance.at<double>(0,0)) &&
-			odomEvent.info().covariance.at<double>(0,0) != 1.0 &&
-			odomEvent.info().covariance.at<double>(0,0)>0.0)
+		if(uIsFinite(odomEvent.info().reg.covariance.at<double>(0,0)) &&
+			odomEvent.info().reg.covariance.at<double>(0,0) != 1.0 &&
+			odomEvent.info().reg.covariance.at<double>(0,0)>0.0)
 		{
 			// Use largest covariance error (to be independent of the odometry frame rate)
-			if(covariance_.empty() || odomEvent.info().covariance.at<double>(0,0) > covariance_.at<double>(0,0))
+			if(covariance_.empty() || odomEvent.info().reg.covariance.at<double>(0,0) > covariance_.at<double>(0,0))
 			{
-				covariance_ = odomEvent.info().covariance;
+				covariance_ = odomEvent.info().reg.covariance;
 			}
 		}
 
@@ -614,7 +614,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 			covariance_ = cv::Mat::eye(6,6,CV_64FC1);
 		}
 		OdometryInfo odomInfo = odomEvent.info().copyWithoutData();
-		odomInfo.covariance = covariance_;
+		odomInfo.reg.covariance = covariance_;
 		if(ignoreFrame)
 		{
 			// set negative id so rtabmap will detect it as an intermediate node

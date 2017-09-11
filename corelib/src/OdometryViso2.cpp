@@ -273,11 +273,11 @@ Transform OdometryViso2::computeTransform(
 	{
 		info->type = (int)kTypeViso2;
 		info->keyFrameAdded = !keep_reference_frame_;
-		info->matches = viso2_->getNumberOfMatches();
-		info->inliers = viso2_->getNumberOfInliers();
+		info->reg.matches = viso2_->getNumberOfMatches();
+		info->reg.inliers = viso2_->getNumberOfInliers();
 		if(covariance.cols == 6 && covariance.rows == 6 && covariance.type() == CV_64FC1)
 		{
-			info->covariance = covariance;
+			info->reg.covariance = covariance;
 		}
 
 		if(this->isInfoDataFilled())

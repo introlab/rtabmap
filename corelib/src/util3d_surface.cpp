@@ -2338,6 +2338,153 @@ pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 	return normals;
 }
 
+float computeNormalsComplexity(const cv::Mat & scan)
+{
+	if(!scan.empty() && (scan.channels() == 5 || scan.channels() == 6 || scan.channels() == 7))
+	{
+		 //Construct a buffer used by the pca analysis
+		int sz = static_cast<int>(scan.cols*2);
+		bool is2d = scan.channels() == 5;
+		cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+		int oi = 0;
+		for (int i = 0; i < scan.cols; ++i)
+		{
+			const float * ptrScan = scan.ptr<float>(0, i);
+			if(scan.channels() == 5)
+			{
+				if(uIsFinite(ptrScan[2]) && uIsFinite(ptrScan[3]))
+				{
+					float * ptr = data_normals.ptr<float>(oi++, 0);
+					ptr[0] = ptrScan[2];
+					ptr[1] = ptrScan[3];
+				}
+			}
+			else if(scan.channels() == 6)
+			{
+				if(uIsFinite(ptrScan[3]) && uIsFinite(ptrScan[4]) && uIsFinite(ptrScan[5]))
+				{
+					float * ptr = data_normals.ptr<float>(oi++, 0);
+					ptr[0] = ptrScan[3];
+					ptr[1] = ptrScan[4];
+					ptr[2] = ptrScan[5];
+				}
+			}
+			else
+			{
+				if(uIsFinite(ptrScan[4]) && uIsFinite(ptrScan[5]) && uIsFinite(ptrScan[6]))
+				{
+					float * ptr = data_normals.ptr<float>(oi++, 0);
+					ptr[0] = ptrScan[4];
+					ptr[1] = ptrScan[5];
+					ptr[2] = ptrScan[6];
+				}
+			}
+		}
+		if(oi>1)
+		{
+			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+			// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+			return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		}
+	}
+	else if(!scan.empty())
+	{
+		UERROR("Scan doesn't have normals!");
+	}
+	return 0.0f;
+}
+
+float computeNormalsComplexity(const pcl::PointCloud<pcl::PointNormal> & cloud, bool is2d)
+{
+	 //Construct a buffer used by the pca analysis
+	int sz = static_cast<int>(cloud.size()*2);
+	cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+	int oi = 0;
+	for (unsigned int i = 0; i < cloud.size(); ++i)
+	{
+		const pcl::PointNormal & pt = cloud.at(i);
+		if(uIsFinite(pt.normal_x) && uIsFinite(pt.normal_y) && uIsFinite(pt.normal_z))
+		{
+			float * ptr = data_normals.ptr<float>(oi++, 0);
+			ptr[0] = pt.normal_x;
+			ptr[1] = pt.normal_y;
+			if(!is2d)
+			{
+				ptr[2] = pt.normal_z;
+			}
+		}
+	}
+	if(oi>1)
+	{
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+	}
+	return 0.0f;
+}
+
+float computeNormalsComplexity(const pcl::PointCloud<pcl::Normal> & normals, bool is2d)
+{
+	 //Construct a buffer used by the pca analysis
+	int sz = static_cast<int>(normals.size()*2);
+	cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+	int oi = 0;
+	for (unsigned int i = 0; i < normals.size(); ++i)
+	{
+		const pcl::Normal & pt = normals.at(i);
+		if(uIsFinite(pt.normal_x) && uIsFinite(pt.normal_y) && uIsFinite(pt.normal_z))
+		{
+			float * ptr = data_normals.ptr<float>(oi++, 0);
+			ptr[0] = pt.normal_x;
+			ptr[1] = pt.normal_y;
+			if(!is2d)
+			{
+				ptr[2] = pt.normal_z;
+			}
+		}
+	}
+	if(oi>1)
+	{
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+	}
+	return 0.0f;
+}
+
+float computeNormalsComplexity(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, bool is2d)
+{
+	 //Construct a buffer used by the pca analysis
+	int sz = static_cast<int>(cloud.size()*2);
+	cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+	int oi = 0;
+	for (unsigned int i = 0; i < cloud.size(); ++i)
+	{
+		const pcl::PointXYZRGBNormal & pt = cloud.at(i);
+		if(uIsFinite(pt.normal_x) && uIsFinite(pt.normal_y) && uIsFinite(pt.normal_z))
+		{
+			float * ptr = data_normals.ptr<float>(oi++, 0);
+			ptr[0] = pt.normal_x;
+			ptr[1] = pt.normal_y;
+			if(!is2d)
+			{
+				ptr[2] = pt.normal_z;
+			}
+		}
+	}
+	if(oi>1)
+	{
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+	}
+	return 0.0f;
+}
+
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float searchRadius,

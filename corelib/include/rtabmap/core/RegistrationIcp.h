@@ -66,6 +66,7 @@ private:
 	bool _pointToPlane;
 	int _pointToPlaneK;
 	float _pointToPlaneRadius;
+	float _pointToPlaneMinComplexity;
 	bool _libpointmatcher;
 	std::string _libpointmatcherConfig;
 	float _libpointmatcherOutlierRatio;

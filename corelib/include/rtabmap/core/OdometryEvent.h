@@ -41,7 +41,7 @@ class OdometryEvent : public UEvent
 public:
 	OdometryEvent()
 	{
-		_info.covariance = cv::Mat::eye(6,6,CV_64FC1);
+		_info.reg.covariance = cv::Mat::eye(6,6,CV_64FC1);
 	}
 	OdometryEvent(
 		const SensorData & data,
@@ -51,17 +51,17 @@ public:
 			_pose(pose),
 			_info(info)
 	{
-		if(_info.covariance.empty())
+		if(_info.reg.covariance.empty())
 		{
-			_info.covariance = cv::Mat::eye(6,6,CV_64FC1);
+			_info.reg.covariance = cv::Mat::eye(6,6,CV_64FC1);
 		}
-		UASSERT(_info.covariance.cols == 6 && _info.covariance.rows == 6 && _info.covariance.type() == CV_64FC1);
-		UASSERT_MSG(uIsFinite(_info.covariance.at<double>(0,0)) && _info.covariance.at<double>(0,0)>0, "Transitional variance should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(_info.covariance.at<double>(1,1)) && _info.covariance.at<double>(1,1)>0, "Transitional variance should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(_info.covariance.at<double>(2,2)) && _info.covariance.at<double>(2,2)>0, "Transitional variance should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(_info.covariance.at<double>(3,3)) && _info.covariance.at<double>(3,3)>0, "Rotational variance should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(_info.covariance.at<double>(4,4)) && _info.covariance.at<double>(4,4)>0, "Rotational variance should not be null! (set to 1 if unknown)");
-		UASSERT_MSG(uIsFinite(_info.covariance.at<double>(5,5)) && _info.covariance.at<double>(5,5)>0, "Rotational variance should not be null! (set to 1 if unknown)");
+		UASSERT(_info.reg.covariance.cols == 6 && _info.reg.covariance.rows == 6 && _info.reg.covariance.type() == CV_64FC1);
+		UASSERT_MSG(uIsFinite(_info.reg.covariance.at<double>(0,0)) && _info.reg.covariance.at<double>(0,0)>0, "Transitional variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(_info.reg.covariance.at<double>(1,1)) && _info.reg.covariance.at<double>(1,1)>0, "Transitional variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(_info.reg.covariance.at<double>(2,2)) && _info.reg.covariance.at<double>(2,2)>0, "Transitional variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(_info.reg.covariance.at<double>(3,3)) && _info.reg.covariance.at<double>(3,3)>0, "Rotational variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(_info.reg.covariance.at<double>(4,4)) && _info.reg.covariance.at<double>(4,4)>0, "Rotational variance should not be null! (set to 1 if unknown)");
+		UASSERT_MSG(uIsFinite(_info.reg.covariance.at<double>(5,5)) && _info.reg.covariance.at<double>(5,5)>0, "Rotational variance should not be null! (set to 1 if unknown)");
 	}
 	virtual ~OdometryEvent() {}
 	virtual std::string getClassName() const {return "OdometryEvent";}
@@ -69,7 +69,7 @@ public:
 	SensorData & data() {return _data;}
 	const SensorData & data() const {return _data;}
 	const Transform & pose() const {return _pose;}
-	const cv::Mat & covariance() const {return _info.covariance;}
+	const cv::Mat & covariance() const {return _info.reg.covariance;}
 	std::vector<float> velocity() const {
 		if(_info.interval>0.0)
 		{

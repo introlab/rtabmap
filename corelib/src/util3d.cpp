@@ -1808,7 +1808,7 @@ cv::Mat projectCloudToCamera(
 {
 	UASSERT(!cameraTransform.isNull());
 	UASSERT(!laserScan.empty());
-	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7));
+	UASSERT(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7));
 	UASSERT(cameraMatrixK.type() == CV_64FC1 && cameraMatrixK.cols == 3 && cameraMatrixK.cols == 3);
 
 	float fx = cameraMatrixK.at<double>(0,0);
@@ -1819,46 +1819,25 @@ cv::Mat projectCloudToCamera(
 	cv::Mat registered = cv::Mat::zeros(imageSize, CV_32FC1);
 	Transform t = cameraTransform.inverse();
 
-	const cv::Vec2f* vec2Ptr = laserScan.ptr<cv::Vec2f>();
-	const cv::Vec3f* vec3Ptr = laserScan.ptr<cv::Vec3f>();
-	const cv::Vec4f* vec4Ptr = laserScan.ptr<cv::Vec4f>();
-	const cv::Vec6f* vec6Ptr = laserScan.ptr<cv::Vec6f>();
-	const float* vec7Ptr = laserScan.ptr<float>();
-
 	int count = 0;
 	for(int i=0; i<laserScan.cols; ++i)
 	{
+		const float* ptr = laserScan.ptr<float>(0, i);
+
 		// Get 3D from laser scan
 		cv::Point3f ptScan;
-		if(laserScan.type() == CV_32FC2)
+		if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC(5))
 		{
-			ptScan.x = vec2Ptr[i][0];
-			ptScan.y = vec2Ptr[i][1];
+			// 2D scans
+			ptScan.x = ptr[0];
+			ptScan.y = ptr[1];
 			ptScan.z = 0;
 		}
-		else if(laserScan.type() == CV_32FC3)
+		else // 3D scans
 		{
-			ptScan.x = vec3Ptr[i][0];
-			ptScan.y = vec3Ptr[i][1];
-			ptScan.z = vec3Ptr[i][2];
-		}
-		else if(laserScan.type() == CV_32FC(4))
-		{
-			ptScan.x = vec4Ptr[i][0];
-			ptScan.y = vec4Ptr[i][1];
-			ptScan.z = vec4Ptr[i][2];
-		}
-		else if(laserScan.type() == CV_32FC(6))
-		{
-			ptScan.x = vec6Ptr[i][0];
-			ptScan.y = vec6Ptr[i][1];
-			ptScan.z = vec6Ptr[i][2];
-		}
-		else // 7f
-		{
-			ptScan.x = (vec7Ptr+i*7)[0];
-			ptScan.y = (vec7Ptr+i*7)[1];
-			ptScan.z = (vec7Ptr+i*7)[2];
+			ptScan.x = ptr[0];
+			ptScan.y = ptr[1];
+			ptScan.z = ptr[2];
 		}
 		ptScan = util3d::transformPoint(ptScan, t);
 

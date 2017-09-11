@@ -1123,7 +1123,10 @@ bool Rtabmap::process(
 						}
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), info.icpInliersRatio);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_inliers_ratio(), info.icpInliersRatio);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_rotation(), info.icpRotation);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_translation(), info.icpTranslation);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_complexity(), info.icpStructuralComplexity);
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
 					}
 				}

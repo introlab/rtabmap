@@ -891,15 +891,15 @@ Transform OdometryORBSLAM2::computeTransform(
 	{
 		info->lost = t.isNull();
 		info->type = (int)kTypeORBSLAM2;
-		info->covariance = covariance;
+		info->reg.covariance = covariance;
 		info->localMapSize = totalMapPoints;
 		info->localKeyFrames = totalKfs;
 
 		if(this->isInfoDataFilled() && orbslam2_->mpTracker && orbslam2_->mpMap)
 		{
 			const std::vector<cv::KeyPoint> & kpts = orbslam2_->mpTracker->mCurrentFrame.mvKeys;
-			info->wordMatches.resize(kpts.size());
-			info->wordInliers.resize(kpts.size());
+			info->reg.matchesIDs.resize(kpts.size());
+			info->reg.inliersIDs.resize(kpts.size());
 			int oi = 0;
 			for (unsigned int i = 0; i < kpts.size(); ++i)
 			{
@@ -915,14 +915,15 @@ Transform OdometryORBSLAM2::computeTransform(
 				info->words.insert(std::make_pair(wordId, kpts[i]));
 				if(orbslam2_->mpTracker->mCurrentFrame.mvpMapPoints[i] != 0)
 				{
-					info->wordMatches[oi] = wordId;
-					info->wordInliers[oi] = wordId;
+					info->reg.matchesIDs[oi] = wordId;
+					info->reg.inliersIDs[oi] = wordId;
 					++oi;
 				}
 			}
-			info->wordMatches.resize(oi);
-			info->wordInliers.resize(oi);
-			info->inliers = oi;
+			info->reg.matchesIDs.resize(oi);
+			info->reg.inliersIDs.resize(oi);
+			info->reg.inliers = oi;
+			info->reg.matches = oi;
 
 			std::vector<ORB_SLAM2::MapPoint*> mapPoints = orbslam2_->mpMap->GetAllMapPoints();
 			for (unsigned int i = 0; i < mapPoints.size(); ++i)

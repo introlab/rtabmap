@@ -232,6 +232,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_pointToPlane(Parameters::defaultIcpPointToPlane()),
 	_pointToPlaneK(Parameters::defaultIcpPointToPlaneK()),
 	_pointToPlaneRadius(Parameters::defaultIcpPointToPlaneRadius()),
+	_pointToPlaneMinComplexity(Parameters::defaultIcpPointToPlaneMinComplexity()),
 	_libpointmatcher(Parameters::defaultIcpPM()),
 	_libpointmatcherConfig(Parameters::defaultIcpPMConfig()),
 	_libpointmatcherOutlierRatio(Parameters::defaultIcpPMOutlierRatio()),
@@ -265,6 +266,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpPointToPlane(), _pointToPlane);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneK(), _pointToPlaneK);
 	Parameters::parse(parameters, Parameters::kIcpPointToPlaneRadius(), _pointToPlaneRadius);
+	Parameters::parse(parameters, Parameters::kIcpPointToPlaneMinComplexity(), _pointToPlaneMinComplexity);
+	UASSERT(_pointToPlaneMinComplexity >= 0.0f && _pointToPlaneMinComplexity <= 1.0f);
 
 	Parameters::parse(parameters, Parameters::kIcpPM(), _libpointmatcher);
 	Parameters::parse(parameters, Parameters::kIcpPMConfig(), _libpointmatcherConfig);
@@ -428,6 +431,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 			float correspondencesRatio = 0.0f;
 			int correspondences = 0;
 			double variance = 1.0;
+			bool transformComputed = false;
+			bool tooLowComplexityForPlaneToPlane = false;
 
 			if( _pointToPlane &&
 				_voxelSize == 0.0f &&
@@ -436,72 +441,88 @@ Transform RegistrationIcp::computeTransformationImpl(
 				!((fromScan.channels() == 5 || toScan.channels() == 5) && !_libpointmatcher)) // PCL crashes if 2D)
 			{
 				//special case if we have already normals computed and there is no filtering
-				pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::laserScanToPointCloudNormal(fromScan, fromLocalTransform);
-				pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toLocalTransform);
 
-				fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
-				toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
-
-
-				UDEBUG("Conversion time = %f s", timer.ticks());
-				pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
-#ifdef RTABMAP_POINTMATCHER
-				if(_libpointmatcher)
+				double fromComplexity = util3d::computeNormalsComplexity(fromScan);
+				double toComplexity = util3d::computeNormalsComplexity(toScan);
+				UWARN("%d->%d %f %f", fromSignature.id(), toSignature.id(), fromComplexity, toComplexity);
+				float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
+				info.icpStructuralComplexity = complexity;
+				if(complexity < _pointToPlaneMinComplexity)
 				{
-					// Load point clouds
-					DP data = pclToDP(fromCloudNormals, fromScan.channels() == 5);
-					DP ref = pclToDP(toCloudNormals, toScan.channels() == 5);
-
-					// Compute the transformation to express data in ref
-					PM::TransformationParameters T;
-					try
-					{
-						UASSERT(_libpointmatcherICP != 0);
-						PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
-						UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
-						T = icp(data, ref);
-						icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
-						UDEBUG("libpointmatcher icp...done! T=%s", icpT.prettyPrint().c_str());
-
-						float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
-						UDEBUG("match ratio: %f", matchRatio);
-
-						if(!icpT.isNull())
-						{
-							fromCloudNormalsRegistered = util3d::transformPointCloud(fromCloudNormals, icpT);
-							hasConverged = true;
-						}
-					}
-					catch(const std::exception & e)
-					{
-						UWARN("libpointmatcher has failed: %s", e.what());
-					}
+					tooLowComplexityForPlaneToPlane = true;
+					UWARN("ICP PointToPlane ignored as structural complexity is too low: %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
 				}
 				else
-#endif
 				{
-					icpT = util3d::icpPointToPlane(
-							fromCloudNormals,
-							toCloudNormals,
-						   _maxCorrespondenceDistance,
-						   _maxIterations,
-						   hasConverged,
-						   *fromCloudNormalsRegistered,
-						   _epsilon,
-						   this->force3DoF());
-				}
+					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals = util3d::laserScanToPointCloudNormal(fromScan, fromLocalTransform);
+					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toLocalTransform);
 
-				if(!icpT.isNull() && hasConverged)
-				{
-					util3d::computeVarianceAndCorrespondences(
-							fromCloudNormalsRegistered,
-							toCloudNormals,
-							_maxCorrespondenceDistance,
-							variance,
-							correspondences);
+					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
+					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
+
+
+					UDEBUG("Conversion time = %f s", timer.ticks());
+					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
+#ifdef RTABMAP_POINTMATCHER
+					if(_libpointmatcher)
+					{
+						// Load point clouds
+						DP data = pclToDP(fromCloudNormals, fromScan.channels() == 5);
+						DP ref = pclToDP(toCloudNormals, toScan.channels() == 5);
+
+						// Compute the transformation to express data in ref
+						PM::TransformationParameters T;
+						try
+						{
+							UASSERT(_libpointmatcherICP != 0);
+							PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
+							UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
+							T = icp(data, ref);
+							icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
+							UDEBUG("libpointmatcher icp...done! T=%s", icpT.prettyPrint().c_str());
+
+							float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
+							UDEBUG("match ratio: %f", matchRatio);
+
+							if(!icpT.isNull())
+							{
+								fromCloudNormalsRegistered = util3d::transformPointCloud(fromCloudNormals, icpT);
+								hasConverged = true;
+							}
+						}
+						catch(const std::exception & e)
+						{
+							UWARN("libpointmatcher has failed: %s", e.what());
+						}
+					}
+					else
+#endif
+					{
+						icpT = util3d::icpPointToPlane(
+								fromCloudNormals,
+								toCloudNormals,
+							   _maxCorrespondenceDistance,
+							   _maxIterations,
+							   hasConverged,
+							   *fromCloudNormalsRegistered,
+							   _epsilon,
+							   this->force3DoF());
+					}
+
+					if(!icpT.isNull() && hasConverged)
+					{
+						util3d::computeVarianceAndCorrespondences(
+								fromCloudNormalsRegistered,
+								toCloudNormals,
+								_maxCorrespondenceDistance,
+								variance,
+								correspondences);
+					}
+					transformComputed = true;
 				}
 			}
-			else
+
+			if(!transformComputed)
 			{
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloud = util3d::laserScanToPointCloud(fromScan, fromLocalTransform);
 				pcl::PointCloud<pcl::PointXYZ>::Ptr toCloud = util3d::laserScanToPointCloud(toScan, guess * toLocalTransform);
@@ -534,44 +555,43 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 				pcl::PointCloud<pcl::PointXYZ>::Ptr fromCloudRegistered(new pcl::PointCloud<pcl::PointXYZ>());
 				if(_pointToPlane && // ICP Point To Plane
+					!tooLowComplexityForPlaneToPlane && // if previously rejected above
 					!((fromScan.channels() == 2 || fromScan.channels() == 5 || toScan.channels() == 2 || toScan.channels() == 5) && !_libpointmatcher)) // PCL crashes if 2D
 				{
-					pcl::PointCloud<pcl::Normal>::Ptr normals;
 					Eigen::Vector3f viewpointFrom(fromLocalTransform.x(), fromLocalTransform.y(), fromLocalTransform.z());
+					pcl::PointCloud<pcl::Normal>::Ptr normalsFrom;
+					if(fromScan.channels() == 2 || fromScan.channels() == 5)
+					{
+						if(_voxelSize > 0.0f)
+						{
+							normalsFrom = util3d::computeNormals2D(
+									fromCloudFiltered,
+									_pointToPlaneK,
+									_pointToPlaneRadius,
+									viewpointFrom);
+						}
+						else
+						{
+							normalsFrom = util3d::computeFastOrganizedNormals2D(
+									fromCloudFiltered,
+									_pointToPlaneK,
+									_pointToPlaneRadius,
+									viewpointFrom);
+						}
+					}
+					else
+					{
+						normalsFrom = util3d::computeNormals(fromCloudFiltered, _pointToPlaneK, _pointToPlaneRadius, viewpointFrom);
+					}
+
 					Transform toT = guess * toLocalTransform;
 					Eigen::Vector3f viewpointTo(toT.x(), toT.y(), toT.z());
-
-					if(fromScan.channels() == 2 || fromScan.channels() == 5)
-					{
-						if(_voxelSize > 0.0f)
-						{
-							normals = util3d::computeNormals2D(
-									fromCloudFiltered,
-									_pointToPlaneK,
-									_pointToPlaneRadius,
-									viewpointFrom);
-						}
-						else
-						{
-							normals = util3d::computeFastOrganizedNormals2D(
-									fromCloudFiltered,
-									_pointToPlaneK,
-									_pointToPlaneRadius,
-									viewpointFrom);
-						}
-					}
-					else
-					{
-						normals = util3d::computeNormals(fromCloudFiltered, _pointToPlaneK, _pointToPlaneRadius, viewpointFrom);
-					}
-					pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
-					pcl::concatenateFields(*fromCloudFiltered, *normals, *fromCloudNormals);
-
+					pcl::PointCloud<pcl::Normal>::Ptr normalsTo;
 					if(toScan.channels() == 2 || toScan.channels() == 5)
 					{
 						if(_voxelSize > 0.0f)
 						{
-							normals = util3d::computeNormals2D(
+							normalsTo = util3d::computeNormals2D(
 									toCloudFiltered,
 									_pointToPlaneK,
 									_pointToPlaneRadius,
@@ -579,7 +599,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						else
 						{
-							normals = util3d::computeFastOrganizedNormals2D(
+							normalsTo = util3d::computeFastOrganizedNormals2D(
 									toCloudFiltered,
 									_pointToPlaneK,
 									_pointToPlaneRadius,
@@ -588,99 +608,116 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 					else
 					{
-						normals = util3d::computeNormals(toCloudFiltered, _pointToPlaneK, _pointToPlaneRadius, viewpointTo);
+						normalsTo = util3d::computeNormals(toCloudFiltered, _pointToPlaneK, _pointToPlaneRadius, viewpointTo);
 					}
-					pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
-					pcl::concatenateFields(*toCloudFiltered, *normals, *toCloudNormals);
 
-					std::vector<int> indices;
-					toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
-					fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
-
-					// update output scans
-					if(fromScan.channels() == 2 || fromScan.channels() == 5)
+					double fromComplexity = util3d::computeNormalsComplexity(*normalsFrom, fromScan.channels() == 2 || fromScan.channels() == 5);
+					double toComplexity = util3d::computeNormalsComplexity(*normalsTo, toScan.channels() == 2 || toScan.channels() == 5);
+					float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
+					info.icpStructuralComplexity = complexity;
+					if(complexity < _pointToPlaneMinComplexity)
 					{
-						fromSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
+						tooLowComplexityForPlaneToPlane = true;
+						UWARN("ICP PointToPlane ignored as structural complexity is too low: %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
 					}
 					else
 					{
-						fromSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
-					}
-					if(toScan.channels() == 2 || toScan.channels() == 5)
-					{
-						toSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
-					}
-					else
-					{
-						toSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
-					}
+						pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+						pcl::concatenateFields(*fromCloudFiltered, *normalsFrom, *fromCloudNormals);
 
-					UDEBUG("Compute normals (%d,%d) time = %f s", (int)fromCloudNormals->size(), (int)toCloudNormals->size(), timer.ticks());
+						pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+						pcl::concatenateFields(*toCloudFiltered, *normalsTo, *toCloudNormals);
 
-					if(toCloudNormals->size() && fromCloudNormals->size())
-					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
+						std::vector<int> indices;
+						toCloudNormals = util3d::removeNaNNormalsFromPointCloud(toCloudNormals);
+						fromCloudNormals = util3d::removeNaNNormalsFromPointCloud(fromCloudNormals);
+
+						// update output scans
+						if(fromScan.channels() == 2 || fromScan.channels() == 5)
+						{
+							fromSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
+						}
+						else
+						{
+							fromSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*fromCloudNormals, fromLocalTransform.inverse()), LaserScanInfo(maxLaserScansFrom, fromSignature.sensorData().laserScanInfo().maxRange(), fromLocalTransform));
+						}
+						if(toScan.channels() == 2 || toScan.channels() == 5)
+						{
+							toSignature.sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+						}
+						else
+						{
+							toSignature.sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*toCloudNormals, (guess*toLocalTransform).inverse()), LaserScanInfo(maxLaserScansTo, toSignature.sensorData().laserScanInfo().maxRange(), toLocalTransform));
+						}
+						UDEBUG("Compute normals (%d,%d) time = %f s", (int)fromCloudNormals->size(), (int)toCloudNormals->size(), timer.ticks());
+
+						if(toCloudNormals->size() && fromCloudNormals->size())
+						{
+							pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered(new pcl::PointCloud<pcl::PointNormal>());
 
 #ifdef RTABMAP_POINTMATCHER
-						if(_libpointmatcher)
-						{
-							// Load point clouds
-							DP data = pclToDP(fromCloudNormals, fromScan.channels() == 2 || fromScan.channels() == 5);
-							DP ref = pclToDP(toCloudNormals, toScan.channels() == 2 || toScan.channels() == 5);
-
-							// Compute the transformation to express data in ref
-							PM::TransformationParameters T;
-							try
+							if(_libpointmatcher)
 							{
-								UASSERT(_libpointmatcherICP != 0);
-								PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
-								UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
-								T = icp(data, ref);
-								UDEBUG("libpointmatcher icp...done!");
-								icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
+								// Load point clouds
+								DP data = pclToDP(fromCloudNormals, fromScan.channels() == 2 || fromScan.channels() == 5);
+								DP ref = pclToDP(toCloudNormals, toScan.channels() == 2 || toScan.channels() == 5);
 
-								float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
-								UDEBUG("match ratio: %f", matchRatio);
-
-								if(!icpT.isNull())
+								// Compute the transformation to express data in ref
+								PM::TransformationParameters T;
+								try
 								{
-									fromCloudNormalsRegistered = util3d::transformPointCloud(fromCloudNormals, icpT);
-									hasConverged = true;
+									UASSERT(_libpointmatcherICP != 0);
+									PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
+									UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
+									T = icp(data, ref);
+									UDEBUG("libpointmatcher icp...done!");
+									icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
+
+									float matchRatio = icp.errorMinimizer->getWeightedPointUsedRatio();
+									UDEBUG("match ratio: %f", matchRatio);
+
+									if(!icpT.isNull())
+									{
+										fromCloudNormalsRegistered = util3d::transformPointCloud(fromCloudNormals, icpT);
+										hasConverged = true;
+									}
+								}
+								catch(const std::exception & e)
+								{
+									UWARN("libpointmatcher has failed: %s", e.what());
 								}
 							}
-							catch(const std::exception & e)
+							else
+#endif
 							{
-								UWARN("libpointmatcher has failed: %s", e.what());
+								icpT = util3d::icpPointToPlane(
+										fromCloudNormals,
+										toCloudNormals,
+									   _maxCorrespondenceDistance,
+									   _maxIterations,
+									   hasConverged,
+									   *fromCloudNormalsRegistered,
+									   _epsilon,
+									   this->force3DoF());
+							}
+
+							if(!icpT.isNull() && hasConverged)
+							{
+								util3d::computeVarianceAndCorrespondences(
+										fromCloudNormalsRegistered,
+										toCloudNormals,
+										_maxCorrespondenceDistance,
+										variance,
+										correspondences);
 							}
 						}
-						else
-#endif
-						{
-							icpT = util3d::icpPointToPlane(
-									fromCloudNormals,
-									toCloudNormals,
-								   _maxCorrespondenceDistance,
-								   _maxIterations,
-								   hasConverged,
-								   *fromCloudNormalsRegistered,
-								   _epsilon,
-								   this->force3DoF());
-						}
-
-						if(!icpT.isNull() && hasConverged)
-						{
-							util3d::computeVarianceAndCorrespondences(
-									fromCloudNormalsRegistered,
-									toCloudNormals,
-									_maxCorrespondenceDistance,
-									variance,
-									correspondences);
-						}
+						transformComputed = true;
 					}
 				}
-				else // ICP Point to Point
+
+				if(!transformComputed) // ICP Point to Point
 				{
-					if(_pointToPlane && ((fromScan.channels() == 2 || fromScan.channels() == 5 || toScan.channels() == 2 || toScan.channels() == 5) && !_libpointmatcher))
+					if(_pointToPlane && !tooLowComplexityForPlaneToPlane && ((fromScan.channels() == 2 || fromScan.channels() == 5 || toScan.channels() == 2 || toScan.channels() == 5) && !_libpointmatcher))
 					{
 						UWARN("ICP PointToPlane ignored for 2d scans with PCL registration (some crash issues). Use libpointmatcher (%s) or disable %s to avoid this warning.", Parameters::kIcpPM().c_str(), Parameters::kIcpPointToPlane().c_str());
 					}
@@ -707,7 +744,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 
 #ifdef RTABMAP_POINTMATCHER
-					if(_libpointmatcher)
+					if(_libpointmatcher && !_pointToPlane) // don't use libpointmatcher if it is configured for point to plane
 					{
 						// Load point clouds
 						DP data = pclToDP(fromCloudFiltered, fromScan.channels() == 2 || fromScan.channels() == 5);

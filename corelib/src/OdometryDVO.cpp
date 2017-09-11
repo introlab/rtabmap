@@ -270,7 +270,7 @@ Transform OdometryDVO::computeTransform(
 	if(info)
 	{
 		info->type = (int)kTypeDVO;
-		info->covariance = covariance;
+		info->reg.covariance = covariance;
 	}
 
 	UINFO("Odom update time = %fs", timer.elapsed());

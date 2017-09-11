@@ -513,6 +513,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
     RTABMAP_PARAM(Icp, PointToPlaneK,             int, 20,      "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
     RTABMAP_PARAM(Icp, PointToPlaneRadius,        float, 0.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
+    RTABMAP_PARAM(Icp, PointToPlaneMinComplexity, float, 0.0,   "Minimum structural complexity (0.0=low, 1.0=high) of the scan to do point to plane registration, otherwise point to point registration is done instead.");
 
     // libpointmatcher
     RTABMAP_PARAM(Icp, PM,                       bool, false,   "Use libpointmatcher for ICP registration instead of PCL's implementation.");

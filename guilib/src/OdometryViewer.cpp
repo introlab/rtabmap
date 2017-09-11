@@ -179,7 +179,7 @@ void OdometryViewer::clear()
 void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 {
 	processingData_ = true;
-	int quality = odom.info().inliers;
+	int quality = odom.info().reg.inliers;
 
 	bool lost = false;
 	bool lostStateChanged = false;
@@ -193,11 +193,11 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 
 		lost = true;
 	}
-	else if(odom.info().inliers>0 &&
+	else if(odom.info().reg.inliers>0 &&
 			qualityWarningThr_ &&
-			odom.info().inliers < qualityWarningThr_)
+			odom.info().reg.inliers < qualityWarningThr_)
 	{
-		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, qualityWarningThr_);
+		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().reg.inliers, qualityWarningThr_);
 		lostStateChanged = imageView_->getBackgroundColor() == Qt::darkRed;
 		imageView_->setBackgroundColor(Qt::darkYellow);
 		cloudView_->setBackgroundColor(Qt::darkYellow);
@@ -425,13 +425,13 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 			{
 				if(imageView_->isFeaturesShown())
 				{
-					for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.matchesIDs.size(); ++i)
 					{
-						imageView_->setFeatureColor(odom.info().wordMatches[i], Qt::red); // outliers
+						imageView_->setFeatureColor(odom.info().reg.matchesIDs[i], Qt::red); // outliers
 					}
-					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.inliersIDs.size(); ++i)
 					{
-						imageView_->setFeatureColor(odom.info().wordInliers[i], Qt::green); // inliers
+						imageView_->setFeatureColor(odom.info().reg.inliersIDs[i], Qt::green); // inliers
 					}
 				}
 			}
