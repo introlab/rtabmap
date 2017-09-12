@@ -3805,8 +3805,8 @@ void DatabaseViewer::updateConstraintView(
 		}
 
 		//update coordinate
-
 		constraintsViewer_->addOrUpdateCoordinate("from_coordinate", pose, 0.2);
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		constraintsViewer_->addOrUpdateCoordinate("to_coordinate", pose*t, 0.2);
 		constraintsViewer_->removeCoordinate("to_coordinate_gt");
 		if(uContains(groundTruthPoses_, link.from()) && uContains(groundTruthPoses_, link.to()))
@@ -3814,6 +3814,7 @@ void DatabaseViewer::updateConstraintView(
 			constraintsViewer_->addOrUpdateCoordinate("to_coordinate_gt",
 					pose*(groundTruthPoses_.at(link.from()).inverse()*groundTruthPoses_.at(link.to())), 0.1);
 		}
+#endif
 
 		constraintsViewer_->clearTrajectory();
 
