@@ -211,6 +211,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->loopClosure_bundle->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->groupBoxx_g2o->setEnabled(false);
 	}
+#ifdef RTABMAP_ORB_SLAM2
+	else
+	{
+		// only graph optimization is disabled, g2o (from ORB_SLAM2) is valid only for SBA
+		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
+	}
+#endif
 	if(!OptimizerG2O::isCSparseAvailable())
 	{
 		_ui->comboBox_g2o_solver->setItemData(0, 0, Qt::UserRole - 1);
@@ -2434,6 +2441,7 @@ bool PreferencesDialog::validateForm()
 					   "with TORO. GTSAM is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeGTSAM);
 		}
+#ifndef RTABMAP_ORB_SLAM2
 		else if(Optimizer::isAvailable(Optimizer::kTypeG2O))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
@@ -2441,8 +2449,13 @@ bool PreferencesDialog::validateForm()
 					   "with TORO. g2o is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeG2O);
 		}
+#endif
 	}
+#ifdef RTABMAP_ORB_SLAM2
+	if(_ui->graphOptimization_type->currentIndex() == 1)
+#else
 	if(_ui->graphOptimization_type->currentIndex() == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+#endif
 	{
 		if(Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 		{
@@ -2461,6 +2474,7 @@ bool PreferencesDialog::validateForm()
 	}
 	if(_ui->graphOptimization_type->currentIndex() == 2 && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
+#ifndef RTABMAP_ORB_SLAM2
 		if(Optimizer::isAvailable(Optimizer::kTypeG2O))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
@@ -2468,7 +2482,9 @@ bool PreferencesDialog::validateForm()
 					   "with GTSAM. g2o is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeG2O);
 		}
-		else if(Optimizer::isAvailable(Optimizer::kTypeTORO))
+		else
+#endif
+			if(Optimizer::isAvailable(Optimizer::kTypeTORO))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
 					tr("Selected graph optimization strategy (GTSAM) is not available. RTAB-Map is not built "
@@ -3487,7 +3503,9 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 					ok = false;
 				}
 #endif
+#ifndef RTABMAP_ORB_SLAM2
 				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+#endif
 				{
 					if(valueInt==1 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
 					{

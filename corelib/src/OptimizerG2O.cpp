@@ -37,19 +37,22 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/util3d_motion_estimation.h>
 #include <rtabmap/core/util3d.h>
 
-#ifdef RTABMAP_G2O
-#include "g2o/config.h"
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
 #include "g2o/core/sparse_optimizer.h"
 #include "g2o/core/block_solver.h"
 #include "g2o/core/factory.h"
 #include "g2o/core/optimization_algorithm_factory.h"
 #include "g2o/core/optimization_algorithm_gauss_newton.h"
 #include "g2o/core/optimization_algorithm_levenberg.h"
+#include "g2o/core/robust_kernel_impl.h"
 #include "g2o/core/linear_solver.h"
+
+#ifdef RTABMAP_G2O
 #include "g2o/types/sba/types_sba.h"
+#include "g2o/solvers/eigen/linear_solver_eigen.h"
+#include "g2o/config.h"
 #include "g2o/types/slam2d/types_slam2d.h"
 #include "g2o/types/slam3d/types_slam3d.h"
-#include "g2o/core/robust_kernel_impl.h"
 #ifdef G2O_HAVE_CSPARSE
 #include "g2o/solvers/csparse/linear_solver_csparse.h"
 #endif
@@ -57,14 +60,20 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifdef G2O_HAVE_CHOLMOD
 #include "g2o/solvers/cholmod/linear_solver_cholmod.h"
 #endif
-#include "g2o/solvers/eigen/linear_solver_eigen.h"
-
 enum {
     PARAM_OFFSET=0,
 };
+#endif // RTABMAP_G2O
+
+#ifdef RTABMAP_ORB_SLAM2
+#include "g2o/types/types_sba.h"
+#include "g2o/types/types_six_dof_expmap.h"
+#include "g2o/solvers/linear_solver_eigen.h"
+#endif
 
 typedef g2o::BlockSolver< g2o::BlockSolverTraits<-1, -1> > SlamBlockSolver;
 typedef g2o::LinearSolverEigen<SlamBlockSolver::PoseMatrixType> SlamLinearEigenSolver;
+#ifdef RTABMAP_G2O
 typedef g2o::LinearSolverPCG<SlamBlockSolver::PoseMatrixType> SlamLinearPCGSolver;
 #ifdef G2O_HAVE_CSPARSE
 typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSparseSolver;
@@ -79,14 +88,15 @@ typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearChol
 #include "vertigo/g2o/edge_se3Switchable.h"
 #include "vertigo/g2o/vertex_switchLinear.h"
 #endif
+#endif
 
-#endif // end RTABMAP_G2O
+#endif // end defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
 
 namespace rtabmap {
 
 bool OptimizerG2O::available()
 {
-#ifdef RTABMAP_G2O
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
 	return true;
 #else
 	return false;
@@ -123,6 +133,13 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 	UASSERT(pixelVariance_ > 0.0);
 	UASSERT(baseline_ >= 0.0);
 
+#ifdef RTABMAP_ORB_SLAM2
+	if(solver_ != 3)
+	{
+		UWARN("g2o built with ORB_SLAM2 has only Eigen solver available, using Eigen=3 instead of %d.", solver_);
+		solver_ = 3;
+	}
+#else
 #ifndef G2O_HAVE_CHOLMOD
 	if(solver_ == 2)
 	{
@@ -138,6 +155,8 @@ void OptimizerG2O::parseParameters(const ParametersMap & parameters)
 		solver_ = 1;
 	}
 #endif
+#endif
+
 }
 
 std::map<int, Transform> OptimizerG2O::optimize(
@@ -613,7 +632,11 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	}
 	UDEBUG("Optimizing graph...end!");
 #else
+#ifdef RTABMAP_ORB_SLAM2
+	UERROR("G2O graph optimization cannot be used with g2o built from ORB_SLAM2, only SBA is available.");
+#else
 	UERROR("Not built with G2O support!");
+#endif
 #endif
 	return optimizedPoses;
 }
@@ -628,7 +651,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		std::set<int> * outliers)
 {
 	std::map<int, Transform> optimizedPoses;
-#ifdef RTABMAP_G2O
+#if defined(RTABMAP_G2O) || defined(RTABMAP_ORB_SLAM2)
 	UDEBUG("Optimizing graph...");
 
 	optimizedPoses.clear();
@@ -638,6 +661,9 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
 		g2o::BlockSolver_6_3::LinearSolverType * linearSolver = 0;
 
+#ifdef RTABMAP_ORB_SLAM2
+		linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+#else
 		if(solver_ == 3)
 		{
 			//eigen
@@ -663,14 +689,17 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			//pcg
 			linearSolver = new g2o::LinearSolverPCG<g2o::BlockSolver_6_3::PoseMatrixType>();
 		}
+#endif
 
 		g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
 
+#ifndef RTABMAP_ORB_SLAM2
 		if(optimizer_ == 1)
 		{
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(solver_ptr));
 		}
 		else
+#endif
 		{
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(solver_ptr));
 		}
@@ -686,9 +715,17 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 			// Add node's pose
 			UASSERT(!camPose.isNull());
+#ifdef RTABMAP_ORB_SLAM2
+			g2o::VertexSE3Expmap * vCam = new g2o::VertexSE3Expmap();
+#else
 			g2o::VertexCam * vCam = new g2o::VertexCam();
+#endif
 
 			Eigen::Affine3d a = camPose.toEigen3d();
+#ifdef RTABMAP_ORB_SLAM2
+			a = a.inverse();
+			vCam->setEstimate(g2o::SE3Quat(a.rotation(), a.translation()));
+#else
 			g2o::SBACam cam(Eigen::Quaterniond(a.rotation()), a.translation());
 			cam.setKcam(
 					iterModel->second.fx(),
@@ -697,6 +734,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					iterModel->second.cy(),
 					iterModel->second.Tx()<0.0?-iterModel->second.Tx()/iterModel->second.fx():baseline_); // baseline in meters
 			vCam->setEstimate(cam);
+#endif
 			vCam->setId(iter->first);
 
 			// negative root means that all other poses should be fixed instead of the root
@@ -718,6 +756,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			++iter;
 		}
 
+#ifndef RTABMAP_ORB_SLAM2
 		UDEBUG("fill edges to g2o...");
 		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
@@ -759,6 +798,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				}
 			}
 		}
+#endif
 
 		UDEBUG("fill 3D points to g2o...");
 		const int stepVertexId = poses.rbegin()->first+1;
@@ -775,7 +815,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				vpt3d->setMarginalized(true);
 				optimizer.addVertex(vpt3d);
 
-				//UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
+				UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
 
 				// set observations
 				for(std::map<int, cv::Point3f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
@@ -786,25 +826,62 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						const cv::Point3f & pt = jter->second;
 						double depth = pt.z;
 
-						//UDEBUG("Added observation pt=%d to cam=%d (%f,%f) d=%f", vpt3d->id()-stepVertexId, camId, pt.x, pt.y, depth);
+						UDEBUG("Added observation pt=%d to cam=%d (%f,%f) d=%f", vpt3d->id()-stepVertexId, camId, pt.x, pt.y, depth);
 
 						g2o::OptimizableGraph::Edge * e;
+						double baseline = 0.0;
+#ifdef RTABMAP_ORB_SLAM2
+						g2o::VertexSE3Expmap* vcam = dynamic_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(camId));
+						std::map<int, CameraModel>::const_iterator iterModel = models.find(camId);
+
+						cv::Point3f t = util3d::transformPoint(pt3d, Transform::fromEigen3d(vcam->estimate()).inverse());
+						UDEBUG("in cam %d frame=(%f,%f,%f)", camId, t.x, t.y, t.z);
+
+						cv::Point3f t2 = util3d::transformPoint(pt3d, (poses.at(camId)*iterModel->second.localTransform()).inverse());
+						UDEBUG("in cam2 %d frame=(%f,%f,%f)",camId, t2.x, t2.y, t2.z);
+
+						g2o::Vector3d t3 = vcam->estimate().map(g2o::Vector3d(pt3d.x, pt3d.y, pt3d.z));
+						UDEBUG("in cam3 %d frame=(%f,%f,%f)",camId, t3[0], t3[1], t3[2]);
+
+						cv::Point3f t4 = util3d::transformPoint(pt3d, (poses.at(camId)*iterModel->second.localTransform()));
+						UDEBUG("in cam4 %d frame=(%f,%f,%f)",camId, t4.x, t4.y, t4.z);
+
+						UASSERT(iterModel != models.end() && iterModel->second.isValidForProjection());
+						baseline = iterModel->second.Tx()<0.0?-iterModel->second.Tx()/iterModel->second.fx():baseline_;
+#else
 						g2o::VertexCam* vcam = dynamic_cast<g2o::VertexCam*>(optimizer.vertex(camId));
+						baseline = vcam->estimate().baseline;
+#endif
 						double variance = pixelVariance_;
-						if(uIsFinite(depth) && depth > 0.0 && vcam->estimate().baseline > 0.0)
+						if(uIsFinite(depth) && depth > 0.0 && baseline > 0.0)
 						{
 							// stereo edge
+#ifdef RTABMAP_ORB_SLAM2
+							g2o::EdgeStereoSE3ProjectXYZ* es = new g2o::EdgeStereoSE3ProjectXYZ();
+							float disparity = baseline * iterModel->second.fx() / depth;
+							Eigen::Vector3d obs( pt.x, pt.y, pt.x-disparity);
+							es->setMeasurement(obs);
+							//variance *= log(exp(1)+disparity);
+							es->setInformation(Eigen::Matrix3d::Identity() / variance);
+							es->fx = iterModel->second.fx();
+							es->fy = iterModel->second.fy();
+							es->cx = iterModel->second.cx();
+							es->cy = iterModel->second.cy();
+							es->bf = baseline*es->fx;
+							e = es;
+#else
 							g2o::EdgeProjectP2SC* es = new g2o::EdgeProjectP2SC();
-							float disparity = vcam->estimate().baseline * vcam->estimate().Kcam(0,0) / depth;
+							float disparity = baseline * vcam->estimate().Kcam(0,0) / depth;
 							Eigen::Vector3d obs( pt.x, pt.y, pt.x-disparity);
 							es->setMeasurement(obs);
 							//variance *= log(exp(1)+disparity);
 							es->setInformation(Eigen::Matrix3d::Identity() / variance);
 							e = es;
+#endif
 						}
 						else
 						{
-							if(vcam->estimate().baseline > 0.0)
+							if(baseline > 0.0)
 							{
 								UWARN("Stereo camera model detected but current "
 										"observation (pt=%d to cam=%d) has null depth (%f m), adding "
@@ -812,15 +889,28 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 										vpt3d->id()-stepVertexId, camId, depth);
 							}
 							// mono edge
+#ifdef RTABMAP_ORB_SLAM2
+							g2o::EdgeSE3ProjectXYZ* em = new g2o::EdgeSE3ProjectXYZ();
+							Eigen::Vector2d obs( pt.x, pt.y);
+							em->setMeasurement(obs);
+							em->setInformation(Eigen::Matrix2d::Identity() / variance);
+							em->fx = iterModel->second.fx();
+							em->fy = iterModel->second.fy();
+							em->cx = iterModel->second.cx();
+							em->cy = iterModel->second.cy();
+							e = em;
+
+#else
 							g2o::EdgeProjectP2MC* em = new g2o::EdgeProjectP2MC();
 							Eigen::Vector2d obs( pt.x, pt.y);
 							em->setMeasurement(obs);
 							em->setInformation(Eigen::Matrix2d::Identity() / variance);
 							e = em;
+#endif
 						}
 						e->setVertex(0, vpt3d);
 						e->setVertex(1, vcam);
-
+						UDEBUG("");
 						if(robustKernelDelta_ > 0.0)
 						{
 							g2o::RobustKernelHuber* kernel = new g2o::RobustKernelHuber;
@@ -875,8 +965,20 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					{
 						(*iter)->setLevel(1);
 						++outliersCount;
-						double d = ((g2o::EdgeProjectP2SC*)(*iter))->measurement()[0]-((g2o::EdgeProjectP2SC*)(*iter))->measurement()[2];
+						double d = 0.0;
+#ifdef RTABMAP_ORB_SLAM2
+						if(dynamic_cast<g2o::EdgeStereoSE3ProjectXYZ*>(*iter) != 0)
+						{
+							d = ((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[0]-((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->measurement()[2];
+						}
+						UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeStereoSE3ProjectXYZ*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
+#else
+						if(dynamic_cast<g2o::EdgeProjectP2SC*>(*iter) != 0)
+						{
+							d = ((g2o::EdgeProjectP2SC*)(*iter))->measurement()[0]-((g2o::EdgeProjectP2SC*)(*iter))->measurement()[2];
+						}
 						UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
+#endif
 
 						const cv::Point3f & pt3d = points3DMap.at((*iter)->vertex(0)->id()-stepVertexId);
 						((g2o::VertexSBAPointXYZ*)(*iter)->vertex(0))->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
@@ -909,10 +1011,18 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		// update poses
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
+#ifdef RTABMAP_ORB_SLAM2
+			const g2o::VertexSE3Expmap* v = (const g2o::VertexSE3Expmap*)optimizer.vertex(iter->first);
+#else
 			const g2o::VertexCam* v = (const g2o::VertexCam*)optimizer.vertex(iter->first);
+#endif
 			if(v)
 			{
 				Transform t = Transform::fromEigen3d(v->estimate());
+
+#ifdef RTABMAP_ORB_SLAM2
+				t=t.inverse();
+#endif
 
 				// remove model local transform
 				t *= models.at(iter->first).localTransform().inverse();

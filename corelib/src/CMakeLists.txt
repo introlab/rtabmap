@@ -325,12 +325,12 @@ ENDIF(dvo_core_FOUND)
 
 IF(ORB_SLAM2_FOUND)
     SET(INCLUDE_DIRS
+        ${ORB_SLAM2_INCLUDE_DIRS} #before so that g2o includes are taken from ORB_SLAM2 directory before the official g2o one
 		${INCLUDE_DIRS}
-		${ORB_SLAM2_INCLUDE_DIRS}
 	)
 	SET(LIBRARIES
+	    ${ORB_SLAM2_LIBRARIES}
 		${LIBRARIES}
-		${ORB_SLAM2_LIBRARIES}
 	)
 ENDIF(ORB_SLAM2_FOUND)
 
