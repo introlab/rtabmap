@@ -2698,9 +2698,27 @@ void DatabaseViewer::update(int value,
 					//add scan
 					if(ui_->checkBox_showScan->isChecked() && data.laserScanRaw().cols)
 					{
-						if(data.laserScanRaw().channels() == 6)
+						if(data.laserScanRaw().channels() == 7)
+						{
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr scan = util3d::laserScanToPointCloudRGBNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+							{
+								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+							}
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(data.laserScanRaw().channels() == 6)
 						{
 							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+							{
+								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+							}
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(data.laserScanRaw().channels() == 4)
+						{
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan = util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanInfo().localTransform());
 							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 							{
 								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());

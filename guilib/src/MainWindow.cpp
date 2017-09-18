@@ -2920,7 +2920,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		}
 
 		// Do ceiling/floor filtering
-		if(scan.channels() > 2 && // don't filter 2D scans
+		if((scan.channels() > 2 && scan.channels() != 5) && // don't filter 2D scans
 		   (_preferencesDialog->getScanFloorFilteringHeight() != 0.0 ||
 		   _preferencesDialog->getScanCeilingFilteringHeight() != 0.0))
 		{
@@ -2987,7 +2987,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 				iter->sensorData().laserScanInfo().localTransform().z());
 
 			pcl::PointCloud<pcl::Normal>::Ptr normals;
-			if(cloud->size())
+			if(cloud.get() && cloud->size())
 			{
 				if(scan.channels() == 2 || scan.channels() == 5)
 				{
@@ -3003,7 +3003,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			}
 			else
 			{
-				UASSERT(cloudRGB->size()); // Assuming 4 channels cannot be 2D
+				UASSERT(cloudRGB.get() && cloudRGB->size()); // Assuming 4 channels cannot be 2D
 				normals = util3d::computeNormals(cloudRGB, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
 				cloudRGBWithNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 				pcl::concatenateFields(*cloudRGB, *normals, *cloudRGBWithNormals);

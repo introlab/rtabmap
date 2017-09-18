@@ -193,7 +193,9 @@ pcl::PointXYZRGB transformPoint(
 		const pcl::PointXYZRGB & pt,
 		const Transform & transform)
 {
-	return pcl::transformPoint(pt, transform.toEigen3f());
+	pcl::PointXYZRGB ptRGB = pcl::transformPoint(pt, transform.toEigen3f());
+	ptRGB.rgb = pt.rgb;
+	return ptRGB;
 }
 pcl::PointNormal transformPoint(
 		const pcl::PointNormal & point,
@@ -227,6 +229,8 @@ pcl::PointXYZRGBNormal transformPoint(
 	ret.normal_x = static_cast<float> (transform (0, 0) * nt.coeffRef (0) + transform (0, 1) * nt.coeffRef (1) + transform (0, 2) * nt.coeffRef (2));
 	ret.normal_y = static_cast<float> (transform (1, 0) * nt.coeffRef (0) + transform (1, 1) * nt.coeffRef (1) + transform (1, 2) * nt.coeffRef (2));
 	ret.normal_z = static_cast<float> (transform (2, 0) * nt.coeffRef (0) + transform (2, 1) * nt.coeffRef (1) + transform (2, 2) * nt.coeffRef (2));
+
+	ret.rgb = point.rgb;
 	return ret;
 }
 
