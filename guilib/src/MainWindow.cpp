@@ -3042,10 +3042,10 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		}
 		else if(cloudRGB.get())
 		{
-			added = _cloudViewer->addCloud(scanName, cloudWithNormals, pose, color);
+			added = _cloudViewer->addCloud(scanName, cloudRGB, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = util3d::laserScanFromPointCloud(*cloudWithNormals);
+				scan = util3d::laserScanFromPointCloud(*cloudRGB);
 			}
 		}
 		else
@@ -3064,7 +3064,6 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 				}
 			}
 		}
-
 		if(!added)
 		{
 			UERROR("Adding cloud %d to viewer failed!", nodeId);
