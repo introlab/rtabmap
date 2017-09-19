@@ -38,7 +38,7 @@ namespace util3d
 
 cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transform)
 {
-	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6));
+	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7));
 
 	cv::Mat output = laserScan.clone();
 
@@ -81,7 +81,7 @@ cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transfor
 				out[3] = pt.normal_y;
 				out[4] = pt.normal_z;
 			}
-			else // 6 and 7 channels
+			else if(laserScan.type() == CV_32FC(6))
 			{
 				pcl::PointNormal pt;
 				pt.x=ptr[0];
@@ -97,6 +97,23 @@ cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transfor
 				out[3] = pt.normal_x;
 				out[4] = pt.normal_y;
 				out[5] = pt.normal_z;
+			}
+			else // 7 channels
+			{
+				pcl::PointNormal pt;
+				pt.x=ptr[0];
+				pt.y=ptr[1];
+				pt.z=ptr[2];
+				pt.normal_x=ptr[4];
+				pt.normal_y=ptr[5];
+				pt.normal_z=ptr[6];
+				pt = util3d::transformPoint(pt, transform);
+				out[0] = pt.x;
+				out[1] = pt.y;
+				out[2] = pt.z;
+				out[4] = pt.normal_x;
+				out[5] = pt.normal_y;
+				out[6] = pt.normal_z;
 			}
 		}
 	}

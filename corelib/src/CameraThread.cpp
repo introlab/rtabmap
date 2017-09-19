@@ -298,7 +298,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 			UASSERT(_scanDecimation >= 1);
 			UTimer timer;
 			pcl::IndicesPtr validIndices(new std::vector<int>);
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::cloudRGBFromSensorData(
 					data,
 					_scanDecimation,
 					_scanMaxDepth,
@@ -317,7 +317,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 				}
 				else if(!cloud->is_dense)
 				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZ>);
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr denseCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 					pcl::copyPointCloud(*cloud, *validIndices, *denseCloud);
 					cloud = denseCloud;
 				}
@@ -328,7 +328,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					{
 						Eigen::Vector3f viewPoint(baseToScan.x(), baseToScan.y(), baseToScan.z());
 						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, _scanNormalsRadius, viewPoint);
-						pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
+						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 						pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 						scan = util3d::laserScanFromPointCloud(*cloudNormals, baseToScan.inverse());
 					}
