@@ -211,6 +211,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		_ui->loopClosure_bundle->setItemData(1, 0, Qt::UserRole - 1);
 		_ui->groupBoxx_g2o->setEnabled(false);
 	}
+#ifdef RTABMAP_ORB_SLAM2
+	else
+	{
+		// only graph optimization is disabled, g2o (from ORB_SLAM2) is valid only for SBA
+		_ui->graphOptimization_type->setItemData(1, 0, Qt::UserRole - 1);
+	}
+#endif
 	if(!OptimizerG2O::isCSparseAvailable())
 	{
 		_ui->comboBox_g2o_solver->setItemData(0, 0, Qt::UserRole - 1);
@@ -410,9 +417,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_ceilingFilterHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_floorFilterHeight, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_normalKSearch, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_normalRadiusSearch, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_ceilingFilterHeight_scan, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_floorFilterHeight_scan, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_normalKSearch_scan, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+	connect(_ui->doubleSpinBox_normalRadiusSearch_scan, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showFrustums, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -585,6 +594,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_cameraImages_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_cameraImages_scanNormalsK, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_cameraImages_scanNormalsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 
 	//Rtabmap basic
 	connect(_ui->general_doubleSpinBox_timeThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_timeThr_2, SLOT(setValue(double)));
@@ -649,7 +659,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_imagePreDecimation->setObjectName(Parameters::kMemImagePreDecimation().c_str());
 	_ui->spinBox_imagePostDecimation->setObjectName(Parameters::kMemImagePostDecimation().c_str());
 	_ui->general_spinBox_laserScanDownsample->setObjectName(Parameters::kMemLaserScanDownsampleStepSize().c_str());
+	_ui->general_doubleSpinBox_laserScanVoxelSize->setObjectName(Parameters::kMemLaserScanVoxelSize().c_str());
 	_ui->general_spinBox_laserScanNormalK->setObjectName(Parameters::kMemLaserScanNormalK().c_str());
+	_ui->general_doubleSpinBox_laserScanNormalRadius->setObjectName(Parameters::kMemLaserScanNormalRadius().c_str());
 	_ui->checkBox_useOdomFeatures->setObjectName(Parameters::kMemUseOdomFeatures().c_str());
 
 	// Database
@@ -857,7 +869,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_icpEpsilon->setObjectName(Parameters::kIcpEpsilon().c_str());
 	_ui->loopClosure_icpRatio->setObjectName(Parameters::kIcpCorrespondenceRatio().c_str());
 	_ui->loopClosure_icpPointToPlane->setObjectName(Parameters::kIcpPointToPlane().c_str());
-	_ui->loopClosure_icpPointToPlaneNormals->setObjectName(Parameters::kIcpPointToPlaneNormalNeighbors().c_str());
+	_ui->loopClosure_icpPointToPlaneNormals->setObjectName(Parameters::kIcpPointToPlaneK().c_str());
+	_ui->loopClosure_icpPointToPlaneNormalsRadius->setObjectName(Parameters::kIcpPointToPlaneRadius().c_str());
+	_ui->loopClosure_icpPointToPlaneNormalsMinComplexity->setObjectName(Parameters::kIcpPointToPlaneMinComplexity().c_str());
 
 	_ui->groupBox_libpointmatcher->setObjectName(Parameters::kIcpPM().c_str());
 	_ui->lineEdit_IcpPMConfigPath->setObjectName(Parameters::kIcpPMConfig().c_str());
@@ -902,7 +916,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	//Odometry
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
 	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odometryType, SLOT(setCurrentIndex(int)));
-	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOdometryVisibility()));
 	_ui->odom_strategy->setCurrentIndex(Parameters::defaultOdomStrategy());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
 	_ui->odom_holonomic->setObjectName(Parameters::kOdomHolonomic().c_str());
@@ -920,6 +933,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_odom_f2m_maxNewFeatures->setObjectName(Parameters::kOdomF2MMaxNewFeatures().c_str());
 	_ui->spinBox_odom_f2m_scanMaxSize->setObjectName(Parameters::kOdomF2MScanMaxSize().c_str());
 	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubtractRadius().c_str());
+	_ui->doubleSpinBox_odom_f2m_scanAngle->setObjectName(Parameters::kOdomF2MScanSubtractAngle().c_str());
 	_ui->odom_f2m_bundleStrategy->setObjectName(Parameters::kOdomF2MBundleAdjustment().c_str());
 	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
 
@@ -1374,10 +1388,12 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_ceilingFilterHeight->setValue(0);
 		_ui->doubleSpinBox_floorFilterHeight->setValue(0);
 		_ui->spinBox_normalKSearch->setValue(10);
+		_ui->doubleSpinBox_normalRadiusSearch->setValue(0.0);
 
 		_ui->doubleSpinBox_ceilingFilterHeight_scan->setValue(0);
 		_ui->doubleSpinBox_floorFilterHeight_scan->setValue(0);
 		_ui->spinBox_normalKSearch_scan->setValue(0);
+		_ui->doubleSpinBox_normalRadiusSearch_scan->setValue(0.0);
 
 		_ui->checkBox_showGraphs->setChecked(true);
 		_ui->checkBox_showFrustums->setChecked(false);
@@ -1542,6 +1558,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->setValue(4.0);
 		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.025f);
 		_ui->spinBox_cameraImages_scanNormalsK->setValue(20);
+		_ui->doubleSpinBox_cameraImages_scanNormalsRadius->setValue(0.0);
 
 		_ui->groupBox_depthFromScan->setChecked(false);
 		_ui->groupBox_depthFromScan_fillHoles->setChecked(true);
@@ -1620,7 +1637,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		if(groupBox->objectName() == _ui->groupBox_odometry1->objectName())
 		{
 			_ui->odom_registration->setCurrentIndex(3);
-			updateOdometryVisibility();
 		}
 	}
 }
@@ -1769,9 +1785,11 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_ceilingFilterHeight->setValue(settings.value("cloudCeilingHeight", _ui->doubleSpinBox_ceilingFilterHeight->value()).toDouble());
 	_ui->doubleSpinBox_floorFilterHeight->setValue(settings.value("cloudFloorHeight", _ui->doubleSpinBox_floorFilterHeight->value()).toDouble());
 	_ui->spinBox_normalKSearch->setValue(settings.value("normalKSearch", _ui->spinBox_normalKSearch->value()).toInt());
+	_ui->doubleSpinBox_normalRadiusSearch->setValue(settings.value("normalRadiusSearch", _ui->doubleSpinBox_normalRadiusSearch->value()).toDouble());
 	_ui->doubleSpinBox_ceilingFilterHeight_scan->setValue(settings.value("scanCeilingHeight", _ui->doubleSpinBox_ceilingFilterHeight_scan->value()).toDouble());
 	_ui->doubleSpinBox_floorFilterHeight_scan->setValue(settings.value("scanFloorHeight", _ui->doubleSpinBox_floorFilterHeight_scan->value()).toDouble());
 	_ui->spinBox_normalKSearch_scan->setValue(settings.value("scanNormalKSearch", _ui->spinBox_normalKSearch_scan->value()).toInt());
+	_ui->doubleSpinBox_normalRadiusSearch_scan->setValue(settings.value("scanNormalRadiusSearch", _ui->doubleSpinBox_normalRadiusSearch_scan->value()).toDouble());
 
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
 	_ui->checkBox_showFrustums->setChecked(settings.value("showFrustums", _ui->checkBox_showFrustums->isChecked()).toBool());
@@ -1933,6 +1951,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->setValue(settings.value("maxDepth", _ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value()).toDouble());
 	_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(settings.value("voxelSize", _ui->doubleSpinBox_cameraImages_scanVoxelSize->value()).toDouble());
 	_ui->spinBox_cameraImages_scanNormalsK->setValue(settings.value("normalsK", _ui->spinBox_cameraImages_scanNormalsK->value()).toInt());
+	_ui->doubleSpinBox_cameraImages_scanNormalsRadius->setValue(settings.value("normalsRadius", _ui->doubleSpinBox_cameraImages_scanNormalsRadius->value()).toDouble());
 	settings.endGroup();//ScanFromDepth
 
 	settings.beginGroup("DepthFromScan");
@@ -2155,9 +2174,11 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("cloudCeilingHeight",     _ui->doubleSpinBox_ceilingFilterHeight->value());
 	settings.setValue("cloudFloorHeight",       _ui->doubleSpinBox_floorFilterHeight->value());
 	settings.setValue("normalKSearch",          _ui->spinBox_normalKSearch->value());
+	settings.setValue("normalRadiusSearch",     _ui->doubleSpinBox_normalRadiusSearch->value());
 	settings.setValue("scanCeilingHeight",      _ui->doubleSpinBox_ceilingFilterHeight_scan->value());
 	settings.setValue("scanFloorHeight",        _ui->doubleSpinBox_floorFilterHeight_scan->value());
 	settings.setValue("scanNormalKSearch",      _ui->spinBox_normalKSearch_scan->value());
+	settings.setValue("scanNormalRadiusSearch", _ui->doubleSpinBox_normalRadiusSearch_scan->value());
 
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
 	settings.setValue("showFrustums", _ui->checkBox_showFrustums->isChecked());
@@ -2321,6 +2342,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("maxDepth", 			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value());
 	settings.setValue("voxelSize", 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value());
 	settings.setValue("normalsK", 			_ui->spinBox_cameraImages_scanNormalsK->value());
+	settings.setValue("normalsRadius", 		_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value());
 	settings.endGroup();
 
 	settings.beginGroup("DepthFromScan");
@@ -2421,6 +2443,7 @@ bool PreferencesDialog::validateForm()
 					   "with TORO. GTSAM is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeGTSAM);
 		}
+#ifndef RTABMAP_ORB_SLAM2
 		else if(Optimizer::isAvailable(Optimizer::kTypeG2O))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
@@ -2428,8 +2451,13 @@ bool PreferencesDialog::validateForm()
 					   "with TORO. g2o is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeG2O);
 		}
+#endif
 	}
+#ifdef RTABMAP_ORB_SLAM2
+	if(_ui->graphOptimization_type->currentIndex() == 1)
+#else
 	if(_ui->graphOptimization_type->currentIndex() == 1 && !Optimizer::isAvailable(Optimizer::kTypeG2O))
+#endif
 	{
 		if(Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 		{
@@ -2448,6 +2476,7 @@ bool PreferencesDialog::validateForm()
 	}
 	if(_ui->graphOptimization_type->currentIndex() == 2 && !Optimizer::isAvailable(Optimizer::kTypeGTSAM))
 	{
+#ifndef RTABMAP_ORB_SLAM2
 		if(Optimizer::isAvailable(Optimizer::kTypeG2O))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
@@ -2455,7 +2484,9 @@ bool PreferencesDialog::validateForm()
 					   "with GTSAM. g2o is set instead for graph optimization strategy."));
 			_ui->graphOptimization_type->setCurrentIndex(Optimizer::kTypeG2O);
 		}
-		else if(Optimizer::isAvailable(Optimizer::kTypeTORO))
+		else
+#endif
+			if(Optimizer::isAvailable(Optimizer::kTypeTORO))
 		{
 			QMessageBox::warning(this, tr("Parameter warning"),
 					tr("Selected graph optimization strategy (GTSAM) is not available. RTAB-Map is not built "
@@ -3474,7 +3505,9 @@ void PreferencesDialog::setParameter(const std::string & key, const std::string 
 					ok = false;
 				}
 #endif
+#ifndef RTABMAP_ORB_SLAM2
 				if(!Optimizer::isAvailable(Optimizer::kTypeG2O))
+#endif
 				{
 					if(valueInt==1 && combo->objectName().toStdString().compare(Parameters::kOptimizerStrategy()) == 0)
 					{
@@ -3936,18 +3969,6 @@ void PreferencesDialog::setupKpRoiPanel()
 	_ui->doubleSpinBox_kp_roi3->setValue(strings[3].toDouble()*100.0);
 }
 
-void PreferencesDialog::updateOdometryVisibility()
-{
-	UASSERT(_ui->odom_strategy->count() == 6);
-	_ui->groupBox_odomF2M->setVisible(_ui->odom_strategy->currentIndex()==0);
-	_ui->groupBox_odomF2F->setVisible(_ui->odom_strategy->currentIndex()==1);
-	_ui->groupBox_odomFovis->setVisible(_ui->odom_strategy->currentIndex()==2);
-	_ui->groupBox_odomViso2->setVisible(_ui->odom_strategy->currentIndex()==3);
-	_ui->groupBox_odomDVO->setVisible(_ui->odom_strategy->currentIndex()==4);
-	_ui->groupBox_odomORBSLAM2->setVisible(_ui->odom_strategy->currentIndex()==5);
-	_ui->groupBox_odomMono->setVisible(_ui->odom_strategy->currentIndex()==6);
-}
-
 void PreferencesDialog::updateKpROI()
 {
 	QStringList strings;
@@ -4286,6 +4307,10 @@ int PreferencesDialog::getNormalKSearch() const
 {
 	return _ui->spinBox_normalKSearch->value();
 }
+double PreferencesDialog::getNormalRadiusSearch() const
+{
+	return _ui->doubleSpinBox_normalRadiusSearch->value();
+}
 double PreferencesDialog::getScanCeilingFilteringHeight() const
 {
 	return _ui->doubleSpinBox_ceilingFilterHeight_scan->value();
@@ -4297,6 +4322,10 @@ double PreferencesDialog::getScanFloorFilteringHeight() const
 int PreferencesDialog::getScanNormalKSearch() const
 {
 	return _ui->spinBox_normalKSearch_scan->value();
+}
+double PreferencesDialog::getScanNormalRadiusSearch() const
+{
+	return _ui->doubleSpinBox_normalRadiusSearch_scan->value();
 }
 
 bool PreferencesDialog::isGraphsShown() const
@@ -4636,6 +4665,10 @@ int PreferencesDialog::getSourceScanNormalsK() const
 {
 	return _ui->spinBox_cameraImages_scanNormalsK->value();
 }
+double PreferencesDialog::getSourceScanNormalsRadius() const
+{
+	return _ui->doubleSpinBox_cameraImages_scanNormalsRadius->value();
+}
 
 Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 {
@@ -4743,6 +4776,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 						_ui->spinBox_cameraImages_scanDownsampleStep->value(),
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
+						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
 						this->getLaserLocalTransform());
 		((CameraRGBDImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
@@ -4788,6 +4822,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 						_ui->spinBox_cameraImages_scanDownsampleStep->value(),
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
+						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
 						this->getLaserLocalTransform());
 		((CameraStereoImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
@@ -4893,6 +4928,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 						_ui->spinBox_cameraImages_scanDownsampleStep->value(),
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
+						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
 						this->getLaserLocalTransform());
 		((CameraImages*)camera)->setDepthFromScan(
 				_ui->groupBox_depthFromScan->isChecked(),
@@ -5138,7 +5174,8 @@ void PreferencesDialog::testOdometry()
 			_ui->spinBox_cameraScanFromDepth_decimation->value(),
 			_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-			_ui->spinBox_cameraImages_scanNormalsK->value());
+			_ui->spinBox_cameraImages_scanNormalsK->value(),
+			_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value());
 	if(isDepthFilteringAvailable())
 	{
 		if(_ui->groupBox_bilateral->isChecked())
@@ -5186,7 +5223,8 @@ void PreferencesDialog::testCamera()
 				_ui->spinBox_cameraScanFromDepth_decimation->value(),
 				_ui->doubleSpinBox_cameraSCanFromDepth_maxDepth->value(),
 				_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
-				_ui->spinBox_cameraImages_scanNormalsK->value());
+				_ui->spinBox_cameraImages_scanNormalsK->value(),
+				_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value());
 		if(isDepthFilteringAvailable())
 		{
 			if(_ui->groupBox_bilateral->isChecked())

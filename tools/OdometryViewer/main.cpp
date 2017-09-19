@@ -191,6 +191,7 @@ int main (int argc, char * argv[])
 	float maxDepth = 4.0f;
 	float voxelSize = rtabmap::Parameters::defaultIcpVoxelSize();
 	int normalsK = 0;
+	float normalsRadius = 0.0f;
 	if(regStrategy == 1 || regStrategy == 2)
 	{
 		// icp requires scans
@@ -203,8 +204,10 @@ int main (int argc, char * argv[])
 		rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpPointToPlane(), pointToPlane);
 		if(pointToPlane)
 		{
-			normalsK = rtabmap::Parameters::defaultIcpPointToPlaneNormalNeighbors();
-			rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpPointToPlaneNormalNeighbors(), normalsK);
+			normalsK = rtabmap::Parameters::defaultIcpPointToPlaneK();
+			rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpPointToPlaneK(), normalsK);
+			normalsRadius = rtabmap::Parameters::defaultIcpPointToPlaneRadius();
+			rtabmap::Parameters::parse(parameters, rtabmap::Parameters::kIcpPointToPlaneRadius(), normalsRadius);
 		}
 
 		uInsert(parameters, rtabmap::ParametersPair(rtabmap::Parameters::kIcpDownsamplingStep(), "1"));
@@ -310,7 +313,7 @@ int main (int argc, char * argv[])
 		{
 			rtabmap::CameraThread cameraThread(camera, parameters);
 
-			cameraThread.setScanFromDepth(icp, decimation<1?1:decimation, maxDepth, voxelSize, normalsK);
+			cameraThread.setScanFromDepth(icp, decimation<1?1:decimation, maxDepth, voxelSize, normalsK, normalsRadius);
 
 			odomThread.start();
 			cameraThread.start();

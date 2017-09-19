@@ -83,6 +83,7 @@ Transform OdometryF2F::computeTransform(
 		return output;
 	}
 
+	bool addKeyFrame = false;
 	RegistrationInfo regInfo;
 
 	UASSERT(!this->getPose().isNull());
@@ -99,8 +100,8 @@ Transform OdometryF2F::computeTransform(
 		output = registrationPipeline_->computeTransformationMod(
 				tmpRefFrame,
 				newFrame,
-				// special case for ICP-only odom, set guess to identity if we just started
-				!guess.isNull()?motionSinceLastKeyFrame*guess:!registrationPipeline_->isImageRequired()&&this->getPose().isIdentity()?Transform::getIdentity():Transform(),
+				// special case for ICP-only odom, set guess to identity if we just started or reset
+				!guess.isNull()?motionSinceLastKeyFrame*guess:!registrationPipeline_->isImageRequired()&&this->framesProcessed()<2?motionSinceLastKeyFrame:Transform(),
 				&regInfo);
 
 		if(output.isNull() && !guess.isNull() && registrationPipeline_->isImageRequired())
@@ -185,7 +186,7 @@ Transform OdometryF2F::computeTransform(
 		{
 			UDEBUG("Update key frame");
 			int features = newFrame.getWordsDescriptors().size();
-			if(features == 0)
+			if(registrationPipeline_->isImageRequired() && features == 0)
 			{
 				newFrame = Signature(data);
 				// this will generate features only for the first frame or if optical flow was used (no 3d words)
@@ -209,6 +210,8 @@ Transform OdometryF2F::computeTransform(
 
 				//reset motion
 				lastKeyFramePose_.setNull();
+
+				addKeyFrame = true;
 			}
 			else
 			{
@@ -243,12 +246,17 @@ Transform OdometryF2F::computeTransform(
 
 	if(info)
 	{
-		info->type = 1;
-		info->covariance = regInfo.covariance;
-		info->inliers = regInfo.inliers;
-		info->icpInliersRatio = regInfo.icpInliersRatio;
-		info->matches = regInfo.matches;
+		info->type = kTypeF2F;
 		info->features = newFrame.sensorData().keypoints().size();
+		info->keyFrameAdded = addKeyFrame;
+		if(this->isInfoDataFilled())
+		{
+			info->reg = regInfo;
+		}
+		else
+		{
+			info->reg = regInfo.copyWithoutData();
+		}
 	}
 
 	UINFO("Odom update time = %fs lost=%s inliers=%d, ref frame corners=%d, transform accepted=%s",

@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryFovis.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util2d.h"
-#include "rtabmap/core/Version.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
@@ -40,13 +39,16 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 
 OdometryFovis::OdometryFovis(const ParametersMap & parameters) :
-	Odometry(parameters),
+	Odometry(parameters)
+#ifdef RTABMAP_FOVIS
+    ,
 	fovis_(0),
 	rect_(0),
 	stereoCalib_(0),
 	depthImage_(0),
 	stereoDepth_(0),
 	lost_(false)
+#endif
 {
 	fovisParameters_ = Parameters::filterParameters(parameters, "OdomFovis");
 	if(parameters.find(Parameters::kOdomVisKeyFrameThr()) != parameters.end())
@@ -381,9 +383,9 @@ Transform OdometryFovis::computeTransform(
 		info->type = (int)kTypeFovis;
 		info->keyFrameAdded = fovis_->getChangeReferenceFrames();
 		info->features = fovis_->getTargetFrame()->getNumDetectedKeypoints();
-		info->matches = fovis_->getMotionEstimator()->getNumMatches();
-		info->inliers = fovis_->getMotionEstimator()->getNumInliers();
-		info->covariance = covariance;
+		info->reg.matches = fovis_->getMotionEstimator()->getNumMatches();
+		info->reg.inliers = fovis_->getMotionEstimator()->getNumInliers();
+		info->reg.covariance = covariance;
 
 		if(this->isInfoDataFilled())
 		{

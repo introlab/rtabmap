@@ -2469,7 +2469,8 @@ void DatabaseViewer::update(int value,
 				labelPose->setText(QString("%1xyz=(%2,%3,%4)\nrpy=(%5,%6,%7)").arg(odomPose.isIdentity()?"* ":"").arg(x).arg(y).arg(z).arg(roll).arg(pitch).arg(yaw));
 				if(s!=0.0)
 				{
-					stamp->setText(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+					stamp->setText(QString::number(s, 'f'));
+					stamp->setToolTip(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{
@@ -2697,9 +2698,27 @@ void DatabaseViewer::update(int value,
 					//add scan
 					if(ui_->checkBox_showScan->isChecked() && data.laserScanRaw().cols)
 					{
-						if(data.laserScanRaw().channels() == 6)
+						if(data.laserScanRaw().channels() == 7)
+						{
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr scan = util3d::laserScanToPointCloudRGBNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+							{
+								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+							}
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(data.laserScanRaw().channels() == 6)
 						{
 							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+							{
+								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+							}
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
+						else if(data.laserScanRaw().channels() == 4)
+						{
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan = util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanInfo().localTransform());
 							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 							{
 								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
@@ -3757,7 +3776,7 @@ void DatabaseViewer::updateConstraintView(
 			constraintsViewer_->removeCloud("scan1");
 			if(!dataFrom.laserScanRaw().empty())
 			{
-				if(dataFrom.laserScanRaw().channels() == 6)
+				if(dataFrom.laserScanRaw().channels() >= 5)
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
@@ -3780,7 +3799,7 @@ void DatabaseViewer::updateConstraintView(
 			}
 			if(!dataTo.laserScanRaw().empty())
 			{
-				if(dataTo.laserScanRaw().channels() == 6)
+				if(dataTo.laserScanRaw().channels() >= 5)
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
@@ -3804,8 +3823,8 @@ void DatabaseViewer::updateConstraintView(
 		}
 
 		//update coordinate
-
 		constraintsViewer_->addOrUpdateCoordinate("from_coordinate", pose, 0.2);
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
 		constraintsViewer_->addOrUpdateCoordinate("to_coordinate", pose*t, 0.2);
 		constraintsViewer_->removeCoordinate("to_coordinate_gt");
 		if(uContains(groundTruthPoses_, link.from()) && uContains(groundTruthPoses_, link.to()))
@@ -3813,6 +3832,7 @@ void DatabaseViewer::updateConstraintView(
 			constraintsViewer_->addOrUpdateCoordinate("to_coordinate_gt",
 					pose*(groundTruthPoses_.at(link.from()).inverse()*groundTruthPoses_.at(link.to())), 0.1);
 		}
+#endif
 
 		constraintsViewer_->clearTrajectory();
 
@@ -4020,19 +4040,19 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				UINFO("rotational_min=%f", rotational_min);
 				UINFO("rotational_max=%f", rotational_max);
 
-				ui_->toolBox_statistics->updateStat("GT/translational_rmse/", translational_rmse, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_mean/", translational_mean, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_median/", translational_median, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_std/", translational_std, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_min/", translational_min, false);
-				ui_->toolBox_statistics->updateStat("GT/translational_max/", translational_max, false);
+				ui_->toolBox_statistics->updateStat("GT/translational rmse/", translational_rmse, false);
+				ui_->toolBox_statistics->updateStat("GT/translational mean/", translational_mean, false);
+				ui_->toolBox_statistics->updateStat("GT/translational median/", translational_median, false);
+				ui_->toolBox_statistics->updateStat("GT/translational std/", translational_std, false);
+				ui_->toolBox_statistics->updateStat("GT/translational min/", translational_min, false);
+				ui_->toolBox_statistics->updateStat("GT/translational max/", translational_max, false);
 
-				ui_->toolBox_statistics->updateStat("GT/rotational_rmse/", rotational_rmse, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_mean/", rotational_mean, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_median/", rotational_median, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_std/", rotational_std, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_min/", rotational_min, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational_max/", rotational_max, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational rmse/", rotational_rmse, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational mean/", rotational_mean, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational median/", rotational_median, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational std/", rotational_std, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational min/", rotational_min, false);
+				ui_->toolBox_statistics->updateStat("GT/rotational max/", rotational_max, false);
 			}
 		}
 

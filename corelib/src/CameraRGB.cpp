@@ -70,6 +70,7 @@ CameraImages::CameraImages() :
 		_scanDownsampleStep(1),
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
+		_scanNormalsRadius(0),
 		_depthFromScan(false),
 		_depthFromScanFillHoles(1),
 		_depthFromScanFillHolesFromBorder(false),
@@ -99,6 +100,7 @@ CameraImages::CameraImages(const std::string & path,
 	_scanDownsampleStep(1),
 	_scanVoxelSize(0.0f),
 	_scanNormalsK(0),
+	_scanNormalsRadius(0),
 	_depthFromScan(false),
 	_depthFromScanFillHoles(1),
 	_depthFromScanFillHolesFromBorder(false),
@@ -685,9 +687,9 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				cloud = util3d::voxelize(cloud, _scanVoxelSize);
 				UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d", _scanVoxelSize, previousSize, (int)cloud->size());
 			}
-			if(_scanNormalsK > 0 && cloud->size())
+			if((_scanNormalsK > 0 || _scanNormalsRadius) && cloud->size())
 			{
-				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK);
+				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, _scanNormalsRadius);
 				pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 				pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 				scan = util3d::laserScanFromPointCloud(*cloudNormals, _scanLocalTransform.inverse());

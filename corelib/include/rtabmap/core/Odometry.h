@@ -68,6 +68,7 @@ public:
 	bool isInfoDataFilled() const {return _fillInfoData;}
 	const Transform & previousVelocityTransform() const {return previousVelocityTransform_;}
 	double previousStamp() const {return previousStamp_;}
+	unsigned int framesProcessed() const {return framesProcessed_;}
 
 private:
 	virtual Transform computeTransform(SensorData & data, const Transform & guess = Transform(), OdometryInfo * info = 0) = 0;
@@ -98,6 +99,7 @@ private:
 	Transform previousVelocityTransform_;
 	Transform previousGroundTruthPose_;
 	float distanceTravelled_;
+	unsigned int framesProcessed_;
 
 	std::vector<ParticleFilter *> particleFilters_;
 	cv::KalmanFilter kalmanFilter_;

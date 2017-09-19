@@ -64,7 +64,9 @@ private:
 	float _epsilon;
 	float _correspondenceRatio;
 	bool _pointToPlane;
-	int _pointToPlaneNormalNeighbors;
+	int _pointToPlaneK;
+	float _pointToPlaneRadius;
+	float _pointToPlaneMinComplexity;
 	bool _libpointmatcher;
 	std::string _libpointmatcherConfig;
 	float _libpointmatcherOutlierRatio;

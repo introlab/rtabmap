@@ -673,7 +673,7 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior)
 			std::map<int,float>::const_iterator jter = posterior.find(iter.key());
 			if(jter != posterior.end())
 			{
-				UDEBUG("id=%d max=%f hyp=%f color = %f", iter.key(), max, jter->second, (1-jter->second/max)*240.0f/360.0f);
+				//UDEBUG("id=%d max=%f hyp=%f color = %f", iter.key(), max, jter->second, (1-jter->second/max)*240.0f/360.0f);
 				iter.value()->setColor(QColor::fromHsvF((1-jter->second/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
 			}
 			else

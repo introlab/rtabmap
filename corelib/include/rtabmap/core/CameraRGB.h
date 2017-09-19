@@ -85,7 +85,8 @@ public:
 			int maxScanPts = 0,
 			int downsampleStep = 1,
 			float voxelSize = 0.0f,
-			int normalsK = 0, // compute normals if > 0
+			int normalsK = 0,        // compute normals if > 0
+			float normalsRadius = 0, // compute normals if > 0
 			const Transform & localTransform=Transform::getIdentity())
 	{
 		_scanPath = dir;
@@ -93,6 +94,7 @@ public:
 		_scanMaxPts = maxScanPts;
 		_scanDownsampleStep = downsampleStep;
 		_scanNormalsK = normalsK;
+		_scanNormalsRadius = normalsRadius;
 		_scanVoxelSize = voxelSize;
 		if(_scanDownsampleStep>1)
 		{
@@ -158,6 +160,7 @@ private:
 	int _scanDownsampleStep;
 	float _scanVoxelSize;
 	int _scanNormalsK;
+	float _scanNormalsRadius;
 
 	bool _depthFromScan;
 	int _depthFromScanFillHoles; // <0:horizontal 0:disabled >0:vertical

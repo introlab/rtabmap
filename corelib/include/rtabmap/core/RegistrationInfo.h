@@ -39,8 +39,24 @@ public:
 		matches(0),
 		icpInliersRatio(0),
 		icpTranslation(0.0f),
-		icpRotation(0.0f)
+		icpRotation(0.0f),
+		icpStructuralComplexity(0.0f)
+
 	{
+	}
+
+	RegistrationInfo copyWithoutData() const
+	{
+		RegistrationInfo output;
+		output.covariance = covariance.clone();
+		output.rejectedMsg = rejectedMsg;
+		output.inliers = inliers;
+		output.matches = matches;
+		output.icpInliersRatio = icpInliersRatio;
+		output.icpTranslation = icpTranslation;
+		output.icpRotation = icpRotation;
+		output.icpStructuralComplexity = icpStructuralComplexity;
+		return output;
 	}
 
 	cv::Mat covariance;
@@ -56,6 +72,7 @@ public:
 	float icpInliersRatio;
 	float icpTranslation;
 	float icpRotation;
+	float icpStructuralComplexity;
 };
 
 }

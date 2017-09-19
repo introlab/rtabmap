@@ -211,7 +211,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Mem, ImagePostDecimation,         int, 1,         "Image decimation (>=1) of saved data in created signatures (after features extraction). Decimation is done from the original image. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
     RTABMAP_PARAM(Mem, CompressionParallelized,     bool, true,     "Compression of sensor data is multi-threaded.");
     RTABMAP_PARAM(Mem, LaserScanDownsampleStepSize, int, 1,         "If > 1, downsample the laser scans when creating a signature.");
-    RTABMAP_PARAM(Mem, LaserScanNormalK,            int, 0,         "If > 0 and laser scans are 3D without normals, normals will be computed with K search neighbors when creating a signature.");
+    RTABMAP_PARAM(Mem, LaserScanVoxelSize,          float, 0.0,     uFormat("If > 0 m, voxel filtering is done on laser scans when creating a signature. If the laser scan had normals, they will be removed. To recompute the normals, make sure to use \"%s\" or \"%s\" parameters.", kMemLaserScanNormalK().c_str(), kMemLaserScanNormalRadius().c_str()).c_str());
+    RTABMAP_PARAM(Mem, LaserScanNormalK,            int, 0,         "If > 0 and laser scans don't have normals, normals will be computed with K search neighbors when creating a signature.");
+    RTABMAP_PARAM(Mem, LaserScanNormalRadius,       int, 0,         "If > 0 m and laser scans don't have normals, normals will be computed with radius search neighbors when creating a signature.");
     RTABMAP_PARAM(Mem, UseOdomFeatures,             bool, false,    "Use odometry features.");
 
     // KeypointMemory (Keypoint-based)
@@ -386,7 +388,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Odom, GuessMotion,            bool, false,  "Guess next transformation from the last motion computed.");
     RTABMAP_PARAM(Odom, KeyFrameThr,            float, 0.3,   "[Visual] Create a new keyframe when the number of inliers drops under this ratio of features in last frame. Setting the value to 0 means that a keyframe is created for each processed frame.");
     RTABMAP_PARAM(Odom, VisKeyFrameThr,         int, 100,     "[Visual] Create a new keyframe when the number of inliers drops under this threshold. Setting the value to 0 means that a keyframe is created for each processed frame.");
-    RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.7,   "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
+    RTABMAP_PARAM(Odom, ScanKeyFrameThr,        float, 0.9,   "[Geometry] Create a new keyframe when the number of ICP inliers drops under this ratio of points in last frame's scan. Setting the value to 0 means that a keyframe is created for each processed frame.");
     RTABMAP_PARAM(Odom, ImageDecimation,        int, 1,       "Decimation of the images before registration. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).");
     RTABMAP_PARAM(Odom, AlignWithGround,        bool, false,  "Align odometry with the ground on initialization.");
 
@@ -395,6 +397,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomF2M, MaxNewFeatures,      int, 0,       "[Visual] Maximum features (sorted by keypoint response) added to local map from a new key-frame. 0 means no limit.");
     RTABMAP_PARAM(OdomF2M, ScanMaxSize,         int, 2000,    "[Geometry] Maximum local scan map size.");
     RTABMAP_PARAM(OdomF2M, ScanSubtractRadius,  float, 0.05,  "[Geometry] Radius used to filter points of a new added scan to local map. This could match the voxel size of the scans.");
+    RTABMAP_PARAM(OdomF2M, ScanSubtractAngle,   float, 45,    uFormat("[Geometry] Max angle (degrees) used to filter points of a new added scan to local map (when \"%s\">0). 0 means any angle.", kOdomF2MScanSubtractRadius().c_str()).c_str());
     RTABMAP_PARAM(OdomF2M, BundleAdjustment,          int, 0, "Local bundle adjustment: 0=disabled, 1=g2o, 2=cvsba.");
     RTABMAP_PARAM(OdomF2M, BundleAdjustmentMaxFrames, int, 0, "Maximum frames used for bundle adjustment (0=inf or all current frames in the local map).");
 
@@ -510,7 +513,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, Epsilon,                   float, 0,     "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
     RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.2,   "Ratio of matching correspondences to accept the transform.");
     RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
-    RTABMAP_PARAM(Icp, PointToPlaneNormalNeighbors, int, 20,    "Number of neighbors to compute normals for point to plane.");
+    RTABMAP_PARAM(Icp, PointToPlaneK,             int, 20,      "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
+    RTABMAP_PARAM(Icp, PointToPlaneRadius,        float, 0.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
+    RTABMAP_PARAM(Icp, PointToPlaneMinComplexity, float, 0.02,  "Minimum structural complexity (0.0=low, 1.0=high) of the scan to do point to plane registration, otherwise point to point registration is done instead.");
 
     // libpointmatcher
     RTABMAP_PARAM(Icp, PM,                       bool, false,   "Use libpointmatcher for ICP registration instead of PCL's implementation.");

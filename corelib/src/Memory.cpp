@@ -88,7 +88,9 @@ Memory::Memory(const ParametersMap & parameters) :
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
+	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
 	_laserScanNormalK(Parameters::defaultMemLaserScanNormalK()),
+	_laserScanNormalRadius(Parameters::defaultMemLaserScanNormalRadius()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
@@ -439,7 +441,9 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
 	Parameters::parse(parameters, Parameters::kMemCompressionParallelized(), _compressionParallelized);
 	Parameters::parse(parameters, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
+	Parameters::parse(parameters, Parameters::kMemLaserScanVoxelSize(), _laserScanVoxelSize);
 	Parameters::parse(parameters, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
+	Parameters::parse(parameters, Parameters::kMemLaserScanNormalRadius(), _laserScanNormalRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
@@ -2404,6 +2408,18 @@ Transform Memory::computeIcpTransformMulti(
 	UASSERT(uContains(poses, toId) && uContains(_signatures, toId));
 
 	UDEBUG("Guess=%s", (poses.at(fromId).inverse() * poses.at(toId)).prettyPrint().c_str());
+	if(ULogger::level() == ULogger::kDebug)
+	{
+		std::string ids;
+		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(iter->first != fromId)
+			{
+				ids += uNumber2Str(iter->first) + " ";
+			}
+		}
+		UDEBUG("%d vs %s", fromId, ids.c_str());
+	}
 
 	// make sure that all laser scans are loaded
 	std::list<Signature*> depthToLoad;
@@ -2436,6 +2452,8 @@ Transform Memory::computeIcpTransformMulti(
 		std::string msg;
 		int maxPoints = fromScan.cols;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
+		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
+		bool is2D = true;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first != fromId)
@@ -2445,14 +2463,33 @@ Transform Memory::computeIcpTransformMulti(
 				{
 					cv::Mat scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
-							scan,
-							s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
-					if(scan.cols > maxPoints)
+					if(!scan.empty())
 					{
-						maxPoints = scan.cols;
+						if(scan.channels() != 2 && scan.channels() != 5)
+						{
+							is2D = false;
+						}
+
+						if(scan.channels() >= 5)
+						{
+							pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormal = util3d::laserScanToPointCloudNormal(
+									scan,
+									s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
+							*assembledToNormalClouds += *cloudNormal;
+						}
+						else
+						{
+							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
+									scan,
+									s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
+							*assembledToClouds += *cloud;
+						}
+
+						if(scan.cols > maxPoints)
+						{
+							maxPoints = scan.cols;
+						}
 					}
-					*assembledToClouds += *cloud;
 				}
 				else
 				{
@@ -2460,15 +2497,22 @@ Transform Memory::computeIcpTransformMulti(
 				}
 			}
 		}
-		if(assembledToClouds->size())
+
+		cv::Mat assembledScan;
+		if(assembledToNormalClouds->size())
 		{
-			assembledData.setLaserScanRaw(
-					util3d::laserScanFromPointCloud(*assembledToClouds),
-					LaserScanInfo(
-							fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
-							fromS->sensorData().laserScanInfo().maxRange(),
-							Transform::getIdentity())); // scans are in base frame
+			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
 		}
+		else if(assembledToClouds->size())
+		{
+			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToClouds):util3d::laserScanFromPointCloud(*assembledToClouds);
+		}
+		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
+		assembledData.setLaserScanRaw(assembledScan,
+				LaserScanInfo(
+					fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
+					fromS->sensorData().laserScanInfo().maxRange(),
+					is2D?Transform(0,0,fromS->sensorData().laserScanInfo().localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		std::vector<int> inliersV;
@@ -3268,7 +3312,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
 						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
-	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3 || data.laserScanRaw().type() == CV_32FC(4) || data.laserScanRaw().type() == CV_32FC(6));
+	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3 || data.laserScanRaw().type() == CV_32FC(4) || data.laserScanRaw().type() == CV_32FC(5) || data.laserScanRaw().type() == CV_32FC(6) || data.laserScanRaw().type() == CV_32FC(7));
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().size() == 0 &&
@@ -3718,13 +3762,41 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		if(stats) stats->addStatistic(Statistics::kTimingMemScan_downsampling(), t*1000.0f);
 		UDEBUG("time downsampling scan = %fs", t);
 	}
-	if(!laserScan.empty() && _laserScanNormalK > 0 && laserScan.channels() == 3 && !isIntermediateNode)
+	if(!laserScan.empty() && _laserScanVoxelSize > 0.0f && !isIntermediateNode)
 	{
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
-		float x,y,z;
-		data.laserScanInfo().localTransform().getTranslation(x,y,z);
-		pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _laserScanNormalK, Eigen::Vector3f(x,y,z));
-		laserScan = util3d::laserScanFromPointCloud(*cloud, *normals);
+		float pointsBeforeFiltering = laserScan.cols;
+		if(laserScan.channels() == 4 || laserScan.channels() == 7)
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(laserScan);
+			cloud = util3d::voxelize(cloud, _laserScanVoxelSize);
+			laserScan = util3d::laserScanFromPointCloud(*cloud);
+		}
+		else
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
+			cloud = util3d::voxelize(cloud, _laserScanVoxelSize);
+			if(laserScan.channels() == 2 || laserScan.channels() == 5)
+			{
+				laserScan = util3d::laserScan2dFromPointCloud(*cloud);
+			}
+			else
+			{
+				laserScan = util3d::laserScanFromPointCloud(*cloud);
+			}
+		}
+		float ratio = float(laserScan.cols) / pointsBeforeFiltering;
+		maxLaserScanMaxPts = int(float(maxLaserScanMaxPts) * ratio);
+
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemScan_voxel_filtering(), t*1000.0f);
+		UDEBUG("time voxel filtering scan = %fs", t);
+	}
+	if(!laserScan.empty() &&
+		(_laserScanNormalK > 0 || _laserScanNormalRadius>0.0f) &&
+		laserScan.channels() > 1 && laserScan.channels() < 5 &&
+		!isIntermediateNode)
+	{
+		laserScan = util3d::computeNormals(laserScan, _laserScanNormalK, _laserScanNormalRadius);
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemScan_normals(), t*1000.0f);
 		UDEBUG("time normals scan = %fs", t);

@@ -352,7 +352,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 
 					if(this->isInfoDataFilled() && info)
 					{
-						info->wordMatches.insert(info->wordMatches.end(), matches.begin(), matches.end());
+						info->reg.matchesIDs.insert(info->reg.matchesIDs.end(), matches.begin(), matches.end());
 					}
 					correspondences = (int)matches.size();
 
@@ -397,10 +397,10 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 
 							if(this->isInfoDataFilled() && info && inliersV.size())
 							{
-								info->wordInliers.resize(inliersV.size());
+								info->reg.inliersIDs.resize(inliersV.size());
 								for(unsigned int i=0; i<inliersV.size(); ++i)
 								{
-									info->wordInliers[i] = matches[inliersV[i]]; // index and ID should match (index starts at 0, ID starts at 1)
+									info->reg.inliersIDs[i] = matches[inliersV[i]]; // index and ID should match (index starts at 0, ID starts at 1)
 								}
 							}
 
@@ -976,7 +976,7 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 		if(info)
 		{
 			// a very high variance tells that the new pose is not linked with the previous one
-			info->covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0;
+			info->reg.covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0;
 		}
 
 			// generate kpts
@@ -1013,8 +1013,8 @@ Transform OdometryMono::computeTransform(SensorData & data, const Transform & gu
 	if(this->isInfoDataFilled() && info)
 	{
 		//info->variance = variance;
-		info->inliers = inliers;
-		info->matches = correspondences;
+		info->reg.inliers = inliers;
+		info->reg.matches = correspondences;
 		info->features = nFeatures;
 		info->localMapSize = (int)localMap_.size();
 		info->localMap = localMap_;

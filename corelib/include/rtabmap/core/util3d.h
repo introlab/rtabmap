@@ -192,15 +192,20 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImages(
 
 // return CV_32FC3  (x,y,z)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
-// return CV_32FC6 (x,y,z,normal_z,normal_y,normalz)
+// return CV_32FC6 (x,y,z,normal_x,normal_y,normal_z)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform = Transform());
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
 // return CV_32FC4 (x,y,z,rgb)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const Transform & transform = Transform());
-// return CV_32FC7 (x,y,z,rgb,normal_z,normal_y,normalz)
+// return CV_32FC7 (x,y,z,rgb,normal_x,normal_y,normal_z)
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
+// return CV_32FC7 (x,y,z,rgb,normal_x,normal_y,normal_z)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const Transform & transform = Transform());
 // return CV_32FC2  (x,y)
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
+// return CV_32FC5  (x,y,normal_x, normal_y, normal_z)
+cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform = Transform());
+cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
 // For laserScan of type CV_32FC2, z is set to null.
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform = Transform());
 // For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.

@@ -53,10 +53,12 @@ private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
+#ifdef RTABMAP_DVO
 	dvo::DenseTracker * dvo_;
 	dvo::core::RgbdImagePyramid * reference_;
 	dvo::core::RgbdCameraPyramid * camera_;
 	bool lost_;
+#endif
 	Transform motionFromKeyFrame_;
 	Transform previousLocalTransform_;
 

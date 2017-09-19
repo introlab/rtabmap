@@ -560,6 +560,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->statsToolBox->updateStat("Odometry/Inliers/", false);
 	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", false);
 	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", false);
+	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", false);
 	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", false);
 	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", false);
@@ -812,7 +815,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 			if (_odomThread == 0 && _camera->camera()->odomProvided() && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
-				odomInfo.covariance = cameraEvent->info().odomCovariance;
+				odomInfo.reg.covariance = cameraEvent->info().odomCovariance;
 				if (!_processingOdometry && !_processingStatistics)
 				{
 					_processingOdometry = true; // if we receive too many odometry events!
@@ -927,11 +930,11 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		pose = _lastOdomPose;
 		lost = true;
 	}
-	else if(odom.info().inliers>0 &&
+	else if(odom.info().reg.inliers>0 &&
 			_preferencesDialog->getOdomQualityWarnThr() &&
-			odom.info().inliers < _preferencesDialog->getOdomQualityWarnThr())
+			odom.info().reg.inliers < _preferencesDialog->getOdomQualityWarnThr())
 	{
-		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().inliers, _preferencesDialog->getOdomQualityWarnThr());
+		UDEBUG("odom warn, quality(inliers)=%d thr=%d", odom.info().reg.inliers, _preferencesDialog->getOdomQualityWarnThr());
 		lostStateChanged = _cloudViewer->getBackgroundColor() == Qt::darkRed;
 		_cloudViewer->setBackgroundColor(Qt::darkYellow);
 		_ui->imageView_odometry->setBackgroundColor(Qt::darkYellow);
@@ -1202,9 +1205,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				if(_preferencesDialog->isOdomOnlyInliersShown())
 				{
 					std::multimap<int, cv::KeyPoint> kpInliers;
-					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.inliersIDs.size(); ++i)
 					{
-						kpInliers.insert(*odom.info().words.find(odom.info().wordInliers[i]));
+						kpInliers.insert(*odom.info().words.find(odom.info().reg.inliersIDs[i]));
 					}
 					_ui->imageView_odometry->setFeatures(
 							kpInliers,
@@ -1271,13 +1274,13 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			{
 				if(_ui->imageView_odometry->isFeaturesShown() && !_preferencesDialog->isOdomOnlyInliersShown())
 				{
-					for(unsigned int i=0; i<odom.info().wordMatches.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.matchesIDs.size(); ++i)
 					{
-						_ui->imageView_odometry->setFeatureColor(odom.info().wordMatches[i], Qt::red); // outliers
+						_ui->imageView_odometry->setFeatureColor(odom.info().reg.matchesIDs[i], Qt::red); // outliers
 					}
-					for(unsigned int i=0; i<odom.info().wordInliers.size(); ++i)
+					for(unsigned int i=0; i<odom.info().reg.inliersIDs.size(); ++i)
 					{
-						_ui->imageView_odometry->setFeatureColor(odom.info().wordInliers[i], Qt::green); // inliers
+						_ui->imageView_odometry->setFeatureColor(odom.info().reg.inliersIDs[i], Qt::green); // inliers
 					}
 				}
 			}
@@ -1323,15 +1326,18 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	}
 
 	//Process info
-	_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().inliers, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().matches, _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
-	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/Inliers/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.inliers, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/InliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().reg.inliers)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPInliersRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpInliersRatio, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPRotation/rad", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpRotation, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPTranslation/m", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpTranslation, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/ICPStructuralComplexity/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.icpStructuralComplexity, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/Matches/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.matches, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/MatchesRatio/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), odom.info().features<=0?0.0f:float(odom.info().reg.matches)/float(odom.info().features), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().reg.covariance.at<double>(0,0)), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceLin/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.covariance.at<double>(0,0), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/StdDevAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), sqrt((float)odom.info().reg.covariance.at<double>(5,5)), _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Odometry/VarianceAng/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().reg.covariance.at<double>(5,5), _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeEstimation/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeEstimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/TimeFiltering/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().timeParticleFiltering*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Odometry/Features/", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), (float)odom.info().features, _preferencesDialog->isCacheSavedInFigures());
@@ -2651,9 +2657,9 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 					if(_preferencesDialog->getSubtractFilteringAngle() > 0.0f)
 					{
 						//normals required
-						if(_preferencesDialog->getNormalKSearch() > 0)
+						if(_preferencesDialog->getNormalKSearch() > 0 || _preferencesDialog->getNormalRadiusSearch() > 0)
 						{
-							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
+							pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), _preferencesDialog->getNormalRadiusSearch(), viewPoint);
 							pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
 						}
 						else
@@ -2790,7 +2796,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 
 				if(_preferencesDialog->getNormalKSearch() > 0 && cloudWithNormals->size() == 0)
 				{
-					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), viewPoint);
+					pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, indices, _preferencesDialog->getNormalKSearch(), _preferencesDialog->getNormalRadiusSearch(), viewPoint);
 					pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
 				}
 
@@ -2880,22 +2886,48 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			scan = util3d::downsample(scan, _preferencesDialog->getDownsamplingStepScan(0));
 		}
 
-		if(scan.channels() == 6)
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB;
+		pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals;
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudRGBWithNormals;
+		if(scan.channels() == 7 && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
 		{
-			pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-			cloud = util3d::laserScanToPointCloudNormal(scan, iter->sensorData().laserScanInfo().localTransform());
-			if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+			cloudRGBWithNormals = util3d::laserScanToPointCloudRGBNormal(scan, iter->sensorData().laserScanInfo().localTransform());
+		}
+		else if((scan.channels() == 5 || scan.channels() == 6) && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
+		{
+			cloudWithNormals = util3d::laserScanToPointCloudNormal(scan, iter->sensorData().laserScanInfo().localTransform());
+		}
+		else if(scan.channels() == 4)
+		{
+			cloudRGB = util3d::laserScanToPointCloudRGB(scan, iter->sensorData().laserScanInfo().localTransform());
+		}
+		else
+		{
+			cloud = util3d::laserScanToPointCloud(scan, iter->sensorData().laserScanInfo().localTransform());
+		}
+
+		if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
+		{
+			if(cloud.get())
 			{
 				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
 			}
+			if(cloudRGB.get())
+			{
+				cloudRGB = util3d::voxelize(cloudRGB, _preferencesDialog->getCloudVoxelSizeScan(0));
+			}
+		}
 
-			// Do ceiling/floor filtering
-			if(cloud->size() &&
-			   (_preferencesDialog->getScanFloorFilteringHeight() != 0.0 ||
-			   _preferencesDialog->getScanCeilingFilteringHeight() != 0.0))
+		// Do ceiling/floor filtering
+		if((scan.channels() > 2 && scan.channels() != 5) && // don't filter 2D scans
+		   (_preferencesDialog->getScanFloorFilteringHeight() != 0.0 ||
+		   _preferencesDialog->getScanCeilingFilteringHeight() != 0.0))
+		{
+			if(cloudRGBWithNormals.get())
 			{
 				// perform in /map frame
-				pcl::PointCloud<pcl::PointNormal>::Ptr cloudTransformed = util3d::transformPointCloud(cloud, pose);
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudTransformed = util3d::transformPointCloud(cloudRGBWithNormals, pose);
 				cloudTransformed = rtabmap::util3d::passThrough(
 						cloudTransformed,
 						"z",
@@ -2903,53 +2935,35 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 						_preferencesDialog->getScanCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getScanCeilingFilteringHeight());
 
 				//transform back in sensor frame
-				cloud = util3d::transformPointCloud(cloudTransformed, pose.inverse());
+				cloudRGBWithNormals = util3d::transformPointCloud(cloudTransformed, pose.inverse());
 			}
+			if(cloudWithNormals.get())
+			{
+				// perform in /map frame
+				pcl::PointCloud<pcl::PointNormal>::Ptr cloudTransformed = util3d::transformPointCloud(cloudWithNormals, pose);
+				cloudTransformed = rtabmap::util3d::passThrough(
+						cloudTransformed,
+						"z",
+						_preferencesDialog->getScanFloorFilteringHeight()==0.0?(float)std::numeric_limits<int>::min():_preferencesDialog->getScanFloorFilteringHeight(),
+						_preferencesDialog->getScanCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getScanCeilingFilteringHeight());
 
-			QColor color = Qt::gray;
-			if(mapId >= 0)
-			{
-				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+				//transform back in sensor frame
+				cloudWithNormals = util3d::transformPointCloud(cloudTransformed, pose.inverse());
 			}
-			if(!_cloudViewer->addCloud(scanName, cloud, pose, color))
+			if(cloudRGB.get())
 			{
-				UERROR("Adding cloud %d to viewer failed!", nodeId);
-			}
-			else
-			{
-				if(nodeId > 0)
-				{
-					if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
-					{
-						//reconvert the voxelized cloud
-						scan = util3d::laserScanFromPointCloud(*cloud);
-					}
-					else
-					{
-						scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
-					}
-					_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
-				}
-				_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-				_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
-			}
-		}
-		else
-		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
-			cloud = util3d::laserScanToPointCloud(scan, iter->sensorData().laserScanInfo().localTransform());
-			bool filtered = false;
-			if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
-			{
-				cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(0));
-				filtered = true;
-			}
+				// perform in /map frame
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudTransformed = util3d::transformPointCloud(cloudRGB, pose);
+				cloudTransformed = rtabmap::util3d::passThrough(
+						cloudTransformed,
+						"z",
+						_preferencesDialog->getScanFloorFilteringHeight()==0.0?(float)std::numeric_limits<int>::min():_preferencesDialog->getScanFloorFilteringHeight(),
+						_preferencesDialog->getScanCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getScanCeilingFilteringHeight());
 
-			// Do ceiling/floor filtering
-			if(scan.channels() > 2 && // don't filter 2D scans
-				cloud->size() &&
-			   (_preferencesDialog->getScanFloorFilteringHeight() != 0.0 ||
-			   _preferencesDialog->getScanCeilingFilteringHeight() != 0.0))
+				//transform back in sensor frame
+				cloudRGB = util3d::transformPointCloud(cloudTransformed, pose.inverse());
+			}
+			if(cloud.get())
 			{
 				// perform in /map frame
 				pcl::PointCloud<pcl::PointXYZ>::Ptr cloudTransformed = util3d::transformPointCloud(cloud, pose);
@@ -2961,77 +2975,108 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 
 				//transform back in sensor frame
 				cloud = util3d::transformPointCloud(cloudTransformed, pose.inverse());
-				filtered = true;
 			}
+		}
 
-			pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals;
-			if(scan.channels() > 2 && // don't compute normals for 2D scans
-				cloud->size() &&
-			   _preferencesDialog->getScanNormalKSearch() > 0)
-			{
-				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _preferencesDialog->getScanNormalKSearch());
-				cloudWithNormals.reset(new pcl::PointCloud<pcl::PointNormal>);
-				pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
-				filtered = true;
-			}
+		if(	(cloud.get() || cloudRGB.get()) &&
+		   (_preferencesDialog->getScanNormalKSearch() > 0 || _preferencesDialog->getScanNormalRadiusSearch() > 0.0))
+		{
+			Eigen::Vector3f scanViewpoint(
+				iter->sensorData().laserScanInfo().localTransform().x(),
+				iter->sensorData().laserScanInfo().localTransform().y(),
+				iter->sensorData().laserScanInfo().localTransform().z());
 
-			QColor color = Qt::gray;
-			if(mapId >= 0)
+			pcl::PointCloud<pcl::Normal>::Ptr normals;
+			if(cloud.get() && cloud->size())
 			{
-				color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
-			}
-			if(cloudWithNormals.get())
-			{
-				if(!_cloudViewer->addCloud(scanName, cloudWithNormals, pose, color))
+				if(scan.channels() == 2 || scan.channels() == 5)
 				{
-					UERROR("Adding cloud %d to viewer failed!", nodeId);
+					normals = util3d::computeFastOrganizedNormals2D(cloud, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
 				}
 				else
 				{
-					if(nodeId > 0)
-					{
-						//reconvert the voxelized cloud
-						scan = util3d::laserScanFromPointCloud(*cloudWithNormals);
-						_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
-					}
-
-					_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-					_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+					normals = util3d::computeNormals(cloud, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
 				}
+				cloudWithNormals.reset(new pcl::PointCloud<pcl::PointNormal>);
+				pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
+				cloud.reset();
 			}
 			else
 			{
-				if(!_cloudViewer->addCloud(scanName, cloud, pose, color))
+				UASSERT(cloudRGB.get() && cloudRGB->size()); // Assuming 4 channels cannot be 2D
+				normals = util3d::computeNormals(cloudRGB, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
+				cloudRGBWithNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+				pcl::concatenateFields(*cloudRGB, *normals, *cloudRGBWithNormals);
+				cloudRGB.reset();
+			}
+		}
+
+		QColor color = Qt::gray;
+		if(mapId >= 0)
+		{
+			color = (Qt::GlobalColor)(mapId+3 % 12 + 7 );
+		}
+		bool added = false;
+		if(cloudRGBWithNormals.get())
+		{
+			added = _cloudViewer->addCloud(scanName, cloudRGBWithNormals, pose, color);
+			if(added && nodeId > 0)
+			{
+				scan = util3d::laserScanFromPointCloud(*cloudRGBWithNormals);
+			}
+		}
+		else if(cloudWithNormals.get())
+		{
+			added = _cloudViewer->addCloud(scanName, cloudWithNormals, pose, color);
+			if(added && nodeId > 0)
+			{
+				if(scan.channels() == 5)
 				{
-					UERROR("Adding cloud %d to viewer failed!", nodeId);
+					scan = util3d::laserScan2dFromPointCloud(*cloudWithNormals);
 				}
 				else
 				{
-					if(nodeId > 0)
-					{
-						if(filtered)
-						{
-							//reconvert the voxelized cloud
-							if(scan.channels() == 2)
-							{
-								scan = util3d::laserScan2dFromPointCloud(*cloud);
-							}
-							else
-							{
-								scan = util3d::laserScanFromPointCloud(*cloud);
-							}
-						}
-						else
-						{
-							scan = util3d::transformLaserScan(scan, iter->sensorData().laserScanInfo().localTransform());
-						}
-						_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
-					}
-
-					_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
-					_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
+					scan = util3d::laserScanFromPointCloud(*cloudWithNormals);
 				}
 			}
+		}
+		else if(cloudRGB.get())
+		{
+			added = _cloudViewer->addCloud(scanName, cloudRGB, pose, color);
+			if(added && nodeId > 0)
+			{
+				scan = util3d::laserScanFromPointCloud(*cloudRGB);
+			}
+		}
+		else
+		{
+			UASSERT(cloud.get());
+			added = _cloudViewer->addCloud(scanName, cloud, pose, color);
+			if(added && nodeId > 0)
+			{
+				if(scan.channels() == 2)
+				{
+					scan = util3d::laserScan2dFromPointCloud(*cloud);
+				}
+				else
+				{
+					scan = util3d::laserScanFromPointCloud(*cloud);
+				}
+			}
+		}
+		if(!added)
+		{
+			UERROR("Adding cloud %d to viewer failed!", nodeId);
+		}
+		else
+		{
+			if(nodeId > 0)
+			{
+				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
+			}
+
+			_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
+			_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 		}
 	}
 }
@@ -3269,35 +3314,35 @@ Transform MainWindow::alignPosesToGroundTruth(
 
 			if((_preferencesDialog->isTimeUsedInFigures() && stamp > 0.0) || (refId && refId>=0))
 			{
-				_ui->statsToolBox->updateStat("GT/translational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_max, _preferencesDialog->isCacheSavedInFigures());
 
-				_ui->statsToolBox->updateStat("GT/rotational_rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_max, _preferencesDialog->isCacheSavedInFigures());
 			}
 			else
 			{
-				_ui->statsToolBox->updateStat("GT/translational_rmse/", translational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_mean/", translational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_median/", translational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_std/", translational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_min/", translational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational_max/", translational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational rmse/", translational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational mean/", translational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational median/", translational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational std/", translational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational min/", translational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/translational max/", translational_max, _preferencesDialog->isCacheSavedInFigures());
 
-				_ui->statsToolBox->updateStat("GT/rotational_rmse/", rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_mean/", rotational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_median/", rotational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_std/", rotational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_min/", rotational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational_max/", rotational_max, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational rmse/", rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational mean/", rotational_mean, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational median/", rotational_median, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational std/", rotational_std, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational min/", rotational_min, _preferencesDialog->isCacheSavedInFigures());
+				_ui->statsToolBox->updateStat("GT/rotational max/", rotational_max, _preferencesDialog->isCacheSavedInFigures());
 			}
 		}
 	}
@@ -3308,43 +3353,58 @@ void MainWindow::updateNodeVisibility(int nodeId, bool visible)
 {
 	UINFO("Update visibility %d", nodeId);
 	QMap<std::string, Transform> viewerClouds = _cloudViewer->getAddedClouds();
-	if(_preferencesDialog->isCloudsShown(0))
+	Transform pose;
+	if(_currentGTPosesMap.size() &&
+		_ui->actionAnchor_clouds_to_ground_truth->isChecked() &&
+		_currentGTPosesMap.find(nodeId)!=_currentGTPosesMap.end())
 	{
-		std::string cloudName = uFormat("cloud%d", nodeId);
-		if(visible && !viewerClouds.contains(cloudName) && _cachedSignatures.contains(nodeId) && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
-		{
-			createAndAddCloudToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
-		}
-		else if(viewerClouds.contains(cloudName))
-		{
-			if(visible && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
-			{
-				//make sure the transformation was done
-				_cloudViewer->updateCloudPose(cloudName, _currentPosesMap.find(nodeId)->second);
-			}
-			_cloudViewer->setCloudVisibility(cloudName, visible);
-		}
+		pose = _currentGTPosesMap.at(nodeId);
+	}
+	else if(_currentPosesMap.find(nodeId) != _currentPosesMap.end())
+	{
+		pose = _currentPosesMap.at(nodeId);
 	}
 
-	if(_preferencesDialog->isScansShown(0))
+	if(!pose.isNull() || !visible)
 	{
-		std::string scanName = uFormat("scan%d", nodeId);
-		if(visible && !viewerClouds.contains(scanName) && _cachedSignatures.contains(nodeId) && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
+		if(_preferencesDialog->isCloudsShown(0))
 		{
-			createAndAddScanToMap(nodeId, _currentPosesMap.find(nodeId)->second, uValue(_currentMapIds, nodeId, -1));
-		}
-		else if(viewerClouds.contains(scanName))
-		{
-			if(visible && _currentPosesMap.find(nodeId) != _currentPosesMap.end())
+			std::string cloudName = uFormat("cloud%d", nodeId);
+			if(visible && !viewerClouds.contains(cloudName) && _cachedSignatures.contains(nodeId))
 			{
-				//make sure the transformation was done
-				_cloudViewer->updateCloudPose(scanName, _currentPosesMap.find(nodeId)->second);
+				createAndAddCloudToMap(nodeId, pose, uValue(_currentMapIds, nodeId, -1));
 			}
-			_cloudViewer->setCloudVisibility(scanName, visible);
+			else if(viewerClouds.contains(cloudName))
+			{
+				if(visible)
+				{
+					//make sure the transformation was done
+					_cloudViewer->updateCloudPose(cloudName, pose);
+				}
+				_cloudViewer->setCloudVisibility(cloudName, visible);
+			}
 		}
-	}
 
-	_cloudViewer->update();
+		if(_preferencesDialog->isScansShown(0))
+		{
+			std::string scanName = uFormat("scan%d", nodeId);
+			if(visible && !viewerClouds.contains(scanName) && _cachedSignatures.contains(nodeId))
+			{
+				createAndAddScanToMap(nodeId, pose, uValue(_currentMapIds, nodeId, -1));
+			}
+			else if(viewerClouds.contains(scanName))
+			{
+				if(visible)
+				{
+					//make sure the transformation was done
+					_cloudViewer->updateCloudPose(scanName, pose);
+				}
+				_cloudViewer->setCloudVisibility(scanName, visible);
+			}
+		}
+
+		_cloudViewer->update();
+	}
 }
 
 void MainWindow::updateGraphView()
@@ -4496,7 +4556,8 @@ void MainWindow::startDetection()
 			_preferencesDialog->getSourceScanFromDepthDecimation(),
 			_preferencesDialog->getSourceScanFromDepthMaxDepth(),
 			_preferencesDialog->getSourceScanVoxelSize(),
-			_preferencesDialog->getSourceScanNormalsK());
+			_preferencesDialog->getSourceScanNormalsK(),
+			_preferencesDialog->getSourceScanNormalsRadius());
 	if(_preferencesDialog->isDepthFilteringAvailable())
 	{
 		if(_preferencesDialog->isBilateralFiltering())
@@ -7046,6 +7107,7 @@ void MainWindow::changeState(MainWindow::State newState)
 		if(_camera)
 		{
 			_camera->start();
+			ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 		}
 		break;
 
@@ -7077,6 +7139,7 @@ void MainWindow::changeState(MainWindow::State newState)
 			if(_camera)
 			{
 				_camera->start();
+				ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 			}
 		}
 		else if(_state == kDetecting)

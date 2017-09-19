@@ -274,8 +274,14 @@ public:
 	void setCameraFree();
 	void setCameraLockZ(bool enabled = true);
 	void setGridShown(bool shown);
+	void setNormalsShown(bool shown);
 	void setGridCellCount(unsigned int count);
 	void setGridCellSize(float size);
+	bool isNormalsShown() const;
+	int getNormalsStep() const;
+	float getNormalsScale() const;
+	void setNormalsStep(int step);
+	void setNormalsScale(float scale);
 
 public slots:
 	void setDefaultBackgroundColor(const QColor & color);
@@ -318,6 +324,9 @@ private:
     QAction * _aShowGrid;
     QAction * _aSetGridCellCount;
     QAction * _aSetGridCellSize;
+    QAction * _aShowNormals;
+	QAction * _aSetNormalsStep;
+	QAction * _aSetNormalsScale;
     QAction * _aSetBackgroundColor;
     QAction * _aSetRenderingRate;
     QAction * _aSetLighting;
@@ -336,6 +345,8 @@ private:
     QColor _frustumColor;
     unsigned int _gridCellCount;
     float _gridCellSize;
+    int _normalsStep;
+    float _normalsScale;
     cv::Vec3d _lastCameraOrientation;
     cv::Vec3d _lastCameraPose;
     QMap<std::string, Transform> _addedClouds; // include cloud, scan, meshes

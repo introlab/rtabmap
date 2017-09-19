@@ -1116,14 +1116,17 @@ bool Rtabmap::process(
 						else
 						{
 							UINFO("Odometry refining rejected: %s", info.rejectedMsg.c_str());
-							if(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0)
+							if(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(0,0) != 1.0 && info.covariance.at<double>(5,5) > 0.0 && info.covariance.at<double>(5,5) != 1.0)
 							{
 								_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, (info.covariance*100.0).inv()));
 							}
 						}
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers_ratio(), info.icpInliersRatio);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_inliers_ratio(), info.icpInliersRatio);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_rotation(), info.icpRotation);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_translation(), info.icpTranslation);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_complexity(), info.icpStructuralComplexity);
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
 					}
 				}
@@ -1228,9 +1231,7 @@ bool Rtabmap::process(
 		//============================================================
 		if(_proximityByTime &&
 		   rehearsedId == 0 && // don't do it if rehearsal happened
-		   signature->getWords3().size() &&
 		   _memory->isIncremental() && // don't do it in localization mode
-		   !signature->isBadSignature() &&
 		   signature->getWeight()>=0)
 		{
 			const std::set<int> & stm = _memory->getStMem();
@@ -1511,7 +1512,7 @@ bool Rtabmap::process(
 							++immunizedGlobally;
 						}
 
-						UDEBUG("nt=%d m=%d immunized=1", iter->first, iter->second);
+						//UDEBUG("nt=%d m=%d immunized=1", iter->first, iter->second);
 					}
 					neighbors.erase(iter++);
 				}
@@ -1557,7 +1558,7 @@ bool Rtabmap::process(
 						{
 							++nbDirectNeighborsInDb;
 						}
-						UDEBUG("nt=%d m=%d", iter->first, iter->second);
+						//UDEBUG("nt=%d m=%d", iter->first, iter->second);
 					}
 					neighbors.erase(iter++);
 				}
@@ -1698,7 +1699,7 @@ bool Rtabmap::process(
 							{
 								++immunizedLocally;
 							}
-							UDEBUG("local node %d on path immunized=1", iter->first);
+							//UDEBUG("local node %d on path immunized=1", iter->first);
 						}
 					}
 				}
@@ -1745,7 +1746,7 @@ bool Rtabmap::process(
 					{
 						++immunizedLocally;
 					}
-					UDEBUG("local node %d (%f m) immunized=1", iter->second, iter->first);
+					//UDEBUG("local node %d (%f m) immunized=1", iter->second, iter->first);
 				}
 			}
 		}
@@ -2006,7 +2007,7 @@ bool Rtabmap::process(
 						//find the nearest pose on the path
 						int nearestId = rtabmap::graph::findNearestNode(path, _optimizedPoses.at(signature->id()));
 						UASSERT(nearestId > 0);
-						UDEBUG("Path %d (size=%d) distance=%fm", nearestId, (int)path.size(), _optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)));
+						//UDEBUG("Path %d (size=%d) distance=%fm", nearestId, (int)path.size(), _optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)));
 
 						// nearest pose must be close and not linked to current location
 						if(!signature->hasLink(nearestId) &&
@@ -2101,7 +2102,7 @@ bool Rtabmap::process(
 						}
 						else
 						{
-							UDEBUG("Path %d ignored", nearestId);
+							//UDEBUG("Path %d ignored", nearestId);
 						}
 					}
 				}
@@ -2996,7 +2997,7 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transfo
 
 					if(valid)
 					{
-						UDEBUG("%d <- %d", nearestId, jter->first);
+						//UDEBUG("%d <- %d", nearestId, jter->first);
 						path.insert(*jter);
 						poses.erase(jter);
 					}

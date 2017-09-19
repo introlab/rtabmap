@@ -369,6 +369,26 @@ pcl::PointCloud<pcl::PointNormal>::Ptr passThrough(
 	return output;
 }
 
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr passThrough(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const std::string & axis,
+		float min,
+		float max,
+		bool negative)
+{
+	UASSERT_MSG(max > min, uFormat("cloud=%d, max=%f min=%f axis=%s", (int)cloud->size(), max, min, axis.c_str()).c_str());
+	UASSERT(axis.compare("x") == 0 || axis.compare("y") == 0 || axis.compare("z") == 0);
+
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::PassThrough<pcl::PointXYZRGBNormal> filter;
+	filter.setNegative(negative);
+	filter.setFilterFieldName(axis);
+	filter.setFilterLimits(min, max);
+	filter.setInputCloud(cloud);
+	filter.filter(*output);
+	return output;
+}
+
 pcl::IndicesPtr cropBox(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,

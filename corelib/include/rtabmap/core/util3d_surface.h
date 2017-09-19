@@ -212,37 +212,75 @@ cv::Mat RTABMAP_EXP mergeTextures(
 		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
 		const ProgressState * state = 0);
 
-
+cv::Mat RTABMAP_EXP computeNormals(
+		const cv::Mat & laserScan,
+		int searchK,
+		float searchRadius);
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		int normalKSearch = 20,
+		int searchK = 20,
+		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		int normalKSearch = 20,
+		int searchK = 20,
+		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch = 20,
+		int searchK = 20,
+		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch = 20,
+		int searchK = 20,
+		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
-pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals2D(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int searchK = 5,
+		float searchRadius = 0.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals2D(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int searchK = 5,
+		float searchRadius = 0.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		float maxDepthChangeFactor = 0.02f,
 		float normalSmoothingSize = 10.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
-pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float maxDepthChangeFactor = 0.02f,
 		float normalSmoothingSize = 10.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+
+float RTABMAP_EXP computeNormalsComplexity(
+		const cv::Mat & scan,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
+float RTABMAP_EXP computeNormalsComplexity(
+		const pcl::PointCloud<pcl::Normal> & normals,
+		bool is2d = false,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
+float RTABMAP_EXP computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointNormal> & cloud,
+		bool is2d = false,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
+float RTABMAP_EXP computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		bool is2d = false,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
 
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,

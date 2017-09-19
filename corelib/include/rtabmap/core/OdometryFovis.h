@@ -53,13 +53,15 @@ private:
 	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
 
 private:
+#ifdef RTABMAP_FOVIS
 	fovis::VisualOdometry * fovis_;
 	fovis::Rectification * rect_;
 	fovis::StereoCalibration * stereoCalib_;
 	fovis::DepthImage * depthImage_;
 	fovis::StereoDepth * stereoDepth_;
-	ParametersMap fovisParameters_;
 	bool lost_;
+#endif
+	ParametersMap fovisParameters_;
 	Transform previousLocalTransform_;
 };
 

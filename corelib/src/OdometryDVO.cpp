@@ -28,7 +28,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryDVO.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util2d.h"
-#include "rtabmap/core/Version.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
@@ -43,10 +42,12 @@ namespace rtabmap {
 
 OdometryDVO::OdometryDVO(const ParametersMap & parameters) :
 	Odometry(parameters),
+#ifdef RTABMAP_DVO
 	dvo_(0),
 	reference_(0),
 	camera_(0),
 	lost_(false),
+#endif
 	motionFromKeyFrame_(Transform::getIdentity())
 {
 }
@@ -270,7 +271,7 @@ Transform OdometryDVO::computeTransform(
 	if(info)
 	{
 		info->type = (int)kTypeDVO;
-		info->covariance = covariance;
+		info->reg.covariance = covariance;
 	}
 
 	UINFO("Odom update time = %fs", timer.elapsed());

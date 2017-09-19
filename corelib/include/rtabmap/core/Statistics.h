@@ -77,7 +77,10 @@ class RTABMAP_EXP Statistics
 
 	RTABMAP_STATS(NeighborLinkRefining, Accepted,);
 	RTABMAP_STATS(NeighborLinkRefining, Inliers,);
-	RTABMAP_STATS(NeighborLinkRefining, Inliers_ratio,);
+	RTABMAP_STATS(NeighborLinkRefining, ICP_inliers_ratio,);
+	RTABMAP_STATS(NeighborLinkRefining, ICP_rotation, rad);
+	RTABMAP_STATS(NeighborLinkRefining, ICP_translation, m);
+	RTABMAP_STATS(NeighborLinkRefining, ICP_complexity,);
 	RTABMAP_STATS(NeighborLinkRefining, Variance,);
 	RTABMAP_STATS(NeighborLinkRefining, Pts,);
 
@@ -131,6 +134,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Compressing_data, ms);
 	RTABMAP_STATS(TimingMem, Post_decimation, ms);
 	RTABMAP_STATS(TimingMem, Scan_downsampling, ms);
+	RTABMAP_STATS(TimingMem, Scan_voxel_filtering, ms);
 	RTABMAP_STATS(TimingMem, Scan_normals, ms);
 	RTABMAP_STATS(TimingMem, Occupancy_grid, ms);
 

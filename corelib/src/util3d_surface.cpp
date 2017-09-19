@@ -1994,18 +1994,52 @@ cv::Mat mergeTextures(
 	return globalTextures;
 }
 
+cv::Mat computeNormals(
+		const cv::Mat & laserScan,
+		int searchK,
+		float searchRadius)
+{
+	if(laserScan.empty() || laserScan.channels()<2 || laserScan.channels()>4)
+	{
+		return laserScan;
+	}
+
+	pcl::PointCloud<pcl::Normal>::Ptr normals;
+	if(laserScan.channels() < 4)
+	{
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
+		if(laserScan.channels() == 2)
+		{
+			normals = util3d::computeNormals2D(cloud, searchK, searchRadius);
+			return util3d::laserScan2dFromPointCloud(*cloud, *normals);
+		}
+		else
+		{
+			normals = util3d::computeNormals(cloud, searchK, searchRadius);
+			return util3d::laserScanFromPointCloud(*cloud, *normals);
+		}
+	}
+	else // 4 channels
+	{
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(laserScan);
+		normals = util3d::computeNormals(cloud, searchK, searchRadius);
+		return util3d::laserScanFromPointCloud(*cloud, *normals);
+	}
+}
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return computeNormals(cloud, indices, normalKSearch, viewPoint);
+	return computeNormals(cloud, indices, searchK, searchRadius, viewPoint);
 }
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
@@ -2032,7 +2066,8 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 	//	n.setIndices(indices);
 	//}
 	n.setSearchMethod (tree);
-	n.setKSearch (normalKSearch);
+	n.setKSearch (searchK);
+	n.setRadiusSearch (searchRadius);
 	n.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
 	n.compute (*normals);
 
@@ -2041,16 +2076,18 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
-	return computeNormals(cloud, indices, normalKSearch, viewPoint);
+	return computeNormals(cloud, indices, searchK, searchRadius, viewPoint);
 }
 pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
-		int normalKSearch,
+		int searchK,
+		float searchRadius,
 		const Eigen::Vector3f & viewPoint)
 {
 	pcl::search::KdTree<pcl::PointXYZRGB>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZRGB>);
@@ -2077,9 +2114,178 @@ pcl::PointCloud<pcl::Normal>::Ptr computeNormals(
 	//	n.setIndices(indices);
 	//}
 	n.setSearchMethod (tree);
-	n.setKSearch (normalKSearch);
+	n.setKSearch (searchK);
+	n.setRadiusSearch(searchRadius);
 	n.setViewPoint(viewPoint[0], viewPoint[1], viewPoint[2]);
 	n.compute (*normals);
+
+	return normals;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr computeNormals2D(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int searchK,
+		float searchRadius,
+		const Eigen::Vector3f & viewPoint)
+{
+	UASSERT(searchK>0 || searchRadius>0.0f);
+	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree (new pcl::search::KdTree<pcl::PointXYZ>);
+	tree->setInputCloud (cloud);
+
+	normals->resize(cloud->size());
+
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+
+	// assuming that points are ordered
+	for(unsigned int i=0; i<cloud->size(); ++i)
+	{
+		const pcl::PointXYZ & pt = cloud->at(i);
+		std::vector<Eigen::Vector3f> neighborNormals;
+		Eigen::Vector3f direction;
+		direction[0] = viewPoint[0] - pt.x;
+		direction[1] = viewPoint[1] - pt.y;
+		direction[2] = viewPoint[2] - pt.z;
+
+		std::vector<int> k_indices;
+		std::vector<float> k_sqr_distances;
+		if(searchRadius>0.0f)
+		{
+			tree->radiusSearch(cloud->at(i), searchRadius, k_indices, k_sqr_distances, searchK);
+		}
+		else
+		{
+			tree->nearestKSearch(cloud->at(i), searchK, k_indices, k_sqr_distances);
+		}
+
+		for(unsigned int j=0; j<k_indices.size(); ++j)
+		{
+			if(k_indices.at(j) != (int)i)
+			{
+				const pcl::PointXYZ & pt2 = cloud->at(k_indices.at(j));
+				Eigen::Vector3f v(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+				Eigen::Vector3f up = v.cross(direction);
+				Eigen::Vector3f n = up.cross(v);
+				n.normalize();
+				neighborNormals.push_back(n);
+			}
+		}
+
+		if(neighborNormals.empty())
+		{
+			normals->at(i).normal_x = bad_point;
+			normals->at(i).normal_y = bad_point;
+			normals->at(i).normal_z = bad_point;
+		}
+		else
+		{
+			Eigen::Vector3f meanNormal(0,0,0);
+			for(unsigned int j=0; j<neighborNormals.size(); ++j)
+			{
+				meanNormal+=neighborNormals[j];
+			}
+			meanNormal /= (float)neighborNormals.size();
+			meanNormal.normalize();
+			normals->at(i).normal_x = meanNormal[0];
+			normals->at(i).normal_y = meanNormal[1];
+			normals->at(i).normal_z = meanNormal[2];
+		}
+	}
+
+	return normals;
+}
+
+pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals2D(
+		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int searchK,
+		float searchRadius,
+		const Eigen::Vector3f & viewPoint)
+{
+	UASSERT(searchK>0);
+	pcl::PointCloud<pcl::Normal>::Ptr normals (new pcl::PointCloud<pcl::Normal>);
+
+	normals->resize(cloud->size());
+	searchRadius *= searchRadius; // squared distance
+
+	float bad_point = std::numeric_limits<float>::quiet_NaN ();
+
+	// assuming that points are ordered
+	for(int i=0; i<(int)cloud->size(); ++i)
+	{
+		int li = i-searchK;
+		if(li<0)
+		{
+			li=0;
+		}
+		int hi = i+searchK;
+		if(hi>=(int)cloud->size())
+		{
+			hi=(int)cloud->size()-1;
+		}
+
+		// get points before not too far
+		const pcl::PointXYZ & pt = cloud->at(i);
+		std::vector<Eigen::Vector3f> neighborNormals;
+		Eigen::Vector3f direction;
+		direction[0] = viewPoint[0] - cloud->at(i).x;
+		direction[1] = viewPoint[1] - cloud->at(i).y;
+		direction[2] = viewPoint[2] - cloud->at(i).z;
+		for(int j=i-1; j>=li; --j)
+		{
+			const pcl::PointXYZ & pt2 = cloud->at(j);
+			Eigen::Vector3f vd(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+			if(searchRadius<=0.0f || (vd[0]*vd[0] + vd[1]*vd[1] + vd[2]*vd[2]) < searchRadius)
+			{
+				Eigen::Vector3f v(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+				Eigen::Vector3f up = v.cross(direction);
+				Eigen::Vector3f n = up.cross(v);
+				n.normalize();
+				neighborNormals.push_back(n);
+			}
+			else
+			{
+				break;
+			}
+		}
+		for(int j=i+1; j<=hi; ++j)
+		{
+			const pcl::PointXYZ & pt2 = cloud->at(j);
+			Eigen::Vector3f vd(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+			if(searchRadius<=0.0f || (vd[0]*vd[0] + vd[1]*vd[1] + vd[2]*vd[2]) < searchRadius)
+			{
+				Eigen::Vector3f v(pt2.x-pt.x, pt2.y - pt.y, pt2.z - pt.z);
+				Eigen::Vector3f up = v[2]==0.0f?Eigen::Vector3f(0,0,1):v.cross(direction);
+				Eigen::Vector3f n = up.cross(v);
+				n.normalize();
+				neighborNormals.push_back(n);
+			}
+			else
+			{
+				break;
+			}
+		}
+
+		if(neighborNormals.empty())
+		{
+			normals->at(i).normal_x = bad_point;
+			normals->at(i).normal_y = bad_point;
+			normals->at(i).normal_z = bad_point;
+		}
+		else
+		{
+			Eigen::Vector3f meanNormal(0,0,0);
+			for(unsigned int j=0; j<neighborNormals.size(); ++j)
+			{
+				meanNormal+=neighborNormals[j];
+			}
+			meanNormal /= (float)neighborNormals.size();
+			meanNormal.normalize();
+			normals->at(i).normal_x = meanNormal[0];
+			normals->at(i).normal_y = meanNormal[1];
+			normals->at(i).normal_z = meanNormal[2];
+		}
+	}
 
 	return normals;
 }
@@ -2130,6 +2336,204 @@ pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 	ne.compute(*normals);
 
 	return normals;
+}
+
+float computeNormalsComplexity(
+		const cv::Mat & scan,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
+{
+	if(!scan.empty() && (scan.channels() == 5 || scan.channels() == 6 || scan.channels() == 7))
+	{
+		 //Construct a buffer used by the pca analysis
+		int sz = static_cast<int>(scan.cols*2);
+		bool is2d = scan.channels() == 5;
+		cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+		int oi = 0;
+		for (int i = 0; i < scan.cols; ++i)
+		{
+			const float * ptrScan = scan.ptr<float>(0, i);
+			if(scan.channels() == 5)
+			{
+				if(uIsFinite(ptrScan[2]) && uIsFinite(ptrScan[3]))
+				{
+					float * ptr = data_normals.ptr<float>(oi++, 0);
+					ptr[0] = ptrScan[2];
+					ptr[1] = ptrScan[3];
+				}
+			}
+			else if(scan.channels() == 6)
+			{
+				if(uIsFinite(ptrScan[3]) && uIsFinite(ptrScan[4]) && uIsFinite(ptrScan[5]))
+				{
+					float * ptr = data_normals.ptr<float>(oi++, 0);
+					ptr[0] = ptrScan[3];
+					ptr[1] = ptrScan[4];
+					ptr[2] = ptrScan[5];
+				}
+			}
+			else
+			{
+				if(uIsFinite(ptrScan[4]) && uIsFinite(ptrScan[5]) && uIsFinite(ptrScan[6]))
+				{
+					float * ptr = data_normals.ptr<float>(oi++, 0);
+					ptr[0] = ptrScan[4];
+					ptr[1] = ptrScan[5];
+					ptr[2] = ptrScan[6];
+				}
+			}
+		}
+		if(oi>1)
+		{
+			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+			if(pcaEigenVectors)
+			{
+				*pcaEigenVectors = pca_analysis.eigenvectors;
+			}
+			if(pcaEigenValues)
+			{
+				*pcaEigenValues = pca_analysis.eigenvalues;
+			}
+
+			// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+			return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+		}
+	}
+	else if(!scan.empty())
+	{
+		UERROR("Scan doesn't have normals!");
+	}
+	return 0.0f;
+}
+
+float computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointNormal> & cloud,
+		bool is2d,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
+{
+	 //Construct a buffer used by the pca analysis
+	int sz = static_cast<int>(cloud.size()*2);
+	cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+	int oi = 0;
+	for (unsigned int i = 0; i < cloud.size(); ++i)
+	{
+		const pcl::PointNormal & pt = cloud.at(i);
+		if(uIsFinite(pt.normal_x) && uIsFinite(pt.normal_y) && uIsFinite(pt.normal_z))
+		{
+			float * ptr = data_normals.ptr<float>(oi++, 0);
+			ptr[0] = pt.normal_x;
+			ptr[1] = pt.normal_y;
+			if(!is2d)
+			{
+				ptr[2] = pt.normal_z;
+			}
+		}
+	}
+	if(oi>1)
+	{
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		if(pcaEigenVectors)
+		{
+			*pcaEigenVectors = pca_analysis.eigenvectors;
+		}
+		if(pcaEigenValues)
+		{
+			*pcaEigenValues = pca_analysis.eigenvalues;
+		}
+
+		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+	}
+	return 0.0f;
+}
+
+float computeNormalsComplexity(
+		const pcl::PointCloud<pcl::Normal> & normals,
+		bool is2d,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
+{
+	 //Construct a buffer used by the pca analysis
+	int sz = static_cast<int>(normals.size()*2);
+	cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+	int oi = 0;
+	for (unsigned int i = 0; i < normals.size(); ++i)
+	{
+		const pcl::Normal & pt = normals.at(i);
+		if(uIsFinite(pt.normal_x) && uIsFinite(pt.normal_y) && uIsFinite(pt.normal_z))
+		{
+			float * ptr = data_normals.ptr<float>(oi++, 0);
+			ptr[0] = pt.normal_x;
+			ptr[1] = pt.normal_y;
+			if(!is2d)
+			{
+				ptr[2] = pt.normal_z;
+			}
+		}
+	}
+	if(oi>1)
+	{
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		if(pcaEigenVectors)
+		{
+			*pcaEigenVectors = pca_analysis.eigenvectors;
+		}
+		if(pcaEigenValues)
+		{
+			*pcaEigenValues = pca_analysis.eigenvalues;
+		}
+
+		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+	}
+	return 0.0f;
+}
+
+float computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		bool is2d,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
+{
+	 //Construct a buffer used by the pca analysis
+	int sz = static_cast<int>(cloud.size()*2);
+	cv::Mat data_normals = cv::Mat::zeros(sz, is2d?2:3, CV_32FC1);
+	int oi = 0;
+	for (unsigned int i = 0; i < cloud.size(); ++i)
+	{
+		const pcl::PointXYZRGBNormal & pt = cloud.at(i);
+		if(uIsFinite(pt.normal_x) && uIsFinite(pt.normal_y) && uIsFinite(pt.normal_z))
+		{
+			float * ptr = data_normals.ptr<float>(oi++, 0);
+			ptr[0] = pt.normal_x;
+			ptr[1] = pt.normal_y;
+			if(!is2d)
+			{
+				ptr[2] = pt.normal_z;
+			}
+		}
+	}
+	if(oi>1)
+	{
+		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		if(pcaEigenVectors)
+		{
+			*pcaEigenVectors = pca_analysis.eigenvectors;
+		}
+		if(pcaEigenValues)
+		{
+			*pcaEigenValues = pca_analysis.eigenvalues;
+		}
+
+		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
+		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
+	}
+	return 0.0f;
 }
 
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mls(
