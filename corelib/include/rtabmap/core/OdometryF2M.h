@@ -64,6 +64,7 @@ private:
 	float scanKeyFrameThr_;
 	int scanMaximumMapSize_;
 	float scanSubtractRadius_;
+	float scanSubtractAngle_;
 	int bundleAdjustment_;
 	int bundleMaxFrames_;
 

@@ -433,6 +433,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 			double variance = 1.0;
 			bool transformComputed = false;
 			bool tooLowComplexityForPlaneToPlane = false;
+			cv::Mat complexityVectors;
 
 			if( _pointToPlane &&
 				_voxelSize == 0.0f &&
@@ -442,14 +443,16 @@ Transform RegistrationIcp::computeTransformationImpl(
 			{
 				//special case if we have already normals computed and there is no filtering
 
-				double fromComplexity = util3d::computeNormalsComplexity(fromScan);
-				double toComplexity = util3d::computeNormalsComplexity(toScan);
+				cv::Mat complexityVectorsFrom, complexityVectorsTo;
+				double fromComplexity = util3d::computeNormalsComplexity(fromScan, &complexityVectorsFrom);
+				double toComplexity = util3d::computeNormalsComplexity(toScan, &complexityVectorsTo);
 				float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
 				info.icpStructuralComplexity = complexity;
 				if(complexity < _pointToPlaneMinComplexity)
 				{
 					tooLowComplexityForPlaneToPlane = true;
-					UWARN("ICP PointToPlane ignored as structural complexity is too low: %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
+					complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
+					UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
 				}
 				else
 				{
@@ -610,14 +613,16 @@ Transform RegistrationIcp::computeTransformationImpl(
 						normalsTo = util3d::computeNormals(toCloudFiltered, _pointToPlaneK, _pointToPlaneRadius, viewpointTo);
 					}
 
-					double fromComplexity = util3d::computeNormalsComplexity(*normalsFrom, fromScan.channels() == 2 || fromScan.channels() == 5);
-					double toComplexity = util3d::computeNormalsComplexity(*normalsTo, toScan.channels() == 2 || toScan.channels() == 5);
+					cv::Mat complexityVectorsFrom, complexityVectorsTo;
+					double fromComplexity = util3d::computeNormalsComplexity(*normalsFrom, fromScan.channels() == 2 || fromScan.channels() == 5, &complexityVectorsFrom);
+					double toComplexity = util3d::computeNormalsComplexity(*normalsTo, toScan.channels() == 2 || toScan.channels() == 5, &complexityVectorsTo);
 					float complexity = fromComplexity<toComplexity?fromComplexity:toComplexity;
 					info.icpStructuralComplexity = complexity;
 					if(complexity < _pointToPlaneMinComplexity)
 					{
 						tooLowComplexityForPlaneToPlane = true;
-						UWARN("ICP PointToPlane ignored as structural complexity is too low: %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
+						complexityVectors = fromComplexity<toComplexity?complexityVectorsFrom:complexityVectorsTo;
+						UWARN("ICP PointToPlane ignored as structural complexity is too low (corridor-like environment): %f < %f (%s). PointToPoint is done instead.", complexity, _pointToPlaneMinComplexity, Parameters::kIcpPointToPlaneMinComplexity().c_str());
 					}
 					else
 					{
@@ -721,7 +726,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						UWARN("ICP PointToPlane ignored for 2d scans with PCL registration (some crash issues). Use libpointmatcher (%s) or disable %s to avoid this warning.", Parameters::kIcpPM().c_str(), Parameters::kIcpPointToPlane().c_str());
 					}
 
-					if(_voxelSize > 0.0f)
+					if(_voxelSize > 0.0f || !tooLowComplexityForPlaneToPlane)
 					{
 						// update output scans
 						if(fromScan.channels() == 2 || fromScan.channels() == 5)
@@ -743,7 +748,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 					}
 
 #ifdef RTABMAP_POINTMATCHER
-					if(_libpointmatcher && !_pointToPlane) // don't use libpointmatcher if it is configured for point to plane
+					if(_libpointmatcher)
 					{
 						// Load point clouds
 						DP data = pclToDP(fromCloudFiltered, fromScan.channels() == 2 || fromScan.channels() == 5);
@@ -756,7 +761,30 @@ Transform RegistrationIcp::computeTransformationImpl(
 							UASSERT(_libpointmatcherICP != 0);
 							PM::ICP & icp = *((PM::ICP*)_libpointmatcherICP);
 							UDEBUG("libpointmatcher icp... (if there is a seg fault here, make sure all third party libraries are built with same Eigen version.)");
-							T = icp(data, ref);
+							if(_pointToPlane)
+							{
+								// temporary set PointToPointErrorMinimizer
+								PM::ICP & icpTmp = icp;
+								icpTmp.errorMinimizer.reset(PM::get().ErrorMinimizerRegistrar.create("PointToPointErrorMinimizer"));
+
+								for(PM::OutlierFilters::iterator iter=icpTmp.outlierFilters.begin(); iter!=icpTmp.outlierFilters.end();)
+								{
+									if((*iter)->className.compare("SurfaceNormalOutlierFilter") == 0)
+									{
+										iter = icpTmp.outlierFilters.erase(iter);
+									}
+									else
+									{
+										++iter;
+									}
+								}
+
+								T = icpTmp(data, ref);
+							}
+							else
+							{
+								T = icp(data, ref);
+							}
 							UDEBUG("libpointmatcher icp...done!");
 							icpT = Transform::fromEigen3d(Eigen::Affine3d(Eigen::Matrix4d(eigenMatrixToDim<double>(T.template cast<double>(), 4))));
 
@@ -790,6 +818,39 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 					if(!icpT.isNull() && hasConverged)
 					{
+						if(tooLowComplexityForPlaneToPlane)
+						{
+							Transform guessInv = guess.inverse();
+							Transform t = guessInv * icpT.inverse() * guess;
+							Eigen::Vector3f v(t.x(), t.y(), t.z());
+							if(complexityVectors.cols == 2)
+							{
+								// limit translation in direction of the first eigen vector
+								Eigen::Vector3f n(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), 0.0f);
+								float a = v.dot(n);
+								v = n*a;
+							}
+							else if(complexityVectors.rows == 3)
+							{
+								// limit translation in direction of the first and second eigen vectors
+								Eigen::Vector3f n1(complexityVectors.at<float>(0,0), complexityVectors.at<float>(0,1), complexityVectors.at<float>(0,2));
+								Eigen::Vector3f n2(complexityVectors.at<float>(1,0), complexityVectors.at<float>(1,1), complexityVectors.at<float>(1,2));
+								float a = v.dot(n1);
+								float b = v.dot(n2);
+								v = n1*a;
+								v += n2*b;
+							}
+							else
+							{
+								UWARN("not supposed to be here!");
+								v = Eigen::Vector3f(0,0,0);
+							}
+							float roll, pitch, yaw;
+							t.getEulerAngles(roll, pitch, yaw);
+							t = Transform(v[0], v[1], v[2], roll, pitch, yaw);
+							icpT = guess * t.inverse() * guessInv;
+						}
+
 						util3d::computeVarianceAndCorrespondences(
 								fromCloudRegistered,
 								toCloudFiltered,

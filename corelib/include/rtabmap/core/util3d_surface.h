@@ -263,16 +263,24 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals(
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
 float RTABMAP_EXP computeNormalsComplexity(
-		const cv::Mat & scan);
+		const cv::Mat & scan,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
 		const pcl::PointCloud<pcl::Normal> & normals,
-		bool is2d = false);
+		bool is2d = false,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointNormal> & cloud,
-		bool is2d = false);
+		bool is2d = false,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
-		bool is2d = false);
+		bool is2d = false,
+		cv::Mat * pcaEigenVectors = 0,
+		cv::Mat * pcaEigenValues = 0);
 
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,

@@ -659,6 +659,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_imagePreDecimation->setObjectName(Parameters::kMemImagePreDecimation().c_str());
 	_ui->spinBox_imagePostDecimation->setObjectName(Parameters::kMemImagePostDecimation().c_str());
 	_ui->general_spinBox_laserScanDownsample->setObjectName(Parameters::kMemLaserScanDownsampleStepSize().c_str());
+	_ui->general_doubleSpinBox_laserScanVoxelSize->setObjectName(Parameters::kMemLaserScanVoxelSize().c_str());
 	_ui->general_spinBox_laserScanNormalK->setObjectName(Parameters::kMemLaserScanNormalK().c_str());
 	_ui->general_doubleSpinBox_laserScanNormalRadius->setObjectName(Parameters::kMemLaserScanNormalRadius().c_str());
 	_ui->checkBox_useOdomFeatures->setObjectName(Parameters::kMemUseOdomFeatures().c_str());
@@ -932,6 +933,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_odom_f2m_maxNewFeatures->setObjectName(Parameters::kOdomF2MMaxNewFeatures().c_str());
 	_ui->spinBox_odom_f2m_scanMaxSize->setObjectName(Parameters::kOdomF2MScanMaxSize().c_str());
 	_ui->doubleSpinBox_odom_f2m_scanRadius->setObjectName(Parameters::kOdomF2MScanSubtractRadius().c_str());
+	_ui->doubleSpinBox_odom_f2m_scanAngle->setObjectName(Parameters::kOdomF2MScanSubtractAngle().c_str());
 	_ui->odom_f2m_bundleStrategy->setObjectName(Parameters::kOdomF2MBundleAdjustment().c_str());
 	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
 

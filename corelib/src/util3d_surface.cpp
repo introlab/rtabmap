@@ -2338,7 +2338,10 @@ pcl::PointCloud<pcl::Normal>::Ptr computeFastOrganizedNormals(
 	return normals;
 }
 
-float computeNormalsComplexity(const cv::Mat & scan)
+float computeNormalsComplexity(
+		const cv::Mat & scan,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
 {
 	if(!scan.empty() && (scan.channels() == 5 || scan.channels() == 6 || scan.channels() == 7))
 	{
@@ -2384,6 +2387,15 @@ float computeNormalsComplexity(const cv::Mat & scan)
 		{
 			cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
+			if(pcaEigenVectors)
+			{
+				*pcaEigenVectors = pca_analysis.eigenvectors;
+			}
+			if(pcaEigenValues)
+			{
+				*pcaEigenValues = pca_analysis.eigenvalues;
+			}
+
 			// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
 			return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
 		}
@@ -2395,7 +2407,11 @@ float computeNormalsComplexity(const cv::Mat & scan)
 	return 0.0f;
 }
 
-float computeNormalsComplexity(const pcl::PointCloud<pcl::PointNormal> & cloud, bool is2d)
+float computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointNormal> & cloud,
+		bool is2d,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
 {
 	 //Construct a buffer used by the pca analysis
 	int sz = static_cast<int>(cloud.size()*2);
@@ -2419,13 +2435,26 @@ float computeNormalsComplexity(const pcl::PointCloud<pcl::PointNormal> & cloud, 
 	{
 		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
+		if(pcaEigenVectors)
+		{
+			*pcaEigenVectors = pca_analysis.eigenvectors;
+		}
+		if(pcaEigenValues)
+		{
+			*pcaEigenValues = pca_analysis.eigenvalues;
+		}
+
 		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
 		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
 	}
 	return 0.0f;
 }
 
-float computeNormalsComplexity(const pcl::PointCloud<pcl::Normal> & normals, bool is2d)
+float computeNormalsComplexity(
+		const pcl::PointCloud<pcl::Normal> & normals,
+		bool is2d,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
 {
 	 //Construct a buffer used by the pca analysis
 	int sz = static_cast<int>(normals.size()*2);
@@ -2449,13 +2478,26 @@ float computeNormalsComplexity(const pcl::PointCloud<pcl::Normal> & normals, boo
 	{
 		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
 
+		if(pcaEigenVectors)
+		{
+			*pcaEigenVectors = pca_analysis.eigenvectors;
+		}
+		if(pcaEigenValues)
+		{
+			*pcaEigenValues = pca_analysis.eigenvalues;
+		}
+
 		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
 		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);
 	}
 	return 0.0f;
 }
 
-float computeNormalsComplexity(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, bool is2d)
+float computeNormalsComplexity(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud,
+		bool is2d,
+		cv::Mat * pcaEigenVectors,
+		cv::Mat * pcaEigenValues)
 {
 	 //Construct a buffer used by the pca analysis
 	int sz = static_cast<int>(cloud.size()*2);
@@ -2478,6 +2520,15 @@ float computeNormalsComplexity(const pcl::PointCloud<pcl::PointXYZRGBNormal> & c
 	if(oi>1)
 	{
 		cv::PCA pca_analysis(cv::Mat(data_normals, cv::Range(0, oi*2)), cv::Mat(), CV_PCA_DATA_AS_ROW);
+
+		if(pcaEigenVectors)
+		{
+			*pcaEigenVectors = pca_analysis.eigenvectors;
+		}
+		if(pcaEigenValues)
+		{
+			*pcaEigenValues = pca_analysis.eigenvalues;
+		}
 
 		// Get last eigen value, scale between 0 and 1: 0=low complexity, 1=high complexity
 		return pca_analysis.eigenvalues.at<float>(0, is2d?1:2)*(is2d?2.0f:3.0f);

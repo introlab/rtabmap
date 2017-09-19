@@ -88,6 +88,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
 	_laserScanDownsampleStepSize(Parameters::defaultMemLaserScanDownsampleStepSize()),
+	_laserScanVoxelSize(Parameters::defaultMemLaserScanVoxelSize()),
 	_laserScanNormalK(Parameters::defaultMemLaserScanNormalK()),
 	_laserScanNormalRadius(Parameters::defaultMemLaserScanNormalRadius()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
@@ -440,6 +441,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
 	Parameters::parse(parameters, Parameters::kMemCompressionParallelized(), _compressionParallelized);
 	Parameters::parse(parameters, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
+	Parameters::parse(parameters, Parameters::kMemLaserScanVoxelSize(), _laserScanVoxelSize);
 	Parameters::parse(parameters, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
 	Parameters::parse(parameters, Parameters::kMemLaserScanNormalRadius(), _laserScanNormalRadius);
 	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
@@ -3759,6 +3761,35 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemScan_downsampling(), t*1000.0f);
 		UDEBUG("time downsampling scan = %fs", t);
+	}
+	if(!laserScan.empty() && _laserScanVoxelSize > 0.0f && !isIntermediateNode)
+	{
+		float pointsBeforeFiltering = laserScan.cols;
+		if(laserScan.channels() == 4 || laserScan.channels() == 7)
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(laserScan);
+			cloud = util3d::voxelize(cloud, _laserScanVoxelSize);
+			laserScan = util3d::laserScanFromPointCloud(*cloud);
+		}
+		else
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
+			cloud = util3d::voxelize(cloud, _laserScanVoxelSize);
+			if(laserScan.channels() == 2 || laserScan.channels() == 5)
+			{
+				laserScan = util3d::laserScan2dFromPointCloud(*cloud);
+			}
+			else
+			{
+				laserScan = util3d::laserScanFromPointCloud(*cloud);
+			}
+		}
+		float ratio = float(laserScan.cols) / pointsBeforeFiltering;
+		maxLaserScanMaxPts = int(float(maxLaserScanMaxPts) * ratio);
+
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemScan_voxel_filtering(), t*1000.0f);
+		UDEBUG("time voxel filtering scan = %fs", t);
 	}
 	if(!laserScan.empty() &&
 		(_laserScanNormalK > 0 || _laserScanNormalRadius>0.0f) &&

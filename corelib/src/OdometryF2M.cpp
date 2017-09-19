@@ -65,6 +65,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	scanKeyFrameThr_(Parameters::defaultOdomScanKeyFrameThr()),
 	scanMaximumMapSize_(Parameters::defaultOdomF2MScanMaxSize()),
 	scanSubtractRadius_(Parameters::defaultOdomF2MScanSubtractRadius()),
+	scanSubtractAngle_(Parameters::defaultOdomF2MScanSubtractAngle()),
 	bundleAdjustment_(Parameters::defaultOdomF2MBundleAdjustment()),
 	bundleMaxFrames_(Parameters::defaultOdomF2MBundleAdjustmentMaxFrames()),
 	map_(new Signature(-1)),
@@ -80,6 +81,10 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomScanKeyFrameThr(), scanKeyFrameThr_);
 	Parameters::parse(parameters, Parameters::kOdomF2MScanMaxSize(), scanMaximumMapSize_);
 	Parameters::parse(parameters, Parameters::kOdomF2MScanSubtractRadius(), scanSubtractRadius_);
+	if(Parameters::parse(parameters, Parameters::kOdomF2MScanSubtractAngle(), scanSubtractAngle_))
+	{
+		scanSubtractAngle_ *= M_PI/180.0f;
+	}
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustment(), bundleAdjustment_);
 	Parameters::parse(parameters, Parameters::kOdomF2MBundleAdjustmentMaxFrames(), bundleMaxFrames_);
 	UASSERT(bundleMaxFrames_ >= 0);
@@ -605,7 +610,7 @@ Transform OdometryF2M::computeTransform(
 									mapCloudNormals,
 									pcl::IndicesPtr(new std::vector<int>),
 									scanSubtractRadius_,
-									0.0f);
+									scanSubtractAngle_);
 							newPoints = frameCloudNormalsIndices->size();
 						}
 						else

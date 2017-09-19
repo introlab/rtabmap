@@ -282,6 +282,7 @@ private:
 	int _imagePostDecimation;
 	bool _compressionParallelized;
 	float _laserScanDownsampleStepSize;
+	float _laserScanVoxelSize;
 	int _laserScanNormalK;
 	int _laserScanNormalRadius;
 	bool _reextractLoopClosureFeatures;

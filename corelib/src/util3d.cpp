@@ -1531,6 +1531,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const cv::Mat & laserS
 
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
 	output->resize(laserScan.cols);
+	output->is_dense = true;
 	bool nullTransform = transform.isNull();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(int i=0; i<laserScan.cols; ++i)
@@ -1550,6 +1551,7 @@ pcl::PointCloud<pcl::PointNormal>::Ptr laserScanToPointCloudNormal(const cv::Mat
 
 	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
 	output->resize(laserScan.cols);
+	output->is_dense = true;
 	bool nullTransform = transform.isNull();
 	for(int i=0; i<laserScan.cols; ++i)
 	{
@@ -1568,6 +1570,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr laserScanToPointCloudRGB(const cv::Mat & 
 
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGB>);
 	output->resize(laserScan.cols);
+	output->is_dense = true;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
 	for(int i=0; i<laserScan.cols; ++i)
@@ -1587,6 +1590,7 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr laserScanToPointCloudRGBNormal(cons
 
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 	output->resize(laserScan.cols);
+	output->is_dense = true;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
 	for(int i=0; i<laserScan.cols; ++i)
 	{
