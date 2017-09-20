@@ -2193,7 +2193,7 @@ bool RTABMapApp::exportMesh(
 							}
 
 							Eigen::Vector3f viewpoint( iter->second.x(),  iter->second.y(),  iter->second.z());
-							pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(transformedCloud, normalK, viewpoint);
+							pcl::PointCloud<pcl::Normal>::Ptr normals = rtabmap::util3d::computeNormals(transformedCloud, normalK, 0.0f, viewpoint);
 
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudWithNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 							pcl::concatenateFields(*transformedCloud, *normals, *cloudWithNormals);

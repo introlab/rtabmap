@@ -879,7 +879,7 @@ void CameraTango::mainLoop()
 				info.interval = data.stamp()-previousStamp_;
 				info.transform = previousPose_.inverse() * pose;
 			}
-			info.covariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.000001);
+			info.reg.covariance = cv::Mat::eye(6,6,CV_64FC1) * (firstFrame?9999.0:0.000001);
 			LOGI("Publish odometry message (variance=%f)", firstFrame?9999:0.000001);
 			this->post(new OdometryEvent(data, pose, info));
 			previousPose_ = pose;
