@@ -33,6 +33,7 @@ import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.DialogInterface.OnShowListener;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
@@ -50,8 +51,15 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.Typeface;
 import android.hardware.Camera;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.graphics.Point;
 import android.hardware.display.DisplayManager;
+import android.location.Location;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -74,15 +82,19 @@ import android.text.method.LinkMovementMethod;
 import android.text.util.Linkify;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.ContextMenu;
 import android.view.Display;
 import android.view.GestureDetector;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.MenuInflater;
 import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.View;
+import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
+import android.view.View.OnCreateContextMenuListener;
 import android.view.View.OnTouchListener;
 import android.view.Window;
 import android.view.WindowManager;
@@ -90,11 +102,13 @@ import android.view.inputmethod.EditorInfo;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.NumberPicker;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
@@ -108,7 +122,7 @@ import com.google.atap.tangoservice.Tango;
 
 // The main activity of the application. This activity shows debug information
 // and a glSurfaceView that renders graphic content.
-public class RTABMapActivity extends Activity implements OnClickListener, OnItemSelectedListener {
+public class RTABMapActivity extends Activity implements OnClickListener, OnItemSelectedListener, SensorEventListener {
 
 	// Tag for debug logging.
 	public static final String TAG = RTABMapActivity.class.getSimpleName();
@@ -206,6 +220,12 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private String mLoopThr;
 	private String mMinInliers;
 	private String mMaxOptimizationError;
+	
+	private LocationManager mLocationManager;
+	private LocationListener mLocationListener;
+	private Location mLastKnownLocation;
+	private SensorManager mSensorManager;
+	private float mCompassDeg = 0.0f;
 
 	private int mTotalLoopClosures = 0;
 	private boolean mMapIsEmpty = false;
@@ -454,29 +474,68 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
 
 		DisplayManager displayManager = (DisplayManager) getSystemService(DISPLAY_SERVICE);
-        if (displayManager != null) {
-            displayManager.registerDisplayListener(new DisplayManager.DisplayListener() {
-                @Override
-                public void onDisplayAdded(int displayId) {
+		if (displayManager != null) {
+			displayManager.registerDisplayListener(new DisplayManager.DisplayListener() {
+				@Override
+				public void onDisplayAdded(int displayId) {
 
-                }
+				}
 
-                @Override
-                public void onDisplayChanged(int displayId) {
-                    synchronized (this) {
-                        setAndroidOrientation();
-                        Display display = getWindowManager().getDefaultDisplay();
-                        display.getSize(mScreenSize);
-                    }
-                }
+				@Override
+				public void onDisplayChanged(int displayId) {
+					synchronized (this) {
+						setAndroidOrientation();
+						Display display = getWindowManager().getDefaultDisplay();
+						display.getSize(mScreenSize);
+					}
+				}
 
-                @Override
-                public void onDisplayRemoved(int displayId) {}
-            }, null);
-        }
-                
-       	DISABLE_LOG =  !( 0 != ( getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
+				@Override
+				public void onDisplayRemoved(int displayId) {}
+			}, null);
+		}
+
+		// Acquire a reference to the system Location Manager
+		mLocationManager = (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
+
+		// Define a listener that responds to location updates
+		mLocationListener = new LocationListener() {
+			public void onLocationChanged(Location location) {
+				mLastKnownLocation = location;
+				double stamp = location.getTime()/1000.0;
+				if(!DISABLE_LOG) Log.d(TAG, String.format("GPS received at %f (%d)", stamp, location.getTime()));
+				RTABMapLib.setGPS(
+						stamp,
+						(double)location.getLongitude(), 
+						(double)location.getLatitude(), 
+						(double)location.getAltitude(),  
+						(double)location.getAccuracy(),
+						(double)mCompassDeg);
+			}
+
+			public void onStatusChanged(String provider, int status, Bundle extras) {}
+
+			public void onProviderEnabled(String provider) {}
+
+			public void onProviderDisabled(String provider) {}
+		};
+
+		mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+
+		DISABLE_LOG =  !( 0 != ( getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE ) );
 	}
+
+	@Override
+	public void onSensorChanged(SensorEvent event) {
+		// get the angle around the z-axis rotated
+		mCompassDeg = event.values[0];
+	}
+
+	@Override
+	public void onAccuracyChanged(Sensor sensor, int accuracy) {
+		// not in use
+	}
+
 
 	public int getStatusBarHeight() {
 		int result = 0;
@@ -580,6 +639,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		if(!DISABLE_LOG) Log.i(TAG, "onPause()");
 		mOnPause = true;
 		
+		mLocationManager.removeUpdates(mLocationListener);
+		mSensorManager.unregisterListener(this);
+
+		
 		// This deletes OpenGL context!
 		mGLView.onPause();
 
@@ -619,9 +682,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 		mProgressDialog.show();
 		mOnPause = false;
-		
 		setAndroidOrientation();
-
+		
 		// update preferences
 		try
 		{
@@ -640,6 +702,12 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			boolean keepAllDb = sharedPref.getBoolean(getString(R.string.pref_key_keep_all_db), Boolean.parseBoolean(getString(R.string.pref_default_keep_all_db)));
 			boolean optimizeFromGraphEnd = sharedPref.getBoolean(getString(R.string.pref_key_optimize_end), Boolean.parseBoolean(getString(R.string.pref_default_optimize_end)));
 			String optimizer = sharedPref.getString(getString(R.string.pref_key_optimizer), getString(R.string.pref_default_optimizer));
+			boolean gpsSaved = sharedPref.getBoolean(getString(R.string.pref_key_gps_saved), Boolean.parseBoolean(getString(R.string.pref_default_gps_saved)));
+			if(gpsSaved)
+			{
+				mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
+				mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_GAME);
+			}
 			
 			if(!DISABLE_LOG) Log.d(TAG, "set mapping parameters");
 			RTABMapLib.setOnlineBlending(sharedPref.getBoolean(getString(R.string.pref_key_blending), Boolean.parseBoolean(getString(R.string.pref_default_blending))));
@@ -1065,7 +1133,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	{
 		if(!DISABLE_LOG) Log.i(TAG, String.format("updateStatsCallback()"));
 
-		final String[] statusTexts = new String[16];
+		final String[] statusTexts = new String[17];
 		if(mButtonPause!=null && !mButtonPause.isChecked())
 		{
 			String updateValue = mUpdateRate.compareTo("0")==0?"Max":mUpdateRate;
@@ -1101,8 +1169,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			statusTexts[1] = mStatusTexts[1];
 		}
 		statusTexts[2] = getString(R.string.free_memory)+getFreeMemory();
-	
-		
+			
 		if(loopClosureId > 0)
 		{
 			++mTotalLoopClosures;
@@ -1110,7 +1177,29 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		
 		mMapNodes = nodes;
 		
-		int index = 4;
+		if(mLastKnownLocation != null)
+		{
+			long millisec = System.currentTimeMillis() - mLastKnownLocation.getTime();
+			if(millisec > 2000)
+			{
+				statusTexts[3] = getString(R.string.gps)+String.format("[too old, %d ms]", millisec); 
+			}
+			else
+			{
+				statusTexts[3] = getString(R.string.gps)+
+						String.format("%.2f %.2f %.2fm %.0fdeg %.0fm", 
+								mLastKnownLocation.getLongitude(), 
+								mLastKnownLocation.getLatitude(), 
+								mLastKnownLocation.getAltitude(), 
+								mCompassDeg, 
+								mLastKnownLocation.getAccuracy());
+			}
+		}
+		
+		String formattedDate = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
+		statusTexts[4] = getString(R.string.time)+formattedDate;
+		
+		int index = 5;
 		statusTexts[index++] = getString(R.string.nodes)+nodes+" (" + nodesDrawn + " shown)";
 		statusTexts[index++] = getString(R.string.words)+words;
 		statusTexts[index++] = getString(R.string.database_size)+databaseMemoryUsed;
@@ -1123,7 +1212,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		statusTexts[index++] = getString(R.string.inliers)+inliers;
 		statusTexts[index++] = getString(R.string.hypothesis)+(int)(hypothesis*100.0f) +" / " + (int)(Float.parseFloat(mLoopThr)*100.0f) + " (" + (loopClosureId>0?loopClosureId:highestHypId)+")";
 		statusTexts[index++] = getString(R.string.fps)+(int)fps+" Hz";
-	
+			
 		runOnUiThread(new Runnable() {
 				public void run() {
 					updateStatsUI(adjustedMemoryUsed, loopClosureId, inliers, matches, rejected, optimizationMaxError, statusTexts);
@@ -1489,7 +1578,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			
 			mMapIsEmpty = false;
 			mDateOnPause = new Date();
-
+			
 			long memoryFree = getFreeMemory();
 			if(!mOnPause && !mItemLocalizationMode.isChecked() && !mItemDataRecorderMode.isChecked() && memoryFree >= 100 && mMapNodes>2)
 			{
@@ -1943,54 +2032,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 		else if(itemId == R.id.open)
 		{
-			final String[] files = Util.loadFileList(mWorkingDirectory, true);
-			if(files.length > 0)
-			{
-				String[] filesWithSize = new String[files.length];
-				for(int i = 0; i<filesWithSize.length; ++i)
-				{
-					File filePath = new File(mWorkingDirectory+files[i]);
-					long mb = filePath.length()/(1024*1024);
-					filesWithSize[i] = files[i] + " ("+mb+" MB)";
-				}
-				
-				ArrayList<HashMap<String, String> > arrayList = new ArrayList<HashMap<String, String> >();
-		        for (int i = 0; i < filesWithSize.length; i++) {
-		            HashMap<String, String> hashMap = new HashMap<String, String>();//create a hashmap to store the data in key value pair
-		            hashMap.put("name", filesWithSize[i]);
-		            hashMap.put("path", mWorkingDirectory + files[i]);
-		            arrayList.add(hashMap);//add the hashmap into arrayList
-		        }
-		        String[] from = {"name", "path"};//string array
-		        int[] to = {R.id.textView, R.id.imageView};//int array of views id's
-		        DatabaseListArrayAdapter simpleAdapter = new DatabaseListArrayAdapter(this, arrayList, R.layout.database_list, from, to);//Create object and set the parameters for simpleAdapter
-
-				AlertDialog.Builder builder = new AlertDialog.Builder(this);
-				builder.setTitle("Choose Your File (*.db)");
-				builder.setAdapter(simpleAdapter, new DialogInterface.OnClickListener() {
-				//builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
-					public void onClick(DialogInterface dialog, final int which) {
-												
-						// Adjust color now?
-						new AlertDialog.Builder(getActivity())
-						.setTitle("Opening database...")
-						.setMessage("Do you want to adjust colors now?\nThis can be done later under Optimize menu.")
-						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog, int whichIn) {
-								openDatabase(files[which], true);
-							}
-						})
-						.setNeutralButton("No", new DialogInterface.OnClickListener() {
-							public void onClick(DialogInterface dialog, int whichIn) {
-								openDatabase(files[which], false);
-							}
-						})
-						.show();
-						return;
-					}
-				});
-				builder.show();
-			}   	
+			openDatabase();
 		}
 		else if(itemId == R.id.settings)
 		{
@@ -2006,6 +2048,170 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		}
 
 		return true;
+	}
+	
+	private void openDatabase()
+	{
+		final String[] files = Util.loadFileList(mWorkingDirectory, true);
+		if(files.length > 0)
+		{
+			String[] filesWithSize = new String[files.length];
+			for(int i = 0; i<filesWithSize.length; ++i)
+			{
+				File filePath = new File(mWorkingDirectory+files[i]);
+				long mb = filePath.length()/(1024*1024);
+				filesWithSize[i] = files[i] + " ("+mb+" MB)";
+			}
+			
+			ArrayList<HashMap<String, String> > arrayList = new ArrayList<HashMap<String, String> >();
+	        for (int i = 0; i < filesWithSize.length; i++) {
+	            HashMap<String, String> hashMap = new HashMap<String, String>();//create a hashmap to store the data in key value pair
+	            hashMap.put("name", filesWithSize[i]);
+	            hashMap.put("path", mWorkingDirectory + files[i]);
+	            arrayList.add(hashMap);//add the hashmap into arrayList
+	        }
+	        String[] from = {"name", "path"};//string array
+	        int[] to = {R.id.textView, R.id.imageView};//int array of views id's
+	        DatabaseListArrayAdapter simpleAdapter = new DatabaseListArrayAdapter(this, arrayList, R.layout.database_list, from, to);//Create object and set the parameters for simpleAdapter
+
+			AlertDialog.Builder builder = new AlertDialog.Builder(this);
+			builder.setTitle("Choose Your File (*.db)");
+			builder.setAdapter(simpleAdapter, new DialogInterface.OnClickListener() {
+			//builder.setItems(filesWithSize, new DialogInterface.OnClickListener() {
+				public void onClick(DialogInterface dialog, final int which) {
+											
+					// Adjust color now?
+					new AlertDialog.Builder(getActivity())
+					.setTitle("Opening database...")
+					.setMessage("Do you want to adjust colors now?\nThis can be done later under Optimize menu.")
+					.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int whichIn) {
+							openDatabase(files[which], true);
+						}
+					})
+					.setNeutralButton("No", new DialogInterface.OnClickListener() {
+						public void onClick(DialogInterface dialog, int whichIn) {
+							openDatabase(files[which], false);
+						}
+					})
+					.show();
+					return;
+				}
+			});
+
+			final AlertDialog ad = builder.create(); //don't show dialog yet
+			ad.setOnShowListener(new OnShowListener() 
+			{   			
+				@Override
+				public void onShow(DialogInterface dialog) 
+				{       
+					ListView lv = ad.getListView(); 
+					ad.registerForContextMenu(lv);
+					lv.setOnCreateContextMenuListener(new OnCreateContextMenuListener() {
+
+						@Override
+						public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
+
+							if (v.getId()==ad.getListView().getId()) {
+								AdapterView.AdapterContextMenuInfo info = (AdapterView.AdapterContextMenuInfo)menuInfo;
+								final int position = info.position;
+								menu.setHeaderTitle(files[position]);
+								menu.add(Menu.NONE, 0, 0, "Rename").setOnMenuItemClickListener(new OnMenuItemClickListener() {
+									@Override
+									public boolean onMenuItemClick(MenuItem item) {
+										AlertDialog.Builder builderRename = new AlertDialog.Builder(getActivity());
+										builderRename.setTitle("RTAB-Map Database Name (*.db):");
+										final EditText input = new EditText(getActivity());
+										input.setInputType(InputType.TYPE_CLASS_TEXT); 
+										input.setText("");
+										input.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI);
+										input.setSelectAllOnFocus(true);
+										input.selectAll();
+										builderRename.setView(input);
+										builderRename.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+											@Override
+											public void onClick(DialogInterface dialog, int which)
+											{
+												final String fileName = input.getText().toString();  
+												dialog.dismiss();
+												if(!fileName.isEmpty())
+												{
+													File newFile = new File(mWorkingDirectory + fileName + ".db");
+													if(newFile.exists())
+													{
+														new AlertDialog.Builder(getActivity())
+														.setTitle("File Already Exists")
+														.setMessage(String.format("Name %s already used, choose another name.", fileName))
+														.show();
+													}
+													else
+													{
+														File from = new File(mWorkingDirectory, files[position]);
+												        File to   = new File(mWorkingDirectory, fileName + ".db");
+												        from.renameTo(to);
+												        ad.dismiss();
+												        resetNoTouchTimer(true);
+													}
+												}
+											}
+										});
+										AlertDialog alertToShow = builderRename.create();
+										alertToShow.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE);
+										alertToShow.show();
+										return true;
+									}
+								});
+								menu.add(Menu.NONE, 1, 1, "Delete").setOnMenuItemClickListener(new OnMenuItemClickListener() {
+									@Override
+									public boolean onMenuItemClick(MenuItem item) {
+										DialogInterface.OnClickListener dialogClickListener = new DialogInterface.OnClickListener() {
+										    @Override
+										    public void onClick(DialogInterface dialog, int which) {
+										        switch (which){
+										        case DialogInterface.BUTTON_POSITIVE:
+										        	Log.e(TAG, String.format("Yes delete %s!", files[position]));
+										        	(new File(mWorkingDirectory+files[position])).delete();
+										        	ad.dismiss();
+										        	resetNoTouchTimer(true);
+										            break;
+
+										        case DialogInterface.BUTTON_NEGATIVE:
+										            //No button clicked
+										            break;
+										        }
+										    }
+										};
+										AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+										builder.setTitle(String.format("Delete %s", files[position]))
+										    .setMessage("Are you sure?")
+										    .setPositiveButton("Yes", dialogClickListener)
+										    .setNegativeButton("No", dialogClickListener).show();
+										return true;
+									}
+								});
+								menu.add(Menu.NONE, 2, 2, "Share").setOnMenuItemClickListener(new OnMenuItemClickListener() {
+									@Override
+									public boolean onMenuItemClick(MenuItem item) {
+										// Send to...
+										File f = new File(mWorkingDirectory+files[position]);
+										final int fileSizeMB = (int)f.length()/(1024 * 1024);
+										Intent shareIntent = new Intent();
+										shareIntent.setAction(Intent.ACTION_SEND);
+										shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
+										shareIntent.setType("application/octet-stream");
+										startActivity(Intent.createChooser(shareIntent, String.format("Sharing database \"%s\" (%d MB)...", files[position], fileSizeMB)));
+										ad.dismiss();
+							        	resetNoTouchTimer(true);
+										return true;
+									}
+								});
+							}
+						}							
+					});
+				}
+			});
+			ad.show();
+		}   	
 	}
 	
 	private void export(final boolean isOBJ, final boolean meshing, final boolean regenerateCloud, final boolean optimized, final int optimizedMaxPolygons)
@@ -2211,8 +2417,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							msg = String.format("Database saved to \"%s\".", newDatabasePathHuman);	
 						}
 						
-						mToast.makeText(getActivity(), msg, mToast.LENGTH_LONG).show();
-						
 						// build notification
 						Intent intent = new Intent(getActivity(), RTABMapActivity.class);
 						// use System.currentTimeMillis() to have a unique ID for the pending intent
@@ -2231,6 +2435,15 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 								(NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
 						notificationManager.notify(0, n);
+						
+						// Send to...
+						File f = new File(newDatabasePath);
+						final int fileSizeMB = (int)f.length()/(1024 * 1024);
+						Intent shareIntent = new Intent();
+						shareIntent.setAction(Intent.ACTION_SEND);
+						shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
+						shareIntent.setType("application/octet-stream");
+						startActivity(Intent.createChooser(shareIntent, String.format("Database \"%s\" (%d MB) successfully saved on the SD-CARD! Share it?", newDatabasePathHuman, fileSizeMB)));
 						
 						resetNoTouchTimer(true);
 						if(!mItemDataRecorderMode.isChecked())
@@ -2385,11 +2598,13 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 							mProgressDialog.dismiss();
 							
 							// Send to...
+							File f = new File(zipOutput);
+							final int fileSizeMB = (int)f.length()/(1024 * 1024);
 							Intent shareIntent = new Intent();
 							shareIntent.setAction(Intent.ACTION_SEND);
-							shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(new File(zipOutput)));
+							shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
 							shareIntent.setType("application/zip");
-							startActivity(Intent.createChooser(shareIntent, String.format("Mesh \"%s\" successfully exported! Share it?", pathHuman)));
+							startActivity(Intent.createChooser(shareIntent, String.format("Mesh \"%s\" (%d MB) successfully exported on the SD-CARD! Share it?", pathHuman, fileSizeMB)));
 														
 							resetNoTouchTimer(true);
 						}

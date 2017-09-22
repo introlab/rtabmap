@@ -340,6 +340,24 @@ Java_com_introlab_rtabmap_RTABMapLib_setMappingParameter(
 }
 
 JNIEXPORT void JNICALL
+Java_com_introlab_rtabmap_RTABMapLib_setGPS(
+		JNIEnv*, jobject,
+		double stamp,
+		double longitude,
+		double latitude,
+		double altitude,
+		double accuracy,
+		double bearing)
+{
+	return app.setGPS(stamp,
+			longitude,
+			latitude,
+			altitude,
+			accuracy,
+			bearing);
+}
+
+JNIEXPORT void JNICALL
 Java_com_introlab_rtabmap_RTABMapLib_resetMapping(
 		JNIEnv*, jobject)
 {

@@ -89,6 +89,12 @@ public:
 	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
 	void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
+	void setGPS(double stamp,
+	  		double longitude,
+	  		double latitude,
+	  		double altitude,
+	  		double accuracy,
+	  		double bearing);
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
 	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
@@ -126,6 +132,7 @@ private:
 	TangoSupportRotation colorCameraToDisplayRotation_;
 	cv::Mat fisheyeRectifyMapX_;
 	cv::Mat fisheyeRectifyMapY_;
+	std::vector<double> lastKnownGPS_;
 };
 
 } /* namespace rtabmap */

@@ -1975,6 +1975,19 @@ int RTABMapApp::setMappingParameter(const std::string & key, const std::string &
 	}
 }
 
+void RTABMapApp::setGPS(double stamp,
+  		double longitude,
+  		double latitude,
+  		double altitude,
+  		double accuracy,
+  		double bearing)
+{
+	if(camera_)
+	{
+		camera_->setGPS(stamp, longitude, latitude, altitude, accuracy, bearing);
+	}
+}
+
 void RTABMapApp::resetMapping()
 {
 	LOGW("Reset!");

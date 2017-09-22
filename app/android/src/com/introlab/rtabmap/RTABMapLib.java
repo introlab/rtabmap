@@ -92,6 +92,13 @@ public class RTABMapLib
     public static native void setRenderingTextureDecimation(int value);
     public static native void setBackgroundColor(float gray);
     public static native int setMappingParameter(String key, String value);
+    public static native void setGPS(
+			double stamp,
+			double longitude, 
+			double latitude, 
+			double altitude,  
+			double accuracy,
+			double bearing);
 
     public static native void resetMapping();
     public static native void save(String outputDatabasePath);

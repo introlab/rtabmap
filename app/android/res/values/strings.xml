@@ -34,6 +34,8 @@
     <string name="memory">"Used Memory (MB): "</string>
     <string name="hypothesis">"Hypothesis (%): "</string>
     <string name="fps">"FPS (rendering): "</string>
+    <string name="gps">"GPS (long,lat,alt,bearing,acc): "</string>
+    <string name="time">"Time: "</string>
     
     <!-- Preference keys: BEGIN -->
     <string name="pref_key_tags">pref_key_tags</string>
@@ -101,6 +103,8 @@
     <string name="pref_default_keep_all_db">true</string>
     <string name="pref_key_raw_scan_saved">pref_key_raw_scan_saved</string>
     <string name="pref_default_raw_scan_saved">false</string>
+    <string name="pref_key_gps_saved">pref_key_gps_saved</string>
+    <string name="pref_default_gps_saved">false</string>
     <string name="pref_key_db_in_memory">pref_key_db_in_memory</string>
     <string name="pref_default_db_in_memory">true</string>
     
@@ -339,6 +343,8 @@
     <string name="pref_summary_keep_all_db">Discarded frames while not moving are still saved in database. Useful to replay exactly the scanning on RTAB-Map Desktop.</string>
     <string name="pref_title_raw_scan_saved">Save Raw Scan</string>
     <string name="pref_summary_raw_scan_saved">Save raw point clouds in database.</string>
+    <string name="pref_title_gps_saved">Save GPS</string>
+    <string name="pref_summary_gps_saved">Save GPS in database.</string>
     <string name="pref_title_db_in_memory">Database In Memory</string>
     <string name="pref_summary_db_in_memory">The database is kept in RAM for fast access. Set to false to reduce RAM used at the cost of slower access. This parameter is applied on reset or when a database is opened.</string>
 

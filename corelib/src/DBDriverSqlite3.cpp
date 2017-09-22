@@ -497,7 +497,11 @@ long DBDriverSqlite3::getNodesMemoryUsedQuery() const
 	if(_ppDb)
 	{
 		std::string query;
-		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		if(uStrNumCmp(_version, "0.14.0") >= 0)
+		{
+			query = "SELECT sum(length(id) + length(map_id) + length(weight) + length(pose) + length(stamp) + ifnull(length(label),0) + length(ground_truth_pose) + ifnull(length(velocity),0) + ifnull(length(gps),0) + length(time_enter)) from Node;";
+		}
+		else if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
 			query = "SELECT sum(length(id) + length(map_id) + length(weight) + length(pose) + length(stamp) + ifnull(length(label),0) + length(ground_truth_pose) + ifnull(length(velocity),0) + length(time_enter)) from Node;";
 		}
@@ -1751,7 +1755,8 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		std::string & label,
 		double & stamp,
 		Transform & groundTruthPose,
-		std::vector<float> & velocity) const
+		std::vector<float> & velocity,
+		std::vector<double> & gps) const
 {
 	bool found = false;
 	if(_ppDb && signatureId)
@@ -1760,7 +1765,14 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		if(uStrNumCmp(_version, "0.14.0") >= 0)
+		{
+			query << "SELECT pose, map_id, weight, label, stamp, ground_truth_pose, velocity, gps "
+					 "FROM Node "
+					 "WHERE id = " << signatureId <<
+					 ";";
+		}
+		else if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
 			query << "SELECT pose, map_id, weight, label, stamp, ground_truth_pose, velocity "
 					 "FROM Node "
@@ -1837,6 +1849,17 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 						if((unsigned int)dataSize == velocity.size()*sizeof(float) && data)
 						{
 							memcpy(velocity.data(), data, dataSize);
+						}
+					}
+
+					if(uStrNumCmp(_version, "0.14.0") >= 0)
+					{
+						gps.resize(6,0);
+						data = sqlite3_column_blob(ppStmt, index); // velocity
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						if((unsigned int)dataSize == gps.size()*sizeof(double) && data)
+						{
+							memcpy(gps.data(), data, dataSize);
 						}
 					}
 				}
@@ -2239,7 +2262,13 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 		unsigned int loaded = 0;
 
 		// Load nodes information
-		if(uStrNumCmp(_version, "0.13.0") >= 0)
+		if(uStrNumCmp(_version, "0.14.0") >= 0)
+		{
+			query << "SELECT id, map_id, weight, pose, stamp, label, ground_truth_pose, velocity, gps "
+				  << "FROM Node "
+				  << "WHERE id=?;";
+		}
+		else if(uStrNumCmp(_version, "0.13.0") >= 0)
 		{
 			query << "SELECT id, map_id, weight, pose, stamp, label, ground_truth_pose, velocity "
 				  << "FROM Node "
@@ -2281,6 +2310,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 			Transform pose;
 			Transform groundTruthPose;
 			std::vector<float> velocity;
+			std::vector<double> gps;
 			const void * data = 0;
 			int dataSize = 0;
 			std::string label;
@@ -2329,6 +2359,17 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								memcpy(velocity.data(), data, dataSize);
 							}
 						}
+
+						if(uStrNumCmp(_version, "0.14.0") >= 0)
+						{
+							gps.resize(6,0);
+							data = sqlite3_column_blob(ppStmt, index); // gps
+							dataSize = sqlite3_column_bytes(ppStmt, index++);
+							if((unsigned int)dataSize == gps.size()*sizeof(double) && data)
+							{
+								memcpy(gps.data(), data, dataSize);
+							}
+						}
 					}
 				}
 
@@ -2351,6 +2392,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				if(velocity.size() == 6)
 				{
 					s->setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
+				}
+				if(gps.size() == 6)
+				{
+					s->sensorData().setGPS(gps[0], gps[1], gps[2], gps[3], gps[4], gps[5]);
 				}
 				s->setSaved(true);
 				nodes.push_back(s);
@@ -4213,7 +4258,11 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 
 std::string DBDriverSqlite3::queryStepNode() const
 {
-	if(uStrNumCmp(_version, "0.13.0") >= 0)
+	if(uStrNumCmp(_version, "0.14.0") >= 0)
+	{
+		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label, ground_truth_pose, velocity, gps) VALUES(?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.13.0") >= 0)
 	{
 		return "INSERT INTO Node(id, map_id, weight, pose, stamp, label, ground_truth_pose, velocity) VALUES(?,?,?,?,?,?,?,?);";
 	}
@@ -4290,6 +4339,20 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 				else
 				{
 					rc = sqlite3_bind_blob(ppStmt, index++, s->getVelocity().data(), s->getVelocity().size()*sizeof(float), SQLITE_STATIC);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
+			}
+
+			if(uStrNumCmp(_version, "0.14.0") >= 0)
+			{
+				if(s->sensorData().gps().empty())
+				{
+					rc = sqlite3_bind_null(ppStmt, index++);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
+				else
+				{
+					rc = sqlite3_bind_blob(ppStmt, index++, s->sensorData().gps().data(), s->sensorData().gps().size()*sizeof(double), SQLITE_STATIC);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 				}
 			}

@@ -712,7 +712,8 @@ bool DBDriver::getNodeInfo(
 		std::string & label,
 		double & stamp,
 		Transform & groundTruthPose,
-		std::vector<float> & velocity) const
+		std::vector<float> & velocity,
+		std::vector<double> & gps) const
 {
 	bool found = false;
 	// look in the trash
@@ -725,6 +726,7 @@ bool DBDriver::getNodeInfo(
 		label = _trashSignatures.at(signatureId)->getLabel();
 		stamp = _trashSignatures.at(signatureId)->getStamp();
 		groundTruthPose = _trashSignatures.at(signatureId)->getGroundTruthPose();
+		gps = _trashSignatures.at(signatureId)->sensorData().gps();
 		found = true;
 	}
 	_trashesMutex.unlock();
@@ -732,7 +734,7 @@ bool DBDriver::getNodeInfo(
 	if(!found)
 	{
 		_dbSafeAccessMutex.lock();
-		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose, velocity);
+		found = this->getNodeInfoQuery(signatureId, pose, mapId, weight, label, stamp, groundTruthPose, velocity, gps);
 		_dbSafeAccessMutex.unlock();
 	}
 	return found;

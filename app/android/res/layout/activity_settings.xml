@@ -198,6 +198,11 @@
 		            android:summary="@string/pref_summary_raw_scan_saved"
 		            android:defaultValue="@string/pref_default_raw_scan_saved"/>
 		        <SwitchPreference
+		            android:key="@string/pref_key_gps_saved"
+		            android:title="@string/pref_title_gps_saved"
+		            android:summary="@string/pref_summary_gps_saved"
+		            android:defaultValue="@string/pref_default_gps_saved"/>
+		        <SwitchPreference
 		            android:key="@string/pref_key_db_in_memory"
 		            android:title="@string/pref_title_db_in_memory"
 		            android:summary="@string/pref_summary_db_in_memory"

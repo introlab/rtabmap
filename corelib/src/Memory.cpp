@@ -3051,7 +3051,8 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 	std::string label;
 	double stamp;
 	std::vector<float> velocity;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, lookInDatabase);
+	std::vector<double> gps;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
 	return pose;
 }
 
@@ -3062,7 +3063,8 @@ Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
 	std::string label;
 	double stamp;
 	std::vector<float> velocity;
-	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, lookInDatabase);
+	std::vector<double> gps;
+	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
 	return groundTruth;
 }
 
@@ -3074,6 +3076,7 @@ bool Memory::getNodeInfo(int signatureId,
 		double & stamp,
 		Transform & groundTruth,
 		std::vector<float> & velocity,
+		std::vector<double> & gps,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -3086,11 +3089,12 @@ bool Memory::getNodeInfo(int signatureId,
 		stamp = s->getStamp();
 		groundTruth = s->getGroundTruthPose();
 		velocity = s->getVelocity();
+		gps = s->sensorData().gps();
 		return true;
 	}
 	else if(lookInDatabase && _dbDriver)
 	{
-		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth, velocity);
+		return _dbDriver->getNodeInfo(signatureId, odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps);
 	}
 	return false;
 }
@@ -3963,6 +3967,10 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	s->sensorData().setUserDataRaw(data.userDataRaw());
 
 	s->sensorData().setGroundTruth(data.groundTruth());
+	if(!data.gps().empty())
+	{
+		s->sensorData().setGPS(data.gps()[0], data.gps()[1], data.gps()[2], data.gps()[3], data.gps()[4], data.gps()[5]);
+	}
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
