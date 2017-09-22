@@ -1019,7 +1019,8 @@ void DatabaseViewer::exportDatabase()
 				std::string label;
 				double stamp = 0;
 				std::vector<float> velocity;
-				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity))
+				std::vector<double> gps;
+				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
 				{
 					if(frameRate == 0 ||
 					   previousStamp == 0 ||
@@ -1324,7 +1325,8 @@ void DatabaseViewer::updateIds()
 		double s;
 		int mapId;
 		std::vector<float> v;
-		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v);
+		std::vector<double> gps;
+		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 
 		if(i>0)
@@ -1794,7 +1796,8 @@ void DatabaseViewer::exportPoses(int format)
 				double stamp=0.0;
 				int mapId;
 				std::vector<float> v;
-				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v))
+				std::vector<double> gps;
+				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps))
 				{
 					stamps.insert(std::make_pair(iter->first, stamp));
 				}
@@ -1986,7 +1989,8 @@ void DatabaseViewer::regenerateLocalMaps()
 		double stamp;
 		QString msg;
 		std::vector<float> velocity;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity))
+		std::vector<double> gps;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -2063,7 +2067,8 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 		double stamp;
 		QString msg;
 		std::vector<float> velocity;
-		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity))
+		std::vector<double> gps;
+		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
 		{
 			Signature s = data;
 			s.setPose(odomPose);
@@ -2367,6 +2372,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_mapA,
 			ui_->label_poseA,
 			ui_->label_calibA,
+			ui_->label_gpsA,
 			true);
 }
 
@@ -2384,6 +2390,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_mapB,
 			ui_->label_poseB,
 			ui_->label_calibB,
+			ui_->label_gpsB,
 			true);
 }
 
@@ -2399,6 +2406,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelMapId,
 						QLabel * labelPose,
 						QLabel * labelCalib,
+						QLabel * labelGps,
 						bool updateConstraintView)
 {
 	UTimer timer;
@@ -2411,6 +2419,7 @@ void DatabaseViewer::update(int value,
 	labelPose->clear();
 	stamp->clear();
 	labelCalib->clear();
+	labelGps->clear();
 	QRectF rect;
 	if(value >= 0 && value < ids_.size())
 	{
@@ -2460,7 +2469,8 @@ void DatabaseViewer::update(int value,
 				std::string l;
 				double s;
 				std::vector<float> v;
-				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v);
+				std::vector<double> gps;
+				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps);
 
 				weight->setNum(w);
 				label->setText(l.c_str());
@@ -2471,6 +2481,11 @@ void DatabaseViewer::update(int value,
 				{
 					stamp->setText(QString::number(s, 'f'));
 					stamp->setToolTip(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+				}
+				if(gps.size())
+				{
+					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps[0], 'f')).arg(gps[1]).arg(gps[2]).arg(gps[3]).arg(gps[4]).arg(gps[5]));
+					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps[0]*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{
@@ -3441,6 +3456,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_mapA,
 					ui_->label_poseA,
 					ui_->label_calibA,
+					ui_->label_gpsA,
 					false); // don't update constraints view!
 		this->update(idToIndex_.value(link.to()),
 					ui_->label_indexB,
@@ -3454,6 +3470,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_mapB,
 					ui_->label_poseB,
 					ui_->label_calibB,
+					ui_->label_gpsB,
 					false); // don't update constraints view!
 	}
 
@@ -3494,7 +3511,8 @@ void DatabaseViewer::updateConstraintView(
 			double s;
 			Transform p,g;
 			std::vector<float> v;
-			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v);
+			std::vector<double> gps;
+			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps);
 			if(!p.isNull())
 			{
 				// keep just the z and roll/pitch rotation

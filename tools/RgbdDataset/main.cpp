@@ -318,7 +318,8 @@ int main(int argc, char * argv[])
 				std::string l;
 				double s;
 				std::vector<float> v;
-				rtabmap.getMemory()->getNodeInfo(iter->first, o, m, w, l, s, gtPose, v, true);
+				std::vector<double> gps;
+				rtabmap.getMemory()->getNodeInfo(iter->first, o, m, w, l, s, gtPose, v, gps, true);
 				if(!gtPose.isNull())
 				{
 					groundTruth.insert(std::make_pair(iter->first, gtPose));

@@ -2089,7 +2089,8 @@ bool ExportCloudsDialog::getExportedClouds(
 										int m,w;
 										std::string l;
 										double s;
-										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity);
+										std::vector<double> gps;
+										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity, gps);
 									}
 								}
 								cv::Size imageSize = img.size();
@@ -2121,7 +2122,8 @@ bool ExportCloudsDialog::getExportedClouds(
 										int m,w;
 										std::string l;
 										double s;
-										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity);
+										std::vector<double> gps;
+										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity, gps);
 									}
 								}
 							}

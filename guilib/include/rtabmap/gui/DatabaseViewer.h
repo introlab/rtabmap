@@ -141,6 +141,7 @@ private:
 				QLabel * labelMapId,
 				QLabel * labelPose,
 				QLabel * labeCalib,
+				QLabel * labelGps,
 				bool updateConstraintView);
 	void updateStereo(const SensorData * data);
 	void updateWordsMatching();
