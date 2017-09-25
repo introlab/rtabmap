@@ -255,7 +255,9 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					data.cameraModels()[0].fy(),
 					float(data.imageRaw().cols) - data.cameraModels()[0].cx(),
 					data.cameraModels()[0].cy(),
-					data.cameraModels()[0].localTransform());
+					data.cameraModels()[0].localTransform(),
+					data.cameraModels()[0].Tx(),
+					data.cameraModels()[0].imageSize());
 			data.setCameraModel(tmpModel);
 		}
 		if(!data.depthRaw().empty())
