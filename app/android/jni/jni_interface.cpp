@@ -349,7 +349,7 @@ Java_com_introlab_rtabmap_RTABMapLib_setGPS(
 		double accuracy,
 		double bearing)
 {
-	return app.setGPS(GPS(stamp,
+	return app.setGPS(rtabmap::GPS(stamp,
 			longitude,
 			latitude,
 			altitude,
