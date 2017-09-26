@@ -177,7 +177,7 @@ public:
 			double & stamp,
 			Transform & groundTruth,
 			std::vector<float> & velocity,
-			std::vector<double> & gps,
+			GPS & gps,
 			bool lookInDatabase = false) const;
 	cv::Mat getImageCompressed(int signatureId) const;
 	SensorData getNodeData(int nodeId, bool uncompressedData = false) const;
@@ -301,6 +301,7 @@ private:
 	bool _memoryChanged; // False by default, become true only when Memory::update() is called.
 	bool _linksChanged; // False by default, become true when links are modified.
 	int _signaturesAdded;
+	GPS _gpsOrigin;
 
 	std::map<int, Signature *> _signatures; // TODO : check if a signature is already added? although it is not supposed to occur...
 	std::set<int> _stMem; // id

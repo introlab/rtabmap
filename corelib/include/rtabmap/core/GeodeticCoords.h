@@ -25,6 +25,20 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+/*
+ * The methods in this file were modified from the originals of the MRPT toolkit (see notice below):
+ * https://github.com/MRPT/mrpt/blob/master/libs/topography/src/conversions.cpp
+ */
+
+/* +---------------------------------------------------------------------------+
+   |                     Mobile Robot Programming Toolkit (MRPT)               |
+   |                          http://www.mrpt.org/                             |
+   |                                                                           |
+   | Copyright (c) 2005-2016, Individual contributors, see AUTHORS file        |
+   | See: http://www.mrpt.org/Authors - All rights reserved.                   |
+   | Released under BSD License. See details in http://www.mrpt.org/License    |
+   +---------------------------------------------------------------------------+ */
+
 
 #ifndef GEODETICCOORDS_H_
 #define GEODETICCOORDS_H_
@@ -52,10 +66,56 @@ public:
 	cv::Point3d toGeocentric_WGS84() const;
 	cv::Point3d toENU_WGS84(const GeodeticCoords & origin) const; // East=X, North=Y
 
+	void fromGeocentric_WGS84(const cv::Point3d& geocentric);
+	void fromENU_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
+
+	static cv::Point3d ENU_WGS84ToGeocentric_WGS84(const cv::Point3d & enu, const GeodeticCoords & origin);
+
 private:
 	double latitude_;  // deg
 	double longitude_; // deg
 	double altitude_;  // m
+};
+
+class GPS
+{
+public:
+	GPS():
+		stamp_(0.0),
+		longitude_(0.0),
+		latitude_(0.0),
+		altitude_(0.0),
+		error_(0.0),
+		bearing_(0.0)
+	{}
+	GPS(const double & stamp,
+		const double & longitude,
+		const double & latitude,
+		const double & altitude,
+		const double & error,
+		const double & bearing):
+			stamp_(stamp),
+			longitude_(longitude),
+			latitude_(latitude),
+			altitude_(altitude),
+			error_(error),
+			bearing_(bearing)
+	{}
+	const double & stamp() const {return stamp_;}
+	const double & longitude() const {return longitude_;}
+	const double & latitude() const {return latitude_;}
+	const double & altitude() const {return altitude_;}
+	const double & error() const {return error_;}
+	const double & bearing() const {return bearing_;}
+
+	GeodeticCoords toGeodeticCoords() const {return GeodeticCoords(latitude_, longitude_, altitude_);}
+private:
+	double stamp_;     // in sec
+	double longitude_; // DD
+	double latitude_;  // DD
+	double altitude_;  // m
+	double error_;     // m
+	double bearing_;   // deg (North 0->360 clockwise)
 };
 
 }

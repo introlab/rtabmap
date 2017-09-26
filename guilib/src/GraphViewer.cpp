@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QUrl>
 
 #include <rtabmap/core/util3d.h>
+#include <rtabmap/core/GeodeticCoords.h>
 #include <rtabmap/utilite/UCv2Qt.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -81,6 +82,8 @@ public:
 		this->setBrush(b);
 	}
 
+	int id() const {return _id;};
+	int mapId() const {return _mapId;}
 	const Transform & pose() const {return _pose;}
 	void setPose(const Transform & pose) {this->setPos(-pose.y()*100.0f,-pose.x()*100.0f); _pose=pose;}
 
@@ -102,6 +105,29 @@ private:
 	int _id;
 	int _mapId;
 	Transform _pose;
+};
+
+class NodeGPSItem: public NodeItem
+{
+public:
+	NodeGPSItem(int id, int mapId, const Transform & pose, float radius, const GPS & gps) :
+		NodeItem(id, mapId, pose, radius),
+		_gps(gps)
+	{
+	}
+	virtual ~NodeGPSItem() {}
+protected:
+	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event )
+	{
+		this->setToolTip(QString("%1 [%2] %3\n"
+				"longitude=%4 latitude=%5 altitude=%6m error=%7m bearing=%8deg")
+				.arg(id()).arg(mapId()).arg(pose().prettyPrint().c_str())
+				.arg(_gps.longitude()).arg(_gps.latitude()).arg(_gps.altitude()).arg(_gps.error()).arg(_gps.bearing()));
+		this->setScale(2);
+		QGraphicsEllipseItem::hoverEnterEvent(event);
+	}
+private:
+	GPS _gps;
 };
 
 class LinkItem: public QGraphicsLineItem
@@ -195,6 +221,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_localPathColor(Qt::cyan),
 		_globalPathColor(Qt::darkMagenta),
 		_gtPathColor(Qt::gray),
+		_gpsPathColor(Qt::darkCyan),
 		_loopIntraSessionColor(Qt::red),
 		_loopInterSessionColor(Qt::green),
 		_intraInterSessionColors(false),
@@ -209,7 +236,8 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_gridCellSize(0.0f),
 		_localRadius(0),
 		_loopClosureOutlierThr(0),
-		_maxLinkLength(0.02f)
+		_maxLinkLength(0.02f),
+		_orientationENU(false)
 {
 	this->setScene(new QGraphicsScene(this));
 	this->setDragMode(QGraphicsView::ScrollHandDrag);
@@ -267,6 +295,10 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_gtGraphRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
 	_gtGraphRoot->setZValue(2);
 	_gtGraphRoot->setParentItem(_root);
+
+	_gpsGraphRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
+	_gpsGraphRoot->setZValue(2);
+	_gpsGraphRoot->setParentItem(_root);
 
 	this->restoreDefaults();
 
@@ -622,6 +654,135 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 	UDEBUG("_gtNodeItems=%d, _gtLinkItems=%d timer=%fs", _gtNodeItems.size(), _gtLinkItems.size(), timer.ticks());
 }
 
+void GraphViewer::updateGPSGraph(
+		const std::map<int, Transform> & poses,
+		const std::map<int, GPS> & gpsValues)
+{
+	UTimer timer;
+	bool wasVisible = _gpsGraphRoot->isVisible();
+	_gpsGraphRoot->show();
+	bool wasEmpty = _gpsNodeItems.size() == 0 && _gpsNodeItems.size() == 0;
+	UDEBUG("poses=%d", (int)poses.size());
+	//Hide nodes and links
+	for(QMap<int, NodeItem*>::iterator iter = _gpsNodeItems.begin(); iter!=_gpsNodeItems.end(); ++iter)
+	{
+		iter.value()->hide();
+		iter.value()->setColor(_gpsPathColor); // reset color
+	}
+	for(QMultiMap<int, LinkItem*>::iterator iter = _gpsLinkItems.begin(); iter!=_gpsLinkItems.end(); ++iter)
+	{
+		iter.value()->hide();
+	}
+
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		if(!iter->second.isNull())
+		{
+			QMap<int, NodeItem*>::iterator itemIter = _gpsNodeItems.find(iter->first);
+			if(itemIter != _gpsNodeItems.end())
+			{
+				itemIter.value()->setPose(iter->second);
+				itemIter.value()->show();
+			}
+			else
+			{
+				// create node item
+				const Transform & pose = iter->second;
+				UASSERT(gpsValues.find(iter->first) != gpsValues.end());
+				NodeItem * item = new NodeGPSItem(iter->first, -1, pose, _nodeRadius, gpsValues.at(iter->first));
+				this->scene()->addItem(item);
+				item->setZValue(20);
+				item->setColor(_gpsPathColor);
+				item->setParentItem(_gpsGraphRoot);
+				_gpsNodeItems.insert(iter->first, item);
+			}
+
+			if(iter!=poses.begin())
+			{
+				std::map<int, Transform>::const_iterator iterPrevious = iter;
+				--iterPrevious;
+				Transform previousPose = iterPrevious->second;
+				Transform currentPose = iter->second;
+
+				LinkItem * linkItem = 0;
+				QMultiMap<int, LinkItem*>::iterator linkIter = _gpsLinkItems.end();
+				if(_gpsLinkItems.contains(iterPrevious->first))
+				{
+					linkIter = _gpsLinkItems.find(iter->first);
+					while(linkIter.key() == iterPrevious->first && linkIter != _gpsLinkItems.end())
+					{
+						if(linkIter.value()->to() == iter->first)
+						{
+							linkIter.value()->setPoses(previousPose, currentPose);
+							linkIter.value()->show();
+							linkItem = linkIter.value();
+							break;
+						}
+						++linkIter;
+					}
+				}
+				if(linkItem == 0)
+				{
+					//create a link item
+					linkItem = new LinkItem(iterPrevious->first, iter->first, previousPose, currentPose, Link(), 1);
+					QPen p = linkItem->pen();
+					p.setWidthF(_linkWidth*100.0f);
+					linkItem->setPen(p);
+					linkItem->setZValue(10);
+					this->scene()->addItem(linkItem);
+					linkItem->setParentItem(_gpsGraphRoot);
+					_gpsLinkItems.insert(iterPrevious->first, linkItem);
+				}
+				if(linkItem)
+				{
+					linkItem->setColor(_gpsPathColor);
+				}
+			}
+		}
+	}
+
+	//remove not used nodes and links
+	for(QMap<int, NodeItem*>::iterator iter = _gpsNodeItems.begin(); iter!=_gpsNodeItems.end();)
+	{
+		if(!iter.value()->isVisible())
+		{
+			delete iter.value();
+			iter = _gpsNodeItems.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+	for(QMultiMap<int, LinkItem*>::iterator iter = _gpsLinkItems.begin(); iter!=_gpsLinkItems.end();)
+	{
+		if(!iter.value()->isVisible())
+		{
+			delete iter.value();
+			iter = _gpsLinkItems.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+
+	if(_gpsNodeItems.size() || _gpsLinkItems.size())
+	{
+		this->scene()->setSceneRect(this->scene()->itemsBoundingRect());  // Re-shrink the scene to it's bounding contents
+
+		if(wasEmpty)
+		{
+			QRectF rect = this->scene()->itemsBoundingRect();
+			this->fitInView(rect.adjusted(-rect.width()/2.0f, -rect.height()/2.0f, rect.width()/2.0f, rect.height()/2.0f), Qt::KeepAspectRatio);
+		}
+	}
+
+	_gpsGraphRoot->setVisible(wasVisible);
+
+	UDEBUG("_gpsNodeItems=%d, _gpsLinkItems=%d timer=%fs", _gpsNodeItems.size(), _gpsLinkItems.size(), timer.ticks());
+}
+
 void GraphViewer::updateReferentialPosition(const Transform & t)
 {
 	QTransform qt(t.r11(), t.r12(), t.r21(), t.r22(), -t.o24()*100.0f, -t.o14()*100.0f);
@@ -820,6 +981,10 @@ void GraphViewer::clearGraph()
 	_gtNodeItems.clear();
 	qDeleteAll(_gtLinkItems);
 	_gtLinkItems.clear();
+	qDeleteAll(_gpsNodeItems);
+	_gpsNodeItems.clear();
+	qDeleteAll(_gpsLinkItems);
+	_gpsLinkItems.clear();
 
 	_referential->resetTransform();
 	_localRadius->resetTransform();
@@ -867,6 +1032,7 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("local_path_color", this->getLocalPathColor());
 	settings.setValue("global_path_color", this->getGlobalPathColor());
 	settings.setValue("gt_color", this->getGTColor());
+	settings.setValue("gps_color", this->getGPSColor());
 	settings.setValue("intra_session_color", this->getIntraSessionLoopColor());
 	settings.setValue("inter_session_color", this->getInterSessionLoopColor());
 	settings.setValue("intra_inter_session_colors_enabled", this->isIntraInterSessionColorsEnabled());
@@ -880,6 +1046,8 @@ void GraphViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("global_path_visible", this->isGlobalPathVisible());
 	settings.setValue("local_path_visible", this->isLocalPathVisible());
 	settings.setValue("gt_graph_visible", this->isGtGraphVisible());
+	settings.setValue("gps_graph_visible", this->isGPSGraphVisible());
+	settings.setValue("orientation_ENU", this->isOrientationENU());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -906,6 +1074,7 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setLocalPathColor(settings.value("local_path_color", this->getLocalPathColor()).value<QColor>());
 	this->setGlobalPathColor(settings.value("global_path_color", this->getGlobalPathColor()).value<QColor>());
 	this->setGTColor(settings.value("gt_color", this->getGTColor()).value<QColor>());
+	this->setGPSColor(settings.value("gps_color", this->getGPSColor()).value<QColor>());
 	this->setIntraSessionLoopColor(settings.value("intra_session_color", this->getIntraSessionLoopColor()).value<QColor>());
 	this->setInterSessionLoopColor(settings.value("inter_session_color", this->getInterSessionLoopColor()).value<QColor>());
 	this->setGridMapVisible(settings.value("grid_visible", this->isGridMapVisible()).toBool());
@@ -919,6 +1088,8 @@ void GraphViewer::loadSettings(QSettings & settings, const QString & group)
 	this->setGlobalPathVisible(settings.value("global_path_visible", this->isGlobalPathVisible()).toBool());
 	this->setLocalPathVisible(settings.value("local_path_visible", this->isLocalPathVisible()).toBool());
 	this->setGtGraphVisible(settings.value("gt_graph_visible", this->isGtGraphVisible()).toBool());
+	this->setGPSGraphVisible(settings.value("gps_graph_visible", this->isGPSGraphVisible()).toBool());
+	this->setOrientationENU(settings.value("orientation_ENU", this->isOrientationENU()).toBool());
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -957,6 +1128,14 @@ bool GraphViewer::isGtGraphVisible() const
 {
 	return _gtGraphRoot->isVisible();
 }
+bool GraphViewer::isGPSGraphVisible() const
+{
+	return _gpsGraphRoot->isVisible();
+}
+bool GraphViewer::isOrientationENU() const
+{
+	return _orientationENU;
+}
 
 void GraphViewer::setWorkingDirectory(const QString & path)
 {
@@ -970,6 +1149,10 @@ void GraphViewer::setNodeRadius(float radius)
 		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
 	}
 	for(QMap<int, NodeItem*>::iterator iter=_gtNodeItems.begin(); iter!=_gtNodeItems.end(); ++iter)
+	{
+		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
+	}
+	for(QMap<int, NodeItem*>::iterator iter=_gpsNodeItems.begin(); iter!=_gpsNodeItems.end(); ++iter)
 	{
 		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
 	}
@@ -1100,6 +1283,18 @@ void GraphViewer::setGTColor(const QColor & color)
 		iter.value()->setColor(_gtPathColor);
 	}
 }
+void GraphViewer::setGPSColor(const QColor & color)
+{
+	_gpsPathColor = color;
+	for(QMap<int, NodeItem*>::iterator iter=_gpsNodeItems.begin(); iter!=_gpsNodeItems.end(); ++iter)
+	{
+		iter.value()->setColor(_gpsPathColor);
+	}
+	for(QMultiMap<int, LinkItem*>::iterator iter=_gpsLinkItems.begin(); iter!=_gpsLinkItems.end(); ++iter)
+	{
+		iter.value()->setColor(_gpsPathColor);
+	}
+}
 void GraphViewer::setIntraSessionLoopColor(const QColor & color)
 {
 	_loopIntraSessionColor = color;
@@ -1192,6 +1387,18 @@ void GraphViewer::setGtGraphVisible(bool visible)
 {
 	_gtGraphRoot->setVisible(visible);
 }
+void GraphViewer::setGPSGraphVisible(bool visible)
+{
+	_gpsGraphRoot->setVisible(visible);
+}
+void GraphViewer::setOrientationENU(bool enabled)
+{
+	if(_orientationENU!=enabled)
+	{
+		_orientationENU = enabled;
+		this->rotate(_orientationENU?90:270);
+	}
+}
 
 void GraphViewer::restoreDefaults()
 {
@@ -1258,6 +1465,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aChangeLocalPathColor = menuLink->addAction(tr("Local path"));
 	QAction * aChangeGlobalPathColor = menuLink->addAction(tr("Global path"));
 	QAction * aChangeGTColor = menuLink->addAction(tr("Ground truth"));
+	QAction * aChangeGPSColor = menuLink->addAction(tr("GPS"));
 	menuLink->addSeparator();
 	QAction * aSetIntraInterSessionColors = menuLink->addAction(tr("Enable intra/inter-session colors"));
 	QAction * aChangeIntraSessionLoopColor = menuLink->addAction(tr("Intra-session loop closure"));
@@ -1272,6 +1480,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aChangeLocalPathColor->setIcon(createIcon(_localPathColor));
 	aChangeGlobalPathColor->setIcon(createIcon(_globalPathColor));
 	aChangeGTColor->setIcon(createIcon(_gtPathColor));
+	aChangeGPSColor->setIcon(createIcon(_gpsPathColor));
 	aChangeIntraSessionLoopColor->setIcon(createIcon(_loopIntraSessionColor));
 	aChangeInterSessionLoopColor->setIcon(createIcon(_loopInterSessionColor));
 	aChangeNeighborColor->setIconVisibleInMenu(true);
@@ -1284,6 +1493,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aChangeLocalPathColor->setIconVisibleInMenu(true);
 	aChangeGlobalPathColor->setIconVisibleInMenu(true);
 	aChangeGTColor->setIconVisibleInMenu(true);
+	aChangeGPSColor->setIconVisibleInMenu(true);
 	aChangeIntraSessionLoopColor->setIconVisibleInMenu(true);
 	aChangeInterSessionLoopColor->setIconVisibleInMenu(true);
 	aSetIntraInterSessionColors->setCheckable(true);
@@ -1302,6 +1512,8 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	QAction * aShowHideGlobalPath;
 	QAction * aShowHideLocalPath;
 	QAction * aShowHideGtGraph;
+	QAction * aShowHideGPSGraph;
+	QAction * aOrientationENU;
 	if(_gridMap->isVisible())
 	{
 		aShowHideGridMap = menu.addAction(tr("Hide grid map"));
@@ -1366,10 +1578,22 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		aShowHideGtGraph = menu.addAction(tr("Show ground truth graph"));
 	}
+	if(_gpsGraphRoot->isVisible())
+	{
+		aShowHideGPSGraph = menu.addAction(tr("Hide GPS graph"));
+	}
+	else
+	{
+		aShowHideGPSGraph = menu.addAction(tr("Show GPS graph"));
+	}
+	aOrientationENU = menu.addAction(tr("ENU Orientation"));
+	aOrientationENU->setCheckable(true);
+	aOrientationENU->setChecked(_orientationENU);
 	aShowHideGraph->setEnabled(_nodeItems.size());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
 	aShowHideGtGraph->setEnabled(_gtNodeItems.size());
+	aShowHideGPSGraph->setEnabled(_gpsNodeItems.size());
 	menu.addSeparator();
 	QAction * aRestoreDefaults = menu.addAction(tr("Restore defaults"));
 
@@ -1487,6 +1711,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			r == aChangeLocalPathColor ||
 			r == aChangeGlobalPathColor ||
 			r == aChangeGTColor ||
+			r == aChangeGPSColor ||
 			r == aChangeIntraSessionLoopColor ||
 			r == aChangeInterSessionLoopColor)
 	{
@@ -1534,6 +1759,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		else if(r == aChangeGTColor)
 		{
 			color = _gtPathColor;
+		}
+		else if(r == aChangeGPSColor)
+		{
+			color = _gpsPathColor;
 		}
 		else if(r == aChangeIntraSessionLoopColor)
 		{
@@ -1594,6 +1823,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 			else if(r == aChangeGTColor)
 			{
 				this->setGTColor(color);
+			}
+			else if(r == aChangeGPSColor)
+			{
+				this->setGPSColor(color);
 			}
 			else if(r == aChangeIntraSessionLoopColor)
 			{
@@ -1671,6 +1904,15 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		this->setGtGraphVisible(!this->isGtGraphVisible());
 	}
+	else if(r == aShowHideGPSGraph)
+	{
+		this->setGPSGraphVisible(!this->isGPSGraphVisible());
+	}
+	else if(r == aOrientationENU)
+	{
+		this->setOrientationENU(!this->isOrientationENU());
+	}
+
 	if(r)
 	{
 		emit configChanged();

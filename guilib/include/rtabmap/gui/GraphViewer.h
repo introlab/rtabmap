@@ -34,8 +34,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QMap>
 #include <QtCore/QSettings>
 #include <rtabmap/core/Link.h>
+#include <rtabmap/core/GeodeticCoords.h>
 #include <opencv2/opencv.hpp>
 #include <map>
+#include <vector>
 
 class QGraphicsItem;
 class QGraphicsPixmapItem;
@@ -58,6 +60,9 @@ public:
 					 const std::multimap<int, Link> & constraints,
 					 const std::map<int, int> & mapIds);
 	void updateGTGraph(const std::map<int, Transform> & poses);
+	void updateGPSGraph(
+			const std::map<int, Transform> & gpsMapPoses,
+			const std::map<int, GPS> & gpsValues);
 	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
 	void updatePosterior(const std::map<int, float> & posterior);
@@ -89,6 +94,7 @@ public:
 	const QColor & getLocalPathColor() const {return _localPathColor;}
 	const QColor & getGlobalPathColor() const {return _globalPathColor;}
 	const QColor & getGTColor() const {return _gtPathColor;}
+	const QColor & getGPSColor() const {return _gpsPathColor;}
 	const QColor & getIntraSessionLoopColor() const {return _loopIntraSessionColor;}
 	const QColor & getInterSessionLoopColor() const {return _loopInterSessionColor;}
 	bool isIntraInterSessionColorsEnabled() const {return _intraInterSessionColors;}
@@ -102,6 +108,8 @@ public:
 	bool isGlobalPathVisible() const;
 	bool isLocalPathVisible() const;
 	bool isGtGraphVisible() const;
+	bool isGPSGraphVisible() const;
+	bool isOrientationENU() const;
 
 	// setters
 	void setWorkingDirectory(const QString & path);
@@ -119,6 +127,7 @@ public:
 	void setLocalPathColor(const QColor & color);
 	void setGlobalPathColor(const QColor & color);
 	void setGTColor(const QColor & color);
+	void setGPSColor(const QColor & color);
 	void setIntraSessionLoopColor(const QColor & color);
 	void setInterSessionLoopColor(const QColor & color);
 	void setIntraInterSessionColorsEnabled(bool enabled);
@@ -132,6 +141,8 @@ public:
 	void setGlobalPathVisible(bool visible);
 	void setLocalPathVisible(bool visible);
 	void setGtGraphVisible(bool visible);
+	void setGPSGraphVisible(bool visible);
+	void setOrientationENU(bool enabled);
 
 signals:
 	void configChanged();
@@ -158,6 +169,7 @@ private:
 	QColor _localPathColor;
 	QColor _globalPathColor;
 	QColor _gtPathColor;
+	QColor _gpsPathColor;
 	QColor _loopIntraSessionColor;
 	QColor _loopInterSessionColor;
 	bool _intraInterSessionColors;
@@ -166,10 +178,13 @@ private:
 	QGraphicsItem * _globalPathRoot;
 	QGraphicsItem * _localPathRoot;
 	QGraphicsItem * _gtGraphRoot;
+	QGraphicsItem * _gpsGraphRoot;
 	QMap<int, NodeItem*> _nodeItems;
 	QMultiMap<int, LinkItem*> _linkItems;
 	QMap<int, NodeItem*> _gtNodeItems;
+	QMap<int, NodeItem*> _gpsNodeItems;
 	QMultiMap<int, LinkItem*> _gtLinkItems;
+	QMultiMap<int, LinkItem*> _gpsLinkItems;
 	QMultiMap<int, LinkItem*> _localPathLinkItems;
 	QMultiMap<int, LinkItem*> _globalPathLinkItems;
 	float _nodeRadius;
@@ -181,6 +196,7 @@ private:
 	QGraphicsEllipseItem * _localRadius;
 	float _loopClosureOutlierThr;
 	float _maxLinkLength;
+	bool _orientationENU;
 };
 
 } /* namespace rtabmap */

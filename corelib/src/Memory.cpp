@@ -1401,6 +1401,7 @@ void Memory::clear()
 	_idMapCount = kIdStart;
 	_memoryChanged = false;
 	_linksChanged = false;
+	_gpsOrigin = GPS();
 
 	if(_dbDriver)
 	{
@@ -3051,7 +3052,7 @@ Transform Memory::getOdomPose(int signatureId, bool lookInDatabase) const
 	std::string label;
 	double stamp;
 	std::vector<float> velocity;
-	std::vector<double> gps;
+	GPS gps;
 	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
 	return pose;
 }
@@ -3063,7 +3064,7 @@ Transform Memory::getGroundTruthPose(int signatureId, bool lookInDatabase) const
 	std::string label;
 	double stamp;
 	std::vector<float> velocity;
-	std::vector<double> gps;
+	GPS gps;
 	getNodeInfo(signatureId, pose, mapId, weight, label, stamp, groundTruth, velocity, gps, lookInDatabase);
 	return groundTruth;
 }
@@ -3076,7 +3077,7 @@ bool Memory::getNodeInfo(int signatureId,
 		double & stamp,
 		Transform & groundTruth,
 		std::vector<float> & velocity,
-		std::vector<double> & gps,
+		GPS & gps,
 		bool lookInDatabase) const
 {
 	const Signature * s = this->getSignature(signatureId);
@@ -3967,10 +3968,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	s->sensorData().setUserDataRaw(data.userDataRaw());
 
 	s->sensorData().setGroundTruth(data.groundTruth());
-	if(!data.gps().empty())
-	{
-		s->sensorData().setGPS(data.gps()[0], data.gps()[1], data.gps()[2], data.gps()[3], data.gps()[4], data.gps()[5]);
-	}
+	s->sensorData().setGPS(data.gps());
 
 	t = timer.ticks();
 	if(stats) stats->addStatistic(Statistics::kTimingMemCompressing_data(), t*1000.0f);
@@ -3996,9 +3994,39 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	s->sensorData().setOccupancyGrid(ground, obstacles, cellSize, viewPoint);
 
 	// prior
-	if(!isIntermediateNode && !data.globalPose().isNull() && data.globalPoseCovariance().cols==6 && data.globalPoseCovariance().rows==6 && data.globalPoseCovariance().cols==CV_64FC1)
+	if(!isIntermediateNode)
 	{
-		s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
+		if(!data.globalPose().isNull() && data.globalPoseCovariance().cols==6 && data.globalPoseCovariance().rows==6 && data.globalPoseCovariance().cols==CV_64FC1)
+		{
+			s->addLink(Link(s->id(), s->id(), Link::kPosePrior, data.globalPose(), data.globalPoseCovariance().inv()));
+
+			/*if(data.gps().stamp() > 0.0)
+			{
+				UWARN("GPS constraint ignored as global pose is also set.");
+			}*/
+		}
+		else if(data.gps().stamp() > 0.0)
+		{
+			// TODO: What kind of covariance should we set to have decent gtsam and g2o results!?
+			/*if(_gpsOrigin.stamp() <= 0.0)
+			{
+				_gpsOrigin =  data.gps();
+			}
+			cv::Point3f pt = data.gps().toGeodeticCoords().toENU_WGS84(_gpsOrigin.toGeodeticCoords());
+			Transform gpsPose(pt.x, pt.y, pose.z(), 0, 0, -(data.gps().bearing()-90.0)*180.0/M_PI);
+			cv::Mat gpsInfMatrix = cv::Mat::eye(6,6,CV_64FC1)*0.00000001;
+			if(data.gps().error() > 0.0)
+			{
+				// only set x, y as we don't know variance for other degrees of freedom.
+				gpsInfMatrix.at<double>(0,0) = gpsInfMatrix.at<double>(1,1) = 0.1;
+				gpsInfMatrix.at<double>(2,2) = 100000;
+				s->addLink(Link(s->id(), s->id(), Link::kPosePrior, gpsPose, gpsInfMatrix));
+			}
+			else
+			{
+				UERROR("Invalid GPS error value (%f m), must be > 0 m.", data.gps().error());
+			}*/
+		}
 	}
 
 	return s;

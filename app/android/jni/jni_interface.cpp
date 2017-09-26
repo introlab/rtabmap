@@ -349,12 +349,12 @@ Java_com_introlab_rtabmap_RTABMapLib_setGPS(
 		double accuracy,
 		double bearing)
 {
-	return app.setGPS(stamp,
+	return app.setGPS(GPS(stamp,
 			longitude,
 			latitude,
 			altitude,
 			accuracy,
-			bearing);
+			bearing));
 }
 
 JNIEXPORT void JNICALL

@@ -147,12 +147,7 @@ class RTABMapApp : public UEventsHandler {
   void setRenderingTextureDecimation(int value);
   void setBackgroundColor(float gray);
   int setMappingParameter(const std::string & key, const std::string & value);
-  void setGPS(double stamp,
-  		double longitude,
-  		double latitude,
-  		double altitude,
-  		double accuracy,
-  		double bearing);
+  void setGPS(const rtabmap::GPS & gps);
 
   void resetMapping();
   void save(const std::string & databasePath);

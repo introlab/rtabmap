@@ -51,7 +51,23 @@ namespace rtabmap {
 
 
 inline double DEG2RAD(const double x) { return x*M_PI/180.0;}
+inline double RAD2DEG(const double x) { return x*180.0/M_PI;}
 inline double square(const double & value) {return value*value;}
+
+GeodeticCoords::GeodeticCoords() :
+		latitude_(0.0),
+		longitude_(0.0),
+		altitude_(0.0)
+{
+
+}
+GeodeticCoords::GeodeticCoords(double latitude, double longitude, double altitude) :
+		latitude_(latitude),
+		longitude_(longitude),
+		altitude_(altitude)
+{
+
+}
 
 //*---------------------------------------------------------------
 //			geodeticToGeocentric_WGS84
@@ -123,19 +139,72 @@ cv::Point3d GeodeticCoords::toENU_WGS84(const GeodeticCoords &origin) const
 	return out;
 }
 
-GeodeticCoords::GeodeticCoords() :
-		latitude_(0.0),
-		longitude_(0.0),
-		altitude_(0.0)
+void GeodeticCoords::fromGeocentric_WGS84(const cv::Point3d& geocentric)
 {
+	static const double a = 6378137;		// Semi-major axis of the Earth (meters)
+	static const double b = 6356752.3142;	// Semi-minor axis:
 
+	const double sa2 = a*a;
+	const double sb2 = b*b;
+
+	const double e2 = (sa2 - sb2) / sa2;
+	const double ep2 = (sa2 - sb2) / sb2;
+	const double p = std::sqrt(geocentric.x * geocentric.x + geocentric.y * geocentric.y);
+	const double theta = atan2(geocentric.z * a, p * b);
+
+	longitude_ = atan2(geocentric.y, geocentric.x);
+	latitude_ = atan2(
+			geocentric.z + ep2 * b * sin(theta) * sin(theta) * sin(theta),
+		p - e2 * a * cos(theta) * cos(theta) * cos(theta));
+
+	const double clat = cos(latitude_);
+	const double slat = sin(latitude_);
+	const double N = sa2 / std::sqrt(sa2 * clat * clat + sb2 * slat * slat);
+
+	altitude_ = p / clat - N;
+	longitude_ = RAD2DEG(longitude_);
+	latitude_ = RAD2DEG(latitude_);
 }
-GeodeticCoords::GeodeticCoords(double latitude, double longitude, double altitude) :
-		latitude_(latitude),
-		longitude_(longitude),
-		altitude_(altitude)
-{
 
+void GeodeticCoords::fromENU_WGS84(const cv::Point3d& enu, const GeodeticCoords& origin)
+{
+	fromGeocentric_WGS84(ENU_WGS84ToGeocentric_WGS84(enu, origin));
+}
+
+cv::Point3d GeodeticCoords::ENU_WGS84ToGeocentric_WGS84(const cv::Point3d& enu, const GeodeticCoords& origin)
+{
+	// Generate reference 3D point:
+	cv::Point3f originGeocentric;
+	originGeocentric = origin.toGeocentric_WGS84();
+
+	cv::Vec3d P_ref(originGeocentric.x, originGeocentric.y, originGeocentric.z);
+
+	// Z axis -> In direction out-ward the center of the Earth:
+	cv::Vec3d REF_X, REF_Y, REF_Z;
+	REF_Z = cv::normalize(P_ref);
+
+	// 1st column: Starting at the reference point, move in the tangent
+	// direction
+	//   east-ward: I compute this as the derivative of P_ref wrt "longitude":
+	//      A_east[0] =-(N+in_height_meters)*cos(lat)*sin(lon);  --> -Z[1]
+	//      A_east[1] = (N+in_height_meters)*cos(lat)*cos(lon);  -->  Z[0]
+	//      A_east[2] = 0;                                       -->  0
+	// ---------------------------------------------------------------------------
+	cv::Vec3d AUX_X(-REF_Z[1], REF_Z[0], 0);
+	REF_X = cv::normalize(AUX_X);
+
+	// 2nd column: The cross product:
+	REF_Y = REF_Z.cross(REF_X);
+
+	cv::Point3d out_coords;
+	out_coords.x =
+		REF_X[0] * enu.x + REF_Y[0] * enu.y + REF_Z[0] * enu.z + originGeocentric.x;
+	out_coords.y =
+		REF_X[1] * enu.x + REF_Y[1] * enu.y + REF_Z[1] * enu.z + originGeocentric.y;
+	out_coords.z =
+		REF_X[2] * enu.x + REF_Y[2] * enu.y + REF_Z[2] * enu.z + originGeocentric.z;
+
+	return out_coords;
 }
 
 }

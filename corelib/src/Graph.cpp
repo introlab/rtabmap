@@ -425,6 +425,105 @@ bool importPoses(
 	return false;
 }
 
+bool exportGPS(
+		const std::string & filePath,
+		const std::map<int, GPS> & gpsValues,
+		unsigned int rgba)
+{
+	UDEBUG("%s", filePath.c_str());
+	std::string tmpPath = filePath;
+
+	std::string ext = UFile::getExtension(filePath);
+
+	if(ext.compare("kml")!=0 && ext.compare("txt")!=0)
+	{
+		UERROR("Only txt and kml formats are supported!");
+		return false;
+	}
+
+	FILE* fout = 0;
+#ifdef _MSC_VER
+	fopen_s(&fout, tmpPath.c_str(), "w");
+#else
+	fout = fopen(tmpPath.c_str(), "w");
+#endif
+	if(fout)
+	{
+		if(ext.compare("kml")==0)
+		{
+			std::string values;
+			for(std::map<int, GPS>::const_iterator iter=gpsValues.begin(); iter!=gpsValues.end(); ++iter)
+			{
+				values += uFormat("%f,%f,%f ", iter->second.longitude(), iter->second.latitude(), iter->second.altitude());
+			}
+
+			// switch argb (Qt format) -> abgr
+			unsigned int abgr = 0xFF << 24 | (rgba & 0xFF) << 16 | (rgba & 0xFF00) | ((rgba >> 16) &0xFF);
+
+			std::string colorHexa = uFormat("%08x", abgr);
+
+			fprintf(fout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+			fprintf(fout, "<kml xmlns=\"http://www.opengis.net/kml/2.2\">\n");
+			fprintf(fout, "<Document>\n"
+						  "	<name>%s</name>\n", tmpPath.c_str());
+			fprintf(fout, "	<StyleMap id=\"msn_ylw-pushpin\">\n"
+						  "		<Pair>\n"
+						  "			<key>normal</key>\n"
+						  "			<styleUrl>#sn_ylw-pushpin</styleUrl>\n"
+						  "		</Pair>\n"
+						  "		<Pair>\n"
+						  "			<key>highlight</key>\n"
+						  "			<styleUrl>#sh_ylw-pushpin</styleUrl>\n"
+						  "		</Pair>\n"
+						  "	</StyleMap>\n"
+						  "	<Style id=\"sh_ylw-pushpin\">\n"
+						  "		<IconStyle>\n"
+						  "			<scale>1.2</scale>\n"
+						  "		</IconStyle>\n"
+						  "		<LineStyle>\n"
+						  "			<color>%s</color>\n"
+						  "		</LineStyle>\n"
+						  "	</Style>\n"
+						  "	<Style id=\"sn_ylw-pushpin\">\n"
+						  "		<LineStyle>\n"
+						  "			<color>%s</color>\n"
+						  "		</LineStyle>\n"
+						  "	</Style>\n", colorHexa.c_str(), colorHexa.c_str());
+			fprintf(fout, "	<Placemark>\n"
+						  "		<name>%s</name>\n"
+						  "		<styleUrl>#msn_ylw-pushpin</styleUrl>"
+						  "		<LineString>\n"
+						  "			<coordinates>\n"
+						  "				%s\n"
+						  "			</coordinates>\n"
+						  "		</LineString>\n"
+						  "	</Placemark>\n"
+						  "</Document>\n"
+						  "</kml>\n",
+						  uSplit(tmpPath, '.').front().c_str(),
+						  values.c_str());
+		}
+		else
+		{
+			fprintf(fout, "# stamp longitude latitude altitude error bearing\n");
+			for(std::map<int, GPS>::const_iterator iter=gpsValues.begin(); iter!=gpsValues.end(); ++iter)
+			{
+				fprintf(fout, "%f %f %f %f %f %f\n",
+						iter->second.stamp(),
+						iter->second.longitude(),
+						iter->second.latitude(),
+						iter->second.altitude(),
+						iter->second.error(),
+						iter->second.bearing());
+			}
+		}
+
+		fclose(fout);
+		return true;
+	}
+	return false;
+}
+
 // KITTI evaluation
 float lengths[] = {100,200,300,400,500,600,700,800};
 int32_t num_lengths = 8;

@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <set>
+#include <vector>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -94,6 +95,9 @@ private slots:
 	void exportPosesKITTI();
 	void exportPosesTORO();
 	void exportPosesG2O();
+	void exportPosesKML();
+	void exportGPS_TXT();
+	void exportGPS_KML();
 	void generateLocalGraph();
 	void regenerateLocalMaps();
 	void regenerateCurrentLocalMaps();
@@ -162,6 +166,7 @@ private:
 	void refineConstraint(int from, int to,  bool silent);
 	bool addConstraint(int from, int to, bool silent);
 	void exportPoses(int format);
+	void exportGPS(int format);
 
 private:
 	Ui_DatabaseViewer * ui_;
@@ -181,6 +186,8 @@ private:
 	std::multimap<int, rtabmap::Link> graphLinks_;
 	std::map<int, rtabmap::Transform> poses_;
 	std::map<int, rtabmap::Transform> groundTruthPoses_;
+	std::map<int, rtabmap::Transform> gpsPoses_;
+	std::map<int, GPS> gpsValues_;
 	std::multimap<int, rtabmap::Link> links_;
 	std::multimap<int, rtabmap::Link> linksRefined_;
 	std::multimap<int, rtabmap::Link> linksAdded_;

@@ -68,6 +68,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/RegistrationIcp.h"
 #include "rtabmap/core/OccupancyGrid.h"
+#include "rtabmap/core/GeodeticCoords.h"
 #include "rtabmap/gui/DataRecorder.h"
 #include "ExportCloudsDialog.h"
 #include "EditDepthArea.h"
@@ -229,6 +230,9 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionKITTI_format_txt, SIGNAL(triggered()), this , SLOT(exportPosesKITTI()));
 	connect(ui_->actionTORO_graph, SIGNAL(triggered()), this , SLOT(exportPosesTORO()));
 	connect(ui_->actionG2o_g2o, SIGNAL(triggered()), this , SLOT(exportPosesG2O()));
+	connect(ui_->actionPoses_KML, SIGNAL(triggered()), this , SLOT(exportPosesKML()));
+	connect(ui_->actionGPS_TXT, SIGNAL(triggered()), this , SLOT(exportGPS_TXT()));
+	connect(ui_->actionGPS_KML, SIGNAL(triggered()), this , SLOT(exportGPS_KML()));
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
@@ -250,6 +254,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->pushButton_reject->setEnabled(false);
 
 	ui_->menuExport_poses->setEnabled(false);
+	ui_->menuExport_GPS->setEnabled(false);
+	ui_->actionPoses_KML->setEnabled(false);
 
 	ui_->horizontalSlider_A->setTracking(false);
 	ui_->horizontalSlider_B->setTracking(false);
@@ -698,6 +704,8 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			graphLinks_.clear();
 			poses_.clear();
 			groundTruthPoses_.clear();
+			gpsPoses_.clear();
+			gpsValues_.clear();
 			mapIds_.clear();
 			links_.clear();
 			linksAdded_.clear();
@@ -710,6 +718,8 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			ui_->graphViewer->clearAll();
 			occupancyGridViewer_->clear();
 			ui_->menuExport_poses->setEnabled(false);
+			ui_->menuExport_GPS->setEnabled(false);
+			ui_->actionPoses_KML->setEnabled(false);
 			ui_->checkBox_showOptimized->setEnabled(false);
 			ui_->toolBox_statistics->clear();
 			databaseFileName_.clear();
@@ -1011,6 +1021,7 @@ void DatabaseViewer::exportDatabase()
 			std::map<int, Transform> poses;
 			std::map<int, double> stamps;
 			std::map<int, Transform> groundTruths;
+			std::map<int, GPS> gpsValues;
 			for(int i=0; i<ids_.size(); i+=1+framesIgnored)
 			{
 				Transform odomPose, groundTruth;
@@ -1019,7 +1030,7 @@ void DatabaseViewer::exportDatabase()
 				std::string label;
 				double stamp = 0;
 				std::vector<float> velocity;
-				std::vector<double> gps;
+				GPS gps;
 				if(dbDriver_->getNodeInfo(ids_[i], odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
 				{
 					if(frameRate == 0 ||
@@ -1040,6 +1051,10 @@ void DatabaseViewer::exportDatabase()
 							poses.insert(std::make_pair(ids_[i], odomPose));
 							stamps.insert(std::make_pair(ids_[i], stamp));
 							groundTruths.insert(std::make_pair(ids_[i], groundTruth));
+							if(gps.stamp() > 0.0)
+							{
+								gpsValues.insert(std::make_pair(ids_[i], gps));
+							}
 						}
 					}
 					if(sessionExported >= 0 && mapId > sessionExported)
@@ -1115,7 +1130,14 @@ void DatabaseViewer::exportDatabase()
 							stamps.at(id),
 							userData);
 					}
-					sensorData.setGroundTruth(groundTruths.at(id));
+					if(groundTruths.find(id)!=groundTruths.end())
+					{
+						sensorData.setGroundTruth(groundTruths.at(id));
+					}
+					if(gpsValues.find(id)!=gpsValues.end())
+					{
+						sensorData.setGPS(gpsValues.at(id));
+					}
 
 					recorder.addData(sensorData, dialog.isOdomExported()?poses.at(id):Transform(), covariance);
 
@@ -1294,8 +1316,12 @@ void DatabaseViewer::updateIds()
 	mapIds_.clear();
 	poses_.clear();
 	groundTruthPoses_.clear();
+	gpsPoses_.clear();
+	gpsValues_.clear();
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
 	ui_->label_alignPosesWithGroundTruth->setVisible(false);
+	ui_->menuExport_GPS->setEnabled(false);
+	ui_->actionPoses_KML->setEnabled(false);
 	links_.clear();
 	linksAdded_.clear();
 	linksRefined_.clear();
@@ -1325,10 +1351,9 @@ void DatabaseViewer::updateIds()
 		double s;
 		int mapId;
 		std::vector<float> v;
-		std::vector<double> gps;
+		GPS gps;
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
-
 		if(i>0)
 		{
 			if(mapIds_.at(ids_[i-1]) == mapId)
@@ -1392,6 +1417,20 @@ void DatabaseViewer::updateIds()
 			{
 				groundTruthPoses_.insert(std::make_pair(ids_[i], g));
 			}
+			if(gps.stamp() > 0.0)
+			{
+				gpsValues_.insert(std::make_pair(ids_[i], gps));
+
+				cv::Point3f p(0.0f,0.0f,0.0f);
+				if(!gpsPoses_.empty())
+				{
+					GeodeticCoords coords = gps.toGeodeticCoords();
+					GPS originGPS = gpsValues_.begin()->second;
+					p = coords.toENU_WGS84(originGPS.toGeodeticCoords());
+				}
+				Transform pose(p.x, p.y, p.z, 0.0f, 0.0f, (float)((-(gps.bearing()-90))*180.0/M_PI));
+				gpsPoses_.insert(std::make_pair(ids_[i], pose));
+			}
 		}
 
 		if(idsWithoutBad.find(ids_[i]) == idsWithoutBad.end())
@@ -1403,10 +1442,23 @@ void DatabaseViewer::updateIds()
 			}
 		}
 	}
-	if(!groundTruthPoses_.empty())
+	if(!groundTruthPoses_.empty() || !gpsPoses_.empty())
 	{
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(true);
 		ui_->label_alignPosesWithGroundTruth->setVisible(true);
+		if(!groundTruthPoses_.empty())
+		{
+			ui_->label_alignPosesWithGroundTruth->setText(tr("Align poses with ground truth"));
+		}
+		else
+		{
+			ui_->label_alignPosesWithGroundTruth->setText(tr("Align poses with GPS"));
+		}
+	}
+	if(!gpsValues_.empty())
+	{
+		ui_->menuExport_GPS->setEnabled(true);
+		ui_->actionPoses_KML->setEnabled(groundTruthPoses_.empty());
 	}
 
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)poses_.size(), (int)links_.size());
@@ -1434,6 +1486,7 @@ void DatabaseViewer::updateIds()
 	ui_->textEdit_info->append(tr("WM:\t\t%1 nodes and %2 words").arg(dbDriver_->getLastNodesSize()).arg(dbDriver_->getLastDictionarySize()));
 	ui_->textEdit_info->append(tr("Global graph:\t%1 poses and %2 links").arg(poses_.size()).arg(links_.size()));
 	ui_->textEdit_info->append(tr("Ground truth:\t%1 poses").arg(groundTruthPoses_.size()));
+	ui_->textEdit_info->append(tr("GPS:\t%1 poses").arg(gpsValues_.size()));
 	ui_->textEdit_info->append("");
 	long total = 0;
 	long dbSize = UFile::length(dbDriver_->getUrl());
@@ -1663,6 +1716,10 @@ void DatabaseViewer::exportPosesG2O()
 {
 	exportPoses(4);
 }
+void DatabaseViewer::exportPosesKML()
+{
+	exportPoses(5);
+}
 
 void DatabaseViewer::exportPoses(int format)
 {
@@ -1674,6 +1731,104 @@ void DatabaseViewer::exportPoses(int format)
 			QMessageBox::warning(this, tr("Cannot export poses"), tr("No graph in database?!"));
 			return;
 		}
+	}
+
+	if(format == 5)
+	{
+		if(gpsValues_.empty() || gpsPoses_.empty())
+		{
+			QMessageBox::warning(this, tr("Cannot export poses"), tr("No GPS in database?!"));
+		}
+		else
+		{
+			std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+
+			//align with ground truth for more meaningful results
+			pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
+			cloud1.resize(graph.size());
+			cloud2.resize(graph.size());
+			int oi = 0;
+			int idFirst = 0;
+			for(std::map<int, Transform>::const_iterator iter=gpsPoses_.begin(); iter!=gpsPoses_.end(); ++iter)
+			{
+				std::map<int, Transform>::iterator iter2 = graph.find(iter->first);
+				if(iter2!=graph.end())
+				{
+					if(oi==0)
+					{
+						idFirst = iter->first;
+					}
+					cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+					cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
+				}
+			}
+
+			Transform t = Transform::getIdentity();
+			if(oi>5)
+			{
+				cloud1.resize(oi);
+				cloud2.resize(oi);
+
+				t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
+			}
+			else if(idFirst)
+			{
+				t = gpsPoses_.at(idFirst) * graph.at(idFirst).inverse();
+			}
+
+			std::map<int, GPS> values;
+			GeodeticCoords origin = gpsValues_.begin()->second.toGeodeticCoords();
+			for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+			{
+				iter->second = t * iter->second;
+
+				GeodeticCoords coord;
+				coord.fromENU_WGS84(cv::Point3d(iter->second.x(), iter->second.y(), iter->second.z()), origin);
+				double bearing = -(iter->second.theta()*180.0/M_PI-90.0);
+				if(bearing < 0)
+				{
+					bearing += 360;
+				}
+
+				Transform p, g;
+				int w;
+				std::string l;
+				double stamp=0.0;
+				int mapId;
+				std::vector<float> v;
+				GPS gps;
+				dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps);
+				values.insert(std::make_pair(iter->first, GPS(stamp, coord.longitude(), coord.latitude(), coord.altitude(), 0, 0)));
+			}
+
+			QString output = pathDatabase_ + QDir::separator() + "poses.kml";
+			QString path = QFileDialog::getSaveFileName(
+					this,
+					tr("Save File"),
+					output,
+					tr("Google Earth file (*.kml)"));
+
+			if(!path.isEmpty())
+			{
+				bool saved = graph::exportGPS(path.toStdString(), values, ui_->graphViewer->getNodeColor().rgba());
+
+				if(saved)
+				{
+					QMessageBox::information(this,
+							tr("Export poses..."),
+							tr("GPS coordinates saved to \"%1\".")
+							.arg(path));
+				}
+				else
+				{
+					QMessageBox::information(this,
+							tr("Export poses..."),
+							tr("Failed to save GPS coordinates to \"%1\"!")
+							.arg(path));
+				}
+			}
+		}
+		return;
 	}
 
 	std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
@@ -1796,7 +1951,7 @@ void DatabaseViewer::exportPoses(int format)
 				double stamp=0.0;
 				int mapId;
 				std::vector<float> v;
-				std::vector<double> gps;
+				GPS gps;
 				if(dbDriver_->getNodeInfo(iter->first, p, mapId, w, l, stamp, g, v, gps))
 				{
 					stamps.insert(std::make_pair(iter->first, stamp));
@@ -1836,6 +1991,48 @@ void DatabaseViewer::exportPoses(int format)
 						tr("Export poses..."),
 						tr("Failed to save %1 to \"%2\"!")
 						.arg(format == 3?"TORO graph":format == 4?"g2o graph":"poses")
+						.arg(path));
+			}
+		}
+	}
+}
+
+void DatabaseViewer::exportGPS_TXT()
+{
+	exportGPS(0);
+}
+void DatabaseViewer::exportGPS_KML()
+{
+	exportGPS(1);
+}
+
+void DatabaseViewer::exportGPS(int format)
+{
+	if(!gpsValues_.empty())
+	{
+		QString output = pathDatabase_ + QDir::separator() + (format==0?"gps.txt":"gps.kml");
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				output,
+				format==0?tr("Raw format (*.txt)"):tr("Google Earth file (*.kml)"));
+
+		if(!path.isEmpty())
+		{
+			bool saved = graph::exportGPS(path.toStdString(), gpsValues_, ui_->graphViewer->getGPSColor().rgba());
+
+			if(saved)
+			{
+				QMessageBox::information(this,
+						tr("Export poses..."),
+						tr("GPS coordinates saved to \"%1\".")
+						.arg(path));
+			}
+			else
+			{
+				QMessageBox::information(this,
+						tr("Export poses..."),
+						tr("Failed to save GPS coordinates to \"%1\"!")
 						.arg(path));
 			}
 		}
@@ -1989,7 +2186,7 @@ void DatabaseViewer::regenerateLocalMaps()
 		double stamp;
 		QString msg;
 		std::vector<float> velocity;
-		std::vector<double> gps;
+		GPS gps;
 		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
 		{
 			Signature s = data;
@@ -2067,7 +2264,7 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 		double stamp;
 		QString msg;
 		std::vector<float> velocity;
-		std::vector<double> gps;
+		GPS gps;
 		if(dbDriver_->getNodeInfo(data.id(), odomPose, mapId, weight, label, stamp, groundTruth, velocity, gps))
 		{
 			Signature s = data;
@@ -2469,7 +2666,7 @@ void DatabaseViewer::update(int value,
 				std::string l;
 				double s;
 				std::vector<float> v;
-				std::vector<double> gps;
+				GPS gps;
 				dbDriver_->getNodeInfo(id, odomPose, mapId, w, l, s, g, v, gps);
 
 				weight->setNum(w);
@@ -2482,10 +2679,10 @@ void DatabaseViewer::update(int value,
 					stamp->setText(QString::number(s, 'f'));
 					stamp->setToolTip(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
-				if(gps.size())
+				if(gps.stamp()>0.0)
 				{
-					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps[0], 'f')).arg(gps[1]).arg(gps[2]).arg(gps[3]).arg(gps[4]).arg(gps[5]));
-					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps[0]*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+					labelGps->setText(QString("stamp=%1 longitude=%2 latitude=%3 altitude=%4m error=%5m bearing=%6deg").arg(QString::number(gps.stamp(), 'f')).arg(gps.longitude()).arg(gps.latitude()).arg(gps.altitude()).arg(gps.error()).arg(gps.bearing()));
+					labelGps->setToolTip(QDateTime::fromMSecsSinceEpoch(gps.stamp()*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
 				}
 				if(data.cameraModels().size() || data.stereoCameraModel().isValidForProjection())
 				{
@@ -3511,7 +3708,7 @@ void DatabaseViewer::updateConstraintView(
 			double s;
 			Transform p,g;
 			std::vector<float> v;
-			std::vector<double> gps;
+			GPS gps;
 			dbDriver_->getNodeInfo(link.from(), p, m, w, l, s, g, v, gps);
 			if(!p.isNull())
 			{
@@ -3914,16 +4111,22 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 	{
 		std::map<int, rtabmap::Transform> graph = uValueAt(graphes_, value);
 
+		std::map<int, Transform> refPoses = groundTruthPoses_;
+		if(refPoses.empty())
+		{
+			refPoses = gpsPoses_;
+		}
+
 		// Log ground truth statistics (in TUM's RGBD-SLAM format)
-		if(groundTruthPoses_.size())
+		if(refPoses.size())
 		{
 			// compute KITTI statistics before aligning the poses
 			float length = graph::computePathLength(graph);
-			if(groundTruthPoses_.size() == graph.size() && length >= 100.0f)
+			if(refPoses.size() == graph.size() && length >= 100.0f)
 			{
 				float t_err = 0.0f;
 				float r_err = 0.0f;
-				graph::calcKittiSequenceErrors(uValues(groundTruthPoses_), uValues(graph), t_err, r_err);
+				graph::calcKittiSequenceErrors(uValues(refPoses), uValues(graph), t_err, r_err);
 				UINFO("KITTI t_err = %f %%", t_err);
 				UINFO("KITTI r_err = %f deg/m", r_err);
 				ui_->toolBox_statistics->updateStat("GT/kitti_t_err/%", t_err, false);
@@ -3938,7 +4141,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				cloud2.resize(graph.size());
 				int oi = 0;
 				int idFirst = 0;
-				for(std::map<int, Transform>::const_iterator iter=groundTruthPoses_.begin(); iter!=groundTruthPoses_.end(); ++iter)
+				for(std::map<int, Transform>::const_iterator iter=refPoses.begin(); iter!=refPoses.end(); ++iter)
 				{
 					std::map<int, Transform>::iterator iter2 = graph.find(iter->first);
 					if(iter2!=graph.end())
@@ -3962,7 +4165,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 				else if(idFirst)
 				{
-					t = groundTruthPoses_.at(idFirst) * graph.at(idFirst).inverse();
+					t = refPoses.at(idFirst) * graph.at(idFirst).inverse();
 				}
 				if(!t.isIdentity())
 				{
@@ -3987,8 +4190,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			int oi=0;
 			for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
 			{
-				std::map<int, Transform>::const_iterator jter = groundTruthPoses_.find(iter->first);
-				if(jter!=groundTruthPoses_.end())
+				std::map<int, Transform>::const_iterator jter = refPoses.find(iter->first);
+				if(jter!=refPoses.end())
 				{
 					Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
 					Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
@@ -4142,6 +4345,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 		}
 
 		ui_->graphViewer->updateGTGraph(groundTruthPoses_);
+		ui_->graphViewer->updateGPSGraph(gpsPoses_, gpsValues_);
 		ui_->graphViewer->updateGraph(graph, graphLinks_, mapIds_);
 		ui_->graphViewer->clearMap();
 		occupancyGridViewer_->clear();
@@ -4428,6 +4632,7 @@ void DatabaseViewer::updateGraphView()
 		int totalLocalTime = 0;
 		int totalLocalSpace = 0;
 		int totalUser = 0;
+		int totalPriors = 0;
 		for(std::multimap<int, rtabmap::Link>::iterator iter=links.begin(); iter!=links.end();)
 		{
 			if(iter->second.type() == Link::kNeighbor)
@@ -4474,15 +4679,20 @@ void DatabaseViewer::updateGraphView()
 				}
 				++totalUser;
 			}
+			else if(iter->second.type() == Link::kPosePrior)
+			{
+				++totalPriors;
+			}
 			++iter;
 		}
-		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6)")
+		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7)")
 				.arg(totalNeighbor)
 				.arg(totalNeighborMerged)
 				.arg(totalGlobal)
 				.arg(totalLocalSpace)
 				.arg(totalLocalTime)
-				.arg(totalUser));
+				.arg(totalUser)
+				.arg(totalPriors));
 
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 

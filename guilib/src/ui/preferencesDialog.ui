@@ -63,25 +63,16 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-629</y>
-            <width>678</width>
-            <height>2739</height>
+            <y>0</y>
+            <width>673</width>
+            <height>2749</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -95,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>18</number>
+                <number>14</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -4570,16 +4561,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -8489,21 +8471,21 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="0" rowspan="2">
+                    <item row="4" column="0" rowspan="2">
                      <widget class="QCheckBox" name="graphOptimization_fromGraphEnd">
                       <property name="text">
                        <string/>
                       </property>
                      </widget>
                     </item>
-                    <item row="3" column="1">
+                    <item row="4" column="1">
                      <widget class="Line" name="line">
                       <property name="orientation">
                        <enum>Qt::Horizontal</enum>
                       </property>
                      </widget>
                     </item>
-                    <item row="4" column="1">
+                    <item row="5" column="1">
                      <widget class="QLabel" name="label_151">
                       <property name="text">
                        <string>Optimize graph from the newest node.</string>
@@ -8516,7 +8498,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="5" column="1">
+                    <item row="6" column="1">
                      <widget class="QLabel" name="label_211">
                       <property name="text">
                        <string>-If true, there is no odometry correction computed. All previous poses in the map are corrected instead, not the last one (which corresponds to latest odometry value). So, the transform between frames /map to /odom will be always Identity even on loop closures.</string>
@@ -8529,7 +8511,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                      </widget>
                     </item>
-                    <item row="6" column="1">
+                    <item row="7" column="1">
                      <widget class="QLabel" name="label_183">
                       <property name="text">
                        <string>-If false, the graph is optimized from the oldest node of the current graph. It can be useful to preserve the map referential from the oldest node. An odometry correction between frames /map to /odom is computed. Warning: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).</string>
@@ -8539,6 +8521,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <property name="textInteractionFlags">
                        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="QLabel" name="label_431">
+                      <property name="text">
+                       <string>Ignore pose priors.</string>
+                      </property>
+                      <property name="wordWrap">
+                       <bool>true</bool>
+                      </property>
+                      <property name="textInteractionFlags">
+                       <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QCheckBox" name="graphOptimization_priorsIgnored">
+                      <property name="text">
+                       <string/>
                       </property>
                      </widget>
                     </item>
@@ -12653,16 +12655,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12802,16 +12795,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                       </widget>
                       <widget class="QWidget" name="page_55">
                        <layout class="QVBoxLayout" name="verticalLayout_86">
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -12969,16 +12953,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13058,16 +13033,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13179,16 +13145,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>

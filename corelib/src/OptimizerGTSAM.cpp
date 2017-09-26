@@ -99,18 +99,34 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 	{
 		gtsam::NonlinearFactorGraph graph;
 
-		//prior first pose
-		UASSERT(uContains(poses, rootId));
-		const Transform & initialPose = poses.at(rootId);
-		if(isSlam2d())
+		// detect if there is a global pose prior set, if so remove rootId
+		if(!priorsIgnored())
 		{
-			gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01, 0.01, 0.01));
-			graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
+			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+			{
+				if(iter->second.from() == iter->second.to())
+				{
+					rootId = 0;
+					break;
+				}
+			}
 		}
-		else
+
+		//prior first pose
+		if(rootId != 0)
 		{
-			gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished());
-			graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
+			UASSERT(uContains(poses, rootId));
+			const Transform & initialPose = poses.at(rootId);
+			if(isSlam2d())
+			{
+				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3(0.01, 0.01, 0.01));
+				graph.add(gtsam::PriorFactor<gtsam::Pose2>(rootId, gtsam::Pose2(initialPose.x(), initialPose.y(), initialPose.theta()), priorNoise));
+			}
+			else
+			{
+				gtsam::noiseModel::Diagonal::shared_ptr priorNoise = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << 1e-6, 1e-6, 1e-6, 1e-4, 1e-4, 1e-4).finished());
+				graph.add(gtsam::PriorFactor<gtsam::Pose3>(rootId, gtsam::Pose3(initialPose.toEigen4d()), priorNoise));
+			}
 		}
 
 		UDEBUG("fill poses to gtsam...");
@@ -134,93 +150,130 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		{
 			int id1 = iter->second.from();
 			int id2 = iter->second.to();
+			UASSERT(!iter->second.transform().isNull());
 			if(id1 == id2)
 			{
-				// not supporting pose prior
-				continue;
-			}
-
-			UASSERT(!iter->second.transform().isNull());
-
-#ifdef RTABMAP_VERTIGO
-			if(this->isRobust() &&
-			   iter->second.type()!=Link::kNeighbor &&
-			   iter->second.type() != Link::kNeighborMerged)
-			{
-				// create new switch variable
-				// Sunderhauf IROS 2012:
-				// "Since it is reasonable to initially accept all loop closure constraints,
-				//  a proper and convenient initial value for all switch variables would be
-				//  sij = 1 when using the linear switch function"
-				double prior = 1.0;
-				initialEstimate.insert(gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior));
-
-				// create switch prior factor
-				// "If the front-end is not able to assign sound individual values
-				//  for Ξij , it is save to set all Ξij = 1, since this value is close
-				//  to the individual optimal choice of Ξij for a large range of
-				//  outliers."
-				gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
-				graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior), switchPriorModel));
-			}
-#endif
-
-			if(isSlam2d())
-			{
-				Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
-				if(!isCovarianceIgnored())
+				if(!priorsIgnored())
 				{
-					// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
-					information(0,0) = iter->second.infMatrix().at<double>(0,0)/1000.0; // x-x
-					information(0,1) = iter->second.infMatrix().at<double>(0,1)/1000.0; // x-y
-					information(0,2) = iter->second.infMatrix().at<double>(0,5)/1000.0; // x-theta
-					information(1,0) = iter->second.infMatrix().at<double>(1,0)/1000.0; // y-x
-					information(1,1) = iter->second.infMatrix().at<double>(1,1)/1000.0; // y-y
-					information(1,2) = iter->second.infMatrix().at<double>(1,5)/1000.0; // y-theta
-					information(2,0) = iter->second.infMatrix().at<double>(5,0)/1000.0; // theta-x
-					information(2,1) = iter->second.infMatrix().at<double>(5,1)/1000.0; // theta-y
-					information(2,2) = iter->second.infMatrix().at<double>(5,5)/1000.0; // theta-theta
-				}
-				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+					if(isSlam2d())
+					{
+						Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+						if(!isCovarianceIgnored())
+						{
+							// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+							information(0,0) = iter->second.infMatrix().at<double>(0,0)/1000.0; // x-x
+							information(0,1) = iter->second.infMatrix().at<double>(0,1)/1000.0; // x-y
+							information(0,2) = iter->second.infMatrix().at<double>(0,5)/1000.0; // x-theta
+							information(1,0) = iter->second.infMatrix().at<double>(1,0)/1000.0; // y-x
+							information(1,1) = iter->second.infMatrix().at<double>(1,1)/1000.0; // y-y
+							information(1,2) = iter->second.infMatrix().at<double>(1,5)/1000.0; // y-theta
+							information(2,0) = iter->second.infMatrix().at<double>(5,0)/1000.0; // theta-x
+							information(2,1) = iter->second.infMatrix().at<double>(5,1)/1000.0; // theta-y
+							information(2,2) = iter->second.infMatrix().at<double>(5,5)/1000.0; // theta-theta
+						}
 
-#ifdef RTABMAP_VERTIGO
-				if(this->isRobust() &&
-				   iter->second.type()!=Link::kNeighbor &&
-				   iter->second.type() != Link::kNeighborMerged)
-				{
-					// create switchable edge factor
-					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
-				}
-				else
-#endif
-				{
-					graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+						gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+						graph.add(gtsam::PriorFactor<gtsam::Pose2>(id1, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+					}
+					else
+					{
+						Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+						if(!isCovarianceIgnored())
+						{
+							memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+							// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+							information = information / 1000.0;
+						}
+
+						gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+						graph.add(gtsam::PriorFactor<gtsam::Pose3>(id1, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+					}
 				}
 			}
 			else
 			{
-				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-				if(!isCovarianceIgnored())
-				{
-					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
-					// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
-					information = information / 1000.0;
-				}
-
-				gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
-
 #ifdef RTABMAP_VERTIGO
 				if(this->isRobust() &&
-				   iter->second.type()!=Link::kNeighbor &&
-				   iter->second.type() != Link::kNeighborMerged)
+				   iter->second.type() != Link::kNeighbor &&
+				   iter->second.type() != Link::kNeighborMerged &&
+				   iter->second.type() != Link::kPosePrior)
 				{
-					// create switchable edge factor
-					graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+					// create new switch variable
+					// Sunderhauf IROS 2012:
+					// "Since it is reasonable to initially accept all loop closure constraints,
+					//  a proper and convenient initial value for all switch variables would be
+					//  sij = 1 when using the linear switch function"
+					double prior = 1.0;
+					initialEstimate.insert(gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior));
+
+					// create switch prior factor
+					// "If the front-end is not able to assign sound individual values
+					//  for Ξij , it is save to set all Ξij = 1, since this value is close
+					//  to the individual optimal choice of Ξij for a large range of
+					//  outliers."
+					gtsam::noiseModel::Diagonal::shared_ptr switchPriorModel = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector1(1.0));
+					graph.add(gtsam::PriorFactor<vertigo::SwitchVariableLinear> (gtsam::Symbol('s',switchCounter), vertigo::SwitchVariableLinear(prior), switchPriorModel));
+				}
+#endif
+
+				if(isSlam2d())
+				{
+					Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+					if(!isCovarianceIgnored())
+					{
+						// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+						information(0,0) = iter->second.infMatrix().at<double>(0,0)/1000.0; // x-x
+						information(0,1) = iter->second.infMatrix().at<double>(0,1)/1000.0; // x-y
+						information(0,2) = iter->second.infMatrix().at<double>(0,5)/1000.0; // x-theta
+						information(1,0) = iter->second.infMatrix().at<double>(1,0)/1000.0; // y-x
+						information(1,1) = iter->second.infMatrix().at<double>(1,1)/1000.0; // y-y
+						information(1,2) = iter->second.infMatrix().at<double>(1,5)/1000.0; // y-theta
+						information(2,0) = iter->second.infMatrix().at<double>(5,0)/1000.0; // theta-x
+						information(2,1) = iter->second.infMatrix().at<double>(5,1)/1000.0; // theta-y
+						information(2,2) = iter->second.infMatrix().at<double>(5,5)/1000.0; // theta-theta
+					}
+					gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+
+#ifdef RTABMAP_VERTIGO
+					if(this->isRobust() &&
+					   iter->second.type()!=Link::kNeighbor &&
+					   iter->second.type() != Link::kNeighborMerged)
+					{
+						// create switchable edge factor
+						graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose2>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+					}
+					else
+#endif
+					{
+						graph.add(gtsam::BetweenFactor<gtsam::Pose2>(id1, id2, gtsam::Pose2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()), model));
+					}
 				}
 				else
-#endif
 				{
-					graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+					Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+					if(!isCovarianceIgnored())
+					{
+						memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+						// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
+						information = information / 1000.0;
+					}
+
+					gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
+
+#ifdef RTABMAP_VERTIGO
+					if(this->isRobust() &&
+					   iter->second.type() != Link::kNeighbor &&
+					   iter->second.type() != Link::kNeighborMerged &&
+					   iter->second.type() != Link::kPosePrior)
+					{
+						// create switchable edge factor
+						graph.add(vertigo::BetweenFactorSwitchableLinear<gtsam::Pose3>(id1, id2, gtsam::Symbol('s', switchCounter++), gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+					}
+					else
+#endif
+					{
+						graph.add(gtsam::BetweenFactor<gtsam::Pose3>(id1, id2, gtsam::Pose3(iter->second.transform().toEigen4d()), model));
+					}
 				}
 			}
 		}

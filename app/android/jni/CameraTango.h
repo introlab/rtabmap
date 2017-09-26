@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define CAMERATANGO_H_
 
 #include <rtabmap/core/Camera.h>
+#include <rtabmap/core/GeodeticCoords.h>
 #include <rtabmap/utilite/UMutex.h>
 #include <rtabmap/utilite/USemaphore.h>
 #include <rtabmap/utilite/UEventsSender.h>
@@ -89,12 +90,7 @@ public:
 	void setSmoothing(bool enabled) {smoothing_ = enabled;}
 	void setRawScanPublished(bool enabled) {rawScanPublished_ = enabled;}
 	void setScreenRotation(TangoSupportRotation colorCameraToDisplayRotation) {colorCameraToDisplayRotation_ = colorCameraToDisplayRotation;}
-	void setGPS(double stamp,
-	  		double longitude,
-	  		double latitude,
-	  		double altitude,
-	  		double accuracy,
-	  		double bearing);
+	void setGPS(const GPS & gps);
 
 	void cloudReceived(const cv::Mat & cloud, double timestamp);
 	void rgbReceived(const cv::Mat & tangoImage, int type, double timestamp);
@@ -132,7 +128,7 @@ private:
 	TangoSupportRotation colorCameraToDisplayRotation_;
 	cv::Mat fisheyeRectifyMapX_;
 	cv::Mat fisheyeRectifyMapY_;
-	std::vector<double> lastKnownGPS_;
+	GPS lastKnownGPS_;
 };
 
 } /* namespace rtabmap */

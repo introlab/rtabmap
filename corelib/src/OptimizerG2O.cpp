@@ -235,17 +235,19 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		}
 
 		// detect if there is a global pose prior set, if so remove rootId
-		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
+		if(!priorsIgnored())
 		{
-			if(iter->second.from() == iter->second.to())
+			for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 			{
-				rootId = 0;
-				break;
+				if(iter->second.from() == iter->second.to())
+				{
+					rootId = 0;
+					break;
+				}
 			}
 		}
 
 		UDEBUG("fill poses to g2o...");
-		std::map<int, std::pair<Transform, cv::Mat> > geoPoses; // pose / information matrix
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			UASSERT(!iter->second.isNull());
@@ -292,47 +294,50 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 			if(id1 == id2)
 			{
-				if(isSlam2d())
+				if(!priorsIgnored())
 				{
-					g2o::EdgeSE2Prior * priorEdge = new g2o::EdgeSE2Prior();
-					g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
-					priorEdge->setVertex(0, v1);
-					priorEdge->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
-					priorEdge->setParameterId(0, PARAM_OFFSET);
-					Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
-					if(!isCovarianceIgnored())
+					if(isSlam2d())
 					{
-						information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
-						information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
-						information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
-						information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
-						information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
-						information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
-						information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
-						information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
-						information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
+						g2o::EdgeSE2Prior * priorEdge = new g2o::EdgeSE2Prior();
+						g2o::VertexSE2* v1 = (g2o::VertexSE2*)optimizer.vertex(id1);
+						priorEdge->setVertex(0, v1);
+						priorEdge->setMeasurement(g2o::SE2(iter->second.transform().x(), iter->second.transform().y(), iter->second.transform().theta()));
+						priorEdge->setParameterId(0, PARAM_OFFSET);
+						Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
+						if(!isCovarianceIgnored())
+						{
+							information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+							information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+							information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
+							information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+							information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+							information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
+							information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
+							information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
+							information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
+						}
+						priorEdge->setInformation(information);
+						edge = priorEdge;
 					}
-					priorEdge->setInformation(information);
-					edge = priorEdge;
-				}
-				else
-				{
-					g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
-					g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
-					priorEdge->setVertex(0, v1);
-					Eigen::Affine3d a = iter->second.transform().toEigen3d();
-					Eigen::Isometry3d pose;
-					pose = a.rotation();
-					pose.translation() = a.translation();
-					priorEdge->setMeasurement(pose);
-					priorEdge->setParameterId(0, PARAM_OFFSET);
-					Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-					if(!isCovarianceIgnored())
+					else
 					{
-						memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+						g2o::EdgeSE3Prior * priorEdge = new g2o::EdgeSE3Prior();
+						g2o::VertexSE3* v1 = (g2o::VertexSE3*)optimizer.vertex(id1);
+						priorEdge->setVertex(0, v1);
+						Eigen::Affine3d a = iter->second.transform().toEigen3d();
+						Eigen::Isometry3d pose;
+						pose = a.rotation();
+						pose.translation() = a.translation();
+						priorEdge->setMeasurement(pose);
+						priorEdge->setParameterId(0, PARAM_OFFSET);
+						Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+						if(!isCovarianceIgnored())
+						{
+							memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+						}
+						priorEdge->setInformation(information);
+						edge = priorEdge;
 					}
-					priorEdge->setInformation(information);
-					edge = priorEdge;
 				}
 			}
 			else
@@ -462,7 +467,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				}
 			}
 
-			if (!optimizer.addEdge(edge))
+			if (edge && !optimizer.addEdge(edge))
 			{
 				delete edge;
 				UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
@@ -767,34 +772,37 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				int id1 = iter->second.from();
 				int id2 = iter->second.to();
 
-				UASSERT(!iter->second.transform().isNull());
-
-				Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-				memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
-
-				// between cameras, not base_link
-				Transform camLink = models.at(id1).localTransform().inverse()*iter->second.transform()*models.at(id2).localTransform();
-				UDEBUG("added edge %d->%d (in cam frame=%s)",
-						id1,
-						id2,
-						camLink.prettyPrint().c_str());
-				Eigen::Affine3d a = camLink.toEigen3d();
-
-				g2o::EdgeSBACam * e = new g2o::EdgeSBACam();
-				g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1);
-				g2o::VertexCam* v2 = (g2o::VertexCam*)optimizer.vertex(id2);
-				UASSERT(v1 != 0);
-				UASSERT(v2 != 0);
-				e->setVertex(0, v1);
-				e->setVertex(1, v2);
-				e->setMeasurement(g2o::SE3Quat(a.rotation(), a.translation()));
-				e->setInformation(information);
-
-				if (!optimizer.addEdge(e))
+				if(id1 != id2) // not supporting prior
 				{
-					delete e;
-					UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
-					return optimizedPoses;
+					UASSERT(!iter->second.transform().isNull());
+
+					Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
+					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+
+					// between cameras, not base_link
+					Transform camLink = models.at(id1).localTransform().inverse()*iter->second.transform()*models.at(id2).localTransform();
+					UDEBUG("added edge %d->%d (in cam frame=%s)",
+							id1,
+							id2,
+							camLink.prettyPrint().c_str());
+					Eigen::Affine3d a = camLink.toEigen3d();
+
+					g2o::EdgeSBACam * e = new g2o::EdgeSBACam();
+					g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1);
+					g2o::VertexCam* v2 = (g2o::VertexCam*)optimizer.vertex(id2);
+					UASSERT(v1 != 0);
+					UASSERT(v2 != 0);
+					e->setVertex(0, v1);
+					e->setVertex(1, v2);
+					e->setMeasurement(g2o::SE3Quat(a.rotation(), a.translation()));
+					e->setInformation(information);
+
+					if (!optimizer.addEdge(e))
+					{
+						delete e;
+						UERROR("Map: Failed adding constraint between %d and %d, skipping", id1, id2);
+						return optimizedPoses;
+					}
 				}
 			}
 		}

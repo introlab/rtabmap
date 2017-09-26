@@ -318,7 +318,7 @@ int main(int argc, char * argv[])
 				std::string l;
 				double s;
 				std::vector<float> v;
-				std::vector<double> gps;
+				GPS gps;
 				rtabmap.getMemory()->getNodeInfo(iter->first, o, m, w, l, s, gtPose, v, gps, true);
 				if(!gtPose.isNull())
 				{

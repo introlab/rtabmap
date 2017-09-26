@@ -116,8 +116,7 @@ CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, 
 		cloudStamp_(0),
 		tangoColorType_(0),
 		tangoColorStamp_(0),
-		colorCameraToDisplayRotation_(ROTATION_0),
-		lastKnownGPS_(std::vector<double>(6,0))
+		colorCameraToDisplayRotation_(ROTATION_0)
 {
 	UASSERT(decimation >= 1);
 }
@@ -190,7 +189,7 @@ bool CameraTango::init(const std::string & calibrationFolder, const std::string 
 {
 	close();
 
-	lastKnownGPS_ = std::vector<double>(6,0);
+	lastKnownGPS_ = GPS();
 
 	TangoSupport_initialize(TangoService_getPoseAtTime, TangoService_getCameraIntrinsics);
 
@@ -516,19 +515,9 @@ std::string CameraTango::getSerial() const
 	return "Tango";
 }
 
-void CameraTango::setGPS(double stamp,
-	  		double longitude,
-	  		double latitude,
-	  		double altitude,
-	  		double accuracy,
-	  		double bearing)
+void CameraTango::setGPS(const GPS & gps)
 {
-	lastKnownGPS_[0] = stamp;
-	lastKnownGPS_[1] = longitude;
-	lastKnownGPS_[2] = latitude;
-	lastKnownGPS_[3] = altitude;
-	lastKnownGPS_[4] = accuracy;
-	lastKnownGPS_[5] = bearing;
+	lastKnownGPS_ = gps;
 }
 
 rtabmap::Transform CameraTango::tangoPoseToTransform(const TangoPoseData * tangoPose) const
@@ -856,13 +845,13 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			}
 			data.setGroundTruth(odom);
 
-			if(lastKnownGPS_[0] > 0.0 && rgbStamp-lastKnownGPS_[0]<2.0)
+			if(lastKnownGPS_.stamp() > 0.0 && rgbStamp-lastKnownGPS_.stamp()<2.0)
 			{
-				data.setGPS(lastKnownGPS_[0], lastKnownGPS_[1], lastKnownGPS_[2], lastKnownGPS_[3], lastKnownGPS_[4], lastKnownGPS_[5]);
+				data.setGPS(lastKnownGPS_);
 			}
-			else if(lastKnownGPS_[0]>0.0)
+			else if(lastKnownGPS_.stamp()>0.0)
 			{
-				LOGD("GPS too old (current time=%f, gps time = %f)", rgbStamp, lastKnownGPS_[0]);
+				LOGD("GPS too old (current time=%f, gps time = %f)", rgbStamp, lastKnownGPS_.stamp());
 			}
 		}
 		else

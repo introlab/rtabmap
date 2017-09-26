@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include <list>
 #include <rtabmap/core/Link.h>
+#include <rtabmap/core/GeodeticCoords.h>
 
 namespace rtabmap {
 class Memory;
@@ -57,6 +58,11 @@ bool RTABMAP_EXP importPoses(
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints = 0, // optional for formats 3 and 4
 		std::map<int, double> * stamps = 0); // optional for format 1
+
+bool RTABMAP_EXP exportGPS(
+		const std::string & filePath,
+		const std::map<int, GPS> & gpsValues,
+		unsigned int rgba = 0xFFFFFFFF);
 
 /**
  * Compute translation and rotation errors for KITTI datasets.

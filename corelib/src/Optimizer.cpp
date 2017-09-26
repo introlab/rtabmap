@@ -181,7 +181,10 @@ void Optimizer::getConnectedGraph(
 				uFormat("Input links should be unique between two poses (%d->%d).",
 						iter->second.from(), iter->second.to()).c_str());
 		biLinks.insert(std::make_pair(iter->second.from(), iter->second.to()));
-		biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+		if(iter->second.from() != iter->second.to())
+		{
+			biLinks.insert(std::make_pair(iter->second.to(), iter->second.from()));
+		}
 	}
 
 	while((depth == 0 || d < depth) && nextDepth.size())
@@ -199,18 +202,26 @@ void Optimizer::getConnectedGraph(
 				for(std::multimap<int, int>::const_iterator iter=biLinks.find(*jter); iter!=biLinks.end() && iter->first==*jter; ++iter)
 				{
 					int nextId = iter->second;
-					if(ids.find(nextId) == ids.end() && uContains(posesIn, nextId))
+					if(uContains(posesIn, nextId))
 					{
-						nextDepth.insert(nextId);
+						if(ids.find(nextId) == ids.end())
+						{
+							nextDepth.insert(nextId);
 
-						std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
-						if(depth == 0 || d < depth-1)
-						{
-							linksOut.insert(*kter);
+							std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
+							if(depth == 0 || d < depth-1)
+							{
+								linksOut.insert(*kter);
+							}
+							else if(curentDepth.find(nextId) != curentDepth.end() ||
+									ids.find(nextId) != ids.end())
+							{
+								linksOut.insert(*kter);
+							}
 						}
-						else if(curentDepth.find(nextId) != curentDepth.end() ||
-								ids.find(nextId) != ids.end())
+						else if(*jter == nextId)
 						{
+							std::multimap<int, Link>::const_iterator kter = graph::findLink(linksIn, *jter, nextId);
 							linksOut.insert(*kter);
 						}
 					}
@@ -221,12 +232,13 @@ void Optimizer::getConnectedGraph(
 	}
 }
 
-Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust) :
+Optimizer::Optimizer(int iterations, bool slam2d, bool covarianceIgnored, double epsilon, bool robust, bool priorsIgnored) :
 		iterations_(iterations),
 		slam2d_(slam2d),
 		covarianceIgnored_(covarianceIgnored),
 		epsilon_(epsilon),
-		robust_(robust)
+		robust_(robust),
+		priorsIgnored_(priorsIgnored)
 {
 }
 
@@ -235,7 +247,8 @@ Optimizer::Optimizer(const ParametersMap & parameters) :
 		slam2d_(Parameters::defaultRegForce3DoF()),
 		covarianceIgnored_(Parameters::defaultOptimizerVarianceIgnored()),
 		epsilon_(Parameters::defaultOptimizerEpsilon()),
-		robust_(Parameters::defaultOptimizerRobust())
+		robust_(Parameters::defaultOptimizerRobust()),
+		priorsIgnored_(Parameters::defaultOptimizerPriorsIgnored())
 {
 	parseParameters(parameters);
 }
@@ -247,6 +260,7 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRegForce3DoF(), slam2d_);
 	Parameters::parse(parameters, Parameters::kOptimizerEpsilon(), epsilon_);
 	Parameters::parse(parameters, Parameters::kOptimizerRobust(), robust_);
+	Parameters::parse(parameters, Parameters::kOptimizerPriorsIgnored(), priorsIgnored_);
 }
 
 std::map<int, Transform> Optimizer::optimize(

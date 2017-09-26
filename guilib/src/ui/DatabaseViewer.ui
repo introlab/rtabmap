@@ -51,8 +51,8 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-24</y>
-           <width>393</width>
+           <y>0</y>
+           <width>408</width>
            <height>232</height>
           </rect>
          </property>
@@ -226,8 +226,8 @@
          <property name="geometry">
           <rect>
            <x>0</x>
-           <y>-24</y>
-           <width>393</width>
+           <y>0</y>
+           <width>408</width>
            <height>232</height>
           </rect>
          </property>
@@ -534,6 +534,14 @@
      <addaction name="actionKITTI_format_txt"/>
      <addaction name="actionTORO_graph"/>
      <addaction name="actionG2o_g2o"/>
+     <addaction name="actionPoses_KML"/>
+    </widget>
+    <widget class="QMenu" name="menuExport_GPS">
+     <property name="title">
+      <string>Export GPS...</string>
+     </property>
+     <addaction name="actionGPS_TXT"/>
+     <addaction name="actionGPS_KML"/>
     </widget>
     <addaction name="actionOpen_database"/>
     <addaction name="separator"/>
@@ -543,6 +551,7 @@
     <addaction name="actionExport"/>
     <addaction name="actionExtract_images"/>
     <addaction name="menuExport_poses"/>
+    <addaction name="menuExport_GPS"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -898,7 +907,7 @@
        <item row="6" column="1">
         <widget class="QLabel" name="label_41">
          <property name="text">
-          <string>Links (N, NM, G, LS, LT, U)</string>
+          <string>Links (N, NM, G, LS, LT, U, P)</string>
          </property>
         </widget>
        </item>
@@ -1187,8 +1196,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>280</width>
-          <height>666</height>
+          <width>309</width>
+          <height>650</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1550,8 +1559,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
-          <height>126</height>
+          <width>324</width>
+          <height>168</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1650,8 +1659,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>186</width>
-          <height>496</height>
+          <width>309</width>
+          <height>256</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2261,6 +2270,21 @@
   <action name="actionG2o_g2o">
    <property name="text">
     <string>g2o (*.g2o)</string>
+   </property>
+  </action>
+  <action name="actionGPS_KML">
+   <property name="text">
+    <string>Google Earth (*.kml)</string>
+   </property>
+  </action>
+  <action name="actionGPS_TXT">
+   <property name="text">
+    <string>Raw format (*.txt)</string>
+   </property>
+  </action>
+  <action name="actionPoses_KML">
+   <property name="text">
+    <string>Google Earth (*.kml)</string>
    </property>
   </action>
  </widget>

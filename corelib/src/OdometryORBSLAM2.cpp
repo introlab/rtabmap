@@ -749,7 +749,6 @@ OdometryORBSLAM2::OdometryORBSLAM2(const ParametersMap & parameters) :
 #ifdef RTABMAP_ORB_SLAM2
     ,
 	orbslam2_(0),
-	system_(0),
 	firstFrame_(true)
 #endif
 {

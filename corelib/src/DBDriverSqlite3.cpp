@@ -1756,7 +1756,7 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 		double & stamp,
 		Transform & groundTruthPose,
 		std::vector<float> & velocity,
-		std::vector<double> & gps) const
+		GPS & gps) const
 {
 	bool found = false;
 	if(_ppDb && signatureId)
@@ -1854,12 +1854,13 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 
 					if(uStrNumCmp(_version, "0.14.0") >= 0)
 					{
-						gps.resize(6,0);
+						std::vector<double> gpsV(6,0);
 						data = sqlite3_column_blob(ppStmt, index); // velocity
 						dataSize = sqlite3_column_bytes(ppStmt, index++);
-						if((unsigned int)dataSize == gps.size()*sizeof(double) && data)
+						if((unsigned int)dataSize == gpsV.size()*sizeof(double) && data)
 						{
-							memcpy(gps.data(), data, dataSize);
+							memcpy(gpsV.data(), data, dataSize);
+							gps = GPS(gpsV[0], gpsV[1], gpsV[2], gpsV[3], gpsV[4], gpsV[5]);
 						}
 					}
 				}
@@ -2395,7 +2396,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				}
 				if(gps.size() == 6)
 				{
-					s->sensorData().setGPS(gps[0], gps[1], gps[2], gps[3], gps[4], gps[5]);
+					s->sensorData().setGPS(GPS(gps[0], gps[1], gps[2], gps[3], gps[4], gps[5]));
 				}
 				s->setSaved(true);
 				nodes.push_back(s);
@@ -4320,6 +4321,7 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 		}
 	}
 
+	std::vector<double> gps;
 	if(uStrNumCmp(_version, "0.10.1") >= 0)
 	{
 		// ignore user_data
@@ -4345,14 +4347,21 @@ void DBDriverSqlite3::stepNode(sqlite3_stmt * ppStmt, const Signature * s) const
 
 			if(uStrNumCmp(_version, "0.14.0") >= 0)
 			{
-				if(s->sensorData().gps().empty())
+				if(s->sensorData().gps().stamp() <= 0.0)
 				{
 					rc = sqlite3_bind_null(ppStmt, index++);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 				}
 				else
 				{
-					rc = sqlite3_bind_blob(ppStmt, index++, s->sensorData().gps().data(), s->sensorData().gps().size()*sizeof(double), SQLITE_STATIC);
+					gps.resize(6,0.0);
+					gps[0] = s->sensorData().gps().stamp();
+					gps[1] = s->sensorData().gps().longitude();
+					gps[2] = s->sensorData().gps().latitude();
+					gps[3] = s->sensorData().gps().altitude();
+					gps[4] = s->sensorData().gps().error();
+					gps[5] = s->sensorData().gps().bearing();
+					rc = sqlite3_bind_blob(ppStmt, index++, gps.data(), gps.size()*sizeof(double), SQLITE_STATIC);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 				}
 			}

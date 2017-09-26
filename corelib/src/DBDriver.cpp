@@ -713,7 +713,7 @@ bool DBDriver::getNodeInfo(
 		double & stamp,
 		Transform & groundTruthPose,
 		std::vector<float> & velocity,
-		std::vector<double> & gps) const
+		GPS & gps) const
 {
 	bool found = false;
 	// look in the trash

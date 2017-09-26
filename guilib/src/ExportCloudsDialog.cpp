@@ -2089,7 +2089,7 @@ bool ExportCloudsDialog::getExportedClouds(
 										int m,w;
 										std::string l;
 										double s;
-										std::vector<double> gps;
+										GPS gps;
 										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity, gps);
 									}
 								}
@@ -2122,7 +2122,7 @@ bool ExportCloudsDialog::getExportedClouds(
 										int m,w;
 										std::string l;
 										double s;
-										std::vector<double> gps;
+										GPS gps;
 										_dbDriver->getNodeInfo(jter->first, p, m, w, l, s, gt, velocity, gps);
 									}
 								}
