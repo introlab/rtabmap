@@ -58,12 +58,12 @@
    			android:entries="@array/pref_background_color_keys"
    			android:entryValues="@array/pref_background_color_values"
    			android:defaultValue="@string/pref_default_background_color"/>
-        <SwitchPreference
+        <com.introlab.rtabmap.CustomSwitchPreference
             android:key="@string/pref_key_blending"
             android:title="@string/pref_title_blending"
             android:summary="@string/pref_summary_blending"
             android:defaultValue="@string/pref_default_blending"/>
-        <SwitchPreference
+        <com.introlab.rtabmap.CustomSwitchPreference
             android:key="@string/pref_key_nodes_filtering"
             android:title="@string/pref_title_nodes_filtering"
             android:summary="@string/pref_summary_nodes_filtering"
@@ -79,22 +79,22 @@
             android:summary="@string/pref_summary_mapping"
             android:persistent="false">
         
-		    <SwitchPreference
+		    <com.introlab.rtabmap.CustomSwitchPreference
 	            android:key="@string/pref_key_append"
 	            android:title="@string/pref_title_append"
 	            android:summary="@string/pref_summary_append"
 	            android:defaultValue="@string/pref_default_append"/>
-		    <SwitchPreference
+		    <com.introlab.rtabmap.CustomSwitchPreference
 	            android:key="@string/pref_key_resolution"
 	            android:title="@string/pref_title_resolution"
 	            android:summary="@string/pref_summary_resolution"
 	            android:defaultValue="@string/pref_default_resolution"/>
-		    <SwitchPreference
+		    <com.introlab.rtabmap.CustomSwitchPreference
 		        android:key="@string/pref_key_smoothing"
 		        android:title="@string/pref_title_smoothing"
 		        android:summary="@string/pref_summary_smoothing"
 		        android:defaultValue="@string/pref_default_smoothing"/>
-		    <SwitchPreference
+		    <com.introlab.rtabmap.CustomSwitchPreference
 		        android:key="@string/pref_key_fisheye"
 		        android:title="@string/pref_title_fisheye"
 		        android:summary="@string/pref_summary_fisheye"
@@ -179,7 +179,7 @@
 		   			android:entries="@array/pref_optimizer_keys"
 		   			android:entryValues="@array/pref_optimizer_values"
 		   			android:defaultValue="@string/pref_default_optimizer"/>
-		        <SwitchPreference 
+		        <com.introlab.rtabmap.CustomSwitchPreference 
 		            android:key="@string/pref_key_optimize_end"
 		    		android:title="@string/pref_title_optimize_end"
 		    		android:summary="@string/pref_summary_optimize_end"
@@ -187,22 +187,22 @@
 		    </PreferenceCategory>
 	        <PreferenceCategory
 	        	android:title="@string/pref_title_mapping_database">
-		        <SwitchPreference
+		        <com.introlab.rtabmap.CustomSwitchPreference
 		            android:key="@string/pref_key_keep_all_db"
 		            android:title="@string/pref_title_keep_all_db"
 		            android:summary="@string/pref_summary_keep_all_db"
 		            android:defaultValue="@string/pref_default_keep_all_db"/>
-		        <SwitchPreference
+		        <com.introlab.rtabmap.CustomSwitchPreference
 		            android:key="@string/pref_key_raw_scan_saved"
 		            android:title="@string/pref_title_raw_scan_saved"
 		            android:summary="@string/pref_summary_raw_scan_saved"
 		            android:defaultValue="@string/pref_default_raw_scan_saved"/>
-		        <SwitchPreference
+		        <com.introlab.rtabmap.CustomSwitchPreference
 		            android:key="@string/pref_key_gps_saved"
 		            android:title="@string/pref_title_gps_saved"
 		            android:summary="@string/pref_summary_gps_saved"
 		            android:defaultValue="@string/pref_default_gps_saved"/>
-		        <SwitchPreference
+		        <com.introlab.rtabmap.CustomSwitchPreference
 		            android:key="@string/pref_key_db_in_memory"
 		            android:title="@string/pref_title_db_in_memory"
 		            android:summary="@string/pref_summary_db_in_memory"
@@ -264,7 +264,7 @@
 	   			android:entryValues="@array/pref_min_texture_cluster_size_values"
 	   			android:defaultValue="@string/pref_default_min_texture_cluster_size"/>
 	        
-		    <SwitchPreference
+		    <com.introlab.rtabmap.CustomSwitchPreference
 	            android:key="@string/pref_key_block_render"
 	            android:title="@string/pref_title_block_render"
 	            android:summary="@string/pref_summary_block_render"
@@ -291,7 +291,7 @@
 		   			android:entryValues="@array/pref_opt_color_radius_values"
 		   			android:defaultValue="@string/pref_default_opt_color_radius"/>
 		        
-		        <SwitchPreference
+		        <com.introlab.rtabmap.CustomSwitchPreference
 		            android:key="@string/pref_key_opt_clean_white"
 		            android:title="@string/pref_title_opt_clean_white"
 		            android:summary="@string/pref_summary_opt_clean_white"
@@ -321,7 +321,7 @@
    			android:entries="@array/pref_cluster_ratio_keys"
    			android:entryValues="@array/pref_cluster_ratio_values"
    			android:defaultValue="@string/pref_default_cluster_ratio"/>
-        <SwitchPreference 
+        <com.introlab.rtabmap.CustomSwitchPreference 
             android:key="@string/pref_key_notification_sound"
     		android:title="@string/pref_title_notification_sound"
     		android:summary="@string/pref_summary_notification_sound"
