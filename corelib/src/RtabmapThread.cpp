@@ -337,6 +337,17 @@ bool RtabmapThread::handleEvent(UEvent* event)
 					{
 						OdometryInfo infoCov;
 						infoCov.reg.covariance = e->info().odomCovariance;
+						if(e->info().odomVelocity.size() == 6)
+						{
+							infoCov.transform = Transform(
+									e->info().odomVelocity[0],
+									e->info().odomVelocity[1],
+									e->info().odomVelocity[2],
+									e->info().odomVelocity[3],
+									e->info().odomVelocity[4],
+									e->info().odomVelocity[5]);
+							infoCov.interval = 1.0;
+						}
 						this->addData(OdometryEvent(e->data(), e->info().odomPose, infoCov));
 					}
 					else

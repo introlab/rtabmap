@@ -66,6 +66,7 @@ public:
 	float timeTotal;
 	Transform odomPose;
 	cv::Mat odomCovariance;
+	std::vector<float> odomVelocity;
 };
 
 } // namespace rtabmap

@@ -2568,6 +2568,7 @@ void DatabaseViewer::sliderAValueChanged(int value)
 			ui_->label_idA,
 			ui_->label_mapA,
 			ui_->label_poseA,
+			ui_->label_velA,
 			ui_->label_calibA,
 			ui_->label_gpsA,
 			true);
@@ -2586,6 +2587,7 @@ void DatabaseViewer::sliderBValueChanged(int value)
 			ui_->label_idB,
 			ui_->label_mapB,
 			ui_->label_poseB,
+			ui_->label_velB,
 			ui_->label_calibB,
 			ui_->label_gpsB,
 			true);
@@ -2602,6 +2604,7 @@ void DatabaseViewer::update(int value,
 						QLabel * labelId,
 						QLabel * labelMapId,
 						QLabel * labelPose,
+						QLabel * labelVelocity,
 						QLabel * labelCalib,
 						QLabel * labelGps,
 						bool updateConstraintView)
@@ -2614,6 +2617,7 @@ void DatabaseViewer::update(int value,
 	label->clear();
 	labelMapId->clear();
 	labelPose->clear();
+	labelVelocity->clear();
 	stamp->clear();
 	labelCalib->clear();
 	labelGps->clear();
@@ -2678,6 +2682,10 @@ void DatabaseViewer::update(int value,
 				{
 					stamp->setText(QString::number(s, 'f'));
 					stamp->setToolTip(QDateTime::fromMSecsSinceEpoch(s*1000.0).toString("dd.MM.yyyy hh:mm:ss.zzz"));
+				}
+				if(v.size()==6)
+				{
+					labelVelocity->setText(QString("vx=%1 vy=%2 vz=%3 vroll=%4 vpitch=%5 vyaw=%6").arg(v[0]).arg(v[1]).arg(v[2]).arg(v[3]).arg(v[4]).arg(v[5]));
 				}
 				if(gps.stamp()>0.0)
 				{
@@ -3652,6 +3660,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_idA,
 					ui_->label_mapA,
 					ui_->label_poseA,
+					ui_->label_velA,
 					ui_->label_calibA,
 					ui_->label_gpsA,
 					false); // don't update constraints view!
@@ -3666,6 +3675,7 @@ void DatabaseViewer::updateConstraintView(
 					ui_->label_idB,
 					ui_->label_mapB,
 					ui_->label_poseB,
+					ui_->label_velB,
 					ui_->label_calibB,
 					ui_->label_gpsB,
 					false); // don't update constraints view!

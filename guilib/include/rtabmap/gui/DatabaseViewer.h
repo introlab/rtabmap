@@ -144,6 +144,7 @@ private:
 				QLabel * labelId,
 				QLabel * labelMapId,
 				QLabel * labelPose,
+				QLabel * labelVelocity,
 				QLabel * labeCalib,
 				QLabel * labelGps,
 				bool updateConstraintView);

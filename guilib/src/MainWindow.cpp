@@ -1465,6 +1465,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 		bool smallMovement = (bool)uValue(stat.data(), Statistics::kMemorySmall_movement(), 0.0f);
 
+		bool fastMovement = (bool)uValue(stat.data(), Statistics::kMemoryFast_movement(), 0.0f);
+
 		// update cache
 		Signature signature;
 		if(uContains(stat.getSignatures(), stat.refImageId()))
@@ -1475,7 +1477,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			if( uStr2Bool(_preferencesDialog->getParameter(Parameters::kMemIncrementalMemory())) &&
 				signature.getWeight()>=0) // ignore intermediate nodes for the cache
 			{
-				if(smallMovement)
+				if(smallMovement || fastMovement)
 				{
 					_cachedSignatures.insert(-1, signature); // negative means temporary
 				}
@@ -1525,6 +1527,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		{
 			_ui->imageView_source->setBackgroundColor(Qt::gray);
 		}
+		else if(fastMovement)
+		{
+			_ui->imageView_source->setBackgroundColor(Qt::magenta);
+		}
 		// Set color code as tooltip
 		if(_ui->label_refId->toolTip().isEmpty())
 		{
@@ -1535,6 +1541,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				"  Dark Yellow = Proximity Detection in Time\n"
 				"  Dark Cyan = Neighbor Link Refined\n"
 				"  Gray = Small Movement\n"
+				"  Magenta = Fast Movement\n"
 				"Feature Color code:\n"
 				"  Green = New\n"
 				"  Yellow = New but Not Unique\n"

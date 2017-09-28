@@ -225,6 +225,8 @@ private:
 	bool _rgbdSlamMode;
 	float _rgbdLinearUpdate;
 	float _rgbdAngularUpdate;
+	float _rgbdLinearSpeedUpdate;
+	float _rgbdAngularSpeedUpdate;
 	float _newMapOdomChangeDistance;
 	bool _neighborLinkRefining;
 	bool _proximityByTime;

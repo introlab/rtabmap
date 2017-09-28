@@ -456,6 +456,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 				{
 					info->odomPose = pose;
 					info->odomCovariance = infMatrix.inv();
+					info->odomVelocity = velocity;
 					UDEBUG("odom variance = %f/%f", info->odomCovariance.at<double>(0,0), info->odomCovariance.at<double>(5,5));
 				}
 			}

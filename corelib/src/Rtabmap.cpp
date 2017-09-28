@@ -93,6 +93,8 @@ Rtabmap::Rtabmap() :
 	_rgbdSlamMode(Parameters::defaultRGBDEnabled()),
 	_rgbdLinearUpdate(Parameters::defaultRGBDLinearUpdate()),
 	_rgbdAngularUpdate(Parameters::defaultRGBDAngularUpdate()),
+	_rgbdLinearSpeedUpdate(Parameters::defaultRGBDLinearSpeedUpdate()),
+	_rgbdAngularSpeedUpdate(Parameters::defaultRGBDAngularSpeedUpdate()),
 	_newMapOdomChangeDistance(Parameters::defaultRGBDNewMapOdomChangeDistance()),
 	_neighborLinkRefining(Parameters::defaultRGBDNeighborLinkRefining()),
 	_proximityByTime(Parameters::defaultRGBDProximityByTime()),
@@ -409,6 +411,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDEnabled(), _rgbdSlamMode);
 	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rgbdLinearUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rgbdAngularUpdate);
+	Parameters::parse(parameters, Parameters::kRGBDLinearSpeedUpdate(), _rgbdLinearSpeedUpdate);
+	Parameters::parse(parameters, Parameters::kRGBDAngularSpeedUpdate(), _rgbdAngularSpeedUpdate);
 	Parameters::parse(parameters, Parameters::kRGBDNewMapOdomChangeDistance(), _newMapOdomChangeDistance);
 	Parameters::parse(parameters, Parameters::kRGBDNeighborLinkRefining(), _neighborLinkRefining);
 	Parameters::parse(parameters, Parameters::kRGBDProximityByTime(), _proximityByTime);
@@ -436,6 +440,8 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
+	UASSERT(_rgbdLinearSpeedUpdate >= 0.0f);
+	UASSERT(_rgbdAngularSpeedUpdate >= 0.0f);
 
 	// By default, we create our strategies if they are not already created.
 	// If they already exists, we check the parameters if a change is requested
@@ -1008,6 +1014,7 @@ bool Rtabmap::process(
 	// Metric
 	//============================================================
 	bool smallDisplacement = false;
+	bool tooFastMovement = false;
 	std::list<int> signaturesRemoved;
 	if(_rgbdSlamMode)
 	{
@@ -1020,34 +1027,45 @@ bool Rtabmap::process(
 		{
 			_optimizedPoses.erase(rehearsedId);
 		}
-		else if(signature->getWeight() >= 0 && _rgbdLinearUpdate > 0.0f && _rgbdAngularUpdate > 0.0f)
+		else if(signature->getWeight() >= 0)
 		{
-			//============================================================
-			// Minimum displacement required to add to Memory
-			//============================================================
-			const std::map<int, Link> & links = signature->getLinks();
-			if(links.size() && links.begin()->second.type() == Link::kNeighbor)
+			if(_rgbdLinearUpdate > 0.0f && _rgbdAngularUpdate > 0.0f)
 			{
-				// don't do this if there are intermediate nodes
-				const Signature * s = _memory->getSignature(links.begin()->second.to());
-				UASSERT(s!=0);
-				if(s->getWeight() >= 0)
+				//============================================================
+				// Minimum displacement required to add to Memory
+				//============================================================
+				const std::map<int, Link> & links = signature->getLinks();
+				if(links.size() && links.begin()->second.type() == Link::kNeighbor)
 				{
-					float x,y,z, roll,pitch,yaw;
-					links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-					bool isMoving = fabs(x) > _rgbdLinearUpdate ||
-									fabs(y) > _rgbdLinearUpdate ||
-									fabs(z) > _rgbdLinearUpdate ||
-									fabs(roll) > _rgbdAngularUpdate ||
-									fabs(pitch) > _rgbdAngularUpdate ||
-									fabs(yaw) > _rgbdAngularUpdate;
-					if(!isMoving)
+					// don't do this if there are intermediate nodes
+					const Signature * s = _memory->getSignature(links.begin()->second.to());
+					UASSERT(s!=0);
+					if(s->getWeight() >= 0)
 					{
-						// This will disable global loop closure detection, only retrieval will be done.
-						// The location will also be deleted at the end.
-						smallDisplacement = true;
+						float x,y,z, roll,pitch,yaw;
+						links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+						bool isMoving = fabs(x) > _rgbdLinearUpdate ||
+										fabs(y) > _rgbdLinearUpdate ||
+										fabs(z) > _rgbdLinearUpdate ||
+										fabs(roll) > _rgbdAngularUpdate ||
+										fabs(pitch) > _rgbdAngularUpdate ||
+										fabs(yaw) > _rgbdAngularUpdate;
+						if(!isMoving)
+						{
+							// This will disable global loop closure detection, only retrieval will be done.
+							// The location will also be deleted at the end.
+							smallDisplacement = true;
+						}
 					}
 				}
+			}
+			if(odomVelocity.size() == 6)
+			{
+				// This will disable global loop closure detection, only retrieval will be done.
+				// The location will also be deleted at the end.
+				tooFastMovement =
+						(_rgbdLinearSpeedUpdate>0.0f && uMax3(fabs(odomVelocity[0]), fabs(odomVelocity[1]), fabs(odomVelocity[2])) > _rgbdLinearSpeedUpdate) ||
+						(_rgbdAngularSpeedUpdate>0.0f && uMax3(fabs(odomVelocity[3]), fabs(odomVelocity[4]), fabs(odomVelocity[5])) > _rgbdAngularSpeedUpdate);
 			}
 		}
 
@@ -1293,8 +1311,8 @@ bool Rtabmap::process(
 	// Bayes filter update
 	//============================================================
 	int previousId = signature->getLinks().size() && signature->getLinks().begin()->first!=signature->id()?signature->getLinks().begin()->first:0;
-	// Not a bad signature, not an intermediate node, not a small displacement unless the previous signature didn't have a loop closure
-	if(!signature->isBadSignature() && signature->getWeight()>=0 && (!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0))
+	// Not a bad signature, not an intermediate node, not a small displacement unless the previous signature didn't have a loop closure, not too fast movement
+	if(!signature->isBadSignature() && signature->getWeight()>=0 && (!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0) && !tooFastMovement)
 	{
 		// If the working memory is empty, don't do the detection. It happens when it
 		// is the first time the detector is started (there needs some images to
@@ -1436,7 +1454,7 @@ bool Rtabmap::process(
 			}
 		} // if(_memory->getWorkingMemSize())
 	}// !isBadSignature
-	else if(!signature->isBadSignature() && smallDisplacement)
+	else if(!signature->isBadSignature() && (smallDisplacement || tooFastMovement))
 	{
 		_highestHypothesis = lastHighestHypothesis;
 	}
@@ -1878,7 +1896,8 @@ bool Rtabmap::process(
 			// closures if we are already localized by a global closure.
 
 			// don't do it if it is a small displacement unless the previous signature didn't have a loop closure
-			if(!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0)
+			// don't do it if there is a too fast movement
+			if((!smallDisplacement || _memory->getLoopClosureLinks(previousId, false).size() == 0) && !tooFastMovement)
 			{
 
 				//============================================================
@@ -2404,6 +2423,7 @@ bool Rtabmap::process(
 
 			statistics_.addStatistic(Statistics::kMemorySmall_movement(), smallDisplacement?1.0f:0);
 			statistics_.addStatistic(Statistics::kMemoryDistance_travelled(), _distanceTravelled);
+			statistics_.addStatistic(Statistics::kMemoryFast_movement(), tooFastMovement?1.0f:0);
 
 			if(_publishLikelihood || _publishPdf)
 			{
@@ -2471,7 +2491,7 @@ bool Rtabmap::process(
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
 		}
-		else if(smallDisplacement && _loopClosureHypothesis.first == 0 && lastProximitySpaceClosureId == 0)
+		else if((smallDisplacement || tooFastMovement) && _loopClosureHypothesis.first == 0 && lastProximitySpaceClosureId == 0)
 		{
 			// Don't delete the location if a loop closure is detected
 			UINFO("Ignoring location %d because the displacement is too small! (d=%f a=%f)",

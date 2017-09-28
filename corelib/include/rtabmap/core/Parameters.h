@@ -316,8 +316,10 @@ class RTABMAP_EXP Parameters
 
     // RGB-D SLAM
     RTABMAP_PARAM(RGBD, Enabled,                  bool, true,  "");
-    RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  "Minimum linear displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
-    RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  "Minimum angular displacement to update the map. Rehearsal is done prior to this, so weights are still updated.");
+    RTABMAP_PARAM(RGBD, LinearUpdate,             float, 0.1,  "Minimum linear displacement (m) to update the map. Rehearsal is done prior to this, so weights are still updated.");
+    RTABMAP_PARAM(RGBD, AngularUpdate,            float, 0.1,  "Minimum angular displacement (rad) to update the map. Rehearsal is done prior to this, so weights are still updated.");
+    RTABMAP_PARAM(RGBD, LinearSpeedUpdate,        float, 0.0,  "Maximum linear speed (m/s) to update the map (0 means not limit).");
+    RTABMAP_PARAM(RGBD, AngularSpeedUpdate,       float, 0.0,  "Maximum angular speed (rad/s) to update the map (0 means not limit).");
     RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0,    "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
     RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd,     bool, false, "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest node of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
     RTABMAP_PARAM(RGBD, OptimizeMaxError,         float, 1,    uFormat("Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph. Not compatible with \"%s\" if enabled.", kOptimizerRobust().c_str()));
