@@ -43,7 +43,7 @@
     * SIFT patent: http://www.cs.ubc.ca/~lowe/keypoints/
 
 ## Privacy Policy
-[RTAB-Map Tango](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en) app on Google Play Store requires access to camera to record images that will be used for creating the map. When saving, a database containing these images is created. That database is saved locally on the device (on the sd-card under RTAB-Map folder). RTAB-Map requires read/write access to RTAB-Map folder only, to save, export and open maps. RTAB-Map doesn't access any other information outside the RTAB-Map folder. RTAB-Map doesn't share information over Internet unless the user explicitly exports a map to Sketchfab, for which RTAB-Map needs the network. If so, the user will be asked for authorization ([oauth2](https://oauth.net/)) by Sketchfab (see their Privacy Policy [here](https://sketchfab.com/privacy)).
+[RTAB-Map Tango](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en) app on Google Play Store requires access to camera to record images that will be used for creating the map. When saving, a database containing these images is created. That database is saved locally on the device (on the sd-card under RTAB-Map folder). While location permission is required to install RTAB-Map Tango, the GPS coordinates are not saved by default, the option "Settings->Mapping...->Save GPS" should be enabled first. RTAB-Map requires read/write access to RTAB-Map folder only, to save, export and open maps. RTAB-Map doesn't access any other information outside the RTAB-Map folder. RTAB-Map doesn't share information over Internet unless the user explicitly exports a map to Sketchfab, for which RTAB-Map needs the network. If so, the user will be asked for authorization ([oauth2](https://oauth.net/)) by Sketchfab (see their Privacy Policy [here](https://sketchfab.com/privacy)).
 
 This website uses Google Analytics. See their Privacy Policy [here](https://support.google.com/analytics/answer/6004245?hl=en).
 
@@ -57,6 +57,9 @@ This website uses Google Analytics. See their Privacy Policy [here](https://supp
     [![paypal](https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=X8TCXXHHDL62Q)
 
 ## What's new 
+
+### September 2017
+ * New version 0.14 of RTAB-Map Tango with GPS support. See it on [play store](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en).
 
 ### July 2017
 * New version 0.13 of RTAB-Map Tango. See it on [play store](https://play.google.com/store/apps/details?id=com.introlab.rtabmap&hl=en).
