@@ -109,6 +109,13 @@
 		            android:entries="@array/pref_update_rate_keys"
 		   			android:entryValues="@array/pref_update_rate_values"
 		   			android:defaultValue="@string/pref_default_update_rate"/>
+		        <ListPreference
+		            android:key="@string/pref_key_max_speed"
+		            android:title="@string/pref_title_max_speed"
+		            android:summary="@string/pref_summary_max_speed"
+		            android:entries="@array/pref_max_speed_keys"
+		   			android:entryValues="@array/pref_max_speed_values"
+		   			android:defaultValue="@string/pref_default_max_speed"/>
 		        <ListPreference 
 		            android:key="@string/pref_key_time_thr"
 		    		android:title="@string/pref_title_time_thr"

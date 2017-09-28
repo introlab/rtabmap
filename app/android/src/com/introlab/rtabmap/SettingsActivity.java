@@ -195,6 +195,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         ((Preference)findPreference(getString(R.string.pref_key_rendering_texture_decimation))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_rendering_texture_decimation))).getEntry() + ") "+getString(R.string.pref_summary_rendering_texture_decimation));
           
         ((Preference)findPreference(getString(R.string.pref_key_update_rate))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_update_rate))).getEntry() + ") "+getString(R.string.pref_summary_update_rate));
+        ((Preference)findPreference(getString(R.string.pref_key_max_speed))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_max_speed))).getEntry() + ") "+getString(R.string.pref_summary_max_speed));
         ((Preference)findPreference(getString(R.string.pref_key_time_thr))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_time_thr))).getEntry() + ") "+getString(R.string.pref_summary_time_thr));
         ((Preference)findPreference(getString(R.string.pref_key_mem_thr))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_mem_thr))).getEntry() + ") "+getString(R.string.pref_summary_mem_thr));
         ((Preference)findPreference(getString(R.string.pref_key_loop_thr))).setSummary("("+((ListPreference)findPreference(getString(R.string.pref_key_loop_thr))).getEntry() + ") "+getString(R.string.pref_summary_loop_thr));
@@ -253,6 +254,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         	if(key.compareTo(getString(R.string.pref_key_rendering_texture_decimation))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_rendering_texture_decimation));
         	
         	if(key.compareTo(getString(R.string.pref_key_update_rate))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_update_rate));
+        	if(key.compareTo(getString(R.string.pref_key_max_speed))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_max_speed));
         	if(key.compareTo(getString(R.string.pref_key_time_thr))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_time_thr));
         	if(key.compareTo(getString(R.string.pref_key_mem_thr))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_mem_thr));
         	if(key.compareTo(getString(R.string.pref_key_loop_thr))==0) pref.setSummary("("+((ListPreference)pref).getEntry() + ") "+getString(R.string.pref_summary_loop_thr));

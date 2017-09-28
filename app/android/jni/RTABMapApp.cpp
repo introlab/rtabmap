@@ -1245,8 +1245,9 @@ int RTABMapApp::Render()
 
 						// Don't create mesh for the last node added if rehearsal happened or if discarded (small movement)
 						int smallMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemorySmall_movement(), 0.0f);
+						int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
 						int rehearsalMerged = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryRehearsal_merged(), 0.0f);
-						if(smallMovement == 0 && rehearsalMerged == 0)
+						if(smallMovement == 0 && rehearsalMerged == 0 && fastMovement == 0)
 						{
 							for(std::map<int, rtabmap::Signature>::const_iterator jter=stats.getSignatures().begin(); jter!=stats.getSignatures().end(); ++jter)
 							{
@@ -1289,6 +1290,10 @@ int RTABMapApp::Render()
 						else if(!paused_ && rehearsalMerged>0)
 						{
 							main_scene_.setBackgroundColor(0, 0, 0.2f); // blue
+						}
+						else if(!paused_ && fastMovement)
+						{
+							main_scene_.setBackgroundColor(0.2f, 0, 0.2f); // dark magenta
 						}
 						else
 						{
@@ -2020,12 +2025,19 @@ void RTABMapApp::save(const std::string & databasePath)
 		dataRecorderMode_ = false;
 	}
 
-	if(appendModeBackup || dataRecorderModeBackup)
+	bool localizationModeBackup = localizationMode_;
+	if(localizationMode_)
+	{
+		localizationMode_ = false;
+	}
+
+	if(appendModeBackup || dataRecorderModeBackup || localizationModeBackup)
 	{
 		rtabmap::ParametersMap parameters = getRtabmapParameters();
 		rtabmap_->parseParameters(parameters);
 		appendMode_ = appendModeBackup;
 		dataRecorderMode_ = dataRecorderModeBackup;
+		localizationMode_ = localizationModeBackup;
 	}
 
 	std::map<int, rtabmap::Transform> poses = rtabmap_->getLocalOptimizedPoses();
@@ -3180,6 +3192,8 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopOptimization_max_error(), uValue(stats.data(), rtabmap::Statistics::kLoopOptimization_max_error(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryRehearsal_sim(), uValue(stats.data(), rtabmap::Statistics::kMemoryRehearsal_sim(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopHighest_hypothesis_value(), uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f)));
+			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryDistance_travelled(), uValue(stats.data(), rtabmap::Statistics::kMemoryDistance_travelled(), 0.0f)));
+			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryFast_movement(), uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f)));
 		}
 		// else use last data
 
@@ -3195,6 +3209,8 @@ bool RTABMapApp::handleEvent(UEvent * event)
 		float optimizationMaxError = uValue(bufferedStatsData_, rtabmap::Statistics::kLoopOptimization_max_error(), 0.0f);
 		float rehearsalValue = uValue(bufferedStatsData_, rtabmap::Statistics::kMemoryRehearsal_sim(), 0.0f);
 		float hypothesis = uValue(bufferedStatsData_, rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f);
+		float distanceTravelled = uValue(bufferedStatsData_, rtabmap::Statistics::kMemoryDistance_travelled(), 0.0f);
+		int fastMovement = (int)uValue(bufferedStatsData_, rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
 
 		// Call JAVA callback with some stats
 		UINFO("Send statistics to GUI");
@@ -3208,7 +3224,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIIFIFIFF)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIIFIFIFFFI)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,
@@ -3229,7 +3245,9 @@ bool RTABMapApp::handleEvent(UEvent * event)
 								renderingTime_>0.0f?1.0f/renderingTime_:0.0f,
 								rejected,
 								rehearsalValue,
-								optimizationMaxError);
+								optimizationMaxError,
+								distanceTravelled,
+								fastMovement);
 						success = true;
 					}
 				}

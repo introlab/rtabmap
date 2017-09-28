@@ -46,7 +46,7 @@ const int scanDownsampling = 1;
 void onPointCloudAvailableRouter(void* context, const TangoPointCloud* point_cloud)
 {
 	CameraTango* app = static_cast<CameraTango*>(context);
-	if(point_cloud->num_points>0)
+	if(app->isRunning() && point_cloud->num_points>0)
 	{
 		app->cloudReceived(cv::Mat(1, point_cloud->num_points, CV_32FC4, point_cloud->points[0]), point_cloud->timestamp);
 	}
@@ -55,31 +55,34 @@ void onPointCloudAvailableRouter(void* context, const TangoPointCloud* point_clo
 void onFrameAvailableRouter(void* context, TangoCameraId id, const TangoImageBuffer* color)
 {
 	CameraTango* app = static_cast<CameraTango*>(context);
-	cv::Mat tangoImage;
-	if(color->format == TANGO_HAL_PIXEL_FORMAT_RGBA_8888)
+	if(app->isRunning())
 	{
-		tangoImage = cv::Mat(color->height, color->width, CV_8UC4, color->data);
-	}
-	else if(color->format == TANGO_HAL_PIXEL_FORMAT_YV12)
-	{
-		tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
-	}
-	else if(color->format == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP)
-	{
-		tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
-	}
-	else if(color->format == 35)
-	{
-		tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
-	}
-	else
-	{
-		LOGE("Not supported color format : %d.", color->format);
-	}
+		cv::Mat tangoImage;
+		if(color->format == TANGO_HAL_PIXEL_FORMAT_RGBA_8888)
+		{
+			tangoImage = cv::Mat(color->height, color->width, CV_8UC4, color->data);
+		}
+		else if(color->format == TANGO_HAL_PIXEL_FORMAT_YV12)
+		{
+			tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
+		}
+		else if(color->format == TANGO_HAL_PIXEL_FORMAT_YCrCb_420_SP)
+		{
+			tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
+		}
+		else if(color->format == 35)
+		{
+			tangoImage = cv::Mat(color->height+color->height/2, color->width, CV_8UC1, color->data);
+		}
+		else
+		{
+			LOGE("Not supported color format : %d.", color->format);
+		}
 
-	if(!tangoImage.empty())
-	{
-		app->rgbReceived(tangoImage, (unsigned int)color->format, color->timestamp);
+		if(!tangoImage.empty())
+		{
+			app->rgbReceived(tangoImage, (unsigned int)color->format, color->timestamp);
+		}
 	}
 }
 

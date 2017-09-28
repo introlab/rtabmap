@@ -181,6 +181,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private long mOnPauseStamp = 0;
 	private boolean mOnPause = false;
 	private Date mDateOnPause = new Date();
+	private long mLastFastMovementNotificationStamp = 0;
 	private boolean mBlockBack = true;
 
 	private MenuItem mItemSave;
@@ -435,6 +436,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		    @Override
 		    public void onClick(DialogInterface dialog, int which) {
 		    	RTABMapLib.cancelProcessing();
+		    	
+		    	mProgressDialog.setTitle("");
+			mProgressDialog.setMessage(String.format("Cancelling..."));
+			mProgressDialog.show();
 		    }
 		});
 
@@ -449,6 +454,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		mWorkingDirectory = "";
 		mWorkingDirectoryHuman = "";
 		mTotalLoopClosures = 0;
+		mLastFastMovementNotificationStamp = System.currentTimeMillis()/1000;
 
 		if(Environment.getExternalStorageState().compareTo(Environment.MEDIA_MOUNTED)==0)
 		{
@@ -639,22 +645,21 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		if(!DISABLE_LOG) Log.i(TAG, "onPause()");
 		mOnPause = true;
 		
-		mLocationManager.removeUpdates(mLocationListener);
-		mSensorManager.unregisterListener(this);
-
-		
-		// This deletes OpenGL context!
-		mGLView.onPause();
-
-		RTABMapLib.onPause();
-
-		unbindService(mTangoServiceConnection);
-
 		if(!mButtonPause.isChecked())
 		{
 			mButtonPause.setChecked(true);
 			pauseMapping();
 		}
+		
+		mLocationManager.removeUpdates(mLocationListener);
+		mSensorManager.unregisterListener(this);
+
+		RTABMapLib.onPause();
+		
+		unbindService(mTangoServiceConnection);
+		
+		// This deletes OpenGL context!
+		mGLView.onPause();
 		
 		mOnPauseStamp = System.currentTimeMillis()/1000;
 	}
@@ -690,6 +695,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			if(!DISABLE_LOG) Log.d(TAG, "update preferences...");
 			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 			mUpdateRate = sharedPref.getString(getString(R.string.pref_key_update_rate), getString(R.string.pref_default_update_rate));
+			String maxSpeed = sharedPref.getString(getString(R.string.pref_key_max_speed), getString(R.string.pref_default_max_speed));
 			mTimeThr = sharedPref.getString(getString(R.string.pref_key_time_thr), getString(R.string.pref_default_time_thr));
 			String memThr = sharedPref.getString(getString(R.string.pref_key_mem_thr), getString(R.string.pref_default_mem_thr));
 			mLoopThr = sharedPref.getString(getString(R.string.pref_key_loop_thr), getString(R.string.pref_default_loop_thr));
@@ -720,6 +726,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			RTABMapLib.setMappingParameter("Rtabmap/DetectionRate", mUpdateRate);
 			RTABMapLib.setMappingParameter("Rtabmap/TimeThr", mTimeThr);
 			RTABMapLib.setMappingParameter("Rtabmap/MemoryThr", memThr);
+			RTABMapLib.setMappingParameter("RGBD/LinearSpeedUpdate", maxSpeed);
+			RTABMapLib.setMappingParameter("RGBD/AngularSpeedUpdate", String.valueOf(Float.parseFloat(maxSpeed)/2.0f));
 			RTABMapLib.setMappingParameter("Mem/RehearsalSimilarity", simThr);
 			RTABMapLib.setMappingParameter("Kp/MaxFeatures", mMaxFeatures);
 			RTABMapLib.setMappingParameter("Vis/MaxFeatures", maxFeaturesLoop);
@@ -1009,6 +1017,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			int matches,
 			int rejected,
 			float optimizationMaxError,
+			boolean fastMovement,
 			String[] statusTexts)
 	{
 		mStatusTexts = statusTexts;
@@ -1083,6 +1092,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		
 		if(mButtonPause!=null && !mButtonPause.isChecked())
 		{
+			long currentTime = System.currentTimeMillis()/1000;
 			if(loopClosureId > 0)
 			{
 				mToast.setText(String.format("Loop closure detected! (%d/%d inliers)", inliers, matches));
@@ -1107,6 +1117,18 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				}
 				mToast.show();
 			}
+			else if(fastMovement)
+			{
+				if(currentTime - mLastFastMovementNotificationStamp > 2)
+				{
+					mToast.setText("Move slower... blurry images are not added to map (\"Settings->Mapping...->Maximum Motion Speed\" is enabled).");
+					mToast.show();
+				}
+			}
+			else
+			{
+				mLastFastMovementNotificationStamp = currentTime;
+			}
 		}
 	}
 
@@ -1129,11 +1151,13 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			final float fps,
 			final int rejected,
 			final float rehearsalValue,
-			final float optimizationMaxError)
+			final float optimizationMaxError,
+			final float distanceTravelled,
+			final int fastMovement)
 	{
 		if(!DISABLE_LOG) Log.i(TAG, String.format("updateStatsCallback()"));
 
-		final String[] statusTexts = new String[17];
+		final String[] statusTexts = new String[18];
 		if(mButtonPause!=null && !mButtonPause.isChecked())
 		{
 			String updateValue = mUpdateRate.compareTo("0")==0?"Max":mUpdateRate;
@@ -1212,10 +1236,11 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		statusTexts[index++] = getString(R.string.inliers)+inliers;
 		statusTexts[index++] = getString(R.string.hypothesis)+(int)(hypothesis*100.0f) +" / " + (int)(Float.parseFloat(mLoopThr)*100.0f) + " (" + (loopClosureId>0?loopClosureId:highestHypId)+")";
 		statusTexts[index++] = getString(R.string.fps)+(int)fps+" Hz";
+		statusTexts[index++] = getString(R.string.distance)+(int)distanceTravelled+" m";
 			
 		runOnUiThread(new Runnable() {
 				public void run() {
-					updateStatsUI(adjustedMemoryUsed, loopClosureId, inliers, matches, rejected, optimizationMaxError, statusTexts);
+					updateStatsUI(adjustedMemoryUsed, loopClosureId, inliers, matches, rejected, optimizationMaxError, fastMovement!=0, statusTexts);
 				} 
 		});
 	}
@@ -1428,6 +1453,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 						}
 						else
 						{
+							mProgressDialog.dismiss();
 							mToast.makeText(getActivity(), String.format("Optimization canceled"), mToast.LENGTH_LONG).show();
 						}
 						updateState(State.STATE_IDLE);
@@ -1607,6 +1633,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				mMemoryWarningDialog=null;
 			}
 			RTABMapLib.setPausedMapping(false);
+			mLastFastMovementNotificationStamp = System.currentTimeMillis()/1000;
 			
 			if(mItemDataRecorderMode.isChecked())
 			{
@@ -1615,6 +1642,12 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			else if(!mMapIsEmpty)
 			{
 				mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
+			}
+			else if(mMapIsEmpty && mItemLocalizationMode!=null && mItemLocalizationMode.isChecked())
+			{
+				mItemLocalizationMode.setChecked(false);
+				RTABMapLib.setLocalizationMode(false);
+				mToast.makeText(getActivity(), String.format("Disabled localization mode as the map is empty, now mapping..."), mToast.LENGTH_LONG).show();
 			}
 		}
 	}
@@ -2376,6 +2409,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 						}
 						else
 						{
+							mProgressDialog.dismiss();
 							mToast.makeText(getActivity(), String.format("Export canceled"), mToast.LENGTH_LONG).show();
 							updateState(previousState);
 						}

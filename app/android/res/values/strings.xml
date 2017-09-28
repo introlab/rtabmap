@@ -34,6 +34,7 @@
     <string name="memory">"Used Memory (MB): "</string>
     <string name="hypothesis">"Hypothesis (%): "</string>
     <string name="fps">"FPS (rendering): "</string>
+    <string name="distance">"Distance travelled: "</string>
     <string name="gps">"GPS (long,lat,alt,bearing,acc): "</string>
     <string name="time">"Time: "</string>
     
@@ -77,6 +78,8 @@
     
     <string name="pref_key_update_rate">pref_key_update_rate</string>
     <string name="pref_default_update_rate">1</string>
+    <string name="pref_key_max_speed">pref_key_max_speed</string>
+    <string name="pref_default_max_speed">0.2</string>
     <string name="pref_key_time_thr">pref_key_time_thr</string>
     <string name="pref_default_time_thr">1000</string>
     <string name="pref_key_mem_thr">pref_key_mem_thr</string>
@@ -317,6 +320,8 @@
     <string name="pref_summary_fisheye">Use fish eye camera instead of the color camera. May not work on some devices.</string>
     <string name="pref_title_update_rate">Update Rate</string>
     <string name="pref_summary_update_rate">Rate at which a new node is added to map.</string>
+    <string name="pref_title_max_speed">Maximum Motion Speed</string>
+    <string name="pref_summary_max_speed">Images taken when the camera is moving too fast are ignored to avoid blurry textures.</string>
     <string name="pref_title_time_thr">Time Limit</string>
     <string name="pref_summary_time_thr">Maximum time allowed for map updates. If time to add a new node is above this theshold, some old parts of the map are temporarly forgotten to reduce time of next updates.</string>
     <string name="pref_title_mem_thr">Memory Limit</string>
@@ -365,6 +370,20 @@
         <item>"2"</item>
         <item>"1"</item>
         <item>"0.5"</item>
+    </string-array>
+    <string-array name="pref_max_speed_keys">
+        <item>"No Limit"</item>
+        <item>"High"</item>
+        <item>"Medium"</item>
+        <item>"Low"</item>
+        <item>"Very Low"</item>
+    </string-array>
+    <string-array name="pref_max_speed_values">
+        <item>"0"</item>
+        <item>"0.4"</item>
+        <item>"0.3"</item>
+        <item>"0.2"</item>
+        <item>"0.1"</item>
     </string-array>
     <string-array name="pref_time_thr_keys">
         <item>"No Limit"</item>
