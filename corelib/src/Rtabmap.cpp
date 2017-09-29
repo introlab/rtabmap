@@ -651,6 +651,11 @@ int Rtabmap::triggerNewMap()
 		_mapCorrection.setIdentity();
 		_mapCorrectionBackup.setNull();
 
+		if(_bayesFilter)
+		{
+			_bayesFilter->reset();
+		}
+
 		//Verify if there are nodes that were merged through graph reduction
 		if(reducedIds.size() && _path.size())
 		{
