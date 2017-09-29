@@ -221,6 +221,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private String mLoopThr;
 	private String mMinInliers;
 	private String mMaxOptimizationError;
+	private boolean mGPSSaved = false;
 	
 	private LocationManager mLocationManager;
 	private LocationListener mLocationListener;
@@ -708,8 +709,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			boolean keepAllDb = sharedPref.getBoolean(getString(R.string.pref_key_keep_all_db), Boolean.parseBoolean(getString(R.string.pref_default_keep_all_db)));
 			boolean optimizeFromGraphEnd = sharedPref.getBoolean(getString(R.string.pref_key_optimize_end), Boolean.parseBoolean(getString(R.string.pref_default_optimize_end)));
 			String optimizer = sharedPref.getString(getString(R.string.pref_key_optimizer), getString(R.string.pref_default_optimizer));
-			boolean gpsSaved = sharedPref.getBoolean(getString(R.string.pref_key_gps_saved), Boolean.parseBoolean(getString(R.string.pref_default_gps_saved)));
-			if(gpsSaved)
+			mGPSSaved = sharedPref.getBoolean(getString(R.string.pref_key_gps_saved), Boolean.parseBoolean(getString(R.string.pref_default_gps_saved)));
+			if(mGPSSaved)
 			{
 				mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, mLocationListener);
 				mSensorManager.registerListener(this, mSensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION), SensorManager.SENSOR_DELAY_GAME);
@@ -997,11 +998,11 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else if((mItemStatusVisibility.isChecked() || mState == State.STATE_VISUALIZING_WHILE_LOADING))
 			{
-				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 0, 3));
+				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 0, 4));
 			}
 			else if(mItemDebugVisibility.isChecked())
 			{
-				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 4, mStatusTexts.length));
+				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 5, mStatusTexts.length));
 			}
 			else
 			{
@@ -1201,22 +1202,29 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		
 		mMapNodes = nodes;
 		
-		if(mLastKnownLocation != null)
+		if(mGPSSaved)
 		{
-			long millisec = System.currentTimeMillis() - mLastKnownLocation.getTime();
-			if(millisec > 2000)
+			if(mLastKnownLocation != null)
 			{
-				statusTexts[3] = getString(R.string.gps)+String.format("[too old, %d ms]", millisec); 
+				long millisec = System.currentTimeMillis() - mLastKnownLocation.getTime();
+				if(millisec > 1000)
+				{
+					statusTexts[3] = getString(R.string.gps)+String.format("[too old, %d ms]", millisec); 
+				}
+				else
+				{
+					statusTexts[3] = getString(R.string.gps)+
+							String.format("%.2f %.2f %.2fm %.0fdeg %.0fm", 
+									mLastKnownLocation.getLongitude(), 
+									mLastKnownLocation.getLatitude(), 
+									mLastKnownLocation.getAltitude(), 
+									mCompassDeg, 
+									mLastKnownLocation.getAccuracy());
+				}
 			}
 			else
 			{
-				statusTexts[3] = getString(R.string.gps)+
-						String.format("%.2f %.2f %.2fm %.0fdeg %.0fm", 
-								mLastKnownLocation.getLongitude(), 
-								mLastKnownLocation.getLatitude(), 
-								mLastKnownLocation.getAltitude(), 
-								mCompassDeg, 
-								mLastKnownLocation.getAccuracy());
+				statusTexts[3] = getString(R.string.gps)+"[not yet available]";
 			}
 		}
 		

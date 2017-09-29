@@ -848,7 +848,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			}
 			data.setGroundTruth(odom);
 
-			if(lastKnownGPS_.stamp() > 0.0 && rgbStamp-lastKnownGPS_.stamp()<2.0)
+			if(lastKnownGPS_.stamp() > 0.0 && rgbStamp-lastKnownGPS_.stamp()<1.0)
 			{
 				data.setGPS(lastKnownGPS_);
 			}

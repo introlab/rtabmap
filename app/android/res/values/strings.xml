@@ -35,7 +35,7 @@
     <string name="hypothesis">"Hypothesis (%): "</string>
     <string name="fps">"FPS (rendering): "</string>
     <string name="distance">"Distance travelled: "</string>
-    <string name="gps">"GPS (long,lat,alt,bearing,acc): "</string>
+    <string name="gps">"GPS (long,lat,alt,bearing,err): "</string>
     <string name="time">"Time: "</string>
     
     <!-- Preference keys: BEGIN -->
