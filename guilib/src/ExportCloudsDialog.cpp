@@ -1357,6 +1357,7 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 			}
 
+			assembledCloud->is_dense = true;
 			pcl::copyPointCloud(*assembledCloud, *rawAssembledCloud);
 
 			if(_ui->doubleSpinBox_voxelSize_assembled->value())
