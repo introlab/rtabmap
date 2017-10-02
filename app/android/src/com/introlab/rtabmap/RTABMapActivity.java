@@ -1120,13 +1120,14 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else if(fastMovement)
 			{
-				if(currentTime - mLastFastMovementNotificationStamp > 2)
+				if(currentTime - mLastFastMovementNotificationStamp > 3)
 				{
 					mToast.setText("Move slower... blurry images are not added to map (\"Settings->Mapping...->Maximum Motion Speed\" is enabled).");
 					mToast.show();
 				}
 			}
-			else
+			
+			if(!fastMovement)
 			{
 				mLastFastMovementNotificationStamp = currentTime;
 			}

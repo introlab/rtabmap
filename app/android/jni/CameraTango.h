@@ -81,6 +81,7 @@ public:
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	void close(); // close Tango connection
+	void resetOrigin();
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 	const CameraModel & getCameraModel() const {return model_;}
@@ -129,6 +130,8 @@ private:
 	cv::Mat fisheyeRectifyMapX_;
 	cv::Mat fisheyeRectifyMapY_;
 	GPS lastKnownGPS_;
+	Transform originOffset_;
+	bool originUpdate_;
 };
 
 } /* namespace rtabmap */

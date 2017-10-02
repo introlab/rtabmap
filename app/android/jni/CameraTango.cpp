@@ -119,7 +119,8 @@ CameraTango::CameraTango(bool colorCamera, int decimation, bool publishRawScan, 
 		cloudStamp_(0),
 		tangoColorType_(0),
 		tangoColorStamp_(0),
-		colorCameraToDisplayRotation_(ROTATION_0)
+		colorCameraToDisplayRotation_(ROTATION_0),
+		originUpdate_(false)
 {
 	UASSERT(decimation >= 1);
 }
@@ -191,8 +192,6 @@ void initFisheyeRectificationMap(
 bool CameraTango::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 	close();
-
-	lastKnownGPS_ = GPS();
 
 	TangoSupport_initialize(TangoService_getPoseAtTime, TangoService_getCameraIntrinsics);
 
@@ -436,6 +435,14 @@ void CameraTango::close()
 	previousStamp_ = 0.0;
 	fisheyeRectifyMapX_ = cv::Mat();
 	fisheyeRectifyMapY_ = cv::Mat();
+	lastKnownGPS_ = GPS();
+	originOffset_ = Transform();
+	originUpdate_ = false;
+}
+
+void CameraTango::resetOrigin()
+{
+	originUpdate_ = true;
 }
 
 void CameraTango::cloudReceived(const cv::Mat & cloud, double timestamp)
@@ -499,7 +506,20 @@ void CameraTango::poseReceived(const Transform & pose)
 	if(!pose.isNull() && pose.getNormSquared() < 100000)
 	{
 		// send pose of the camera (without optical rotation), not the device
-		this->post(new PoseEvent(pose*deviceTColorCamera_*opticalRotation));
+		Transform p = pose*deviceTColorCamera_*opticalRotation;
+		if(originUpdate_)
+		{
+			originOffset_ = p.translation().inverse();
+			originUpdate_ = false;
+		}
+		if(!originOffset_.isNull())
+		{
+			this->post(new PoseEvent(originOffset_*p));
+		}
+		else
+		{
+			this->post(new PoseEvent(p));
+		}
 	}
 }
 
@@ -773,6 +793,12 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 			Transform poseDevice = getPoseAtTimestamp(rgbStamp);
 
+			// adjust origin
+			if(!originOffset_.isNull())
+			{
+				poseDevice = originOffset_ * poseDevice;
+			}
+
 			//LOGD("Local    = %s", model.localTransform().prettyPrint().c_str());
 			//LOGD("tango    = %s", poseDevice.prettyPrint().c_str());
 			//LOGD("opengl(t)= %s", (opengl_world_T_tango_world * poseDevice).prettyPrint().c_str());
@@ -885,6 +911,7 @@ void CameraTango::mainLoop()
 		{
 			rtabmap::Transform pose = data.groundTruth();
 			data.setGroundTruth(Transform());
+
 			// convert stamp to epoch
 			bool firstFrame = previousPose_.isNull();
 			if(firstFrame)

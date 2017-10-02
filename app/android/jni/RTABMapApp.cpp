@@ -565,6 +565,11 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 
 	rtabmap_->setOptimizedPoses(poses);
 
+	if(camera_)
+	{
+		camera_->resetOrigin();
+	}
+
 	// Start threads
 	LOGI("Start rtabmap thread");
 	rtabmapThread_->registerToEventsManager();
@@ -1996,6 +2001,11 @@ void RTABMapApp::resetMapping()
 
 	mapToOdom_.setIdentity();
 	clearSceneOnNextRender_ = true;
+
+	if(camera_)
+	{
+		camera_->resetOrigin();
+	}
 
 	UEventsManager::post(new rtabmap::RtabmapEventCmd(rtabmap::RtabmapEventCmd::kCmdResetMemory));
 }
