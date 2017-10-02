@@ -1391,6 +1391,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				str = String.format("Too few features (%s) were tracked in the fisheye image. This may result in poor odometry!", value);
 			}
 		}
+		else if(key.equals("TooClose"))
+		{
+			str = String.format("Too close! Tip: Scan from at least ~1 meter from surfaces.", value);
+		}
 		else	
 		{
 			str = String.format("Unknown Tango event detected!? (type=%d)", type);

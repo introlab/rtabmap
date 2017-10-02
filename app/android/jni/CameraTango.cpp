@@ -729,6 +729,13 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 			CameraModel depthModel = model_.scaled(1.0f/float(depthSizeDec));
 			std::vector<cv::Point3f> scanData(rawScanPublished_?cloud.total():0);
 			int oi=0;
+			int closePoints = 0;
+			float closeROI[4];
+			closeROI[0] = depth.cols/4;
+			closeROI[1] = 3*(depth.cols/4);
+			closeROI[2] = depth.rows/4;
+			closeROI[3] = 3*(depth.rows/4);
+			unsigned short minDepthValue=10000;
 			for(unsigned int i=0; i<cloud.total(); ++i)
 			{
 				float * p = cloud.ptr<float>(0,i);
@@ -746,6 +753,17 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 				pixel_x_h = static_cast<int>((depthModel.fx()) * (pt.x / pt.z) + depthModel.cx() + 0.5f);
 				pixel_y_h = static_cast<int>((depthModel.fy()) * (pt.y / pt.z) + depthModel.cy() + 0.5f);
 				unsigned short depth_value(pt.z * 1000.0f);
+
+				if(pixel_x_l>=closeROI[0] && pixel_x_l<closeROI[1] &&
+				   pixel_y_l>closeROI[2] && pixel_y_l<closeROI[3] &&
+				   depth_value < 600)
+				{
+					++closePoints;
+					if(depth_value < minDepthValue)
+					{
+						minDepthValue = depth_value;
+					}
+				}
 
 				bool pixelSet = false;
 				if(pixel_x_l>=0 && pixel_x_l<depth.cols &&
@@ -774,6 +792,11 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 				{
 					pixelsSet += 1;
 				}
+			}
+
+			if(closePoints > 100)
+			{
+				this->post(new CameraTangoEvent(0, "TooClose", ""));
 			}
 
 			if(oi)

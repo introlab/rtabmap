@@ -54,7 +54,7 @@
     <string name="pref_key_depth">pref_key_depth</string>
     <string name="pref_default_depth">2.5</string>
     <string name="pref_key_point_size">pref_key_point_size</string>
-    <string name="pref_default_point_size">5</string>
+    <string name="pref_default_point_size">10</string>
     <string name="pref_key_angle">pref_key_angle</string>
     <string name="pref_default_angle">20</string>
     <string name="pref_key_triangle">pref_key_triangle</string>

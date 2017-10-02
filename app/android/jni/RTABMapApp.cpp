@@ -99,6 +99,8 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("0.1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityPathMaxNeighbors(), std::string("0"))); // disable scan matching to merged nodes
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), std::string("false"))); // just keep loop closure detection
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLinearUpdate(), std::string("0.05")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDAngularUpdate(), std::string("0.05")));
 
 	if(parameters.find(rtabmap::Parameters::kOptimizerStrategy()) != parameters.end())
 	{
@@ -1286,7 +1288,7 @@ int RTABMapApp::Render()
 						int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
 						if(!paused_ && loopClosure>0)
 						{
-							main_scene_.setBackgroundColor(0, 0.7f, 0); // green
+							main_scene_.setBackgroundColor(0, 0.5f, 0); // green
 						}
 						else if(!paused_ && rejected>0)
 						{
