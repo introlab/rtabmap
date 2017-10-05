@@ -1331,6 +1331,7 @@ void DatabaseViewer::updateIds()
 	std::multimap<int, Link> links;
 	dbDriver_->getAllLinks(links, true);
 	UDEBUG("%d total links loaded", (int)links.size());
+
 	double totalOdom = 0.0;
 	Transform previousPose;
 	int sessions = ids_.size()?1:0;
@@ -1442,6 +1443,7 @@ void DatabaseViewer::updateIds()
 			}
 		}
 	}
+
 	if(!groundTruthPoses_.empty() || !gpsPoses_.empty())
 	{
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(true);
@@ -4606,11 +4608,10 @@ void DatabaseViewer::updateGraphView()
 			}
 		}
 
+		links = updateLinksWithModifications(links);
 		if(ui_->checkBox_ignorePoseCorrection->isChecked())
 		{
-			std::multimap<int, Link> tmp = links;
-			std::multimap<int, Link>::iterator jter=links.begin();
-			for(std::multimap<int, Link>::iterator iter=tmp.begin(); iter!=tmp.end(); ++iter, ++jter)
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
 				if(iter->second.type() == Link::kNeighbor ||
 				   iter->second.type() == Link::kNeighborMerged)
@@ -4628,11 +4629,6 @@ void DatabaseViewer::updateGraphView()
 					}
 				}
 			}
-			links = updateLinksWithModifications(tmp);
-		}
-		else
-		{
-			links = updateLinksWithModifications(links);
 		}
 
 		// filter links
@@ -5455,7 +5451,19 @@ void DatabaseViewer::updateLoopClosuresSlider(int from, int to)
 	loopLinks_.clear();
 	std::multimap<int, Link> links = updateLinksWithModifications(links_);
 	int position = ui_->horizontalSlider_loops->value();
+	std::multimap<int, Link> linksSortedByParents;
 	for(std::multimap<int, rtabmap::Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
+	{
+		if(iter->second.to() > iter->second.from())
+		{
+			linksSortedByParents.insert(std::make_pair(iter->second.to(), iter->second.inverse()));
+		}
+		else
+		{
+			linksSortedByParents.insert(*iter);
+		}
+	}
+	for(std::multimap<int, rtabmap::Link>::iterator iter = linksSortedByParents.begin(); iter!=linksSortedByParents.end(); ++iter)
 	{
 		if(!iter->second.transform().isNull())
 		{
