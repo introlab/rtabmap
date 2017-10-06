@@ -1155,11 +1155,17 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			final float rehearsalValue,
 			final float optimizationMaxError,
 			final float distanceTravelled,
-			final int fastMovement)
+			final int fastMovement,
+			final float x,
+			final float y,
+			final float z,
+			final float roll,
+			final float pitch,
+			final float yaw)
 	{
 		if(!DISABLE_LOG) Log.i(TAG, String.format("updateStatsCallback()"));
 
-		final String[] statusTexts = new String[18];
+		final String[] statusTexts = new String[19];
 		if(mButtonPause!=null && !mButtonPause.isChecked())
 		{
 			String updateValue = mUpdateRate.compareTo("0")==0?"Max":mUpdateRate;
@@ -1246,6 +1252,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		statusTexts[index++] = getString(R.string.hypothesis)+(int)(hypothesis*100.0f) +" / " + (int)(Float.parseFloat(mLoopThr)*100.0f) + " (" + (loopClosureId>0?loopClosureId:highestHypId)+")";
 		statusTexts[index++] = getString(R.string.fps)+(int)fps+" Hz";
 		statusTexts[index++] = getString(R.string.distance)+(int)distanceTravelled+" m";
+		statusTexts[index++] = String.format("Pose (x,y,z): %.2f %.2f %.2f", x,y,z);
 			
 		runOnUiThread(new Runnable() {
 				public void run() {
