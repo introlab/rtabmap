@@ -293,6 +293,5 @@ private:
 
 };
 
-#endif /* RTABMAP_H_ */
-
 } // namespace rtabmap
+#endif /* RTABMAP_H_ */
