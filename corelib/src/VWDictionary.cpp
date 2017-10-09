@@ -760,7 +760,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 			for(int j=0; j<dists.cols; ++j)
 			{
 				float d = dists.at<float>(i,j);
-				int id = uValue(_mapIndexId, results.at<int>(i,j));
+				int id = uValue(_mapIndexId, (int)results.at<size_t>(i,j));
 				if(d >= 0.0f && id > 0)
 				{
 					fullResults.insert(std::pair<float, int>(d, id));
@@ -1108,7 +1108,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				for(int j=0; j<dists.cols; ++j)
 				{
 					float d = dists.at<float>(i,j);
-					int id = uValue(_mapIndexId, results.at<int>(i,j));
+					int id = uValue(_mapIndexId, (int)results.at<size_t>(i,j));
 					if(d >= 0.0f && id > 0)
 					{
 						fullResults.insert(std::pair<float, int>(d, id));

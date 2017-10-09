@@ -436,7 +436,7 @@ void FlannIndex::knnSearch(
 		UERROR("Flann index not yet created!");
 		return;
 	}
-	indices.create(query.rows, knn, CV_32S);
+	indices.create(query.rows, knn, sizeof(size_t)==8?CV_64F:CV_32S);
 	dists.create(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F);
 
 	rtflann::Matrix<size_t> indicesF((size_t*)indices.data, indices.rows, indices.cols);

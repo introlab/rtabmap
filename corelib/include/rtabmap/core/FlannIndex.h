@@ -74,7 +74,7 @@ public:
 
 	void removePoint(unsigned int index);
 
-	// return squared distances
+	// return squared distances (indices should be casted in size_t)
 	void knnSearch(
 			const cv::Mat & query,
 			cv::Mat & indices,
