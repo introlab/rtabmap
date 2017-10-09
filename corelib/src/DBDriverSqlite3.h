@@ -76,7 +76,7 @@ private:
 
 	virtual void getWeightQuery(int signatureId, int & weight) const;
 
-	virtual void saveQuery(const std::list<Signature *> & signatures) const;
+	virtual void saveQuery(const std::list<Signature *> & signatures);
 	virtual void saveQuery(const std::list<VisualWord *> & words) const;
 	virtual void updateQuery(const std::list<Signature *> & signatures, bool updateTimestamp) const;
 	virtual void updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const;
@@ -171,6 +171,7 @@ private:
 
 private:
 	sqlite3 * _ppDb;
+	long _memoryUsedEstimate;
 	std::string _version;
 	bool _dbInMemory;
 	unsigned int _cacheSize;

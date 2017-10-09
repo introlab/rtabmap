@@ -202,7 +202,7 @@ private:
 
 	virtual void getWeightQuery(int signatureId, int & weight) const = 0;
 
-	virtual void saveQuery(const std::list<Signature *> & signatures) const = 0;
+	virtual void saveQuery(const std::list<Signature *> & signatures) = 0;
 	virtual void saveQuery(const std::list<VisualWord *> & words) const = 0;
 	virtual void updateQuery(const std::list<Signature *> & signatures, bool updateTimestamp) const = 0;
 	virtual void updateQuery(const std::list<VisualWord *> & words, bool updateTimestamp) const = 0;
@@ -264,7 +264,7 @@ private:
 
 private:
 	//non-abstract methods
-	void saveOrUpdate(const std::vector<Signature *> & signatures) const;
+	void saveOrUpdate(const std::vector<Signature *> & signatures);
 	void saveOrUpdate(const std::vector<VisualWord *> & words) const;
 
 	//thread stuff

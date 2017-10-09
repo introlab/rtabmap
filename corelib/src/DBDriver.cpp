@@ -386,7 +386,7 @@ void DBDriver::asyncSave(VisualWord * vw)
 	}
 }
 
-void DBDriver::saveOrUpdate(const std::vector<Signature *> & signatures) const
+void DBDriver::saveOrUpdate(const std::vector<Signature *> & signatures)
 {
 	ULOGGER_DEBUG("");
 	std::list<Signature *> toSave;

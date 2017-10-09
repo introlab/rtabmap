@@ -183,6 +183,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	private Date mDateOnPause = new Date();
 	private long mLastFastMovementNotificationStamp = 0;
 	private boolean mBlockBack = true;
+	private long mFreeMemoryOnStart = 0;
 
 	private MenuItem mItemSave;
 	private MenuItem mItemOpen;
@@ -237,7 +238,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	
 	private AlertDialog mMemoryWarningDialog = null;
 	
-	private final int STATUS_TEXTS_SIZE = 18;
+	private final int STATUS_TEXTS_SIZE = 19;
 	private final int STATUS_TEXTS_POSE_INDEX = 5;
 	private String[] mStatusTexts = new String[STATUS_TEXTS_SIZE];
 	
@@ -274,6 +275,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setTitle(R.string.menu_name);
+		
+		mFreeMemoryOnStart = getFreeMemory();
 
 		// Query screen size, the screen size is used for computing the normalized
 		// touch point.
@@ -809,8 +812,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		if(!DISABLE_LOG) Log.i(TAG, String.format("called setCamera(type=%d);", type));
 		
 		// for convenience, for a refresh of the memory used
-		mStatusTexts[1] = getString(R.string.memory)+String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024));
-		mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(getFreeMemory());
+		long freeMemory = getFreeMemory();
+		mStatusTexts[1] = getString(R.string.memory)+String.valueOf(mFreeMemoryOnStart>freeMemory?mFreeMemoryOnStart-freeMemory:0);
+		mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(freeMemory);
 		updateStatusTexts();
 				
 		RTABMapLib.setCamera(type);
@@ -1014,7 +1018,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	}
 
 	private void updateStatsUI(
-			int processMemoryUsed,
 			int loopClosureId,
 			int inliers,
 			int matches,
@@ -1031,10 +1034,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			if(!mButtonPause.isChecked())
 			{	
 				//check if we are low in memory
-				long memoryUsed = processMemoryUsed;
 				long memoryFree = getFreeMemory();
+				long memoryUsed = mFreeMemoryOnStart>memoryFree?mFreeMemoryOnStart-memoryFree:0;
 				
-				if(memoryFree < 200)
+				if(memoryFree < 400)
 				{
 					mButtonPause.setChecked(true);
 					pauseMapping();
@@ -1145,7 +1148,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			final float updateTime, 
 			final int loopClosureId,
 			final int highestHypId,
-			final int processMemoryUsed,
 			final int databaseMemoryUsed,
 			final int inliers,
 			final int matches,
@@ -1178,28 +1180,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			statusTexts[0] = mStatusTexts[0];
 		}
 				
-		if(mButtonPause!=null)
-		{
-			if(!mButtonPause.isChecked())
-			{
-				// getNativeHeapAllocatedSize() is too slow, so we need to use the estimate.
-				statusTexts[1] = getString(R.string.memory)+processMemoryUsed; 
-			}
-			else if(mState == State.STATE_PROCESSING)
-			{
-				// This request is long to do, only do it when processing.
-				statusTexts[1] = getString(R.string.memory)+String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024));
-			}
-			else
-			{
-				statusTexts[1] = mStatusTexts[1];
-			}
-		}
-		else
-		{
-			statusTexts[1] = mStatusTexts[1];
-		}
-		statusTexts[2] = getString(R.string.free_memory)+getFreeMemory();
+		long memoryFree = getFreeMemory();
+		statusTexts[1] = getString(R.string.memory)+(mFreeMemoryOnStart>memoryFree?mFreeMemoryOnStart-memoryFree:0); 
+		statusTexts[2] = getString(R.string.free_memory)+memoryFree;
 			
 		if(loopClosureId > 0)
 		{
@@ -1240,6 +1223,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		int index = STATUS_TEXTS_POSE_INDEX;
 		statusTexts[index++] = getString(R.string.nodes)+nodes+" (" + nodesDrawn + " shown)";
 		statusTexts[index++] = getString(R.string.words)+words;
+		statusTexts[index++] = getString(R.string.database_size)+databaseMemoryUsed;
 		statusTexts[index++] = getString(R.string.points)+points;
 		statusTexts[index++] = getString(R.string.polygons)+polygons;
 		statusTexts[index++] = getString(R.string.update_time)+(int)(updateTime) + " / " + (mTimeThr.compareTo("0")==0?"No Limit":mTimeThr);
@@ -1254,7 +1238,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			
 		runOnUiThread(new Runnable() {
 				public void run() {
-					updateStatsUI(processMemoryUsed, loopClosureId, inliers, matches, rejected, optimizationMaxError, fastMovement!=0, statusTexts);
+					updateStatsUI(loopClosureId, inliers, matches, rejected, optimizationMaxError, fastMovement!=0, statusTexts);
 				} 
 		});
 	}
@@ -1316,8 +1300,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				mStatusTexts[0] = getString(R.string.status)+(status == 1 && msg.isEmpty()?(mItemDataRecorderMode!=null&&mItemDataRecorderMode.isChecked()?"Recording":mItemLocalizationMode!=null&&mItemLocalizationMode.isChecked()?"Localization":"Mapping"):msg);
 			}
 			
-			mStatusTexts[1] = getString(R.string.memory)+String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024));
-			mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(getFreeMemory());
+			long freeMemory = getFreeMemory();
+			mStatusTexts[1] = getString(R.string.memory)+String.valueOf(mFreeMemoryOnStart>freeMemory?mFreeMemoryOnStart-freeMemory:0);
+			mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(freeMemory);
 			updateStatusTexts();
 		}
 	}
@@ -1616,8 +1601,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			RTABMapLib.setPausedMapping(true);
 			
 			mStatusTexts[0] = getString(R.string.status)+"Paused";
-			mStatusTexts[1] = getString(R.string.memory)+String.valueOf(Debug.getNativeHeapAllocatedSize()/(1024*1024));
-			mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(getFreeMemory());
+			long freeMemory = getFreeMemory();
+			mStatusTexts[1] = getString(R.string.memory)+String.valueOf(mFreeMemoryOnStart>freeMemory?mFreeMemoryOnStart-freeMemory:0);
+			mStatusTexts[2] = getString(R.string.free_memory)+String.valueOf(freeMemory);
 			updateStatusTexts();
 			
 			mMapIsEmpty = false;
@@ -1922,6 +1908,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mMapNodes = 0;
 			mStatusTexts[index++] = getString(R.string.nodes)+0;
 			mStatusTexts[index++] = getString(R.string.words)+0;
+			mStatusTexts[index++] = getString(R.string.database_size)+0;
 			mStatusTexts[index++] = getString(R.string.points)+0;
 			mStatusTexts[index++] = getString(R.string.polygons)+0;
 			mStatusTexts[index++] = getString(R.string.update_time)+0;
@@ -1961,6 +1948,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 					mMapNodes = 0;
 					mStatusTexts[index++] = getString(R.string.nodes)+0;
 					mStatusTexts[index++] = getString(R.string.words)+0;
+					mStatusTexts[index++] = getString(R.string.database_size)+0;
 					mStatusTexts[index++] = getString(R.string.points)+0;
 					mStatusTexts[index++] = getString(R.string.polygons)+0;
 					mStatusTexts[index++] = getString(R.string.update_time)+0;

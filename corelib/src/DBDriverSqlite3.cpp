@@ -42,6 +42,7 @@ namespace rtabmap {
 DBDriverSqlite3::DBDriverSqlite3(const ParametersMap & parameters) :
 	DBDriver(parameters),
 	_ppDb(0),
+	_memoryUsedEstimate(0),
 	_version("0.0.0"),
 	_dbInMemory(Parameters::defaultDbSqlite3InMemory()),
 	_cacheSize(Parameters::defaultDbSqlite3CacheSize()),
@@ -313,6 +314,7 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 	this->disconnectDatabaseQuery();
 	// Open a database connection
 	_ppDb = 0;
+	_memoryUsedEstimate = 0;
 
 	int rc = SQLITE_OK;
 	bool dbFileExist = false;
@@ -324,6 +326,10 @@ bool DBDriverSqlite3::connectDatabaseQuery(const std::string & url, bool overwri
 			UINFO("Deleting database %s...", url.c_str());
 			UASSERT(UFile::erase(url.c_str()) == 0);
 			dbFileExist = false;
+		}
+		else if(dbFileExist)
+		{
+			_memoryUsedEstimate = UFile::length(this->getUrl());
 		}
 	}
 
@@ -481,14 +487,14 @@ void DBDriverSqlite3::executeNoResultQuery(const std::string & sql) const
 
 long DBDriverSqlite3::getMemoryUsedQuery() const
 {
-	//if(_dbInMemory)
-	//{
+	if(_dbInMemory)
+	{
 		return sqlite3_memory_used();
-	//}
-	//else // Commented because it can lag
-	//{
-	//	return UFile::length(this->getUrl());
-	//}
+	}
+	else
+	{
+		return _memoryUsedEstimate;
+	}
 }
 
 long DBDriverSqlite3::getNodesMemoryUsedQuery() const
@@ -3395,7 +3401,7 @@ void DBDriverSqlite3::updateQuery(const std::list<VisualWord *> & words, bool up
 	}
 }
 
-void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
+void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 {
 	UDEBUG("");
 	if(_ppDb && signatures.size())
@@ -3413,6 +3419,12 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures) const
 
 		for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 		{
+			_memoryUsedEstimate += (*i)->getMemoryUsed();
+			// raw data are not kept in database
+			_memoryUsedEstimate -= (*i)->sensorData().imageRaw().total() * (*i)->sensorData().imageRaw().elemSize();
+			_memoryUsedEstimate -= (*i)->sensorData().depthOrRightRaw().total() * (*i)->sensorData().depthOrRightRaw().elemSize();
+			_memoryUsedEstimate -= (*i)->sensorData().laserScanRaw().total() * (*i)->sensorData().laserScanRaw().elemSize();
+
 			stepNode(ppStmt, *i);
 		}
 		// Finalize (delete) the statement
