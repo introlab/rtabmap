@@ -1736,7 +1736,7 @@ void RTABMapApp::setPausedMapping(bool paused)
 		if(paused_)
 		{
 			LOGW("Pause!");
-			camera_->join(true);
+			camera_->kill();
 		}
 		else
 		{
