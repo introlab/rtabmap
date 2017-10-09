@@ -185,7 +185,7 @@ private:
 	std::string databaseFileName_;
 	std::list<std::map<int, rtabmap::Transform> > graphes_;
 	std::multimap<int, rtabmap::Link> graphLinks_;
-	std::map<int, rtabmap::Transform> poses_;
+	std::map<int, rtabmap::Transform> odomPoses_;
 	std::map<int, rtabmap::Transform> groundTruthPoses_;
 	std::map<int, rtabmap::Transform> gpsPoses_;
 	std::map<int, GPS> gpsValues_;

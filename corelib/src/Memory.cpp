@@ -1065,6 +1065,7 @@ std::map<int, int> Memory::getNeighborsId(
 		bool incrementMarginOnLoop, // default false
 		bool ignoreLoopIds, // default false
 		bool ignoreIntermediateNodes, // default false
+		const std::set<int> & nodesSet,
 		double * dbAccessTime
 		) const
 {
@@ -1094,7 +1095,7 @@ std::map<int, int> Memory::getNeighborsId(
 
 		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
 		{
-			if(ids.find(*jter) == ids.end())
+			if(ids.find(*jter) == ids.end() && (nodesSet.empty() || nodesSet.find(*jter) != nodesSet.end()))
 			{
 				//UDEBUG("Added %d with margin %d", *jter, m);
 				// Look up in STM/WM if all ids are here, if not... load them from the database
@@ -1184,6 +1185,7 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 	UASSERT(uContains(optimizedPoses, signatureId));
 	UASSERT(signatureId > 0);
 	std::map<int, float> ids;
+	std::map<int, float> checkedIds;
 	std::list<int> curentMarginList;
 	std::set<int> currentMargin;
 	std::set<int> nextMargin;
@@ -1192,8 +1194,6 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 	Transform referential = optimizedPoses.at(signatureId);
 	UASSERT(!referential.isNull());
 	float radiusSqrd = radius*radius;
-	std::map<int, float> savedRadius;
-	savedRadius.insert(std::make_pair(signatureId, 0));
 	while((maxGraphDepth == 0 || m < maxGraphDepth) && nextMargin.size())
 	{
 		curentMarginList = std::list<int>(nextMargin.begin(), nextMargin.end());
@@ -1201,7 +1201,7 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 
 		for(std::list<int>::iterator jter = curentMarginList.begin(); jter!=curentMarginList.end(); ++jter)
 		{
-			if(ids.find(*jter) == ids.end())
+			if(checkedIds.find(*jter) == checkedIds.end())
 			{
 				//UDEBUG("Added %d with margin %d", *jter, m);
 				// Look up in STM/WM if all ids are here, if not... load them from the database
@@ -1210,7 +1210,13 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 				const std::map<int, Link> * links = &tmpLinks;
 				if(s)
 				{
-					ids.insert(std::pair<int, float>(*jter, savedRadius.at(*jter)));
+					const Transform & t = optimizedPoses.at(*jter);
+					UASSERT(!t.isNull());
+					float distanceSqrd = referential.getDistanceSquared(t);
+					if(radiusSqrd == 0 || distanceSqrd<radiusSqrd)
+					{
+						ids.insert(std::pair<int, float>(*jter,distanceSqrd));
+					}
 
 					links = &s->getLinks();
 				}
@@ -1222,15 +1228,7 @@ std::map<int, float> Memory::getNeighborsIdRadius(
 						uContains(optimizedPoses, iter->first) &&
 						iter->second.type()!=Link::kVirtualClosure)
 					{
-						const Transform & t = optimizedPoses.at(iter->first);
-						UASSERT(!t.isNull());
-						float distanceSqrd = referential.getDistanceSquared(t);
-						if(radiusSqrd == 0 || distanceSqrd<radiusSqrd)
-						{
-							savedRadius.insert(std::make_pair(iter->first, distanceSqrd));
-							nextMargin.insert(iter->first);
-						}
-
+						nextMargin.insert(iter->first);
 					}
 				}
 			}
@@ -2478,7 +2476,7 @@ Transform Memory::computeIcpTransformMulti(
 	{
 		// Create a fake signature with all scans merged in oldId referential
 		SensorData assembledData;
-		Transform toPose = poses.at(toId);
+		Transform toPoseInv = poses.at(toId).inverse();
 		std::string msg;
 		int maxPoints = fromScan.cols;
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
@@ -2502,17 +2500,15 @@ Transform Memory::computeIcpTransformMulti(
 
 						if(scan.channels() >= 5)
 						{
-							pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormal = util3d::laserScanToPointCloudNormal(
+							*assembledToNormalClouds += *util3d::laserScanToPointCloudNormal(
 									scan,
-									s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
-							*assembledToNormalClouds += *cloudNormal;
+									toPoseInv * iter->second * s->sensorData().laserScanInfo().localTransform());
 						}
 						else
 						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(
+							*assembledToClouds += *util3d::laserScanToPointCloud(
 									scan,
-									s->sensorData().laserScanInfo().localTransform() * toPose.inverse() * iter->second);
-							*assembledToClouds += *cloud;
+									toPoseInv * iter->second * s->sensorData().laserScanInfo().localTransform());
 						}
 
 						if(scan.cols > maxPoints)
@@ -2545,7 +2541,6 @@ Transform Memory::computeIcpTransformMulti(
 					is2D?Transform(0,0,fromS->sensorData().laserScanInfo().localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
-		std::vector<int> inliersV;
 		t = _registrationIcp->computeTransformation(fromS->sensorData(), assembledData, guess, info);
 	}
 

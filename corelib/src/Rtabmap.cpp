@@ -1504,6 +1504,7 @@ bool Rtabmap::process(
 				true,
 				true,
 				false,
+				std::set<int>(),
 				&timeGetNeighborsTimeDb);
 		ULOGGER_DEBUG("neighbors of %d in time = %d", retrievalId, (int)neighbors.size());
 		//Priority to locations near in time (direct neighbor) then by space (loop closure)
@@ -1558,6 +1559,7 @@ bool Rtabmap::process(
 				true,
 				false,
 				false,
+				std::set<int>(),
 				&timeGetNeighborsSpaceDb);
 		ULOGGER_DEBUG("neighbors of %d in space = %d", retrievalId, (int)neighbors.size());
 		firstPassDone = false;
@@ -1914,7 +1916,7 @@ bool Rtabmap::process(
 				//
 				UDEBUG("Proximity detection (local loop closure in SPACE using matching images)");
 				std::map<int, float> nearestIds;
-				if(_memory->isIncremental())
+				if(_memory->isIncremental() && _proximityMaxGraphDepth > 0)
 				{
 					nearestIds = _memory->getNeighborsIdRadius(signature->id(), _localRadius, _optimizedPoses, _proximityMaxGraphDepth);
 				}
@@ -1992,7 +1994,7 @@ bool Rtabmap::process(
 								else
 								{
 									UWARN("Ignoring local loop closure with %d because resulting "
-										  "transform is to large!? (%fm > %fm)",
+										  "transform is too large!? (%fm > %fm)",
 											nearestId, transform.getNorm(), _proximityFilteringRadius);
 								}
 							}
@@ -2012,13 +2014,6 @@ bool Rtabmap::process(
 					// closures if we are already localized by at least one
 					// local visual closure above.
 
-					// Parse again with if different (normally, maxNeighbors would be smaller than MaxGraphDepth)
-					if(_proximityMaxNeighbors != _proximityMaxGraphDepth)
-					{
-						nearestPaths = getPaths(nearestPoses, _optimizedPoses.at(signature->id()), _proximityMaxNeighbors);
-						UDEBUG("nearestPaths=%d proximityMaxPaths=%d", (int)nearestPaths.size(), _proximityMaxPaths);
-					}
-
 					proximitySpacePaths = (int)nearestPaths.size();
 					for(std::map<int, std::map<int, Transform> >::const_reverse_iterator iter=nearestPaths.rbegin();
 							iter!=nearestPaths.rend() &&
@@ -2035,10 +2030,25 @@ bool Rtabmap::process(
 						//UDEBUG("Path %d (size=%d) distance=%fm", nearestId, (int)path.size(), _optimizedPoses.at(signature->id()).getDistance(_optimizedPoses.at(nearestId)));
 
 						// nearest pose must be close and not linked to current location
-						if(!signature->hasLink(nearestId) &&
-						   (_proximityFilteringRadius <= 0.0f ||
-							_optimizedPoses.at(signature->id()).getDistanceSquared(_optimizedPoses.at(nearestId)) < _proximityFilteringRadius*_proximityFilteringRadius))
+						if(!signature->hasLink(nearestId))
 						{
+							if(_proximityMaxNeighbors < _proximityMaxGraphDepth || _proximityMaxGraphDepth == 0)
+							{
+								std::map<int, Transform> filteredPath;
+								int i=0;
+								std::map<int, Transform>::iterator nearestIdIter = path.find(nearestId);
+								for(std::map<int, Transform>::iterator iter=nearestIdIter; iter!=path.end() && i<=_proximityMaxNeighbors; ++iter, ++i)
+								{
+									filteredPath.insert(*iter);
+								}
+								i=1;
+								for(std::map<int, Transform>::reverse_iterator iter(nearestIdIter); iter!=path.rend() && i<=_proximityMaxNeighbors; ++iter, ++i)
+								{
+									filteredPath.insert(*iter);
+								}
+								path = filteredPath;
+							}
+
 							// Assemble scans in the path and do ICP only
 							if(_proximityRawPosesUsed)
 							{
@@ -2073,49 +2083,40 @@ bool Rtabmap::process(
 									Transform transform = _memory->computeIcpTransformMulti(signature->id(), nearestId, filteredPath, &info);
 									if(!transform.isNull())
 									{
-										if(_proximityFilteringRadius <= 0 || transform.getNormSquared() <= _proximityFilteringRadius*_proximityFilteringRadius)
-										{
-											UINFO("[Scan matching] Add local loop closure in SPACE (%d->%d) %s",
-													signature->id(),
-													nearestId,
-													transform.prettyPrint().c_str());
+										UINFO("[Scan matching] Add local loop closure in SPACE (%d->%d) %s",
+												signature->id(),
+												nearestId,
+												transform.prettyPrint().c_str());
 
-											cv::Mat scanMatchingIds;
-											if(_scanMatchingIdsSavedInLinks)
+										cv::Mat scanMatchingIds;
+										if(_scanMatchingIdsSavedInLinks)
+										{
+											std::stringstream stream;
+											stream << "SCANS:";
+											for(std::map<int, Transform>::iterator iter=path.begin(); iter!=path.end(); ++iter)
 											{
-												std::stringstream stream;
-												stream << "SCANS:";
-												for(std::map<int, Transform>::iterator iter=path.begin(); iter!=path.end(); ++iter)
+												if(iter != path.begin())
 												{
-													if(iter != path.begin())
-													{
-														stream << ";";
-													}
-													stream << uNumber2Str(iter->first);
+													stream << ";";
 												}
-												std::string scansStr = stream.str();
-												scanMatchingIds = cv::Mat(1, int(scansStr.size()+1), CV_8SC1, (void *)scansStr.c_str());
-												scanMatchingIds = compressData2(scanMatchingIds); // compressed
+												stream << uNumber2Str(iter->first);
 											}
-
-											// set Identify covariance for laser scan matching only
-											UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-											_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, (info.covariance*100.0).inv(), scanMatchingIds));
-											loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
-
-											++proximityDetectionsAddedByICPOnly;
-
-											// no local loop closure added visually
-											if(proximityDetectionsAddedVisually == 0 && _loopClosureHypothesis.first == 0)
-											{
-												lastProximitySpaceClosureId = nearestId;
-											}
+											std::string scansStr = stream.str();
+											scanMatchingIds = cv::Mat(1, int(scansStr.size()+1), CV_8SC1, (void *)scansStr.c_str());
+											scanMatchingIds = compressData2(scanMatchingIds); // compressed
 										}
-										else
+
+										// set Identify covariance for laser scan matching only
+										UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+										_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, (info.covariance*100.0).inv(), scanMatchingIds));
+										loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
+
+										++proximityDetectionsAddedByICPOnly;
+
+										// no local loop closure added visually
+										if(proximityDetectionsAddedVisually == 0 && _loopClosureHypothesis.first == 0)
 										{
-											UWARN("Ignoring local loop closure with %d because resulting "
-												  "transform is to large!? (%fm > %fm)",
-													nearestId, transform.getNorm(), _proximityFilteringRadius);
+											lastProximitySpaceClosureId = nearestId;
 										}
 									}
 									else
@@ -3003,13 +3004,14 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transfo
 	std::map<int, std::map<int, Transform> > paths;
 	if(_memory && poses.size() && !target.isNull())
 	{
+		std::set<int> nodesSet = uKeysSet(poses);
 		// Segment poses connected only by neighbor links
 		while(poses.size())
 		{
 			std::map<int, Transform> path;
 			// select nearest pose and iterate neighbors from there
 			int nearestId = rtabmap::graph::findNearestNode(poses, target);
-			std::map<int, int> ids = _memory->getNeighborsId(nearestId, maxGraphDepth, 0, true, true, true);
+			std::map<int, int> ids = _memory->getNeighborsId(nearestId, maxGraphDepth, 0, true, true, true, nodesSet);
 
 			for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 			{

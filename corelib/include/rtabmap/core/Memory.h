@@ -127,6 +127,7 @@ public:
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
 			bool ignoreIntermediateNodes = false,
+			const std::set<int> & nodesSet = std::set<int>(),
 			double * dbAccessTime = 0) const;
 	std::map<int, float> getNeighborsIdRadius(
 			int signatureId,
