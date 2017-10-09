@@ -375,7 +375,7 @@ public:
      * @param params
      * @return
      */
-    int knnSearch(const Matrix<ElementType>& queries,
+    /*int knnSearch(const Matrix<ElementType>& queries,
                                  Matrix<int>& indices,
                                  Matrix<DistanceType>& dists,
                                  size_t knn,
@@ -391,7 +391,7 @@ public:
     	}
         delete[] indices_.ptr();
     	return result;
-    }
+    }*/
 
 
     /**

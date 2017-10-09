@@ -292,4 +292,20 @@ cv::Mat Signature::getPoseCovariance() const
 	return covariance;
 }
 
+long Signature::getMemoryUsed(bool withSensorData) const // Return memory usage in Bytes
+{
+	long total =  _words.size() * sizeof(float) * 8 +
+				  _words3.size() * sizeof(float) * 4;
+	if(!_wordsDescriptors.empty())
+	{
+		total += _wordsDescriptors.size() * sizeof(int);
+		total += _wordsDescriptors.size() * _wordsDescriptors.begin()->second.total() * _wordsDescriptors.begin()->second.elemSize();
+	}
+	if(withSensorData)
+	{
+		total+=_sensorData.getMemoryUsed();
+	}
+	return total;
+}
+
 } //namespace rtabmap

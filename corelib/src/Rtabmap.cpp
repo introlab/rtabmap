@@ -2505,6 +2505,10 @@ bool Rtabmap::process(
 			signaturesRemoved.push_back(signature->id());
 			_memory->deleteLocation(signature->id());
 		}
+		else
+		{
+			_memory->saveLocationData(signature->id());
+		}
 	}
 
 	// Pass this point signature should not be used, since it could have been transferred...

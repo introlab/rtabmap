@@ -187,6 +187,7 @@ void DBDriverSqlite3::setTempStore(int tempStore)
 
 void DBDriverSqlite3::setDbInMemory(bool dbInMemory)
 {
+	UDEBUG("dbInMemory=%d", dbInMemory?1:0);
 	if(dbInMemory != _dbInMemory)
 	{
 		if(this->isConnected())

@@ -787,7 +787,10 @@ long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			_groundCellsCompressed.total()*_groundCellsCompressed.elemSize() +
 			_groundCellsRaw.total()*_groundCellsRaw.elemSize() +
 			_obstacleCellsCompressed.total()*_obstacleCellsCompressed.elemSize() +
-			_obstacleCellsRaw.total()*_obstacleCellsRaw.elemSize();
+			_obstacleCellsRaw.total()*_obstacleCellsRaw.elemSize()+
+			_keypoints.size() * sizeof(float) * 7 +
+			_keypoints3D.size() * sizeof(float)*3 +
+			_descriptors.total()*_descriptors.elemSize();
 }
 
 } // namespace rtabmap

@@ -41,6 +41,7 @@ public:
 	virtual ~DBDriverSqlite3();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual bool isInMemory() const {return getUrl().empty() || _dbInMemory;}
 	void setDbInMemory(bool dbInMemory);
 	void setJournalMode(int journalMode);
 	void setCacheSize(unsigned int cacheSize);

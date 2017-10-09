@@ -316,6 +316,15 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
 		}
 		UDEBUG("Total word references added = %d", _vwd->getTotalActiveReferences());
+
+		if(_lastSignature == 0)
+		{
+			// Memory is empty, save parameters
+			ParametersMap parameters = Parameters::getDefaultParameters();
+			uInsert(parameters, parameters_);
+			UDEBUG("");
+			_dbDriver->addInfoAfterRun(0, 0,	0, 0, 0, parameters);
+		}
 	}
 	else
 	{
@@ -1275,6 +1284,7 @@ int Memory::getDatabaseMemoryUsed() const
 	{
 		memoryUsed = _dbDriver->getMemoryUsed()/(1024*1024); //Byte to MB
 	}
+
 	return memoryUsed;
 }
 
@@ -2124,6 +2134,25 @@ void Memory::deleteLocation(int locationId, std::list<int> * deletedWords)
 	}
 }
 
+void Memory::saveLocationData(int locationId)
+{
+	UDEBUG("Saving location data %d", locationId);
+	Signature * location = _getSignature(locationId);
+	if( location &&
+		_dbDriver &&
+		!_dbDriver->isInMemory() && // don't push in database if it is also in memory.
+		location->id()>0 &&
+		(_incrementalMemory && !location->isSaved()))
+	{
+		Signature * cpy = new Signature();
+		*cpy = *location;
+		_dbDriver->asyncSave(cpy);
+
+		location->setSaved(true);
+		location->sensorData().clearCompressedData();
+	}
+}
+
 void Memory::removeLink(int oldId, int newId)
 {
 	//this method assumes receiving oldId < newId, if not switch them
@@ -2370,7 +2399,7 @@ Transform Memory::computeIcpTransform(
 
 		if(depthsToLoad.size())
 		{
-			_dbDriver->loadNodeData(depthsToLoad);
+			_dbDriver->loadNodeData(depthsToLoad, false, true, false, false);
 		}
 	}
 
@@ -2437,7 +2466,7 @@ Transform Memory::computeIcpTransformMulti(
 	}
 	if(depthToLoad.size() && _dbDriver)
 	{
-		_dbDriver->loadNodeData(depthToLoad);
+		_dbDriver->loadNodeData(depthToLoad, false, true, false, false);
 	}
 
 	Signature * fromS = _getSignature(fromId);

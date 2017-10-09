@@ -429,7 +429,9 @@ void CameraTango::close()
 	{
 		TangoConfig_free(tango_config_);
 		tango_config_ = nullptr;
+		LOGI("TangoService_disconnect()");
 		TangoService_disconnect();
+		LOGI("TangoService_disconnect() done.");
 	}
 	previousPose_.setNull();
 	previousStamp_ = 0.0;

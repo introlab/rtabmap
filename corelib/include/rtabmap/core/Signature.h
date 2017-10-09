@@ -134,6 +134,8 @@ public:
 	SensorData & sensorData() {return _sensorData;}
 	const SensorData & sensorData() const {return _sensorData;}
 
+	long getMemoryUsed(bool withSensorData=true) const; // Return memory usage in Bytes
+
 private:
 	int _id;
 	int _mapId;

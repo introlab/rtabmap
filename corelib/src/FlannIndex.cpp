@@ -439,7 +439,7 @@ void FlannIndex::knnSearch(
 	indices.create(query.rows, knn, CV_32S);
 	dists.create(query.rows, knn, featuresType_ == CV_8UC1?CV_32S:CV_32F);
 
-	rtflann::Matrix<int> indicesF((int*)indices.data, indices.rows, indices.cols);
+	rtflann::Matrix<size_t> indicesF((size_t*)indices.data, indices.rows, indices.cols);
 
 	rtflann::SearchParams params = rtflann::SearchParams(checks, eps, sorted);
 

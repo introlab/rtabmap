@@ -109,7 +109,7 @@
     <string name="pref_key_gps_saved">pref_key_gps_saved</string>
     <string name="pref_default_gps_saved">false</string>
     <string name="pref_key_db_in_memory">pref_key_db_in_memory</string>
-    <string name="pref_default_db_in_memory">true</string>
+    <string name="pref_default_db_in_memory">false</string>
     
     <string name="pref_key_cloud_voxel">pref_key_cloud_voxel</string>
     <string name="pref_default_cloud_voxel">0.01</string>

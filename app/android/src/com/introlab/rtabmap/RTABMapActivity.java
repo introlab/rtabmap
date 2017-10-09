@@ -237,7 +237,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	
 	private AlertDialog mMemoryWarningDialog = null;
 	
-	private String[] mStatusTexts = new String[16];
+	private final int STATUS_TEXTS_SIZE = 18;
+	private final int STATUS_TEXTS_POSE_INDEX = 5;
+	private String[] mStatusTexts = new String[STATUS_TEXTS_SIZE];
 	
 	GestureDetector mGesDetect = null;
 
@@ -998,11 +1000,11 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else if((mItemStatusVisibility.isChecked() || mState == State.STATE_VISUALIZING_WHILE_LOADING))
 			{
-				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 0, 4));
+				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 0, STATUS_TEXTS_POSE_INDEX-1));
 			}
 			else if(mItemDebugVisibility.isChecked())
 			{
-				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, 5, mStatusTexts.length));
+				mRenderer.updateTexts(Arrays.copyOfRange(mStatusTexts, STATUS_TEXTS_POSE_INDEX-1, mStatusTexts.length));
 			}
 			else
 			{
@@ -1165,7 +1167,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 	{
 		if(!DISABLE_LOG) Log.i(TAG, String.format("updateStatsCallback()"));
 
-		final String[] statusTexts = new String[19];
+		final String[] statusTexts = new String[STATUS_TEXTS_SIZE];
 		if(mButtonPause!=null && !mButtonPause.isChecked())
 		{
 			String updateValue = mUpdateRate.compareTo("0")==0?"Max":mUpdateRate;
@@ -1175,16 +1177,13 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			statusTexts[0] = mStatusTexts[0];
 		}
-		
-		// getNativeHeapAllocatedSize() is too slow, so we need to use the estimate.
-		// Multiply by 3/2 to match getNativeHeapAllocatedSize()
-		final int adjustedMemoryUsed = (processMemoryUsed*3)/2;
-		
+				
 		if(mButtonPause!=null)
 		{
 			if(!mButtonPause.isChecked())
 			{
-				statusTexts[1] = getString(R.string.memory)+adjustedMemoryUsed; 
+				// getNativeHeapAllocatedSize() is too slow, so we need to use the estimate.
+				statusTexts[1] = getString(R.string.memory)+processMemoryUsed; 
 			}
 			else if(mState == State.STATE_PROCESSING)
 			{
@@ -1238,10 +1237,9 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		String formattedDate = new SimpleDateFormat("HH:mm:ss.SSS").format(new Date());
 		statusTexts[4] = getString(R.string.time)+formattedDate;
 		
-		int index = 5;
+		int index = STATUS_TEXTS_POSE_INDEX;
 		statusTexts[index++] = getString(R.string.nodes)+nodes+" (" + nodesDrawn + " shown)";
 		statusTexts[index++] = getString(R.string.words)+words;
-		statusTexts[index++] = getString(R.string.database_size)+databaseMemoryUsed;
 		statusTexts[index++] = getString(R.string.points)+points;
 		statusTexts[index++] = getString(R.string.polygons)+polygons;
 		statusTexts[index++] = getString(R.string.update_time)+(int)(updateTime) + " / " + (mTimeThr.compareTo("0")==0?"No Limit":mTimeThr);
@@ -1256,7 +1254,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			
 		runOnUiThread(new Runnable() {
 				public void run() {
-					updateStatsUI(adjustedMemoryUsed, loopClosureId, inliers, matches, rejected, optimizationMaxError, fastMovement!=0, statusTexts);
+					updateStatsUI(processMemoryUsed, loopClosureId, inliers, matches, rejected, optimizationMaxError, fastMovement!=0, statusTexts);
 				} 
 		});
 	}
@@ -1920,11 +1918,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			mTotalLoopClosures = 0;
 			
-			int index = 4;
+			int index = STATUS_TEXTS_POSE_INDEX;
 			mMapNodes = 0;
 			mStatusTexts[index++] = getString(R.string.nodes)+0;
 			mStatusTexts[index++] = getString(R.string.words)+0;
-			mStatusTexts[index++] = getString(R.string.database_size)+0;
 			mStatusTexts[index++] = getString(R.string.points)+0;
 			mStatusTexts[index++] = getString(R.string.polygons)+0;
 			mStatusTexts[index++] = getString(R.string.update_time)+0;
@@ -1934,13 +1931,14 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mStatusTexts[index++] = getString(R.string.inliers)+0;
 			mStatusTexts[index++] = getString(R.string.hypothesis)+0;
 			mStatusTexts[index++] = getString(R.string.fps)+0;
+			mStatusTexts[index++] = getString(R.string.distance)+0;
+			mStatusTexts[index++] = String.format("Pose (x,y,z): 0 0 0");
 			updateStatusTexts();
 
 			mOpenedDatabasePath = "";
 			SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 			boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
 			String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
-			(new File(tmpDatabase)).delete();
 			RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
 			
 			mMapIsEmpty = true;
@@ -1959,11 +1957,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				public void onClick(DialogInterface dialog, int which) {           	  
 					// reset
 					mTotalLoopClosures = 0;
-					int index = 4;
+					int index = STATUS_TEXTS_POSE_INDEX;
 					mMapNodes = 0;
 					mStatusTexts[index++] = getString(R.string.nodes)+0;
 					mStatusTexts[index++] = getString(R.string.words)+0;
-					mStatusTexts[index++] = getString(R.string.database_size)+0;
 					mStatusTexts[index++] = getString(R.string.points)+0;
 					mStatusTexts[index++] = getString(R.string.polygons)+0;
 					mStatusTexts[index++] = getString(R.string.update_time)+0;
@@ -1973,6 +1970,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 					mStatusTexts[index++] = getString(R.string.inliers)+0;
 					mStatusTexts[index++] = getString(R.string.hypothesis)+0;
 					mStatusTexts[index++] = getString(R.string.fps)+0;
+					mStatusTexts[index++] = getString(R.string.distance)+0;
+					mStatusTexts[index++] = String.format("Pose (x,y,z): 0 0 0");
 					updateStatusTexts();
 
 					mItemDataRecorderMode.setChecked(!dataRecorderOldState);
@@ -1982,7 +1981,6 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 					SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
 					boolean databaseInMemory = sharedPref.getBoolean(getString(R.string.pref_key_db_in_memory), Boolean.parseBoolean(getString(R.string.pref_default_db_in_memory)));
 					String tmpDatabase = mWorkingDirectory+RTABMAP_TMP_DB;
-					(new File(tmpDatabase)).delete();
 					RTABMapLib.openDatabase(tmpDatabase, databaseInMemory, false);
 
 					mItemOpen.setEnabled(!mItemDataRecorderMode.isChecked() && mButtonPause.isChecked());

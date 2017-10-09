@@ -68,6 +68,7 @@ public:
 	virtual ~DBDriver();
 
 	virtual void parseParameters(const ParametersMap & parameters);
+	virtual bool isInMemory() const {return _url.empty();}
 	const std::string & getUrl() const {return _url;}
 
 	void beginTransaction() const;
