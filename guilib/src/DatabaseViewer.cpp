@@ -69,6 +69,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RegistrationIcp.h"
 #include "rtabmap/core/OccupancyGrid.h"
 #include "rtabmap/core/GeodeticCoords.h"
+#include "rtabmap/core/Recovery.h"
 #include "rtabmap/gui/DataRecorder.h"
 #include "ExportCloudsDialog.h"
 #include "EditDepthArea.h"
@@ -77,6 +78,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "ExportDialog.h"
 #include "rtabmap/gui/ProgressDialog.h"
 #include "ParametersToolBox.h"
+#include "RecoveryState.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
 #include <pcl/filters/voxel_grid.h>
@@ -216,10 +218,15 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 
 	connect(ui_->actionQuit, SIGNAL(triggered()), this, SLOT(close()));
 
+	ui_->actionOpen_database->setEnabled(true);
+	ui_->actionClose_database->setEnabled(false);
+
 	// connect actions with custom slots
 	ui_->actionSave_config->setShortcut(QKeySequence::Save);
 	connect(ui_->actionSave_config, SIGNAL(triggered()), this, SLOT(writeSettings()));
 	connect(ui_->actionOpen_database, SIGNAL(triggered()), this, SLOT(openDatabase()));
+	connect(ui_->actionClose_database, SIGNAL(triggered()), this, SLOT(closeDatabase()));
+	connect(ui_->actionDatabase_recovery, SIGNAL(triggered()), this, SLOT(recoverDatabase()));
 	connect(ui_->actionExport, SIGNAL(triggered()), this, SLOT(exportDatabase()));
 	connect(ui_->actionExtract_images, SIGNAL(triggered()), this, SLOT(extractImages()));
 	connect(ui_->actionEdit_depth_image, SIGNAL(triggered()), this, SLOT(editDepthImage()));
@@ -692,51 +699,23 @@ bool DatabaseViewer::openDatabase(const QString & path)
 	UDEBUG("Open database \"%s\"", path.toStdString().c_str());
 	if(QFile::exists(path))
 	{
-		if(dbDriver_)
-		{
-			delete dbDriver_;
-			dbDriver_ = 0;
-			ids_.clear();
-			idToIndex_.clear();
-			neighborLinks_.clear();
-			loopLinks_.clear();
-			graphes_.clear();
-			graphLinks_.clear();
-			odomPoses_.clear();
-			groundTruthPoses_.clear();
-			gpsPoses_.clear();
-			gpsValues_.clear();
-			mapIds_.clear();
-			links_.clear();
-			linksAdded_.clear();
-			linksRefined_.clear();
-			linksRemoved_.clear();
-			localMaps_.clear();
-			localMapsInfo_.clear();
-			generatedLocalMaps_.clear();
-			generatedLocalMapsInfo_.clear();
-			ui_->graphViewer->clearAll();
-			occupancyGridViewer_->clear();
-			ui_->menuExport_poses->setEnabled(false);
-			ui_->menuExport_GPS->setEnabled(false);
-			ui_->actionPoses_KML->setEnabled(false);
-			ui_->checkBox_showOptimized->setEnabled(false);
-			ui_->toolBox_statistics->clear();
-			databaseFileName_.clear();
-			ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
-			ui_->label_alignPosesWithGroundTruth->setVisible(false);
-		}
-
 		std::string driverType = "sqlite3";
 
 		dbDriver_ = DBDriver::create();
 
 		if(!dbDriver_->openConnection(path.toStdString()))
 		{
+			ui_->actionClose_database->setEnabled(false);
+			ui_->actionOpen_database->setEnabled(true);
+			delete dbDriver_;
+			dbDriver_ = 0;
 			QMessageBox::warning(this, "Database error", tr("Can't open database \"%1\"").arg(path));
 		}
 		else
 		{
+			ui_->actionClose_database->setEnabled(true);
+			ui_->actionOpen_database->setEnabled(false);
+
 			pathDatabase_ = UDirectory::getDir(path.toStdString()).c_str();
 			databaseFileName_ = UFile::getName(path.toStdString());
 			ui_->graphViewer->setWorkingDirectory(pathDatabase_);
@@ -810,33 +789,8 @@ bool DatabaseViewer::openDatabase(const QString & path)
 	return false;
 }
 
-void DatabaseViewer::closeEvent(QCloseEvent* event)
+bool DatabaseViewer::closeDatabase()
 {
-	//write settings before quit?
-	bool save = false;
-	if(this->isWindowModified())
-	{
-		QMessageBox::Button b=QMessageBox::question(this,
-				tr("Database Viewer"),
-				tr("There are unsaved changed settings. Save them?"),
-				QMessageBox::Save | QMessageBox::Cancel | QMessageBox::Discard);
-		if(b == QMessageBox::Save)
-		{
-			save = true;
-		}
-		else if(b != QMessageBox::Discard)
-		{
-			event->ignore();
-			return;
-		}
-	}
-
-	if(save)
-	{
-		writeSettings();
-	}
-
-	event->accept();
 	if(dbDriver_)
 	{
 		if(linksAdded_.size() || linksRefined_.size() || linksRemoved_.size())
@@ -889,12 +843,11 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 
 			if(button != QMessageBox::Yes && button != QMessageBox::No)
 			{
-				event->ignore();
+				return false;
 			}
 		}
 
-		if(event->isAccepted() &&
-			generatedLocalMaps_.size() &&
+		if(	generatedLocalMaps_.size() &&
 			uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.11.10") >= 0)
 		{
 			QMessageBox::StandardButton button = QMessageBox::question(this,
@@ -929,9 +882,161 @@ void DatabaseViewer::closeEvent(QCloseEvent* event)
 
 			if(button != QMessageBox::Yes && button != QMessageBox::No)
 			{
-				event->ignore();
+				return false;
 			}
 		}
+
+		delete dbDriver_;
+		dbDriver_ = 0;
+		ids_.clear();
+		idToIndex_.clear();
+		neighborLinks_.clear();
+		loopLinks_.clear();
+		graphes_.clear();
+		graphLinks_.clear();
+		odomPoses_.clear();
+		groundTruthPoses_.clear();
+		gpsPoses_.clear();
+		gpsValues_.clear();
+		mapIds_.clear();
+		links_.clear();
+		linksAdded_.clear();
+		linksRefined_.clear();
+		linksRemoved_.clear();
+		localMaps_.clear();
+		localMapsInfo_.clear();
+		generatedLocalMaps_.clear();
+		generatedLocalMapsInfo_.clear();
+		ui_->graphViewer->clearAll();
+		occupancyGridViewer_->clear();
+		ui_->menuExport_poses->setEnabled(false);
+		ui_->menuExport_GPS->setEnabled(false);
+		ui_->actionPoses_KML->setEnabled(false);
+		ui_->checkBox_showOptimized->setEnabled(false);
+		ui_->toolBox_statistics->clear();
+		databaseFileName_.clear();
+		ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+		ui_->label_alignPosesWithGroundTruth->setVisible(false);
+		ui_->label_optimizeFrom->setText(tr("Optimize from"));
+		ui_->textEdit_info->clear();
+
+		ui_->pushButton_refine->setEnabled(false);
+		ui_->pushButton_add->setEnabled(false);
+		ui_->pushButton_reset->setEnabled(false);
+		ui_->pushButton_reject->setEnabled(false);
+
+		ui_->horizontalSlider_loops->setEnabled(false);
+		ui_->horizontalSlider_loops->setMaximum(0);
+		ui_->horizontalSlider_iterations->setEnabled(false);
+		ui_->horizontalSlider_iterations->setMaximum(0);
+		ui_->horizontalSlider_neighbors->setEnabled(false);
+		ui_->horizontalSlider_neighbors->setMaximum(0);
+		ui_->label_constraint->clear();
+		ui_->label_constraint_opt->clear();
+		ui_->label_variance->clear();
+
+		ui_->horizontalSlider_A->setEnabled(false);
+		ui_->horizontalSlider_A->setMaximum(0);
+		ui_->horizontalSlider_B->setEnabled(false);
+		ui_->horizontalSlider_B->setMaximum(0);
+		ui_->label_idA->setText("NaN");
+		ui_->label_idB->setText("NaN");
+		sliderAValueChanged(0);
+		sliderBValueChanged(0);
+
+		constraintsViewer_->clear();
+		constraintsViewer_->update();
+
+		cloudViewer_->clear();
+		cloudViewer_->update();
+
+		occupancyGridViewer_->clear();
+		occupancyGridViewer_->update();
+
+		ui_->graphViewer->clearAll();
+		ui_->label_loopClosures->clear();
+		ui_->label_timeOptimization->clear();
+		ui_->label_pathLength->clear();
+		ui_->label_poses->clear();
+		ui_->spinBox_optimizationsFrom->setEnabled(false);
+
+		ui_->graphicsView_A->clear();
+		ui_->graphicsView_B->clear();
+
+		ui_->graphicsView_stereo->clear();
+		stereoViewer_->clear();
+		stereoViewer_->update();
+
+		ui_->toolBox_statistics->clear();
+	}
+
+	ui_->actionClose_database->setEnabled(dbDriver_ != 0);
+	ui_->actionOpen_database->setEnabled(dbDriver_ == 0);
+
+	return dbDriver_ == 0;
+}
+
+
+void DatabaseViewer::recoverDatabase()
+{
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), pathDatabase_, tr("Databases (*.db)"));
+	if(!path.isEmpty())
+	{
+		if(path.compare(pathDatabase_+QDir::separator()+databaseFileName_.c_str()) == 0)
+		{
+			QMessageBox::information(this, "Database recovery", tr("The selected database is already opened, close it first."));
+			return;
+		}
+		std::string errorMsg;
+		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+		progressDialog->setMaximumSteps(100);
+		progressDialog->show();
+		progressDialog->setCancelButtonVisible(true);
+		RecoveryState state(progressDialog);
+		if(databaseRecovery(path.toStdString(), false, &errorMsg, &state))
+		{
+			QMessageBox::information(this, "Database recovery", tr("Database \"%1\" recovered! Try opening it again.").arg(path));
+		}
+		else
+		{
+			QMessageBox::warning(this, "Database recovery", tr("Database recovery failed: \"%1\".").arg(errorMsg.c_str()));
+		}
+		progressDialog->setValue(progressDialog->maximumSteps());
+	}
+}
+
+void DatabaseViewer::closeEvent(QCloseEvent* event)
+{
+	//write settings before quit?
+	bool save = false;
+	if(this->isWindowModified())
+	{
+		QMessageBox::Button b=QMessageBox::question(this,
+				tr("Database Viewer"),
+				tr("There are unsaved changed settings. Save them?"),
+				QMessageBox::Save | QMessageBox::Cancel | QMessageBox::Discard);
+		if(b == QMessageBox::Save)
+		{
+			save = true;
+		}
+		else if(b != QMessageBox::Discard)
+		{
+			event->ignore();
+			return;
+		}
+	}
+
+	if(save)
+	{
+		writeSettings();
+	}
+
+	event->accept();
+
+	if(!closeDatabase())
+	{
+		event->ignore();
 	}
 
 	if(event->isAccepted())
@@ -3139,7 +3244,7 @@ void DatabaseViewer::update(int value,
 			labelMapId->setText(QString::number(mapId));
 		}
 	}
-	else
+	else if(value != 0)
 	{
 		ULOGGER_ERROR("Slider index out of range ?");
 	}
@@ -3537,12 +3642,18 @@ void DatabaseViewer::update3dView()
 
 void DatabaseViewer::sliderNeighborValueChanged(int value)
 {
-	this->updateConstraintView(neighborLinks_.at(value));
+	if(value < neighborLinks_.size())
+	{
+		this->updateConstraintView(neighborLinks_.at(value));
+	}
 }
 
 void DatabaseViewer::sliderLoopValueChanged(int value)
 {
-	this->updateConstraintView(loopLinks_.at(value));
+	if(value < loopLinks_.size())
+	{
+		this->updateConstraintView(loopLinks_.at(value));
+	}
 }
 
 // only called when ui_->checkBox_showOptimized state changed

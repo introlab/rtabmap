@@ -1053,7 +1053,7 @@ template<typename PointInT> bool
 pcl::TextureMapping<PointInT>::textureMeshwithMultipleCameras2 (
 		pcl::TextureMesh &mesh,
 		const pcl::texture_mapping::CameraVector &cameras,
-		const ProgressState * state,
+		const rtabmap::ProgressState * state,
 		std::vector<std::map<int, pcl::PointXY> > * vertexToPixels)
 {
 

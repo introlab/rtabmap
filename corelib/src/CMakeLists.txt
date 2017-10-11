@@ -11,6 +11,8 @@ SET(SRC_FILES
 	DBDriverSqlite3.cpp
 	DBReader.cpp
 	
+	Recovery.cpp
+	
     Camera.cpp
     CameraThread.cpp
     CameraRGB.cpp

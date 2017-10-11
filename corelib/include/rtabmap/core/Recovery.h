@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2017, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,38 +25,32 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_
-#define CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_
+#ifndef RECOVERY_H_
+#define RECOVERY_H_
 
-#include <rtabmap/utilite/ULogger.h>
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
+#include <string>
 
 namespace rtabmap {
 
-class ProgressState
-{
-public:
-	ProgressState():canceled_(false){}
-	virtual bool callback(const std::string & msg) const
-	{
-		if(!msg.empty())
-			UDEBUG("msg=%s", msg.c_str());
-		return true;
-	}
-	virtual ~ProgressState(){}
+class ProgressState;
 
-	void setCanceled(bool canceled)
-	{
-		canceled_ = canceled;
-	}
-	bool isCanceled() const
-	{
-		return canceled_;
-	}
-
-private:
-	bool canceled_;
-};
+/**
+ * Return true on success. The database is
+ * renamed to "*.backup.db" before recovering.
+ * @param corruptedDatabase database to recover
+ * @param keepCorruptedDatabase if false and on recovery success, the backup database is removed
+ * @param errorMsg error message if the function returns false
+ * @param progressState A ProgressState object used to get status of the recovery process
+ */
+bool RTABMAP_EXP databaseRecovery(
+		const std::string & corruptedDatabase,
+		bool keepCorruptedDatabase = true,
+		std::string * errorMsg = 0,
+		ProgressState * progressState = 0);
 
 }
 
-#endif /* CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_ */
+
+#endif /* RECOVERY_H_ */

@@ -85,6 +85,8 @@ private slots:
 	void restoreDefaultSettings();
 	void configModified();
 	void openDatabase();
+	bool closeDatabase();
+	void recoverDatabase();
 	void updateStatistics();
 	void editDepthImage();
 	void generateGraph();

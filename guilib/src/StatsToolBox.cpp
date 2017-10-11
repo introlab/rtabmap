@@ -81,6 +81,7 @@ void StatItem::clearCache()
 {
 	_x.clear();
 	_y.clear();
+	_value->clear();
 }
 
 void StatItem::addValue(float y)

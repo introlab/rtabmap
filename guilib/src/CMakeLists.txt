@@ -30,6 +30,7 @@ SET(headers_ui
 	./DepthCalibrationDialog.h
 	./3rdParty/QMultiComboBox.h
 	./TexturingState.h
+	./RecoveryState.h
 	./EditDepthArea.h
 )
 

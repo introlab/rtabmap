@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2017, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,38 +25,79 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_
-#define CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_
+#ifndef RECOVERYSTATE_H_
+#define RECOVERYSTATE_H_
 
-#include <rtabmap/utilite/ULogger.h>
+#include "rtabmap/gui/ProgressDialog.h"
+#include "rtabmap/core/ProgressState.h"
+#include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UConversion.h"
+#include <QApplication>
 
 namespace rtabmap {
 
-class ProgressState
+class RecoveryState : public QObject, public ProgressState
 {
+	Q_OBJECT
+
 public:
-	ProgressState():canceled_(false){}
+	RecoveryState(ProgressDialog * dialog): dialog_(dialog)
+	{
+		connect(dialog_, SIGNAL(canceled()), this, SLOT(cancel()));
+	}
+	virtual ~RecoveryState() {}
 	virtual bool callback(const std::string & msg) const
 	{
 		if(!msg.empty())
-			UDEBUG("msg=%s", msg.c_str());
-		return true;
+		{
+			QString msgQt = msg.c_str();
+			if(msgQt.contains("Processed"))
+			{
+				dialog_->incrementStep();
+				dialog_->appendText(msg.c_str());
+			}
+			else if(msgQt.contains("Found"))
+			{
+				std::list<std::string> strSplit = uSplitNumChar(msg);
+				if(strSplit.size() == 3)
+				{
+					int nodes = uStr2Int(*(++strSplit.begin()));
+					if(nodes > 0)
+					{
+						dialog_->setMaximumSteps(nodes);
+					}
+				}
+				dialog_->appendText(msg.c_str());
+			}
+			else if(msgQt.contains("Skipping") ||
+					msgQt.contains("Failed processing"))
+			{
+				dialog_->appendText(msg.c_str(), Qt::darkYellow);
+			}
+			else
+			{
+				dialog_->appendText(msg.c_str());
+			}
+		}
+		QApplication::processEvents();
+		if(!isCanceled())
+		{
+			return ProgressState::callback(msg);
+		}
+		return false;
 	}
-	virtual ~ProgressState(){}
 
-	void setCanceled(bool canceled)
+public slots:
+	void cancel()
 	{
-		canceled_ = canceled;
-	}
-	bool isCanceled() const
-	{
-		return canceled_;
+		setCanceled(true);
 	}
 
 private:
-	bool canceled_;
+	ProgressDialog * dialog_;
 };
 
 }
 
-#endif /* CORELIB_INCLUDE_RTABMAP_CORE_PROGRESSSTATE_H_ */
+
+#endif /* RECOVERYSTATE_H_ */

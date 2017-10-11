@@ -42,6 +42,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RegistrationVis.h"
 #include "rtabmap/core/OccupancyGrid.h"
 #include "rtabmap/core/GainCompensator.h"
+#include "rtabmap/core/Recovery.h"
 
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/KeypointItem.h"
@@ -66,6 +67,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "AboutDialog.h"
 #include "PostProcessingDialog.h"
 #include "DepthCalibrationDialog.h"
+#include "RecoveryState.h"
 
 #include <QtGui/QCloseEvent>
 #include <QtGui/QPixmap>
@@ -143,6 +145,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_firstStamp(0.0f),
 	_processingStatistics(false),
 	_processingDownloadedMap(false),
+	_recovering(false),
 	_odometryReceived(false),
 	_newDatabasePath(""),
 	_newDatabasePathOutput(""),
@@ -776,8 +779,11 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 	}
 	else if(anEvent->getClassName().compare("RtabmapEventInit") == 0)
 	{
-		RtabmapEventInit * rtabmapEventInit = (RtabmapEventInit*)anEvent;
-		emit rtabmapEventInitReceived((int)rtabmapEventInit->getStatus(), rtabmapEventInit->getInfo().c_str());
+		if(!_recovering)
+		{
+			RtabmapEventInit * rtabmapEventInit = (RtabmapEventInit*)anEvent;
+			emit rtabmapEventInitReceived((int)rtabmapEventInit->getStatus(), rtabmapEventInit->getInfo().c_str());
+		}
 	}
 	else if(anEvent->getClassName().compare("RtabmapEvent3DMap") == 0)
 	{
@@ -4224,10 +4230,10 @@ void MainWindow::newDatabase()
 				tr("Cannot create a new database because the temporary database \"%1\" already exists. "
 				  "There may be another instance of RTAB-Map running with the same Working Directory or "
 				  "the last time RTAB-Map was not closed correctly. "
-				  "Do you want to continue (the database will be deleted to create the new one)?").arg(databasePath.c_str()),
-				  QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+				  "Do you want to recover the database (click Ignore to delete it and create a new one)?").arg(databasePath.c_str()),
+				  QMessageBox::Yes | QMessageBox::No | QMessageBox::Ignore, QMessageBox::No);
 
-		if(r == QMessageBox::Yes)
+		if(r == QMessageBox::Ignore)
 		{
 			if(QFile::remove(databasePath.c_str()))
 			{
@@ -4236,6 +4242,44 @@ void MainWindow::newDatabase()
 			else
 			{
 				UERROR("Temporary database \"%s\" could not be deleted!", databasePath.c_str());
+				return;
+			}
+		}
+		else if(r == QMessageBox::Yes)
+		{
+			std::string errorMsg;
+			rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
+			progressDialog->setAttribute(Qt::WA_DeleteOnClose);
+			progressDialog->setMaximumSteps(100);
+			progressDialog->show();
+			progressDialog->setCancelButtonVisible(true);
+			RecoveryState state(progressDialog);
+			_recovering = true;
+			if(databaseRecovery(databasePath, false, &errorMsg, &state))
+			{
+				_recovering = false;
+				progressDialog->setValue(progressDialog->maximumSteps());
+				QString newPath = QFileDialog::getSaveFileName(this, tr("Save recovered database"), _preferencesDialog->getWorkingDirectory()+QDir::separator()+QString("recovered.db"), tr("RTAB-Map database files (*.db)"));
+				if(newPath.isEmpty())
+				{
+					return;
+				}
+				if(QFileInfo(newPath).suffix() == "")
+				{
+					newPath += ".db";
+				}
+				if(QFile::exists(newPath))
+				{
+					QFile::remove(newPath);
+				}
+				QFile::rename(databasePath.c_str(), newPath);
+				return;
+			}
+			else
+			{
+				_recovering = false;
+				progressDialog->setValue(progressDialog->maximumSteps());
+				QMessageBox::warning(this, "Database recovery", tr("Database recovery failed: \"%1\".", errorMsg.c_str()));
 				return;
 			}
 		}

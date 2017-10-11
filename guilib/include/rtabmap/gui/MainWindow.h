@@ -277,6 +277,7 @@ private:
 	double _firstStamp;
 	bool _processingStatistics;
 	bool _processingDownloadedMap;
+	bool _recovering;
 	bool _odometryReceived;
 	QString _newDatabasePath;
 	QString _newDatabasePathOutput;
