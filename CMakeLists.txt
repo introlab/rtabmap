@@ -322,7 +322,7 @@ IF(WITH_ZED)
             LINK_DIRECTORIES( ${LINK_DIRECTORIES} ${ZED_LIBRARY_DIR})
         ENDIF(ZED_LIBRARIES AND ZED_INCLUDE_DIRS)
     ELSE() # Linux
-        find_package(ZED 1 QUIET)
+        find_package(ZED 2 QUIET)
     ENDIF(WIN32)
     
     IF(ZED_FOUND)
