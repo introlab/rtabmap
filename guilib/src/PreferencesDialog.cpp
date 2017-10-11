@@ -520,6 +520,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_freenect2BilateralFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2EdgeAwareFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2NoiseFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_freenect2Pipeline, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1516,6 +1517,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_freenect2BilateralFiltering->setChecked(true);
 		_ui->checkBox_freenect2EdgeAwareFiltering->setChecked(true);
 		_ui->checkBox_freenect2NoiseFiltering->setChecked(true);
+		_ui->lineEdit_freenect2Pipeline->setText("");
 		_ui->comboBox_realsensePresetRGB->setCurrentIndex(0);
 		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
 		_ui->checkbox_realsenseOdom->setChecked(false);
@@ -1888,6 +1890,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->checkBox_freenect2BilateralFiltering->setChecked(settings.value("bilateralFiltering", _ui->checkBox_freenect2BilateralFiltering->isChecked()).toBool());
 	_ui->checkBox_freenect2EdgeAwareFiltering->setChecked(settings.value("edgeAwareFiltering", _ui->checkBox_freenect2EdgeAwareFiltering->isChecked()).toBool());
 	_ui->checkBox_freenect2NoiseFiltering->setChecked(settings.value("noiseFiltering", _ui->checkBox_freenect2NoiseFiltering->isChecked()).toBool());
+	_ui->lineEdit_freenect2Pipeline->setText(settings.value("pipeline", _ui->lineEdit_freenect2Pipeline->text()).toString());
 	settings.endGroup(); // Freenect2
 
 	settings.beginGroup("RealSense");
@@ -2279,6 +2282,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("bilateralFiltering", _ui->checkBox_freenect2BilateralFiltering->isChecked());
 	settings.setValue("edgeAwareFiltering", _ui->checkBox_freenect2EdgeAwareFiltering->isChecked());
 	settings.setValue("noiseFiltering",     _ui->checkBox_freenect2NoiseFiltering->isChecked());
+	settings.setValue("pipeline",           _ui->lineEdit_freenect2Pipeline->text());
 	settings.endGroup(); // Freenect2
 
 	settings.beginGroup("RealSense");
@@ -4740,7 +4744,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			_ui->doubleSpinBox_freenect2MaxDepth->value(),
 			_ui->checkBox_freenect2BilateralFiltering->isChecked(),
 			_ui->checkBox_freenect2EdgeAwareFiltering->isChecked(),
-			_ui->checkBox_freenect2NoiseFiltering->isChecked());
+			_ui->checkBox_freenect2NoiseFiltering->isChecked(),
+			_ui->lineEdit_freenect2Pipeline->text().toStdString());
 	}
 	else if (driver == kSrcRealSense)
 	{

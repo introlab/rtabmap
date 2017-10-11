@@ -2820,15 +2820,13 @@ void Rtabmap::setWorkingDirectory(std::string path)
 		ULOGGER_DEBUG("Comparing new working directory path \"%s\" with \"%s\"", path.c_str(), _wDir.c_str());
 		if(path.compare(_wDir) != 0)
 		{
+			if (_foutFloat || _foutInt)
+			{
+				UWARN("Working directory has been changed from \"%s\" with \"%s\", new log files will be created.",
+					path.c_str(), _wDir.c_str());
+			}
 			_wDir = path;
-			if(_memory)
-			{
-				this->resetMemory();
-			}
-			else
-			{
-				setupLogFiles();
-			}
+			setupLogFiles();
 		}
 	}
 	else if(path.empty())

@@ -1343,7 +1343,8 @@ CameraFreenect2::CameraFreenect2(
 	float maxDepth,
 	bool bilateralFiltering,
 	bool edgeAwareFiltering,
-	bool noiseFiltering) :
+	bool noiseFiltering,
+	const std::string & pipelineName) :
 		Camera(imageRate, localTransform)
 #ifdef RTABMAP_FREENECT2
         ,
@@ -1357,7 +1358,8 @@ CameraFreenect2::CameraFreenect2(
 		maxKinect2Depth_(maxDepth),
 		bilateralFiltering_(bilateralFiltering),
 		edgeAwareFiltering_(edgeAwareFiltering),
-		noiseFiltering_(noiseFiltering)
+		noiseFiltering_(noiseFiltering),
+		pipelineName_(pipelineName)
 #endif
 {
 #ifdef RTABMAP_FREENECT2
@@ -1410,6 +1412,72 @@ CameraFreenect2::~CameraFreenect2()
 #endif
 }
 
+libfreenect2::PacketPipeline *createPacketPipelineByName(const std::string & name)
+{
+	std::string availablePipelines;
+#if defined(LIBFREENECT2_WITH_OPENGL_SUPPORT)
+	availablePipelines += "gl ";
+	if (name == "gl")
+	{
+		UINFO("Using 'gl' pipeline.");
+		return new libfreenect2::OpenGLPacketPipeline();
+	}
+#endif
+#if defined(LIBFREENECT2_WITH_CUDA_SUPPORT)
+	availablePipelines += "cuda cudakde ";
+	if (name == "cuda")
+	{
+		UINFO("Using 'cuda' pipeline.");
+		return new libfreenect2::CudaPacketPipeline();
+	}
+	if (name == "cudakde")
+	{
+		UINFO("Using 'cudakde' pipeline.");
+		return new libfreenect2::CudaKdePacketPipeline();
+	}
+#endif
+#if defined(LIBFREENECT2_WITH_OPENCL_SUPPORT)
+	availablePipelines += "cl clkde ";
+	if (name == "cl")
+	{
+		UINFO("Using 'cl' pipeline.");
+		return new libfreenect2::OpenCLPacketPipeline();
+	}
+	if (name == "clkde")
+	{
+		UINFO("Using 'clkde' pipeline.");
+		return new libfreenect2::OpenCLKdePacketPipeline();
+	}
+#endif
+	availablePipelines += "cpu";
+	if (name == "cpu")
+	{
+		UINFO("Using 'cpu' pipeline.");
+		return new libfreenect2::CpuPacketPipeline();
+	}
+
+	if (!name.empty())
+	{
+		UERROR("'%s' pipeline is not available. Available pipelines are: \"%s\". Default one is used instead (first one in the list).", 
+			name.c_str(), availablePipelines.c_str());
+	}
+
+	// create default pipeline
+#if defined(LIBFREENECT2_WITH_OPENGL_SUPPORT)
+	UINFO("Using 'gl' pipeline.");
+	return new libfreenect2::OpenGLPacketPipeline();
+#elif defined(LIBFREENECT2_WITH_CUDA_SUPPORT)
+	UINFO("Using 'cuda' pipeline.");
+	return new libfreenect2::CudaPacketPipeline();
+#elif defined(LIBFREENECT2_WITH_OPENCL_SUPPORT)
+	UINFO("Using 'cl' pipeline.");
+	return new libfreenect2::OpenCLPacketPipeline();
+#else
+	UINFO("Using 'cpu' pipeline.");
+	return new libfreenect2::CpuPacketPipeline();
+#endif
+}
+
 bool CameraFreenect2::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
 #ifdef RTABMAP_FREENECT2
@@ -1426,20 +1494,7 @@ bool CameraFreenect2::init(const std::string & calibrationFolder, const std::str
 		reg_ = 0;
 	}
 
-	libfreenect2::PacketPipeline * pipeline;
-#ifdef LIBFREENECT2_WITH_CUDA_SUPPORT
-	pipeline = new libfreenect2::CudaPacketPipeline();
-#else
-#ifdef LIBFREENECT2_WITH_OPENGL_SUPPORT
-	pipeline = new libfreenect2::OpenGLPacketPipeline();
-#else
-#ifdef LIBFREENECT2_WITH_OPENCL_SUPPORT
-	pipeline = new libfreenect2::OpenCLPacketPipeline();
-#else
-	pipeline = new libfreenect2::CpuPacketPipeline();
-#endif
-#endif
-#endif
+	libfreenect2::PacketPipeline * pipeline = createPacketPipelineByName(pipelineName_);
 
 	if(deviceId_ <= 0)
 	{

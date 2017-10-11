@@ -263,7 +263,8 @@ public:
 					float maxDepth = 12.0f,
 					bool bilateralFiltering = true,
 					bool edgeAwareFiltering = true,
-					bool noiseFiltering = true);
+					bool noiseFiltering = true,
+					const std::string & pipelineName = "");
 	virtual ~CameraFreenect2();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -287,6 +288,7 @@ private:
 	bool bilateralFiltering_;
 	bool edgeAwareFiltering_;
 	bool noiseFiltering_;
+	std::string pipelineName_;
 #endif
 };
 

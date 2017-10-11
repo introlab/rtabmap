@@ -3821,15 +3821,6 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 
 		if(_state != kIdle && parametersModified.size())
 		{
-			if(parametersModified.erase(Parameters::kRtabmapWorkingDirectory()) &&
-				_state != kMonitoring &&
-				_state != kMonitoringPaused)
-			{
-				QMessageBox::information(this, tr("Working memory changed"),
-						tr("The working directory can't be changed while the "
-								"detector is running (state=%1). This will be "
-								"applied when the detector will stop.").arg(_state));
-			}
 			if(postParamEvent)
 			{
 				this->post(new ParamEvent(parametersModified));
