@@ -1412,6 +1412,7 @@ CameraFreenect2::~CameraFreenect2()
 #endif
 }
 
+#ifdef RTABMAP_FREENECT2
 libfreenect2::PacketPipeline *createPacketPipelineByName(const std::string & name)
 {
 	std::string availablePipelines;
@@ -1477,6 +1478,7 @@ libfreenect2::PacketPipeline *createPacketPipelineByName(const std::string & nam
 	return new libfreenect2::CpuPacketPipeline();
 #endif
 }
+#endif
 
 bool CameraFreenect2::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
