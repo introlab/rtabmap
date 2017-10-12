@@ -3965,7 +3965,8 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 				{
 					serializedIds[i] = iter->first;
-					memcpy(serializedPoses.data()+(12*sizeof(float)*i), iter->second.data(), 12*sizeof(float));
+					memcpy(serializedPoses.data()+(12*i), iter->second.data(), 12*sizeof(float));
+					++i;
 				}
 
 				compressedIds = compressData2(cv::Mat(1,serializedIds.size(), CV_32SC1, serializedIds.data()));
@@ -4175,6 +4176,16 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 				if(poses)
 				{
 					UASSERT(serializedIds.cols == serializedPoses.cols/12);
+					UASSERT(serializedPoses.type() == CV_32FC1);
+					UASSERT(serializedIds.type() == CV_32SC1);
+					for(int i=0; i<serializedIds.cols; ++i)
+					{
+						Transform t(serializedPoses.at<float>(i*12), serializedPoses.at<float>(i*12+1), serializedPoses.at<float>(i*12+2), serializedPoses.at<float>(i*12+3),
+								serializedPoses.at<float>(i*12+4), serializedPoses.at<float>(i*12+5), serializedPoses.at<float>(i*12+6), serializedPoses.at<float>(i*12+7),
+								serializedPoses.at<float>(i*12+8), serializedPoses.at<float>(i*12+9), serializedPoses.at<float>(i*12+10), serializedPoses.at<float>(i*12+11));
+						poses->insert(std::make_pair(serializedIds.at<int>(i), t));
+						UDEBUG("Optimized pose %d: %s", serializedIds.at<int>(i), t.prettyPrint().c_str());
+					}
 				}
 			}
 

@@ -1539,10 +1539,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		case STATE_VISUALIZING:
 			mButtonLighting.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
 			mButtonWireframe.setVisibility(mHudVisible && !mItemRenderingPointCloud.isChecked()?View.VISIBLE:View.INVISIBLE);
-			mButtonCloseVisualization.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonCloseVisualization.setVisibility(mHudVisible && mButtonPause.isChecked()?View.VISIBLE:View.INVISIBLE);
 			mButtonCloseVisualization.setEnabled(true);
-			mButtonSaveOnDevice.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
-			mButtonShareOnSketchfab.setVisibility(mHudVisible?View.VISIBLE:View.INVISIBLE);
+			mButtonSaveOnDevice.setVisibility(mHudVisible && mButtonPause.isChecked()?View.VISIBLE:View.INVISIBLE);
+			mButtonShareOnSketchfab.setVisibility(mHudVisible && mButtonPause.isChecked()?View.VISIBLE:View.INVISIBLE);
 			mItemSave.setEnabled(mButtonPause.isChecked());
 			mItemExport.setEnabled(mButtonPause.isChecked() && !mItemDataRecorderMode.isChecked());
 			mItemOpen.setEnabled(false);
@@ -1550,7 +1550,8 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			mItemSettings.setEnabled(true);
 			mItemReset.setEnabled(true);
 			mItemModes.setEnabled(true);
-			mButtonPause.setVisibility(View.INVISIBLE);
+			mButtonPause.setVisibility(mHudVisible && mItemLocalizationMode.isChecked()?View.VISIBLE:View.GONE);
+			mItemLocalizationMode.setEnabled(mButtonPause.isChecked());
 			mItemDataRecorderMode.setEnabled(mButtonPause.isChecked());
 			break;
 		case STATE_VISUALIZING_WHILE_LOADING:
@@ -1594,7 +1595,14 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
 	private void pauseMapping() {
 
-		updateState(State.STATE_IDLE);
+		if(mState != State.STATE_VISUALIZING)
+		{
+			updateState(State.STATE_IDLE);
+		}
+		else
+		{
+			updateState(State.STATE_VISUALIZING);
+		}
 
 		if(mButtonPause.isChecked())
 		{
@@ -1645,7 +1653,14 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			}
 			else if(!mMapIsEmpty)
 			{
-				mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
+				if(mItemLocalizationMode!=null && mItemLocalizationMode.isChecked())
+				{
+					mToast.makeText(getActivity(), String.format("Localization mode"), mToast.LENGTH_LONG).show();
+				}
+				else
+				{
+					mToast.makeText(getActivity(), String.format("On resume, a new map is created. Tip: Try relocalizing in the previous area."), mToast.LENGTH_LONG).show();
+				}
 			}
 			else if(mMapIsEmpty && mItemLocalizationMode!=null && mItemLocalizationMode.isChecked())
 			{
@@ -1817,6 +1832,10 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			item.setChecked(!item.isChecked());
 			RTABMapLib.setLocalizationMode(item.isChecked());
+			if(mState == State.STATE_VISUALIZING)
+			{
+				mButtonPause.setVisibility(mItemLocalizationMode.isChecked()?View.VISIBLE:View.GONE);
+			}
 		}
 		else if(itemId == R.id.trajectory_mode)
 		{

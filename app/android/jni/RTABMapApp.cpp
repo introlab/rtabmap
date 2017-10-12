@@ -187,6 +187,8 @@ RTABMapApp::RTABMapApp() :
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
 		optMesh_(new pcl::TextureMesh),
+		optRefId_(0),
+		optRefPose_(0),
 		mapToOdom_(rtabmap::Transform::getIdentity())
 
 {
@@ -194,28 +196,45 @@ RTABMapApp::RTABMapApp() :
 }
 
 RTABMapApp::~RTABMapApp() {
-  if(camera_)
-  {
-	  delete camera_;
-  }
-  if(rtabmapThread_)
-  {
-	  rtabmapThread_->close(false);
-	  delete rtabmapThread_;
-  }
-  if(logHandler_)
-  {
-	  delete logHandler_;
-  }
-  boost::mutex::scoped_lock  lock(rtabmapMutex_);
-  if(rtabmapEvents_.size())
-  {
-	  for(std::list<rtabmap::RtabmapEvent*>::iterator iter=rtabmapEvents_.begin(); iter!=rtabmapEvents_.end(); ++iter)
-	  {
-		  delete *iter;
-	  }
-  }
-  rtabmapEvents_.clear();
+	if(camera_)
+	{
+		delete camera_;
+	}
+	if(rtabmapThread_)
+	{
+		rtabmapThread_->close(false);
+		delete rtabmapThread_;
+	}
+	if(logHandler_)
+	{
+		delete logHandler_;
+	}
+	if(optRefPose_)
+	{
+		delete optRefPose_;
+	}
+	{
+		boost::mutex::scoped_lock  lock(rtabmapMutex_);
+		if(rtabmapEvents_.size())
+		{
+			for(std::list<rtabmap::RtabmapEvent*>::iterator iter=rtabmapEvents_.begin(); iter!=rtabmapEvents_.end(); ++iter)
+			{
+				delete *iter;
+			}
+		}
+		rtabmapEvents_.clear();
+	}
+	{
+		boost::mutex::scoped_lock  lock(visLocalizationMutex_);
+		if(visLocalizationEvents_.size())
+		{
+			for(std::list<rtabmap::RtabmapEvent*>::iterator iter=visLocalizationEvents_.begin(); iter!=visLocalizationEvents_.end(); ++iter)
+			{
+				delete *iter;
+			}
+		}
+		visLocalizationEvents_.clear();
+	}
 }
 
 void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
@@ -276,6 +295,13 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	this->unregisterFromEventsManager(); // to ignore published init events when closing rtabmap
 	status_.first = rtabmap::RtabmapEventInit::kInitializing;
 	rtabmapMutex_.lock();
+	if(rtabmapEvents_.size())
+	{
+		for(std::list<rtabmap::RtabmapEvent*>::iterator iter=rtabmapEvents_.begin(); iter!=rtabmapEvents_.end(); ++iter)
+		{
+			delete *iter;
+		}
+	}
 	rtabmapEvents_.clear();
 	openingDatabase_ = true;
 	if(rtabmapThread_)
@@ -293,6 +319,12 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	// Open visualization while we load (if there is an optimized mesh saved in database)
 	optMesh_.reset(new pcl::TextureMesh);
 	optTexture_ = cv::Mat();
+	optRefId_ = 0;
+	if(optRefPose_)
+	{
+		delete optRefPose_;
+		optRefPose_ = 0;
+	}
 	cv::Mat cloudMat;
 	std::vector<std::vector<std::vector<unsigned int> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
@@ -314,6 +346,12 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 				LOGI("Open: Found optimized mesh! Visualizing it.");
 				optMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
 				optTexture_ = textures;
+				if(optPoses.size())
+				{
+					// just take the last as reference
+					optRefId_ = optPoses.rbegin()->first;
+					optRefPose_ = new rtabmap::Transform(optPoses.rbegin()->second);
+				}
 				if(!optTexture_.empty())
 				{
 					LOGI("Open: Texture mesh: %dx%d.", optTexture_.cols, optTexture_.rows);
@@ -987,14 +1025,12 @@ int RTABMapApp::Render()
 				poseEvents_.clear();
 			}
 		}
-		rtabmap::Transform mapOdom = rtabmap::Transform::getIdentity();
 		if(!pose.isNull())
 		{
 			// update camera pose?
-			if(graphOptimization_ && !visualizingMesh_ && !mapToOdom_.isIdentity())
+			if(graphOptimization_ && !mapToOdom_.isIdentity())
 			{
-				mapOdom = mapToOdom_;
-				main_scene_.SetCameraPose(opengl_world_T_rtabmap_world*mapOdom*rtabmap_world_T_tango_world*pose);
+				main_scene_.SetCameraPose(opengl_world_T_rtabmap_world*mapToOdom_*rtabmap_world_T_tango_world*pose);
 			}
 			else
 			{
@@ -1063,6 +1099,58 @@ int RTABMapApp::Render()
 					pcl::fromPCLPointCloud2(optMesh_->cloud, *cloud);
 					main_scene_.addCloud(g_optMeshId, cloud, indices, opengl_world_T_rtabmap_world);
 				}
+
+				// clean up old messages if there are ones
+				boost::mutex::scoped_lock  lock(visLocalizationMutex_);
+				if(visLocalizationEvents_.size())
+				{
+					for(std::list<rtabmap::RtabmapEvent*>::iterator iter=visLocalizationEvents_.begin(); iter!=visLocalizationEvents_.end(); ++iter)
+					{
+						delete *iter;
+					}
+				}
+				visLocalizationEvents_.clear();
+			}
+
+			std::list<rtabmap::RtabmapEvent*> visLocalizationEvents;
+			visLocalizationMutex_.lock();
+			visLocalizationEvents = visLocalizationEvents_;
+			visLocalizationEvents_.clear();
+			visLocalizationMutex_.unlock();
+
+			if(visLocalizationEvents.size())
+			{
+				const rtabmap::Statistics & stats = visLocalizationEvents.back()->getStats();
+				if(!stats.mapCorrection().isNull())
+				{
+					mapToOdom_ = stats.mapCorrection();
+				}
+
+				std::map<int, rtabmap::Transform>::const_iterator iter = stats.poses().find(optRefId_);
+				if(iter != stats.poses().end() && !iter->second.isNull() && optRefPose_)
+				{
+					// adjust opt mesh pose
+					main_scene_.setCloudPose(g_optMeshId, opengl_world_T_rtabmap_world * iter->second * (*optRefPose_).inverse());
+				}
+				int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
+				int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
+				int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
+				if(!paused_ && loopClosure>0)
+				{
+					main_scene_.setBackgroundColor(0, 0.5f, 0); // green
+				}
+				else if(!paused_ && rejected>0)
+				{
+					main_scene_.setBackgroundColor(0, 0.2f, 0); // dark green
+				}
+				else if(!paused_ && fastMovement)
+				{
+					main_scene_.setBackgroundColor(0.2f, 0, 0.2f); // dark magenta
+				}
+				else
+				{
+					main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
+				}
 			}
 
 			//backup state
@@ -1080,6 +1168,27 @@ int RTABMapApp::Render()
 
 			// revert state
 			main_scene_.setMeshRendering(isMeshRendering, isTextureRendering);
+
+			fpsTime.restart();
+			lastDrawnCloudsCount_ = main_scene_.Render();
+			if(renderingTime_ < fpsTime.elapsed())
+			{
+				renderingTime_ = fpsTime.elapsed();
+			}
+
+			if(visLocalizationEvents.size())
+			{
+				// send statistics to GUI
+				UEventsManager::post(new PostRenderEvent(visLocalizationEvents.back()));
+				visLocalizationEvents.pop_back();
+
+				for(std::list<rtabmap::RtabmapEvent*>::iterator iter=visLocalizationEvents.begin(); iter!=visLocalizationEvents.end(); ++iter)
+				{
+					delete *iter;
+				}
+				visLocalizationEvents.clear();
+				lastPostRenderEventTime_ = UTimer::now();
+			}
 		}
 		else
 		{
@@ -1466,7 +1575,7 @@ int RTABMapApp::Render()
 										odomEvent.data().imageRaw().cols, odomEvent.data().imageRaw().rows,
 										odomEvent.data().depthRaw().cols, odomEvent.data().depthRaw().rows,
 									   (int)cloud->width, (int)cloud->height);
-								main_scene_.addCloud(-1, cloud, indices, opengl_world_T_rtabmap_world*mapOdom*odomEvent.pose());
+								main_scene_.addCloud(-1, cloud, indices, opengl_world_T_rtabmap_world*mapToOdom_*odomEvent.pose());
 								main_scene_.setCloudVisible(-1, true);
 							}
 							else
@@ -1663,7 +1772,10 @@ void RTABMapApp::setPausedMapping(bool paused)
 {
 	{
 		boost::mutex::scoped_lock  lock(renderingMutex_);
-		visualizingMesh_ = false;
+		if(!localizationMode_)
+		{
+			visualizingMesh_ = false;
+		}
 		main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
 	}
 	paused_ = paused;
@@ -2778,11 +2890,17 @@ bool RTABMapApp::postExportation(bool visualize)
 	LOGI("postExportation(visualize=%d)", visualize?1:0);
 	optMesh_.reset(new pcl::TextureMesh);
 	optTexture_ = cv::Mat();
+	optRefId_ = 0;
+	if(optRefPose_)
+	{
+		delete optRefPose_;
+		optRefPose_ = 0;
+	}
 	exportedMeshUpdated_ = false;
-	visualizingMesh_ = false;
 
 	if(visualize)
 	{
+		visualizingMesh_ = false;
 		cv::Mat cloudMat;
 		std::vector<std::vector<std::vector<unsigned int> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
@@ -2801,6 +2919,13 @@ bool RTABMapApp::postExportation(bool visualize)
 				optMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
 				optTexture_ = textures;
 
+				if(optPoses.size())
+				{
+					// just take the last as reference
+					optRefId_ = optPoses.rbegin()->first;
+					optRefPose_ = new rtabmap::Transform(optPoses.rbegin()->second);
+				}
+
 				boost::mutex::scoped_lock  lock(renderingMutex_);
 				visualizingMesh_ = true;
 				exportedMeshUpdated_ = true;
@@ -2810,6 +2935,19 @@ bool RTABMapApp::postExportation(bool visualize)
 				LOGI("postExportation: No optimized mesh found.");
 			}
 		}
+	}
+	else if(visualizingMesh_)
+	{
+		rtabmapMutex_.lock();
+		if(!rtabmap_->getLocalOptimizedPoses().empty())
+		{
+			rtabmap::Statistics stats;
+			stats.setPoses(rtabmap_->getLocalOptimizedPoses());
+			rtabmapEvents_.push_back(new rtabmap::RtabmapEvent(stats));
+		}
+		rtabmapMutex_.unlock();
+
+		visualizingMesh_ = false;
 	}
 
 	return visualizingMesh_;
@@ -3048,8 +3186,16 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			LOGI("Received RtabmapEvent event!");
 			if(camera_->isRunning())
 			{
-				boost::mutex::scoped_lock lock(rtabmapMutex_);
-				rtabmapEvents_.push_back((rtabmap::RtabmapEvent*)event);
+				if(visualizingMesh_)
+				{
+					boost::mutex::scoped_lock lock(visLocalizationMutex_);
+					visLocalizationEvents_.push_back((rtabmap::RtabmapEvent*)event);
+				}
+				else
+				{
+					boost::mutex::scoped_lock lock(rtabmapMutex_);
+					rtabmapEvents_.push_back((rtabmap::RtabmapEvent*)event);
+				}
 				return true;
 			}
 		}
