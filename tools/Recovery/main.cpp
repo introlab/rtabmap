@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/ProgressState.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 using namespace rtabmap;
 
