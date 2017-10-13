@@ -2495,22 +2495,42 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 
 						notificationManager.notify(0, n);
 						
-						// Send to...
-						File f = new File(newDatabasePath);
+						final File f = new File(newDatabasePath);
 						final int fileSizeMB = (int)f.length()/(1024 * 1024);
-						Intent shareIntent = new Intent();
-						shareIntent.setAction(Intent.ACTION_SEND);
-						shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
-						shareIntent.setType("application/octet-stream");
-						startActivity(Intent.createChooser(shareIntent, String.format("Database \"%s\" (%d MB) successfully saved on the SD-CARD! Share it?", newDatabasePathHuman, fileSizeMB)));
 						
-						resetNoTouchTimer(true);
-						if(!mItemDataRecorderMode.isChecked())
-						{
-							mOpenedDatabasePath = newDatabasePath;
-						}
-						mProgressDialog.dismiss();
-						updateState(previousState);
+						new AlertDialog.Builder(getActivity())
+						.setTitle("Database saved!")
+						.setMessage(String.format("Database \"%s\" (%d MB) successfully saved on the SD-CARD! Share it?", newDatabasePathHuman, fileSizeMB))
+						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								// Send to...
+								Intent shareIntent = new Intent();
+								shareIntent.setAction(Intent.ACTION_SEND);
+								shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
+								shareIntent.setType("application/octet-stream");
+								startActivity(Intent.createChooser(shareIntent, "Sharing..."));
+								
+								resetNoTouchTimer(true);
+								if(!mItemDataRecorderMode.isChecked())
+								{
+									mOpenedDatabasePath = newDatabasePath;
+								}
+								mProgressDialog.dismiss();
+								updateState(previousState);
+							}
+						})
+						.setNegativeButton("No", new DialogInterface.OnClickListener() {
+							public void onClick(DialogInterface dialog, int which) {
+								resetNoTouchTimer(true);
+								if(!mItemDataRecorderMode.isChecked())
+								{
+									mOpenedDatabasePath = newDatabasePath;
+								}
+								mProgressDialog.dismiss();
+								updateState(previousState);
+							}
+						})
+						.show();
 					}
 				});
 			} 
@@ -2656,16 +2676,30 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 						public void run() {
 							mProgressDialog.dismiss();
 							
-							// Send to...
-							File f = new File(zipOutput);
+							final File f = new File(zipOutput);
 							final int fileSizeMB = (int)f.length()/(1024 * 1024);
-							Intent shareIntent = new Intent();
-							shareIntent.setAction(Intent.ACTION_SEND);
-							shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
-							shareIntent.setType("application/zip");
-							startActivity(Intent.createChooser(shareIntent, String.format("Mesh \"%s\" (%d MB) successfully exported on the SD-CARD! Share it?", pathHuman, fileSizeMB)));
-														
-							resetNoTouchTimer(true);
+							
+							new AlertDialog.Builder(getActivity())
+							.setTitle("Database saved!")
+							.setMessage(String.format("Mesh \"%s\" (%d MB) successfully exported on the SD-CARD! Share it?", pathHuman, fileSizeMB))
+							.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog, int which) {
+									// Send to...
+									Intent shareIntent = new Intent();
+									shareIntent.setAction(Intent.ACTION_SEND);
+									shareIntent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(f));
+									shareIntent.setType("application/zip");
+									startActivity(Intent.createChooser(shareIntent, "Sharing..."));
+																
+									resetNoTouchTimer(true);
+								}
+							})
+							.setNegativeButton("No", new DialogInterface.OnClickListener() {
+								public void onClick(DialogInterface dialog, int which) {
+									resetNoTouchTimer(true);
+								}
+							})
+							.show();
 						}
 					});
 				}
