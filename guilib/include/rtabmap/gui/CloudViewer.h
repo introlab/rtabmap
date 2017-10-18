@@ -303,6 +303,7 @@ protected:
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 	virtual void handleAction(QAction * event);
 	QMenu * menu() {return _menu;}
+	pcl::visualization::PCLVisualizer * visualizer() {return _visualizer;}
 
 private:
 	void createMenu();
