@@ -1169,13 +1169,6 @@ int RTABMapApp::Render()
 			// revert state
 			main_scene_.setMeshRendering(isMeshRendering, isTextureRendering);
 
-			fpsTime.restart();
-			lastDrawnCloudsCount_ = main_scene_.Render();
-			if(renderingTime_ < fpsTime.elapsed())
-			{
-				renderingTime_ = fpsTime.elapsed();
-			}
-
 			if(visLocalizationEvents.size())
 			{
 				// send statistics to GUI
