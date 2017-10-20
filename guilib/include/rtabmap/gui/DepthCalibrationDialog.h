@@ -25,64 +25,62 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef EDITDEPTHAREA_H
-#define EDITDEPTHAREA_H
+#ifndef RTABMAP_DEPTHCALIBRATIONDIALOG_H_
+#define RTABMAP_DEPTHCALIBRATIONDIALOG_H_
 
-#include <QColor>
-#include <QImage>
-#include <QPoint>
-#include <QWidget>
-#include <opencv2/opencv.hpp>
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-class QMenu;
-class QAction;
+#include <QDialog>
+#include <QMap>
+#include <QtCore/QSettings>
+#include <rtabmap/core/Signature.h>
+#include <rtabmap/core/Parameters.h>
+
+class Ui_DepthCalibrationDialog;
+
+namespace clams {
+class DiscreteDepthDistortionModel;
+}
 
 namespace rtabmap {
 
-class EditDepthArea : public QWidget
+class ProgressDialog;
+
+class RTABMAPGUI_EXP DepthCalibrationDialog : public QDialog
 {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-    EditDepthArea(QWidget *parent = 0);
+	DepthCalibrationDialog(QWidget * parent = 0);
+	virtual ~DepthCalibrationDialog();
 
-    void setImage(const cv::Mat & depth, const cv::Mat & rgb = cv::Mat());
-    cv::Mat getModifiedImage() const;
-    bool isModified() const {return modified_;}
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
 
-    void setPenWidth(int newWidth);
-    int penWidth() const { return myPenWidth_; }
+	void calibrate(const std::map<int, Transform> & poses,
+			const QMap<int, Signature> & cachedSignatures,
+			const QString & workingDirectory,
+			const ParametersMap & parameters);
+
+signals:
+	void configChanged();
 
 public slots:
-    void resetChanges();
+	void restoreDefaults();
 
-protected:
-    virtual void mousePressEvent(QMouseEvent *event);
-    virtual void mouseMoveEvent(QMouseEvent *event);
-    virtual void mouseReleaseEvent(QMouseEvent *event);
-    virtual void paintEvent(QPaintEvent *event);
-    virtual void resizeEvent(QResizeEvent *event);
-    virtual void contextMenuEvent(QContextMenuEvent * e);
+private slots:
+	void saveModel();
+	void cancel();
 
 private:
-    void drawLineTo(const QPoint &endPoint);
-    void computeScaleOffsets(const QRect & targetRect, float & scale, float & offsetX, float & offsetY) const;
-
-    bool modified_;
-    bool scribbling_;
-    int myPenWidth_;
-    QImage imageRGB_;
-    QImage image_;
-    cv::Mat originalImage_;
-    QPoint lastPoint_;
-
-    QMenu * menu_;
-    QAction * showRGB_;
-    QAction * removeCluster_;
-    QAction * resetChanges_;
-    QAction * setPenWidth_;
+	Ui_DepthCalibrationDialog * _ui;
+	ProgressDialog * _progressDialog;
+	bool _canceled;
+	clams::DiscreteDepthDistortionModel * _model;
+	QString _workingDirectory;
+	cv::Size _imageSize;
 };
 
-}
+} /* namespace rtabmap */
 
-#endif
+#endif /* GUILIB_SRC_DEPTHCALIBRATIONDIALOG_H_ */

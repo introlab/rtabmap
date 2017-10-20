@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Parameters.h>
 #include <rtabmap/core/Optimizer.h>
 
-#include "ParametersToolBox.h"
+#include "rtabmap/gui/ParametersToolBox.h"
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QLineEdit>

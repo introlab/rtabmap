@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "ExportDialog.h"
+#include "rtabmap/gui/ExportDialog.h"
 #include "ui_exportDialog.h"
 
 #include <QFileDialog>

@@ -1638,17 +1638,18 @@ void CloudViewer::resetCamera()
 	if((_aFollowCamera->isChecked() || _aLockCamera->isChecked()) && !_lastPose.isNull())
 	{
 		// reset relative to last current pose
+		cv::Point3f pt = util3d::transformPoint(cv::Point3f(_lastPose.x(), _lastPose.y(), _lastPose.z()), _lastPose.rotation()*Transform(-1, 0, 0));
 		if(_aLockViewZ->isChecked())
 		{
 			_visualizer->setCameraPosition(
-					_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
+					pt.x, pt.y, pt.z,
 					_lastPose.x(), _lastPose.y(), _lastPose.z(),
 					0, 0, 1);
 		}
 		else
 		{
 			_visualizer->setCameraPosition(
-					_lastPose.x()-1, _lastPose.y(), _lastPose.z(),
+					pt.x, pt.y, pt.z,
 					_lastPose.x(), _lastPose.y(), _lastPose.z(),
 					_lastPose.r31(), _lastPose.r32(), _lastPose.r33());
 		}

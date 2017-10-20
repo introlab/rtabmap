@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef IMAGEVIEW_H_
-#define IMAGEVIEW_H_
+#ifndef RTABMAP_IMAGEVIEW_H_
+#define RTABMAP_IMAGEVIEW_H_
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
@@ -63,6 +63,7 @@ public:
 	int getAlpha() const {return _alpha;}
 	bool isGraphicsViewMode() const;
 	bool isGraphicsViewScaled() const;
+	const QColor & getDefaultBackgroundColor() const;
 	const QColor & getBackgroundColor() const;
 
 	float viewScale() const;
@@ -73,6 +74,7 @@ public:
 	void setLinesShown(bool shown);
 	void setGraphicsViewMode(bool on);
 	void setGraphicsViewScaled(bool scaled);
+	void setDefaultBackgroundColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
 
 	void setFeatures(const std::multimap<int, cv::KeyPoint> & refWords, const cv::Mat & depth = cv::Mat(), const QColor & color = Qt::yellow);
@@ -112,6 +114,7 @@ private:
 private:
 	QString _savedFileName;
 	int _alpha;
+	QColor _defaultBgColor;
 
 	QMenu * _menu;
 	QAction * _showImage;

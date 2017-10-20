@@ -25,60 +25,51 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef GUILIB_SRC_DEPTHCALIBRATIONDIALOG_H_
-#define GUILIB_SRC_DEPTHCALIBRATIONDIALOG_H_
+#ifndef RTABMAP_EXPORTDIALOG_H_
+#define RTABMAP_EXPORTDIALOG_H_
+
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QDialog>
-#include <QMap>
-#include <QtCore/QSettings>
-#include <rtabmap/core/Signature.h>
-#include <rtabmap/core/Parameters.h>
+#include <QSettings>
 
-class Ui_DepthCalibrationDialog;
-
-namespace clams {
-class DiscreteDepthDistortionModel;
-}
+class Ui_ExportDialog;
 
 namespace rtabmap {
 
-class ProgressDialog;
-
-class DepthCalibrationDialog : public QDialog
+class RTABMAPGUI_EXP ExportDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	DepthCalibrationDialog(QWidget * parent = 0);
-	virtual ~DepthCalibrationDialog();
+	ExportDialog(QWidget * parent = 0);
 
-	void saveSettings(QSettings & settings, const QString & group = "") const;
-	void loadSettings(QSettings & settings, const QString & group = "");
+	virtual ~ExportDialog();
 
-	void calibrate(const std::map<int, Transform> & poses,
-			const QMap<int, Signature> & cachedSignatures,
-			const QString & workingDirectory,
-			const ParametersMap & parameters);
+	void saveSettings(QSettings & settings, const QString & group) const;
+	void loadSettings(QSettings & settings, const QString & group);
+
+	QString outputPath() const;
+	int framesIgnored() const;
+	double targetFramerate() const;
+	int sessionExported() const;
+	bool isRgbExported() const;
+	bool isDepthExported() const;
+	bool isDepth2dExported() const;
+	bool isOdomExported() const;
+	bool isUserDataExported() const;
 
 signals:
 	void configChanged();
 
-public slots:
+private slots:
+	void getPath();
 	void restoreDefaults();
 
-private slots:
-	void saveModel();
-	void cancel();
-
 private:
-	Ui_DepthCalibrationDialog * _ui;
-	ProgressDialog * _progressDialog;
-	bool _canceled;
-	clams::DiscreteDepthDistortionModel * _model;
-	QString _workingDirectory;
-	cv::Size _imageSize;
+	Ui_ExportDialog * _ui;
 };
 
-} /* namespace rtabmap */
+}
 
-#endif /* GUILIB_SRC_DEPTHCALIBRATIONDIALOG_H_ */
+#endif /* EXPORTDIALOG_H_ */

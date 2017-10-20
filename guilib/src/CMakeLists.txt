@@ -5,7 +5,7 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/MainWindow.h
 	../include/${PROJECT_PREFIX}/gui/PreferencesDialog.h
 	../include/${PROJECT_PREFIX}/gui/DatabaseViewer.h
-	./AboutDialog.h
+	../include/${PROJECT_PREFIX}/gui/AboutDialog.h
 	../include/${PROJECT_PREFIX}/gui/ConsoleWidget.h
 	../include/${PROJECT_PREFIX}/gui/ImageView.h
 	../include/${PROJECT_PREFIX}/gui/PdfPlot.h
@@ -19,19 +19,19 @@ SET(headers_ui
 	../include/${PROJECT_PREFIX}/gui/DataRecorder.h
 	../include/${PROJECT_PREFIX}/gui/CameraViewer.h
 	../include/${PROJECT_PREFIX}/gui/CalibrationDialog.h
-	./ExportDialog.h
-	./PostProcessingDialog.h
-	./ExportCloudsDialog.h
-	./ExportBundlerDialog.h
-	./MapVisibilityWidget.h
+	../include/${PROJECT_PREFIX}/gui/ExportDialog.h
+	../include/${PROJECT_PREFIX}/gui/PostProcessingDialog.h
+	../include/${PROJECT_PREFIX}/gui/ExportCloudsDialog.h
+	../include/${PROJECT_PREFIX}/gui/ExportBundlerDialog.h
+	../include/${PROJECT_PREFIX}/gui/MapVisibilityWidget.h
 	../include/${PROJECT_PREFIX}/gui/GraphViewer.h
-	./CreateSimpleCalibrationDialog.h
-	./ParametersToolBox.h
-	./DepthCalibrationDialog.h
+	../include/${PROJECT_PREFIX}/gui/CreateSimpleCalibrationDialog.h
+	../include/${PROJECT_PREFIX}/gui/ParametersToolBox.h
+	../include/${PROJECT_PREFIX}/gui/DepthCalibrationDialog.h
 	./3rdParty/QMultiComboBox.h
-	./TexturingState.h
-	./RecoveryState.h
-	./EditDepthArea.h
+	../include/${PROJECT_PREFIX}/gui/TexturingState.h
+	../include/${PROJECT_PREFIX}/gui/RecoveryState.h
+	../include/${PROJECT_PREFIX}/gui/EditDepthArea.h
 )
 
 SET(uis

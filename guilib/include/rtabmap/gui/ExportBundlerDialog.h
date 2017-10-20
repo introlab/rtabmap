@@ -25,65 +25,49 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RTABMAP_PROGRESSDIALOG_H_
-#define RTABMAP_PROGRESSDIALOG_H_
+#ifndef RTABMAP_EXPORTBUNDLERDIALOG_H_
+#define RTABMAP_EXPORTBUNDLERDIALOG_H_
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
 #include <QDialog>
+#include <QSettings>
 
-class QLabel;
-class QTextEdit;
-class QProgressBar;
-class QPushButton;
-class QCheckBox;
+class Ui_ExportBundlerDialog;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ProgressDialog : public QDialog
+class RTABMAPGUI_EXP ExportBundlerDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~ProgressDialog();
+	ExportBundlerDialog(QWidget * parent = 0);
 
-	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
-	void setValue(int value);
-	int maximumSteps() const;
-	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
-	void setCancelButtonVisible(bool visible);
-	bool isCanceled() const {return _canceled;}
+	virtual ~ExportBundlerDialog();
+
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
+
+	void setWorkingDirectory(const QString & path);
+
+	QString outputPath() const;
+
+	double maxLinearSpeed() const;
+	double maxAngularSpeed() const;
+	double laplacianThreshold() const;
 
 signals:
-	void canceled();
-
-protected:
-	virtual void closeEvent(QCloseEvent * event);
-
-public slots:
-	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep(int steps = 1);
-	void clear();
-	void resetProgress();
+	void configChanged();
 
 private slots:
-	void closeDialog();
-	void cancel();
+	void getPath();
+	void restoreDefaults();
 
 private:
-	QLabel * _text;
-	QTextEdit * _detailedText;
-	QProgressBar * _progressBar;
-	QPushButton * _closeButton;
-	QPushButton * _cancelButton;
-	QCheckBox * _closeWhenDoneCheckBox;
-	QString _endMessage;
-	int _delayedClosingTime; // sec
-	bool _canceled;
+	Ui_ExportBundlerDialog * _ui;
 };
 
 }
 
-#endif /* PROGRESSDIALOG_H_ */
+#endif /* EXPORTBUNDLERDIALOG_H_ */

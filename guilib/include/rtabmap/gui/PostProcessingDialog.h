@@ -25,56 +25,72 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifndef RTABMAP_POSTPROCESSINGDIALOG_H_
+#define RTABMAP_POSTPROCESSINGDIALOG_H_
 
-#ifndef GUILIB_SRC_TEXTURINGSTATE_H_
-#define GUILIB_SRC_TEXTURINGSTATE_H_
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include "rtabmap/gui/ProgressDialog.h"
-#include "rtabmap/core/ProgressState.h"
-#include <QApplication>
+#include <QDialog>
+#include <QtCore/QSettings>
+
+#include <rtabmap/core/Optimizer.h>
+
+class Ui_PostProcessingDialog;
+class QAbstractButton;
 
 namespace rtabmap {
 
-class TexturingState : public QObject, public ProgressState
+class RTABMAPGUI_EXP PostProcessingDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	TexturingState(ProgressDialog * dialog, bool incrementOnMsgReceived): dialog_(dialog)
-	{
-		_increment = incrementOnMsgReceived;
-		connect(dialog_, SIGNAL(canceled()), this, SLOT(cancel()));
-	}
-	virtual ~TexturingState() {}
-	virtual bool callback(const std::string & msg) const
-	{
-		if(!msg.empty())
-		{
-			dialog_->appendText(msg.c_str());
-			if(_increment)
-			{
-				dialog_->incrementStep();
-			}
-		}
-		QApplication::processEvents();
-		if(!isCanceled())
-		{
-			return ProgressState::callback(msg);
-		}
-		return false;
-	}
+	PostProcessingDialog(QWidget * parent = 0);
+
+	virtual ~PostProcessingDialog();
+
+	void saveSettings(QSettings & settings, const QString & group = "") const;
+	void loadSettings(QSettings & settings, const QString & group = "");
+
+	//getters
+	bool isDetectMoreLoopClosures() const;
+	double clusterRadius() const;
+	double clusterAngle() const;
+	int iterations() const;
+	bool isRefineNeighborLinks() const;
+	bool isRefineLoopClosureLinks() const;
+	bool isSBA() const;
+	int sbaIterations() const;
+	double sbaVariance() const;
+	Optimizer::Type sbaType() const;
+
+	//setters
+	void setDetectMoreLoopClosures(bool on);
+	void setClusterRadius(double radius);
+	void setClusterAngle(double angle);
+	void setIterations(int iterations);
+	void setRefineNeighborLinks(bool on);
+	void setRefineLoopClosureLinks(bool on);
+	void setSBA(bool on);
+	void setSBAIterations(int iterations);
+	void setSBAVariance(double variance);
+	void setSBAType(Optimizer::Type type);
+
+signals:
+	void configChanged();
 
 public slots:
-	void cancel()
-	{
-		setCanceled(true);
-	}
+	void restoreDefaults();
+
+private slots:
+	void updateVisibility();
+	void updateButtonBox();
+
 
 private:
-	ProgressDialog * dialog_;
-	bool _increment;
+	Ui_PostProcessingDialog * _ui;
 };
 
 }
 
-#endif /* GUILIB_SRC_TEXTURINGSTATE_H_ */
+#endif /* POSTPROCESSINGDIALOG_H_ */

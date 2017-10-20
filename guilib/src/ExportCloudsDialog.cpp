@@ -25,11 +25,11 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "ExportCloudsDialog.h"
+#include "rtabmap/gui/ExportCloudsDialog.h"
 #include "ui_exportCloudsDialog.h"
 
 #include "rtabmap/gui/CloudViewer.h"
-#include "TexturingState.h"
+#include "rtabmap/gui/TexturingState.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UThread.h"

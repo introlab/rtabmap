@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include <DepthCalibrationDialog.h>
+#include <rtabmap/gui/DepthCalibrationDialog.h>
 #include "ui_depthCalibrationDialog.h"
 
 #include "rtabmap/gui/ProgressDialog.h"

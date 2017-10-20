@@ -68,11 +68,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/gui/ImageView.h"
 #include "rtabmap/gui/GraphViewer.h"
-#include "ExportCloudsDialog.h"
-#include "ExportBundlerDialog.h"
-#include "PostProcessingDialog.h"
-#include "CreateSimpleCalibrationDialog.h"
-#include "DepthCalibrationDialog.h"
+#include "rtabmap/gui/ExportCloudsDialog.h"
+#include "rtabmap/gui/ExportBundlerDialog.h"
+#include "rtabmap/gui/PostProcessingDialog.h"
+#include "rtabmap/gui/CreateSimpleCalibrationDialog.h"
+#include "rtabmap/gui/DepthCalibrationDialog.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UConversion.h>

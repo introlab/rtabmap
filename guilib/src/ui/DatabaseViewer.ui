@@ -21,16 +21,7 @@
     <property name="spacing">
      <number>0</number>
     </property>
-    <property name="leftMargin">
-     <number>0</number>
-    </property>
-    <property name="topMargin">
-     <number>0</number>
-    </property>
-    <property name="rightMargin">
-     <number>0</number>
-    </property>
-    <property name="bottomMargin">
+    <property name="margin">
      <number>0</number>
     </property>
     <item>
@@ -61,8 +52,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>388</width>
-           <height>242</height>
+           <width>438</width>
+           <height>202</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -253,8 +244,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>387</width>
-           <height>242</height>
+           <width>437</width>
+           <height>202</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -434,16 +425,7 @@
       </item>
       <item row="1" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout">
-        <property name="leftMargin">
-         <number>12</number>
-        </property>
-        <property name="topMargin">
-         <number>12</number>
-        </property>
-        <property name="rightMargin">
-         <number>12</number>
-        </property>
-        <property name="bottomMargin">
+        <property name="margin">
          <number>12</number>
         </property>
         <item>
@@ -499,16 +481,7 @@
       </item>
       <item row="1" column="1">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <property name="leftMargin">
-         <number>12</number>
-        </property>
-        <property name="topMargin">
-         <number>12</number>
-        </property>
-        <property name="rightMargin">
-         <number>12</number>
-        </property>
-        <property name="bottomMargin">
+        <property name="margin">
          <number>12</number>
         </property>
         <item>
@@ -579,7 +552,7 @@
      <x>0</x>
      <y>0</y>
      <width>1547</width>
-     <height>25</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1070,16 +1043,7 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_10">
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
+     <property name="margin">
       <number>0</number>
      </property>
      <item>
@@ -1133,8 +1097,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>340</width>
-          <height>186</height>
+          <width>274</width>
+          <height>192</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1269,8 +1233,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>282</width>
-          <height>626</height>
+          <width>206</width>
+          <height>520</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1632,8 +1596,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>205</width>
-          <height>117</height>
+          <width>152</width>
+          <height>96</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1732,8 +1696,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>185</width>
-          <height>487</height>
+          <width>138</width>
+          <height>381</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1835,16 +1799,7 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
+     <property name="margin">
       <number>0</number>
      </property>
      <item>
@@ -1957,16 +1912,7 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
+     <property name="margin">
       <number>0</number>
      </property>
      <item>
@@ -2097,16 +2043,7 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_7">
     <layout class="QVBoxLayout" name="verticalLayout_13">
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
+     <property name="margin">
       <number>0</number>
      </property>
      <item>
@@ -2124,16 +2061,7 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
     <layout class="QVBoxLayout" name="verticalLayout_7">
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
+     <property name="margin">
       <number>0</number>
      </property>
      <item>
@@ -2178,16 +2106,7 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>0</number>
-     </property>
-     <property name="rightMargin">
-      <number>0</number>
-     </property>
-     <property name="bottomMargin">
+     <property name="margin">
       <number>0</number>
      </property>
      <item>
@@ -2436,7 +2355,7 @@
   <customwidget>
    <class>rtabmap::ParametersToolBox</class>
    <extends>QWidget</extends>
-   <header>ParametersToolBox.h</header>
+   <header>../include/rtabmap/gui/ParametersToolBox.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

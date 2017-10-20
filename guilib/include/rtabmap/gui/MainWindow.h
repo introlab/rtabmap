@@ -25,8 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef MAINWINDOW_H_
-#define MAINWINDOW_H_
+#ifndef RTABMAP_MAINWINDOW_H_
+#define RTABMAP_MAINWINDOW_H_
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
@@ -96,7 +96,7 @@ public:
 	 * @param prefDialog If NULL, a default dialog is created. This
 	 *                   dialog is automatically destroyed with the MainWindow.
 	 */
-	MainWindow(PreferencesDialog * prefDialog = 0, QWidget * parent = 0);
+	MainWindow(PreferencesDialog * prefDialog = 0, QWidget * parent = 0, bool showSplashScreen = true);
 	virtual ~MainWindow();
 
 	QString getWorkingDirectory() const;
@@ -106,8 +106,10 @@ public:
 	bool isProcessingStatistics() const {return _processingStatistics;}
 	bool isProcessingOdometry() const {return _processingOdometry;}
 
+	bool isDatabaseUpdated() const { return _databaseUpdated; }
+
 public slots:
-	void processStats(const rtabmap::Statistics & stat);
+	virtual void processStats(const rtabmap::Statistics & stat);
 	void updateCacheFromDatabase(const QString & path);
 	void openDatabase(const QString & path);
 	void updateParameters(const rtabmap::ParametersMap & parameters);
@@ -121,19 +123,31 @@ protected:
 	virtual void keyPressEvent(QKeyEvent *event);
 	virtual bool eventFilter(QObject *obj, QEvent *event);
 
-private slots:
-	void changeState(MainWindow::State state);
+protected slots:
+	virtual void changeState(MainWindow::State state);
+	virtual void newDatabase();
+	virtual void openDatabase();
+	virtual bool closeDatabase();
+	virtual void startDetection();
+	virtual void pauseDetection();
+	virtual void stopDetection();
+	virtual void saveConfigGUI();
+	virtual void downloadAllClouds();
+	virtual void downloadPoseGraph();
+	virtual void clearTheCache();
+	virtual void openHelp();
+	virtual void openPreferences();
+	virtual void openPreferencesSource();
+	virtual void setDefaultViews();
+	virtual void resetOdometry();
+	virtual void triggerNewMap();
+	virtual void deleteMemory();
+
+protected slots:
 	void beep();
 	void cancelProgress();
 	void configGUIModified();
-	void saveConfigGUI();
-	void newDatabase();
-	void openDatabase();
-	bool closeDatabase();
 	void editDatabase();
-	void startDetection();
-	void pauseDetection();
-	void stopDetection();
 	void notifyNoMoreImages();
 	void printLoopClosureIds();
 	void generateGraphDOT();
@@ -146,7 +160,6 @@ private slots:
 	void exportOctomap();
 	void postProcessing();
 	void depthCalibration();
-	void deleteMemory();
 	void openWorkingDirectory();
 	void updateEditMenu();
 	void selectStream();
@@ -169,14 +182,7 @@ private slots:
 	void cancelGoal();
 	void label();
 	void updateCacheFromDatabase();
-	void downloadAllClouds();
-	void downloadPoseGraph();
 	void anchorCloudsToGroundTruth();
-	void clearTheCache();
-	void openHelp();
-	void openPreferences();
-	void openPreferencesSource();
-	void setDefaultViews();
 	void selectScreenCaptureFormat(bool checked);
 	void takeScreenshot();
 	void updateElapsedTime();
@@ -207,8 +213,6 @@ private slots:
 	void exportClouds();
 	void exportBundlerFormat();
 	void viewClouds();
-	void resetOdometry();
-	void triggerNewMap();
 	void dataRecorder();
 	void dataRecorderDestroyed();
 	void updateNodeVisibility(int, bool);
@@ -255,6 +259,33 @@ private:
 	void loadFigures();
 	void exportPoses(int format);
 	QString captureScreen(bool cacheInRAM = false);
+
+protected:
+	Ui_mainWindow * ui() { return _ui; }
+	const State & state() const { return _state; }
+
+	const QMap<int, Signature> & cachedSignatures() const { return _cachedSignatures;}
+	const std::map<int, Transform> & currentPosesMap() const { return _currentPosesMap; }  // <nodeId, pose>
+	const std::map<int, Transform> & currentGTPosesMap() const { return _currentGTPosesMap; }  // <nodeId, pose>
+	const std::multimap<int, Link> & currentLinksMap() const { return _currentLinksMap; }  // <nodeFromId, link>
+	const std::map<int, int> & currentMapIds() const { return _currentMapIds; }    // <nodeId, mapId>
+	const std::map<int, std::string> & currentLabels() const { return _currentLabels; }  // <nodeId, label>
+	const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds() const { return _cachedClouds; }
+	const std::map<int, cv::Mat> & createdScans() const { return _createdScans; }
+	const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & createdFeatures() const { return _createdFeatures; }
+
+	const rtabmap::OccupancyGrid * occupancyGrid() const { return _occupancyGrid; }
+	const rtabmap::OctoMap * octomap() const { return _octomap; }
+
+	rtabmap::ProgressDialog * progressDialog() { return _progressDialog; }
+	rtabmap::CloudViewer * cloudViewer() const { return _cloudViewer; }
+	rtabmap::LoopClosureViewer * loopClosureViewer() const { return _loopClosureViewer; }
+
+	void setCloudViewer(rtabmap::CloudViewer * cloudViewer);
+	void setLoopClosureViewer(rtabmap::LoopClosureViewer * loopClosureViewer);
+
+	void setNewDatabasePathOutput(const QString & newDatabasePathOutput) {_newDatabasePathOutput = newDatabasePathOutput;}
+	const QString & newDatabasePathOutput() const { return _newDatabasePathOutput; }
 
 private:
 	Ui_mainWindow * _ui;
@@ -320,7 +351,7 @@ private:
 	PdfPlotCurve * _likelihoodCurve;
 	PdfPlotCurve * _rawLikelihoodCurve;
 
-	ProgressDialog * _initProgressDialog;
+	ProgressDialog * _progressDialog;
 
 	CloudViewer * _cloudViewer;
 	LoopClosureViewer * _loopClosureViewer;
@@ -341,4 +372,4 @@ private:
 
 }
 
-#endif /* MainWindow_H_ */
+#endif /* RTABMAP_MainWindow_H_ */

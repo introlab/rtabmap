@@ -25,65 +25,66 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RTABMAP_PROGRESSDIALOG_H_
-#define RTABMAP_PROGRESSDIALOG_H_
+//
+// Original version from Find-Object: https://github.com/introlab/find-object
+//
+
+#ifndef RTABMAP_PARAMETERSTOOLBOX_H_
+#define RTABMAP_PARAMETERSTOOLBOX_H_
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include <QDialog>
+#include <rtabmap/core/Parameters.h>
+#include <QWidget>
+#include <QSet>
 
-class QLabel;
-class QTextEdit;
-class QProgressBar;
-class QPushButton;
-class QCheckBox;
+class QVBoxLayout;
+class QStackedWidget;
+class QComboBox;
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ProgressDialog : public QDialog
+class RTABMAPGUI_EXP ParametersToolBox: public QWidget
 {
 	Q_OBJECT
 
 public:
-	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~ProgressDialog();
+	ParametersToolBox(QWidget *parent = 0);
+	virtual ~ParametersToolBox();
 
-	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
-	void setValue(int value);
-	int maximumSteps() const;
-	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
-	void setCancelButtonVisible(bool visible);
-	bool isCanceled() const {return _canceled;}
-
-signals:
-	void canceled();
-
-protected:
-	virtual void closeEvent(QCloseEvent * event);
-
-public slots:
-	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep(int steps = 1);
-	void clear();
-	void resetProgress();
-
-private slots:
-	void closeDialog();
-	void cancel();
+	void setupUi(const ParametersMap & parameters);
+	QWidget * getParameterWidget(const QString & key);
+	void updateParameter(const std::string & key, const std::string & value);
+	const ParametersMap & getParameters() const {return parameters_;}
 
 private:
-	QLabel * _text;
-	QTextEdit * _detailedText;
-	QProgressBar * _progressBar;
-	QPushButton * _closeButton;
-	QPushButton * _cancelButton;
-	QCheckBox * _closeWhenDoneCheckBox;
-	QString _endMessage;
-	int _delayedClosingTime; // sec
-	bool _canceled;
+	void addParameter(QVBoxLayout * layout, const std::string & key, const std::string & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const QString & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const int & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const double & value);
+	void addParameter(QVBoxLayout * layout, const QString & key, const bool & value);
+	void addParameter(QVBoxLayout * layout, const QString & name, QWidget * widget);
+
+Q_SIGNALS:
+	void parametersChanged(const QStringList & name);
+
+private Q_SLOTS:
+	void changeParameter();
+	void changeParameter(const QString & value);
+	void changeParameter(const int & value);
+	void resetCurrentPage();
+	void resetAllPages();
+
+private:
+	QStringList resetPage(int index);
+	void updateParametersVisibility();
+
+private:
+	QComboBox * comboBox_;
+	QStackedWidget * stackedWidget_;
+	ParametersMap parameters_;
 };
 
-}
+} // namespace find_object
 
-#endif /* PROGRESSDIALOG_H_ */
+#endif /* PARAMETERSTOOLBOX_H_ */

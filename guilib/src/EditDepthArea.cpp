@@ -32,7 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QAction>
 #include <QInputDialog>
 
-#include "EditDepthArea.h"
+#include "rtabmap/gui/EditDepthArea.h"
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UCv2Qt.h>
 

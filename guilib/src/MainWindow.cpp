@@ -53,6 +53,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/ProgressDialog.h"
 #include "rtabmap/gui/CloudViewer.h"
 #include "rtabmap/gui/LoopClosureViewer.h"
+#include "rtabmap/gui/ExportCloudsDialog.h"
+#include "rtabmap/gui/ExportBundlerDialog.h"
+#include "rtabmap/gui/AboutDialog.h"
+#include "rtabmap/gui/PostProcessingDialog.h"
+#include "rtabmap/gui/DepthCalibrationDialog.h"
+#include "rtabmap/gui/RecoveryState.h"
 
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/ULogger.h>
@@ -61,13 +67,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UConversion.h>
 #include "rtabmap/utilite/UPlot.h"
 #include "rtabmap/utilite/UCv2Qt.h"
-
-#include "ExportCloudsDialog.h"
-#include "ExportBundlerDialog.h"
-#include "AboutDialog.h"
-#include "PostProcessingDialog.h"
-#include "DepthCalibrationDialog.h"
-#include "RecoveryState.h"
 
 #include <QtGui/QCloseEvent>
 #include <QtGui/QPixmap>
@@ -130,7 +129,7 @@ inline static void initGuiResource() { Q_INIT_RESOURCE(GuiLib); }
 
 namespace rtabmap {
 
-MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
+MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool showSplashScreen) :
 	QMainWindow(parent),
 	_ui(0),
 	_state(kIdle),
@@ -177,11 +176,15 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 
 	initGuiResource();
 
-	QPixmap pixmap(":images/RTAB-Map.png");
-	QSplashScreen splash(pixmap);
-	splash.show();
-	splash.showMessage(tr("Loading..."));
-	QApplication::processEvents();
+	QSplashScreen * splash = 0;
+	if (showSplashScreen)
+	{
+		QPixmap pixmap(":images/RTAB-Map.png");
+		splash = new QSplashScreen(pixmap);
+		splash->show();
+		splash->showMessage(tr("Loading..."));
+		QApplication::processEvents();
+	}
 
 	// Create dialogs
 	_aboutDialog = new AboutDialog(this);
@@ -265,9 +268,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_logEventTime->start();
 
 	//Graphics scenes
-	_ui->imageView_source->setBackgroundColor(Qt::black);
-	_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
-	_ui->imageView_odometry->setBackgroundColor(Qt::black);
+	_ui->imageView_source->setBackgroundColor(_ui->imageView_source->getDefaultBackgroundColor());
+	_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
+	_ui->imageView_odometry->setBackgroundColor(_ui->imageView_odometry->getDefaultBackgroundColor());
 	_ui->imageView_odometry->setAlpha(200);
 	_preferencesDialog->loadWidgetState(_ui->imageView_source);
 	_preferencesDialog->loadWidgetState(_ui->imageView_loopClosure);
@@ -290,9 +293,9 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->rawLikelihoodPlot->addCurve(_rawLikelihoodCurve, false);
 	_ui->rawLikelihoodPlot->showLegend(false);
 
-	_initProgressDialog = new ProgressDialog(this);
-	_initProgressDialog->setMinimumWidth(800);
-	connect(_initProgressDialog, SIGNAL(canceled()), this, SLOT(cancelProgress()));
+	_progressDialog = new ProgressDialog(this);
+	_progressDialog->setMinimumWidth(800);
+	connect(_progressDialog, SIGNAL(canceled()), this, SLOT(cancelProgress()));
 
 	connect(_ui->widget_mapVisibility, SIGNAL(visibilityChanged(int, bool)), this, SLOT(updateNodeVisibility(int, bool)));
 
@@ -326,7 +329,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_ui->toolBar_2->setWindowTitle(tr("Control toolbar"));
 	QAction * a = _ui->menuShow_view->addAction("Progress dialog");
 	a->setCheckable(false);
-	connect(a, SIGNAL(triggered(bool)), _initProgressDialog, SLOT(show()));
+	connect(a, SIGNAL(triggered(bool)), _progressDialog, SLOT(show()));
 	QAction * statusBarAction = _ui->menuShow_view->addAction("Status bar");
 	statusBarAction->setCheckable(true);
 	statusBarAction->setChecked(statusBarShown);
@@ -618,7 +621,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent) :
 	_loopClosureViewer->setDecimation(_preferencesDialog->getCloudDecimation(0));
 	_loopClosureViewer->setMaxDepth(_preferencesDialog->getCloudMaxDepth(0));
 
-	splash.close();
+	if (splash)
+	{
+		splash->close();
+		delete splash;
+	}
 
 	this->setFocus();
 
@@ -648,6 +655,30 @@ void MainWindow::setupMainLayout(bool vertical)
 	{
 		qobject_cast<QHBoxLayout *>(_ui->layout_imageview->layout())->setDirection(QBoxLayout::LeftToRight);
 	}
+}
+
+void MainWindow::setCloudViewer(rtabmap::CloudViewer * cloudViewer)
+{ 
+	UASSERT(cloudViewer); 
+	delete _cloudViewer;
+	_cloudViewer = cloudViewer; 
+	_cloudViewer->setParent(_ui->layout_cloudViewer);
+	_cloudViewer->setObjectName("widget_cloudViewer");
+	_ui->layout_cloudViewer->layout()->addWidget(_cloudViewer);
+	
+	_cloudViewer->setBackfaceCulling(true, false);
+	_preferencesDialog->loadWidgetState(_cloudViewer);
+
+	connect(_cloudViewer, SIGNAL(configChanged()), this, SLOT(configGUIModified()));
+}
+void MainWindow::setLoopClosureViewer(rtabmap::LoopClosureViewer * loopClosureViewer)
+{ 
+	UASSERT(loopClosureViewer); 
+	delete _loopClosureViewer; 
+	_loopClosureViewer = loopClosureViewer;
+	_loopClosureViewer->setParent(_ui->layout_loopClosureViewer);
+	_loopClosureViewer->setObjectName("widget_loopClosureViewer");
+	_ui->layout_loopClosureViewer->layout()->addWidget(_loopClosureViewer);
 }
 
 void MainWindow::closeEvent(QCloseEvent* event)
@@ -950,7 +981,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 		UDEBUG("odom ok");
 		lostStateChanged = _cloudViewer->getBackgroundColor() == Qt::darkRed;
 		_cloudViewer->setBackgroundColor(_cloudViewer->getDefaultBackgroundColor());
-		_ui->imageView_odometry->setBackgroundColor(Qt::black);
+		_ui->imageView_odometry->setBackgroundColor(_ui->imageView_odometry->getDefaultBackgroundColor());
 	}
 
 	if(!pose.isNull() && (_ui->dockWidget_cloudViewer->isVisible() || _ui->graphicsView_graphView->isVisible()))
@@ -1501,8 +1532,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_ui->imageView_source->clear();
 			_ui->imageView_loopClosure->clear();
 
-			_ui->imageView_source->setBackgroundColor(Qt::black);
-			_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
+			_ui->imageView_source->setBackgroundColor(_ui->imageView_source->getDefaultBackgroundColor());
+			_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
 
 			_ui->label_matchId->clear();
 		}
@@ -1970,7 +2001,7 @@ void MainWindow::updateMapCloud(
 
 		if(verboseProgress)
 		{
-			_initProgressDialog->appendText(tr("Map update: %1 nodes shown of %2 (cloud filtering is on)").arg(poses.size()).arg(posesIn.size()));
+			_progressDialog->appendText(tr("Map update: %1 nodes shown of %2 (cloud filtering is on)").arg(poses.size()).arg(posesIn.size()));
 			QApplication::processEvents();
 		}
 	}
@@ -2181,8 +2212,8 @@ void MainWindow::updateMapCloud(
 
 			if(verboseProgress)
 			{
-				_initProgressDialog->appendText(tr("Updated cloud %1 (%2/%3)").arg(iter->first).arg(i).arg(poses.size()));
-				_initProgressDialog->incrementStep();
+				_progressDialog->appendText(tr("Updated cloud %1 (%2/%3)").arg(iter->first).arg(i).arg(poses.size()));
+				_progressDialog->incrementStep();
 				if(poses.size() < 200 || i % 100 == 0)
 				{
 					QApplication::processEvents();
@@ -3441,13 +3472,13 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 {
 	if((RtabmapEventInit::Status)status == RtabmapEventInit::kInitializing)
 	{
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
+		_progressDialog->resetProgress();
+		_progressDialog->show();
 		this->changeState(MainWindow::kInitializing);
 	}
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kInitialized)
 	{
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		_progressDialog->setValue(_progressDialog->maximumSteps());
 		this->changeState(MainWindow::kInitialized);
 
 		if(!_openedDatabasePath.isEmpty())
@@ -3457,8 +3488,8 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	}
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosing)
 	{
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
+		_progressDialog->resetProgress();
+		_progressDialog->show();
 		if(_state!=kApplicationClosing)
 		{
 			this->changeState(MainWindow::kClosing);
@@ -3466,7 +3497,7 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	}
 	else if((RtabmapEventInit::Status)status == RtabmapEventInit::kClosed)
 	{
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		_progressDialog->setValue(_progressDialog->maximumSteps());
 
 		if(_databaseUpdated)
 		{
@@ -3544,46 +3575,46 @@ void MainWindow::processRtabmapEventInit(int status, const QString & info)
 	}
 	else
 	{
-		_initProgressDialog->incrementStep();
+		_progressDialog->incrementStep();
 		QString msg(info);
 		if((RtabmapEventInit::Status)status == RtabmapEventInit::kError)
 		{
 			_openedDatabasePath.clear();
 			_newDatabasePath.clear();
 			_newDatabasePathOutput.clear();
-			_initProgressDialog->setAutoClose(false);
+			_progressDialog->setAutoClose(false);
 			msg.prepend(tr("[ERROR] "));
-			_initProgressDialog->appendText(msg);
+			_progressDialog->appendText(msg);
 			this->changeState(MainWindow::kIdle);
 		}
 		else
 		{
-			_initProgressDialog->appendText(msg);
+			_progressDialog->appendText(msg);
 		}
 	}
 }
 
 void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & event)
 {
-	_initProgressDialog->appendText("Downloading the map... done.");
-	_initProgressDialog->incrementStep();
+	_progressDialog->appendText("Downloading the map... done.");
+	_progressDialog->incrementStep();
 
 	if(event.getCode())
 	{
 		UERROR("Map received with code error %d!", event.getCode());
-		_initProgressDialog->appendText(uFormat("[ERROR] Map received with code error %d!", event.getCode()).c_str());
-		_initProgressDialog->setAutoClose(false);
+		_progressDialog->appendText(uFormat("[ERROR] Map received with code error %d!", event.getCode()).c_str());
+		_progressDialog->setAutoClose(false);
 	}
 	else
 	{
 
 		_processingDownloadedMap = true;
 		UINFO("Received map!");
-		_initProgressDialog->appendText(tr(" poses = %1").arg(event.getPoses().size()));
-		_initProgressDialog->appendText(tr(" constraints = %1").arg(event.getConstraints().size()));
+		_progressDialog->appendText(tr(" poses = %1").arg(event.getPoses().size()));
+		_progressDialog->appendText(tr(" constraints = %1").arg(event.getConstraints().size()));
 
-		_initProgressDialog->setMaximumSteps(int(event.getSignatures().size()+event.getPoses().size()+1));
-		_initProgressDialog->appendText(QString("Inserting data in the cache (%1 signatures downloaded)...").arg(event.getSignatures().size()));
+		_progressDialog->setMaximumSteps(int(event.getSignatures().size()+event.getPoses().size()+1));
+		_progressDialog->appendText(QString("Inserting data in the cache (%1 signatures downloaded)...").arg(event.getSignatures().size()));
 		QApplication::processEvents();
 
 		int addedSignatures = 0;
@@ -3610,34 +3641,34 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 				_cachedMemoryUsage += iter->second.sensorData().getMemoryUsed();
 				++addedSignatures;
 			}
-			_initProgressDialog->incrementStep();
+			_progressDialog->incrementStep();
 			QApplication::processEvents();
 		}
-		_initProgressDialog->appendText(tr("Inserted %1 new signatures.").arg(addedSignatures));
-		_initProgressDialog->incrementStep();
+		_progressDialog->appendText(tr("Inserted %1 new signatures.").arg(addedSignatures));
+		_progressDialog->incrementStep();
 		QApplication::processEvents();
 
-		_initProgressDialog->appendText("Inserting data in the cache... done.");
+		_progressDialog->appendText("Inserting data in the cache... done.");
 
 		if(event.getPoses().size())
 		{
-			_initProgressDialog->appendText("Updating the 3D map cloud...");
-			_initProgressDialog->incrementStep();
-			_initProgressDialog->setCancelButtonVisible(true);
+			_progressDialog->appendText("Updating the 3D map cloud...");
+			_progressDialog->incrementStep();
+			_progressDialog->setCancelButtonVisible(true);
 			_progressCanceled = false;
 			QApplication::processEvents();
 			std::map<int, Transform> poses = event.getPoses();
 			alignPosesToGroundTruth(poses, groundTruth);
 			this->updateMapCloud(poses, event.getConstraints(), mapIds, labels, groundTruth, true);
-			_initProgressDialog->appendText("Updating the 3D map cloud... done.");
+			_progressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
 		{
-			_initProgressDialog->appendText("No poses received! The map cloud cannot be updated...");
+			_progressDialog->appendText("No poses received! The map cloud cannot be updated...");
 			UINFO("Map received is empty! Cannot update the map cloud...");
 		}
 
-		_initProgressDialog->appendText(tr("%1 locations are updated to/inserted in the cache.").arg(event.getPoses().size()));
+		_progressDialog->appendText(tr("%1 locations are updated to/inserted in the cache.").arg(event.getPoses().size()));
 
 		if(!_preferencesDialog->isImagesKept())
 		{
@@ -3652,8 +3683,8 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		}
 		_processingDownloadedMap = false;
 	}
-	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-	_initProgressDialog->setCancelButtonVisible(false);
+	_progressDialog->setValue(_progressDialog->maximumSteps());
+	_progressDialog->setCancelButtonVisible(false);
 	_progressCanceled = false;
 }
 
@@ -4158,7 +4189,7 @@ void MainWindow::beep()
 void MainWindow::cancelProgress()
 {
 	_progressCanceled = true;
-	_initProgressDialog->appendText(tr("Canceled!"));
+	_progressDialog->appendText(tr("Canceled!"));
 }
 
 void MainWindow::configGUIModified()
@@ -5094,11 +5125,11 @@ void MainWindow::postProcessing()
 		return;
 	}
 
-	_initProgressDialog->resetProgress();
-	_initProgressDialog->clear();
-	_initProgressDialog->show();
-	_initProgressDialog->appendText("Post-processing beginning!");
-	_initProgressDialog->setCancelButtonVisible(true);
+	_progressDialog->resetProgress();
+	_progressDialog->clear();
+	_progressDialog->show();
+	_progressDialog->appendText("Post-processing beginning!");
+	_progressDialog->setCancelButtonVisible(true);
 	_progressCanceled = false;
 
 	int totalSteps = 0;
@@ -5114,8 +5145,8 @@ void MainWindow::postProcessing()
 	{
 		totalSteps+=1;
 	}
-	_initProgressDialog->setMaximumSteps(totalSteps);
-	_initProgressDialog->show();
+	_progressDialog->setMaximumSteps(totalSteps);
+	_progressDialog->show();
 
 	ParametersMap parameters = _preferencesDialog->getAllParameters();
 	Optimizer * optimizer = Optimizer::create(parameters);
@@ -5138,7 +5169,7 @@ void MainWindow::postProcessing()
 		UASSERT(detectLoopClosureIterations>0);
 		for(int n=0; n<detectLoopClosureIterations && !_progressCanceled; ++n)
 		{
-			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
+			_progressDialog->appendText(tr("Looking for more loop closures, clustering poses... (iteration=%1/%2, radius=%3 m angle=%4 degrees)")
 					.arg(n+1).arg(detectLoopClosureIterations).arg(clusterRadius).arg(clusterAngle));
 
 			std::multimap<int, int> clusters = graph::radiusPosesClustering(
@@ -5146,8 +5177,8 @@ void MainWindow::postProcessing()
 					clusterRadius,
 					clusterAngle*CV_PI/180.0);
 
-			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+(int)clusters.size());
-			_initProgressDialog->appendText(tr("Looking for more loop closures, clustering poses... found %1 clusters.").arg(clusters.size()));
+			_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+(int)clusters.size());
+			_progressDialog->appendText(tr("Looking for more loop closures, clustering poses... found %1 clusters.").arg(clusters.size()));
 			QApplication::processEvents();
 
 			int i=0;
@@ -5353,7 +5384,7 @@ void MainWindow::postProcessing()
 										if(!msg.empty())
 										{
 											UWARN("%s", msg.c_str());
-											_initProgressDialog->appendText(tr("%1").arg(msg.c_str()));
+											_progressDialog->appendText(tr("%1").arg(msg.c_str()));
 											QApplication::processEvents();
 											updateConstraint = false;
 										}
@@ -5367,7 +5398,7 @@ void MainWindow::postProcessing()
 
 										_currentLinksMap.insert(std::make_pair(from, Link(from, to, Link::kUserClosure, transform, info.covariance.inv())));
 										++loopClosuresAdded;
-										_initProgressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
+										_progressDialog->appendText(tr("Detected loop closure %1->%2! (%3/%4)").arg(from).arg(to).arg(i+1).arg(clusters.size()));
 									}
 								}
 							}
@@ -5375,9 +5406,9 @@ void MainWindow::postProcessing()
 					}
 				}
 				QApplication::processEvents();
-				_initProgressDialog->incrementStep();
+				_progressDialog->incrementStep();
 			}
-			_initProgressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
+			_progressDialog->appendText(tr("Iteration %1/%2: Detected %3 loop closures!").arg(n+1).arg(detectLoopClosureIterations).arg(addedLinks.size()/2));
 			if(addedLinks.size() == 0)
 			{
 				break;
@@ -5385,7 +5416,7 @@ void MainWindow::postProcessing()
 
 			if(n+1 < detectLoopClosureIterations)
 			{
-				_initProgressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
+				_progressDialog->appendText(tr("Optimizing graph with new links (%1 nodes, %2 constraints)...")
 						.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 				QApplication::processEvents();
 
@@ -5401,11 +5432,11 @@ void MainWindow::postProcessing()
 						linksOut);
 				optimizedPoses = optimizer->optimize(fromId, posesOut, linksOut);
 				_currentPosesMap = optimizedPoses;
-				_initProgressDialog->appendText(tr("Optimizing graph with new links... done!"));
+				_progressDialog->appendText(tr("Optimizing graph with new links... done!"));
 			}
 		}
 		UINFO("Added %d loop closures.", loopClosuresAdded);
-		_initProgressDialog->appendText(tr("Total new loop closures detected=%1").arg(loopClosuresAdded));
+		_progressDialog->appendText(tr("Total new loop closures detected=%1").arg(loopClosuresAdded));
 	}
 
 	if(!_progressCanceled && (refineNeighborLinks || refineLoopClosureLinks))
@@ -5413,10 +5444,10 @@ void MainWindow::postProcessing()
 		UDEBUG("");
 		if(refineLoopClosureLinks)
 		{
-			_initProgressDialog->setMaximumSteps(_initProgressDialog->maximumSteps()+loopClosuresAdded);
+			_progressDialog->setMaximumSteps(_progressDialog->maximumSteps()+loopClosuresAdded);
 		}
 		// TODO: support ICP from laser scans?
-		_initProgressDialog->appendText(tr("Refining links..."));
+		_progressDialog->appendText(tr("Refining links..."));
 		QApplication::processEvents();
 
 		RegistrationIcp regIcp(parameters);
@@ -5432,8 +5463,8 @@ void MainWindow::postProcessing()
 				int from = iter->second.from();
 				int to = iter->second.to();
 
-				_initProgressDialog->appendText(tr("Refining link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(_currentLinksMap.size()));
-				_initProgressDialog->incrementStep();
+				_progressDialog->appendText(tr("Refining link %1->%2 (%3/%4)").arg(from).arg(to).arg(i+1).arg(_currentLinksMap.size()));
+				_progressDialog->incrementStep();
 				QApplication::processEvents();
 
 				if(!_cachedSignatures.contains(from))
@@ -5467,7 +5498,7 @@ void MainWindow::postProcessing()
 						else
 						{
 							QString str = tr("Cannot refine link %1->%2 (%3").arg(from).arg(to).arg(info.rejectedMsg.c_str());
-							_initProgressDialog->appendText(str, Qt::darkYellow);
+							_progressDialog->appendText(str, Qt::darkYellow);
 							UWARN("%s", str.toStdString().c_str());
 							warn = true;
 						}
@@ -5484,17 +5515,17 @@ void MainWindow::postProcessing()
 							str = tr("Cannot refine link %1->%2 (scans empty!)").arg(from).arg(to);
 						}
 
-						_initProgressDialog->appendText(str, Qt::darkYellow);
+						_progressDialog->appendText(str, Qt::darkYellow);
 						UWARN("%s", str.toStdString().c_str());
 						warn = true;
 					}
 				}
 			}
 		}
-		_initProgressDialog->appendText(tr("Refining links...done!"));
+		_progressDialog->appendText(tr("Refining links...done!"));
 	}
 
-	_initProgressDialog->appendText(tr("Optimizing graph with updated links (%1 nodes, %2 constraints)...")
+	_progressDialog->appendText(tr("Optimizing graph with updated links (%1 nodes, %2 constraints)...")
 			.arg(odomPoses.size()).arg(_currentLinksMap.size()));
 
 	int fromId = optimizeFromGraphEnd?odomPoses.rbegin()->first:odomPoses.begin()->first;
@@ -5508,13 +5539,13 @@ void MainWindow::postProcessing()
 			posesOut,
 			linksOut);
 	optimizedPoses = optimizer->optimize(fromId, posesOut, linksOut);
-	_initProgressDialog->appendText(tr("Optimizing graph with updated links... done!"));
-	_initProgressDialog->incrementStep();
+	_progressDialog->appendText(tr("Optimizing graph with updated links... done!"));
+	_progressDialog->incrementStep();
 
 	if(!_progressCanceled && sba)
 	{
 		UASSERT(Optimizer::isAvailable(sbaType));
-		_initProgressDialog->appendText(tr("SBA (%1 nodes, %2 constraints, %3 iterations)...")
+		_progressDialog->appendText(tr("SBA (%1 nodes, %2 constraints, %3 iterations)...")
 					.arg(optimizedPoses.size()).arg(linksOut.size()).arg(sbaIterations));
 		QApplication::processEvents();
 		uSleep(100);
@@ -5529,17 +5560,17 @@ void MainWindow::postProcessing()
 		if(newPoses.size())
 		{
 			optimizedPoses = newPoses;
-			_initProgressDialog->appendText(tr("SBA... done!"));
+			_progressDialog->appendText(tr("SBA... done!"));
 		}
 		else
 		{
-			_initProgressDialog->appendText(tr("SBA... failed!"));
-			_initProgressDialog->setAutoClose(false);
+			_progressDialog->appendText(tr("SBA... failed!"));
+			_progressDialog->setAutoClose(false);
 		}
-		_initProgressDialog->incrementStep();
+		_progressDialog->incrementStep();
 	}
 
-	_initProgressDialog->appendText(tr("Updating map..."));
+	_progressDialog->appendText(tr("Updating map..."));
 	alignPosesToGroundTruth(optimizedPoses, _currentGTPosesMap);
 	this->updateMapCloud(
 			optimizedPoses,
@@ -5548,16 +5579,16 @@ void MainWindow::postProcessing()
 			std::map<int, std::string>(_currentLabels),
 			std::map<int, Transform>(_currentGTPosesMap),
 			false);
-	_initProgressDialog->appendText(tr("Updating map... done!"));
+	_progressDialog->appendText(tr("Updating map... done!"));
 
 	if(warn)
 	{
-		_initProgressDialog->setAutoClose(false);
+		_progressDialog->setAutoClose(false);
 	}
 
-	_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
-	_initProgressDialog->appendText("Post-processing finished!");
-	_initProgressDialog->setCancelButtonVisible(false);
+	_progressDialog->setValue(_progressDialog->maximumSteps());
+	_progressDialog->appendText("Post-processing finished!");
+	_progressDialog->setCancelButtonVisible(false);
 	_progressCanceled = false;
 
 	delete optimizer;
@@ -5816,9 +5847,9 @@ void MainWindow::updateCacheFromDatabase(const QString & path)
 		if(driver->openConnection(path.toStdString()))
 		{
 			UINFO("Update cache...");
-			_initProgressDialog->resetProgress();
-			_initProgressDialog->show();
-			_initProgressDialog->appendText(tr("Downloading the map from \"%1\" (without poses and links)...")
+			_progressDialog->resetProgress();
+			_progressDialog->show();
+			_progressDialog->appendText(tr("Downloading the map from \"%1\" (without poses and links)...")
 					.arg(path));
 
 			std::set<int> ids;
@@ -5879,9 +5910,9 @@ void MainWindow::downloadAllClouds()
 		}
 
 		UINFO("Download clouds...");
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		_initProgressDialog->appendText(tr("Downloading the map (global=%1 ,optimized=%2)...")
+		_progressDialog->resetProgress();
+		_progressDialog->show();
+		_progressDialog->appendText(tr("Downloading the map (global=%1 ,optimized=%2)...")
 				.arg(global?"true":"false").arg(optimized?"true":"false"));
 		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMap, global, optimized, false));
 	}
@@ -5923,9 +5954,9 @@ void MainWindow::downloadPoseGraph()
 		}
 
 		UINFO("Download the graph...");
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		_initProgressDialog->appendText(tr("Downloading the graph (global=%1 ,optimized=%2)...")
+		_progressDialog->resetProgress();
+		_progressDialog->show();
+		_progressDialog->appendText(tr("Downloading the graph (global=%1 ,optimized=%2)...")
 				.arg(global?"true":"false").arg(optimized?"true":"false"));
 
 		this->post(new RtabmapEventCmd(RtabmapEventCmd::kCmdPublish3DMap, global, optimized, true));
@@ -5993,9 +6024,9 @@ void MainWindow::clearTheCache()
 	_ui->imageView_source->clear();
 	_ui->imageView_loopClosure->clear();
 	_ui->imageView_odometry->clear();
-	_ui->imageView_source->setBackgroundColor(Qt::black);
-	_ui->imageView_loopClosure->setBackgroundColor(Qt::black);
-	_ui->imageView_odometry->setBackgroundColor(Qt::black);
+	_ui->imageView_source->setBackgroundColor(_ui->imageView_source->getDefaultBackgroundColor());
+	_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
+	_ui->imageView_odometry->setBackgroundColor(_ui->imageView_odometry->getDefaultBackgroundColor());
 #ifdef RTABMAP_OCTOMAP
 	// re-create one if the resolution has changed
 	UASSERT(_octomap != 0);
@@ -6169,20 +6200,20 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 		}
 		targetDir += QDir::separator();
 
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_autoScreenCaptureCachedImages.size());
+		_progressDialog->resetProgress();
+		_progressDialog->show();
+		_progressDialog->setMaximumSteps(_autoScreenCaptureCachedImages.size());
 		int i=0;
 		for(QMap<QString, QByteArray>::iterator iter=_autoScreenCaptureCachedImages.begin(); iter!=_autoScreenCaptureCachedImages.end(); ++iter)
 		{
 			QPixmap figure;
 			figure.loadFromData(iter.value(), "PNG");
 			figure.save(targetDir + iter.key(), "PNG");
-			_initProgressDialog->appendText(tr("Saved image \"%1\" (%2/%3).").arg(targetDir + iter.key()).arg(++i).arg(_autoScreenCaptureCachedImages.size()));
-			_initProgressDialog->incrementStep();
+			_progressDialog->appendText(tr("Saved image \"%1\" (%2/%3).").arg(targetDir + iter.key()).arg(++i).arg(_autoScreenCaptureCachedImages.size()));
+			_progressDialog->incrementStep();
 		}
 		_autoScreenCaptureCachedImages.clear();
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		_progressDialog->setValue(_progressDialog->maximumSteps());
 	}
 }
 
@@ -6563,9 +6594,9 @@ void MainWindow::exportImages()
 					tr("Data in the cache don't seem to have images (tested node %1). Calibration file will not be saved. Try refreshing the cache (with clouds).").arg(poses.rbegin()->first));
 		}
 
-		_initProgressDialog->resetProgress();
-		_initProgressDialog->show();
-		_initProgressDialog->setMaximumSteps(_cachedSignatures.size());
+		_progressDialog->resetProgress();
+		_progressDialog->show();
+		_progressDialog->setMaximumSteps(_cachedSignatures.size());
 
 		unsigned int saved = 0;
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
@@ -6602,22 +6633,22 @@ void MainWindow::exportImages()
 				warn = true;
 			}
 			saved += warn?0:1;
-			_initProgressDialog->appendText(info, !warn?Qt::black:Qt::darkYellow);
-			_initProgressDialog->incrementStep();
+			_progressDialog->appendText(info, !warn?Qt::black:Qt::darkYellow);
+			_progressDialog->incrementStep();
 			QApplication::processEvents();
 
 		}
 		if(saved!=poses.size())
 		{
-			_initProgressDialog->setAutoClose(false);
-			_initProgressDialog->appendText(tr("%1 images of %2 saved to \"%3\".").arg(saved).arg(poses.size()).arg(path));
+			_progressDialog->setAutoClose(false);
+			_progressDialog->appendText(tr("%1 images of %2 saved to \"%3\".").arg(saved).arg(poses.size()).arg(path));
 		}
 		else
 		{
-			_initProgressDialog->appendText(tr("%1 images saved to \"%2\".").arg(saved).arg(path));
+			_progressDialog->appendText(tr("%1 images saved to \"%2\".").arg(saved).arg(path));
 		}
 
-		_initProgressDialog->setValue(_initProgressDialog->maximumSteps());
+		_progressDialog->setValue(_progressDialog->maximumSteps());
 	}
 }
 

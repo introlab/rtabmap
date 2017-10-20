@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "MapVisibilityWidget.h"
+#include "rtabmap/gui/MapVisibilityWidget.h"
 
 #include <QCheckBox>
 #include <QVBoxLayout>

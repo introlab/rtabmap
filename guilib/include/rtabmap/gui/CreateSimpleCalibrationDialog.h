@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2017, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,79 +25,44 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RECOVERYSTATE_H_
-#define RECOVERYSTATE_H_
+#ifndef RTABMAP_CREATESIMPLECALIBRATIONDIALOG_H_
+#define RTABMAP_CREATESIMPLECALIBRATIONDIALOG_H_
 
-#include "rtabmap/gui/ProgressDialog.h"
-#include "rtabmap/core/ProgressState.h"
-#include "rtabmap/utilite/UStl.h"
-#include "rtabmap/utilite/UConversion.h"
-#include <QApplication>
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
+#include <QDialog>
+#include <QSettings>
+
+class Ui_createSimpleCalibrationDialog;
 
 namespace rtabmap {
 
-class RecoveryState : public QObject, public ProgressState
+class RTABMAPGUI_EXP CreateSimpleCalibrationDialog : public QDialog
 {
 	Q_OBJECT
 
 public:
-	RecoveryState(ProgressDialog * dialog): dialog_(dialog)
-	{
-		connect(dialog_, SIGNAL(canceled()), this, SLOT(cancel()));
-	}
-	virtual ~RecoveryState() {}
-	virtual bool callback(const std::string & msg) const
-	{
-		if(!msg.empty())
-		{
-			QString msgQt = msg.c_str();
-			if(msgQt.contains("Processed"))
-			{
-				dialog_->incrementStep();
-				dialog_->appendText(msg.c_str());
-			}
-			else if(msgQt.contains("Found"))
-			{
-				std::list<std::string> strSplit = uSplitNumChar(msg);
-				if(strSplit.size() == 3)
-				{
-					int nodes = uStr2Int(*(++strSplit.begin()));
-					if(nodes > 0)
-					{
-						dialog_->setMaximumSteps(nodes);
-					}
-				}
-				dialog_->appendText(msg.c_str());
-			}
-			else if(msgQt.contains("Skipping") ||
-					msgQt.contains("Failed processing"))
-			{
-				dialog_->appendText(msg.c_str(), Qt::darkYellow);
-			}
-			else
-			{
-				dialog_->appendText(msg.c_str());
-			}
-		}
-		QApplication::processEvents();
-		if(!isCanceled())
-		{
-			return ProgressState::callback(msg);
-		}
-		return false;
-	}
+	CreateSimpleCalibrationDialog(
+			const QString & savingFolder = ".",
+			const QString & cameraName = "",
+			QWidget * parent = 0);
 
-public slots:
-	void cancel()
-	{
-		setCanceled(true);
-	}
+	virtual ~CreateSimpleCalibrationDialog();
+
+	void setCameraInfoDir(const QString & folder) {savingFolder_ = folder;}
+	const QString & cameraName() const {return cameraName_;}
+
+private slots:
+	void updateStereoView();
+	void updateSaveStatus();
+	void saveCalibration();
 
 private:
-	ProgressDialog * dialog_;
+	Ui_createSimpleCalibrationDialog * ui_;
+	QString savingFolder_;
+	QString cameraName_;
 };
 
 }
 
-
-#endif /* RECOVERYSTATE_H_ */
+#endif /* CREATESIMPLECALIBRATIONDIALOG_H_ */

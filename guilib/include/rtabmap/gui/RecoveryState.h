@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2010-2016, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
+Copyright (c) 2010-2017, Mathieu Labbe - IntRoLab - Universite de Sherbrooke
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -25,65 +25,79 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RTABMAP_PROGRESSDIALOG_H_
-#define RTABMAP_PROGRESSDIALOG_H_
+#ifndef RTABMAP_RECOVERYSTATE_H_
+#define RTABMAP_RECOVERYSTATE_H_
 
-#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
-
-#include <QDialog>
-
-class QLabel;
-class QTextEdit;
-class QProgressBar;
-class QPushButton;
-class QCheckBox;
+#include "rtabmap/gui/ProgressDialog.h"
+#include "rtabmap/core/ProgressState.h"
+#include "rtabmap/utilite/UStl.h"
+#include "rtabmap/utilite/UConversion.h"
+#include <QApplication>
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ProgressDialog : public QDialog
+class RecoveryState : public QObject, public ProgressState
 {
 	Q_OBJECT
 
 public:
-	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~ProgressDialog();
-
-	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
-	void setValue(int value);
-	int maximumSteps() const;
-	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
-	void setCancelButtonVisible(bool visible);
-	bool isCanceled() const {return _canceled;}
-
-signals:
-	void canceled();
-
-protected:
-	virtual void closeEvent(QCloseEvent * event);
+	RecoveryState(ProgressDialog * dialog): dialog_(dialog)
+	{
+		connect(dialog_, SIGNAL(canceled()), this, SLOT(cancel()));
+	}
+	virtual ~RecoveryState() {}
+	virtual bool callback(const std::string & msg) const
+	{
+		if(!msg.empty())
+		{
+			QString msgQt = msg.c_str();
+			if(msgQt.contains("Processed"))
+			{
+				dialog_->incrementStep();
+				dialog_->appendText(msg.c_str());
+			}
+			else if(msgQt.contains("Found"))
+			{
+				std::list<std::string> strSplit = uSplitNumChar(msg);
+				if(strSplit.size() == 3)
+				{
+					int nodes = uStr2Int(*(++strSplit.begin()));
+					if(nodes > 0)
+					{
+						dialog_->setMaximumSteps(nodes);
+					}
+				}
+				dialog_->appendText(msg.c_str());
+			}
+			else if(msgQt.contains("Skipping") ||
+					msgQt.contains("Failed processing"))
+			{
+				dialog_->appendText(msg.c_str(), Qt::darkYellow);
+			}
+			else
+			{
+				dialog_->appendText(msg.c_str());
+			}
+		}
+		QApplication::processEvents();
+		if(!isCanceled())
+		{
+			return ProgressState::callback(msg);
+		}
+		return false;
+	}
 
 public slots:
-	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep(int steps = 1);
-	void clear();
-	void resetProgress();
-
-private slots:
-	void closeDialog();
-	void cancel();
+	void cancel()
+	{
+		setCanceled(true);
+	}
 
 private:
-	QLabel * _text;
-	QTextEdit * _detailedText;
-	QProgressBar * _progressBar;
-	QPushButton * _closeButton;
-	QPushButton * _cancelButton;
-	QCheckBox * _closeWhenDoneCheckBox;
-	QString _endMessage;
-	int _delayedClosingTime; // sec
-	bool _canceled;
+	ProgressDialog * dialog_;
 };
 
 }
 
-#endif /* PROGRESSDIALOG_H_ */
+
+#endif /* RECOVERYSTATE_H_ */

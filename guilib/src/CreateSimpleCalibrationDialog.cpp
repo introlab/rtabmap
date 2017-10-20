@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "CreateSimpleCalibrationDialog.h"
+#include "rtabmap/gui/CreateSimpleCalibrationDialog.h"
 #include "ui_createSimpleCalibrationDialog.h"
 
 #include "rtabmap/core/CameraModel.h"

@@ -25,65 +25,45 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef RTABMAP_PROGRESSDIALOG_H_
-#define RTABMAP_PROGRESSDIALOG_H_
+#ifndef RTABMAP_MAPVISIBILITYWIDGET_H_
+#define RTABMAP_MAPVISIBILITYWIDGET_H_
 
 #include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
 
-#include <QDialog>
-
-class QLabel;
-class QTextEdit;
-class QProgressBar;
-class QPushButton;
-class QCheckBox;
+#include <QWidget>
+#include <rtabmap/core/Transform.h>
+#include <map>
 
 namespace rtabmap {
 
-class RTABMAPGUI_EXP ProgressDialog : public QDialog
-{
-	Q_OBJECT
-
+class RTABMAPGUI_EXP MapVisibilityWidget : public QWidget {
+	Q_OBJECT;
 public:
-	ProgressDialog(QWidget *parent = 0, Qt::WindowFlags flags = 0);
-	virtual ~ProgressDialog();
+	MapVisibilityWidget(QWidget * parent = 0);
+	virtual ~MapVisibilityWidget();
 
-	void setEndMessage(const QString & message) {_endMessage = message;} // Message shown when the progress is finished
-	void setValue(int value);
-	int maximumSteps() const;
-	void setMaximumSteps(int steps);
-	void setAutoClose(bool on, int delayedClosingTimeMsec = -1);
-	void setCancelButtonVisible(bool visible);
-	bool isCanceled() const {return _canceled;}
+	void setMap(const std::map<int, Transform> & poses, const std::map<int, bool> & mask);
+	std::map<int, Transform> getVisiblePoses() const;
 
-signals:
-	void canceled();
+	void clear();
 
 protected:
-	virtual void closeEvent(QCloseEvent * event);
-
-public slots:
-	void appendText(const QString & text ,const QColor & color = Qt::black);
-	void incrementStep(int steps = 1);
-	void clear();
-	void resetProgress();
+	virtual void showEvent(QShowEvent * event);
 
 private slots:
-	void closeDialog();
-	void cancel();
+	void signalVisibility();
+	void selectAll(bool);
 
 private:
-	QLabel * _text;
-	QTextEdit * _detailedText;
-	QProgressBar * _progressBar;
-	QPushButton * _closeButton;
-	QPushButton * _cancelButton;
-	QCheckBox * _closeWhenDoneCheckBox;
-	QString _endMessage;
-	int _delayedClosingTime; // sec
-	bool _canceled;
+	void updateCheckBoxes();
+
+signals:
+	void visibilityChanged(int id, bool visible);
+
+private:
+	std::map<int, Transform> _poses;
+	std::map<int, bool> _mask;
 };
 
-}
-
-#endif /* PROGRESSDIALOG_H_ */
+} /* namespace rtabmap */
+#endif /* MAPVISIBILITYWIDGET_H_ */

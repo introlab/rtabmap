@@ -25,7 +25,7 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "PostProcessingDialog.h"
+#include "rtabmap/gui/PostProcessingDialog.h"
 #include "ui_postProcessingDialog.h"
 
 #include <QPushButton>

@@ -25,64 +25,56 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-//
-// Original version from Find-Object: https://github.com/introlab/find-object
-//
 
-#ifndef PARAMETERSTOOLBOX_H_
-#define PARAMETERSTOOLBOX_H_
+#ifndef RTABMAP_TEXTURINGSTATE_H_
+#define RTABMAP_TEXTURINGSTATE_H_
 
-#include <rtabmap/core/Parameters.h>
-#include <QWidget>
-#include <QSet>
-
-class QVBoxLayout;
-class QStackedWidget;
-class QComboBox;
+#include "rtabmap/gui/ProgressDialog.h"
+#include "rtabmap/core/ProgressState.h"
+#include <QApplication>
 
 namespace rtabmap {
 
-class ParametersToolBox: public QWidget
+class TexturingState : public QObject, public ProgressState
 {
 	Q_OBJECT
 
 public:
-	ParametersToolBox(QWidget *parent = 0);
-	virtual ~ParametersToolBox();
+	TexturingState(ProgressDialog * dialog, bool incrementOnMsgReceived): dialog_(dialog)
+	{
+		_increment = incrementOnMsgReceived;
+		connect(dialog_, SIGNAL(canceled()), this, SLOT(cancel()));
+	}
+	virtual ~TexturingState() {}
+	virtual bool callback(const std::string & msg) const
+	{
+		if(!msg.empty())
+		{
+			dialog_->appendText(msg.c_str());
+			if(_increment)
+			{
+				dialog_->incrementStep();
+			}
+		}
+		QApplication::processEvents();
+		if(!isCanceled())
+		{
+			return ProgressState::callback(msg);
+		}
+		return false;
+	}
 
-	void setupUi(const ParametersMap & parameters);
-	QWidget * getParameterWidget(const QString & key);
-	void updateParameter(const std::string & key, const std::string & value);
-	const ParametersMap & getParameters() const {return parameters_;}
+public slots:
+	void cancel()
+	{
+		setCanceled(true);
+	}
 
 private:
-	void addParameter(QVBoxLayout * layout, const std::string & key, const std::string & value);
-	void addParameter(QVBoxLayout * layout, const QString & key, const QString & value);
-	void addParameter(QVBoxLayout * layout, const QString & key, const int & value);
-	void addParameter(QVBoxLayout * layout, const QString & key, const double & value);
-	void addParameter(QVBoxLayout * layout, const QString & key, const bool & value);
-	void addParameter(QVBoxLayout * layout, const QString & name, QWidget * widget);
-
-Q_SIGNALS:
-	void parametersChanged(const QStringList & name);
-
-private Q_SLOTS:
-	void changeParameter();
-	void changeParameter(const QString & value);
-	void changeParameter(const int & value);
-	void resetCurrentPage();
-	void resetAllPages();
-
-private:
-	QStringList resetPage(int index);
-	void updateParametersVisibility();
-
-private:
-	QComboBox * comboBox_;
-	QStackedWidget * stackedWidget_;
-	ParametersMap parameters_;
+	ProgressDialog * dialog_;
+	bool _increment;
 };
 
-} // namespace find_object
+}
 
-#endif /* PARAMETERSTOOLBOX_H_ */
+#endif /* GUILIB_SRC_TEXTURINGSTATE_H_ */
