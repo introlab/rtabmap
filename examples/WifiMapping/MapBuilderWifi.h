@@ -65,28 +65,6 @@ public:
 		this->unregisterFromEventsManager();
 	}
 
-protected:
-	virtual bool handleEvent(UEvent * event)
-	{
-		if(event->getClassName().compare("UserDataEvent") == 0)
-		{
-			UserDataEvent * rtabmapEvent = (UserDataEvent *)event;
-			// convert userData to wifi levels
-			if(!rtabmapEvent->data().empty())
-			{
-				UASSERT(rtabmapEvent->data().type() == CV_64FC1 &&
-						rtabmapEvent->data().cols == 2 &&
-						rtabmapEvent->data().rows == 1);
-
-				// format [int level, double stamp]
-				int level = rtabmapEvent->data().at<double>(0);
-				double stamp = rtabmapEvent->data().at<double>(1);
-				wifiLevels_.insert(std::make_pair(stamp, level));
-			}
-		}
-		return MapBuilder::handleEvent(event);
-	}
-
 protected slots:
 	virtual void processStatistics(const rtabmap::Statistics & stats)
 	{
@@ -106,6 +84,18 @@ protected slots:
 		{
 			// Sort stamps by stamps->id
 			nodeStamps.insert(std::make_pair(iter->second.getStamp(), iter->first));
+
+			if(!iter->second.sensorData().userDataRaw().empty())
+			{
+				UASSERT(iter->second.sensorData().userDataRaw().type() == CV_64FC1 &&
+						iter->second.sensorData().userDataRaw().cols == 2 &&
+						iter->second.sensorData().userDataRaw().rows == 1);
+
+				// format [int level, double stamp]
+				int level = iter->second.sensorData().userDataRaw().at<double>(0);
+				double stamp = iter->second.sensorData().userDataRaw().at<double>(1);
+				wifiLevels_.insert(std::make_pair(stamp, level));
+			}
 		}
 
 		int id = 0;

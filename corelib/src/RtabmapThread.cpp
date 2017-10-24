@@ -271,15 +271,6 @@ void RtabmapThread::mainLoop()
 	case kStateTriggeringMap:
 		_rtabmap->triggerNewMap();
 		break;
-	case kStateAddingUserData:
-		_userDataMutex.lock();
-		{
-			userData = _userData;
-			_userData = cv::Mat();
-		}
-		_userDataMutex.unlock();
-		_rtabmap->setUserData(0, userData);
-		break;
 	case kStateSettingGoal:
 		id = atoi(parameters.at("id").c_str());
 		if(id == 0 && !parameters.at("label").empty() && _rtabmap->getMemory())
@@ -396,10 +387,6 @@ bool RtabmapThread::handleEvent(UEvent* event)
 					UWARN("New user data received before the last one was processed... replacing "
 						"user data with this new one. Note that UserDataEvent should be used only "
 						"if the rate of UserDataEvent is lower than RTAB-Map's detection rate (%f Hz).", _rate);
-				}
-				else
-				{
-					pushNewState(kStateAddingUserData);
 				}
 			}
 		}
@@ -674,6 +661,17 @@ bool RtabmapThread::getData(OdometryEvent & data)
 		{
 			data = _dataBuffer.front();
 			_dataBuffer.pop_front();
+
+			_userDataMutex.lock();
+			{
+				if(!_userData.empty())
+				{
+					data.data().setUserData(_userData);
+					_userData = cv::Mat();
+				}
+			}
+			_userDataMutex.unlock();
+
 			dataFilled = true;
 		}
 	}

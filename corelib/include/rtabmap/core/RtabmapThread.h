@@ -66,7 +66,6 @@ public:
 		kStateCleanDataBuffer,
 		kStatePublishingMap,
 		kStateTriggeringMap,
-		kStateAddingUserData,
 		kStateSettingGoal,
 		kStateCancellingGoal,
 		kStateLabelling
