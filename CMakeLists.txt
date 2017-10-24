@@ -169,7 +169,11 @@ option(WITH_ORB_SLAM2     "Include ORB_SLAM2 support"            ON)
 option(PCL_OMP            "With PCL OMP implementations"         ON)
 
 FIND_PACKAGE(OpenCV REQUIRED QUIET)
-FIND_PACKAGE(PCL 1.7 REQUIRED QUIET)
+IF(WITH_QT)
+FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
+ELSE()
+FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation )
+ENDIF()
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
 
 if(NOT "${PCL_LIBRARIES}" STREQUAL "")

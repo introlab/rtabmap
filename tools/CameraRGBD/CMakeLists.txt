@@ -1,3 +1,9 @@
+
+IF(NOT WITH_QT)
+   # visualization module required
+   FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation visualization)
+ENDIF(NOT WITH_QT)
+
 SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include
