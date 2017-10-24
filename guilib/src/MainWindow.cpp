@@ -4310,7 +4310,7 @@ void MainWindow::newDatabase()
 			{
 				_recovering = false;
 				progressDialog->setValue(progressDialog->maximumSteps());
-				QMessageBox::warning(this, "Database recovery", tr("Database recovery failed: \"%1\".", errorMsg.c_str()));
+				QMessageBox::warning(this, "Database recovery", tr("Database recovery failed: \"%1\".").arg(errorMsg.c_str()));
 				return;
 			}
 		}
