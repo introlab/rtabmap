@@ -1951,6 +1951,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	}
 
 	_processingStatistics = false;
+
+	emit(statsProcessed());
 }
 
 void MainWindow::updateMapCloud(
@@ -6877,8 +6879,6 @@ void MainWindow::exportBundlerFormat()
 	{
 		QMessageBox::warning(this, tr("Exporting cameras..."), tr("No poses exported because of missing images. Try refreshing the cache (with clouds)."));
 	}
-
-	emit(statsProcessed());
 }
 
 void MainWindow::resetOdometry()
