@@ -178,6 +178,7 @@ public:
 	bool setGain(int value);
 	bool setMirroring(bool enabled);
 	void setOpenNI2StampsAndIDsUsed(bool used);
+	void setIRDepthShift(int horizontal, int vertical);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -193,6 +194,8 @@ private:
 	std::string _deviceId;
 	bool _openNI2StampsAndIDsUsed;
 	StereoCameraModel _stereoModel;
+	int _depthHShift;
+	int _depthVShift;
 #endif
 };
 

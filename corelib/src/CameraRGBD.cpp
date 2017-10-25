@@ -396,7 +396,9 @@ CameraOpenNI2::CameraOpenNI2(
 	_depthFx(0.0f),
 	_depthFy(0.0f),
 	_deviceId(deviceId),
-	_openNI2StampsAndIDsUsed(false)
+	_openNI2StampsAndIDsUsed(false),
+	_depthHShift(0),
+	_depthVShift(0)
 #endif
 {
 }
@@ -494,6 +496,14 @@ void CameraOpenNI2::setOpenNI2StampsAndIDsUsed(bool used)
 #ifdef RTABMAP_OPENNI2
 	_openNI2StampsAndIDsUsed = used;
 #endif
+}
+
+void CameraOpenNI2::setIRDepthShift(int horizontal, int vertical)
+{
+	UASSERT(horizontal >= 0);
+	UASSERT(vertical >= 0);
+	_depthHShift = horizontal;
+	_depthVShift = vertical;
 }
 
 bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::string & cameraName)
@@ -848,6 +858,12 @@ SensorData CameraOpenNI2::captureImage(CameraInfo * info)
 
 						if(_stereoModel.left().isValidForRectification() && !_stereoModel.stereoTransform().isNull())
 						{
+							if (_depthHShift > 0 || _depthVShift > 0)
+							{
+								cv::Mat out = cv::Mat::zeros(depth.size(), depth.type());
+								depth(cv::Rect(_depthHShift, _depthVShift, depth.cols - _depthHShift, depth.rows - _depthVShift)).copyTo(out(cv::Rect(0, 0, depth.cols - _depthHShift, depth.rows - _depthVShift)));
+								depth = out;
+							}
 							depth = _stereoModel.left().rectifyImage(depth, 0);
 							depth = util2d::registerDepth(depth, _stereoModel.left().K(), rgb.size(), _stereoModel.right().K(), _stereoModel.stereoTransform());
 						}

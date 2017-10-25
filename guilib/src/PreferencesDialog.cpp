@@ -514,6 +514,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->openni2_gain, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->openni2_stampsIdsUsed, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->openni2_hshift, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->openni2_vshift, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_freenect2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_freenect2MinDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_freenect2MaxDepth, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1511,6 +1513,8 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->openni2_gain->setValue(100);
 		_ui->openni2_mirroring->setChecked(false);
 		_ui->openni2_stampsIdsUsed->setChecked(false);
+		_ui->openni2_hshift->setValue(0);
+		_ui->openni2_vshift->setValue(0);
 		_ui->comboBox_freenect2Format->setCurrentIndex(0);
 		_ui->doubleSpinBox_freenect2MinDepth->setValue(0.3);
 		_ui->doubleSpinBox_freenect2MaxDepth->setValue(12.0);
@@ -1881,6 +1885,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->openni2_mirroring->setChecked(settings.value("mirroring", _ui->openni2_mirroring->isChecked()).toBool());
 	_ui->openni2_stampsIdsUsed->setChecked(settings.value("stampsIdsUsed", _ui->openni2_stampsIdsUsed->isChecked()).toBool());
 	_ui->lineEdit_openni2OniPath->setText(settings.value("oniPath", _ui->lineEdit_openni2OniPath->text()).toString());
+	_ui->openni2_hshift->setValue(settings.value("hshift", _ui->openni2_hshift->value()).toInt());
+	_ui->openni2_vshift->setValue(settings.value("vshift", _ui->openni2_vshift->value()).toInt());
 	settings.endGroup(); // Openni2
 
 	settings.beginGroup("Freenect2");
@@ -2277,6 +2283,8 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("mirroring", 		  _ui->openni2_mirroring->isChecked());
 	settings.setValue("stampsIdsUsed",    _ui->openni2_stampsIdsUsed->isChecked());
 	settings.setValue("oniPath", 		  _ui->lineEdit_openni2OniPath->text());
+	settings.setValue("hshift",           _ui->openni2_hshift->value());
+	settings.setValue("vshift",           _ui->openni2_vshift->value());
 	settings.endGroup(); // Openni2
 
 	settings.beginGroup("Freenect2");
@@ -5009,6 +5017,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 					((CameraOpenNI2*)camera)->setExposure(_ui->openni2_exposure->value());
 					((CameraOpenNI2*)camera)->setGain(_ui->openni2_gain->value());
 				}
+				((CameraOpenNI2*)camera)->setIRDepthShift(_ui->openni2_hshift->value(), _ui->openni2_vshift->value());
+				((CameraOpenNI2*)camera)->setMirroring(_ui->openni2_mirroring->isChecked());
 			}
 		}
 	}
