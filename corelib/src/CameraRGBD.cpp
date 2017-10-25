@@ -500,10 +500,12 @@ void CameraOpenNI2::setOpenNI2StampsAndIDsUsed(bool used)
 
 void CameraOpenNI2::setIRDepthShift(int horizontal, int vertical)
 {
+#ifdef RTABMAP_OPENNI2
 	UASSERT(horizontal >= 0);
 	UASSERT(vertical >= 0);
 	_depthHShift = horizontal;
 	_depthVShift = vertical;
+#endif
 }
 
 bool CameraOpenNI2::init(const std::string & calibrationFolder, const std::string & cameraName)
