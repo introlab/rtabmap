@@ -116,6 +116,7 @@ public:
 	virtual QString getTmpIniFilePath() const;
 	void init();
 	void setCurrentPanelToSource();
+	virtual QString getDefaultWorkingDirectory() const;
 
 	// save stuff
 	void saveSettings();

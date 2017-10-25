@@ -1602,7 +1602,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			{
 				if(key.compare(Parameters::kRtabmapWorkingDirectory().c_str()) == 0)
 				{
-					this->setParameter(key, Parameters::createDefaultWorkingDirectory());
+					this->setParameter(key, getDefaultWorkingDirectory().toStdString());
 				}
 				else
 				{
@@ -1984,6 +1984,11 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 }
 
+QString PreferencesDialog::getDefaultWorkingDirectory() const
+{
+	return Parameters::createDefaultWorkingDirectory().c_str();
+}
+
 bool PreferencesDialog::readCoreSettings(const QString & filePath)
 {
 	QString path = getIniFilePath();
@@ -2008,7 +2013,7 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 		if(iter->first.compare(Parameters::kRtabmapWorkingDirectory()) == 0)
 		{
 			// The directory should exist if not the default one
-			if(!QDir(value.c_str()).exists() && value.compare(Parameters::createDefaultWorkingDirectory().c_str()) != 0)
+			if(!QDir(value.c_str()).exists() && value.compare(getDefaultWorkingDirectory().toStdString()) != 0)
 			{
 				if(QDir(this->getWorkingDirectory().toStdString().c_str()).exists())
 				{
@@ -2019,7 +2024,7 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 				}
 				else
 				{
-					std::string defaultWorkingDir = Parameters::createDefaultWorkingDirectory();
+					std::string defaultWorkingDir = getDefaultWorkingDirectory().toStdString();
 					UWARN("Reading config: Not existing working directory \"%s\". Using default one (\"%s\").",
 						value.c_str(),
 						defaultWorkingDir.c_str());
@@ -2040,11 +2045,10 @@ bool PreferencesDialog::readCoreSettings(const QString & filePath)
 					tr("RTAB-Map needs a working directory to put the database.\n\n"
 					   "By default, the directory \"%1\" is used.\n\n"
 					   "The working directory can be changed any time in the "
-					   "preferences menu.").arg(
-							   Parameters::createDefaultWorkingDirectory().c_str()));
+					   "preferences menu.").arg(getDefaultWorkingDirectory()));
 		}
-		this->setParameter(Parameters::kRtabmapWorkingDirectory(), Parameters::createDefaultWorkingDirectory());
-		UDEBUG("key.toStdString()=%s", Parameters::createDefaultWorkingDirectory().c_str());
+		this->setParameter(Parameters::kRtabmapWorkingDirectory(), getDefaultWorkingDirectory().toStdString());
+		UDEBUG("key.toStdString()=%s", getDefaultWorkingDirectory().toStdString().c_str());
 	}
 
 	return true;
