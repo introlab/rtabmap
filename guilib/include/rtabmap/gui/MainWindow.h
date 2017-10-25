@@ -220,12 +220,16 @@ protected slots:
 
 signals:
 	void statsReceived(const rtabmap::Statistics &);
+	void statsProcessed();
 	void cameraInfoReceived(const rtabmap::CameraInfo &);
+	void cameraInfoProcessed();
 	void odometryReceived(const rtabmap::OdometryEvent &, bool);
+	void odometryProcessed();
 	void thresholdsChanged(int, int);
 	void stateChanged(MainWindow::State);
 	void rtabmapEventInitReceived(int status, const QString & info);
 	void rtabmapEvent3DMapReceived(const rtabmap::RtabmapEvent3DMap & event);
+	void rtabmapEvent3DMapProcessed();
 	void rtabmapGlobalPathEventReceived(const rtabmap::RtabmapGlobalPathEvent & event);
 	void rtabmapLabelErrorReceived(int id, const QString & label);
 	void rtabmapGoalStatusEventReceived(int status);
