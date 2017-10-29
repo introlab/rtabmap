@@ -1991,7 +1991,17 @@ void MainWindow::updateMapCloud(
 	{
 		float radius = _preferencesDialog->getCloudFilteringRadius();
 		float angle = _preferencesDialog->getCloudFilteringAngle()*CV_PI/180.0; // convert to rad
-		poses = rtabmap::graph::radiusPosesFiltering(posesIn, radius, angle);
+		bool hasNeg = posesIn.find(-1) != posesIn.end();
+		if(hasNeg)
+		{
+			std::map<int, Transform> posesInTmp = posesIn;
+			posesInTmp.erase(-1);
+			poses = rtabmap::graph::radiusPosesFiltering(posesIn, radius, angle);
+		}
+		else
+		{
+			poses = rtabmap::graph::radiusPosesFiltering(posesIn, radius, angle);
+		}
 		for(std::map<int, Transform>::iterator iter= poses.begin(); iter!=poses.end(); ++iter)
 		{
 			std::map<int, int>::const_iterator jter = mapIdsIn.find(iter->first);
@@ -2003,6 +2013,11 @@ void MainWindow::updateMapCloud(
 			{
 				UERROR("map id of node %d not found!", iter->first);
 			}
+		}
+		//keep -1
+		if(hasNeg)
+		{
+			poses.insert(*posesIn.find(-1));
 		}
 
 		if(verboseProgress)
