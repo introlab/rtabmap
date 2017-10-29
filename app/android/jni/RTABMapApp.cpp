@@ -184,6 +184,7 @@ RTABMapApp::RTABMapApp() :
 		lastDrawnCloudsCount_(0),
 		renderingTime_(0.0f),
 		lastPostRenderEventTime_(0.0),
+		lastPoseEventTime_(0.0),
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
 		optMesh_(new pcl::TextureMesh),
@@ -254,6 +255,7 @@ void RTABMapApp::onCreate(JNIEnv* env, jobject caller_activity)
 	lastDrawnCloudsCount_ = 0;
 	renderingTime_ = 0.0f;
 	lastPostRenderEventTime_ = 0.0;
+	lastPoseEventTime_ = 0.0;
 	bufferedStatsData_.clear();
 	progressionStatus_.setJavaObjects(jvm, RTABMapActivity);
 	main_scene_.setBackgroundColor(backgroundColor_, backgroundColor_, backgroundColor_);
@@ -1041,6 +1043,7 @@ int RTABMapApp::Render()
 				notifyCameraStarted = true;
 				cameraJustInitialized_ = false;
 			}
+			lastPoseEventTime_ = UTimer::now();
 		}
 
 		rtabmap::OdometryEvent odomEvent;
@@ -1249,6 +1252,7 @@ int RTABMapApp::Render()
 				lastDrawnCloudsCount_ = 0;
 				renderingTime_ = 0.0f;
 				lastPostRenderEventTime_ = 0.0;
+				lastPoseEventTime_ = 0.0;
 				bufferedStatsData_.clear();
 			}
 
@@ -1652,6 +1656,12 @@ int RTABMapApp::Render()
 				rtabmapEvents.clear();
 
 				lastPostRenderEventTime_ = UTimer::now();
+
+				if(lastPoseEventTime_>0.0 && UTimer::now()-lastPoseEventTime_ > 1.0)
+				{
+					UERROR("TangoPoseEventNotReceived");
+					UEventsManager::post(new rtabmap::CameraTangoEvent(10, "TangoPoseEventNotReceived", uNumber2Str(UTimer::now()-lastPoseEventTime_)));
+				}
 			}
 		}
 

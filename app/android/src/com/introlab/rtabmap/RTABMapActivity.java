@@ -1385,9 +1385,13 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 		{
 			str = String.format("Too close! Tip: Scan from at least ~1 meter from surfaces.", value);
 		}
+		else if(key.equals("TangoPoseEventNotReceived"))
+		{
+			str = String.format("No valid tango pose event received since %s sec.", value);
+		}
 		else	
 		{
-			str = String.format("Unknown Tango event detected!? (type=%d)", type);
+			str = String.format("Unknown Tango event detected!? (type=%d, key=%s, value=%s)", type, key, value);
 		}
 		if(str!=null)
 		{

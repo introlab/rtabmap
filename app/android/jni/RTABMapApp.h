@@ -228,6 +228,7 @@ class RTABMapApp : public UEventsHandler {
   int lastDrawnCloudsCount_;
   float renderingTime_;
   double lastPostRenderEventTime_;
+  double lastPoseEventTime_;
   std::map<std::string, float> bufferedStatsData_;
 
   bool visualizingMesh_;

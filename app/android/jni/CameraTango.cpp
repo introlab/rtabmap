@@ -505,7 +505,7 @@ static rtabmap::Transform opticalRotation(
 								0.0f,  0.0f, -1.0f, 0.0f);
 void CameraTango::poseReceived(const Transform & pose)
 {
-	if(!pose.isNull() && pose.getNormSquared() < 100000)
+	if(!pose.isNull())
 	{
 		// send pose of the camera (without optical rotation), not the device
 		Transform p = pose*deviceTColorCamera_*opticalRotation;
