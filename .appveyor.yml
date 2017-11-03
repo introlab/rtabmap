@@ -15,13 +15,13 @@ install:
   - set QTDIR=C:\Qt\5.8\msvc2015_64
   - set PATH=%PATH%;%QTDIR%\bin
   # OpenCV
-  - ps: wget https://downloads.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe?r=&ts=1509722265&use_mirror=superb-dca2 -outfile opencv-3.3.1-vc14.exe
+  - ps: wget "https://downloads.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe?r=&ts=1509722265&use_mirror=superb-dca2" -outfile opencv-3.3.1-vc14.exe
   - ps: msiexec /i opencv-3.3.1-vc14.exe /quiet /qn /norestart /log install.log 
   # PCL
   - ps: wget https://github.com/PointCloudLibrary/pcl/releases/download/pcl-1.8.1/PCL-1.8.1-AllInOne-msvc2015-win64.exe -outfile PCL-1.8.1-AllInOne-msvc2015-win64.exe
   - ps: msiexec /i PCL-1.8.1-AllInOne-msvc2015-win64.exe /quiet /qn /norestart /log install.log 
   # zlib
-  - ps: wget https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download -outfile zlib-1.2.8-vc2010-x64.zip
+  - ps: wget "https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download" -outfile zlib-1.2.8-vc2010-x64.zip
   - cmd: 7z x zlib-1.2.8-vc2010-x64.zip -o"C:\Program Files" -y > nul
   
 before_build:
