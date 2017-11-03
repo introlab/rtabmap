@@ -16,14 +16,14 @@ install:
   - set PATH=%PATH%;%QTDIR%\bin
   # OpenCV
   - ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
-  - ps: .\opencv-3.3.1-vc14.exe -o'C:\Program Files' -y
+  - cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
   # Openni2
   - ps: wget 'https://s3.amazonaws.com/com.occipital.openni/OpenNI-Windows-x64-2.2.0.33.zip' -outfile OpenNI-Windows-x64-2.2.0.33.zip
   - ps: Expand-Archive OpenNI-Windows-x64-2.2.0.33.zip -DestinationPath "."
   - ps: msiexec /i OpenNI-Windows-x64-2.2.msi /quiet /qn /norestart /log install.log
   # PCL (the zip file is the NSIS PCL-1.8.1-AllInOne-msvc2015-win64.exe installer but without embedded Openni2 installer that cannot be silent here)
   - ps: wget 'https://dl.dropboxusercontent.com/s/atf4r8kb1xyc1ls/PCL%201.8.1.exe?dl=0' -outfile PCL_1.8.1.exe
-  - ps: .\PCL_1.8.1.exe -o'C:\Program Files' -y
+  - cmd: PCL_1.8.1.exe -o"C:\Program Files" -y
   # zlib
   - ps: wget 'https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download' -outfile zlib-1.2.8-vc2010-x64.zip
   - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files\zlib'
