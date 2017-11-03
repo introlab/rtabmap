@@ -28,6 +28,9 @@ install:
   - ps: wget 'https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download' -outfile zlib-1.2.8-vc2010-x64.zip
   - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files\zlib'
   
+  - ECHO "Installed SDKs:"
+  - ps: "ls \"C:/Program Files\""
+  
 before_build:
   - cd c:\projects\rtabmap\build
   - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR='C:\Program Files\opencv\build' -DPCL_DIR='C:\Program Files\PCL 1.8.1\cmake' ..
