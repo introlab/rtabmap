@@ -20,7 +20,7 @@ install:
   # Openni2
   - ps: wget 'https://s3.amazonaws.com/com.occipital.openni/OpenNI-Windows-x64-2.2.0.33.zip' -outfile OpenNI-Windows-x64-2.2.0.33.zip
   - ps: Expand-Archive OpenNI-Windows-x64-2.2.0.33.zip -DestinationPath "."
-  - ps: Start-Process -FilePath msiexec -ArgumentList '/i OpenNI-Windows-x64-2.2.msi /quiet /qn /norestart /log install.log' -Wait -Passthru
+  - ps: msiexec /i OpenNI-Windows-x64-2.2.msi /quiet /qn /norestart /log install.log
   # PCL (the zip file is the NSIS PCL-1.8.1-AllInOne-msvc2015-win64.exe installer but without embedded Openni2 installer that cannot be silent here)
   - ps: wget 'https://dl.dropboxusercontent.com/s/atf4r8kb1xyc1ls/PCL%201.8.1.exe?dl=0' -outfile PCL_1.8.1.exe
   - ps: .\PCL_1.8.1.exe -o'C:\Program Files' -y
