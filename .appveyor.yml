@@ -17,6 +17,8 @@ install:
   # OpenCV
   - ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
   - cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
+  - ECHO "Installed OpenCV:"
+  - ps: "ls \"C:/Program Files/opencv/build\""
   # Openni2
   - ps: wget 'https://s3.amazonaws.com/com.occipital.openni/OpenNI-Windows-x64-2.2.0.33.zip' -outfile OpenNI-Windows-x64-2.2.0.33.zip
   - ps: Expand-Archive OpenNI-Windows-x64-2.2.0.33.zip -DestinationPath "."
@@ -24,16 +26,17 @@ install:
   # PCL (the zip file is the NSIS PCL-1.8.1-AllInOne-msvc2015-win64.exe installer but without embedded Openni2 installer that cannot be silent here)
   - ps: wget 'https://dl.dropboxusercontent.com/s/atf4r8kb1xyc1ls/PCL%201.8.1.exe?dl=0' -outfile PCL_1.8.1.exe
   - cmd: PCL_1.8.1.exe -o"C:\Program Files" -y
+  - ECHO "Installed PCL:"
+  - ps: "ls \"C:/Program Files/PCL 1.8.1\""
   # zlib
   - ps: wget 'https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download' -outfile zlib-1.2.8-vc2010-x64.zip
   - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files\zlib'
-  
-  - ECHO "Installed SDKs:"
-  - ps: "ls \"C:/Program Files\""
+  - ECHO "Installed zlib:"
+  - ps: "ls \"C:/Program Files/zlib\""
   
 before_build:
   - cd c:\projects\rtabmap\build
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR='C:\Program Files\opencv\build' -DPCL_DIR='C:\Program Files\PCL 1.8.1\cmake' ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL 1.8.1\cmake" ..
   
 notifications:
   - provider: Email
