@@ -10,6 +10,10 @@ clone_folder: c:\projects\rtabmap
 platform: x64
 configuration: Release
 
+init:
+  - cmake --version
+  - C:\"Program Files (x86)"\"%VSINSTALL%"\vcvarsall.bat %MSVC_PLATFORM%
+
 install:
   # Qt
   - set QTDIR=C:\Qt\5.8\msvc2015_64
@@ -20,6 +24,9 @@ install:
   - ECHO "Installed OpenNI2:"
   - ps: "ls \"C:/Program Files/OpenNI2\""
   - set PATH=%PATH%;C:\Program Files\OpenNI2\Redist
+  - set OPENNI2_INCLUDE64=C:\Program Files\OpenNI2\Include
+  - set OPENNI2_LIB64=C:\Program Files\OpenNI2\Lib
+  - set OPENNI2_REDIST64=C:\Program Files\OpenNI2\Redist
   # OpenCV
   - ps: wget 'http://kent.dl.sourceforge.net/project/opencvlibrary/opencv-win/3.3.1/opencv-3.3.1-vc14.exe' -outfile opencv-3.3.1-vc14.exe
   - cmd: opencv-3.3.1-vc14.exe -o"C:\Program Files" -y
