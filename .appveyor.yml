@@ -57,7 +57,7 @@ after_build :
   - cmake --build . --config Release --target package
 
 artifacts:
-  - path: c:\projects\rtabmap\build\RTABMap-*
+  - path: build\RTABMap-*
   
 notifications:
   - provider: Email
