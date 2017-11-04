@@ -15,12 +15,8 @@ install:
   - set QTDIR=C:\Qt\5.8\msvc2015_64
   - set PATH=%PATH%;%QTDIR%\bin
   # Openni2
-  - ps: wget 'https://s3.amazonaws.com/com.occipital.openni/OpenNI-Windows-x64-2.2.0.33.zip' -outfile OpenNI-Windows-x64-2.2.0.33.zip
-  - ps: Expand-Archive OpenNI-Windows-x64-2.2.0.33.zip -DestinationPath .
-  - ECHO "Installing OpenNI2..."
-  - ps: "ls OpenNI*"
-  - msiexec /i OpenNI-Windows-x64-2.2.msi /quiet /qn /norestart /log install.log
-  - type install.log
+  - ps: wget 'https://dl.dropboxusercontent.com/s/d98jv79l6oy9fxz/OpenNI2.exe?dl=0' -outfile OpenNI2.exe
+  - cmd: OpenNI2.exe -o"C:\Program Files" -y
   - ECHO "Installed OpenNI2:"
   - ps: "ls \"C:/Program Files/OpenNI2\""
   # OpenCV
