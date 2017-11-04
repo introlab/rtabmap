@@ -51,13 +51,13 @@ before_build:
   - cd c:\projects\rtabmap\build
   - ECHO %PROGRAMFILES%
   - ECHO %PATH%
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL 1.8.1\cmake" -DZLIB_ROOT="C:\Program Files\zlib" ..
+  - cmake -G "Visual Studio 14 2015 Win64" -DWITH_QT=OFF -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL 1.8.1\cmake" -DZLIB_ROOT="C:\Program Files\zlib" ..
   
-after_build :
-  - cmake --build . --config Release --target package
+#after_build :
+#  - cmake --build . --config Release --target package
 
-artifacts:
-  - path: c:\projects\rtabmap\build\RTABMap-*
+#artifacts:
+#  - path: c:\projects\rtabmap\build\RTABMap-*
   
 notifications:
   - provider: Email
