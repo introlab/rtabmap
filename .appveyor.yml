@@ -30,7 +30,7 @@ install:
   - ps: "ls \"C:/Program Files/PCL 1.8.1\""
   # zlib
   - ps: wget 'https://docs.google.com/uc?authuser=0&id=0B46akLGdg-uaYm9MTTI4MUtUcmc&export=download' -outfile zlib-1.2.8-vc2010-x64.zip
-  - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files\zlib'
+  - ps: Expand-Archive zlib-1.2.8-vc2010-x64.zip -DestinationPath 'C:\Program Files'
   - ECHO "Installed zlib:"
   - ps: "ls \"C:/Program Files/zlib\""
   
