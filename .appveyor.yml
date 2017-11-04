@@ -16,11 +16,11 @@ install:
   - set PATH=%PATH%;%QTDIR%\bin
   # Openni2
   - ps: wget 'https://s3.amazonaws.com/com.occipital.openni/OpenNI-Windows-x64-2.2.0.33.zip' -outfile OpenNI-Windows-x64-2.2.0.33.zip
-  - ps: Expand-Archive OpenNI-Windows-x64-2.2.0.33.zip -DestinationPath "."
+  - ps: Expand-Archive OpenNI-Windows-x64-2.2.0.33.zip -DestinationPath .
   - ECHO "Installing OpenNI2..."
   - ps: "ls OpenNI*"
-  - nuget restore
   - msiexec /i OpenNI-Windows-x64-2.2.msi /quiet /qn /norestart /log install.log
+  - type install.log
   - ECHO "Installed OpenNI2:"
   - ps: "ls \"C:/Program Files/OpenNI2\""
   # OpenCV
