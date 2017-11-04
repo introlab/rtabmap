@@ -19,7 +19,7 @@ install:
   - ps: Expand-Archive OpenNI-Windows-x64-2.2.0.33.zip -DestinationPath "."
   - ECHO "Installing OpenNI2..."
   - ps: "ls OpenNI*"
-  - msiexec /i OpenNI-Windows-x64-2.2.msi /quiet /qn /norestart /log install.log
+  - msiexec /i OpenNI-Windows-x64-2.2.msi /q
   - ECHO "Installed OpenNI2:"
   - ps: "ls \"C:/Program Files/OpenNI2\""
   # OpenCV
