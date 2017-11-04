@@ -36,7 +36,8 @@ install:
   
 before_build:
   - cd c:\projects\rtabmap\build
-  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL 1.8.1\cmake" ..
+  - ECHO %PROGRAMFILES%
+  - cmake -G "Visual Studio 14 2015 Win64" -DOpenCV_DIR="C:\Program Files\opencv\build" -DPCL_DIR="C:\Program Files\PCL 1.8.1\cmake" -DZLIB_ROOT="C:\Program Files\zlib" ..
   
 notifications:
   - provider: Email
