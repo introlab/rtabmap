@@ -18,7 +18,8 @@ init:
 install:
   # Qt
   - set QTDIR=C:\Qt\5.8\msvc2015_64
-  - set PATH=%PATH%;%QTDIR%\bin
+  # make sure Qt bin path is before cmake bin path to avoid copying qt5 dlls from cmake before qt installation
+  - set PATH=%QTDIR%\bin;%PATH%
   # Openni2
   - ps: wget 'https://dl.dropboxusercontent.com/s/d98jv79l6oy9fxz/OpenNI2.exe?dl=0' -outfile OpenNI2.exe
   - cmd: OpenNI2.exe -o"C:\Program Files" -y
