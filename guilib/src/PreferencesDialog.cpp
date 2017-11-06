@@ -269,6 +269,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	{
 		_ui->comboBox_cameraRGBD->setItemData(5, 0, Qt::UserRole - 1);
 	}
+	if (!CameraK4W2::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(8, 0, Qt::UserRole - 1);
+	}
 	if (!CameraRealSense::available())
 	{
 		_ui->comboBox_cameraRGBD->setItemData(6, 0, Qt::UserRole - 1);
@@ -4128,6 +4132,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 	_ui->stackedWidget_rgbd->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 &&
 			(_ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD));
@@ -4758,6 +4763,13 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			_ui->checkBox_freenect2EdgeAwareFiltering->isChecked(),
 			_ui->checkBox_freenect2NoiseFiltering->isChecked(),
 			_ui->lineEdit_freenect2Pipeline->text().toStdString());
+	}
+	else if (driver == kSrcK4W2)
+	{
+		camera = new CameraK4W2(
+			this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
+			this->getGeneralInputRate(),
+			this->getSourceLocalTransform());
 	}
 	else if (driver == kSrcRealSense)
 	{

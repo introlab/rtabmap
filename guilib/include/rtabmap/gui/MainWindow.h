@@ -169,6 +169,7 @@ protected slots:
 	void selectOpenniCvAsus();
 	void selectOpenni2();
 	void selectFreenect2();
+	void selectK4W2();
 	void selectRealSense();
 	void selectStereoDC1394();
 	void selectStereoFlyCapture2();

@@ -107,6 +107,14 @@ SET(SRC_FILES
 	${srcs_qrc}
 )
 
+# to get includes in visual studio
+IF(MSVC)
+    FILE(GLOB HEADERS
+        ../include/${PROJECT_PREFIX}/gui/*.h
+    )
+    SET(SRC_FILES ${SRC_FILES} ${HEADERS})
+ENDIF(MSVC)
+
 SET(INCLUDE_DIRS
 	${PROJECT_SOURCE_DIR}/corelib/include
 	${PROJECT_SOURCE_DIR}/utilite/include

@@ -77,6 +77,12 @@ namespace rs
 typedef struct _freenect_context freenect_context;
 typedef struct _freenect_device freenect_device;
 
+typedef struct IKinectSensor IKinectSensor;
+typedef struct ICoordinateMapper ICoordinateMapper;
+typedef struct _DepthSpacePoint DepthSpacePoint;
+typedef struct tagRGBQUAD RGBQUAD;
+typedef struct IMultiSourceFrameReader IMultiSourceFrameReader;
+
 namespace rtabmap
 {
 
@@ -292,6 +298,47 @@ private:
 	bool edgeAwareFiltering_;
 	bool noiseFiltering_;
 	std::string pipelineName_;
+#endif
+};
+
+/////////////////////////
+// CameraK4W2
+/////////////////////////
+
+class RTABMAP_EXP CameraK4W2 :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	static const int        cDepthWidth = 512;
+	static const int        cDepthHeight = 424;
+	static const int        cColorWidth = 1920;
+	static const int        cColorHeight = 1080;
+
+public:
+	// default local transform z in, x right, y down));
+	CameraK4W2(int deviceId = 0,
+		float imageRate = 0.0f,
+		const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraK4W2();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
+#ifdef RTABMAP_K4W2
+	IKinectSensor*          pKinectSensor_;
+	ICoordinateMapper*      pCoordinateMapper_;
+	DepthSpacePoint*        pDepthCoordinates_;
+	IMultiSourceFrameReader* pMultiSourceFrameReader_;
+	RGBQUAD * pColorRGBX_;
+	INT_PTR hMSEvent;
 #endif
 };
 
