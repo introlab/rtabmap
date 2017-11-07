@@ -527,6 +527,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_freenect2EdgeAwareFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_freenect2NoiseFiltering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_freenect2Pipeline, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->comboBox_k4w2Format, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1519,13 +1520,14 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->openni2_stampsIdsUsed->setChecked(false);
 		_ui->openni2_hshift->setValue(0);
 		_ui->openni2_vshift->setValue(0);
-		_ui->comboBox_freenect2Format->setCurrentIndex(0);
+		_ui->comboBox_freenect2Format->setCurrentIndex(1);
 		_ui->doubleSpinBox_freenect2MinDepth->setValue(0.3);
 		_ui->doubleSpinBox_freenect2MaxDepth->setValue(12.0);
 		_ui->checkBox_freenect2BilateralFiltering->setChecked(true);
 		_ui->checkBox_freenect2EdgeAwareFiltering->setChecked(true);
 		_ui->checkBox_freenect2NoiseFiltering->setChecked(true);
 		_ui->lineEdit_freenect2Pipeline->setText("");
+		_ui->comboBox_k4w2Format->setCurrentIndex(1);
 		_ui->comboBox_realsensePresetRGB->setCurrentIndex(0);
 		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
 		_ui->checkbox_realsenseOdom->setChecked(false);
@@ -1902,6 +1904,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->checkBox_freenect2NoiseFiltering->setChecked(settings.value("noiseFiltering", _ui->checkBox_freenect2NoiseFiltering->isChecked()).toBool());
 	_ui->lineEdit_freenect2Pipeline->setText(settings.value("pipeline", _ui->lineEdit_freenect2Pipeline->text()).toString());
 	settings.endGroup(); // Freenect2
+
+	settings.beginGroup("K4W2");
+	_ui->comboBox_k4w2Format->setCurrentIndex(settings.value("format", _ui->comboBox_k4w2Format->currentIndex()).toInt());
+	settings.endGroup(); // K4W2
 
 	settings.beginGroup("RealSense");
 	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
@@ -2300,6 +2306,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("noiseFiltering",     _ui->checkBox_freenect2NoiseFiltering->isChecked());
 	settings.setValue("pipeline",           _ui->lineEdit_freenect2Pipeline->text());
 	settings.endGroup(); // Freenect2
+
+	settings.beginGroup("K4W2");
+	settings.setValue("format",				_ui->comboBox_k4w2Format->currentIndex());
+	settings.endGroup(); // K4W2
 
 	settings.beginGroup("RealSense");
 	settings.setValue("presetRGB",           _ui->comboBox_realsensePresetRGB->currentIndex());
@@ -4138,6 +4148,7 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD));
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
+	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
 	_ui->groupBox_realsense->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD);
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
 	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD);
@@ -4768,6 +4779,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 	{
 		camera = new CameraK4W2(
 			this->getSourceDevice().isEmpty() ? 0 : atoi(this->getSourceDevice().toStdString().c_str()),
+			(CameraK4W2::Type)_ui->comboBox_k4w2Format->currentIndex(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
 	}

@@ -80,6 +80,7 @@ typedef struct _freenect_device freenect_device;
 typedef struct IKinectSensor IKinectSensor;
 typedef struct ICoordinateMapper ICoordinateMapper;
 typedef struct _DepthSpacePoint DepthSpacePoint;
+typedef struct _ColorSpacePoint ColorSpacePoint;
 typedef struct tagRGBQUAD RGBQUAD;
 typedef struct IMultiSourceFrameReader IMultiSourceFrameReader;
 
@@ -265,7 +266,7 @@ public:
 public:
 	// default local transform z in, x right, y down));
 	CameraFreenect2(int deviceId= 0,
-					Type type = kTypeColor2DepthSD,
+					Type type = kTypeDepth2ColorSD,
 					float imageRate=0.0f,
 					const Transform & localTransform = Transform::getIdentity(),
 					float minDepth = 0.3f,
@@ -311,6 +312,12 @@ class RTABMAP_EXP CameraK4W2 :
 public:
 	static bool available();
 
+	enum Type {
+		kTypeColor2DepthSD,
+		kTypeDepth2ColorSD,
+		kTypeDepth2ColorHD
+	};
+
 public:
 	static const int        cDepthWidth = 512;
 	static const int        cDepthHeight = 424;
@@ -319,7 +326,8 @@ public:
 
 public:
 	// default local transform z in, x right, y down));
-	CameraK4W2(int deviceId = 0,
+	CameraK4W2(int deviceId = 0, // not used
+		Type type = kTypeDepth2ColorSD,
 		float imageRate = 0.0f,
 		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraK4W2();
@@ -332,13 +340,19 @@ protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 
 private:
+	void close();
+
+private:
 #ifdef RTABMAP_K4W2
+	Type type_;
 	IKinectSensor*          pKinectSensor_;
 	ICoordinateMapper*      pCoordinateMapper_;
 	DepthSpacePoint*        pDepthCoordinates_;
+	ColorSpacePoint*        pColorCoordinates_;
 	IMultiSourceFrameReader* pMultiSourceFrameReader_;
 	RGBQUAD * pColorRGBX_;
 	INT_PTR hMSEvent;
+	CameraModel colorCameraModel_;
 #endif
 };
 

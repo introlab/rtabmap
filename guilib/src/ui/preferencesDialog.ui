@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-174</y>
+            <y>-292</y>
             <width>677</width>
             <height>2682</height>
            </rect>
@@ -2865,7 +2865,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            <item>
                             <widget class="QStackedWidget" name="stackedWidget_rgbd">
                              <property name="currentIndex">
-                              <number>7</number>
+                              <number>8</number>
                              </property>
                              <widget class="QWidget" name="page_32">
                               <layout class="QVBoxLayout" name="verticalLayout_63">
@@ -3640,7 +3640,70 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                               </layout>
                              </widget>
                              <widget class="QWidget" name="page_72">
-                              <layout class="QVBoxLayout" name="verticalLayout_127">
+                              <layout class="QVBoxLayout" name="verticalLayout_127" stretch="1,0">
+                               <item>
+                                <widget class="QGroupBox" name="groupBox_k4w2">
+                                 <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                                   <horstretch>0</horstretch>
+                                   <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                 </property>
+                                 <property name="title">
+                                  <string>Kinect for Windows SDK v2</string>
+                                 </property>
+                                 <layout class="QGridLayout" name="gridLayout_96" columnstretch="0,1">
+                                  <item row="0" column="0">
+                                   <widget class="QComboBox" name="comboBox_k4w2Format">
+                                    <property name="sizeAdjustPolicy">
+                                     <enum>QComboBox::AdjustToContents</enum>
+                                    </property>
+                                    <item>
+                                     <property name="text">
+                                      <string>Registered Color to Depth SD</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Registered Depth to Color SD</string>
+                                     </property>
+                                    </item>
+                                    <item>
+                                     <property name="text">
+                                      <string>Registered Depth to Color HD</string>
+                                     </property>
+                                    </item>
+                                   </widget>
+                                  </item>
+                                  <item row="0" column="1">
+                                   <widget class="QLabel" name="label_440">
+                                    <property name="text">
+                                     <string>Format.</string>
+                                    </property>
+                                    <property name="wordWrap">
+                                     <bool>true</bool>
+                                    </property>
+                                    <property name="textInteractionFlags">
+                                     <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                    </property>
+                                   </widget>
+                                  </item>
+                                  <item row="1" column="0">
+                                   <spacer name="verticalSpacer_68">
+                                    <property name="orientation">
+                                     <enum>Qt::Vertical</enum>
+                                    </property>
+                                    <property name="sizeHint" stdset="0">
+                                     <size>
+                                      <width>20</width>
+                                      <height>0</height>
+                                     </size>
+                                    </property>
+                                   </spacer>
+                                  </item>
+                                 </layout>
+                                </widget>
+                               </item>
                                <item>
                                 <spacer name="verticalSpacer_67">
                                  <property name="orientation">

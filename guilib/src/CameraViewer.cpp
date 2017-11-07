@@ -52,7 +52,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 	imageView_(new ImageView(this)),
 	cloudView_(new CloudViewer(this)),
 	processingImages_(false),
-	validDecimationValue_(1),
+	validDecimationValue_(2),
 	parameters_(parameters)
 {
 	qRegisterMetaType<rtabmap::SensorData>("rtabmap::SensorData");
@@ -68,7 +68,7 @@ CameraViewer::CameraViewer(QWidget * parent, const ParametersMap & parameters) :
 	decimationSpin_ = new QSpinBox(this);
 	decimationSpin_->setMinimum(1);
 	decimationSpin_->setMaximum(16);
-	decimationSpin_->setValue(1);
+	decimationSpin_->setValue(2);
 
 	pause_ = new QPushButton("Pause", this);
 	pause_->setCheckable(true);
