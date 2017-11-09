@@ -172,6 +172,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Rtabmap, PublishLastSignature,         bool, true,  "Publishing last signature.");
     RTABMAP_PARAM(Rtabmap, PublishPdf,                   bool, true,  "Publishing pdf.");
     RTABMAP_PARAM(Rtabmap, PublishLikelihood,            bool, true,  "Publishing likelihood.");
+    RTABMAP_PARAM(Rtabmap, ComputeRMSE,                  bool, true,  "Compute root mean square error (RMSE) and publish it in statistics, if ground truth is provided.");
     RTABMAP_PARAM(Rtabmap, TimeThr,                      float, 0,    "Maximum time allowed for the detector (ms) (0 means infinity).");
     RTABMAP_PARAM(Rtabmap, MemoryThr,                    int, 0,      "Maximum signatures in the Working Memory (ms) (0 means infinity).");
     RTABMAP_PARAM(Rtabmap, DetectionRate,                float, 1,    "Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.");
@@ -366,7 +367,11 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Optimizer, Robust,          bool, false,     uFormat("Robust graph optimization using Vertigo (only work for g2o and GTSAM optimization strategies). Not compatible with \"%s\" if enabled.", kRGBDOptimizeMaxError().c_str()));
     RTABMAP_PARAM(Optimizer, PriorsIgnored,   bool, true,      "Ignore prior constraints (global pose or GPS) while optimizing. Currently only g2o and gtsam optimization supports this.");
 
+#ifdef RTABMAP_ORB_SLAM2
+    RTABMAP_PARAM(g2o, Solver,            int, 3,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
+#else
     RTABMAP_PARAM(g2o, Solver,            int, 0,          "0=csparse 1=pcg 2=cholmod 3=Eigen");
+#endif
     RTABMAP_PARAM(g2o, Optimizer,         int, 0,          "0=Levenberg 1=GaussNewton");
     RTABMAP_PARAM(g2o, PixelVariance,     double, 1.0,     "Pixel variance used for bundle adjustment.");
     RTABMAP_PARAM(g2o, RobustKernelDelta, double, 8,       "Robust kernel delta used for bundle adjustment (0 means don't use robust kernel). Observations with chi2 over this threshold will be ignored in the second optimization pass.");

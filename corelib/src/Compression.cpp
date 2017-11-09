@@ -270,4 +270,21 @@ cv::Mat uncompressData(const unsigned char * bytes, unsigned long size)
 	return data;
 }
 
+cv::Mat compressString(const std::string & str)
+{
+	// +1 to include null character
+	return compressData2(cv::Mat(1, str.size()+1, CV_8SC1, (void *)str.data()));
+}
+
+std::string uncompressString(const cv::Mat & bytes)
+{
+	cv::Mat strMat = uncompressData(bytes);
+	if(!strMat.empty())
+	{
+		UASSERT(strMat.type() == CV_8SC1 && strMat.rows == 1);
+		return (const char*)strMat.data;
+	}
+	return "";
+}
+
 } /* namespace rtabmap */

@@ -211,6 +211,7 @@ private:
 	bool _publishLastSignatureData;
 	bool _publishPdf;
 	bool _publishLikelihood;
+	bool _computeRMSE;
 	float _maxTimeAllowed; // in ms
 	unsigned int _maxMemoryAllowed; // signatures count in WM
 	float _loopThr;

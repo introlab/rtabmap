@@ -146,6 +146,7 @@ public:
 	int getTotalDictionarySize() const;
 	ParametersMap getLastParameters() const;
 	std::map<std::string, float> getStatistics(int nodeId, double & stamp) const;
+	std::map<int, std::pair<std::map<std::string, float>, double> > getAllStatistics() const;
 
 	void executeNoResult(const std::string & sql) const;
 
@@ -197,6 +198,7 @@ private:
 	virtual int getTotalDictionarySizeQuery() const = 0;
 	virtual ParametersMap getLastParametersQuery() const = 0;
 	virtual std::map<std::string, float> getStatisticsQuery(int nodeId, double & stamp) const = 0;
+	virtual std::map<int, std::pair<std::map<std::string, float>, double> > getAllStatisticsQuery() const = 0;
 
 	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 

@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/GeodeticCoords.h>
 #include <rtabmap/core/Memory.h>
 #include <rtabmap/core/util3d_filtering.h>
+#include <rtabmap/core/util3d_registration.h>
 #include <pcl/search/kdtree.h>
 #include <pcl/common/eigen.h>
 #include <pcl/common/common.h>
@@ -642,6 +643,143 @@ void calcKittiSequenceErrors (
 }
 // KITTI evaluation end
 
+Transform calcRMSE (
+		const std::map<int, Transform> & groundTruth,
+		const std::map<int, Transform> & poses,
+		float & translational_rmse,
+		float & translational_mean,
+		float & translational_median,
+		float & translational_std,
+		float & translational_min,
+		float & translational_max,
+		float & rotational_rmse,
+		float & rotational_mean,
+		float & rotational_median,
+		float & rotational_std,
+		float & rotational_min,
+		float & rotational_max)
+{
+
+	translational_rmse = 0.0f;
+	translational_mean = 0.0f;
+	translational_median = 0.0f;
+	translational_std = 0.0f;
+	translational_min = 0.0f;
+	translational_max = 0.0f;
+
+	rotational_rmse = 0.0f;
+	rotational_mean = 0.0f;
+	rotational_median = 0.0f;
+	rotational_std = 0.0f;
+	rotational_min = 0.0f;
+	rotational_max = 0.0f;
+
+	//align with ground truth for more meaningful results
+	pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
+	cloud1.resize(poses.size());
+	cloud2.resize(poses.size());
+	int oi = 0;
+	int idFirst = 0;
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		std::map<int, Transform>::const_iterator jter=groundTruth.find(iter->first);
+		if(jter != groundTruth.end())
+		{
+			if(oi==0)
+			{
+				idFirst = iter->first;
+			}
+			cloud1[oi] = pcl::PointXYZ(jter->second.x(), jter->second.y(), jter->second.z());
+			cloud2[oi++] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
+		}
+	}
+
+	Transform t = Transform::getIdentity();
+	if(oi>5)
+	{
+		cloud1.resize(oi);
+		cloud2.resize(oi);
+
+		t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
+	}
+	else if(idFirst)
+	{
+		t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
+	}
+
+	std::vector<float> translationalErrors(poses.size());
+	std::vector<float> rotationalErrors(poses.size());
+	float sumTranslationalErrors = 0.0f;
+	float sumRotationalErrors = 0.0f;
+	float sumSqrdTranslationalErrors = 0.0f;
+	float sumSqrdRotationalErrors = 0.0f;
+	float radToDegree = 180.0f / M_PI;
+	oi=0;
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		std::map<int, Transform>::const_iterator jter = groundTruth.find(iter->first);
+		if(jter!=groundTruth.end())
+		{
+			Transform pose = t * iter->second;
+			Eigen::Vector3f xAxis(1,0,0);
+			Eigen::Vector3f vA = pose.toEigen3f().linear()*xAxis;
+			Eigen::Vector3f vB = jter->second.toEigen3f().linear()*xAxis;
+			double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
+			rotationalErrors[oi] = a*radToDegree;
+			translationalErrors[oi] = pose.getDistance(jter->second);
+
+			sumTranslationalErrors+=translationalErrors[oi];
+			sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
+			sumRotationalErrors+=rotationalErrors[oi];
+			sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
+
+			if(oi == 0)
+			{
+				translational_min = translational_max = translationalErrors[oi];
+				rotational_min = rotational_max = rotationalErrors[oi];
+			}
+			else
+			{
+				if(translationalErrors[oi] < translational_min)
+				{
+					translational_min = translationalErrors[oi];
+				}
+				else if(translationalErrors[oi] > translational_max)
+				{
+					translational_max = translationalErrors[oi];
+				}
+
+				if(rotationalErrors[oi] < rotational_min)
+				{
+					rotational_min = rotationalErrors[oi];
+				}
+				else if(rotationalErrors[oi] > rotational_max)
+				{
+					rotational_max = rotationalErrors[oi];
+				}
+			}
+
+			++oi;
+		}
+	}
+	translationalErrors.resize(oi);
+	rotationalErrors.resize(oi);
+	if(oi)
+	{
+		float total = float(oi);
+		translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
+		translational_mean = sumTranslationalErrors/total;
+		translational_median = translationalErrors[oi/2];
+		translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
+
+		rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
+		rotational_mean = sumRotationalErrors/total;
+		rotational_median = rotationalErrors[oi/2];
+		rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
+	}
+	return t;
+}
+
 
 ////////////////////////////////////////////
 // Graph utilities
@@ -888,7 +1026,7 @@ std::map<int, Transform> radiusPosesFiltering(
 
 				std::set<int> cloudIndices;
 				const Transform & currentT = transforms.at(i);
-				Eigen::Vector3f vA = currentT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+				Eigen::Vector3f vA = currentT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 				for(unsigned int j=0; j<kIndices.size(); ++j)
 				{
 					if(indicesChecked.find(kIndices[j]) == indicesChecked.end())
@@ -897,7 +1035,7 @@ std::map<int, Transform> radiusPosesFiltering(
 						{
 							const Transform & checkT = transforms.at(kIndices[j]);
 							// same orientation?
-							Eigen::Vector3f vB = checkT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+							Eigen::Vector3f vB = checkT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 							double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 							if(a <= angle)
 							{
@@ -993,7 +1131,7 @@ std::multimap<int, int> radiusPosesClustering(const std::map<int, Transform> & p
 
 			std::set<int> cloudIndices;
 			const Transform & currentT = transforms.at(i);
-			Eigen::Vector3f vA = currentT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+			Eigen::Vector3f vA = currentT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 			for(unsigned int j=0; j<kIndices.size(); ++j)
 			{
 				if((int)i != kIndices[j])
@@ -1002,7 +1140,7 @@ std::multimap<int, int> radiusPosesClustering(const std::map<int, Transform> & p
 					{
 						const Transform & checkT = transforms.at(kIndices[j]);
 						// same orientation?
-						Eigen::Vector3f vB = checkT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+						Eigen::Vector3f vB = checkT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 						double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 						if(a <= angle)
 						{
@@ -1644,7 +1782,7 @@ std::list<std::pair<int, Transform> > computePath(
 					{
 						//Transform nextPose = iter->second;
 						//Eigen::Vector4f v1 = Eigen::Vector4f(nextPose.x()-previousIter->second.x(), nextPose.y()-previousIter->second.y(), nextPose.z()-previousIter->second.z(), 1.0f);
-						//Eigen::Vector4f v2 = nextPose.rotation().toEigen4f()*Eigen::Vector4f(1,0,0,1);
+						//Eigen::Vector4f v2 = nextPose.linear().toEigen4f()*Eigen::Vector4f(1,0,0,1);
 						//float angle = pcl::getAngle3D(v1, v2);
 						//float cost = angle ;
 						//UDEBUG("v1=%f,%f,%f v2=%f,%f,%f a=%f", v1[0], v1[1], v1[2], v2[0], v2[1], v2[2], cost);
@@ -1803,7 +1941,7 @@ std::map<int, Transform> getPosesInRadius(
 		pcl::PointXYZ pt(fromT.x(), fromT.y(), fromT.z());
 		kdTree->radiusSearch(pt, radius, ind, sqrdDist, 0);
 
-		Eigen::Vector3f vA = fromT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+		Eigen::Vector3f vA = fromT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 
 		for(unsigned int i=0; i<ind.size(); ++i)
 		{
@@ -1813,7 +1951,7 @@ std::map<int, Transform> getPosesInRadius(
 				{
 					const Transform & checkT = nodes.at(ids[ind[i]]);
 					// same orientation?
-					Eigen::Vector3f vB = checkT.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					Eigen::Vector3f vB = checkT.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 					if(a <= angle)
 					{

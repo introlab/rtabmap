@@ -83,5 +83,8 @@ cv::Mat RTABMAP_EXP uncompressData(const cv::Mat & bytes);
 cv::Mat RTABMAP_EXP uncompressData(const std::vector<unsigned char> & bytes);
 cv::Mat RTABMAP_EXP uncompressData(const unsigned char * bytes, unsigned long size);
 
+cv::Mat RTABMAP_EXP compressString(const std::string & str);
+std::string RTABMAP_EXP uncompressString(const cv::Mat & bytes);
+
 } /* namespace rtabmap */
 #endif /* COMPRESSION_H_ */

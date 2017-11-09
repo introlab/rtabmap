@@ -3249,169 +3249,54 @@ Transform MainWindow::alignPosesToGroundTruth(
 	Transform t = Transform::getIdentity();
 	if(groundTruth.size() && poses.size())
 	{
+		float translational_rmse = 0.0f;
+		float translational_mean = 0.0f;
+		float translational_median = 0.0f;
+		float translational_std = 0.0f;
+		float translational_min = 0.0f;
+		float translational_max = 0.0f;
+		float rotational_rmse = 0.0f;
+		float rotational_mean = 0.0f;
+		float rotational_median = 0.0f;
+		float rotational_std = 0.0f;
+		float rotational_min = 0.0f;
+		float rotational_max = 0.0f;
+
+		Transform gtToMap = graph::calcRMSE(
+				groundTruth,
+				poses,
+				translational_rmse,
+				translational_mean,
+				translational_median,
+				translational_std,
+				translational_min,
+				translational_max,
+				rotational_rmse,
+				rotational_mean,
+				rotational_median,
+				rotational_std,
+				rotational_min,
+				rotational_max);
+
 		if(_preferencesDialog->isGroundTruthAligned())
 		{
-			unsigned int maxSize = poses.size()>groundTruth.size()? (unsigned int)poses.size(): (unsigned int)groundTruth.size();
-			pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
-			cloud1.resize(maxSize);
-			cloud2.resize(maxSize);
-			int oi = 0;
-			int idFirst = 0;
-			for(std::map<int, Transform>::const_iterator iter=groundTruth.begin(); iter!=groundTruth.end(); ++iter)
-			{
-				std::map<int, Transform>::iterator iter2 = poses.find(iter->first);
-				if(iter2!=poses.end())
-				{
-					if(oi==0)
-					{
-						idFirst = iter->first;
-					}
-					cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-					cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
-				}
-			}
-
-			if(oi>5)
-			{
-				cloud1.resize(oi);
-				cloud2.resize(oi);
-
-				t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
-			}
-			else if(idFirst)
-			{
-				t = groundTruth.at(idFirst) * poses.at(idFirst).inverse();
-			}
-			if(!t.isIdentity())
-			{
-				for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					iter->second = t * iter->second;
-				}
-			}
-			UDEBUG("t=%s", t.prettyPrint().c_str());
+			t = gtToMap;
 		}
 
 		// ground truth live statistics
-		std::vector<float> translationalErrors(poses.size());
-		std::vector<float> rotationalErrors(poses.size());
-		int oi=0;
-		float sumTranslationalErrors = 0.0f;
-		float sumRotationalErrors = 0.0f;
-		float sumSqrdTranslationalErrors = 0.0f;
-		float sumSqrdRotationalErrors = 0.0f;
-		float radToDegree = 180.0f / M_PI;
-		float translational_min = 0.0f;
-		float translational_max = 0.0f;
-		float rotational_min = 0.0f;
-		float rotational_max = 0.0f;
-		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-		{
-			std::map<int, Transform>::const_iterator jter = groundTruth.find(iter->first);
-			if(jter!=groundTruth.end())
-			{
-				Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-				Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-				double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-				rotationalErrors[oi] = a*radToDegree;
-				translationalErrors[oi] = iter->second.getDistance(jter->second);
+		UINFO("translational_rmse=%f", translational_rmse);
+		UINFO("translational_mean=%f", translational_mean);
+		UINFO("translational_median=%f", translational_median);
+		UINFO("translational_std=%f", translational_std);
+		UINFO("translational_min=%f", translational_min);
+		UINFO("translational_max=%f", translational_max);
 
-				sumTranslationalErrors+=translationalErrors[oi];
-				sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
-				sumRotationalErrors+=rotationalErrors[oi];
-				sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
-
-				if(oi == 0)
-				{
-					translational_min = translational_max = translationalErrors[oi];
-					rotational_min = rotational_max = rotationalErrors[oi];
-				}
-				else
-				{
-					if(translationalErrors[oi] < translational_min)
-					{
-						translational_min = translationalErrors[oi];
-					}
-					else if(translationalErrors[oi] > translational_max)
-					{
-						translational_max = translationalErrors[oi];
-					}
-
-					if(rotationalErrors[oi] < rotational_min)
-					{
-						rotational_min = rotationalErrors[oi];
-					}
-					else if(rotationalErrors[oi] > rotational_max)
-					{
-						rotational_max = rotationalErrors[oi];
-					}
-				}
-
-				++oi;
-			}
-		}
-		translationalErrors.resize(oi);
-		rotationalErrors.resize(oi);
-		if(oi)
-		{
-			float total = float(oi);
-			float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
-			float translational_mean = sumTranslationalErrors/total;
-			float translational_median = translationalErrors[oi/2];
-			float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
-
-			float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
-			float rotational_mean = sumRotationalErrors/total;
-			float rotational_median = rotationalErrors[oi/2];
-			float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
-
-			UINFO("translational_rmse=%f", translational_rmse);
-			UINFO("translational_mean=%f", translational_mean);
-			UINFO("translational_median=%f", translational_median);
-			UINFO("translational_std=%f", translational_std);
-			UINFO("translational_min=%f", translational_min);
-			UINFO("translational_max=%f", translational_max);
-
-			UINFO("rotational_rmse=%f", rotational_rmse);
-			UINFO("rotational_mean=%f", rotational_mean);
-			UINFO("rotational_median=%f", rotational_median);
-			UINFO("rotational_std=%f", rotational_std);
-			UINFO("rotational_min=%f", rotational_min);
-			UINFO("rotational_max=%f", rotational_max);
-
-			if((_preferencesDialog->isTimeUsedInFigures() && stamp > 0.0) || (refId && refId>=0))
-			{
-				_ui->statsToolBox->updateStat("GT/translational rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, translational_max, _preferencesDialog->isCacheSavedInFigures());
-
-				_ui->statsToolBox->updateStat("GT/rotational rmse/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational mean/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational median/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational std/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational min/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational max/", _preferencesDialog->isTimeUsedInFigures()?stamp-_firstStamp:refId, rotational_max, _preferencesDialog->isCacheSavedInFigures());
-			}
-			else
-			{
-				_ui->statsToolBox->updateStat("GT/translational rmse/", translational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational mean/", translational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational median/", translational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational std/", translational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational min/", translational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/translational max/", translational_max, _preferencesDialog->isCacheSavedInFigures());
-
-				_ui->statsToolBox->updateStat("GT/rotational rmse/", rotational_rmse, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational mean/", rotational_mean, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational median/", rotational_median, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational std/", rotational_std, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational min/", rotational_min, _preferencesDialog->isCacheSavedInFigures());
-				_ui->statsToolBox->updateStat("GT/rotational max/", rotational_max, _preferencesDialog->isCacheSavedInFigures());
-			}
-		}
+		UINFO("rotational_rmse=%f", rotational_rmse);
+		UINFO("rotational_mean=%f", rotational_mean);
+		UINFO("rotational_median=%f", rotational_median);
+		UINFO("rotational_std=%f", rotational_std);
+		UINFO("rotational_min=%f", rotational_min);
+		UINFO("rotational_max=%f", rotational_max);
 	}
 	return t;
 }
@@ -5360,8 +5245,8 @@ void MainWindow::postProcessing()
 															fabs(iter->second.transform().x() - t.x()),
 															fabs(iter->second.transform().y() - t.y()),
 															fabs(iter->second.transform().z() - t.z()));
-													Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-													Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+													Eigen::Vector3f vA = t1.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
+													Eigen::Vector3f vB = t2.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 													float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 													if(linearError > maxLinearError)
 													{

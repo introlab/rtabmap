@@ -79,6 +79,7 @@ Rtabmap::Rtabmap() :
 	_publishLastSignatureData(Parameters::defaultRtabmapPublishLastSignature()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
 	_publishLikelihood(Parameters::defaultRtabmapPublishLikelihood()),
+	_computeRMSE(Parameters::defaultRtabmapComputeRMSE()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 700 ms
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
@@ -400,6 +401,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignatureData);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishPdf(), _publishPdf);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLikelihood(), _publishLikelihood);
+	Parameters::parse(parameters, Parameters::kRtabmapComputeRMSE(), _computeRMSE);
 	Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), _maxTimeAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
@@ -2672,6 +2674,7 @@ bool Rtabmap::process(
 			constraints = _constraints;
 		}
 		UDEBUG("Get all node infos...");
+		std::map<int, Transform> groundTruths;
 		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 		{
 			Transform odomPoseLocal;
@@ -2696,6 +2699,10 @@ bool Rtabmap::process(
 				signatures.at(iter->first).setVelocity(velocity[0], velocity[1], velocity[2], velocity[3], velocity[4], velocity[5]);
 			}
 			signatures.at(iter->first).sensorData().setGPS(gps);
+			if(_computeRMSE && !groundTruth.isNull())
+			{
+				groundTruths.insert(std::make_pair(iter->first, groundTruth));
+			}
 		}
 		localGraphSize = (int)poses.size();
 		if(!lastSignatureLocalizedPose.isNull())
@@ -2706,6 +2713,52 @@ bool Rtabmap::process(
 		statistics_.setConstraints(constraints);
 		statistics_.setSignatures(signatures);
 		statistics_.addStatistic(Statistics::kMemoryLocal_graph_size(), poses.size());
+
+		if(_computeRMSE && groundTruths.size())
+		{
+			float translational_rmse = 0.0f;
+			float translational_mean = 0.0f;
+			float translational_median = 0.0f;
+			float translational_std = 0.0f;
+			float translational_min = 0.0f;
+			float translational_max = 0.0f;
+			float rotational_rmse = 0.0f;
+			float rotational_mean = 0.0f;
+			float rotational_median = 0.0f;
+			float rotational_std = 0.0f;
+			float rotational_min = 0.0f;
+			float rotational_max = 0.0f;
+
+			graph::calcRMSE(
+					groundTruths,
+					poses,
+					translational_rmse,
+					translational_mean,
+					translational_median,
+					translational_std,
+					translational_min,
+					translational_max,
+					rotational_rmse,
+					rotational_mean,
+					rotational_median,
+					rotational_std,
+					rotational_min,
+					rotational_max);
+
+			statistics_.addStatistic(Statistics::kGtTranslational_rmse(), translational_rmse);
+			statistics_.addStatistic(Statistics::kGtTranslational_mean(), translational_mean);
+			statistics_.addStatistic(Statistics::kGtTranslational_median(), translational_median);
+			statistics_.addStatistic(Statistics::kGtTranslational_std(), translational_std);
+			statistics_.addStatistic(Statistics::kGtTranslational_min(), translational_min);
+			statistics_.addStatistic(Statistics::kGtTranslational_max(), translational_max);
+			statistics_.addStatistic(Statistics::kGtRotational_rmse(), rotational_rmse);
+			statistics_.addStatistic(Statistics::kGtRotational_mean(), rotational_mean);
+			statistics_.addStatistic(Statistics::kGtRotational_median(), rotational_median);
+			statistics_.addStatistic(Statistics::kGtRotational_std(), rotational_std);
+			statistics_.addStatistic(Statistics::kGtRotational_min(), rotational_min);
+			statistics_.addStatistic(Statistics::kGtRotational_max(), rotational_max);
+
+		}
 		UDEBUG("");
 	}
 
@@ -3627,8 +3680,8 @@ int Rtabmap::detectMoreLoopClosures(float clusterRadius, float clusterAngle, int
 												fabs(iter->second.transform().x() - t.x()),
 												fabs(iter->second.transform().y() - t.y()),
 												fabs(iter->second.transform().z() - t.z()));
-										Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-										Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+										Eigen::Vector3f vA = t1.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
+										Eigen::Vector3f vB = t2.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 										float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 										if(linearError > maxLinearError)
 										{

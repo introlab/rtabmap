@@ -1080,8 +1080,26 @@ std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, dou
 			rc = sqlite3_step(ppStmt);
 			if(rc == SQLITE_ROW)
 			{
-				stamp = sqlite3_column_double(ppStmt, 0);
-				std::string text((const char *)sqlite3_column_text(ppStmt, 1));
+				int index = 0;
+				stamp = sqlite3_column_double(ppStmt, index++);
+
+				std::string text;
+				if(uStrNumCmp(this->getDatabaseVersion(), "0.15.0") >= 0)
+				{
+					const void * dataPtr = 0;
+					int dataSize = 0;
+					dataPtr = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize>0 && dataPtr)
+					{
+						text = uncompressString(cv::Mat(1, dataSize, CV_8UC1, (void *)dataPtr));
+					}
+				}
+				else
+				{
+					text = (const char *)sqlite3_column_text(ppStmt, index++);
+				}
+
 				if(text.size())
 				{
 					data = Statistics::deserializeData(text);
@@ -1094,6 +1112,63 @@ std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, dou
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		}
 	}
+	return data;
+}
+
+std::map<int, std::pair<std::map<std::string, float>, double> > DBDriverSqlite3::getAllStatisticsQuery() const
+{
+	UDEBUG("");
+	std::map<int, std::pair<std::map<std::string, float>, double> > data;
+	if(_ppDb)
+	{
+		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		{
+			std::stringstream query;
+
+			query << "SELECT id, stamp, data "
+				  << "FROM Statistics;";
+
+			int rc = SQLITE_OK;
+			sqlite3_stmt * ppStmt = 0;
+			rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_step(ppStmt);
+			while(rc == SQLITE_ROW)
+			{
+				int index = 0;
+				int id = sqlite3_column_int(ppStmt, index++);
+				double stamp = sqlite3_column_double(ppStmt, index++);
+
+				std::string text;
+				if(uStrNumCmp(this->getDatabaseVersion(), "0.15.0") >= 0)
+				{
+					const void * dataPtr = 0;
+					int dataSize = 0;
+					dataPtr = sqlite3_column_blob(ppStmt, index);
+					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize>0 && dataPtr)
+					{
+						text = uncompressString(cv::Mat(1, dataSize, CV_8UC1, (void *)dataPtr));
+					}
+				}
+				else
+				{
+					text = (const char *)sqlite3_column_text(ppStmt, index++);
+				}
+
+				if(text.size())
+				{
+					data.insert(std::make_pair(id, std::make_pair(Statistics::deserializeData(text), stamp)));
+				}
+
+				rc = sqlite3_step(ppStmt);
+			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
+	UDEBUG("");
 	return data;
 }
 
@@ -3767,8 +3842,19 @@ void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 				rc = sqlite3_bind_double(ppStmt, index++, statistics.stamp());
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-				rc = sqlite3_bind_text(ppStmt, index++, param.c_str(), -1, SQLITE_STATIC);
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+				cv::Mat compressedParam;
+				if(uStrNumCmp(this->getDatabaseVersion(), "0.15.0") >= 0)
+				{
+					compressedParam = compressString(param);
+					rc = sqlite3_bind_blob(ppStmt, index++, compressedParam.data, compressedParam.cols, SQLITE_STATIC);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
+				else
+				{
+					rc = sqlite3_bind_text(ppStmt, index++, param.c_str(), -1, SQLITE_STATIC);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
 
 				//step
 				rc=sqlite3_step(ppStmt);

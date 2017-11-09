@@ -212,7 +212,7 @@ void Transform::getTranslation(float & x, float & y, float & z) const
 float Transform::getAngle(float x, float y, float z) const
 {
 	Eigen::Vector3f vA(x,y,z);
-	Eigen::Vector3f vB = this->toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+	Eigen::Vector3f vB = this->toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 	return pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 }
 
@@ -328,12 +328,12 @@ Eigen::Affine3d Transform::toEigen3d() const
 
 Eigen::Quaternionf Transform::getQuaternionf() const
 {
-	return Eigen::Quaternionf(this->toEigen3f().rotation()).normalized();
+	return Eigen::Quaternionf(this->toEigen3f().linear()).normalized();
 }
 
 Eigen::Quaterniond Transform::getQuaterniond() const
 {
-	return Eigen::Quaterniond(this->toEigen3d().rotation()).normalized();
+	return Eigen::Quaterniond(this->toEigen3d().linear()).normalized();
 }
 
 Transform Transform::getIdentity()

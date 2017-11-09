@@ -143,6 +143,19 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Keypoint, Indexed_words, words);
 	RTABMAP_STATS(Keypoint, Index_memory_usage, KB);
 
+	RTABMAP_STATS(Gt, Translational_rmse, m);
+	RTABMAP_STATS(Gt, Translational_mean, m);
+	RTABMAP_STATS(Gt, Translational_median, m);
+	RTABMAP_STATS(Gt, Translational_std, m);
+	RTABMAP_STATS(Gt, Translational_min, m);
+	RTABMAP_STATS(Gt, Translational_max, m);
+	RTABMAP_STATS(Gt, Rotational_rmse, deg);
+	RTABMAP_STATS(Gt, Rotational_mean, deg);
+	RTABMAP_STATS(Gt, Rotational_median, deg);
+	RTABMAP_STATS(Gt, Rotational_std, deg);
+	RTABMAP_STATS(Gt, Rotational_min, deg);
+	RTABMAP_STATS(Gt, Rotational_max, deg);
+
 public:
 	static const std::map<std::string, float> & defaultData();
 	static std::string serializeData(const std::map<std::string, float> & data);

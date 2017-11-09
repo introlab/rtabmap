@@ -99,7 +99,7 @@ CREATE TABLE Info (
 CREATE TABLE Statistics (
 	id INTEGER NOT NULL,
 	stamp FLOAT,
-	data TEXT,	
+	data BLOB,	
 	FOREIGN KEY (id) REFERENCES Node(id)
 );
 

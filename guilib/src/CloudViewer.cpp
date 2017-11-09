@@ -534,7 +534,7 @@ bool CloudViewer::addCloud(
 	}
 
 	Eigen::Vector4f origin(pose.x(), pose.y(), pose.z(), 0.0f);
-	Eigen::Quaternionf orientation = Eigen::Quaternionf(pose.toEigen3f().rotation());
+	Eigen::Quaternionf orientation = Eigen::Quaternionf(pose.toEigen3f().linear());
 
 	if(haveNormals && _aShowNormals->isChecked())
 	{

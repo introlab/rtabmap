@@ -1759,24 +1759,47 @@ void DatabaseViewer::updateIds()
 
 void DatabaseViewer::updateStatistics()
 {
+	UDEBUG("");
 	if(dbDriver_)
 	{
 		ui_->toolBox_statistics->clear();
 		double firstStamp = 0.0;
+		std::map<int, std::pair<std::map<std::string, float>, double> > allStats = dbDriver_->getAllStatistics();
+
+		std::map<std::string, std::pair<std::vector<float>, std::vector<float> > > allData;
+
 		for(int i=0; i<ids_.size(); ++i)
 		{
 			double stamp=0.0;
-			std::map<std::string, float> statistics = dbDriver_->getStatistics(ids_[i], stamp);
+			std::map<std::string, float> statistics;
+			if(allStats.find(ids_[i]) != allStats.end())
+			{
+				statistics = allStats.at(ids_[i]).first;
+				stamp = allStats.at(ids_[i]).second;
+			}
 			if(firstStamp==0.0)
 			{
 				firstStamp = stamp;
 			}
 			for(std::map<std::string, float>::iterator iter=statistics.begin(); iter!=statistics.end(); ++iter)
 			{
-				ui_->toolBox_statistics->updateStat(iter->first.c_str(), ui_->checkBox_timeStats->isChecked()?float(stamp-firstStamp):ids_[i], iter->second, true);
+				if(allData.find(iter->first) == allData.end())
+				{
+					//initialize data vectors
+					allData.insert(std::make_pair(iter->first, std::make_pair(std::vector<float>(ids_.size(), 0.0f), std::vector<float>(ids_.size(), 0.0f) )));
+				}
+
+				allData.at(iter->first).first[i] = ui_->checkBox_timeStats->isChecked()?float(stamp-firstStamp):ids_[i];
+				allData.at(iter->first).second[i] = iter->second;
 			}
 		}
+
+		for(std::map<std::string, std::pair<std::vector<float>, std::vector<float> > >::iterator iter=allData.begin(); iter!=allData.end(); ++iter)
+		{
+			ui_->toolBox_statistics->updateStat(iter->first.c_str(), iter->second.first, iter->second.second, true);
+		}
 	}
+	UDEBUG("");
 }
 
 void DatabaseViewer::editDepthImage()
@@ -4256,151 +4279,58 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				graph::calcKittiSequenceErrors(uValues(refPoses), uValues(graph), t_err, r_err);
 				UINFO("KITTI t_err = %f %%", t_err);
 				UINFO("KITTI r_err = %f deg/m", r_err);
-				ui_->toolBox_statistics->updateStat("GT/kitti_t_err/%", t_err, false);
-				ui_->toolBox_statistics->updateStat("GT/kitti_r_err/deg/m", r_err, false);
 			}
 
-			if(ui_->checkBox_alignPosesWithGroundTruth->isChecked())
-			{
-				//align with ground truth for more meaningful results
-				pcl::PointCloud<pcl::PointXYZ> cloud1, cloud2;
-				cloud1.resize(graph.size());
-				cloud2.resize(graph.size());
-				int oi = 0;
-				int idFirst = 0;
-				for(std::map<int, Transform>::const_iterator iter=refPoses.begin(); iter!=refPoses.end(); ++iter)
-				{
-					std::map<int, Transform>::iterator iter2 = graph.find(iter->first);
-					if(iter2!=graph.end())
-					{
-						if(oi==0)
-						{
-							idFirst = iter->first;
-						}
-						cloud1[oi] = pcl::PointXYZ(iter->second.x(), iter->second.y(), iter->second.z());
-						cloud2[oi++] = pcl::PointXYZ(iter2->second.x(), iter2->second.y(), iter2->second.z());
-					}
-				}
-
-				Transform t = Transform::getIdentity();
-				if(oi>5)
-				{
-					cloud1.resize(oi);
-					cloud2.resize(oi);
-
-					t = util3d::transformFromXYZCorrespondencesSVD(cloud2, cloud1);
-				}
-				else if(idFirst)
-				{
-					t = refPoses.at(idFirst) * graph.at(idFirst).inverse();
-				}
-				if(!t.isIdentity())
-				{
-					for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
-					{
-						iter->second = t * iter->second;
-					}
-				}
-			}
-
-			std::vector<float> translationalErrors(graph.size());
-			std::vector<float> rotationalErrors(graph.size());
-			float sumTranslationalErrors = 0.0f;
-			float sumRotationalErrors = 0.0f;
-			float sumSqrdTranslationalErrors = 0.0f;
-			float sumSqrdRotationalErrors = 0.0f;
-			float radToDegree = 180.0f / M_PI;
+			float translational_rmse = 0.0f;
+			float translational_mean = 0.0f;
+			float translational_median = 0.0f;
+			float translational_std = 0.0f;
 			float translational_min = 0.0f;
 			float translational_max = 0.0f;
+			float rotational_rmse = 0.0f;
+			float rotational_mean = 0.0f;
+			float rotational_median = 0.0f;
+			float rotational_std = 0.0f;
 			float rotational_min = 0.0f;
 			float rotational_max = 0.0f;
-			int oi=0;
-			for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
+
+			Transform gtToMap = graph::calcRMSE(
+					refPoses,
+					graph,
+					translational_rmse,
+					translational_mean,
+					translational_median,
+					translational_std,
+					translational_min,
+					translational_max,
+					rotational_rmse,
+					rotational_mean,
+					rotational_median,
+					rotational_std,
+					rotational_min,
+					rotational_max);
+
+			// ground truth live statistics
+			UINFO("translational_rmse=%f", translational_rmse);
+			UINFO("translational_mean=%f", translational_mean);
+			UINFO("translational_median=%f", translational_median);
+			UINFO("translational_std=%f", translational_std);
+			UINFO("translational_min=%f", translational_min);
+			UINFO("translational_max=%f", translational_max);
+
+			UINFO("rotational_rmse=%f", rotational_rmse);
+			UINFO("rotational_mean=%f", rotational_mean);
+			UINFO("rotational_median=%f", rotational_median);
+			UINFO("rotational_std=%f", rotational_std);
+			UINFO("rotational_min=%f", rotational_min);
+			UINFO("rotational_max=%f", rotational_max);
+
+			if(ui_->checkBox_alignPosesWithGroundTruth->isChecked() && !gtToMap.isIdentity())
 			{
-				std::map<int, Transform>::const_iterator jter = refPoses.find(iter->first);
-				if(jter!=refPoses.end())
+				for(std::map<int, Transform>::iterator iter=graph.begin(); iter!=graph.end(); ++iter)
 				{
-					Eigen::Vector3f vA = iter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-					Eigen::Vector3f vB = jter->second.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-					double a = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-					rotationalErrors[oi] = a*radToDegree;
-					translationalErrors[oi] = iter->second.getDistance(jter->second);
-
-					sumTranslationalErrors+=translationalErrors[oi];
-					sumSqrdTranslationalErrors+=translationalErrors[oi]*translationalErrors[oi];
-					sumRotationalErrors+=rotationalErrors[oi];
-					sumSqrdRotationalErrors+=rotationalErrors[oi]*rotationalErrors[oi];
-
-					if(oi == 0)
-					{
-						translational_min = translational_max = translationalErrors[oi];
-						rotational_min = rotational_max = rotationalErrors[oi];
-					}
-					else
-					{
-						if(translationalErrors[oi] < translational_min)
-						{
-							translational_min = translationalErrors[oi];
-						}
-						else if(translationalErrors[oi] > translational_max)
-						{
-							translational_max = translationalErrors[oi];
-						}
-
-						if(rotationalErrors[oi] < rotational_min)
-						{
-							rotational_min = rotationalErrors[oi];
-						}
-						else if(rotationalErrors[oi] > rotational_max)
-						{
-							rotational_max = rotationalErrors[oi];
-						}
-					}
-					++oi;
+					iter->second = gtToMap * iter->second;
 				}
-			}
-			translationalErrors.resize(oi);
-			rotationalErrors.resize(oi);
-			if(oi)
-			{
-				float total = float(oi);
-				float translational_rmse = std::sqrt(sumSqrdTranslationalErrors/total);
-				float translational_mean = sumTranslationalErrors/total;
-				float translational_median = translationalErrors[oi/2];
-				float translational_std = std::sqrt(uVariance(translationalErrors, translational_mean));
-
-				float rotational_rmse = std::sqrt(sumSqrdRotationalErrors/total);
-				float rotational_mean = sumRotationalErrors/total;
-				float rotational_median = rotationalErrors[oi/2];
-				float rotational_std = std::sqrt(uVariance(rotationalErrors, rotational_mean));
-
-				UINFO("translational_rmse=%f", translational_rmse);
-				UINFO("translational_mean=%f", translational_mean);
-				UINFO("translational_median=%f", translational_median);
-				UINFO("translational_std=%f", translational_std);
-				UINFO("translational_min=%f", translational_min);
-				UINFO("translational_max=%f", translational_max);
-
-				UINFO("rotational_rmse=%f", rotational_rmse);
-				UINFO("rotational_mean=%f", rotational_mean);
-				UINFO("rotational_median=%f", rotational_median);
-				UINFO("rotational_std=%f", rotational_std);
-				UINFO("rotational_min=%f", rotational_min);
-				UINFO("rotational_max=%f", rotational_max);
-
-				ui_->toolBox_statistics->updateStat("GT/translational rmse/", translational_rmse, false);
-				ui_->toolBox_statistics->updateStat("GT/translational mean/", translational_mean, false);
-				ui_->toolBox_statistics->updateStat("GT/translational median/", translational_median, false);
-				ui_->toolBox_statistics->updateStat("GT/translational std/", translational_std, false);
-				ui_->toolBox_statistics->updateStat("GT/translational min/", translational_min, false);
-				ui_->toolBox_statistics->updateStat("GT/translational max/", translational_max, false);
-
-				ui_->toolBox_statistics->updateStat("GT/rotational rmse/", rotational_rmse, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational mean/", rotational_mean, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational median/", rotational_median, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational std/", rotational_std, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational min/", rotational_min, false);
-				ui_->toolBox_statistics->updateStat("GT/rotational max/", rotational_max, false);
 			}
 		}
 
@@ -5490,8 +5420,8 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 							fabs(iter->second.transform().x() - t.x()),
 							fabs(iter->second.transform().y() - t.y()),
 							fabs(iter->second.transform().z() - t.z()));
-					Eigen::Vector3f vA = t1.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
-					Eigen::Vector3f vB = t2.toEigen3f().rotation()*Eigen::Vector3f(1,0,0);
+					Eigen::Vector3f vA = t1.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
+					Eigen::Vector3f vB = t2.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
 					float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
 					if(linearError > maxLinearError)
 					{

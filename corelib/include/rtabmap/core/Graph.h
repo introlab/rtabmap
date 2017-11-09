@@ -78,6 +78,30 @@ void RTABMAP_EXP calcKittiSequenceErrors(
 		float & t_err,
 		float & r_err);
 
+/**
+ * Compute root-mean-square error (RMSE) like the TUM RGBD
+ * dataset's evaluation tool (absolute trajectory error).
+ * See https://vision.in.tum.de/data/datasets/rgbd-dataset
+ * @param groundTruth, Ground Truth poses
+ * @param poses, Estimated poses
+ * @return Gt to Map transform
+ */
+Transform RTABMAP_EXP calcRMSE(
+		const std::map<int, Transform> &groundTruth,
+		const std::map<int, Transform> &poses,
+		float & translational_rmse,
+		float & translational_mean,
+		float & translational_median,
+		float & translational_std,
+		float & translational_min,
+		float & translational_max,
+		float & rotational_rmse,
+		float & rotational_mean,
+		float & rotational_median,
+		float & rotational_std,
+		float & rotational_min,
+		float & rotational_max);
+
 std::multimap<int, Link>::iterator RTABMAP_EXP findLink(
 		std::multimap<int, Link> & links,
 		int from,

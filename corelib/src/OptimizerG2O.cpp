@@ -268,7 +268,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 				Eigen::Affine3d a = iter->second.toEigen3d();
 				Eigen::Isometry3d pose;
-				pose = a.rotation();
+				pose = a.linear();
 				pose.translation() = a.translation();
 				v3->setEstimate(pose);
 				if(iter->first == rootId)
@@ -326,7 +326,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						priorEdge->setVertex(0, v1);
 						Eigen::Affine3d a = iter->second.transform().toEigen3d();
 						Eigen::Isometry3d pose;
-						pose = a.rotation();
+						pose = a.linear();
 						pose.translation() = a.translation();
 						priorEdge->setMeasurement(pose);
 						priorEdge->setParameterId(0, PARAM_OFFSET);
@@ -430,7 +430,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 
 					Eigen::Affine3d a = iter->second.transform().toEigen3d();
 					Eigen::Isometry3d constraint;
-					constraint = a.rotation();
+					constraint = a.linear();
 					constraint.translation() = a.translation();
 
 #ifdef RTABMAP_VERTIGO
@@ -503,7 +503,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 								{
 									float roll, pitch, yaw;
 									iter->second.getEulerAngles(roll, pitch, yaw);
-									Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
+									Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().linear().angle());
 									tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
 									UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 								}
@@ -599,7 +599,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					float roll, pitch, yaw;
 					iter->second.getEulerAngles(roll, pitch, yaw);
-					Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
+					Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().linear().angle());
 					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
 					UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 				}
@@ -729,9 +729,9 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			Eigen::Affine3d a = camPose.toEigen3d();
 #ifdef RTABMAP_ORB_SLAM2
 			a = a.inverse();
-			vCam->setEstimate(g2o::SE3Quat(a.rotation(), a.translation()));
+			vCam->setEstimate(g2o::SE3Quat(a.linear(), a.translation()));
 #else
-			g2o::SBACam cam(Eigen::Quaterniond(a.rotation()), a.translation());
+			g2o::SBACam cam(Eigen::Quaterniond(a.linear()), a.translation());
 			cam.setKcam(
 					iterModel->second.fx(),
 					iterModel->second.fy(),
@@ -794,7 +794,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					UASSERT(v2 != 0);
 					e->setVertex(0, v1);
 					e->setVertex(1, v2);
-					e->setMeasurement(g2o::SE3Quat(a.rotation(), a.translation()));
+					e->setMeasurement(g2o::SE3Quat(a.linear(), a.translation()));
 					e->setInformation(information);
 
 					if (!optimizer.addEdge(e))

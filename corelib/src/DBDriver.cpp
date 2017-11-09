@@ -254,6 +254,15 @@ std::map<std::string, float> DBDriver::getStatistics(int nodeId, double & stamp)
 	return statistics;
 }
 
+std::map<int, std::pair<std::map<std::string, float>, double> > DBDriver::getAllStatistics() const
+{
+	std::map<int, std::pair<std::map<std::string, float>, double> > statistics;
+	_dbSafeAccessMutex.lock();
+	statistics = getAllStatisticsQuery();
+	_dbSafeAccessMutex.unlock();
+	return statistics;
+}
+
 std::string DBDriver::getDatabaseVersion() const
 {
 	std::string version = "0.0.0";
