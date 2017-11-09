@@ -450,6 +450,7 @@ int main(int argc, char * argv[])
 				covariance = cv::Mat();
 			}
 
+			++iteration;
 			if(!quiet)
 			{
 				double slamTime = timer.ticks();
@@ -460,7 +461,6 @@ int main(int argc, char * argv[])
 					rmse = rtabmap.getStatistics().data().at(Statistics::kGtTranslational_rmse());
 				}
 
-				++iteration;
 				if(rmse >= 0.0f)
 				{
 					printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms, rmse=%fm",
@@ -476,6 +476,11 @@ int main(int argc, char * argv[])
 					printf(" *");
 				}
 				printf("\n");
+			}
+			else if(iteration % (totalImages/10) == 0)
+			{
+				printf(".");
+				fflush(stdout);
 			}
 
 			cameraInfo = CameraInfo();
