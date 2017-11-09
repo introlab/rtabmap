@@ -503,7 +503,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 								{
 									float roll, pitch, yaw;
 									iter->second.getEulerAngles(roll, pitch, yaw);
-									Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().linear().angle());
+									Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
 									tmpPoses.insert(std::pair<int, Transform>(iter->first, t));
 									UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 								}
@@ -599,7 +599,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					float roll, pitch, yaw;
 					iter->second.getEulerAngles(roll, pitch, yaw);
-					Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().linear().angle());
+					Transform t(v->estimate().translation()[0], v->estimate().translation()[1], iter->second.z(), roll, pitch, v->estimate().rotation().angle());
 					optimizedPoses.insert(std::pair<int, Transform>(iter->first, t));
 					UASSERT_MSG(!t.isNull(), uFormat("Optimized pose %d is null!?!?", iter->first).c_str());
 				}
