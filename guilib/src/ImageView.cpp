@@ -111,7 +111,14 @@ private:
 			{
 				_placeHolder = new QGraphicsRectItem (this);
 				_placeHolder->setVisible(false);
-				_placeHolder->setBrush(QBrush(QColor ( 0, 0, 0, 170 ))); // Black transparent background
+				if(qGray(pen().color().rgb() > 255/2))
+				{
+					_placeHolder->setBrush(QBrush(QColor ( 0,0,0, 170 )));
+				}
+				else
+				{
+					_placeHolder->setBrush(QBrush(QColor ( 255, 255, 255, 170 )));
+				}
 				QGraphicsTextItem * text = new QGraphicsTextItem(_placeHolder);
 				text->setDefaultTextColor(this->pen().color().rgb());
 				text->setPlainText(_text);

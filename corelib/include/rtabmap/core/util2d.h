@@ -54,8 +54,8 @@ std::vector<cv::Point2f> RTABMAP_EXP calcStereoCorrespondences(
 		cv::Size winSize = cv::Size(6,3),
 		int maxLevel = 3,
 		int iterations = 5,
-		int minDisparity = 0,
-		int maxDisparity = 64,
+		float minDisparity = 0.0f,
+		float maxDisparity = 64.0f,
 		bool ssdApproach = true); // SSD by default, otherwise it is SAD
 
 // exactly as cv::calcOpticalFlowPyrLK but it should be called with pyramid (from cv::buildOpticalFlowPyramid()) and delta drops the y error.

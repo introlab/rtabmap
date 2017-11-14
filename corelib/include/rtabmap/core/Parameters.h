@@ -535,8 +535,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Stereo, WinHeight,             int, 3,        "Window height.");
     RTABMAP_PARAM(Stereo, Iterations,            int, 30,       "Maximum iterations.");
     RTABMAP_PARAM(Stereo, MaxLevel,              int, 3,        "Maximum pyramid level.");
-    RTABMAP_PARAM(Stereo, MinDisparity,          int, 1,        "Minimum disparity.");
-    RTABMAP_PARAM(Stereo, MaxDisparity,          int, 128,      "Maximum disparity.");
+    RTABMAP_PARAM(Stereo, MinDisparity,          float, 1.0,    "Minimum disparity.");
+    RTABMAP_PARAM(Stereo, MaxDisparity,          float, 128.0,  "Maximum disparity.");
     RTABMAP_PARAM(Stereo, OpticalFlow,           bool, true,    "Use optical flow to find stereo correspondences, otherwise a simple block matching approach is used.");
     RTABMAP_PARAM(Stereo, SSD,                   bool, true,    uFormat("[%s=false] Use Sum of Squared Differences (SSD) window, otherwise Sum of Absolute Differences (SAD) window is used.", kStereoOpticalFlow().c_str()));
     RTABMAP_PARAM(Stereo, Eps,                   double, 0.01,  uFormat("[%s=true] Epsilon stop criterion.", kStereoOpticalFlow().c_str()));

@@ -53,8 +53,8 @@ public:
 	cv::Size winSize() const {return cv::Size(winWidth_, winHeight_);}
 	int iterations() const   {return iterations_;}
 	int maxLevel() const     {return maxLevel_;}
-	int minDisparity() const {return minDisparity_;}
-	int maxDisparity() const {return maxDisparity_;}
+	float minDisparity() const {return minDisparity_;}
+	float maxDisparity() const {return maxDisparity_;}
 	bool winSSD() const      {return winSSD_;}
 
 private:
@@ -62,8 +62,8 @@ private:
 	int winHeight_;
 	int iterations_;
 	int maxLevel_;
-	int minDisparity_;
-	int maxDisparity_;
+	float minDisparity_;
+	float maxDisparity_;
 	bool winSSD_;
 };
 

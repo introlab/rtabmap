@@ -126,14 +126,14 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 		cv::Size winSize,
 		int maxLevel,
 		int iterations,
-		int minDisparity,
-		int maxDisparity,
+		float minDisparityF,
+		float maxDisparityF,
 		bool ssdApproach)
 {
 	UDEBUG("winSize=(%d,%d)", winSize.width, winSize.height);
 	UDEBUG("maxLevel=%d", maxLevel);
-	UDEBUG("minDisparity=%d", minDisparity);
-	UDEBUG("maxDisparity=%d", maxDisparity);
+	UDEBUG("minDisparity=%f", minDisparityF);
+	UDEBUG("maxDisparity=%f", maxDisparityF);
 	UDEBUG("iterations=%d", iterations);
 	UDEBUG("ssdApproach=%d", ssdApproach?1:0);
 
@@ -164,6 +164,8 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 	int totalIterations = 0;
 	int noSubPixel = 0;
 	int added = 0;
+	int minDisparity = std::floor(minDisparityF);
+	int maxDisparity = std::floor(maxDisparityF);
 	for(unsigned int i=0; i<leftCorners.size(); ++i)
 	{
 		int oi=0;
@@ -316,7 +318,8 @@ std::vector<cv::Point2f> calcStereoCorrespondences(
 					cache.insert(std::make_pair(previousXc, previousVc));
 				}
 
-				if(xc < leftCorners[i].x+float(d)-1.0f || xc > leftCorners[i].x+float(d)+1.0f)
+				if(/*xc < leftCorners[i].x+float(d)-1.0f || xc > leftCorners[i].x+float(d)+1.0f ||*/
+					float(leftCorners[i].x - xc) <= minDisparityF)
 				{
 					reject = true;
 					break;

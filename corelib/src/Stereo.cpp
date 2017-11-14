@@ -135,7 +135,7 @@ std::vector<cv::Point2f> StereoOpticalFlow::computeCorrespondences(
 		if(status[i]!=0)
 		{
 			float disparity = leftCorners[i].x - rightCorners[i].x;
-			if(disparity < float(this->minDisparity()) || disparity > float(this->maxDisparity()))
+			if(disparity <= this->minDisparity() || disparity > this->maxDisparity())
 			{
 				status[i] = 0;
 				++countDisparityRejected;
