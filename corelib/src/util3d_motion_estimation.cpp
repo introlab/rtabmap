@@ -164,6 +164,10 @@ Transform estimateMotion3DTo2D(
 					double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
 					*covariance *= 2.1981 * median_error_sqr;
 				}
+				else
+				{
+					UWARN("Not enough close points to compute covariance!");
+				}
 			}
 			else if(covariance)
 			{

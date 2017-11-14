@@ -325,9 +325,7 @@ Transform RegistrationVis::computeTransformationImpl(
 		std::multimap<int, cv::Point3f> words3To;
 		std::multimap<int, cv::Mat> wordsDescFrom;
 		std::multimap<int, cv::Mat> wordsDescTo;
-		if(_correspondencesApproach == 1 && //Optical Flow
-		   !imageFrom.empty() &&
-		   !imageTo.empty())
+		if(_correspondencesApproach == 1) //Optical Flow
 		{
 			UDEBUG("");
 			// convert to grayscale
@@ -358,7 +356,7 @@ Transform RegistrationVis::computeTransformationImpl(
 				kptsFrom3D = detector->generateKeypoints3D(fromSignature.sensorData(), kptsFrom);
 			}
 
-			if(!imageTo.empty())
+			if(!imageFrom.empty() && !imageTo.empty())
 			{
 				std::vector<cv::Point2f> cornersFrom;
 				cv::KeyPoint::convert(kptsFrom, cornersFrom);
@@ -450,6 +448,10 @@ Transform RegistrationVis::computeTransformationImpl(
 			}
 			else
 			{
+				if(imageFrom.empty())
+				{
+					UERROR("Optical flow correspondences requires images in data!");
+				}
 				UASSERT(kptsFrom.size() == kptsFrom3D.size());
 				for(unsigned int i=0; i< kptsFrom3D.size(); ++i)
 				{
