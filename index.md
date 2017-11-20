@@ -8,7 +8,7 @@
 #### Simultaneous Planning, Localization and Mapping (SPLAM)
 * M. Labbé and F. Michaud, “[Long-term online multi-session graph-based SPLAM with memory management](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/8/87/LabbeAURO2017.pdf),” in _Autonomous Robots_, accepted, 2017.  ([Springer](http://dx.doi.org/10.1007/s10514-017-9682-5))
 
-#### RGB-D mapping
+#### Multi-session SLAM
 * M. Labbé and F. Michaud, “[Online Global Loop Closure Detection for Large-Scale Multi-Session Graph-Based SLAM](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/images/e/eb/Labbe14-IROS.pdf),” in _Proceedings of the IEEE/RSJ International Conference on Intelligent Robots and Systems_, 2014. ([IEEE Xplore](http://ieeexplore.ieee.org/document/6942926/))
     * Results shown in this paper can be reproduced by the [Multi-session mapping](https://github.com/introlab/rtabmap/wiki/Multi-session) tutorial.
    
