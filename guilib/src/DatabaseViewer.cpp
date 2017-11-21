@@ -198,7 +198,10 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	setupMainLayout(ui_->actionVertical_Layout->isChecked());
 	ui_->checkBox_grid_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 	ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
-	ui_->checkBox_grid_empty->setVisible(ui_->checkBox_octomap->isChecked());
+	ui_->checkBox_grid_empty->setVisible(ui_->checkBox_octomap->isChecked() && !ui_->checkBox_grid_cubes->isChecked());
+	ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
+	ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
+	ui_->label_octomap_empty->setVisible(ui_->checkBox_octomap->isChecked() && !ui_->checkBox_grid_cubes->isChecked());
 
 	ui_->menuView->addAction(ui_->dockWidget_constraints->toggleViewAction());
 	ui_->menuView->addAction(ui_->dockWidget_graphView->toggleViewAction());
@@ -3096,7 +3099,7 @@ void DatabaseViewer::update(int value,
 							localMaps.insert(*generatedLocalMaps_.find(data.id()));
 							localMapsInfo.insert(*generatedLocalMapsInfo_.find(data.id()));
 						}
-						else if(!data.gridGroundCellsRaw().empty() && !data.gridObstacleCellsRaw().empty())
+						else if(!data.gridGroundCellsRaw().empty() || !data.gridObstacleCellsRaw().empty())
 						{
 							localMaps.insert(std::make_pair(data.id(), std::make_pair(data.gridGroundCellsRaw(), data.gridObstacleCellsRaw())));
 							localMapsInfo.insert(std::make_pair(data.id(), std::make_pair(data.gridCellSize(), data.gridViewPoint())));
@@ -3104,13 +3107,14 @@ void DatabaseViewer::update(int value,
 						if(!localMaps.empty())
 						{
 							std::map<int, Transform> poses;
-							poses.insert(std::make_pair(data.id(), Transform::getIdentity()));
+							poses.insert(std::make_pair(data.id(), pose));
 
 #ifdef RTABMAP_OCTOMAP
 							OctoMap * octomap = 0;
 							if(ui_->checkBox_octomap->isChecked() &&
-								localMaps.begin()->second.first.channels() > 2 &&
-								localMaps.begin()->second.second.channels() > 2 &&
+								(!localMaps.begin()->second.first.empty() || !localMaps.begin()->second.second.empty()) &&
+								(localMaps.begin()->second.first.empty() || localMaps.begin()->second.first.channels() > 2) &&
+								(localMaps.begin()->second.second.empty() || localMaps.begin()->second.second.channels() > 2) &&
 								localMapsInfo.begin()->second.first > 0.0f)
 							{
 								//create local octomap
@@ -3159,7 +3163,7 @@ void DatabaseViewer::update(int value,
 									{
 										pcl::IndicesPtr obstacles(new std::vector<int>);
 										pcl::IndicesPtr empty(new std::vector<int>);
-										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(0, obstacles.get(), empty.get());
+										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(ui_->spinBox_grid_depth->value(), obstacles.get(), empty.get());
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 										pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
 										cloudViewer_->addCloud("obstacles", obstaclesCloud);
@@ -3175,7 +3179,7 @@ void DatabaseViewer::update(int value,
 									}
 									else
 									{
-										cloudViewer_->addOctomap(octomap);
+										cloudViewer_->addOctomap(octomap, ui_->spinBox_grid_depth->value());
 									}
 								}
 								else
@@ -3184,11 +3188,11 @@ void DatabaseViewer::update(int value,
 									// occupancy cloud
 									cloudViewer_->addCloud("ground",
 											util3d::laserScanToPointCloud(localMaps.begin()->second.first),
-											Transform::getIdentity(),
+											pose,
 											Qt::green);
 									cloudViewer_->addCloud("obstacles",
 											util3d::laserScanToPointCloud(localMaps.begin()->second.second),
-											Transform::getIdentity(),
+											pose,
 											Qt::red);
 									cloudViewer_->setCloudPointSize("ground", 5);
 									cloudViewer_->setCloudPointSize("obstacles", 5);
@@ -4364,7 +4368,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 				else if(localMaps_.find(ids[i]) != localMaps_.end())
 				{
-					if(!localMaps_.find(ids[i])->second.first.empty() || !localMaps_.find(ids[i])->second.first.empty())
+					if(!localMaps_.find(ids[i])->second.first.empty() || !localMaps_.find(ids[i])->second.second.empty())
 					{
 						localMaps.insert(*localMaps_.find(ids.at(i)));
 						localMapsInfo.insert(*localMapsInfo_.find(ids[i]));
@@ -4812,7 +4816,10 @@ void DatabaseViewer::updateGrid()
 	{
 		ui_->checkBox_grid_cubes->setVisible(ui_->checkBox_octomap->isChecked());
 		ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
-		ui_->checkBox_grid_empty->setVisible(ui_->checkBox_octomap->isChecked());
+		ui_->checkBox_grid_empty->setVisible(ui_->checkBox_octomap->isChecked() && !ui_->checkBox_grid_cubes->isChecked());
+		ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
+		ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
+		ui_->label_octomap_empty->setVisible(ui_->checkBox_octomap->isChecked() && !ui_->checkBox_grid_cubes->isChecked());
 
 		update3dView();
 		updateGraphView();
@@ -4822,6 +4829,13 @@ void DatabaseViewer::updateGrid()
 void DatabaseViewer::updateOctomapView()
 {
 #ifdef RTABMAP_OCTOMAP
+		ui_->checkBox_grid_cubes->setVisible(ui_->checkBox_octomap->isChecked());
+		ui_->spinBox_grid_depth->setVisible(ui_->checkBox_octomap->isChecked());
+		ui_->checkBox_grid_empty->setVisible(ui_->checkBox_octomap->isChecked() && !ui_->checkBox_grid_cubes->isChecked());
+		ui_->label_octomap_cubes->setVisible(ui_->checkBox_octomap->isChecked());
+		ui_->label_octomap_depth->setVisible(ui_->checkBox_octomap->isChecked());
+		ui_->label_octomap_empty->setVisible(ui_->checkBox_octomap->isChecked() && !ui_->checkBox_grid_cubes->isChecked());
+
 		if(ui_->checkBox_octomap->isChecked())
 		{
 			if(octomap_)

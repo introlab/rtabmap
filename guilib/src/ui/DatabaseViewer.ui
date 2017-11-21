@@ -52,8 +52,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>438</width>
-           <height>202</height>
+           <width>420</width>
+           <height>256</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -244,8 +244,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>437</width>
-           <height>202</height>
+           <width>420</width>
+           <height>256</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -552,7 +552,7 @@
      <x>0</x>
      <y>0</y>
      <width>1547</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1090,15 +1090,15 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>274</width>
-          <height>192</height>
+          <width>324</width>
+          <height>188</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1233,8 +1233,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>206</width>
-          <height>520</height>
+          <width>296</width>
+          <height>732</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1243,6 +1243,55 @@
         <layout class="QVBoxLayout" name="verticalLayout_16">
          <item>
           <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,1">
+           <item row="7" column="1">
+            <widget class="QLabel" name="label_51">
+             <property name="text">
+              <string>Gain compensation radius (Constraints view)</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="7" column="0">
+            <widget class="QDoubleSpinBox" name="doubleSpinBox_gainCompensationRadius">
+             <property name="suffix">
+              <string> m</string>
+             </property>
+             <property name="decimals">
+              <number>2</number>
+             </property>
+             <property name="minimum">
+              <double>0.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>10.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>0.010000000000000</double>
+             </property>
+             <property name="value">
+              <double>0.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QLabel" name="label_53">
+             <property name="text">
+              <string>OctoMap</string>
+             </property>
+            </widget>
+           </item>
+           <item row="8" column="1">
+            <widget class="QLabel" name="label_54">
+             <property name="text">
+              <string>Voxel size (for clouds and scans)</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
            <item row="1" column="1">
             <widget class="QLabel" name="label_44">
              <property name="text">
@@ -1277,45 +1326,6 @@
              </property>
             </widget>
            </item>
-           <item row="3" column="1">
-            <widget class="QLabel" name="label_51">
-             <property name="text">
-              <string>Gain compensation radius (Constraints view)</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="3" column="0">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_gainCompensationRadius">
-             <property name="suffix">
-              <string> m</string>
-             </property>
-             <property name="decimals">
-              <number>2</number>
-             </property>
-             <property name="minimum">
-              <double>0.000000000000000</double>
-             </property>
-             <property name="maximum">
-              <double>10.000000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.010000000000000</double>
-             </property>
-             <property name="value">
-              <double>0.000000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QLabel" name="label_53">
-             <property name="text">
-              <string>OctoMap</string>
-             </property>
-            </widget>
-           </item>
            <item row="2" column="0">
             <widget class="QCheckBox" name="checkBox_octomap">
              <property name="text">
@@ -1323,17 +1333,7 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="1">
-            <widget class="QLabel" name="label_54">
-             <property name="text">
-              <string>Voxel size (for clouds and scans)</string>
-             </property>
-             <property name="wordWrap">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="0">
+           <item row="8" column="0">
             <widget class="QDoubleSpinBox" name="doubleSpinBox_voxelSize">
              <property name="suffix">
               <string> m</string>
@@ -1352,6 +1352,63 @@
              </property>
              <property name="value">
               <double>0.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_cubes">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_empty">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="0">
+            <widget class="QSpinBox" name="spinBox_grid_depth">
+             <property name="prefix">
+              <string/>
+             </property>
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>16</number>
+             </property>
+             <property name="value">
+              <number>16</number>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLabel" name="label_octomap_empty">
+             <property name="text">
+              <string>OctoMap: Empty space</string>
+             </property>
+            </widget>
+           </item>
+           <item row="5" column="1">
+            <widget class="QLabel" name="label_octomap_cubes">
+             <property name="text">
+              <string>OctoMap: Cubes rendering</string>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="QLabel" name="label_octomap_depth">
+             <property name="text">
+              <string>OctoMap: Tree depth</string>
              </property>
             </widget>
            </item>
@@ -1596,8 +1653,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>152</width>
-          <height>96</height>
+          <width>201</width>
+          <height>126</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1696,8 +1753,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>138</width>
-          <height>381</height>
+          <width>186</width>
+          <height>496</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2125,42 +2182,6 @@
          </property>
          <property name="checked">
           <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="checkBox_grid_cubes">
-         <property name="text">
-          <string>Cubes Rendering</string>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QCheckBox" name="checkBox_grid_empty">
-         <property name="text">
-          <string>Empty Space</string>
-         </property>
-         <property name="checked">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QSpinBox" name="spinBox_grid_depth">
-         <property name="prefix">
-          <string>Depth </string>
-         </property>
-         <property name="minimum">
-          <number>0</number>
-         </property>
-         <property name="maximum">
-          <number>16</number>
-         </property>
-         <property name="value">
-          <number>16</number>
          </property>
         </widget>
        </item>
