@@ -180,7 +180,10 @@ bool DataRecorder::handleEvent(UEvent * event)
 				if(camEvent->data().isValid())
 				{
 					UINFO("Receiving rate = %f Hz", 1.0f/timer_.ticks());
-					this->addData(camEvent->data());
+					this->addData(
+							camEvent->data(),
+							camEvent->info().odomPose,
+							camEvent->info().odomCovariance.empty()?cv::Mat::eye(6,6,CV_64FC1):camEvent->info().odomCovariance);
 
 					if(!processingImages_ && this->isVisible() && camEvent->data().isValid())
 					{

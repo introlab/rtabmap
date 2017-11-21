@@ -4601,7 +4601,7 @@ void MainWindow::startDetection()
 		}
 	}
 
-	if(_dataRecorder && _camera)
+	if(_dataRecorder && _camera && _odomThread)
 	{
 		UEventsManager::createPipe(_camera, _dataRecorder, "CameraEvent");
 	}
