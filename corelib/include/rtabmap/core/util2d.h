@@ -107,7 +107,7 @@ float RTABMAP_EXP getDepth(
 		const cv::Mat & depthImage,
 		float x, float y,
 		bool smoothing,
-		float maxZError = 0.02f,
+		float depthErrorRatio = 0.02f, //ratio
 		bool estWithNeighborsIfNull = false);
 
 cv::Rect RTABMAP_EXP computeRoi(const cv::Mat & image, const std::string & roiRatios);

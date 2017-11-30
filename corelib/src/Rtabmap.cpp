@@ -2170,6 +2170,7 @@ bool Rtabmap::process(
 	// Optimize map graph
 	//============================================================
 	float maxLinearError = 0.0f;
+	float maxLinearErrorRatio = 0.0f;
 	double optimizationError = 0.0;
 	int optimizationIterations = 0;
 	if(_rgbdSlamMode &&
@@ -2281,21 +2282,25 @@ bool Rtabmap::process(
 				}
 				if(maxLinearLink)
 				{
-					UINFO("Max optimization error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
+					UINFO("Max optimization error = %f m (link %d->%d, var=%f, %f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
 				}
 
-				if(maxLinearError > _optimizationMaxLinearError)
+				float stddev = sqrt(maxLinearLink->transVariance());
+				maxLinearErrorRatio = maxLinearError/stddev;
+				if(maxLinearErrorRatio > _optimizationMaxLinearError)
 				{
 					UWARN("Rejecting all added loop closures (%d) in this "
 						  "iteration because a wrong loop closure has been "
 						  "detected after graph optimization, resulting in "
-						  "a maximum graph error of %f m (edge %d->%d, type=%d). The "
-						  "maximum error parameter is %f m.",
+						  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f, stddev=%f). The "
+						  "maximum error ratio parameter is %f of std deviation.",
 						  (int)loopClosureLinksAdded.size(),
-						  maxLinearError,
+						  maxLinearErrorRatio,
 						  maxLinearLink->from(),
 						  maxLinearLink->to(),
 						  maxLinearLink->type(),
+						  maxLinearError,
+						  stddev,
 						  _optimizationMaxLinearError);
 					for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
 					{
@@ -2384,6 +2389,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopVisual_matches(), loopClosureVisualMatches);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxLinearError);
+			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxLinearErrorRatio);
 			statistics_.addStatistic(Statistics::kLoopOptimization_error(), optimizationError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_iterations(), optimizationIterations);
 

@@ -545,7 +545,11 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 		const std::map<std::string, float> & statistics = Statistics::defaultData();
 		for(std::map<std::string, float>::const_iterator iter = statistics.begin(); iter != statistics.end(); ++iter)
 		{
-			_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), false);
+			// Don't add Gt panels yet if we don't know if we will receive Gt values.
+			if(!QString((*iter).first.c_str()).contains("Gt/"))
+			{
+				_ui->statsToolBox->updateStat(QString((*iter).first.c_str()).replace('_', ' '), false);
+			}
 		}
 	}
 	// Specific MainWindow
@@ -1187,6 +1191,43 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				}
 				featuresUpdated = true;
 			}
+
+			if(_preferencesDialog->isFrustumsShown(1))
+			{
+				QMap<std::string, Transform> addedFrustums = _cloudViewer->getAddedFrustums();
+				for(QMap<std::string, Transform>::iterator iter = addedFrustums.begin(); iter!=addedFrustums.end(); ++iter)
+				{
+					std::list<std::string> splitted = uSplitNumChar(iter.key());
+					if(splitted.size() == 2)
+					{
+						int id = std::atoi(splitted.back().c_str());
+						if(splitted.front().compare("f_odom_") == 0 &&
+								odom.info().localBundlePoses.find(id) == odom.info().localBundlePoses.end())
+						{
+							_cloudViewer->removeFrustum(iter.key());
+						}
+					}
+				}
+
+				for(std::map<int, Transform>::const_iterator iter=odom.info().localBundlePoses.begin();iter!=odom.info().localBundlePoses.end(); ++iter)
+				{
+					std::string frustumId = uFormat("f_odom_%d", iter->first);
+					if(_cloudViewer->getAddedFrustums().contains(frustumId))
+					{
+						_cloudViewer->updateFrustumPose(frustumId, _odometryCorrection*iter->second);
+					}
+					else if(odom.info().localBundleModels.find(iter->first) != odom.info().localBundleModels.end())
+					{
+						const CameraModel & model = odom.info().localBundleModels.at(iter->first);
+						Transform t = model.localTransform();
+						if(!t.isNull())
+						{
+							QColor color = Qt::yellow;
+							_cloudViewer->addOrUpdateFrustum(frustumId, _odometryCorrection*iter->second, t, _cloudViewer->getFrustumScale(), color);
+						}
+					}
+				}
+			}
 		}
 		if(!dataIgnored)
 		{
@@ -1533,7 +1574,8 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 		}
 
 		// For intermediate empty nodes, keep latest image shown
-		if(!signature.sensorData().imageRaw().empty() || signature.getWords().size())
+		if(signature.getWeight() >= 0 &&
+		(!signature.sensorData().imageRaw().empty() || signature.getWords().size()))
 		{
 			_ui->imageView_source->clear();
 			_ui->imageView_loopClosure->clear();
@@ -1542,203 +1584,224 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			_ui->imageView_loopClosure->setBackgroundColor(_ui->imageView_loopClosure->getDefaultBackgroundColor());
 
 			_ui->label_matchId->clear();
-		}
 
-		int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
-		bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
-		int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
-		bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);
-		_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
-		if(rehearsalMerged > 0)
-		{
-			_ui->imageView_source->setBackgroundColor(Qt::blue);
-		}
-		else if(proximityTimeDetections > 0)
-		{
-			_ui->imageView_source->setBackgroundColor(Qt::darkYellow);
-		}
-		else if(scanMatchingSuccess)
-		{
-			_ui->imageView_source->setBackgroundColor(Qt::darkCyan);
-		}
-		else if(rehearsedSimilarity)
-		{
-			_ui->imageView_source->setBackgroundColor(Qt::darkBlue);
-		}
-		else if(smallMovement)
-		{
-			_ui->imageView_source->setBackgroundColor(Qt::gray);
-		}
-		else if(fastMovement)
-		{
-			_ui->imageView_source->setBackgroundColor(Qt::magenta);
-		}
-		// Set color code as tooltip
-		if(_ui->label_refId->toolTip().isEmpty())
-		{
-			_ui->label_refId->setToolTip(
-				"Background Color Code:\n"
-				"  Blue = Weight Update Merged\n"
-				"  Dark Blue = Weight Update\n"
-				"  Dark Yellow = Proximity Detection in Time\n"
-				"  Dark Cyan = Neighbor Link Refined\n"
-				"  Gray = Small Movement\n"
-				"  Magenta = Fast Movement\n"
-				"Feature Color code:\n"
-				"  Green = New\n"
-				"  Yellow = New but Not Unique\n"
-				"  Red = In Vocabulary\n"
-		        "  Blue = In Vocabulary and in Previous Signature\n"
-				"  Pink = In Vocabulary and in Loop Closure Signature\n"
-				"  Gray = Not Quantized to Vocabulary");
-		}
-		// Set color code as tooltip
-		if(_ui->label_matchId->toolTip().isEmpty())
-		{
-			_ui->label_matchId->setToolTip(
-				"Background Color Code:\n"
-				"  Green = Accepted Loop Closure Detection\n"
-				"  Red = Rejected Loop Closure Detection\n"
-				"  Yellow = Proximity Detection in Space\n"
-				"Feature Color code:\n"
-				"  Red = In Vocabulary\n"
-				"  Pink = In Vocabulary and in Loop Closure Signature\n"
-				"  Gray = Not Quantized to Vocabulary");
-		}
+			int rehearsalMerged = (int)uValue(stat.data(), Statistics::kMemoryRehearsal_merged(), 0.0f);
+			bool rehearsedSimilarity = (float)uValue(stat.data(), Statistics::kMemoryRehearsal_id(), 0.0f) != 0.0f;
+			int proximityTimeDetections = (int)uValue(stat.data(), Statistics::kProximityTime_detections(), 0.0f);
+			bool scanMatchingSuccess = (bool)uValue(stat.data(), Statistics::kNeighborLinkRefiningAccepted(), 0.0f);
+			_ui->label_stats_imageNumber->setText(QString("%1 [%2]").arg(stat.refImageId()).arg(refMapId));
 
-		UDEBUG("time= %d ms", time.restart());
-
-		int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
-		float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
-		int matchId = 0;
-		Signature loopSignature;
-		int shownLoopId = 0;
-		if(highestHypothesisId > 0 || stat.proximityDetectionId()>0)
-		{
-			bool show = true;
-			if(stat.loopClosureId() > 0)
+			if(rehearsalMerged > 0)
 			{
-				_ui->imageView_loopClosure->setBackgroundColor(Qt::green);
-				_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
-				if(highestHypothesisIsSaved)
-				{
-					_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
-				}
-				_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
-				matchId = stat.loopClosureId();
+				_ui->imageView_source->setBackgroundColor(Qt::blue);
 			}
-			else if(stat.proximityDetectionId())
+			else if(proximityTimeDetections > 0)
 			{
-				_ui->imageView_loopClosure->setBackgroundColor(Qt::yellow);
-				_ui->label_matchId->setText(QString("Local match = %1 [%2]").arg(stat.proximityDetectionId()).arg(loopMapId));
-				matchId = stat.proximityDetectionId();
+				_ui->imageView_source->setBackgroundColor(Qt::darkYellow);
 			}
-			else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
+			else if(scanMatchingSuccess)
 			{
-				show = _preferencesDialog->imageRejectedShown() || _preferencesDialog->imageHighestHypShown();
-				if(show)
-				{
-					_ui->imageView_loopClosure->setBackgroundColor(Qt::red);
-					_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
-					_ui->label_matchId->setText(QString("Loop hypothesis %1 rejected!").arg(highestHypothesisId));
-				}
+				_ui->imageView_source->setBackgroundColor(Qt::darkCyan);
 			}
-			else
+			else if(rehearsedSimilarity)
 			{
-				show = _preferencesDialog->imageHighestHypShown();
-				if(show)
-				{
-					_ui->label_matchId->setText(QString("Highest hypothesis (%1)").arg(highestHypothesisId));
-				}
+				_ui->imageView_source->setBackgroundColor(Qt::darkBlue);
+			}
+			else if(smallMovement)
+			{
+				_ui->imageView_source->setBackgroundColor(Qt::gray);
+			}
+			else if(fastMovement)
+			{
+				_ui->imageView_source->setBackgroundColor(Qt::magenta);
+			}
+			// Set color code as tooltip
+			if(_ui->label_refId->toolTip().isEmpty())
+			{
+				_ui->label_refId->setToolTip(
+					"Background Color Code:\n"
+					"  Blue = Weight Update Merged\n"
+					"  Dark Blue = Weight Update\n"
+					"  Dark Yellow = Proximity Detection in Time\n"
+					"  Dark Cyan = Neighbor Link Refined\n"
+					"  Gray = Small Movement\n"
+					"  Magenta = Fast Movement\n"
+					"Feature Color code:\n"
+					"  Green = New\n"
+					"  Yellow = New but Not Unique\n"
+					"  Red = In Vocabulary\n"
+					"  Blue = In Vocabulary and in Previous Signature\n"
+					"  Pink = In Vocabulary and in Loop Closure Signature\n"
+					"  Gray = Not Quantized to Vocabulary");
+			}
+			// Set color code as tooltip
+			if(_ui->label_matchId->toolTip().isEmpty())
+			{
+				_ui->label_matchId->setToolTip(
+					"Background Color Code:\n"
+					"  Green = Accepted Loop Closure Detection\n"
+					"  Red = Rejected Loop Closure Detection\n"
+					"  Yellow = Proximity Detection in Space\n"
+					"Feature Color code:\n"
+					"  Red = In Vocabulary\n"
+					"  Pink = In Vocabulary and in Loop Closure Signature\n"
+					"  Gray = Not Quantized to Vocabulary");
 			}
 
-			if(show)
-			{
-				shownLoopId = stat.loopClosureId()>0?stat.loopClosureId():stat.proximityDetectionId()>0?stat.proximityDetectionId():highestHypothesisId;
-				QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
-				if(iter != _cachedSignatures.end())
-				{
-					// uncompress after copy to avoid keeping uncompressed data in memory
-					loopSignature = iter.value();
-					loopSignature.sensorData().uncompressData();
-				}
-			}
-		}
-		_refIds.push_back(stat.refImageId());
-		_loopClosureIds.push_back(matchId);
-
-		//update image views
-		{
-			UCvMat2QImageThread qimageThread(signature.sensorData().imageRaw());
-			UCvMat2QImageThread qimageLoopThread(loopSignature.sensorData().imageRaw());
-			UCvMat2QImageThread qdepthThread(signature.sensorData().depthOrRightRaw());
-			UCvMat2QImageThread qdepthLoopThread(loopSignature.sensorData().depthOrRightRaw());
-			qimageThread.start();
-			qdepthThread.start();
-			qimageLoopThread.start();
-			qdepthLoopThread.start();
-			qimageThread.join();
-			qdepthThread.join();
-			qimageLoopThread.join();
-			qdepthLoopThread.join();
-			QImage img = qimageThread.getQImage();
-			QImage lcImg = qimageLoopThread.getQImage();
-			QImage depth = qdepthThread.getQImage();
-			QImage lcDepth = qdepthLoopThread.getQImage();
 			UDEBUG("time= %d ms", time.restart());
 
-			if(!img.isNull())
+			int rejectedHyp = bool(uValue(stat.data(), Statistics::kLoopRejectedHypothesis(), 0.0f));
+			float highestHypothesisValue = uValue(stat.data(), Statistics::kLoopHighest_hypothesis_value(), 0.0f);
+			int matchId = 0;
+			Signature loopSignature;
+			int shownLoopId = 0;
+			if(highestHypothesisId > 0 || stat.proximityDetectionId()>0)
 			{
-				_ui->imageView_source->setImage(img);
-			}
-			if(!depth.isNull())
-			{
-				_ui->imageView_source->setImageDepth(depth);
-			}
-			if(img.isNull() && depth.isNull())
-			{
-				QRect sceneRect;
-				if(signature.sensorData().cameraModels().size())
+				bool show = true;
+				if(stat.loopClosureId() > 0)
 				{
-					for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
+					_ui->imageView_loopClosure->setBackgroundColor(Qt::green);
+					_ui->label_stats_loopClosuresDetected->setText(QString::number(_ui->label_stats_loopClosuresDetected->text().toInt() + 1));
+					if(highestHypothesisIsSaved)
 					{
-						sceneRect.setWidth(sceneRect.width()+signature.sensorData().cameraModels()[i].imageWidth());
-						sceneRect.setHeight(sceneRect.height()+signature.sensorData().cameraModels()[i].imageHeight());
+						_ui->label_stats_loopClosuresReactivatedDetected->setText(QString::number(_ui->label_stats_loopClosuresReactivatedDetected->text().toInt() + 1));
+					}
+					_ui->label_matchId->setText(QString("Match ID = %1 [%2]").arg(stat.loopClosureId()).arg(loopMapId));
+					matchId = stat.loopClosureId();
+				}
+				else if(stat.proximityDetectionId())
+				{
+					_ui->imageView_loopClosure->setBackgroundColor(Qt::yellow);
+					_ui->label_matchId->setText(QString("Local match = %1 [%2]").arg(stat.proximityDetectionId()).arg(loopMapId));
+					matchId = stat.proximityDetectionId();
+				}
+				else if(rejectedHyp && highestHypothesisValue >= _preferencesDialog->getLoopThr())
+				{
+					show = _preferencesDialog->imageRejectedShown() || _preferencesDialog->imageHighestHypShown();
+					if(show)
+					{
+						_ui->imageView_loopClosure->setBackgroundColor(Qt::red);
+						_ui->label_stats_loopClosuresRejected->setText(QString::number(_ui->label_stats_loopClosuresRejected->text().toInt() + 1));
+						_ui->label_matchId->setText(QString("Loop hypothesis %1 rejected!").arg(highestHypothesisId));
 					}
 				}
-				else if(signature.sensorData().stereoCameraModel().isValidForProjection())
+				else
 				{
-					sceneRect.setRect(0,0,signature.sensorData().stereoCameraModel().left().imageWidth(), signature.sensorData().stereoCameraModel().left().imageHeight());
+					show = _preferencesDialog->imageHighestHypShown();
+					if(show)
+					{
+						_ui->label_matchId->setText(QString("Highest hypothesis (%1)").arg(highestHypothesisId));
+					}
 				}
-				if(sceneRect.isValid())
+
+				if(show)
 				{
-					_ui->imageView_source->setSceneRect(sceneRect);
+					shownLoopId = stat.loopClosureId()>0?stat.loopClosureId():stat.proximityDetectionId()>0?stat.proximityDetectionId():highestHypothesisId;
+					QMap<int, Signature>::iterator iter = _cachedSignatures.find(shownLoopId);
+					if(iter != _cachedSignatures.end())
+					{
+						// uncompress after copy to avoid keeping uncompressed data in memory
+						loopSignature = iter.value();
+						loopSignature.sensorData().uncompressData();
+					}
 				}
 			}
-			if(!lcImg.isNull())
+			_refIds.push_back(stat.refImageId());
+			_loopClosureIds.push_back(matchId);
+
+			//update image views
 			{
-				_ui->imageView_loopClosure->setImage(lcImg);
+				UCvMat2QImageThread qimageThread(signature.sensorData().imageRaw());
+				UCvMat2QImageThread qimageLoopThread(loopSignature.sensorData().imageRaw());
+				UCvMat2QImageThread qdepthThread(signature.sensorData().depthOrRightRaw());
+				UCvMat2QImageThread qdepthLoopThread(loopSignature.sensorData().depthOrRightRaw());
+				qimageThread.start();
+				qdepthThread.start();
+				qimageLoopThread.start();
+				qdepthLoopThread.start();
+				qimageThread.join();
+				qdepthThread.join();
+				qimageLoopThread.join();
+				qdepthLoopThread.join();
+				QImage img = qimageThread.getQImage();
+				QImage lcImg = qimageLoopThread.getQImage();
+				QImage depth = qdepthThread.getQImage();
+				QImage lcDepth = qdepthLoopThread.getQImage();
+				UDEBUG("time= %d ms", time.restart());
+
+				if(!img.isNull())
+				{
+					_ui->imageView_source->setImage(img);
+				}
+				if(!depth.isNull())
+				{
+					_ui->imageView_source->setImageDepth(depth);
+				}
+				if(img.isNull() && depth.isNull())
+				{
+					QRect sceneRect;
+					if(signature.sensorData().cameraModels().size())
+					{
+						for(unsigned int i=0; i<signature.sensorData().cameraModels().size(); ++i)
+						{
+							sceneRect.setWidth(sceneRect.width()+signature.sensorData().cameraModels()[i].imageWidth());
+							sceneRect.setHeight(sceneRect.height()+signature.sensorData().cameraModels()[i].imageHeight());
+						}
+					}
+					else if(signature.sensorData().stereoCameraModel().isValidForProjection())
+					{
+						sceneRect.setRect(0,0,signature.sensorData().stereoCameraModel().left().imageWidth(), signature.sensorData().stereoCameraModel().left().imageHeight());
+					}
+					if(sceneRect.isValid())
+					{
+						_ui->imageView_source->setSceneRect(sceneRect);
+					}
+				}
+				if(!lcImg.isNull())
+				{
+					_ui->imageView_loopClosure->setImage(lcImg);
+				}
+				if(!lcDepth.isNull())
+				{
+					_ui->imageView_loopClosure->setImageDepth(lcDepth);
+				}
+				if(_ui->imageView_loopClosure->sceneRect().isNull())
+				{
+					_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
+				}
 			}
-			if(!lcDepth.isNull())
+
+			UDEBUG("time= %d ms", time.restart());
+
+			// do it after scaling
+			this->drawKeypoints(signature.getWords(), loopSignature.getWords());
+
+			UDEBUG("time= %d ms", time.restart());
+
+			_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), signature.getWords().size(), _preferencesDialog->isCacheSavedInFigures());
+			_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), loopSignature.getWords().size(), _preferencesDialog->isCacheSavedInFigures());
+
+			// loop closure view
+			if((stat.loopClosureId() > 0 || stat.proximityDetectionId() > 0)  &&
+			   !stat.loopClosureTransform().isNull() &&
+			   !loopSignature.sensorData().imageRaw().empty())
 			{
-				_ui->imageView_loopClosure->setImageDepth(lcDepth);
-			}
-			if(_ui->imageView_loopClosure->sceneRect().isNull())
-			{
-				_ui->imageView_loopClosure->setSceneRect(_ui->imageView_source->sceneRect());
+				// the last loop closure data
+				Transform loopClosureTransform = stat.loopClosureTransform();
+				signature.setPose(loopClosureTransform);
+				_loopClosureViewer->setData(loopSignature, signature);
+				if(_ui->dockWidget_loopClosureViewer->isVisible())
+				{
+					UTimer loopTimer;
+					_loopClosureViewer->updateView(Transform(), _preferencesDialog->getAllParameters());
+					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
+					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(loopTimer.elapsed()*1000.0f), _preferencesDialog->isCacheSavedInFigures());
+				}
+
+				UDEBUG("time= %d ms", time.restart());
 			}
 		}
-
-		UDEBUG("time= %d ms", time.restart());
-
-		// do it after scaling
-		this->drawKeypoints(signature.getWords(), loopSignature.getWords());
-
-		UDEBUG("time= %d ms", time.restart());
-
-		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the last signature/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), signature.getWords().size(), _preferencesDialog->isCacheSavedInFigures());
-		_ui->statsToolBox->updateStat("Keypoint/Keypoints count in the loop signature/", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), loopSignature.getWords().size(), _preferencesDialog->isCacheSavedInFigures());
 
 		// PDF AND LIKELIHOOD
 		if(!stat.posterior().empty() && _ui->dockWidget_posterior->isVisible())
@@ -1855,26 +1918,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			for(std::map<std::string, float>::iterator iter=updateCloudSats.begin(); iter!=updateCloudSats.end(); ++iter)
 			{
 				_ui->statsToolBox->updateStat(iter->first.c_str(), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(iter->second), _preferencesDialog->isCacheSavedInFigures());
-			}
-
-			// loop closure view
-			if((stat.loopClosureId() > 0 || stat.proximityDetectionId() > 0)  &&
-			   !stat.loopClosureTransform().isNull() &&
-			   !loopSignature.sensorData().imageRaw().empty())
-			{
-				// the last loop closure data
-				Transform loopClosureTransform = stat.loopClosureTransform();
-				signature.setPose(loopClosureTransform);
-				_loopClosureViewer->setData(loopSignature, signature);
-				if(_ui->dockWidget_loopClosureViewer->isVisible())
-				{
-					UTimer loopTimer;
-					_loopClosureViewer->updateView(Transform(), _preferencesDialog->getAllParameters());
-					UINFO("Updating loop closure cloud view time=%fs", loopTimer.elapsed());
-					_ui->statsToolBox->updateStat("GUI/RGB-D closure view/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(loopTimer.elapsed()*1000.0f), _preferencesDialog->isCacheSavedInFigures());
-				}
-
-				UDEBUG("time= %d ms", time.restart());
 			}
 		}
 
@@ -2284,11 +2327,22 @@ void MainWindow::updateMapCloud(
 	// update 3D graphes (show all poses)
 	_cloudViewer->removeAllGraphs();
 	_cloudViewer->removeCloud("graph_nodes");
-	if(!_preferencesDialog->isFrustumsShown())
+	if(!_preferencesDialog->isFrustumsShown(0))
 	{
-		_cloudViewer->removeAllFrustums(true);
+		QMap<std::string, Transform> addedFrustums = _cloudViewer->getAddedFrustums();
+		for(QMap<std::string, Transform>::iterator iter = addedFrustums.begin(); iter!=addedFrustums.end(); ++iter)
+		{
+			std::list<std::string> splitted = uSplitNumChar(iter.key());
+			if(splitted.size() == 2)
+			{
+				if((splitted.front().compare("f_") == 0 || splitted.front().compare("f_gt_") == 0))
+				{
+					_cloudViewer->removeFrustum(iter.key());
+				}
+			}
+		}
 	}
-	if((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown()) && _currentPosesMap.size())
+	if((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown(0)) && _currentPosesMap.size())
 	{
 		UTimer timerGraph;
 		// Find all graphs
@@ -2310,7 +2364,7 @@ void MainWindow::updateMapCloud(
 			}
 
 			// get local transforms for frustums on the graph
-			if(_preferencesDialog->isFrustumsShown())
+			if(_preferencesDialog->isFrustumsShown(0))
 			{
 				std::string frustumId = uFormat("f_%d", iter->first);
 				if(_cloudViewer->getAddedFrustums().contains(frustumId))
@@ -2370,7 +2424,7 @@ void MainWindow::updateMapCloud(
 			_cloudViewer->addOrUpdateGraph(uFormat("graph_%d", iter->first), iter->second, color);
 		}
 
-		if(_preferencesDialog->isFrustumsShown())
+		if(_preferencesDialog->isFrustumsShown(0))
 		{
 			QMap<std::string, Transform> addedFrustums = _cloudViewer->getAddedFrustums();
 			UDEBUG("remove not used frustums");
@@ -3281,6 +3335,11 @@ Transform MainWindow::alignPosesToGroundTruth(
 		if(_preferencesDialog->isGroundTruthAligned())
 		{
 			t = gtToMap;
+
+			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				iter->second = gtToMap * iter->second;
+			}
 		}
 
 		// ground truth live statistics
@@ -4656,7 +4715,7 @@ void MainWindow::pauseDetection()
 			emit stateChanged(kPaused);
 			if(_preferencesDialog->getGeneralInputRate())
 			{
-				QTimer::singleShot(1000.0/_preferencesDialog->getGeneralInputRate() + 10, this, SLOT(pauseDetection()));
+				QTimer::singleShot(500.0/_preferencesDialog->getGeneralInputRate(), this, SLOT(pauseDetection()));
 			}
 			else
 			{

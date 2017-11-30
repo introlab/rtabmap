@@ -78,6 +78,7 @@ CameraImages::CameraImages() :
 		_syncImageRateWithStamps(true),
 		_odometryFormat(0),
 		_groundTruthFormat(0),
+		_maxPoseTimeDiff(0.02),
 		_captureDelay(0.0)
 	{}
 CameraImages::CameraImages(const std::string & path,
@@ -108,6 +109,7 @@ CameraImages::CameraImages(const std::string & path,
 	_syncImageRateWithStamps(true),
 	_odometryFormat(0),
 	_groundTruthFormat(0),
+	_maxPoseTimeDiff(0.02),
 	_captureDelay(0.0)
 {
 
@@ -312,12 +314,12 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 
 		if(success && _odometryPath.size())
 		{
-			success = readPoses(odometry_, _stamps, _odometryPath, _odometryFormat);
+			success = readPoses(odometry_, _stamps, _odometryPath, _odometryFormat, _maxPoseTimeDiff);
 		}
 
 		if(success && _groundTruthPath.size())
 		{
-			success = readPoses(groundTruth_, _stamps, _groundTruthPath, _groundTruthFormat);
+			success = readPoses(groundTruth_, _stamps, _groundTruthPath, _groundTruthFormat, _maxPoseTimeDiff);
 		}
 	}
 
@@ -326,7 +328,7 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 	return success;
 }
 
-bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<double> & inOutStamps, const std::string & filePath, int format) const
+bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<double> & inOutStamps, const std::string & filePath, int format, double maxTimeDiff) const
 {
 	outputPoses.clear();
 	std::map<int, Transform> poses;
@@ -380,16 +382,21 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 					double stampBeg = beginIter->first;
 					double stampEnd = endIter->first;
 					UASSERT(stampEnd > stampBeg && *ster>stampBeg && *ster < stampEnd);
-					if(stampEnd - stampBeg > 10.0)
+					if(fabs(*ster-stampEnd) > maxTimeDiff || fabs(*ster-stampBeg) > maxTimeDiff)
 					{
 						warned = true;
-						UDEBUG("Cannot interpolate pose for stamp %f between %f and %f (>10 sec)",
-							*ster,
-							stampBeg,
-							stampEnd);
+						if(!warned)
+						{
+							UWARN("Cannot interpolate pose for stamp %f between %f and %f (> maximum time diff of %f sec)",
+								*ster,
+								stampBeg,
+								stampEnd,
+								maxTimeDiff);
+						}
 					}
 					else
 					{
+						warned=false;
 						float t = (*ster - stampBeg) / (stampEnd-stampBeg);
 						Transform & ta = poses.at(beginIter->second);
 						Transform & tb = poses.at(endIter->second);
@@ -533,6 +540,26 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 					}
 				}
 			}
+
+			if(_stamps.size())
+			{
+				stamp = _stamps.front();
+				_stamps.pop_front();
+				if(_stamps.size())
+				{
+					_captureDelay = _stamps.front() - stamp;
+				}
+				if(odometry_.size())
+				{
+					odometryPose = odometry_.front();
+					odometry_.pop_front();
+				}
+				if(groundTruth_.size())
+				{
+					groundTruthPose = groundTruth_.front();
+					groundTruth_.pop_front();
+				}
+			}
 		}
 		else
 		{
@@ -541,9 +568,48 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 			if(!fileName.empty())
 			{
 				imageFilePath = _path + fileName;
+				if(_stamps.size())
+				{
+					stamp = _stamps.front();
+					_stamps.pop_front();
+					if(_stamps.size())
+					{
+						_captureDelay = _stamps.front() - stamp;
+					}
+					if(odometry_.size())
+					{
+						odometryPose = odometry_.front();
+						odometry_.pop_front();
+					}
+					if(groundTruth_.size())
+					{
+						groundTruthPose = groundTruth_.front();
+						groundTruth_.pop_front();
+					}
+				}
+
 				while(_count++ < _startAt && (fileName = _dir->getNextFileName()).size())
 				{
 					imageFilePath = _path + fileName;
+					if(_stamps.size())
+					{
+						stamp = _stamps.front();
+						_stamps.pop_front();
+						if(_stamps.size())
+						{
+							_captureDelay = _stamps.front() - stamp;
+						}
+						if(odometry_.size())
+						{
+							odometryPose = odometry_.front();
+							odometry_.pop_front();
+						}
+						if(groundTruth_.size())
+						{
+							groundTruthPose = groundTruth_.front();
+							groundTruth_.pop_front();
+						}
+					}
 				}
 			}
 			if(_scanDir)
@@ -557,26 +623,6 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 						scanFilePath = _scanPath + fileName;
 					}
 				}
-			}
-		}
-
-		if(_stamps.size())
-		{
-			stamp = _stamps.front();
-			_stamps.pop_front();
-			if(_stamps.size())
-			{
-				_captureDelay = _stamps.front() - stamp;
-			}
-			if(odometry_.size())
-			{
-				odometryPose = odometry_.front();
-				odometry_.pop_front();
-			}
-			if(groundTruth_.size())
-			{
-				groundTruthPose = groundTruth_.front();
-				groundTruth_.pop_front();
 			}
 		}
 

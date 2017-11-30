@@ -327,7 +327,9 @@ Feature2D::Feature2D(const ParametersMap & parameters) :
 		_roiRatios(std::vector<float>(4, 0.0f)),
 		_subPixWinSize(Parameters::defaultKpSubPixWinSize()),
 		_subPixIterations(Parameters::defaultKpSubPixIterations()),
-		_subPixEps(Parameters::defaultKpSubPixEps())
+		_subPixEps(Parameters::defaultKpSubPixEps()),
+		gridRows_(Parameters::defaultKpGridRows()),
+		gridCols_(Parameters::defaultKpGridCols())
 {
 	_stereo = new Stereo(parameters);
 	this->parseParameters(parameters);
@@ -346,6 +348,14 @@ void Feature2D::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpSubPixWinSize(), _subPixWinSize);
 	Parameters::parse(parameters, Parameters::kKpSubPixIterations(), _subPixIterations);
 	Parameters::parse(parameters, Parameters::kKpSubPixEps(), _subPixEps);
+	Parameters::parse(parameters, Parameters::kKpGridRows(), gridRows_);
+	Parameters::parse(parameters, Parameters::kKpGridCols(), gridCols_);
+
+	UASSERT(gridRows_ >= 1 && gridCols_>=1);
+	if(maxFeatures_ > 0)
+	{
+		maxFeatures_ =	maxFeatures_ / (gridRows_ * gridCols_);
+	}
 
 	// convert ROI from string to vector
 	ParametersMap::const_iterator iter;
@@ -533,23 +543,36 @@ std::vector<cv::KeyPoint> Feature2D::generateKeypoints(const cv::Mat & image, co
 
 	std::vector<cv::KeyPoint> keypoints;
 	UTimer timer;
+	cv::Rect globalRoi = Feature2D::computeRoi(image, _roiRatios);
+	if(!(globalRoi.width && globalRoi.height))
+	{
+		globalRoi = cv::Rect(0,0,image.cols, image.rows);
+	}
 
 	// Get keypoints
-	cv::Rect roi = Feature2D::computeRoi(image, _roiRatios);
-	keypoints = this->generateKeypointsImpl(image, roi.width && roi.height?roi:cv::Rect(0,0,image.cols, image.rows), mask);
-	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (mask empty=%d)", timer.ticks(), keypoints.size(), mask.empty()?1:0);
-
-	limitKeypoints(keypoints, maxFeatures_);
-
-	if(roi.x || roi.y)
+	int rowSize = globalRoi.height / gridRows_;
+	int colSize = globalRoi.width / gridCols_;
+	for (int i = 0; i<gridRows_; ++i)
 	{
-		// Adjust keypoint position to raw image
-		for(std::vector<cv::KeyPoint>::iterator iter=keypoints.begin(); iter!=keypoints.end(); ++iter)
+		for (int j = 0; j<gridCols_; ++j)
 		{
-			iter->pt.x += roi.x;
-			iter->pt.y += roi.y;
+			cv::Rect roi(globalRoi.x + j*colSize, globalRoi.y + i*rowSize, colSize, rowSize);
+			std::vector<cv::KeyPoint> sub_keypoints;
+			sub_keypoints = this->generateKeypointsImpl(image, roi, mask);
+			limitKeypoints(sub_keypoints, maxFeatures_);
+			if(roi.x || roi.y)
+			{
+				// Adjust keypoint position to raw image
+				for(std::vector<cv::KeyPoint>::iterator iter=sub_keypoints.begin(); iter!=sub_keypoints.end(); ++iter)
+				{
+					iter->pt.x += roi.x;
+					iter->pt.y += roi.y;
+				}
+			}
+			keypoints.insert( keypoints.end(), sub_keypoints.begin(), sub_keypoints.end() );
 		}
 	}
+	UDEBUG("Keypoints extraction time = %f s, keypoints extracted = %d (mask empty=%d)", timer.ticks(), keypoints.size(), mask.empty()?1:0);
 
 	if(keypoints.size() && _subPixWinSize > 0 && _subPixIterations > 0)
 	{

@@ -591,6 +591,11 @@ public:
 		ofs << "Camera.RGB: 1" << std::endl;
 		ofs << std::endl;
 
+		float fps = rtabmap::Parameters::defaultOdomORBSLAM2Fps();
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2Fps(), fps);
+		ofs << "Camera.fps: " << fps << std::endl;
+		ofs << std::endl;
+
 		//# Close/Far threshold. Baseline times.
 		double thDepth = rtabmap::Parameters::defaultOdomORBSLAM2ThDepth();
 		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2ThDepth(), thDepth);
@@ -605,8 +610,8 @@ public:
 		//# ORB Parameters
 		//#--------------------------------------------------------------------------------------------
 		//# ORB Extractor: Number of features per image
-		int features = rtabmap::Parameters::defaultVisMaxFeatures();
-		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kVisMaxFeatures(), features);
+		int features = rtabmap::Parameters::defaultOdomORBSLAM2MaxFeatures();
+		rtabmap::Parameters::parse(parameters_, rtabmap::Parameters::kOdomORBSLAM2MaxFeatures(), features);
 		ofs << "ORBextractor.nFeatures: " << features << std::endl;
 		ofs << std::endl;
 
@@ -869,14 +874,26 @@ Transform OdometryORBSLAM2::computeTransform(
 		}
 		else
 		{
-			//based on values set in viso2_ros
+			float baseline = data.stereoCameraModel().baseline();
+			if(baseline <= 0.0f)
+			{
+				baseline = rtabmap::Parameters::defaultOdomORBSLAM2Bf();
+				rtabmap::Parameters::parse(orbslam2_->parameters_, rtabmap::Parameters::kOdomORBSLAM2Bf(), baseline);
+			}
+			double linearVar = 0.0001;
+			if(baseline > 0.0f)
+			{
+				linearVar = baseline/8.0;
+				linearVar *= linearVar;
+			}
+
 			covariance = cv::Mat::eye(6,6, CV_64FC1);
-			covariance.at<double>(0,0) = 0.002;
-			covariance.at<double>(1,1) = 0.002;
-			covariance.at<double>(2,2) = 0.05;
-			covariance.at<double>(3,3) = 0.09;
-			covariance.at<double>(4,4) = 0.09;
-			covariance.at<double>(5,5) = 0.09;
+			covariance.at<double>(0,0) = linearVar;
+			covariance.at<double>(1,1) = linearVar;
+			covariance.at<double>(2,2) = linearVar;
+			covariance.at<double>(3,3) = 0.01;
+			covariance.at<double>(4,4) = 0.01;
+			covariance.at<double>(5,5) = 0.01;
 		}
 	}
 

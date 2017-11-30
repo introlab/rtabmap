@@ -35,6 +35,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_correspondences.h"
 #include "rtabmap/core/util3d.h"
 
+#include <pcl/common/common.h>
+
 #if CV_MAJOR_VERSION < 3
 #include "opencv/solvepnp.h"
 #endif
@@ -94,8 +96,8 @@ Transform estimateMotion3DTo2D(
 	imagePoints.resize(oi);
 	matches.resize(oi);
 
-	UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d",
-			(int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size());
+	UDEBUG("words3A=%d words2B=%d matches=%d words3B=%d guess=%s",
+			(int)words3A.size(), (int)words2B.size(), (int)matches.size(), (int)words3B.size(), guess.prettyPrint().c_str());
 
 	if((int)matches.size() >= minInliers)
 	{
@@ -141,6 +143,7 @@ Transform estimateMotion3DTo2D(
 			if(covariance && words3B.size())
 			{
 				std::vector<float> errorSqrdDists(inliers.size());
+				std::vector<float> errorSqrdAngles(inliers.size());
 				oi = 0;
 				for(unsigned int i=0; i<inliers.size(); ++i)
 				{
@@ -150,19 +153,25 @@ Transform estimateMotion3DTo2D(
 						const cv::Point3f & objPt = objectPoints[inliers[i]];
 						cv::Point3f newPt = util3d::transformPoint(iter->second, transform);
 						errorSqrdDists[oi] = uNormSquared(objPt.x-newPt.x, objPt.y-newPt.y, objPt.z-newPt.z);
-						//ignore very very far features (stereo)
-						if(errorSqrdDists[oi] < iter->second.x/100.0f)
-						{
-							++oi;
-						}
+
+						Eigen::Vector4f v1(objPt.x - transform.x(), objPt.y - transform.y(), objPt.z - transform.z(), 0);
+						Eigen::Vector4f v2(newPt.x - transform.x(), newPt.y - transform.y(), newPt.z - transform.z(), 0);
+						errorSqrdAngles[oi++] = pcl::getAngle3D(v1, v2)*10.0f;
 					}
 				}
+
 				errorSqrdDists.resize(oi);
+				errorSqrdAngles.resize(oi);
 				if(errorSqrdDists.size())
 				{
 					std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
-					double median_error_sqr = (double)errorSqrdDists[errorSqrdDists.size () >> 1];
-					*covariance *= 2.1981 * median_error_sqr;
+					//divide by 4 instead of 2 to ignore very very far features (stereo)
+					double median_error_sqr = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () >> 2];
+
+					(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr;
+					std::sort(errorSqrdAngles.begin(), errorSqrdAngles.end());
+					median_error_sqr = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () >> 2];
+					(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr;
 				}
 				else
 				{

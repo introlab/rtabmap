@@ -942,7 +942,7 @@ float getDepth(
 		const cv::Mat & depthImage,
 		float x, float y,
 		bool smoothing,
-		float maxZError,
+		float depthErrorRatio,
 		bool estWithNeighborsIfNull)
 {
 	UASSERT(!depthImage.empty());
@@ -1024,10 +1024,15 @@ float getDepth(
 							tmp = d;
 							++count;
 						}
-						else if(fabs(d - tmp/float(count)) < maxZError)
+						else
 						{
-							tmp += d;
-							++count;
+							float depthError = depthErrorRatio * tmp;
+							if(fabs(d - tmp/float(count)) < depthError)
+
+							{
+								tmp += d;
+								++count;
+							}
 						}
 					}
 				}
@@ -1065,8 +1070,10 @@ float getDepth(
 							d = depthImage.at<float>(vv,uu);
 						}
 
+						float depthError = depthErrorRatio * depth;
+
 						// ignore if not valid or depth difference is too high
-						if(d != 0.0f && uIsFinite(d) && fabs(d - depth) < maxZError)
+						if(d != 0.0f && uIsFinite(d) && fabs(d - depth) < depthError)
 						{
 							if(uu == u || vv == v)
 							{

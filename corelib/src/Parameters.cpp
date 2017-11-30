@@ -224,6 +224,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+		// 0.15.1
+		removedParameters_.insert(std::make_pair("Reg/VarianceFromInliersCount",  std::make_pair(false, "")));
+		removedParameters_.insert(std::make_pair("Reg/VarianceNormalized",        std::make_pair(false, "")));
 
 		// 0.13.3
 		removedParameters_.insert(std::make_pair("Icp/PointToPlaneNormalNeighbors", std::make_pair(true,  Parameters::kIcpPointToPlaneK())));
@@ -284,7 +287,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("Odom/MaxDepth",                 std::make_pair(true,  Parameters::kVisMaxDepth())));
 		removedParameters_.insert(std::make_pair("Odom/RoiRatios",                std::make_pair(true,  Parameters::kVisRoiRatios())));
 		removedParameters_.insert(std::make_pair("Odom/Force2D",                  std::make_pair(true,  Parameters::kRegForce3DoF())));
-		removedParameters_.insert(std::make_pair("Odom/VarianceFromInliersCount", std::make_pair(true,  Parameters::kRegVarianceFromInliersCount())));
+		removedParameters_.insert(std::make_pair("Odom/VarianceFromInliersCount", std::make_pair(false, "")));
 		removedParameters_.insert(std::make_pair("Odom/PnPReprojError",           std::make_pair(true,  Parameters::kVisPnPReprojError())));
 		removedParameters_.insert(std::make_pair("Odom/PnPFlags",                 std::make_pair(true,  Parameters::kVisPnPFlags())));
 
@@ -314,7 +317,7 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 		removedParameters_.insert(std::make_pair("LccBow/Iterations",               std::make_pair(false,  Parameters::kVisIterations())));
 		removedParameters_.insert(std::make_pair("LccBow/RefineIterations",         std::make_pair(false,  Parameters::kVisRefineIterations())));
 		removedParameters_.insert(std::make_pair("LccBow/Force2D",                  std::make_pair(false,  Parameters::kRegForce3DoF())));
-		removedParameters_.insert(std::make_pair("LccBow/VarianceFromInliersCount", std::make_pair(false,  Parameters::kRegVarianceFromInliersCount())));
+		removedParameters_.insert(std::make_pair("LccBow/VarianceFromInliersCount", std::make_pair(false,  "")));
 		removedParameters_.insert(std::make_pair("LccBow/PnPReprojError",           std::make_pair(false,  Parameters::kVisPnPReprojError())));
 		removedParameters_.insert(std::make_pair("LccBow/PnPFlags",                 std::make_pair(false,  Parameters::kVisPnPFlags())));
 		removedParameters_.insert(std::make_pair("LccBow/EpipolarGeometryVar",      std::make_pair(true,   Parameters::kVisEpipolarGeometryVar())));
@@ -732,7 +735,7 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 }
 
 
-void Parameters::readINI(const std::string & configFile, ParametersMap & parameters)
+void Parameters::readINI(const std::string & configFile, ParametersMap & parameters, bool modifiedOnly)
 {
 	CSimpleIniA ini;
 	ini.LoadFile(configFile.c_str());
@@ -805,7 +808,10 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 
 				if(Parameters::getDefaultParameters().find(key) != Parameters::getDefaultParameters().end())
 				{
-					uInsert(parameters, ParametersPair(key, iter->second));
+					if(!modifiedOnly || std::string(iter->second).compare(Parameters::getDefaultParameters().find(key)->second) != 0)
+					{
+						uInsert(parameters, ParametersPair(key, iter->second));
+					}
 				}
 			}
 		}

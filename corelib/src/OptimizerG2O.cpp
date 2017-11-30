@@ -646,6 +646,81 @@ std::map<int, Transform> OptimizerG2O::optimize(
 	return optimizedPoses;
 }
 
+#ifdef RTABMAP_ORB_SLAM2
+/**
+ * \brief 3D edge between two SBAcam
+ */
+ class EdgeSE3Expmap : public g2o::BaseBinaryEdge<6, g2o::SE3Quat, g2o::VertexSE3Expmap, g2o::VertexSE3Expmap>
+{
+  public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+    EdgeSE3Expmap():  BaseBinaryEdge<6, g2o::SE3Quat, g2o::VertexSE3Expmap, g2o::VertexSE3Expmap>(){}
+    bool read(std::istream& is)
+      {
+        return false;
+      }
+
+      bool write(std::ostream& os) const
+      {
+        return false;
+      }
+
+    void computeError()
+    {
+      const g2o::VertexSE3Expmap* v1 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+      const g2o::VertexSE3Expmap* v2 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
+      g2o::SE3Quat delta = _inverseMeasurement * (v1->estimate().inverse()*v2->estimate());
+      _error[0]=delta.translation().x();
+      _error[1]=delta.translation().y();
+      _error[2]=delta.translation().z();
+      _error[3]=delta.rotation().x();
+      _error[4]=delta.rotation().y();
+      _error[5]=delta.rotation().z();
+    }
+
+    virtual void setMeasurement(const g2o::SE3Quat& meas){
+      _measurement=meas;
+      _inverseMeasurement=meas.inverse();
+    }
+
+    virtual double initialEstimatePossible(const g2o::OptimizableGraph::VertexSet& , g2o::OptimizableGraph::Vertex* ) { return 1.;}
+    virtual void initialEstimate(const g2o::OptimizableGraph::VertexSet& from_, g2o::OptimizableGraph::Vertex* ){
+    	g2o::VertexSE3Expmap* from = static_cast<g2o::VertexSE3Expmap*>(_vertices[0]);
+    	g2o::VertexSE3Expmap* to = static_cast<g2o::VertexSE3Expmap*>(_vertices[1]);
+		if (from_.count(from) > 0)
+		  to->setEstimate((g2o::SE3Quat) from->estimate() * _measurement);
+		else
+		  from->setEstimate((g2o::SE3Quat) to->estimate() * _inverseMeasurement);
+    }
+
+    virtual bool setMeasurementData(const double* d){
+      Eigen::Map<const g2o::Vector7d> v(d);
+      _measurement.fromVector(v);
+      _inverseMeasurement = _measurement.inverse();
+      return true;
+    }
+
+    virtual bool getMeasurementData(double* d) const{
+      Eigen::Map<g2o::Vector7d> v(d);
+      v = _measurement.toVector();
+      return true;
+    }
+
+    virtual int measurementDimension() const {return 7;}
+
+    virtual bool setMeasurementFromState() {
+    	const g2o::VertexSE3Expmap* v1 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);
+		const g2o::VertexSE3Expmap* v2 = dynamic_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);
+		_measurement = (v1->estimate().inverse()*v2->estimate());
+		_inverseMeasurement = _measurement.inverse();
+		return true;
+    }
+
+  protected:
+    g2o::SE3Quat _inverseMeasurement;
+};
+#endif
+
 std::map<int, Transform> OptimizerG2O::optimizeBA(
 		int rootId,
 		const std::map<int, Transform> & poses,
@@ -761,7 +836,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 			++iter;
 		}
 
-#ifndef RTABMAP_ORB_SLAM2
 		UDEBUG("fill edges to g2o...");
 		for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 		{
@@ -777,23 +851,36 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 					UASSERT(!iter->second.transform().isNull());
 
 					Eigen::Matrix<double, 6, 6> information = Eigen::Matrix<double, 6, 6>::Identity();
-					memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+					if(!isCovarianceIgnored())
+					{
+						memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
+					}
 
 					// between cameras, not base_link
 					Transform camLink = models.at(id1).localTransform().inverse()*iter->second.transform()*models.at(id2).localTransform();
-					UDEBUG("added edge %d->%d (in cam frame=%s)",
-							id1,
-							id2,
-							camLink.prettyPrint().c_str());
-					Eigen::Affine3d a = camLink.toEigen3d();
+					//UDEBUG("added edge %d->%d (in cam frame=%s)",
+					//		id1,
+					//		id2,
+					//		camLink.prettyPrint().c_str());
+#ifdef RTABMAP_ORB_SLAM2
+					EdgeSE3Expmap * e = new EdgeSE3Expmap();
+					g2o::VertexSE3Expmap* v1 = (g2o::VertexSE3Expmap*)optimizer.vertex(id1);
+					g2o::VertexSE3Expmap* v2 = (g2o::VertexSE3Expmap*)optimizer.vertex(id2);
 
+					Transform camPose1 = Transform::fromEigen3d(v1->estimate()).inverse();
+					Transform camPose2Inv = Transform::fromEigen3d(v2->estimate());
+
+					camLink =  camPose1 * camPose1 * camLink * camPose2Inv * camPose2Inv;
+#else
 					g2o::EdgeSBACam * e = new g2o::EdgeSBACam();
 					g2o::VertexCam* v1 = (g2o::VertexCam*)optimizer.vertex(id1);
 					g2o::VertexCam* v2 = (g2o::VertexCam*)optimizer.vertex(id2);
+#endif
 					UASSERT(v1 != 0);
 					UASSERT(v2 != 0);
 					e->setVertex(0, v1);
 					e->setVertex(1, v2);
+					Eigen::Affine3d a = camLink.toEigen3d();
 					e->setMeasurement(g2o::SE3Quat(a.linear(), a.translation()));
 					e->setInformation(information);
 
@@ -806,7 +893,6 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				}
 			}
 		}
-#endif
 
 		UDEBUG("fill 3D points to g2o...");
 		const int stepVertexId = poses.rbegin()->first+1;
@@ -815,7 +901,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		{
 			if(points3DMap.find(iter->first) != points3DMap.end())
 			{
-				const cv::Point3f & pt3d = points3DMap.at(iter->first);
+				cv::Point3f pt3d = points3DMap.at(iter->first);
 				g2o::VertexSBAPointXYZ* vpt3d = new g2o::VertexSBAPointXYZ();
 
 				vpt3d->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
@@ -823,7 +909,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				vpt3d->setMarginalized(true);
 				optimizer.addVertex(vpt3d);
 
-				UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
+				//UDEBUG("Added 3D point %d (%f,%f,%f)", vpt3d->id()-stepVertexId, pt3d.x, pt3d.y, pt3d.z);
 
 				// set observations
 				for(std::map<int, cv::Point3f>::const_iterator jter=iter->second.begin(); jter!=iter->second.end(); ++jter)
@@ -834,25 +920,13 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						const cv::Point3f & pt = jter->second;
 						double depth = pt.z;
 
-						UDEBUG("Added observation pt=%d to cam=%d (%f,%f) d=%f", vpt3d->id()-stepVertexId, camId, pt.x, pt.y, depth);
+						//UDEBUG("Added observation pt=%d to cam=%d (%f,%f) depth=%f", vpt3d->id()-stepVertexId, camId, pt.x, pt.y, depth);
 
 						g2o::OptimizableGraph::Edge * e;
 						double baseline = 0.0;
 #ifdef RTABMAP_ORB_SLAM2
 						g2o::VertexSE3Expmap* vcam = dynamic_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(camId));
 						std::map<int, CameraModel>::const_iterator iterModel = models.find(camId);
-
-						cv::Point3f t = util3d::transformPoint(pt3d, Transform::fromEigen3d(vcam->estimate()).inverse());
-						UDEBUG("in cam %d frame=(%f,%f,%f)", camId, t.x, t.y, t.z);
-
-						cv::Point3f t2 = util3d::transformPoint(pt3d, (poses.at(camId)*iterModel->second.localTransform()).inverse());
-						UDEBUG("in cam2 %d frame=(%f,%f,%f)",camId, t2.x, t2.y, t2.z);
-
-						g2o::Vector3d t3 = vcam->estimate().map(g2o::Vector3d(pt3d.x, pt3d.y, pt3d.z));
-						UDEBUG("in cam3 %d frame=(%f,%f,%f)",camId, t3[0], t3[1], t3[2]);
-
-						cv::Point3f t4 = util3d::transformPoint(pt3d, (poses.at(camId)*iterModel->second.localTransform()));
-						UDEBUG("in cam4 %d frame=(%f,%f,%f)",camId, t4.x, t4.y, t4.z);
 
 						UASSERT(iterModel != models.end() && iterModel->second.isValidForProjection());
 						baseline = iterModel->second.Tx()<0.0?-iterModel->second.Tx()/iterModel->second.fx():baseline_;
@@ -918,7 +992,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						}
 						e->setVertex(0, vpt3d);
 						e->setVertex(1, vcam);
-						UDEBUG("");
+
 						if(robustKernelDelta_ > 0.0)
 						{
 							g2o::RobustKernelHuber* kernel = new g2o::RobustKernelHuber;
@@ -947,11 +1021,12 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		for(int i=0; i<(robustKernelDelta_>0.0?2:1); ++i)
 		{
-			it += optimizer.optimize(i==0&&robustKernelDelta_>0.0?3:iterations());
+			it += optimizer.optimize(i==0&&robustKernelDelta_>0.0?5:iterations());
 
 			// early stop condition
 			optimizer.computeActiveErrors();
 			double chi2 = optimizer.activeRobustChi2();
+
 			if(uIsNan(chi2))
 			{
 				UERROR("Optimization generated NANs, aborting optimization! Try another g2o's optimizer (current=%d).", optimizer_);
@@ -988,7 +1063,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
 #endif
 
-						const cv::Point3f & pt3d = points3DMap.at((*iter)->vertex(0)->id()-stepVertexId);
+						cv::Point3f pt3d = points3DMap.at((*iter)->vertex(0)->id()-stepVertexId);
 						((g2o::VertexSBAPointXYZ*)(*iter)->vertex(0))->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
 
 						if(outliers)
@@ -1007,12 +1082,11 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 				UDEBUG("outliers=%d outliersCountFar=%d", outliersCount, outliersCountFar);
 			}
 		}
-
 		UINFO("g2o optimizing end (%d iterations done, error=%f, outliers=%d/%d (delta=%f) time = %f s)", it, optimizer.activeRobustChi2(), outliersCount, (int)edges.size(), robustKernelDelta_, timer.ticks());
 
 		if(optimizer.activeRobustChi2() > 1000000000000.0)
 		{
-			UWARN("g2o: Large optimimzation error detected (%f), aborting optimization!");
+			UWARN("g2o: Large optimization error detected (%f), aborting optimization!");
 			return optimizedPoses;
 		}
 
@@ -1034,6 +1108,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 				// remove model local transform
 				t *= models.at(iter->first).localTransform().inverse();
+
 				UDEBUG("%d from=%s to=%s", iter->first, iter->second.prettyPrint().c_str(), t.prettyPrint().c_str());
 				if(t.isNull())
 				{

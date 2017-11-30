@@ -560,7 +560,7 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		bool ignoreFrame = false;
 		if(_rate>0.0f)
 		{
-			if((_previousStamp>0.0 && odomEvent.data().stamp()>_previousStamp && odomEvent.data().stamp() - _previousStamp < 1.0f/_rate) ||
+			if((_previousStamp>=0.0 && odomEvent.data().stamp()>_previousStamp && odomEvent.data().stamp() - _previousStamp < 1.0f/_rate) ||
 				((_previousStamp<=0.0 || odomEvent.data().stamp()<=_previousStamp) && _frameRateTimer->getElapsedTime() < 1.0f/_rate))
 			{
 				ignoreFrame = true;

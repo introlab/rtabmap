@@ -239,6 +239,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Kp, SubPixWinSize,            int, 3,       "See cv::cornerSubPix().");
     RTABMAP_PARAM(Kp, SubPixIterations,         int, 0,       "See cv::cornerSubPix(). 0 disables sub pixel refining.");
     RTABMAP_PARAM(Kp, SubPixEps,                double, 0.02, "See cv::cornerSubPix().");
+    RTABMAP_PARAM(Kp, GridRows,                 int, 1,       uFormat("Number of rows of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kKpMaxFeatures().c_str()));
+    RTABMAP_PARAM(Kp, GridCols,                 int, 1,       uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kKpMaxFeatures().c_str()));
 
     //Database
     RTABMAP_PARAM(DbSqlite3, InMemory,     bool, false,      "Using database in the memory instead of a file on the hard disk.");
@@ -463,13 +465,14 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomViso2, BucketHeight,              double, 50,  "Height of bucket.");
 
     // Odometry ORB_SLAM2
-    RTABMAP_PARAM_STR(OdomORBSLAM2, VocPath,            "", "Path to ORB vocabulary (*.txt).");
-    RTABMAP_PARAM(OdomORBSLAM2, Bf,          double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
-    RTABMAP_PARAM(OdomORBSLAM2, ThDepth,     double, 40.0,  "Close/Far threshold. Baseline times.");
+    RTABMAP_PARAM_STR(OdomORBSLAM2, VocPath,             "",    "Path to ORB vocabulary (*.txt).");
+    RTABMAP_PARAM(OdomORBSLAM2, Bf,              double, 0.076, "Fake IR projector baseline (m) used only when stereo is not used.");
+    RTABMAP_PARAM(OdomORBSLAM2, ThDepth,         double, 40.0,  "Close/Far threshold. Baseline times.");
+    RTABMAP_PARAM(OdomORBSLAM2, Fps,             float,  0.0,   "Camera FPS.");
+    RTABMAP_PARAM(OdomORBSLAM2, MaxFeatures,     int,    1000,  "Maximum ORB features extracted per frame.");
 
     // Common registration parameters
-    RTABMAP_PARAM(Reg, VarianceFromInliersCount, bool, false,   "Set variance as the inverse of the number of inliers. Otherwise, the variance is computed as the average 3D position error of the inliers.");
-    RTABMAP_PARAM(Reg, VarianceNormalized,       bool, false,   "Normalize covariance values. Position variances are multiplied by norm of the transform and orientation variances are multiplied by angle of the transform.");
+    RTABMAP_PARAM(Reg, RepeatOnce,               bool, false,   "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration. It can be useful if the registration approach used can use a guess to get better matches.");
     RTABMAP_PARAM(Reg, Strategy,                 int, 0,        "0=Vis, 1=Icp, 2=VisIcp");
     RTABMAP_PARAM(Reg, Force3DoF,                bool, false,   "Force 3 degrees-of-freedom transform (3Dof: x,y and yaw). Parameters z, roll and pitch will be set to 0.");
 
@@ -501,6 +504,8 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Vis, SubPixWinSize,            int, 3,      "See cv::cornerSubPix().");
     RTABMAP_PARAM(Vis, SubPixIterations,         int, 0,      "See cv::cornerSubPix(). 0 disables sub pixel refining.");
     RTABMAP_PARAM(Vis, SubPixEps,                float, 0.02, "See cv::cornerSubPix().");
+    RTABMAP_PARAM(Vis, GridRows,                 int, 1,      uFormat("Number of rows of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
+    RTABMAP_PARAM(Vis, GridCols,                 int, 1,      uFormat("Number of columns of the grid used to extract uniformly \"%s / grid cells\" features from each cell.", kVisMaxFeatures().c_str()));
     RTABMAP_PARAM(Vis, CorType,                  int, 0,      "Correspondences computation approach: 0=Features Matching, 1=Optical Flow");
     RTABMAP_PARAM(Vis, CorNNType,                int, 1,    uFormat("[%s=0] kNNFlannNaive=0, kNNFlannKdTree=1, kNNFlannLSH=2, kNNBruteForce=3, kNNBruteForceGPU=4. Used for features matching approach.", kVisCorType().c_str()));
     RTABMAP_PARAM(Vis, CorNNDR,                  float, 0.6,  uFormat("[%s=0] NNDR: nearest neighbor distance ratio. Used for features matching approach.", kVisCorType().c_str()));
@@ -635,7 +640,7 @@ public:
     static ParametersMap getDefaultParameters(const std::string & group);
     static ParametersMap filterParameters(const ParametersMap & parameters, const std::string & group);
 
-    static void readINI(const std::string & configFile, ParametersMap & parameters);
+    static void readINI(const std::string & configFile, ParametersMap & parameters, bool modifiedOnly = false);
     static void writeINI(const std::string & configFile, const ParametersMap & parameters);
 
     /**

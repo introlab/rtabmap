@@ -66,6 +66,7 @@ public:
 	void setImageRate(float imageRate) {_imageRate = imageRate;}
 	void setLocalTransform(const Transform & localTransform) {_localTransform= localTransform;}
 
+	void resetTimer();
 protected:
 	/**
 	 * Constructor

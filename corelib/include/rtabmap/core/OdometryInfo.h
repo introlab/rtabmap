@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <map>
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/RegistrationInfo.h"
+#include "rtabmap/core/CameraModel.h"
 #include <opencv2/features2d/features2d.hpp>
 
 namespace rtabmap {
@@ -68,6 +69,8 @@ public:
 		output.localBundleOutliers = localBundleOutliers;
 		output.localBundleConstraints = localBundleConstraints;
 		output.localBundleTime = localBundleTime;
+		output.localBundlePoses = localBundlePoses;
+		output.localBundleModels = localBundleModels;
 		output.keyFrameAdded = keyFrameAdded;
 		output.timeEstimation = timeEstimation;
 		output.timeParticleFiltering = timeParticleFiltering;
@@ -90,6 +93,8 @@ public:
 	int localBundleOutliers;
 	int localBundleConstraints;
 	float localBundleTime;
+	std::map<int, Transform> localBundlePoses;
+	std::map<int, CameraModel> localBundleModels;
 	bool keyFrameAdded;
 	float timeEstimation;
 	float timeParticleFiltering;

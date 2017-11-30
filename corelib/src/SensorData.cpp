@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Compression.h"
+#include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/utilite/ULogger.h"
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -791,6 +792,47 @@ long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			_keypoints.size() * sizeof(float) * 7 +
 			_keypoints3D.size() * sizeof(float)*3 +
 			_descriptors.total()*_descriptors.elemSize();
+}
+
+bool SensorData::isPointVisibleFromCameras(const cv::Point3f & pt) const
+{
+	if(_cameraModels.size() >= 1)
+	{
+		for(unsigned int i=0; i<_cameraModels.size(); ++i)
+		{
+			if(_cameraModels[i].isValidForProjection() && !_cameraModels[i].localTransform().isNull())
+			{
+				cv::Point3f ptInCameraFrame = util3d::transformPoint(pt, _cameraModels[i].localTransform().inverse());
+				if(ptInCameraFrame.z > 0.0f)
+				{
+					int borderWidth = int(float(_cameraModels[i].imageWidth())* 0.2);
+					int u, v;
+					_cameraModels[i].reproject(ptInCameraFrame.x, ptInCameraFrame.y, ptInCameraFrame.z, u, v);
+					if(uIsInBounds(u, borderWidth, _cameraModels[i].imageWidth()-2*borderWidth) &&
+					   uIsInBounds(v, borderWidth, _cameraModels[i].imageHeight()-2*borderWidth))
+					{
+						return true;
+					}
+				}
+			}
+		}
+	}
+	else if(_stereoCameraModel.isValidForProjection())
+	{
+		cv::Point3f ptInCameraFrame = util3d::transformPoint(pt, _stereoCameraModel.localTransform().inverse());
+		if(ptInCameraFrame.z > 0.0f)
+		{
+			int u, v;
+			_stereoCameraModel.left().reproject(ptInCameraFrame.x, ptInCameraFrame.y, ptInCameraFrame.z, u, v);
+			return uIsInBounds(u, 0, _stereoCameraModel.left().imageWidth()) &&
+				   uIsInBounds(v, 0, _stereoCameraModel.left().imageHeight());
+		}
+	}
+	else
+	{
+		UERROR("no valid camera model!");
+	}
+	return false;
 }
 
 } // namespace rtabmap

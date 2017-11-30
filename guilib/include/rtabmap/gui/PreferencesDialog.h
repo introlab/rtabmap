@@ -158,7 +158,6 @@ public:
 	bool isGroundTruthAligned() const;
 
 	bool isGraphsShown() const;
-	bool isFrustumsShown() const;
 	bool isLabelsShown() const;
 	double getVoxel() const;
 	double getNoiseRadius() const;
@@ -194,6 +193,7 @@ public:
 	int getScanPointSize(int index) const;     // 0=map, 1=odom
 
 	bool isFeaturesShown(int index) const;     // 0=map, 1=odom
+	bool isFrustumsShown(int index) const;     // 0=map, 1=odom
 	int getFeaturesPointSize(int index) const; // 0=map, 1=odom
 
 	bool isCloudFiltering() const;
@@ -267,7 +267,6 @@ public:
 	double getSimThr() const;
 	int getOdomStrategy() const;
 	int getOdomBufferSize() const;
-	bool getRegVarianceFromInliersCount() const;
 	QString getCameraInfoDir() const; // "workinfDir/camera_info"
 
 	//
@@ -402,6 +401,7 @@ private:
 	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
 	QVector<QSpinBox*> _3dRenderingPtSizeScan;
 	QVector<QCheckBox*> _3dRenderingShowFeatures;
+	QVector<QCheckBox*> _3dRenderingShowFrustums;
 	QVector<QSpinBox*> _3dRenderingPtSizeFeatures;
 };
 

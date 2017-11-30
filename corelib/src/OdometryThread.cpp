@@ -107,6 +107,7 @@ void OdometryThread::mainLoop()
 	if(getData(data))
 	{
 		OdometryInfo info;
+		UDEBUG("Processing data...");
 		Transform pose = _odometry->process(data, &info);
 		// a null pose notify that odometry could not be computed
 		UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());

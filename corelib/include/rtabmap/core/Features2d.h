@@ -177,6 +177,8 @@ private:
 	int _subPixWinSize;
 	int _subPixIterations;
 	double _subPixEps;
+	int gridRows_;
+	int gridCols_;
 	// Stereo stuff
 	Stereo * _stereo;
 };

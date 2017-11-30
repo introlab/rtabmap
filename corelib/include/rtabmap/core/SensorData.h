@@ -235,6 +235,8 @@ public:
 	long getMemoryUsed() const; // Return memory usage in Bytes
 	void clearCompressedData() {_imageCompressed=cv::Mat(); _depthOrRightCompressed=cv::Mat(); _laserScanCompressed=cv::Mat(); _userDataCompressed=cv::Mat();}
 
+	bool isPointVisibleFromCameras(const cv::Point3f & pt) const; // assuming point is in robot frame
+
 private:
 	int _id;
 	double _stamp;

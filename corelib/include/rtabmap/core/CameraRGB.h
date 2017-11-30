@@ -68,7 +68,7 @@ public:
 	const CameraModel & cameraModel() const {return _model;}
 
 	void setPath(const std::string & dir) {_path=dir;}
-	void setStartIndex(int index) {_startAt = index;} // negative means last
+	virtual void setStartIndex(int index) {_startAt = index;} // negative means last
 	void setDirRefreshed(bool enabled) {_refreshDir = enabled;}
 	void setImagesRectified(bool enabled) {_rectifyImages = enabled;}
 	void setBayerMode(int mode) {_bayerMode = mode;} // -1=disabled (default) 0=BayerBG, 1=BayerGB, 2=BayerRG, 3=BayerGR
@@ -123,6 +123,9 @@ public:
 		_groundTruthFormat = format;
 	}
 
+	void setMaxPoseTimeDiff(double diff) {_maxPoseTimeDiff = diff;}
+	double getMaxPoseTimeDiff() const {return _maxPoseTimeDiff;}
+
 	void setDepth(bool isDepth, float depthScaleFactor = 1.0f)
 	{
 		_isDepth = isDepth;
@@ -135,7 +138,8 @@ protected:
 			std::list<Transform> & outputPoses,
 			std::list<double> & stamps,
 			const std::string & filePath,
-			int format) const;
+			int format,
+			double maxTimeDiff) const;
 
 private:
 	std::string _path;
@@ -172,9 +176,9 @@ private:
 
 	std::string _odometryPath;
 	int _odometryFormat;
-
 	std::string _groundTruthPath;
 	int _groundTruthFormat;
+	double _maxPoseTimeDiff;
 
 	std::list<double> _stamps;
 	std::list<Transform> odometry_;

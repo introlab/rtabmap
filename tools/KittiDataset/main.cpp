@@ -60,19 +60,31 @@ void showUsage()
 			"  --scan             Include velodyne scan in node's data.\n"
 			"  --scan_step #      Scan downsample step (default=10).\n"
 			"  --scan_voxel #.#   Scan voxel size (default 0.3 m).\n"
-			"  --scan_k           Scan normal K (default 20).\n"
+			"  --scan_k           Scan normal K (default 5).\n"
 			"  --scan_radius      Scan normal radius (default 0).\n"
 			"  --map_update  #    Do map update each X odometry frames (default=10, which\n"
 			"                        gives 1 Hz map update assuming images are at 10 Hz).\n\n"
 			"%s\n"
 			"Example:\n\n"
 			"   $ rtabmap-kitti_dataset \\\n"
-			"       --Vis/EstimationType 1\\\n"
 			"       --Vis/BundleAdjustment 1\\\n"
-			"       --Vis/PnPReprojError 1.5\\\n"
+			"       --Vis/PnPRefineIterations 0\\\n"
+			"       --Vis/MaxFeatures 1800\\\n"
+			"       --Vis/BundleAdjustment 1\\\n"
+			"       --Vis/Iterations 300\\\n"
+			"       --GFTT/QualityLevel 0.01\\\n"
+			"       --GFTT/MinDistance 7\\\n"
 			"       --Odom/GuessMotion true\\\n"
 			"       --OdomF2M/BundleAdjustment 1\\\n"
+			"       --Mem/UseOdomFeatures true\\\n"
+			"       --Kp/DetectorStrategy true\\\n"
+			"       --Kp/MaxFeatures 900\\\n"
+			"       --Rtabmap/DetectionRate 2\\\n"
 			"       --Rtabmap/CreateIntermediateNodes true\\\n"
+			"       --RGBD/ProximityBySpace false\\\n"
+			"       --Stereo/MaxLevel 5\\\n"
+			"       --Stereo/MaxDisparity 256\\\n"
+			"       --Stereo/MinDisparity 0.5\\\n"
 			"       --gt \"~/KITTI/devkit/cpp/data/odometry/poses/07.txt\"\\\n"
 			"       ~/KITTI/dataset/sequences/07\n\n", rtabmap::Parameters::showUsage());
 	exit(1);
@@ -105,7 +117,7 @@ int main(int argc, char * argv[])
 	bool disp = false;
 	int scanStep = 10;
 	float scanVoxel = 0.3f;
-	int scanNormalK = 20;
+	int scanNormalK = 5;
 	float scanNormalRadius = 0.0f;
 	std::string gtPath;
 	bool quiet = false;
@@ -377,7 +389,7 @@ int main(int argc, char * argv[])
 
 		printf("Processing %d images...\n", totalImages);
 
-		OdometryF2M odom(parameters);
+		Odometry * odom = Odometry::create(parameters);
 		Rtabmap rtabmap;
 		rtabmap.init(parameters, databasePath);
 
@@ -408,7 +420,7 @@ int main(int argc, char * argv[])
 			externalStats.insert(std::make_pair("Camera/UndistortDepth/ms", cameraInfo.timeUndistortDepth*1000.0f));
 
 			OdometryInfo odomInfo;
-			Transform pose = odom.process(data, &odomInfo);
+			Transform pose = odom->process(data, &odomInfo);
 			externalStats.insert(std::make_pair("Odometry/LocalBundle/ms", odomInfo.localBundleTime*1000.0f));
 			externalStats.insert(std::make_pair("Odometry/LocalBundleConstraints/", odomInfo.localBundleConstraints));
 			externalStats.insert(std::make_pair("Odometry/LocalBundleOutliers/", odomInfo.localBundleOutliers));
@@ -433,13 +445,9 @@ int main(int argc, char * argv[])
 				data.setFeatures(std::vector<cv::KeyPoint>(), std::vector<cv::Point3f>(), cv::Mat());// remove features
 				processData = intermediateNodes;
 			}
-			if(covariance.empty())
+			if(covariance.empty() || odomInfo.reg.covariance.at<double>(0,0) > covariance.at<double>(0,0))
 			{
 				covariance = odomInfo.reg.covariance;
-			}
-			else
-			{
-				covariance += odomInfo.reg.covariance;
 			}
 
 			timer.restart();
@@ -463,8 +471,8 @@ int main(int argc, char * argv[])
 
 				if(rmse >= 0.0f)
 				{
-					printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms, rmse=%fm",
-							iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse);
+					printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms, rmse=%fm, stddev=%fm %frad",
+							iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
 				}
 				else
 				{
@@ -487,13 +495,14 @@ int main(int argc, char * argv[])
 			timer.restart();
 			data = cameraThread.camera()->takeImage(&cameraInfo);
 		}
+		delete odom;
 		printf("Total time=%fs\n", totalTime.ticks());
 		/////////////////////////////
 		// Processing dataset end
 		/////////////////////////////
 
 		// Save trajectory
-		printf("Saving rtabmap_trajectory.txt ...\n");
+		printf("Saving trajectory ...\n");
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
 		rtabmap.getGraph(poses, links, true, true);
@@ -575,6 +584,8 @@ int main(int argc, char * argv[])
 				UERROR("could not save RMSE results to \"%s\"", pathErrors.c_str());
 			}
 			fprintf(pFile, "Ground truth comparison:\n");
+			fprintf(pFile, "  KITTI t_err =         %f %%\n", t_err);
+			fprintf(pFile, "  KITTI r_err =         %f deg/m\n", r_err);
 			fprintf(pFile, "  translational_rmse=   %f\n", translational_rmse);
 			fprintf(pFile, "  translational_mean=   %f\n", translational_mean);
 			fprintf(pFile, "  translational_median= %f\n", translational_median);

@@ -1406,6 +1406,19 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 											localTransform));
 								}
 							}
+							else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
+							{
+								UDEBUG("Loading calibration of a stereo camera");
+								memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+								stereoModel = StereoCameraModel(
+										dataFloat[0],  // fx
+										dataFloat[1],  // fy
+										dataFloat[2],  // cx
+										dataFloat[3],  // cy
+										dataFloat[4], // baseline
+										localTransform,
+										cv::Size(dataFloat[5],dataFloat[6]));
+							}
 							else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 							{
 								UDEBUG("Loading calibration of a stereo camera");
@@ -1706,6 +1719,19 @@ bool DBDriverSqlite3::getCalibrationQuery(
 									(double)dataFloat[i+3],
 									localTransform));
 						}
+					}
+					else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
+					{
+						UDEBUG("Loading calibration of a stereo camera");
+						memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+						stereoModel = StereoCameraModel(
+								dataFloat[0],  // fx
+								dataFloat[1],  // fy
+								dataFloat[2],  // cx
+								dataFloat[3],  // cy
+								dataFloat[4], // baseline
+								localTransform,
+								cv::Size(dataFloat[5],dataFloat[6]));
 					}
 					else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 					{
@@ -2667,7 +2693,7 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 					data = sqlite3_column_blob(ppStmt, index);
 					dataSize = sqlite3_column_bytes(ppStmt, index++);
 					// multi-cameras [fx,fy,cx,cy,[width,height],local_transform, ... ,fx,fy,cx,cy,[width,height],local_transform] (4or6+12)*float * numCameras
-					// stereo [fx, fy, cx, cy, baseline, local_transform] (5+12)*float
+					// stereo [fx, fy, cx, cy, baseline, [width,height], local_transform] (5or7+12)*float
 					if(dataSize > 0 && data)
 					{
 						float * dataFloat = (float*)data;
@@ -2687,8 +2713,9 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 										(double)dataFloat[i+1],
 										(double)dataFloat[i+2],
 										(double)dataFloat[i+3],
-										localTransform));
-								models.back().setImageSize(cv::Size(dataFloat[i+4], dataFloat[i+5]));
+										localTransform,
+										0,
+										cv::Size(dataFloat[i+4], dataFloat[i+5])));
 								UDEBUG("%f %f %f %f %f %f %s", dataFloat[i], dataFloat[i+1], dataFloat[i+2],
 										dataFloat[i+3], dataFloat[i+4], dataFloat[i+5],
 										localTransform.prettyPrint().c_str());
@@ -2712,6 +2739,19 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 										(double)dataFloat[i+3],
 										localTransform));
 							}
+						}
+						else if((unsigned int)dataSize == (7+localTransform.size())*sizeof(float))
+						{
+							UDEBUG("Loading calibration of a stereo camera");
+							memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+							stereoModel = StereoCameraModel(
+									dataFloat[0],  // fx
+									dataFloat[1],  // fy
+									dataFloat[2],  // cx
+									dataFloat[3],  // cy
+									dataFloat[4], // baseline
+									localTransform,
+									cv::Size(dataFloat[5], dataFloat[6]));
 						}
 						else if((unsigned int)dataSize == (5+localTransform.size())*sizeof(float))
 						{
@@ -4805,13 +4845,15 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	else if(sensorData.stereoCameraModel().isValidForProjection())
 	{
 		const Transform & localTransform = sensorData.stereoCameraModel().left().localTransform();
-		calibration.resize(5+localTransform.size());
+		calibration.resize(7+localTransform.size());
 		calibration[0] = sensorData.stereoCameraModel().left().fx();
 		calibration[1] = sensorData.stereoCameraModel().left().fy();
 		calibration[2] = sensorData.stereoCameraModel().left().cx();
 		calibration[3] = sensorData.stereoCameraModel().left().cy();
 		calibration[4] = sensorData.stereoCameraModel().baseline();
-		memcpy(calibration.data()+5, localTransform.data(), localTransform.size()*sizeof(float));
+		calibration[5] = sensorData.stereoCameraModel().left().imageWidth();
+		calibration[6] = sensorData.stereoCameraModel().left().imageHeight();
+		memcpy(calibration.data()+7, localTransform.data(), localTransform.size()*sizeof(float));
 	}
 
 	if(calibration.size())

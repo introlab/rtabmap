@@ -2251,7 +2251,7 @@ Transform Memory::computeTransform(
 
 	if(fromS && toS)
 	{
-		return computeTransform(*fromS, *toS, guess, info, useKnownCorrespondencesIfPossible);
+		transform = computeTransform(*fromS, *toS, guess, info, useKnownCorrespondencesIfPossible);
 	}
 	else
 	{
@@ -3515,7 +3515,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 	else if(_feature2D->getMaxFeatures() >= 0 && !isIntermediateNode)
 	{
-		UINFO("Use odometry features");
+		UINFO("Use odometry features: kpts=%d 3d=%d desc=%d (dim=%d, type=%d)",
+				(int)data.keypoints().size(),
+				(int)data.keypoints3D().size(),
+				data.descriptors().rows,
+				data.descriptors().cols,
+				data.descriptors().type());
 		keypoints = data.keypoints();
 		keypoints3D = data.keypoints3D();
 		descriptors = data.descriptors().clone();

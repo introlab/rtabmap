@@ -111,7 +111,27 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	UASSERT(scanKeyFrameThr_ >= 0.0f && scanKeyFrameThr_<=1.0f);
 	UASSERT(maxNewFeatures_ >= 0);
 
+	int corType = Parameters::defaultVisCorType();
+	Parameters::parse(parameters, Parameters::kVisCorType(), corType);
+	if(corType != 0)
+	{
+		UWARN("%s=%d is not supported by OdometryF2M, using Features matching approach instead (type=0).",
+				Parameters::kVisCorType().c_str(),
+				corType);
+		corType = 0;
+	}
+	uInsert(bundleParameters, ParametersPair(Parameters::kVisCorType(), uNumber2Str(corType)));
+
 	regPipeline_ = Registration::create(bundleParameters);
+	if(bundleAdjustment_>0 && !regPipeline_->isImageRequired())
+	{
+		UWARN("%s=%d cannot be used with registration not done with images (%s=%s), disabling bundle adjustment.",
+				Parameters::kOdomF2MBundleAdjustment().c_str(),
+				bundleAdjustment_,
+				Parameters::kRegStrategy().c_str(),
+				uValue(bundleParameters, Parameters::kRegStrategy(), uNumber2Str(Parameters::defaultRegStrategy())).c_str());
+		bundleAdjustment_ = 0;
+	}
 }
 
 OdometryF2M::~OdometryF2M()
@@ -188,6 +208,7 @@ Transform OdometryF2M::computeTransform(
 			lastFrame_->sensorData().isValid())
 		{
 			Signature tmpMap = *map_;
+			UDEBUG("guess=%s frames=%d image required=%d", guess.prettyPrint().c_str(), this->framesProcessed(), regPipeline_->isImageRequired()?1:0);
 			Transform transform = regPipeline_->computeTransformationMod(
 					tmpMap,
 					*lastFrame_,
@@ -255,9 +276,34 @@ Transform OdometryF2M::computeTransform(
 
 						UASSERT_MSG(bundlePoses.find(lastFrame_->id()) == bundlePoses.end(),
 								uFormat("Frame %d already added! Make sure the input frames have unique IDs!", lastFrame_->id()).c_str());
-
-						bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, regInfo.covariance.inv())));
+						cv::Mat var = regInfo.covariance;//cv::Mat::eye(6,6,CV_64FC1); //regInfo.covariance.inv()
+						//var(cv::Range(0,3), cv::Range(0,3)) *= 0.001;
+						//var(cv::Range(3,6), cv::Range(3,6)) *= 0.001;
+						bundleLinks.insert(std::make_pair(bundlePoses_.rbegin()->first, Link(bundlePoses_.rbegin()->first, lastFrame_->id(), Link::kNeighbor, bundlePoses_.rbegin()->second.inverse()*transform, var.inv())));
 						bundlePoses.insert(std::make_pair(lastFrame_->id(), transform));
+
+						CameraModel model;
+						if(lastFrame_->sensorData().cameraModels().size() == 1 && lastFrame_->sensorData().cameraModels().at(0).isValidForProjection())
+						{
+							model = lastFrame_->sensorData().cameraModels()[0];
+						}
+						else if(lastFrame_->sensorData().stereoCameraModel().isValidForProjection())
+						{
+							model = lastFrame_->sensorData().stereoCameraModel().left();
+							// Set Tx for stereo BA
+							model = CameraModel(model.fx(),
+									model.fy(),
+									model.cx(),
+									model.cy(),
+									model.localTransform(),
+									-lastFrame_->sensorData().stereoCameraModel().baseline()*model.fx());
+						}
+						else
+						{
+							UFATAL("no valid camera model!");
+						}
+						bundleModels.insert(std::make_pair(lastFrame_->id(), model));
+						Transform invLocalTransform = model.localTransform().inverse();
 
 						UDEBUG("Fill matches (%d)", (int)regInfo.inliersIDs.size());
 						std::map<int, std::map<int, cv::Point3f> > wordReferences;
@@ -300,7 +346,9 @@ Transform OdometryF2M::computeTransform(
 							if(iter2D!=lastFrame_->getWords().end())
 							{
 								UASSERT(lastFrame_->getWords3().find(wordId) != lastFrame_->getWords3().end());
-								references.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, lastFrame_->getWords3().find(wordId)->second.x)));
+								//move back point in camera frame (to get depth along z)
+								cv::Point3f pt3d = util3d::transformPoint(lastFrame_->getWords3().find(wordId)->second, invLocalTransform);
+								references.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, pt3d.z)));
 							}
 							wordReferences.insert(std::make_pair(wordId, references));
 
@@ -310,28 +358,6 @@ Transform OdometryF2M::computeTransform(
 							//	UDEBUG("%d (%f,%f)", iter->first, iter->second.x, iter->second.y);
 							//}
 						}
-
-						CameraModel model;
-						if(lastFrame_->sensorData().cameraModels().size() == 1 && lastFrame_->sensorData().cameraModels().at(0).isValidForProjection())
-						{
-							model = lastFrame_->sensorData().cameraModels()[0];
-						}
-						else if(lastFrame_->sensorData().stereoCameraModel().isValidForProjection())
-						{
-							model = lastFrame_->sensorData().stereoCameraModel().left();
-							// Set Tx for stereo BA
-							model = CameraModel(model.fx(),
-									model.fy(),
-									model.cx(),
-									model.cy(),
-									model.localTransform(),
-									-lastFrame_->sensorData().stereoCameraModel().baseline()*model.fx());
-						}
-						else
-						{
-							UFATAL("no valid camera model!");
-						}
-						bundleModels.insert(std::make_pair(lastFrame_->id(), model));
 
 						UDEBUG("sba...start");
 						// set root negative to fix all other poses
@@ -343,6 +369,11 @@ Transform OdometryF2M::computeTransform(
 						totalBundleOutliers = (int)sbaOutliers.size();
 
 						UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime, (int)bundlePoses.size(), (int)bundleWordReferences_.size(), (int)sbaOutliers.size());
+						if(info)
+						{
+							info->localBundlePoses = bundlePoses;
+							info->localBundleModels = bundleModels;
+						}
 
 						UDEBUG("Local Bundle Adjustment Before: %s", transform.prettyPrint().c_str());
 						if(bundlePoses.size() == bundlePoses_.size()+1)
@@ -406,7 +437,7 @@ Transform OdometryF2M::computeTransform(
 				bool addVisualKeyFrame = regPipeline_->isImageRequired() &&
 						 (keyFrameThr_ == 0.0f ||
 						  visKeyFrameThr_ == 0 ||
-						  float(regInfo.inliers) <= (keyFrameThr_*float(lastFrame_->sensorData().keypoints().size())) ||
+						  float(regInfo.inliers) <= (keyFrameThr_*float(lastFrame_->getWords().size())) ||
 						  regInfo.inliers <= visKeyFrameThr_);
 				bool addGeometricKeyFrame = regPipeline_->isScanRequired() && (scanKeyFrameThr_==0 || regInfo.icpInliersRatio <= scanKeyFrameThr_);
 
@@ -455,6 +486,22 @@ Transform OdometryF2M::computeTransform(
 					std::multimap<int, cv::Mat>::const_iterator iterDesc = lastFrame_->getWordsDescriptors().begin();
 					UDEBUG("new frame words3=%d", (int)lastFrame_->getWords3().size());
 					std::set<int> seenStatusUpdated;
+					Transform invLocalTransform;
+					if(bundleAdjustment_>0)
+					{
+						if(lastFrame_->sensorData().cameraModels().size() == 1 && lastFrame_->sensorData().cameraModels().at(0).isValidForProjection())
+						{
+							invLocalTransform = lastFrame_->sensorData().cameraModels()[0].localTransform().inverse();
+						}
+						else if(lastFrame_->sensorData().stereoCameraModel().isValidForProjection())
+						{
+							invLocalTransform = lastFrame_->sensorData().stereoCameraModel().left().localTransform().inverse();
+						}
+						else
+						{
+							UFATAL("no valid camera model!");
+						}
+					}
 					for(std::multimap<int, cv::Point3f>::const_iterator iter = lastFrame_->getWords3().begin(); iter!=lastFrame_->getWords3().end(); ++iter, ++iter2D, ++iterDesc)
 					{
 						if(util3d::isFinite(iter->second))
@@ -480,16 +527,17 @@ Transform OdometryF2M::computeTransform(
 									UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
 									iterBundlePosesRef->second += 1;
 
+									//move back point in camera frame (to get depth along z)
+									cv::Point3f pt3d = util3d::transformPoint(iter->second, invLocalTransform);
 									if(bundleWordReferences_.find(iter->first) == bundleWordReferences_.end())
 									{
 										std::map<int, cv::Point3f> framePt;
-
-										framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, iter->second.x)));
+										framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, pt3d.z)));
 										bundleWordReferences_.insert(std::make_pair(iter->first, framePt));
 									}
 									else
 									{
-										bundleWordReferences_.find(iter->first)->second.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, iter->second.x)));
+										bundleWordReferences_.find(iter->first)->second.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter2D->second.pt.x, iter2D->second.pt.y, pt3d.z)));
 									}
 								}
 							}
@@ -510,15 +558,17 @@ Transform OdometryF2M::computeTransform(
 									UASSERT(iterBundlePosesRef!=bundlePoseReferences_.end());
 									iterBundlePosesRef->second += 1;
 
+									//move back point in camera frame (to get depth along z)
+									cv::Point3f pt3d = util3d::transformPoint(iter->second.second.second.first, invLocalTransform);
 									if(bundleWordReferences_.find(iter->second.first) == bundleWordReferences_.end())
 									{
 										std::map<int, cv::Point3f> framePt;
-										framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.second.first.pt.x, iter->second.second.first.pt.y, iter->second.second.second.first.x)));
+										framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.second.first.pt.x, iter->second.second.first.pt.y, pt3d.z)));
 										bundleWordReferences_.insert(std::make_pair(iter->second.first, framePt));
 									}
 									else
 									{
-										bundleWordReferences_.find(iter->second.first)->second.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.second.first.pt.x, iter->second.second.first.pt.y, iter->second.second.second.first.x)));
+										bundleWordReferences_.find(iter->second.first)->second.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.second.first.pt.x, iter->second.second.first.pt.y, pt3d.z)));
 									}
 								}
 							}
@@ -568,18 +618,31 @@ Transform OdometryF2M::computeTransform(
 							}
 						}
 
+						Link * previousLink = 0;
 						for(std::map<int, int>::iterator iter=bundlePoseReferences_.begin(); iter!=bundlePoseReferences_.end();)
 						{
-							if((iter->second <= 0 && // <= regPipeline_->getMinVisualCorrespondences() &&
-								bundlePoses_.begin()->first == iter->first)) // remove oldest pose first
+							if(iter->second <= 0)
 							{
-								UASSERT(bundlePoses_.erase(iter->first) == 1);
-								bundleLinks_.erase(iter->first);
-								bundleModels_.erase(iter->first);
-								bundlePoseReferences_.erase(iter++);
+								if(previousLink == 0 || bundleLinks_.find(iter->first) != bundleLinks_.end())
+								{
+									if(previousLink)
+									{
+										UASSERT(previousLink->to() == iter->first);
+										*previousLink = previousLink->merge(bundleLinks_.find(iter->first)->second, previousLink->type());
+									}
+									UASSERT(bundlePoses_.erase(iter->first) == 1);
+									bundleLinks_.erase(iter->first);
+									bundleModels_.erase(iter->first);
+									bundlePoseReferences_.erase(iter++);
+								}
 							}
 							else
 							{
+								previousLink=0;
+								if(bundleLinks_.find(iter->first) != bundleLinks_.end())
+								{
+									previousLink = &bundleLinks_.find(iter->first)->second;
+								}
 								++iter;
 							}
 						}
@@ -765,6 +828,7 @@ Transform OdometryF2M::computeTransform(
 
 					std::multimap<int, cv::KeyPoint> words;
 					std::multimap<int, cv::Point3f> transformedPoints;
+					std::multimap<int, int> mapPointWeights;
 					std::multimap<int, cv::Mat> descriptors;
 					UASSERT(lastFrame_->getWords3().size() == lastFrame_->getWordsDescriptors().size());
 					std::multimap<int, cv::KeyPoint>::const_iterator wordsIter = lastFrame_->getWords().begin();
@@ -777,12 +841,27 @@ Transform OdometryF2M::computeTransform(
 						{
 							words.insert(*wordsIter);
 							transformedPoints.insert(std::make_pair(iter->first, util3d::transformPoint(iter->second, newFramePose)));
+							mapPointWeights.insert(std::make_pair(iter->first, 0));
 							descriptors.insert(*descIter);
 						}
 					}
 
 					if(bundleAdjustment_>0)
 					{
+						Transform invLocalTransform;
+						if(lastFrame_->sensorData().cameraModels().size() == 1 && lastFrame_->sensorData().cameraModels().at(0).isValidForProjection())
+						{
+							invLocalTransform = lastFrame_->sensorData().cameraModels()[0].localTransform().inverse();
+						}
+						else if(lastFrame_->sensorData().stereoCameraModel().isValidForProjection())
+						{
+							invLocalTransform = lastFrame_->sensorData().stereoCameraModel().left().localTransform().inverse();
+						}
+						else
+						{
+							UFATAL("no valid camera model!");
+						}
+
 						// update bundleWordReferences_: used for bundle adjustment
 						for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 						{
@@ -795,8 +874,11 @@ Transform OdometryF2M::computeTransform(
 								float d = 0.0f;
 								if(lastFrame_->getWords3().count(iter->first) == 1)
 								{
-									d = lastFrame_->getWords3().find(iter->first)->second.x;
+									//move back point in camera frame (to get depth along z)
+									cv::Point3f pt3d = util3d::transformPoint(lastFrame_->getWords3().find(iter->first)->second, invLocalTransform);
+									d = pt3d.z;
 								}
+
 
 								framePt.insert(std::make_pair(lastFrame_->id(), cv::Point3f(iter->second.pt.x, iter->second.pt.y, d)));
 								bundleWordReferences_.insert(std::make_pair(iter->first, framePt));

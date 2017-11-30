@@ -160,16 +160,15 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 						if(!isCovarianceIgnored())
 						{
-							// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
-							information(0,0) = iter->second.infMatrix().at<double>(0,0)/1000.0; // x-x
-							information(0,1) = iter->second.infMatrix().at<double>(0,1)/1000.0; // x-y
-							information(0,2) = iter->second.infMatrix().at<double>(0,5)/1000.0; // x-theta
-							information(1,0) = iter->second.infMatrix().at<double>(1,0)/1000.0; // y-x
-							information(1,1) = iter->second.infMatrix().at<double>(1,1)/1000.0; // y-y
-							information(1,2) = iter->second.infMatrix().at<double>(1,5)/1000.0; // y-theta
-							information(2,0) = iter->second.infMatrix().at<double>(5,0)/1000.0; // theta-x
-							information(2,1) = iter->second.infMatrix().at<double>(5,1)/1000.0; // theta-y
-							information(2,2) = iter->second.infMatrix().at<double>(5,5)/1000.0; // theta-theta
+							information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+							information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+							information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
+							information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+							information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+							information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
+							information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
+							information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
+							information(2,2) = iter->second.infMatrix().at<double>(5,5)/100000.0; // theta-theta
 						}
 
 						gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
@@ -181,8 +180,10 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 						if(!isCovarianceIgnored())
 						{
 							memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
-							// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
-							information = information / 1000.0;
+							// Without the following, graph optimization on KITTI06 is very unstable
+							information(3,3) /= 100000.0;
+							information(4,4) /= 100000.0;
+							information(5,5) /= 100000.0;
 						}
 
 						gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
@@ -221,16 +222,15 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					Eigen::Matrix<double, 3, 3> information = Eigen::Matrix<double, 3, 3>::Identity();
 					if(!isCovarianceIgnored())
 					{
-						// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
-						information(0,0) = iter->second.infMatrix().at<double>(0,0)/1000.0; // x-x
-						information(0,1) = iter->second.infMatrix().at<double>(0,1)/1000.0; // x-y
-						information(0,2) = iter->second.infMatrix().at<double>(0,5)/1000.0; // x-theta
-						information(1,0) = iter->second.infMatrix().at<double>(1,0)/1000.0; // y-x
-						information(1,1) = iter->second.infMatrix().at<double>(1,1)/1000.0; // y-y
-						information(1,2) = iter->second.infMatrix().at<double>(1,5)/1000.0; // y-theta
-						information(2,0) = iter->second.infMatrix().at<double>(5,0)/1000.0; // theta-x
-						information(2,1) = iter->second.infMatrix().at<double>(5,1)/1000.0; // theta-y
-						information(2,2) = iter->second.infMatrix().at<double>(5,5)/1000.0; // theta-theta
+						information(0,0) = iter->second.infMatrix().at<double>(0,0); // x-x
+						information(0,1) = iter->second.infMatrix().at<double>(0,1); // x-y
+						information(0,2) = iter->second.infMatrix().at<double>(0,5); // x-theta
+						information(1,0) = iter->second.infMatrix().at<double>(1,0); // y-x
+						information(1,1) = iter->second.infMatrix().at<double>(1,1); // y-y
+						information(1,2) = iter->second.infMatrix().at<double>(1,5); // y-theta
+						information(2,0) = iter->second.infMatrix().at<double>(5,0); // theta-x
+						information(2,1) = iter->second.infMatrix().at<double>(5,1); // theta-y
+						information(2,2) = iter->second.infMatrix().at<double>(5,5)/100000.0; // theta-theta
 					}
 					gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);
 
@@ -254,8 +254,10 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 					if(!isCovarianceIgnored())
 					{
 						memcpy(information.data(), iter->second.infMatrix().data, iter->second.infMatrix().total()*sizeof(double));
-						// For some reasons, dividing by 1000 avoids some exceptions (maybe too large numbers on optimization)
-						information = information / 1000.0;
+						// Without the following, graph optimization on KITTI06 is very unstable
+						information(3,3) /= 100000.0;
+						information(4,4) /= 100000.0;
+						information(5,5) /= 100000.0;
 					}
 
 					gtsam::noiseModel::Gaussian::shared_ptr model = gtsam::noiseModel::Gaussian::Information(information);

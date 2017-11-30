@@ -216,8 +216,10 @@ Transform OdometryDVO::computeTransform(
 			lost_ = false;
 			cv::Mat information = cv::Mat::eye(6,6, CV_64FC1);
 			memcpy(information.data, result.Information.data(), 36*sizeof(double));
-			covariance = information.inv();
-			covariance *= 100.0; // to be in the same scale than loop closure detection
+			//copy only diagonal to avoid g2o/gtsam errors on graph optimization
+			covariance  = cv::Mat::eye(6,6,CV_64FC1);
+			covariance = information.inv().mul(covariance);
+			//covariance *= 100.0; // to be in the same scale than loop closure detection
 
 			Transform currentMotion = t;
 			t = motionFromKeyFrame_.inverse() * t;

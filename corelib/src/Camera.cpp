@@ -59,6 +59,11 @@ Camera::~Camera()
 	UDEBUG("");
 }
 
+void Camera::resetTimer()
+{
+	_frameRateTimer->start();
+}
+
 SensorData Camera::takeImage(CameraInfo * info)
 {
 	bool warnFrameRateTooHigh = false;

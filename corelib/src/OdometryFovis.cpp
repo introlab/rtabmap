@@ -123,6 +123,7 @@ Transform OdometryFovis::computeTransform(
 		const Transform & guess,
 		OdometryInfo * info)
 {
+	UDEBUG("");
 	Transform t;
 
 #ifdef RTABMAP_FOVIS
@@ -205,6 +206,7 @@ Transform OdometryFovis::computeTransform(
 	Transform localTransform = Transform::getIdentity();
 	if(data.cameraModels().size() == 1) //depth
 	{
+		UDEBUG("");
 		fovis::CameraIntrinsicsParameters rgb_params;
 		memset(&rgb_params, 0, sizeof(fovis::CameraIntrinsicsParameters));
 		rgb_params.width = data.cameraModels()[0].imageWidth();
@@ -263,6 +265,7 @@ Transform OdometryFovis::computeTransform(
 	}
 	else // stereo
 	{
+		UDEBUG("");
 		// initialize left camera parameters
 		fovis::CameraIntrinsicsParameters left_parameters;
 		left_parameters.width = data.stereoCameraModel().left().imageWidth();
@@ -331,6 +334,7 @@ Transform OdometryFovis::computeTransform(
 		fovis_ = new fovis::VisualOdometry(rect_, options);
 	}
 
+	UDEBUG("");
 	fovis_->processFrame(gray.data, depthSource);
 
 	// get the motion estimate for this frame to the previous frame.

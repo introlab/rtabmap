@@ -295,6 +295,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #if PCL_VERSION_COMPARE(<, 1, 7, 2)
 	_ui->checkBox_showFrustums->setEnabled(false);
 	_ui->checkBox_showFrustums->setChecked(false);
+	_ui->checkBox_showOdomFrustums->setEnabled(false);
+	_ui->checkBox_showOdomFrustums->setChecked(false);
 #endif
 
 	// in case we change the ui, we should not forget to change stuff related to this parameter
@@ -393,6 +395,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingShowFeatures[0] = _ui->checkBox_showFeatures;
 	_3dRenderingShowFeatures[1] = _ui->checkBox_showOdomFeatures;
 
+	_3dRenderingShowFrustums.resize(2);
+	_3dRenderingShowFrustums[0] = _ui->checkBox_showFrustums;
+	_3dRenderingShowFrustums[1] = _ui->checkBox_showOdomFrustums;
+
 	_3dRenderingPtSizeFeatures.resize(2);
 	_3dRenderingPtSizeFeatures[0] = _ui->spinBox_ptsize_features;
 	_3dRenderingPtSizeFeatures[1] = _ui->spinBox_ptsize_odom_features;
@@ -406,6 +412,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingRoiRatios[i], SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingShowScans[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingShowFeatures[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingShowFrustums[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 		connect(_3dRenderingDownsamplingScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingVoxelSizeScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -428,7 +435,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_normalRadiusSearch_scan, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->checkBox_showGraphs, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->checkBox_showFrustums, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_showLabels, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->radioButton_noFiltering, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -470,6 +476,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	//Source panel
 	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->general_doubleSpinBox_imgRate, SIGNAL(valueChanged(double)), _ui->doubleSpinBox_OdomORBSLAM2Fps, SLOT(setValue(double)));
 	connect(_ui->source_mirroring, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->toolButton_source_path_calibration, SIGNAL(clicked()), this, SLOT(selectCalibrationPath()));
 	connect(_ui->lineEdit_calibrationFile, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -488,7 +495,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->source_images_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceImagesPath()));
 	connect(_ui->source_images_lineEdit_path, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->source_images_spinBox_startPos, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
-	connect(_ui->source_images_refreshDir, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraImages_bayerMode, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	//video group
 	connect(_ui->source_video_toolButton_selectSource, SIGNAL(clicked()), this, SLOT(selectSourceVideoPath()));
@@ -544,6 +550,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_cameraImages_timestamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_cameraImages_syncTimeStamps, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_cameraRGBDImages_scale, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_cameraRGBDImages_startIndex, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_path_scans, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_laser_transform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_cameraImages_max_scan_pts, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
@@ -553,6 +560,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_cameraImages_odomFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraImages_gt, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraImages_gtFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->doubleSpinBox_maxPoseTimeDiff, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_depthFromScan, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_depthFromScan_fillHoles, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_depthFromScan_vertical, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
@@ -564,6 +572,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraStereoImages_path_left, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->lineEdit_cameraStereoImages_path_right, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkBox_stereo_rectify, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_cameraStereoImages_startIndex, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraStereoVideo_path, SIGNAL(clicked()), this, SLOT(selectSourceStereoVideoPath()));
 	connect(_ui->toolButton_cameraStereoVideo_path_2, SIGNAL(clicked()), this, SLOT(selectSourceStereoVideoPath2()));
@@ -699,6 +708,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->surf_doubleSpinBox_maxDepth->setObjectName(Parameters::kKpMaxDepth().c_str());
 	_ui->surf_doubleSpinBox_minDepth->setObjectName(Parameters::kKpMinDepth().c_str());
 	_ui->surf_spinBox_wordsPerImageTarget->setObjectName(Parameters::kKpMaxFeatures().c_str());
+	_ui->spinBox_KPGridRows->setObjectName(Parameters::kKpGridRows().c_str());
+	_ui->spinBox_KPGridCols->setObjectName(Parameters::kKpGridCols().c_str());
 	_ui->surf_doubleSpinBox_ratioBadSign->setObjectName(Parameters::kKpBadSignRatio().c_str());
 	_ui->checkBox_kp_tfIdfLikelihoodUsed->setObjectName(Parameters::kKpTfIdfLikelihoodUsed().c_str());
 	_ui->checkBox_kp_parallelized->setObjectName(Parameters::kKpParallelized().c_str());
@@ -833,8 +844,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->checkbox_rgbd_createOccupancyGrid->setObjectName(Parameters::kRGBDCreateOccupancyGrid().c_str());
 
 	// Registration
-	_ui->loopClosure_bowVarianceFromInliersCount->setObjectName(Parameters::kRegVarianceFromInliersCount().c_str());
-	_ui->reg_varianceNormalized->setObjectName(Parameters::kRegVarianceNormalized().c_str());
+	_ui->reg_repeatOnce->setObjectName(Parameters::kRegRepeatOnce().c_str());
 	_ui->comboBox_registrationStrategy->setObjectName(Parameters::kRegStrategy().c_str());
 	_ui->loopClosure_bowForce2D->setObjectName(Parameters::kRegForce3DoF().c_str());
 
@@ -859,6 +869,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
 	_ui->reextract_type->setObjectName(Parameters::kVisFeatureType().c_str());
 	_ui->reextract_maxFeatures->setObjectName(Parameters::kVisMaxFeatures().c_str());
+	_ui->reextract_gridrows->setObjectName(Parameters::kVisGridRows().c_str());
+	_ui->reextract_gridcols->setObjectName(Parameters::kVisGridCols().c_str());
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kVisMaxDepth().c_str());
 	_ui->loopClosure_bowMinDepth->setObjectName(Parameters::kVisMinDepth().c_str());
 	_ui->loopClosure_roi->setObjectName(Parameters::kVisRoiRatios().c_str());
@@ -929,6 +941,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_strategy->setObjectName(Parameters::kOdomStrategy().c_str());
 	connect(_ui->odom_strategy, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_odometryType, SLOT(setCurrentIndex(int)));
 	_ui->odom_strategy->setCurrentIndex(Parameters::defaultOdomStrategy());
+	_ui->stackedWidget_odometryType->setCurrentIndex(Parameters::defaultOdomStrategy());
 	_ui->odom_countdown->setObjectName(Parameters::kOdomResetCountdown().c_str());
 	_ui->odom_holonomic->setObjectName(Parameters::kOdomHolonomic().c_str());
 	_ui->odom_fillInfoData->setObjectName(Parameters::kOdomFillInfoData().c_str());
@@ -1023,6 +1036,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_OdomORBSLAM2VocPath, SIGNAL(clicked()), this, SLOT(changeOdometryORBSLAM2Vocabulary()));
 	_ui->doubleSpinBox_OdomORBSLAM2Bf->setObjectName(Parameters::kOdomORBSLAM2Bf().c_str());
 	_ui->doubleSpinBox_OdomORBSLAM2ThDepth->setObjectName(Parameters::kOdomORBSLAM2ThDepth().c_str());
+	_ui->doubleSpinBox_OdomORBSLAM2Fps->setObjectName(Parameters::kOdomORBSLAM2Fps().c_str());
+	_ui->spinBox_OdomORBSLAM2MaxFeatures->setObjectName(Parameters::kOdomORBSLAM2MaxFeatures().c_str());
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
@@ -1384,6 +1399,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingRoiRatios[i]->setText("0.0 0.0 0.0 0.0");
 			_3dRenderingShowScans[i]->setChecked(true);
 			_3dRenderingShowFeatures[i]->setChecked(i==0?false:true);
+			_3dRenderingShowFrustums[i]->setChecked(false);
 
 			_3dRenderingDownsamplingScan[i]->setValue(1);
 			_3dRenderingVoxelSizeScan[i]->setValue(0.0);
@@ -1408,7 +1424,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_normalRadiusSearch_scan->setValue(0.0);
 
 		_ui->checkBox_showGraphs->setChecked(true);
-		_ui->checkBox_showFrustums->setChecked(false);
 		_ui->checkBox_showLabels->setChecked(false);
 
 		_ui->doubleSpinBox_mesh_angleTolerance->setValue(15.0);
@@ -1470,7 +1485,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->source_comboBox_image_type->setCurrentIndex(kSrcUsbDevice-kSrcUsbDevice);
 		_ui->source_images_spinBox_startPos->setValue(0);
-		_ui->source_images_refreshDir->setChecked(false);
 		_ui->checkBox_rgb_rectify->setChecked(false);
 		_ui->comboBox_cameraImages_bayerMode->setCurrentIndex(0);
 
@@ -1537,6 +1551,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
 		_ui->lineEdit_cameraRGBDImages_path_depth->setText("");
 		_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(1.0);
+		_ui->spinBox_cameraRGBDImages_startIndex->setValue(0);
 		_ui->lineEdit_source_distortionModel->setText("");
 		_ui->groupBox_bilateral->setChecked(false);
 		_ui->doubleSpinBox_bilateral_sigmaS->setValue(10.0);
@@ -1546,6 +1561,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraStereoImages_path_left->setText("");
 		_ui->lineEdit_cameraStereoImages_path_right->setText("");
 		_ui->checkBox_stereo_rectify->setChecked(false);
+		_ui->spinBox_cameraStereoImages_startIndex->setValue(0);
 		_ui->lineEdit_cameraStereoVideo_path->setText("");
 		_ui->lineEdit_cameraStereoVideo_path_2->setText("");
 		_ui->comboBox_stereoZed_resolution->setCurrentIndex(2);
@@ -1568,6 +1584,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_cameraImages_odomFormat->setCurrentIndex(0);
 		_ui->lineEdit_cameraImages_gt->setText("");
 		_ui->comboBox_cameraImages_gtFormat->setCurrentIndex(0);
+		_ui->doubleSpinBox_maxPoseTimeDiff->setValue(0.02);
 
 		_ui->groupBox_scanFromDepth->setChecked(false);
 		_ui->spinBox_cameraScanFromDepth_decimation->setValue(8);
@@ -1786,6 +1803,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingRoiRatios[i]->setText(settings.value(QString("roiRatios%1").arg(i), _3dRenderingRoiRatios[i]->text()).toString());
 		_3dRenderingShowScans[i]->setChecked(settings.value(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked()).toBool());
 		_3dRenderingShowFeatures[i]->setChecked(settings.value(QString("showFeatures%1").arg(i), _3dRenderingShowFeatures[i]->isChecked()).toBool());
+		_3dRenderingShowFrustums[i]->setChecked(settings.value(QString("showFrustums%1").arg(i), _3dRenderingShowFrustums[i]->isChecked()).toBool());
 
 		_3dRenderingDownsamplingScan[i]->setValue(settings.value(QString("downsamplingScan%1").arg(i), _3dRenderingDownsamplingScan[i]->value()).toInt());
 		_3dRenderingVoxelSizeScan[i]->setValue(settings.value(QString("voxelSizeScan%1").arg(i), _3dRenderingVoxelSizeScan[i]->value()).toDouble());
@@ -1808,7 +1826,6 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->doubleSpinBox_normalRadiusSearch_scan->setValue(settings.value("scanNormalRadiusSearch", _ui->doubleSpinBox_normalRadiusSearch_scan->value()).toDouble());
 
 	_ui->checkBox_showGraphs->setChecked(settings.value("showGraphs", _ui->checkBox_showGraphs->isChecked()).toBool());
-	_ui->checkBox_showFrustums->setChecked(settings.value("showFrustums", _ui->checkBox_showFrustums->isChecked()).toBool());
 	_ui->checkBox_showLabels->setChecked(settings.value("showLabels", _ui->checkBox_showLabels->isChecked()).toBool());
 
 	_ui->radioButton_noFiltering->setChecked(settings.value("noFiltering", _ui->radioButton_noFiltering->isChecked()).toBool());
@@ -1920,12 +1937,14 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_cameraRGBDImages_path_rgb->setText(settings.value("path_rgb", _ui->lineEdit_cameraRGBDImages_path_rgb->text()).toString());
 	_ui->lineEdit_cameraRGBDImages_path_depth->setText(settings.value("path_depth", _ui->lineEdit_cameraRGBDImages_path_depth->text()).toString());
 	_ui->doubleSpinBox_cameraRGBDImages_scale->setValue(settings.value("scale", _ui->doubleSpinBox_cameraRGBDImages_scale->value()).toDouble());
+	_ui->spinBox_cameraRGBDImages_startIndex->setValue(settings.value("start_index", _ui->spinBox_cameraRGBDImages_startIndex->value()).toInt());
 	settings.endGroup(); // RGBDImages
 
 	settings.beginGroup("StereoImages");
 	_ui->lineEdit_cameraStereoImages_path_left->setText(settings.value("path_left", _ui->lineEdit_cameraStereoImages_path_left->text()).toString());
 	_ui->lineEdit_cameraStereoImages_path_right->setText(settings.value("path_right", _ui->lineEdit_cameraStereoImages_path_right->text()).toString());
 	_ui->checkBox_stereo_rectify->setChecked(settings.value("rectify",_ui->checkBox_stereo_rectify->isChecked()).toBool());
+	_ui->spinBox_cameraStereoImages_startIndex->setValue(settings.value("start_index",_ui->spinBox_cameraStereoImages_startIndex->value()).toInt());
 	settings.endGroup(); // StereoImages
 
 	settings.beginGroup("StereoVideo");
@@ -1947,7 +1966,6 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("Images");
 	_ui->source_images_lineEdit_path->setText(settings.value("path", _ui->source_images_lineEdit_path->text()).toString());
 	_ui->source_images_spinBox_startPos->setValue(settings.value("startPos",_ui->source_images_spinBox_startPos->value()).toInt());
-	_ui->source_images_refreshDir->setChecked(settings.value("refreshDir",_ui->source_images_refreshDir->isChecked()).toBool());
 	_ui->comboBox_cameraImages_bayerMode->setCurrentIndex(settings.value("bayerMode",_ui->comboBox_cameraImages_bayerMode->currentIndex()).toInt());
 
 	_ui->checkBox_cameraImages_timestamps->setChecked(settings.value("filenames_as_stamps",_ui->checkBox_cameraImages_timestamps->isChecked()).toBool());
@@ -1962,6 +1980,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_cameraImages_odomFormat->setCurrentIndex(settings.value("odom_format", _ui->comboBox_cameraImages_odomFormat->currentIndex()).toInt());
 	_ui->lineEdit_cameraImages_gt->setText(settings.value("gt_path", _ui->lineEdit_cameraImages_gt->text()).toString());
 	_ui->comboBox_cameraImages_gtFormat->setCurrentIndex(settings.value("gt_format", _ui->comboBox_cameraImages_gtFormat->currentIndex()).toInt());
+	_ui->doubleSpinBox_maxPoseTimeDiff->setValue(settings.value("max_pose_time_diff", _ui->doubleSpinBox_maxPoseTimeDiff->value()).toDouble());
 	settings.endGroup(); // images
 
 	settings.beginGroup("Video");
@@ -2186,6 +2205,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("roiRatios%1").arg(i), _3dRenderingRoiRatios[i]->text());
 		settings.setValue(QString("showScans%1").arg(i), _3dRenderingShowScans[i]->isChecked());
 		settings.setValue(QString("showFeatures%1").arg(i), _3dRenderingShowFeatures[i]->isChecked());
+		settings.setValue(QString("showFrustums%1").arg(i), _3dRenderingShowFrustums[i]->isChecked());
 
 		settings.setValue(QString("downsamplingScan%1").arg(i), _3dRenderingDownsamplingScan[i]->value());
 		settings.setValue(QString("voxelSizeScan%1").arg(i), _3dRenderingVoxelSizeScan[i]->value());
@@ -2208,7 +2228,6 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("scanNormalRadiusSearch", _ui->doubleSpinBox_normalRadiusSearch_scan->value());
 
 	settings.setValue("showGraphs", _ui->checkBox_showGraphs->isChecked());
-	settings.setValue("showFrustums", _ui->checkBox_showFrustums->isChecked());
 	settings.setValue("showLabels", _ui->checkBox_showLabels->isChecked());
 
 	settings.setValue("noFiltering",             _ui->radioButton_noFiltering->isChecked());
@@ -2322,12 +2341,14 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("path_rgb",            _ui->lineEdit_cameraRGBDImages_path_rgb->text());
 	settings.setValue("path_depth",          _ui->lineEdit_cameraRGBDImages_path_depth->text());
 	settings.setValue("scale",               _ui->doubleSpinBox_cameraRGBDImages_scale->value());
+	settings.setValue("start_index",         _ui->spinBox_cameraRGBDImages_startIndex->value());
 	settings.endGroup(); // RGBDImages
 
 	settings.beginGroup("StereoImages");
 	settings.setValue("path_left",      _ui->lineEdit_cameraStereoImages_path_left->text());
 	settings.setValue("path_right",     _ui->lineEdit_cameraStereoImages_path_right->text());
 	settings.setValue("rectify", 	    _ui->checkBox_stereo_rectify->isChecked());
+	settings.setValue("start_index",    _ui->spinBox_cameraStereoImages_startIndex->value());
 	settings.endGroup(); // StereoImages
 
 	settings.beginGroup("StereoVideo");
@@ -2350,7 +2371,6 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("Images");
 	settings.setValue("path", 			_ui->source_images_lineEdit_path->text());
 	settings.setValue("startPos", 		_ui->source_images_spinBox_startPos->value());
-	settings.setValue("refreshDir", 	_ui->source_images_refreshDir->isChecked());
 	settings.setValue("bayerMode", 	    _ui->comboBox_cameraImages_bayerMode->currentIndex());
 	settings.setValue("filenames_as_stamps", _ui->checkBox_cameraImages_timestamps->isChecked());
 	settings.setValue("sync_stamps",    _ui->checkBox_cameraImages_syncTimeStamps->isChecked());
@@ -2364,6 +2384,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("odom_format",         _ui->comboBox_cameraImages_odomFormat->currentIndex());
 	settings.setValue("gt_path",             _ui->lineEdit_cameraImages_gt->text());
 	settings.setValue("gt_format",           _ui->comboBox_cameraImages_gtFormat->currentIndex());
+	settings.setValue("max_pose_time_diff",  _ui->doubleSpinBox_maxPoseTimeDiff->value());
 	settings.endGroup(); // images
 
 	settings.beginGroup("Video");
@@ -4046,6 +4067,8 @@ void PreferencesDialog::useOdomFeatures()
 			_ui->surf_doubleSpinBox_maxDepth->setValue(_ui->loopClosure_bowMaxDepth->value());
 			_ui->surf_doubleSpinBox_minDepth->setValue(_ui->loopClosure_bowMinDepth->value());
 			_ui->surf_spinBox_wordsPerImageTarget->setValue(_ui->reextract_maxFeatures->value());
+			_ui->spinBox_KPGridRows->setValue(_ui->reextract_gridrows->value());
+			_ui->spinBox_KPGridCols->setValue(_ui->reextract_gridcols->value());
 			_ui->lineEdit_kp_roi->setText(_ui->loopClosure_roi->text());
 			_ui->subpix_winSize_kp->setValue(_ui->subpix_winSize->value());
 			_ui->subpix_iterations_kp->setValue(_ui->subpix_iterations->value());
@@ -4368,10 +4391,6 @@ bool PreferencesDialog::isGraphsShown() const
 {
 	return _ui->checkBox_showGraphs->isChecked();
 }
-bool PreferencesDialog::isFrustumsShown() const
-{
-	return _ui->checkBox_showFrustums->isEnabled() && _ui->checkBox_showFrustums->isChecked();
-}
 bool PreferencesDialog::isLabelsShown() const
 {
 	return _ui->checkBox_showLabels->isChecked();
@@ -4470,6 +4489,11 @@ bool PreferencesDialog::isFeaturesShown(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingShowFeatures[index]->isChecked();
+}
+bool PreferencesDialog::isFrustumsShown(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingShowFrustums[index]->isEnabled() && _3dRenderingShowFrustums[index]->isChecked();
 }
 int PreferencesDialog::getFeaturesPointSize(int index) const
 {
@@ -4812,9 +4836,11 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			_ui->doubleSpinBox_cameraRGBDImages_scale->value(),
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraRGBDImages*)camera)->setStartIndex(_ui->spinBox_cameraRGBDImages_startIndex->value());
 		((CameraRGBDImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
 		((CameraRGBDImages*)camera)->setOdometryPath(_ui->lineEdit_cameraImages_odom->text().toStdString(), _ui->comboBox_cameraImages_odomFormat->currentIndex());
 		((CameraRGBDImages*)camera)->setGroundTruthPath(_ui->lineEdit_cameraImages_gt->text().toStdString(), _ui->comboBox_cameraImages_gtFormat->currentIndex());
+		((CameraRGBDImages*)camera)->setMaxPoseTimeDiff(_ui->doubleSpinBox_maxPoseTimeDiff->value());
 		((CameraRGBDImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
@@ -4858,9 +4884,11 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			_ui->checkBox_stereo_rectify->isChecked() && !useRawImages,
 			this->getGeneralInputRate(),
 			this->getSourceLocalTransform());
+		((CameraStereoImages*)camera)->setStartIndex(_ui->spinBox_cameraStereoImages_startIndex->value());
 		((CameraStereoImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
 		((CameraStereoImages*)camera)->setOdometryPath(_ui->lineEdit_cameraImages_odom->text().toStdString(), _ui->comboBox_cameraImages_odomFormat->currentIndex());
 		((CameraStereoImages*)camera)->setGroundTruthPath(_ui->lineEdit_cameraImages_gt->text().toStdString(), _ui->comboBox_cameraImages_gtFormat->currentIndex());
+		((CameraStereoImages*)camera)->setMaxPoseTimeDiff(_ui->doubleSpinBox_maxPoseTimeDiff->value());
 		((CameraStereoImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
@@ -4957,7 +4985,6 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 			this->getSourceLocalTransform());
 
 		((CameraImages*)camera)->setStartIndex(_ui->source_images_spinBox_startPos->value());
-		((CameraImages*)camera)->setDirRefreshed(_ui->source_images_refreshDir->isChecked());
 		((CameraImages*)camera)->setImagesRectified(_ui->checkBox_rgb_rectify->isChecked() && !useRawImages);
 
 		((CameraImages*)camera)->setBayerMode(_ui->comboBox_cameraImages_bayerMode->currentIndex()-1);
@@ -4967,6 +4994,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 		((CameraImages*)camera)->setGroundTruthPath(
 				_ui->lineEdit_cameraImages_gt->text().toStdString(),
 				_ui->comboBox_cameraImages_gtFormat->currentIndex());
+		((CameraImages*)camera)->setMaxPoseTimeDiff(_ui->doubleSpinBox_maxPoseTimeDiff->value());
 		((CameraImages*)camera)->setScanPath(
 						_ui->lineEdit_cameraImages_path_scans->text().isEmpty()?"":_ui->lineEdit_cameraImages_path_scans->text().append(QDir::separator()).toStdString(),
 						_ui->spinBox_cameraImages_max_scan_pts->value(),
@@ -5075,10 +5103,6 @@ int PreferencesDialog::getOdomStrategy() const
 int PreferencesDialog::getOdomBufferSize() const
 {
 	return _ui->odom_dataBufferSize->value();
-}
-bool PreferencesDialog::getRegVarianceFromInliersCount() const
-{
-	return _ui->loopClosure_bowVarianceFromInliersCount->isChecked();
 }
 
 QString PreferencesDialog::getCameraInfoDir() const

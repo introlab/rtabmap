@@ -286,7 +286,8 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		}
 	}
 
-	double dt = previousStamp_>0.0f?data.stamp() - previousStamp_:0.0;
+	// KITTI datasets start with stamp=0
+	double dt = previousStamp_>0.0f || (previousStamp_==0.0f && framesProcessed()==1)?data.stamp() - previousStamp_:0.0;
 	Transform guess = dt>0.0 && guessFromMotion_ && !previousVelocityTransform_.isNull()?Transform::getIdentity():Transform();
 	if(!(dt>0.0 || (dt == 0.0 && previousVelocityTransform_.isNull())))
 	{
@@ -528,7 +529,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			}
 		}
 
-		if(data.stamp() == 0)
+		if(data.stamp() == 0 && framesProcessed_ != 0)
 		{
 			UWARN("Null stamp detected");
 		}

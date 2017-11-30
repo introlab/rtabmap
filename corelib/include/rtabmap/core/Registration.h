@@ -45,6 +45,7 @@ public:
 		kTypeIcp = 1,
 		kTypeVisIcp = 2
 	};
+	static double COVARIANCE_EPSILON;
 
 public:
 	static Registration * create(const ParametersMap & parameters);
@@ -61,9 +62,8 @@ public:
 	int getMinVisualCorrespondences() const;
 	float getMinGeometryCorrespondencesRatio() const;
 
-	bool varianceFromInliersCount() const {return varianceFromInliersCount_;}
+	bool repeatOnce() const {return repeatOnce_;}
 	bool force3DoF() const {return force3DoF_;}
-	bool covarianceNormalized() const {return covarianceNormalized_;}
 
 	// take ownership!
 	void setChildRegistration(Registration * child);
@@ -85,8 +85,6 @@ public:
 			Transform guess = Transform::getIdentity(),
 			RegistrationInfo * info = 0) const;
 
-	void normalizeCovariance(cv::Mat & covariance, const Transform & transform) const;
-
 protected:
 	// take ownership of child
 	Registration(const ParametersMap & parameters = ParametersMap(), Registration * child = 0);
@@ -106,8 +104,7 @@ protected:
 	virtual float getMinGeometryCorrespondencesRatioImpl() const {return 0.0f;}
 
 private:
-	bool varianceFromInliersCount_;
-	bool covarianceNormalized_;
+	bool repeatOnce_;
 	bool force3DoF_;
 	Registration * child_;
 

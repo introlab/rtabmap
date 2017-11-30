@@ -72,7 +72,7 @@ pcl::PointXYZ RTABMAP_EXP projectDepthTo3D(
 		float cx, float cy,
 		float fx, float fy,
 		bool smoothing,
-		float maxZError = 0.02f);
+		float depthErrorRatio = 0.02f);
 
 RTABMAP_DEPRECATED (pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP cloudFromDepth(
 		const cv::Mat & imageDepth,

@@ -188,6 +188,8 @@ public:
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
 
+	virtual void setStartIndex(int index) {CameraImages::setStartIndex(index);camera2_->setStartIndex(index);} // negative means last
+
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
 

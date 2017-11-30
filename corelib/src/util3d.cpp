@@ -215,13 +215,13 @@ pcl::PointXYZ projectDepthTo3D(
 		float cx, float cy,
 		float fx, float fy,
 		bool smoothing,
-		float maxZError)
+		float depthErrorRatio)
 {
 	UASSERT(depthImage.type() == CV_16UC1 || depthImage.type() == CV_32FC1);
 
 	pcl::PointXYZ pt;
 
-	float depth = util2d::getDepth(depthImage, x, y, smoothing, maxZError);
+	float depth = util2d::getDepth(depthImage, x, y, smoothing, depthErrorRatio);
 	if(depth > 0.0f)
 	{
 		// Use correct principal point from calibration
@@ -2272,7 +2272,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadBINCloud(const std::string & fileName, i
 		UASSERT(bytes % sizeof(float) == 0);
 		int32_t num = bytes/sizeof(float);
 		UASSERT(num % dim == 0);
-		float *data = (float*)malloc(num*sizeof(float));
+		float *data = new float[num];
 
 		// pointers
 		float *px = data+0;
@@ -2292,6 +2292,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadBINCloud(const std::string & fileName, i
 			px+=4; py+=4; pz+=4; pr+=4;
 		}
 		fclose(stream);
+
+		delete[] data;
 	}
 
 	return cloud;
