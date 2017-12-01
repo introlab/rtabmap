@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>20</number>
+                <number>14</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -8797,7 +8797,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item row="2" column="0">
                      <widget class="QDoubleSpinBox" name="graphOptimization_maxError">
                       <property name="suffix">
-                       <string> m</string>
+                       <string/>
                       </property>
                       <property name="decimals">
                        <number>2</number>
@@ -8819,7 +8819,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item row="2" column="1">
                      <widget class="QLabel" name="label_259">
                       <property name="text">
-                       <string>Reject loop closures if optimization error is greater than this value (0=disabled). This will help to detect when a wrong loop closure is added to the graph. It should not be used at the same time than Vertigo above.</string>
+                       <string>Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. It should not be used at the same time than Vertigo above.</string>
                       </property>
                       <property name="wordWrap">
                        <bool>true</bool>

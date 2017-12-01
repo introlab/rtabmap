@@ -4563,6 +4563,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 				}
 			}
 		}
+		ui_->graphViewer->fitInView(ui_->graphViewer->scene()->itemsBoundingRect(), Qt::KeepAspectRatio);
 		ui_->graphViewer->update();
 		ui_->label_iterations->setNum(value);
 

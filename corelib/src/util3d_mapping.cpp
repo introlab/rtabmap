@@ -297,8 +297,8 @@ cv::Mat create2DMapFromOccupancyLocalMaps(
 		yMin += cellSize/2.0f;
 		float xMax = maxX+margin;
 		float yMax = maxY+margin;
-		if(fabs((yMax - yMin) / cellSize) > 99999 ||
-		   fabs((xMax - xMin) / cellSize) > 99999)
+		if(fabs((yMax - yMin) / cellSize) > 30000 || // Max 1.5Km/1.5Km at 5 cm/cell -> 900MB
+		   fabs((xMax - xMin) / cellSize) > 30000)
 		{
 			UERROR("Large map size!! map min=(%f, %f) max=(%f,%f). "
 					"There's maybe an error with the poses provided! The map will not be created!",
