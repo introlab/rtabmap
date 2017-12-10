@@ -61,9 +61,7 @@ void showUsage()
 			"  --scan_step #      Scan downsample step (default=10).\n"
 			"  --scan_voxel #.#   Scan voxel size (default 0.3 m).\n"
 			"  --scan_k           Scan normal K (default 5).\n"
-			"  --scan_radius      Scan normal radius (default 0).\n"
-			"  --map_update  #    Do map update each X odometry frames (default=10, which\n"
-			"                        gives 1 Hz map update assuming images are at 10 Hz).\n\n"
+			"  --scan_radius      Scan normal radius (default 0).\n\n"
 			"%s\n"
 			"Example:\n\n"
 			"   $ rtabmap-kitti_dataset \\\n"
@@ -111,7 +109,6 @@ int main(int argc, char * argv[])
 	std::string path;
 	std::string output;
 	std::string seq;
-	int mapUpdate = 10;
 	bool color = false;
 	bool scan = false;
 	bool disp = false;
@@ -136,15 +133,6 @@ int main(int argc, char * argv[])
 			else if(std::strcmp(argv[i], "--quiet") == 0)
 			{
 				quiet = true;
-			}
-			else if(std::strcmp(argv[i], "--map_update") == 0)
-			{
-				mapUpdate = atoi(argv[++i]);
-				if(mapUpdate <= 0)
-				{
-					printf("map_update should be > 0\n");
-					showUsage();
-				}
 			}
 			else if(std::strcmp(argv[i], "--scan_step") == 0)
 			{
@@ -379,8 +367,18 @@ int main(int argc, char * argv[])
 						Transform(-0.27f, 0.0f, 0.08, 0.0f, 0.0f, 0.0f));
 	}
 
+	float detectionRate = Parameters::defaultRtabmapDetectionRate();
 	bool intermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();
+	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
 	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
+
+	// assuming source is 10 Hz
+	int mapUpdate = 10 / detectionRate;
+	if(mapUpdate < 1)
+	{
+		mapUpdate = 1;
+	}
+
 	std::string databasePath = output+"/rtabmap" + seq + ".db";
 	UFile::erase(databasePath);
 	if(cameraThread.camera()->init(output, "rtabmap_calib"+seq))
@@ -403,6 +401,7 @@ int main(int argc, char * argv[])
 		// Processing dataset begin
 		/////////////////////////////
 		cv::Mat covariance;
+		int odomKeyFrames = 0;
 		while(data.isValid() && g_forever)
 		{
 			std::map<std::string, float> externalStats;
@@ -425,6 +424,7 @@ int main(int argc, char * argv[])
 			externalStats.insert(std::make_pair("Odometry/LocalBundleConstraints/", odomInfo.localBundleConstraints));
 			externalStats.insert(std::make_pair("Odometry/LocalBundleOutliers/", odomInfo.localBundleOutliers));
 			externalStats.insert(std::make_pair("Odometry/TotalTime/ms", odomInfo.timeEstimation*1000.0f));
+			externalStats.insert(std::make_pair("Odometry/Registration/ms", odomInfo.reg.totalTime*1000.0f));
 			float speed = 0.0f;
 			if(odomInfo.interval>0.0)
 				speed = odomInfo.transform.x()/odomInfo.interval*3.6;
@@ -436,6 +436,10 @@ int main(int argc, char * argv[])
 			externalStats.insert(std::make_pair("Odometry/LocalKeyFrames/", odomInfo.localKeyFrames));
 			externalStats.insert(std::make_pair("Odometry/LocalMapSize/", odomInfo.localMapSize));
 			externalStats.insert(std::make_pair("Odometry/LocalScanMapSize/", odomInfo.localScanMapSize));
+			if(odomInfo.keyFrameAdded)
+			{
+				++odomKeyFrames;
+			}
 
 			bool processData = true;
 			if(iteration % mapUpdate != 0)
@@ -459,7 +463,7 @@ int main(int argc, char * argv[])
 			}
 
 			++iteration;
-			if(!quiet)
+			if(!quiet || iteration == totalImages)
 			{
 				double slamTime = timer.ticks();
 
@@ -469,15 +473,31 @@ int main(int argc, char * argv[])
 					rmse = rtabmap.getStatistics().data().at(Statistics::kGtTranslational_rmse());
 				}
 
-				if(rmse >= 0.0f)
+				if(data.keypoints().size() == 0 && data.laserScanRaw().cols)
 				{
-					printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms, rmse=%fm, stddev=%fm %frad",
-							iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
+					if(rmse >= 0.0f)
+					{
+						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%f, kfs=%d)=%dms, slam=%dms, rmse=%fm, noise stddev=%fm %frad",
+								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.icpInliersRatio, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
+					}
+					else
+					{
+						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%f, kfs=%d)=%dms, slam=%dms",
+								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.icpInliersRatio, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+					}
 				}
 				else
 				{
-					printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms",
-							iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+					if(rmse >= 0.0f)
+					{
+						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm, noise stddev=%fm %frad",
+								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
+					}
+					else
+					{
+						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms",
+								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+					}
 				}
 				if(processData && rtabmap.getLoopClosureId()>0)
 				{

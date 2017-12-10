@@ -112,6 +112,7 @@ public:
 	float getDistance(const Transform & t) const;
 	float getDistanceSquared(const Transform & t) const;
 	Transform interpolate(float t, const Transform & other) const;
+	void normalizeRotation();
 	std::string prettyPrint() const;
 
 	Transform operator*(const Transform & t) const;

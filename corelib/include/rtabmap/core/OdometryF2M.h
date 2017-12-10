@@ -80,6 +80,7 @@ private:
 	std::map<int, int> bundlePoseReferences_;
 	int bundleSeq_;
 	Optimizer * sba_;
+	ParametersMap parameters_;
 };
 
 }

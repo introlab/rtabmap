@@ -230,6 +230,7 @@ int main(int argc, char * argv[])
 		// Processing dataset begin
 		/////////////////////////////
 		cv::Mat covariance;
+		int odomKeyFrames = 0;
 		double previousStamp = 0.0;
 		while(data.isValid() && g_forever)
 		{
@@ -253,6 +254,7 @@ int main(int argc, char * argv[])
 			externalStats.insert(std::make_pair("Odometry/LocalBundleConstraints/", odomInfo.localBundleConstraints));
 			externalStats.insert(std::make_pair("Odometry/LocalBundleOutliers/", odomInfo.localBundleOutliers));
 			externalStats.insert(std::make_pair("Odometry/TotalTime/ms", odomInfo.timeEstimation*1000.0f));
+			externalStats.insert(std::make_pair("Odometry/Registration/ms", odomInfo.reg.totalTime*1000.0f));
 			externalStats.insert(std::make_pair("Odometry/Inliers/", odomInfo.reg.inliers));
 			externalStats.insert(std::make_pair("Odometry/Features/", odomInfo.features));
 			externalStats.insert(std::make_pair("Odometry/DistanceTravelled/m", odomInfo.distanceTravelled));
@@ -260,6 +262,10 @@ int main(int argc, char * argv[])
 			externalStats.insert(std::make_pair("Odometry/LocalKeyFrames/", odomInfo.localKeyFrames));
 			externalStats.insert(std::make_pair("Odometry/LocalMapSize/", odomInfo.localMapSize));
 			externalStats.insert(std::make_pair("Odometry/LocalScanMapSize/", odomInfo.localScanMapSize));
+			if(odomInfo.keyFrameAdded)
+			{
+				++odomKeyFrames;
+			}
 
 			bool processData = true;
 			if(detectionRate>0.0f &&
@@ -295,7 +301,7 @@ int main(int argc, char * argv[])
 			}
 
 			++iteration;
-			if(!quiet)
+			if(!quiet || iteration == totalImages)
 			{
 				double slamTime = timer.ticks();
 
@@ -307,13 +313,13 @@ int main(int argc, char * argv[])
 
 				if(rmse >= 0.0f)
 				{
-					printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms, rmse=%fm, stddev=%fm %frad",
-							iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
+					printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm, noise stddev=%fm %frad",
+							iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
 				}
 				else
 				{
-					printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d)=%dms, slam=%dms",
-							iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+					printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms",
+							iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
 				}
 				if(processData && rtabmap.getLoopClosureId()>0)
 				{

@@ -117,7 +117,8 @@ Link Link::merge(const Link & link, Type outputType) const
 			link.to(),
 			outputType,
 			transform_.isNull()?Transform():transform_ * link.transform(), // FIXME, should be inf1^-1(inf1*t1 + inf2*t2)
-			transform_.isNull()?cv::Mat::eye(6,6,CV_64FC1):(infMatrix_.inv() + link.infMatrix().inv()).inv());
+			transform_.isNull()?cv::Mat::eye(6,6,CV_64FC1):(infMatrix_.at<double>(0,0)<link.infMatrix().at<double>(0,0)?infMatrix_:link.infMatrix()));
+			//transform_.isNull()?cv::Mat::eye(6,6,CV_64FC1):(infMatrix_.inv() + link.infMatrix().inv()).inv());
 }
 
 Link Link::inverse() const

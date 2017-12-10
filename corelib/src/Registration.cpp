@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/RegistrationVis.h>
 #include <rtabmap/core/RegistrationIcp.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UTimer.h>
 
 namespace rtabmap {
 
@@ -183,6 +184,7 @@ Transform Registration::computeTransformationMod(
 		Transform guess,
 		RegistrationInfo * infoOut) const
 {
+	UTimer time;
 	RegistrationInfo info;
 	if(infoOut)
 	{
@@ -239,6 +241,7 @@ Transform Registration::computeTransformationMod(
 	if(infoOut)
 	{
 		*infoOut = info;
+		infoOut->totalTime = time.ticks();
 	}
 	return t;
 }

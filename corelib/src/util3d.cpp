@@ -2283,13 +2283,13 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadBINCloud(const std::string & fileName, i
 		// load point cloud
 		FILE *stream;
 		stream = fopen (fileName.c_str(),"rb");
-		num = fread(data,sizeof(float),num,stream)/4;
+		num = fread(data,sizeof(float),num,stream)/dim;
 		cloud->resize(num);
 		for (int32_t i=0; i<num; i++) {
 			(*cloud)[i].x = *px;
 			(*cloud)[i].y = *py;
 			(*cloud)[i].z = *pz;
-			px+=4; py+=4; pz+=4; pr+=4;
+			px+=dim; py+=dim; pz+=dim; pr+=dim;
 		}
 		fclose(stream);
 

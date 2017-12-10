@@ -349,6 +349,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
 	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
+	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(updateStatistics()));
 	// Graph view
@@ -475,6 +477,7 @@ void DatabaseViewer::readSettings()
 	ui_->comboBox_logger_level->setCurrentIndex(settings.value("loggerLevel", ui_->comboBox_logger_level->currentIndex()).toInt());
 	ui_->actionVertical_Layout->setChecked(settings.value("verticalLayout", ui_->actionVertical_Layout->isChecked()).toBool());
 	ui_->checkBox_alignPosesWithGroundTruth->setChecked(settings.value("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked()).toBool());
+	ui_->checkBox_ignoreIntermediateNodes->setChecked(settings.value("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked()).toBool());
 	ui_->checkBox_timeStats->setChecked(settings.value("timeStats", ui_->checkBox_timeStats->isChecked()).toBool());
 
 	// GraphViewer settings
@@ -565,6 +568,7 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("loggerLevel", ui_->comboBox_logger_level->currentIndex());
 	settings.setValue("verticalLayout", ui_->actionVertical_Layout->isChecked());
 	settings.setValue("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked());
+	settings.setValue("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked());
 	settings.setValue("timeStats", ui_->checkBox_timeStats->isChecked());
 
 	// save GraphViewer settings
@@ -652,6 +656,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	// reset GUI parameters
 	ui_->comboBox_logger_level->setCurrentIndex(1);
 	ui_->checkBox_alignPosesWithGroundTruth->setChecked(true);
+	ui_->checkBox_ignoreIntermediateNodes->setChecked(false);
 	ui_->checkBox_timeStats->setChecked(true);
 
 	ui_->checkBox_spanAllMaps->setChecked(true);
@@ -902,6 +907,7 @@ bool DatabaseViewer::closeDatabase()
 		gpsPoses_.clear();
 		gpsValues_.clear();
 		mapIds_.clear();
+		weights_.clear();
 		links_.clear();
 		linksAdded_.clear();
 		linksRefined_.clear();
@@ -919,6 +925,7 @@ bool DatabaseViewer::closeDatabase()
 		ui_->toolBox_statistics->clear();
 		databaseFileName_.clear();
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+		ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
 		ui_->label_alignPosesWithGroundTruth->setVisible(false);
 		ui_->label_optimizeFrom->setText(tr("Optimize from"));
 		ui_->textEdit_info->clear();
@@ -1422,11 +1429,13 @@ void DatabaseViewer::updateIds()
 	ids_ = QList<int>::fromStdList(std::list<int>(ids.begin(), ids.end()));
 	idToIndex_.clear();
 	mapIds_.clear();
+	weights_.clear();
 	odomPoses_.clear();
 	groundTruthPoses_.clear();
 	gpsPoses_.clear();
 	gpsValues_.clear();
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+	ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
 	ui_->label_alignPosesWithGroundTruth->setVisible(false);
 	ui_->menuExport_GPS->setEnabled(false);
 	ui_->actionPoses_KML->setEnabled(false);
@@ -1463,6 +1472,11 @@ void DatabaseViewer::updateIds()
 		GPS gps;
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
+		weights_.insert(std::make_pair(ids_[i], w));
+		if(w < 0)
+		{
+			ui_->checkBox_ignoreIntermediateNodes->setVisible(true);
+		}
 		if(i>0)
 		{
 			if(mapIds_.at(ids_[i-1]) == mapId)
@@ -4633,8 +4647,6 @@ void DatabaseViewer::updateGraphView()
 			}
 		}
 
-		graphes_.push_back(poses);
-
 		ui_->menuExport_poses->setEnabled(true);
 		std::multimap<int, rtabmap::Link> links = links_;
 
@@ -4749,6 +4761,39 @@ void DatabaseViewer::updateGraphView()
 				.arg(totalLocalTime)
 				.arg(totalUser)
 				.arg(totalPriors));
+
+		// remove intermediate nodes?
+		if(ui_->checkBox_ignoreIntermediateNodes->isVisible() &&
+		   ui_->checkBox_ignoreIntermediateNodes->isChecked())
+		{
+			for(std::multimap<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				if(iter->second.type() == Link::kNeighbor ||
+					iter->second.type() == Link::kNeighborMerged)
+				{
+					Link link = iter->second;
+					while(uContains(weights_, link.to()) && weights_.at(link.to()) < 0)
+					{
+						std::multimap<int, Link>::iterator uter = links.find(link.to());
+						if(uter != links.end())
+						{
+							UASSERT(links.count(link.to()) == 1);
+							poses.erase(link.to());
+							link = link.merge(uter->second, uter->second.type());
+							links.erase(uter);
+						}
+						else
+						{
+							break;
+						}
+					}
+
+					iter->second = link;
+				}
+			}
+		}
+
+		graphes_.push_back(poses);
 
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 

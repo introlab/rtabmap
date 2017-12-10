@@ -66,6 +66,7 @@ RegistrationVis::RegistrationVis(const ParametersMap & parameters, Registration 
 		_flowMaxLevel(Parameters::defaultVisCorFlowMaxLevel()),
 		_nndr(Parameters::defaultVisCorNNDR()),
 		_guessWinSize(Parameters::defaultVisCorGuessWinSize()),
+		_guessMatchToProjection(Parameters::defaultVisCorGuessMatchToProjection()),
 		_bundleAdjustment(Parameters::defaultVisBundleAdjustment())
 {
 	_featureParameters = Parameters::getDefaultParameters();
@@ -107,6 +108,7 @@ void RegistrationVis::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kVisCorFlowMaxLevel(), _flowMaxLevel);
 	Parameters::parse(parameters, Parameters::kVisCorNNDR(), _nndr);
 	Parameters::parse(parameters, Parameters::kVisCorGuessWinSize(), _guessWinSize);
+	Parameters::parse(parameters, Parameters::kVisCorGuessMatchToProjection(), _guessMatchToProjection);
 	Parameters::parse(parameters, Parameters::kVisBundleAdjustment(), _bundleAdjustment);
 	uInsert(_bundleParameters, parameters);
 
@@ -762,7 +764,7 @@ Transform RegistrationVis::computeTransformationImpl(
 					cv::Mat K = toSignature.sensorData().cameraModels().size()?toSignature.sensorData().cameraModels()[0].K():toSignature.sensorData().stereoCameraModel().left().K();
 					std::vector<cv::Point2f> projected;
 					cv::projectPoints(kptsFrom3D, rvec, tvec, K, cv::Mat(), projected);
-
+					UDEBUG("Projected points=%d", (int)projected.size());
 					//remove projected points outside of the image
 					UASSERT((int)projected.size() == descriptorsFrom.rows);
 					std::vector<cv::Point2f> cornersProjected(projected.size());
@@ -780,19 +782,14 @@ Transform RegistrationVis::computeTransformationImpl(
 					}
 					projectedIndexToDescIndex.resize(oi);
 					cornersProjected.resize(oi);
-
-
-
-					UDEBUG("cornersProjected=%d", (int)cornersProjected.size());
+					UDEBUG("corners in frame=%d", (int)cornersProjected.size());
 
 					// For each projected feature guess of "from" in "to", find its matching feature in
 					// the radius around the projected guess.
 					// TODO: do cross-check?
 					if(cornersProjected.size())
 					{
-
-						bool matchToProjected = false;
-						if(matchToProjected)
+						if(_guessMatchToProjection)
 						{
 							// match frame to projected
 							// Create kd-tree for projected keypoints
@@ -820,6 +817,7 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::map<int,int> addedWordsFrom; //<id, index>
 							std::map<int, int> duplicates; //<fromId, toId>
 							int newWords = 0;
+							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
 							for(unsigned int i = 0; i < pointsToMat.rows; ++i)
 							{
 								if(kptsTo3D.empty() || util3d::isFinite(kptsTo3D[i]))
@@ -828,14 +826,17 @@ Transform RegistrationVis::computeTransformationImpl(
 									int matchedIndex = -1;
 									if(indices[i].size() >= 2)
 									{
-										cv::Mat descriptors;
 										std::vector<int> descriptorsIndices(indices[i].size());
 										int oi=0;
+										if((int)indices[i].size() > descriptors.rows)
+										{
+											descriptors.resize(indices[i].size());
+										}
 										for(unsigned int j=0; j<indices[i].size(); ++j)
 										{
 											if(kptsFrom.at(projectedIndexToDescIndex[indices[i].at(j)]).octave==octave)
 											{
-												descriptors.push_back(descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]));
+												descriptorsFrom.row(projectedIndexToDescIndex[indices[i].at(j)]).copyTo(descriptors.row(oi));
 												descriptorsIndices[oi++] = indices[i].at(j);
 											}
 										}
@@ -895,11 +896,11 @@ Transform RegistrationVis::computeTransformationImpl(
 									else
 									{
 										// gen fake ids
-										wordsTo.insert(std::make_pair(newToId, kptsTo[i]));
-										wordsDescTo.insert(std::make_pair(newToId, descriptorsTo.row(i)));
+										wordsTo.insert(wordsTo.end(), std::make_pair(newToId, kptsTo[i]));
+										wordsDescTo.insert(wordsDescTo.end(), std::make_pair(newToId, descriptorsTo.row(i)));
 										if(kptsTo3D.size())
 										{
-											words3To.insert(std::make_pair(newToId, kptsTo3D[i]));
+											words3To.insert(words3To.end(), std::make_pair(newToId, kptsTo3D[i]));
 										}
 
 										++newToId;
@@ -918,9 +919,9 @@ Transform RegistrationVis::computeTransformationImpl(
 								if(util3d::isFinite(kptsFrom3D[i]) && addedWordsFrom.find(i) == addedWordsFrom.end())
 								{
 									int id = orignalWordsFromIds.size()?orignalWordsFromIds[i]:i;
-									wordsFrom.insert(std::make_pair(id, kptsFrom[i]));
-									wordsDescFrom.insert(std::make_pair(id, descriptorsFrom.row(i)));
-									words3From.insert(std::make_pair(id, kptsFrom3D[i]));
+									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, kptsFrom[i]));
+									wordsDescFrom.insert(wordsDescFrom.end(), std::make_pair(id, descriptorsFrom.row(i)));
+									words3From.insert(words3From.end(), std::make_pair(id, kptsFrom3D[i]));
 
 									++addWordsFromNotMatched;
 								}
@@ -953,6 +954,10 @@ Transform RegistrationVis::computeTransformationImpl(
 							std::set<int> addedWordsTo;
 							std::set<int> addedWordsFrom;
 							std::set<int> indicesToIgnore;
+							double bruteForceTotalTime = 0.0;
+							double bruteForceDescCopy = 0.0;
+							UTimer bruteForceTimer;
+							cv::Mat descriptors(10, descriptorsTo.cols, descriptorsTo.type());
 							for(unsigned int i = 0; i < cornersProjectedMat.rows; ++i)
 							{
 								int matchedIndexFrom = projectedIndexToDescIndex[i];
@@ -961,15 +966,19 @@ Transform RegistrationVis::computeTransformationImpl(
 									int matchedIndexTo = -1;
 									if(indices[i].size() >= 2)
 									{
-										cv::Mat descriptors;
+										bruteForceTimer.restart();
 										std::vector<int> descriptorsIndices(indices[i].size());
 										int oi=0;
+										if((int)indices[i].size() > descriptors.rows)
+										{
+											descriptors.resize(indices[i].size());
+										}
 										for(unsigned int j=0; j<indices[i].size(); ++j)
 										{
 											int octave = kptsTo[indices[i].at(j)].octave;
 											if(kptsFrom.at(matchedIndexFrom).octave==octave)
 											{
-												descriptors.push_back(descriptorsTo.row(indices[i].at(j)));
+												descriptorsTo.row(indices[i].at(j)).copyTo(descriptors.row(oi));
 												descriptorsIndices[oi++] = indices[i].at(j);
 
 												if(dists[i].at(j) < radius)
@@ -978,14 +987,15 @@ Transform RegistrationVis::computeTransformationImpl(
 												}
 											}
 										}
-										descriptorsIndices.resize(oi);
+										bruteForceDescCopy += bruteForceTimer.ticks();
 										if(oi >=2)
 										{
 											std::vector<std::vector<cv::DMatch> > matches;
 											cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), descriptors, matches, 2);
+											matcher.knnMatch(descriptorsFrom.row(matchedIndexFrom), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
 											UASSERT(matches.size() == 1);
 											UASSERT(matches[0].size() == 2);
+											bruteForceTotalTime+=bruteForceTimer.elapsed();
 											if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)
 											{
 												matchedIndexTo = descriptorsIndices.at(matches[0].at(0).trainIdx);
@@ -1006,14 +1016,14 @@ Transform RegistrationVis::computeTransformationImpl(
 									}
 
 									int id = orignalWordsFromIds.size()?orignalWordsFromIds[matchedIndexFrom]:matchedIndexFrom;
-									addedWordsFrom.insert(matchedIndexFrom);
+									addedWordsFrom.insert(addedWordsFrom.end(), matchedIndexFrom);
 
 									if(kptsFrom.size())
 									{
-										wordsFrom.insert(std::make_pair(id, kptsFrom[matchedIndexFrom]));
+										wordsFrom.insert(wordsFrom.end(), std::make_pair(id, kptsFrom[matchedIndexFrom]));
 									}
-									words3From.insert(std::make_pair(id, kptsFrom3D[matchedIndexFrom]));
-									wordsDescFrom.insert(std::make_pair(id, descriptorsFrom.row(matchedIndexFrom)));
+									words3From.insert(words3From.end(), std::make_pair(id, kptsFrom3D[matchedIndexFrom]));
+									wordsDescFrom.insert(wordsDescFrom.end(), std::make_pair(id, descriptorsFrom.row(matchedIndexFrom)));
 
 									if((kptsTo3D.empty() || util3d::isFinite(kptsTo3D[matchedIndexTo])) &&
 										matchedIndexTo >= 0 &&
@@ -1021,15 +1031,16 @@ Transform RegistrationVis::computeTransformationImpl(
 									{
 										addedWordsTo.insert(matchedIndexTo);
 
-										wordsTo.insert(std::make_pair(id, kptsTo[matchedIndexTo]));
-										wordsDescTo.insert(std::make_pair(id, descriptorsTo.row(matchedIndexTo)));
+										wordsTo.insert(wordsTo.end(), std::make_pair(id, kptsTo[matchedIndexTo]));
+										wordsDescTo.insert(wordsDescTo.end(), std::make_pair(id, descriptorsTo.row(matchedIndexTo)));
 										if(kptsTo3D.size())
 										{
-											words3To.insert(std::make_pair(id, kptsTo3D[matchedIndexTo]));
+											words3To.insert(words3To.end(), std::make_pair(id, kptsTo3D[matchedIndexTo]));
 										}
 									}
 								}
 							}
+							UDEBUG("bruteForceDescCopy=%fs, bruteForceTotalTime=%fs", bruteForceDescCopy, bruteForceTotalTime);
 
 							// create fake ids for not matched words from "from"
 							for(unsigned int i=0; i<kptsFrom3D.size(); ++i)
@@ -1037,9 +1048,9 @@ Transform RegistrationVis::computeTransformationImpl(
 								if(util3d::isFinite(kptsFrom3D[i]) && addedWordsFrom.find(i) == addedWordsFrom.end())
 								{
 									int id = orignalWordsFromIds.size()?orignalWordsFromIds[i]:i;
-									wordsFrom.insert(std::make_pair(id, kptsFrom[i]));
-									wordsDescFrom.insert(std::make_pair(id, descriptorsFrom.row(i)));
-									words3From.insert(std::make_pair(id, kptsFrom3D[i]));
+									wordsFrom.insert(wordsFrom.end(), std::make_pair(id, kptsFrom[i]));
+									wordsDescFrom.insert(wordsDescFrom.end(), std::make_pair(id, descriptorsFrom.row(i)));
+									words3From.insert(words3From.end(), std::make_pair(id, kptsFrom3D[i]));
 								}
 							}
 
@@ -1048,11 +1059,11 @@ Transform RegistrationVis::computeTransformationImpl(
 							{
 								if(addedWordsTo.find(i) == addedWordsTo.end() && indicesToIgnore.find(i) == indicesToIgnore.end())
 								{
-									wordsTo.insert(std::make_pair(newToId, kptsTo[i]));
-									wordsDescTo.insert(std::make_pair(newToId, descriptorsTo.row(i)));
+									wordsTo.insert(wordsTo.end(), std::make_pair(newToId, kptsTo[i]));
+									wordsDescTo.insert(wordsDescTo.end(), std::make_pair(newToId, descriptorsTo.row(i)));
 									if(kptsTo3D.size())
 									{
-										words3To.insert(std::make_pair(newToId, kptsTo3D[i]));
+										words3To.insert(words3To.end(), std::make_pair(newToId, kptsTo3D[i]));
 									}
 									++newToId;
 								}

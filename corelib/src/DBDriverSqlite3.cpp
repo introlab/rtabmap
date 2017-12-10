@@ -1351,6 +1351,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						if((unsigned int)dataSize == localTransform.size()*sizeof(float) && data)
 						{
 							memcpy(localTransform.data(), data, dataSize);
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								localTransform.normalizeRotation();
+							}
 						}
 					}
 
@@ -1375,6 +1379,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
 									localTransform = Transform::getIdentity();
 									memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+									if(uStrNumCmp(_version, "0.15.2") < 0)
+									{
+										localTransform.normalizeRotation();
+									}
 									models.push_back(CameraModel(
 											(double)dataFloat[i],
 											(double)dataFloat[i+1],
@@ -1398,6 +1406,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 									// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
 									localTransform = Transform::getIdentity();
 									memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+									if(uStrNumCmp(_version, "0.15.2") < 0)
+									{
+										localTransform.normalizeRotation();
+									}
 									models.push_back(CameraModel(
 											(double)dataFloat[i],
 											(double)dataFloat[i+1],
@@ -1410,6 +1422,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 							{
 								UDEBUG("Loading calibration of a stereo camera");
 								memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
 								stereoModel = StereoCameraModel(
 										dataFloat[0],  // fx
 										dataFloat[1],  // fy
@@ -1423,6 +1439,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 							{
 								UDEBUG("Loading calibration of a stereo camera");
 								memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
 								stereoModel = StereoCameraModel(
 										dataFloat[0],  // fx
 										dataFloat[1],  // fy
@@ -1482,6 +1502,10 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						{
 							float * dataFloat = (float*)data;
 							memcpy(scanLocalTransform.data(), dataFloat+2, scanLocalTransform.size()*sizeof(float));
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								scanLocalTransform.normalizeRotation();
+							}
 							laserScanMaxPts = (int)dataFloat[0];
 							laserScanMaxRange = dataFloat[1];
 						}
@@ -1666,6 +1690,7 @@ bool DBDriverSqlite3::getCalibrationQuery(
 				if((unsigned int)dataSize == localTransform.size()*sizeof(float) && data)
 				{
 					memcpy(localTransform.data(), data, dataSize);
+					localTransform.normalizeRotation();
 				}
 			}
 
@@ -1689,6 +1714,10 @@ bool DBDriverSqlite3::getCalibrationQuery(
 							// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
 							localTransform = Transform::getIdentity();
 							memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								localTransform.normalizeRotation();
+							}
 							models.push_back(CameraModel(
 									(double)dataFloat[i],
 									(double)dataFloat[i+1],
@@ -1712,6 +1741,10 @@ bool DBDriverSqlite3::getCalibrationQuery(
 							// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
 							localTransform = Transform::getIdentity();
 							memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								localTransform.normalizeRotation();
+							}
 							models.push_back(CameraModel(
 									(double)dataFloat[i],
 									(double)dataFloat[i+1],
@@ -1724,6 +1757,10 @@ bool DBDriverSqlite3::getCalibrationQuery(
 					{
 						UDEBUG("Loading calibration of a stereo camera");
 						memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+						if(uStrNumCmp(_version, "0.15.2") < 0)
+						{
+							localTransform.normalizeRotation();
+						}
 						stereoModel = StereoCameraModel(
 								dataFloat[0],  // fx
 								dataFloat[1],  // fy
@@ -1737,6 +1774,10 @@ bool DBDriverSqlite3::getCalibrationQuery(
 					{
 						UDEBUG("Loading calibration of a stereo camera");
 						memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+						if(uStrNumCmp(_version, "0.15.2") < 0)
+						{
+							localTransform.normalizeRotation();
+						}
 						stereoModel = StereoCameraModel(
 								dataFloat[0],  // fx
 								dataFloat[1],  // fy
@@ -1839,6 +1880,10 @@ bool DBDriverSqlite3::getLaserScanInfoQuery(
 			{
 				float * dataFloat = (float*)data;
 				memcpy(localTransform.data(), dataFloat+2, localTransform.size()*sizeof(float));
+				if(uStrNumCmp(_version, "0.15.2") < 0)
+				{
+					localTransform.normalizeRotation();
+				}
 				maxPts = (int)dataFloat[0];
 				maxRange = dataFloat[1];
 
@@ -1926,6 +1971,10 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 			if((unsigned int)dataSize == pose.size()*sizeof(float) && data)
 			{
 				memcpy(pose.data(), data, dataSize);
+				if(uStrNumCmp(_version, "0.15.2") < 0)
+				{
+					pose.normalizeRotation();
+				}
 			}
 
 			mapId = sqlite3_column_int(ppStmt, index++); // map id
@@ -1947,6 +1996,10 @@ bool DBDriverSqlite3::getNodeInfoQuery(int signatureId,
 					if((unsigned int)dataSize == groundTruthPose.size()*sizeof(float) && data)
 					{
 						memcpy(groundTruthPose.data(), data, dataSize);
+						if(uStrNumCmp(_version, "0.15.2") < 0)
+						{
+							groundTruthPose.normalizeRotation();
+						}
 					}
 
 					if(uStrNumCmp(_version, "0.13.0") >= 0)
@@ -2094,6 +2147,10 @@ void DBDriverSqlite3::getAllLinksQuery(std::multimap<int, Link> & links, bool ig
 			if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
 			{
 				memcpy(transform.data(), data, dataSize);
+				if(uStrNumCmp(_version, "0.15.2") < 0)
+				{
+					transform.normalizeRotation();
+				}
 			}
 			else if(dataSize)
 			{
@@ -2438,6 +2495,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 				if((unsigned int)dataSize == pose.size()*sizeof(float) && data)
 				{
 					memcpy(pose.data(), data, dataSize);
+					if(uStrNumCmp(_version, "0.15.2") < 0)
+					{
+						pose.normalizeRotation();
+					}
 				}
 
 				if(uStrNumCmp(_version, "0.8.5") >= 0)
@@ -2456,6 +2517,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						if((unsigned int)dataSize == groundTruthPose.size()*sizeof(float) && data)
 						{
 							memcpy(groundTruthPose.data(), data, dataSize);
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								groundTruthPose.normalizeRotation();
+							}
 						}
 
 						if(uStrNumCmp(_version, "0.13.0") >= 0)
@@ -2708,6 +2773,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
 								localTransform = Transform::getIdentity();
 								memcpy(localTransform.data(), dataFloat+i+6, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
 								models.push_back(CameraModel(
 										(double)dataFloat[i],
 										(double)dataFloat[i+1],
@@ -2732,6 +2801,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 								// Reinitialize to a new Transform, to avoid copying in the same memory than the previous one
 								localTransform = Transform::getIdentity();
 								memcpy(localTransform.data(), dataFloat+i+4, localTransform.size()*sizeof(float));
+								if(uStrNumCmp(_version, "0.15.2") < 0)
+								{
+									localTransform.normalizeRotation();
+								}
 								models.push_back(CameraModel(
 										(double)dataFloat[i],
 										(double)dataFloat[i+1],
@@ -2744,6 +2817,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						{
 							UDEBUG("Loading calibration of a stereo camera");
 							memcpy(localTransform.data(), dataFloat+7, localTransform.size()*sizeof(float));
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								localTransform.normalizeRotation();
+							}
 							stereoModel = StereoCameraModel(
 									dataFloat[0],  // fx
 									dataFloat[1],  // fy
@@ -2757,6 +2834,10 @@ void DBDriverSqlite3::loadSignaturesQuery(const std::list<int> & ids, std::list<
 						{
 							UDEBUG("Loading calibration of a stereo camera");
 							memcpy(localTransform.data(), dataFloat+5, localTransform.size()*sizeof(float));
+							if(uStrNumCmp(_version, "0.15.2") < 0)
+							{
+								localTransform.normalizeRotation();
+							}
 							stereoModel = StereoCameraModel(
 									dataFloat[0],  // fx
 									dataFloat[1],  // fy
@@ -3103,6 +3184,10 @@ void DBDriverSqlite3::loadLinksQuery(
 			if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
 			{
 				memcpy(transform.data(), data, dataSize);
+				if(uStrNumCmp(_version, "0.15.2") < 0)
+				{
+					transform.normalizeRotation();
+				}
 			}
 			else if(dataSize)
 			{
@@ -3289,6 +3374,10 @@ void DBDriverSqlite3::loadLinksQuery(std::list<Signature *> & signatures) const
 				if((unsigned int)dataSize == transform.size()*sizeof(float) && data)
 				{
 					memcpy(transform.data(), data, dataSize);
+					if(uStrNumCmp(_version, "0.15.2") < 0)
+					{
+						transform.normalizeRotation();
+					}
 				}
 				else if(dataSize)
 				{

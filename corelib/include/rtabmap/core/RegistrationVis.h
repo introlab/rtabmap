@@ -81,6 +81,7 @@ private:
 	int _flowMaxLevel;
 	float _nndr;
 	int _guessWinSize;
+	bool _guessMatchToProjection;
 	int _bundleAdjustment;
 
 	ParametersMap _featureParameters;

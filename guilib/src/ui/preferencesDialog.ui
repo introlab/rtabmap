@@ -95,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>14</number>
+                <number>20</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -13050,7 +13050,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_loopClosureCorrespondences">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>0</number>
                       </property>
                       <widget class="QWidget" name="page_54">
                        <layout class="QVBoxLayout" name="verticalLayout_85">
@@ -13183,7 +13183,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                              </property>
                             </widget>
                            </item>
-                           <item row="3" column="1">
+                           <item row="4" column="1">
                             <spacer name="verticalSpacer_44">
                              <property name="orientation">
                               <enum>Qt::Vertical</enum>
@@ -13195,6 +13195,26 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                               </size>
                              </property>
                             </spacer>
+                           </item>
+                           <item row="3" column="1">
+                            <widget class="QLabel" name="label_448">
+                             <property name="text">
+                              <string>Match frame's corners to source's projected points (when guess transform is provided) instead of projected points to frame's corners.</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="3" column="0">
+                            <widget class="QCheckBox" name="checkBox__visCorGuessMatchToProjection">
+                             <property name="text">
+                              <string/>
+                             </property>
+                            </widget>
                            </item>
                           </layout>
                          </widget>
@@ -14453,7 +14473,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </widget>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_11">
+                        <layout class="QHBoxLayout" name="horizontalLayout_11" stretch="0,0,1">
                          <item>
                           <widget class="QToolButton" name="toolButton_IcpConfigPath">
                            <property name="text">
@@ -14480,8 +14500,8 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         </layout>
                        </item>
                        <item>
-                        <layout class="QHBoxLayout" name="horizontalLayout_12" stretch="0,1">
-                         <item>
+                        <layout class="QGridLayout" name="gridLayout_97" columnstretch="0,1">
+                         <item row="0" column="0">
                           <widget class="QDoubleSpinBox" name="doubleSpinBox_icpPMOutlierRatio">
                            <property name="suffix">
                             <string/>
@@ -14503,8 +14523,8 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                           </widget>
                          </item>
-                         <item>
-                          <widget class="QLabel" name="label_424">
+                         <item row="0" column="1">
+                          <widget class="QLabel" name="label_446">
                            <property name="text">
                             <string>TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.</string>
                            </property>
@@ -14513,6 +14533,61 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                            </property>
                            <property name="textInteractionFlags">
                             <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="1">
+                          <widget class="QLabel" name="label_424">
+                           <property name="text">
+                            <string>KDTreeMatcher/knn: number of nearest neighbors to consider it the reference. For convenience when configuration file is not set.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="0">
+                          <widget class="QDoubleSpinBox" name="doubleSpinBox_icpPMMatcherEpsilon">
+                           <property name="suffix">
+                            <string/>
+                           </property>
+                           <property name="decimals">
+                            <number>2</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.000000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>99.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>1.000000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>0.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="2" column="1">
+                          <widget class="QLabel" name="label_447">
+                           <property name="text">
+                            <string>KDTreeMatcher/epsilon: approximation to use for the nearest-neighbor search. For convenience when configuration file is not set.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="1" column="0">
+                          <widget class="QSpinBox" name="spinBox_icpPMMatcherKnn">
+                           <property name="minimum">
+                            <number>1</number>
                            </property>
                           </widget>
                          </item>

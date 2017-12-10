@@ -123,15 +123,17 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	uInsert(bundleParameters, ParametersPair(Parameters::kVisCorType(), uNumber2Str(corType)));
 
 	regPipeline_ = Registration::create(bundleParameters);
-	if(bundleAdjustment_>0 && !regPipeline_->isImageRequired())
+	if(bundleAdjustment_>0 && regPipeline_->isScanRequired())
 	{
-		UWARN("%s=%d cannot be used with registration not done with images (%s=%s), disabling bundle adjustment.",
+		UWARN("%s=%d cannot be used with registration not done only with images (%s=%s), disabling bundle adjustment.",
 				Parameters::kOdomF2MBundleAdjustment().c_str(),
 				bundleAdjustment_,
 				Parameters::kRegStrategy().c_str(),
 				uValue(bundleParameters, Parameters::kRegStrategy(), uNumber2Str(Parameters::defaultRegStrategy())).c_str());
 		bundleAdjustment_ = 0;
 	}
+
+	parameters_ = bundleParameters;
 }
 
 OdometryF2M::~OdometryF2M()
@@ -209,12 +211,40 @@ Transform OdometryF2M::computeTransform(
 		{
 			Signature tmpMap = *map_;
 			UDEBUG("guess=%s frames=%d image required=%d", guess.prettyPrint().c_str(), this->framesProcessed(), regPipeline_->isImageRequired()?1:0);
+
+			float maxCorrespondenceDistance = 0.0f;
+			float pmOutlierRatio = 0.0f;
+			if(guess.isNull() &&
+				!regPipeline_->isImageRequired() &&
+				regPipeline_->isScanRequired() &&
+				this->framesProcessed() < 2)
+			{
+				// only on initialization (first frame to register), increase icp max correspondences in case the robot is already moving
+				maxCorrespondenceDistance = Parameters::defaultIcpMaxCorrespondenceDistance();
+				pmOutlierRatio = Parameters::defaultIcpPMOutlierRatio();
+				Parameters::parse(parameters_, Parameters::kIcpMaxCorrespondenceDistance(), maxCorrespondenceDistance);
+				Parameters::parse(parameters_, Parameters::kIcpPMOutlierRatio(), pmOutlierRatio);
+				ParametersMap params;
+				params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance*3.0f)));
+				params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(0.95f)));
+				regPipeline_->parseParameters(params);
+			}
+
 			Transform transform = regPipeline_->computeTransformationMod(
 					tmpMap,
 					*lastFrame_,
 					// special case for ICP-only odom, set guess to identity if we just started or reset
 					!guess.isNull()?this->getPose()*guess:!regPipeline_->isImageRequired()&&this->framesProcessed()<2?this->getPose():Transform(),
 					&regInfo);
+
+			if(maxCorrespondenceDistance>0.0f)
+			{
+				// set it back
+				ParametersMap params;
+				params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance)));
+				params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(pmOutlierRatio)));
+				regPipeline_->parseParameters(params);
+			}
 
 			if(transform.isNull() && !guess.isNull() && regPipeline_->isImageRequired())
 			{
@@ -240,6 +270,7 @@ Transform OdometryF2M::computeTransform(
 			}
 			data.setFeatures(lastFrame_->sensorData().keypoints(), lastFrame_->sensorData().keypoints3D(), lastFrame_->sensorData().descriptors());
 
+			UDEBUG("Registration time = %fs", regInfo.totalTime);
 			std::map<int, cv::Point3f> points3DMap;
 			std::map<int, Transform> bundlePoses;
 			std::multimap<int, Link> bundleLinks;
@@ -340,7 +371,10 @@ Transform OdometryF2M::computeTransform(
 							//make sure the last reference is here
 							if(refIter->second.size() > 1)
 							{
-								references.insert(*refIter->second.rbegin());
+								if(references.insert(*refIter->second.rbegin()).second)
+								{
+									++totalBundleWordReferencesUsed;
+								}
 							}
 
 							if(iter2D!=lastFrame_->getWords().end())

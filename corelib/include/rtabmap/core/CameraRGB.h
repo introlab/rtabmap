@@ -96,10 +96,6 @@ public:
 		_scanNormalsK = normalsK;
 		_scanNormalsRadius = normalsRadius;
 		_scanVoxelSize = voxelSize;
-		if(_scanDownsampleStep>1)
-		{
-			_scanMaxPts /= _scanDownsampleStep;
-		}
 	}
 
 	void setDepthFromScan(bool enabled, int fillHoles = 1, bool fillHolesFromBorder = false)

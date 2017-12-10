@@ -235,6 +235,8 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 	_pointToPlaneMinComplexity(Parameters::defaultIcpPointToPlaneMinComplexity()),
 	_libpointmatcher(Parameters::defaultIcpPM()),
 	_libpointmatcherConfig(Parameters::defaultIcpPMConfig()),
+	_libpointmatcherKnn(Parameters::defaultIcpPMMatcherKnn()),
+	_libpointmatcherEpsilon(Parameters::defaultIcpPMMatcherEpsilon()),
 	_libpointmatcherOutlierRatio(Parameters::defaultIcpPMOutlierRatio()),
 	_libpointmatcherICP(0)
 {
@@ -272,6 +274,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kIcpPM(), _libpointmatcher);
 	Parameters::parse(parameters, Parameters::kIcpPMConfig(), _libpointmatcherConfig);
 	Parameters::parse(parameters, Parameters::kIcpPMOutlierRatio(), _libpointmatcherOutlierRatio);
+	Parameters::parse(parameters, Parameters::kIcpPMMatcherKnn(), _libpointmatcherKnn);
+	Parameters::parse(parameters, Parameters::kIcpPMMatcherEpsilon(), _libpointmatcherEpsilon);
 
 #ifndef RTABMAP_POINTMATCHER
 	if(_libpointmatcher)
@@ -322,6 +326,8 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 
 			PM::Parameters params;
 			params["maxDist"] = uNumber2Str(_maxCorrespondenceDistance);
+			params["knn"] = uNumber2Str(_libpointmatcherKnn);
+			params["epsilon"] = uNumber2Str(_libpointmatcherEpsilon);
 			icp->matcher.reset(PM::get().MatcherRegistrar.create("KDTreeMatcher", params));
 			params.clear();
 
@@ -389,7 +395,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 	UDEBUG("Max translation=%f", _maxTranslation);
 	UDEBUG("Max rotation=%f", _maxRotation);
 	UDEBUG("Downsampling step=%d", _downsamplingStep);
-	UDEBUG("libpointmatcher=%d (outlier ratio=%f)", _libpointmatcher?1:0, _libpointmatcherOutlierRatio);
+	UDEBUG("libpointmatcher=%d (knn=%d, outlier ratio=%f)", _libpointmatcher?1:0, _libpointmatcherKnn, _libpointmatcherOutlierRatio);
 
 	UTimer timer;
 	std::string msg;
@@ -903,6 +909,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 						correspondencesRatio = float(correspondences)/float(toScan.cols>fromScan.cols?toScan.cols:fromScan.cols);
 					}
 
+					variance/=10.0;
+
 					UDEBUG("%d->%d hasConverged=%s, variance=%f, correspondences=%d/%d (%f%%), from guess: trans=%f rot=%f",
 							dataTo.id(), dataFrom.id(),
 							hasConverged?"true":"false",
@@ -913,7 +921,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 							info.icpTranslation,
 							info.icpRotation);
 
-					info.covariance = cv::Mat::eye(6,6,CV_64FC1)*(variance>0.0001?variance:0.0001); // epsilon if exact transform
+					info.covariance = cv::Mat::eye(6,6,CV_64FC1)*variance;
 					info.icpInliersRatio = correspondencesRatio;
 
 					if(correspondencesRatio < _correspondenceRatio)
