@@ -235,7 +235,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 			UTimer alignTimer;
 			pcl::IndicesPtr indices(new std::vector<int>);
 			pcl::IndicesPtr ground, obstacles;
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, 1, 0, 0, indices.get());
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::cloudFromSensorData(data, 1, 10, 0, indices.get());
 			bool success = false;
 			if(indices->size())
 			{

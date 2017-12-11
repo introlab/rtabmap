@@ -263,7 +263,7 @@ private:
 	void saveFigures();
 	void loadFigures();
 	void exportPoses(int format);
-	QString captureScreen(bool cacheInRAM = false);
+	QString captureScreen(bool cacheInRAM = false, bool png = true);
 
 protected:
 	Ui_mainWindow * ui() { return _ui; }
@@ -366,6 +366,7 @@ private:
 	QMap<int, QString> _exportPosesFileName;
 	bool _autoScreenCaptureOdomSync;
 	bool _autoScreenCaptureRAM;
+	bool _autoScreenCapturePNG;
 	QMap<QString, QByteArray> _autoScreenCaptureCachedImages;
 
 	QVector<int> _refIds;
