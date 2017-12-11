@@ -168,6 +168,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_exportPosesFrame(0),
 	_autoScreenCaptureOdomSync(false),
 	_autoScreenCaptureRAM(false),
+	_autoScreenCapturePNG(false),
 	_firstCall(true),
 	_progressCanceled(false)
 {
@@ -1363,7 +1364,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 
 	if(_ui->actionAuto_screen_capture->isChecked() && _autoScreenCaptureOdomSync)
 	{
-		this->captureScreen(_autoScreenCaptureRAM);
+		this->captureScreen(_autoScreenCaptureRAM, _autoScreenCapturePNG);
 	}
 
 	//Process info
@@ -1932,7 +1933,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	_ui->statsToolBox->updateStat("GUI/Refresh stats/ms", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), elapsedTime, _preferencesDialog->isCacheSavedInFigures());
 	if(_ui->actionAuto_screen_capture->isChecked() && !_autoScreenCaptureOdomSync)
 	{
-		this->captureScreen(_autoScreenCaptureRAM);
+		this->captureScreen(_autoScreenCaptureRAM, _autoScreenCapturePNG);
 	}
 
 	if(!_preferencesDialog->isImagesKept())
@@ -4051,9 +4052,9 @@ void MainWindow::changeMappingMode()
 	emit mappingModeChanged(_ui->actionSLAM_mode->isChecked());
 }
 
-QString MainWindow::captureScreen(bool cacheInRAM)
+QString MainWindow::captureScreen(bool cacheInRAM, bool png)
 {
-	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + ".png");
+	QString name = (QDateTime::currentDateTime().toString("yyMMddhhmmsszzz") + (png?".png":".jpg"));
 	_ui->statusbar->clearMessage();
 	QPixmap figure = QPixmap::grabWidget(this);
 
@@ -4065,7 +4066,7 @@ QString MainWindow::captureScreen(bool cacheInRAM)
 		QByteArray bytes;
 		QBuffer buffer(&bytes);
 		buffer.open(QIODevice::WriteOnly);
-		figure.save(&buffer, "PNG");
+		figure.save(&buffer, png?"PNG":"JPEG");
 		_autoScreenCaptureCachedImages.insert(name, bytes);
 	}
 	else
@@ -6093,6 +6094,16 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 				{
 					_ui->actionAuto_screen_capture->setChecked(false);
 				}
+
+				r = QMessageBox::question(this, tr("Save in JPEG?"), tr("Save in JPEG format? Otherwise they are saved in PNG."), QMessageBox::Yes | QMessageBox::No, QMessageBox::Yes);
+				if(r == QMessageBox::No || r == QMessageBox::Yes)
+				{
+					_autoScreenCapturePNG = r == QMessageBox::No;
+				}
+				else
+				{
+					_ui->actionAuto_screen_capture->setChecked(false);
+				}
 			}
 		}
 		else
@@ -6116,20 +6127,23 @@ void MainWindow::selectScreenCaptureFormat(bool checked)
 		}
 		targetDir += QDir::separator();
 
+		_progressDialog->setCancelButtonVisible(true);
 		_progressDialog->resetProgress();
 		_progressDialog->show();
 		_progressDialog->setMaximumSteps(_autoScreenCaptureCachedImages.size());
 		int i=0;
-		for(QMap<QString, QByteArray>::iterator iter=_autoScreenCaptureCachedImages.begin(); iter!=_autoScreenCaptureCachedImages.end(); ++iter)
+		for(QMap<QString, QByteArray>::iterator iter=_autoScreenCaptureCachedImages.begin(); iter!=_autoScreenCaptureCachedImages.end() && !_progressDialog->isCanceled(); ++iter)
 		{
 			QPixmap figure;
-			figure.loadFromData(iter.value(), "PNG");
-			figure.save(targetDir + iter.key(), "PNG");
+			figure.loadFromData(iter.value(), _autoScreenCapturePNG?"PNG":"JPEG");
+			figure.save(targetDir + iter.key(), _autoScreenCapturePNG?"PNG":"JPEG");
 			_progressDialog->appendText(tr("Saved image \"%1\" (%2/%3).").arg(targetDir + iter.key()).arg(++i).arg(_autoScreenCaptureCachedImages.size()));
 			_progressDialog->incrementStep();
+			QApplication::processEvents();
 		}
 		_autoScreenCaptureCachedImages.clear();
 		_progressDialog->setValue(_progressDialog->maximumSteps());
+		_progressDialog->setCancelButtonVisible(false);
 	}
 }
 

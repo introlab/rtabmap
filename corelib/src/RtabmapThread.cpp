@@ -85,6 +85,7 @@ void RtabmapThread::clearBufferedData()
 	_dataMutex.lock();
 	{
 		_dataBuffer.clear();
+		_newMapEvents.clear();
 		lastPose_.setIdentity();
 		covariance_ = cv::Mat();
 		_previousStamp = 0;
@@ -572,13 +573,13 @@ void RtabmapThread::addData(const OdometryEvent & odomEvent)
 		{
 			if(odomEvent.pose().isIdentity())
 			{
-				UWARN("Odometry is reset (identity pose detected). Increment map id!");
+				UWARN("Odometry is reset (identity pose detected). Increment map id! (stamp=%fs)", odomEvent.data().stamp());
 			}
 			else
 			{
-				UWARN("Odometry is reset (high variance (%f >=9999 detected). Increment map id!", odomEvent.info().reg.covariance.at<double>(0,0));
+				UWARN("Odometry is reset (high variance (%f >=9999 detected, stamp=%fs). Increment map id!", odomEvent.info().reg.covariance.at<double>(0,0), odomEvent.data().stamp());
 			}
-			pushNewState(kStateTriggeringMap);
+			_newMapEvents.push_back(odomEvent.data().stamp());
 			covariance_ = cv::Mat();
 		}
 
@@ -654,7 +655,7 @@ bool RtabmapThread::getData(OdometryEvent & data)
 	ULOGGER_INFO("wake-up");
 
 	bool dataFilled = false;
-
+	bool triggerNewMap = false;
 	_dataMutex.lock();
 	{
 		if(_state.empty() && !_dataBuffer.empty())
@@ -672,10 +673,23 @@ bool RtabmapThread::getData(OdometryEvent & data)
 			}
 			_userDataMutex.unlock();
 
+			while(_newMapEvents.size() && _newMapEvents.front() <= data.data().stamp())
+			{
+				UWARN("Triggering new map %f<=%f...", _newMapEvents.front() , data.data().stamp());
+				triggerNewMap = true;
+				_newMapEvents.pop_front();
+			}
+
 			dataFilled = true;
 		}
 	}
 	_dataMutex.unlock();
+
+	if(triggerNewMap)
+	{
+		_rtabmap->triggerNewMap();
+	}
+
 	return dataFilled;
 }
 
