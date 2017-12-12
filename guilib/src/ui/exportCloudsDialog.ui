@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>0</y>
-        <width>778</width>
-        <height>4058</height>
+        <y>-2703</y>
+        <width>773</width>
+        <height>4137</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -1899,6 +1899,9 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                   <property name="suffix">
                    <string> m</string>
                   </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
                   <property name="minimum">
                    <double>0.000000000000000</double>
                   </property>
@@ -1945,7 +1948,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                    <string> deg</string>
                   </property>
                   <property name="decimals">
-                   <number>0</number>
+                   <number>1</number>
                   </property>
                   <property name="maximum">
                    <double>180.000000000000000</double>
@@ -1973,6 +1976,9 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                   <property name="suffix">
                    <string> rad/s</string>
                   </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
                   <property name="minimum">
                    <double>0.000000000000000</double>
                   </property>
@@ -1985,6 +1991,9 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                  <widget class="QDoubleSpinBox" name="doubleSpinBox_cameraFilterVel">
                   <property name="suffix">
                    <string> m/s</string>
+                  </property>
+                  <property name="decimals">
+                   <number>3</number>
                   </property>
                   <property name="minimum">
                    <double>0.000000000000000</double>
