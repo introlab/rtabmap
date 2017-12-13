@@ -135,6 +135,53 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsample(
 	}
 	return output;
 }
+pcl::PointCloud<pcl::PointNormal>::Ptr downsample(
+		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		int step)
+{
+	UASSERT(step > 0);
+	pcl::PointCloud<pcl::PointNormal>::Ptr output(new pcl::PointCloud<pcl::PointNormal>);
+	if(step <= 1 || (int)cloud->size() <= step)
+	{
+		// no sampling
+		*output = *cloud;
+	}
+	else
+	{
+		int finalSize = int(cloud->size())/step;
+		output->resize(finalSize);
+		int oi = 0;
+		for(unsigned int i=0; i<cloud->size()-step+1; i+=step)
+		{
+			(*output)[oi++] = cloud->at(i);
+		}
+	}
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr downsample(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		int step)
+{
+	UASSERT(step > 0);
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	if(step <= 1 || (int)cloud->size()<=step)
+	{
+		// no sampling
+		*output = *cloud;
+	}
+	else
+	{
+		int finalSize = int(cloud->size())/step;
+		output->resize(finalSize);
+		int oi = 0;
+		for(int i=0; i<(int)cloud->size()-step+1; i+=step)
+		{
+			(*output)[oi++] = cloud->at(i);
+		}
+	}
+	return output;
+}
+
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,

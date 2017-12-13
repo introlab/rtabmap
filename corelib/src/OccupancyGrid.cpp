@@ -641,7 +641,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 						const float * vi = pair.first.ptr<float>(0,i);
 						float * vo = ground.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(pair.first.channels() > 2)
+						if(pair.first.channels() != 2 && pair.first.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -677,7 +677,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 						const float * vi = pair.second.ptr<float>(0,i);
 						float * vo = obstacles.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(pair.second.channels() > 2)
+						if(pair.first.channels() != 2 && pair.first.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -801,7 +801,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 					{
 						float * ptf = iter->second.ptr<float>(0,i);
 						cv::Point2i pt((ptf[0]-xMin)/cellSize_, (ptf[1]-yMin)/cellSize_);
-						UASSERT_MSG(pt.y < map.rows && pt.x < map.cols,
+						UASSERT_MSG(pt.y >=0 && pt.y < map.rows && pt.x >= 0 && pt.x < map.cols,
 								uFormat("%d: pt=(%d,%d) map=%dx%d rawPt=(%f,%f) xMin=%f yMin=%f channels=%dvs%d",
 										kter->first, pt.x, pt.y, map.cols, map.rows, ptf[0], ptf[1], xMin, yMin, iter->second.channels(), mapInfo.channels()-1).c_str());
 						char & value = map.at<char>(pt.y, pt.x);
@@ -911,7 +911,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 					{
 						float * ptf = jter->second.ptr<float>(0,i);
 						cv::Point2i pt((ptf[0]-xMin)/cellSize_, (ptf[1]-yMin)/cellSize_);
-						UASSERT_MSG(pt.y < map.rows && pt.x < map.cols,
+						UASSERT_MSG(pt.y>=0 && pt.y < map.rows && pt.x>=0 && pt.x < map.cols,
 									uFormat("%d: pt=(%d,%d) map=%dx%d rawPt=(%f,%f) xMin=%f yMin=%f channels=%dvs%d",
 											kter->first, pt.x, pt.y, map.cols, map.rows, ptf[0], ptf[1], xMin, yMin, jter->second.channels(), mapInfo.channels()-1).c_str());
 						char & value = map.at<char>(pt.y, pt.x);

@@ -523,6 +523,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 								fromCloudNormalsRegistered,
 								toCloudNormals,
 								_maxCorrespondenceDistance,
+								_maxRotation,
 								variance,
 								correspondences);
 					}
@@ -717,6 +718,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 										fromCloudNormalsRegistered,
 										toCloudNormals,
 										_maxCorrespondenceDistance,
+										_maxRotation,
 										variance,
 										correspondences);
 							}
@@ -855,14 +857,28 @@ Transform RegistrationIcp::computeTransformationImpl(
 							t.getEulerAngles(roll, pitch, yaw);
 							t = Transform(v[0], v[1], v[2], roll, pitch, yaw);
 							icpT = guess * t.inverse() * guessInv;
-						}
 
-						util3d::computeVarianceAndCorrespondences(
-								fromCloudRegistered,
-								toCloudFiltered,
-								_maxCorrespondenceDistance,
-								variance,
-								correspondences);
+							// we were using normals, so compute correspondences using normals
+							pcl::PointCloud<pcl::PointNormal>::Ptr fromCloudNormalsRegistered = util3d::laserScanToPointCloudNormal(fromScan, icpT * fromLocalTransform);
+							pcl::PointCloud<pcl::PointNormal>::Ptr toCloudNormals = util3d::laserScanToPointCloudNormal(toScan, guess * toLocalTransform);
+
+							util3d::computeVarianceAndCorrespondences(
+									fromCloudNormalsRegistered,
+									toCloudNormals,
+									_maxCorrespondenceDistance,
+									_maxRotation,
+									variance,
+									correspondences);
+						}
+						else
+						{
+							util3d::computeVarianceAndCorrespondences(
+									fromCloudRegistered,
+									toCloudFiltered,
+									_maxCorrespondenceDistance,
+									variance,
+									correspondences);
+						}
 					}
 				}
 			}
@@ -926,8 +942,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 
 					if(correspondencesRatio < _correspondenceRatio)
 					{
-						msg = uFormat("Cannot compute transform (cor=%d corrRatio=%f/%f)",
-								correspondences, correspondencesRatio, _correspondenceRatio);
+						msg = uFormat("Cannot compute transform (cor=%d corrRatio=%f/%f maxLaserScans=%d)",
+								correspondences, correspondencesRatio, _correspondenceRatio, maxLaserScans);
 						UINFO(msg.c_str());
 					}
 					else

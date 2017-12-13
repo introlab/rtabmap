@@ -36,6 +36,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/registration/transformation_estimation_svd.h>
 #include <pcl/sample_consensus/sac_model_registration.h>
 #include <pcl/sample_consensus/ransac.h>
+#include <pcl/common/common.h>
 #include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap
@@ -237,6 +238,7 @@ void computeVarianceAndCorrespondences(
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudA,
 		const pcl::PointCloud<pcl::PointNormal>::ConstPtr & cloudB,
 		double maxCorrespondenceDistance,
+		double maxCorrespondenceAngle,
 		double & variance,
 		int & correspondencesOut)
 {
@@ -244,26 +246,53 @@ void computeVarianceAndCorrespondences(
 	correspondencesOut = 0;
 	pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>::Ptr est;
 	est.reset(new pcl::registration::CorrespondenceEstimation<pcl::PointNormal, pcl::PointNormal>);
-	est->setInputTarget(cloudA->size()>cloudB->size()?cloudA:cloudB);
-	est->setInputSource(cloudA->size()>cloudB->size()?cloudB:cloudA);
+	const pcl::PointCloud<pcl::PointNormal>::ConstPtr & target = cloudA->size()>cloudB->size()?cloudA:cloudB;
+	const pcl::PointCloud<pcl::PointNormal>::ConstPtr & source = cloudA->size()>cloudB->size()?cloudB:cloudA;
+	est->setInputTarget(target);
+	est->setInputSource(source);
 	pcl::Correspondences correspondences;
 	est->determineCorrespondences(correspondences, maxCorrespondenceDistance);
 
-	if(correspondences.size()>=3)
+	if(correspondences.size())
 	{
 		std::vector<double> distances(correspondences.size());
+		correspondencesOut = 0;
 		for(unsigned int i=0; i<correspondences.size(); ++i)
 		{
 			distances[i] = correspondences[i].distance;
+			if(maxCorrespondenceAngle <= 0.0)
+			{
+				++correspondencesOut;
+			}
+			else
+			{
+				Eigen::Vector4f v1(
+						target->at(correspondences[i].index_match).normal_x,
+						target->at(correspondences[i].index_match).normal_y,
+						target->at(correspondences[i].index_match).normal_z,
+						0);
+				Eigen::Vector4f v2(
+						source->at(correspondences[i].index_query).normal_x,
+						source->at(correspondences[i].index_query).normal_y,
+						source->at(correspondences[i].index_query).normal_z,
+						0);
+				float angle = pcl::getAngle3D(v1, v2);
+				if(angle < maxCorrespondenceAngle)
+				{
+					++correspondencesOut;
+				}
+			}
 		}
+		if(correspondencesOut)
+		{
+			distances.resize(correspondencesOut);
 
-		//variance
-		std::sort(distances.begin (), distances.end ());
-		double median_error_sqr = distances[distances.size () >> 1];
-		variance = (2.1981 * median_error_sqr);
+			//variance
+			std::sort(distances.begin (), distances.end ());
+			double median_error_sqr = distances[distances.size () >> 1];
+			variance = (2.1981 * median_error_sqr);
+		}
 	}
-
-	correspondencesOut = (int)correspondences.size();
 }
 
 void computeVarianceAndCorrespondences(
