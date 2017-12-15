@@ -643,9 +643,9 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 			{
 				if(img.type() != CV_16UC1 && img.type() != CV_32FC1)
 				{
-					UERROR("Depth is on and the loaded image has not a format supported (file = \"%s\"). "
-							"Formats supported are 16 bits 1 channel and 32 bits 1 channel.",
-							imageFilePath.c_str());
+					UERROR("Depth is on and the loaded image has not a format supported (file = \"%s\", type=%d). "
+							"Formats supported are 16 bits 1 channel (mm) and 32 bits 1 channel (m).",
+							imageFilePath.c_str(), img.type());
 					img = cv::Mat();
 				}
 
