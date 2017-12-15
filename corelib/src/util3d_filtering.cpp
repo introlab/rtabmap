@@ -201,6 +201,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
 		}
 		filter.filter(*output);
 	}
+	else if(cloud->size() && !cloud->is_dense && indices->size() == 0)
+	{
+		UWARN("Cannot voxelize a cloud not dense with empty indices! (input=%d pts)", (int)cloud->size());
+	}
 	return output;
 }
 pcl::PointCloud<pcl::PointNormal>::Ptr voxelize(
@@ -220,6 +224,10 @@ pcl::PointCloud<pcl::PointNormal>::Ptr voxelize(
 			filter.setIndices(indices);
 		}
 		filter.filter(*output);
+	}
+	else if(cloud->size() && !cloud->is_dense && indices->size() == 0)
+	{
+		UWARN("Cannot voxelize a not dense (organized) cloud with empty indices! (input=%d pts). Returning empty cloud!", (int)cloud->size());
 	}
 	return output;
 }
@@ -241,6 +249,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(
 		}
 		filter.filter(*output);
 	}
+	else if(cloud->size() && !cloud->is_dense && indices->size() == 0)
+	{
+		UWARN("Cannot voxelize a not dense (organized) cloud with empty indices! (input=%d pts). Returning empty cloud!", (int)cloud->size());
+	}
 	return output;
 }
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(
@@ -260,6 +272,10 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(
 			filter.setIndices(indices);
 		}
 		filter.filter(*output);
+	}
+	else if(cloud->size() && !cloud->is_dense && indices->size() == 0)
+	{
+		UWARN("Cannot voxelize a not dense (organized) cloud with empty indices! (input=%d pts). Returning empty cloud!", (int)cloud->size());
 	}
 	return output;
 }
