@@ -845,7 +845,7 @@ Transform RegistrationVis::computeTransformationImpl(
 										{
 											std::vector<std::vector<cv::DMatch> > matches;
 											cv::BFMatcher matcher(descriptors.type()==CV_8U?cv::NORM_HAMMING:cv::NORM_L2SQR);
-											matcher.knnMatch(descriptorsTo.row(i), descriptors, matches, 2);
+											matcher.knnMatch(descriptorsTo.row(i), cv::Mat(descriptors, cv::Range(0, oi)), matches, 2);
 											UASSERT(matches.size() == 1);
 											UASSERT(matches[0].size() == 2);
 											if(matches[0].at(0).distance < _nndr * matches[0].at(1).distance)

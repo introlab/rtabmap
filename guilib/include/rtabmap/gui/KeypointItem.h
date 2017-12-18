@@ -45,6 +45,7 @@ public:
 	virtual ~KeypointItem();
 
 	void setColor(const QColor & color);
+	const cv::KeyPoint & keypoint() const {return _kpt;}
 
 protected:
 	virtual void hoverEnterEvent ( QGraphicsSceneHoverEvent * event );

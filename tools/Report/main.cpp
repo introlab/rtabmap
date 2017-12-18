@@ -84,6 +84,7 @@ int main(int argc, char * argv[])
 					std::vector<float> slamTime;
 					slamTime.reserve(ids.size());
 					float rmse = -1;
+					float maxRMSE = -1;
 					for(std::set<int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 					{
 						Transform p, gt;
@@ -100,6 +101,10 @@ int main(int argc, char * argv[])
 							if(uContains(stat, Statistics::kGtTranslational_rmse()))
 							{
 								rmse = stat.at(Statistics::kGtTranslational_rmse());
+								if(maxRMSE==-1 || maxRMSE < rmse)
+								{
+									maxRMSE = rmse;
+								}
 							}
 							if(uContains(stat, std::string("Camera/TotalTime/ms")))
 							{
@@ -115,10 +120,11 @@ int main(int argc, char * argv[])
 							}
 						}
 					}
-					printf("   %s (%d): %fm, slam: avg=%dms max=%dms, odom: avg=%dms max=%dms, camera: avg=%dms max=%dms\n",
+					printf("   %s (%d): %fm (max=%fm), slam: avg=%dms max=%dms, odom: avg=%dms max=%dms, camera: avg=%dms max=%dms\n",
 							fileName.c_str(),
 							(int)ids.size(),
 							rmse,
+							maxRMSE,
 							(int)uMean(slamTime), (int)uMax(slamTime),
 							(int)uMean(odomTime), (int)uMax(odomTime),
 							(int)uMean(cameraTime), (int)uMax(cameraTime));

@@ -203,7 +203,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(
 	}
 	else if(cloud->size() && !cloud->is_dense && indices->size() == 0)
 	{
-		UWARN("Cannot voxelize a cloud not dense with empty indices! (input=%d pts)", (int)cloud->size());
+		UWARN("Cannot voxelize a not dense (organized) cloud with empty indices! (input=%d pts). Returning empty cloud!", (int)cloud->size());
 	}
 	return output;
 }
