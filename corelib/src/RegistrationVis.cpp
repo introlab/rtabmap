@@ -1249,7 +1249,14 @@ Transform RegistrationVis::computeTransformationImpl(
 						{
 							if(variance <= _epipolarGeometryVar)
 							{
-								transforms[dir] = cameraTransform;
+								if(this->force3DoF())
+								{
+									transforms[dir] = cameraTransform.to3DoF();
+								}
+								else
+								{
+									transforms[dir] = cameraTransform;
+								}
 							}
 							else
 							{
@@ -1327,6 +1334,10 @@ Transform RegistrationVis::computeTransformationImpl(
 									(int)inliers[dir].size(), _minInliers, (int)matches[dir].size(), signatureA->id(), signatureB->id());
 							UINFO(msg.c_str());
 						}
+						else if(this->force3DoF())
+						{
+							transforms[dir] = transforms[dir].to3DoF();
+						}
 					}
 					else
 					{
@@ -1363,6 +1374,10 @@ Transform RegistrationVis::computeTransformationImpl(
 						msg = uFormat("Not enough inliers %d/%d (matches=%d) between %d and %d",
 								(int)inliers[dir].size(), _minInliers, (int)matches[dir].size(), signatureA->id(), signatureB->id());
 						UINFO(msg.c_str());
+					}
+					else if(this->force3DoF())
+					{
+						transforms[dir] = transforms[dir].to3DoF();
 					}
 				}
 				else
