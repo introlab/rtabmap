@@ -5129,8 +5129,11 @@ void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, kp.response);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-	rc = sqlite3_bind_int(ppStmt, index++, kp.octave);
-	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	if(uStrNumCmp(_version, "0.12.0") >= 0)
+	{
+		rc = sqlite3_bind_int(ppStmt, index++, kp.octave);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
 	rc = sqlite3_bind_double(ppStmt, index++, pt.x);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	rc = sqlite3_bind_double(ppStmt, index++, pt.y);
