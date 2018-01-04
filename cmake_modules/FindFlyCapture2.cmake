@@ -19,13 +19,13 @@ set(Triclops_LIBDIR $ENV{Triclops_ROOT_DIR}/lib)
 endif()
 
 #FlyCapture2 SDK
-find_path(FlyCapture2_INCLUDE_DIR NAMES FlyCapture2.h PATHS $ENV{FlyCapture2_ROOT_DIR}/include)
-find_library(FlyCapture2_LIBRARY NAMES FlyCapture2_v100 FlyCapture2 flycapture2 NO_DEFAULT_PATH PATHS ${FlyCapture2_LIBDIR})
+find_path(FlyCapture2_INCLUDE_DIR NAMES FlyCapture2.h PATHS $ENV{FlyCapture2_ROOT_DIR}/include $ENV{FlyCapture2_ROOT_DIR}/include/flycapture)
+find_library(FlyCapture2_LIBRARY NAMES FlyCapture2_v100 FlyCapture2 flycapture2 flycapture NO_DEFAULT_PATH PATHS ${FlyCapture2_LIBDIR})
 
 # Triclops SDK
-find_path(Triclops_INCLUDE_DIR NAMES triclops.h PATHS $ENV{Triclops_ROOT_DIR}/include)
-find_library(Triclops_LIBRARY NAMES triclops triclops_v100 NO_DEFAULT_PATH PATHS ${Triclops_LIBDIR})
-find_library(FlyCaptureBridge_LIBRARY NAMES flycapture2bridge flycapture2bridge_v100 NO_DEFAULT_PATH PATHS ${Triclops_LIBDIR})
+find_path(Triclops_INCLUDE_DIR NAMES triclops.h PATHS $ENV{Triclops_ROOT_DIR}/include $ENV{Triclops_ROOT_DIR}/include/triclops)
+find_library(Triclops_LIBRARY NAMES triclops triclops_v100 libtriclops.so.3 NO_DEFAULT_PATH PATHS ${Triclops_LIBDIR})
+find_library(FlyCaptureBridge_LIBRARY NAMES flycapture2bridge flycapture2bridge_v100 libflycapture2bridge.so.3 NO_DEFAULT_PATH PATHS ${Triclops_LIBDIR})
 find_library(pnmutils_LIBRARY NAMES pnmutils pnmutils_v100 NO_DEFAULT_PATH PATHS ${Triclops_LIBDIR})
 
 IF (FlyCapture2_INCLUDE_DIR AND Triclops_INCLUDE_DIR AND FlyCapture2_LIBRARY AND Triclops_LIBRARY AND FlyCaptureBridge_LIBRARY AND pnmutils_LIBRARY)
