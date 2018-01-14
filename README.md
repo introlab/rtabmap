@@ -1,7 +1,7 @@
 rtabmap ![Analytics](https://ga-beacon.appspot.com/UA-56986679-3/github-main?pixel) 
 =======
 
-<a href="http://introlab.github.io/rtabmap"><img src="https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map.png" align="center" height="100"></a>
+[![RTAB-Map Logo](https://raw.githubusercontent.com/introlab/rtabmap/master/guilib/src/images/RTAB-Map100.png)](http://introlab.github.io/rtabmap)
 
 [![Release][release-image]][releases]
 [![License][license-image]][license]
