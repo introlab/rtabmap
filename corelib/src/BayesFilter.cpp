@@ -31,7 +31,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Parameters.h"
 #include <iostream>
 #include <set>
+#if __cplusplus >= 201103L
+#include <unordered_map>
 #include <unordered_set>
+#endif
 
 #include "rtabmap/utilite/UtiLite.h"
 
@@ -222,6 +225,42 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	return _posterior;
 }
 
+float addNeighborProb(cv::Mat & prediction,
+			unsigned int col,
+			const std::map<int, int> & neighbors,
+			const std::vector<double> & predictionLC,
+#if __cplusplus >= 201103L
+			const std::unordered_map<int, int> & idToIndex
+#else
+			const std::map<int, int> & idToIndex
+#endif
+			)
+{
+	UASSERT(col < (unsigned int)prediction.cols &&
+			col < (unsigned int)prediction.rows);
+
+	float sum=0.0f;
+	float * dataPtr = (float*)prediction.data;
+	for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+	{
+		if(iter->first>=0)
+		{
+#if __cplusplus >= 201103L
+			std::unordered_map<int, int>::const_iterator jter = idToIndex.find(iter->first);
+#else
+			std::map<int, int>::const_iterator jter = idToIndex.find(iter->first);
+#endif
+			if(jter != idToIndex.end())
+			{
+				UASSERT((iter->second+1) < (int)predictionLC.size());
+				sum += dataPtr[col + jter->second*prediction.cols] = predictionLC[iter->second+1];
+			}
+		}
+	}
+	return sum;
+}
+
+
 cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
 	if(!_fullPredictionUpdate && !_prediction.empty())
@@ -239,8 +278,12 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 	UTimer timerGlobal;
 	timerGlobal.start();
 
+#if __cplusplus >= 201103L
 	std::unordered_map<int,int> idToIndexMap;
 	idToIndexMap.reserve(ids.size());
+#else
+	std::map<int,int> idToIndexMap;
+#endif
 	for(unsigned int i=0; i<ids.size(); ++i)
 	{
 		if(ids[i]>0)
@@ -308,7 +351,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 
 					float sum = 0.0f; // sum values added
 					int index = idToIndexMap.at(*iter);
-					sum += this->addNeighborProb(prediction, index, neighbors, idToIndexMap);
+					sum += addNeighborProb(prediction, index, neighbors, _predictionLC, idToIndexMap);
 					idsDone.insert(*iter);
 					this->normalize(prediction, index, sum, ids[0]<0);
 				}
@@ -439,11 +482,19 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	UDEBUG("time creating prediction = %fs", timer.restart());
 
 	// Create id to index maps
+#if __cplusplus >= 201103L
 	std::unordered_set<int> oldIdsSet(oldIds.begin(), oldIds.end());
+#else
+	std::set<int> oldIdsSet(oldIds.begin(), oldIds.end());
+#endif
 	UDEBUG("time creating old ids set = %fs", timer.restart());
 
+#if __cplusplus >= 201103L
 	std::unordered_map<int,int> newIdToIndexMap;
 	newIdToIndexMap.reserve(newIds.size());
+#else
+	std::map<int,int> newIdToIndexMap;
+#endif
 	for(unsigned int i=0; i<newIds.size(); ++i)
 	{
 		if(newIds[i]>0)
@@ -511,7 +562,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 			}
 			const std::map<int, int> & neighbors = _neighborsIndex.at(newIds[i]);
 
-			float sum = this->addNeighborProb(prediction, i, neighbors, newIdToIndexMap);
+			float sum = addNeighborProb(prediction, i, neighbors, _predictionLC, newIdToIndexMap);
 			this->normalize(prediction, i, sum, newIds[0]<0);
 			++added;
 			int count = 0;
@@ -548,7 +599,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 				const std::map<int, int> & neighbors = kter->second;
 				e1+=t1.ticks();
 
-				float sum = this->addNeighborProb(prediction, index, neighbors, newIdToIndexMap);
+				float sum = addNeighborProb(prediction, index, neighbors, _predictionLC, newIdToIndexMap);
 				e3+=t1.ticks();
 
 				this->normalize(prediction, index, sum, newIds[0]<0);
@@ -639,27 +690,5 @@ void BayesFilter::updatePosterior(const Memory * memory, const std::vector<int> 
 	}
 	_posterior = newPosterior;
 }
-
-float BayesFilter::addNeighborProb(cv::Mat & prediction, unsigned int col, const std::map<int, int> & neighbors, const std::unordered_map<int, int> & idToIndex) const
-{
-	UASSERT(col < (unsigned int)prediction.cols &&
-			col < (unsigned int)prediction.rows);
-
-	float sum=0.0f;
-	float * dataPtr = (float*)prediction.data;
-	for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
-	{
-		if(iter->first>=0)
-		{
-			std::unordered_map<int, int>::const_iterator jter = idToIndex.find(iter->first);
-			if(jter != idToIndex.end())
-			{
-				sum += dataPtr[col + jter->second*prediction.cols] = _predictionLC[iter->second+1];
-			}
-		}
-	}
-	return sum;
-}
-
 
 } // namespace rtabmap

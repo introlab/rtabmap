@@ -229,7 +229,9 @@ int main(int argc, char * argv[])
 				globalMapStats.clear();
 				double timeUpdateInit = 0.0;
 				double timeUpdateGrid = 0.0;
+#ifdef RTABMAP_OCTOMAP
 				double timeUpdateOctoMap = 0.0;
+#endif
 				const rtabmap::Statistics & stats = rtabmap.getStatistics();
 				UTimer t;
 				if(stats.poses().size() && stats.getSignatures().size())
@@ -254,7 +256,6 @@ int main(int argc, char * argv[])
 						{
 							cv::Mat ground, obstacles;
 							stats.getSignatures().find(id)->second.sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles);
-							const cv::Point3f & viewpoint = stats.getSignatures().find(id)->second.sensorData().gridViewPoint();
 
 							timeUpdateInit = t.ticks();
 
@@ -267,6 +268,7 @@ int main(int argc, char * argv[])
 #ifdef RTABMAP_OCTOMAP
 							if(updateOctoMap)
 							{
+								const cv::Point3f & viewpoint = stats.getSignatures().find(id)->second.sensorData().gridViewPoint();
 								octomap.addToCache(id, ground, obstacles, viewpoint);
 								octomap.update(stats.poses());
 								timeUpdateOctoMap = t.ticks() + timeUpdateInit;
@@ -276,6 +278,8 @@ int main(int argc, char * argv[])
 					}
 				}
 
+				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/GridUpdate/ms"), timeUpdateGrid*1000.0f));
+#ifdef RTABMAP_OCTOMAP
 				//Simulate publishing
 				double timePub2dOctoMap = 0.0;
 				double timePub3dOctoMap = 0.0;
@@ -291,10 +295,10 @@ int main(int argc, char * argv[])
 					timePub3dOctoMap = t.ticks();
 				}
 
-				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/GridUpdate/ms"), timeUpdateGrid*1000.0f));
 				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapUpdate/ms"), timeUpdateOctoMap*1000.0f));
 				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapProjection/ms"), timePub2dOctoMap*1000.0f));
 				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctomapToCloud/ms"), timePub3dOctoMap*1000.0f));
+#endif
 			}
 		}
 

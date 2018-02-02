@@ -33,7 +33,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <list>
 #include <set>
-#include <unordered_map>
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
 
@@ -68,10 +67,6 @@ private:
 			const std::vector<int> & oldIds,
 			const std::vector<int> & newIds);
 	void updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds);
-	float addNeighborProb(cv::Mat & prediction,
-			unsigned int col,
-			const std::map<int, int> & neighbors,
-			const std::unordered_map<int, int> & idToIndex) const;
 	void normalize(cv::Mat & prediction, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const;
 
 private:
