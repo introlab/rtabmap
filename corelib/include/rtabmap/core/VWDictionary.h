@@ -109,12 +109,12 @@ protected:
 private:
 	bool _incrementalDictionary;
 	bool _incrementalFlann;
+	float _rebalancingFactor;
 	float _nndrRatio;
 	std::string _dictionaryPath; // a pre-computed dictionary (.txt)
 	bool _newWordsComparedTogether;
 	int _lastWordId;
 	bool useDistanceL1_;
-	float _rebalancingFactor;
 	FlannIndex * _flannIndex;
 	cv::Mat _dataTree;
 	NNStrategy _strategy;

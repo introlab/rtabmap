@@ -61,7 +61,12 @@ void showUsage()
 			"  --disp             Generate full disparity.\n"
 			"%s\n"
 			"Example:\n\n"
-			"   $ rtabmap-euroc_dataset --Rtabmap/DetectionRate 4 ~/EuRoC/V1_03_difficult\n\n", rtabmap::Parameters::showUsage());
+			"   $ rtabmap-euroc_dataset \\\n"
+			"       --Rtabmap/PublishRAMUsage true\\\n"
+			"       --Rtabmap/DetectionRate 2\\\n"
+			"       --RGBD/LinearUpdate 0\\\n"
+			"       --Mem/STMSize 30\\\n"
+			"       ~/EuRoC/V1_03_difficult\n\n", rtabmap::Parameters::showUsage());
 	exit(1);
 }
 
