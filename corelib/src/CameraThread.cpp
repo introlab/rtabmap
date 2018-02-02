@@ -274,7 +274,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 	if(_stereoExposureCompensation && !data.imageRaw().empty() && !data.rightRaw().empty())
 	{
 #if CV_MAJOR_VERSION < 3
-		UWARN("Stereo exposure compensation not implemented for OpenCV version under 3.")
+		UWARN("Stereo exposure compensation not implemented for OpenCV version under 3.");
 #else
 		UDEBUG("");
 		UTimer timer;
