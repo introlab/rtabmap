@@ -49,6 +49,8 @@ OdometryF2F::OdometryF2F(const ParametersMap & parameters) :
 	UASSERT(keyFrameThr_>=0.0f && keyFrameThr_<=1.0f);
 	UASSERT(visKeyFrameThr_>=0);
 	UASSERT(scanKeyFrameThr_>=0.0f && scanKeyFrameThr_<=1.0f);
+
+	parameters_ = parameters;
 }
 
 OdometryF2F::~OdometryF2F()
@@ -96,6 +98,24 @@ Transform OdometryF2F::computeTransform(
 	Signature newFrame(data);
 	if(refFrame_.sensorData().isValid())
 	{
+		float maxCorrespondenceDistance = 0.0f;
+		float pmOutlierRatio = 0.0f;
+		if(guess.isNull() &&
+			!registrationPipeline_->isImageRequired() &&
+			registrationPipeline_->isScanRequired() &&
+			this->framesProcessed() < 2)
+		{
+			// only on initialization (first frame to register), increase icp max correspondences in case the robot is already moving
+			maxCorrespondenceDistance = Parameters::defaultIcpMaxCorrespondenceDistance();
+			pmOutlierRatio = Parameters::defaultIcpPMOutlierRatio();
+			Parameters::parse(parameters_, Parameters::kIcpMaxCorrespondenceDistance(), maxCorrespondenceDistance);
+			Parameters::parse(parameters_, Parameters::kIcpPMOutlierRatio(), pmOutlierRatio);
+			ParametersMap params;
+			params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance*3.0f)));
+			params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(0.95f)));
+			registrationPipeline_->parseParameters(params);
+		}
+
 		Signature tmpRefFrame = refFrame_;
 		output = registrationPipeline_->computeTransformationMod(
 				tmpRefFrame,
@@ -103,6 +123,15 @@ Transform OdometryF2F::computeTransform(
 				// special case for ICP-only odom, set guess to identity if we just started or reset
 				!guess.isNull()?motionSinceLastKeyFrame*guess:!registrationPipeline_->isImageRequired()&&this->framesProcessed()<2?motionSinceLastKeyFrame:Transform(),
 				&regInfo);
+
+		if(maxCorrespondenceDistance>0.0f)
+		{
+			// set it back
+			ParametersMap params;
+			params.insert(ParametersPair(Parameters::kIcpMaxCorrespondenceDistance(), uNumber2Str(maxCorrespondenceDistance)));
+			params.insert(ParametersPair(Parameters::kIcpPMOutlierRatio(), uNumber2Str(pmOutlierRatio)));
+			registrationPipeline_->parseParameters(params);
+		}
 
 		if(output.isNull() && !guess.isNull() && registrationPipeline_->isImageRequired())
 		{
@@ -112,11 +141,28 @@ Transform OdometryF2F::computeTransform(
 			newFrame.setWords3(std::multimap<int, cv::Point3f>());
 			newFrame.setWordsDescriptors(std::multimap<int, cv::Mat>());
 			UWARN("Failed to find a transformation with the provided guess (%s), trying again without a guess.", guess.prettyPrint().c_str());
+			// If optical flow is used, switch temporary to feature matching
+			int visCorTypeBackup = Parameters::defaultVisCorType();
+			Parameters::parse(parameters_, Parameters::kVisCorType(), visCorTypeBackup);
+			if(visCorTypeBackup == 1)
+			{
+				ParametersMap params;
+				params.insert(ParametersPair(Parameters::kVisCorType(), "0"));
+				registrationPipeline_->parseParameters(params);
+			}
+
 			output = registrationPipeline_->computeTransformationMod(
 				tmpRefFrame,
 				newFrame,
 				Transform(), // null guess
 				&regInfo);
+
+			if(visCorTypeBackup == 1)
+			{
+				ParametersMap params;
+				params.insert(ParametersPair(Parameters::kVisCorType(), "1"));
+				registrationPipeline_->parseParameters(params);
+			}
 
 			if(output.isNull())
 			{

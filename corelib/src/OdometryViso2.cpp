@@ -163,10 +163,10 @@ Transform OdometryViso2::computeTransform(
 	if(viso2_ == 0)
 	{
 		VisualOdometryStereo::parameters params;
-		params.base      = data.stereoCameraModel().baseline();
-		params.calib.cu  = data.stereoCameraModel().left().cx();
-		params.calib.cv  = data.stereoCameraModel().left().cy();
-		params.calib.f   = data.stereoCameraModel().left().fx();
+		params.base      = params.match.base = data.stereoCameraModel().baseline();
+		params.calib.cu  = params.match.cu = data.stereoCameraModel().left().cx();
+		params.calib.cv  = params.match.cv = data.stereoCameraModel().left().cy();
+		params.calib.f   = params.match.f = data.stereoCameraModel().left().fx();
 
 		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2RansacIters(), params.ransac_iters);
 		Parameters::parse(viso2Parameters_, Parameters::kOdomViso2InlierThreshold(), params.inlier_threshold);

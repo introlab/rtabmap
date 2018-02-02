@@ -127,6 +127,7 @@ public:
 			bool incrementMarginOnLoop = false,
 			bool ignoreLoopIds = false,
 			bool ignoreIntermediateNodes = false,
+			bool ignoreLocalSpaceLoopIds = false,
 			const std::set<int> & nodesSet = std::set<int>(),
 			double * dbAccessTime = 0) const;
 	std::map<int, float> getNeighborsIdRadius(
@@ -281,6 +282,7 @@ private:
 	bool _generateIds;
 	bool _badSignaturesIgnored;
 	bool _mapLabelsAdded;
+	bool _depthAsMask;
 	int _imagePreDecimation;
 	int _imagePostDecimation;
 	bool _compressionParallelized;
@@ -295,6 +297,7 @@ private:
 	bool _useOdometryFeatures;
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
+	int _visCorType;
 
 	int _idCount;
 	int _idMapCount;

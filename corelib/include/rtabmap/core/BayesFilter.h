@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <list>
 #include <set>
+#include <unordered_map>
 #include "rtabmap/utilite/UEventsHandler.h"
 #include "rtabmap/core/Parameters.h"
 
@@ -59,18 +60,18 @@ public:
 	const std::vector<double> & getPredictionLC() const; // {Vp, Lc, l1, l2, l3, l4...}
 	std::string getPredictionLCStr() const; // for convenience {Vp, Lc, l1, l2, l3, l4...}
 
-	cv::Mat generatePrediction(const Memory * memory, const std::vector<int> & ids) const;
+	cv::Mat generatePrediction(const Memory * memory, const std::vector<int> & ids);
 
 private:
 	cv::Mat updatePrediction(const cv::Mat & oldPrediction,
 			const Memory * memory,
 			const std::vector<int> & oldIds,
-			const std::vector<int> & newIds) const;
+			const std::vector<int> & newIds);
 	void updatePosterior(const Memory * memory, const std::vector<int> & likelihoodIds);
 	float addNeighborProb(cv::Mat & prediction,
 			unsigned int col,
 			const std::map<int, int> & neighbors,
-			const std::map<int, int> & idToIndexMap) const;
+			const std::unordered_map<int, int> & idToIndex) const;
 	void normalize(cv::Mat & prediction, unsigned int index, float addedProbabilitiesSum, bool virtualPlaceUsed) const;
 
 private:
@@ -80,6 +81,7 @@ private:
 	std::vector<double> _predictionLC; // {Vp, Lc, l1, l2, l3, l4...}
 	bool _fullPredictionUpdate;
 	float _totalPredictionLCValues;
+	std::map<int, std::map<int, int> > _neighborsIndex;
 };
 
 } // namespace rtabmap

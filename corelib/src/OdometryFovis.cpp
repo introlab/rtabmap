@@ -143,7 +143,12 @@ Transform OdometryFovis::computeTransform(
 			data.stereoCameraModel().left().isValidForReprojection() &&
 			data.stereoCameraModel().right().isValidForReprojection())))
 	{
-		UERROR("Invalid camera model!");
+		UERROR("Invalid camera model! Mono cameras=%d (reproj=%d), Stereo camera=%d (reproj=%d|%d)",
+				(int)data.cameraModels().size(),
+				data.cameraModels().size() && data.cameraModels()[0].isValidForReprojection()?1:0,
+				data.stereoCameraModel().isValidForProjection()?1:0,
+				data.stereoCameraModel().left().isValidForReprojection()?1:0,
+				data.stereoCameraModel().right().isValidForReprojection()?1:0);
 		return t;
 	}
 

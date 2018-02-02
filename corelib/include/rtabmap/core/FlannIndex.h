@@ -49,21 +49,25 @@ public:
 	// Note that useDistanceL1 doesn't have any effect if LSH is used
 	void buildLinearIndex(
 			const cv::Mat & features,
-			bool useDistanceL1 = false);
+			bool useDistanceL1 = false,
+			float rebalancingFactor = 2.0f);
 	void buildKDTreeIndex(
 			const cv::Mat & features,
 			int trees = 4,
-			bool useDistanceL1 = false);
+			bool useDistanceL1 = false,
+			float rebalancingFactor = 2.0f);
 	void buildKDTreeSingleIndex(
 			const cv::Mat & features,
 			int leafMaxSize = 10,
 			bool reorder = true,
-			bool useDistanceL1 = false);
+			bool useDistanceL1 = false,
+			float rebalancingFactor = 2.0f);
 	void buildLSHIndex(
 			const cv::Mat & features,
 			unsigned int table_number = 12,
 			unsigned int key_size = 20,
-			unsigned int multi_probe_level = 2);
+			unsigned int multi_probe_level = 2,
+			float rebalancingFactor = 2.0f);
 
 	bool isBuilt();
 
@@ -102,6 +106,7 @@ private:
 	int featuresDim_;
 	bool isLSH_;
 	bool useDistanceL1_; // true=EUCLEDIAN_L2 false=MANHATTAN_L1
+	float rebalancingFactor_;
 
 	// keep feature in memory until the tree is rebuilt
 	// (in case the word is deleted when removed from the VWDictionary)

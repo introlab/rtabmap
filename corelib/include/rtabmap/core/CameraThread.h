@@ -60,6 +60,7 @@ public:
 	virtual ~CameraThread();
 
 	void setMirroringEnabled(bool enabled) {_mirroring = enabled;}
+	void setStereoExposureCompensation(bool enabled) {_stereoExposureCompensation = enabled;}
 	void setColorOnly(bool colorOnly) {_colorOnly = colorOnly;}
 	void setImageDecimation(int decimation) {_imageDecimation = decimation;}
 	void setStereoToDepth(bool enabled) {_stereoToDepth = enabled;}
@@ -100,6 +101,7 @@ private:
 private:
 	Camera * _camera;
 	bool _mirroring;
+	bool _stereoExposureCompensation;
 	bool _colorOnly;
 	int _imageDecimation;
 	bool _stereoToDepth;

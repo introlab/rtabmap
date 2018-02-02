@@ -71,6 +71,7 @@ CameraImages::CameraImages() :
 		_scanVoxelSize(0.0f),
 		_scanNormalsK(0),
 		_scanNormalsRadius(0),
+		_scanForceGroundNormalsUp(false),
 		_depthFromScan(false),
 		_depthFromScanFillHoles(1),
 		_depthFromScanFillHolesFromBorder(false),
@@ -102,6 +103,7 @@ CameraImages::CameraImages(const std::string & path,
 	_scanVoxelSize(0.0f),
 	_scanNormalsK(0),
 	_scanNormalsRadius(0),
+	_scanForceGroundNormalsUp(false),
 	_depthFromScan(false),
 	_depthFromScanFillHoles(1),
 	_depthFromScanFillHolesFromBorder(false),
@@ -242,15 +244,43 @@ bool CameraImages::init(const std::string & calibrationFolder, const std::string
 			const std::list<std::string> & filenames = _dir->getFileNames();
 			for(std::list<std::string>::const_iterator iter=filenames.begin(); iter!=filenames.end(); ++iter)
 			{
-				// format is text_12234456.12334_text.png
+				// format is text_1223445645.12334_text.png or text_122344564512334_text.png
+				// If no decimals, 10 first number are the seconds
 				std::list<std::string> list = uSplit(*iter, '.');
-				if(list.size() == 3)
+				if(list.size() == 3 || list.size() == 2)
 				{
 					list.pop_back(); // remove extension
-					std::string decimals = uSplitNumChar(list.back()).front();
-					list.pop_back();
-					std::string sec = uSplitNumChar(list.back()).back();
-					double stamp = uStr2Double(sec + "." + decimals);
+					double stamp = 0.0;
+					if(list.size() == 1)
+					{
+						std::list<std::string> numberList = uSplitNumChar(list.front());
+						for(std::list<std::string>::iterator iter=numberList.begin(); iter!=numberList.end(); ++iter)
+						{
+							if(uIsNumber(*iter))
+							{
+								std::string decimals;
+								std::string sec;
+								if(iter->length()>10)
+								{
+									decimals = iter->substr(10, iter->size()-10);
+									sec = iter->substr(0, 10);
+								}
+								else
+								{
+									sec = *iter;
+								}
+								stamp = uStr2Double(sec + "." + decimals);
+								break;
+							}
+						}
+					}
+					else
+					{
+						std::string decimals = uSplitNumChar(list.back()).front();
+						list.pop_back();
+						std::string sec = uSplitNumChar(list.back()).back();
+						stamp = uStr2Double(sec + "." + decimals);
+					}
 					if(stamp > 0.0)
 					{
 						_stamps.push_back(stamp);
@@ -338,19 +368,19 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 		UERROR("Cannot read pose file \"%s\".", filePath.c_str());
 		return false;
 	}
-	else if((format != 1 && format != 5 && format != 6 && format != 7) && poses.size() != this->imagesCount())
+	else if((format != 1 && format != 5 && format != 6 && format != 7 && format != 9) && poses.size() != this->imagesCount())
 	{
 		UERROR("The pose count is not the same as the images (%d vs %d)! Please remove "
 				"the pose file path if you don't want to use it (current file path=%s).",
 				(int)poses.size(), this->imagesCount(), filePath.c_str());
 		return false;
 	}
-	else if((format == 1 || format == 5 || format == 6 || format == 7) && inOutStamps.size() == 0)
+	else if((format == 1 || format == 5 || format == 6 || format == 7 || format == 9) && inOutStamps.size() == 0)
 	{
-		UERROR("When using RGBD-SLAM, GPS, MALAGA and ST LUCIA formats, images must have timestamps!");
+		UERROR("When using RGBD-SLAM, GPS, MALAGA, ST LUCIA and EuRoC MAV formats, images must have timestamps!");
 		return false;
 	}
-	else if(format == 1 || format == 5 || format == 6 || format == 7)
+	else if(format == 1 || format == 5 || format == 6 || format == 7 || format == 9)
 	{
 		UDEBUG("");
 		//Match ground truth values with images
@@ -384,7 +414,6 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 					UASSERT(stampEnd > stampBeg && *ster>stampBeg && *ster < stampEnd);
 					if(fabs(*ster-stampEnd) > maxTimeDiff || fabs(*ster-stampBeg) > maxTimeDiff)
 					{
-						warned = true;
 						if(!warned)
 						{
 							UWARN("Cannot interpolate pose for stamp %f between %f and %f (> maximum time diff of %f sec)",
@@ -393,6 +422,7 @@ bool CameraImages::readPoses(std::list<Transform> & outputPoses, std::list<doubl
 								stampEnd,
 								maxTimeDiff);
 						}
+						warned=true;
 					}
 					else
 					{
@@ -744,7 +774,12 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, _scanNormalsRadius);
 				pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
 				pcl::concatenateFields(*cloud, *normals, *cloudNormals);
+				if(_scanForceGroundNormalsUp)
+				{
+					util3d::adjustNormalsToViewPoint(cloudNormals, Eigen::Vector3f(0,0,0), _scanForceGroundNormalsUp);
+				}
 				scan = util3d::laserScanFromPointCloud(*cloudNormals, _scanLocalTransform.inverse());
+				UDEBUG("Normals computed (k=%d radius=%f)", _scanNormalsK, _scanNormalsRadius);
 			}
 			else
 			{

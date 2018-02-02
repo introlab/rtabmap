@@ -119,6 +119,16 @@ bool Registration::isUserDataRequired() const
 	return val;
 }
 
+bool Registration::canUseGuess() const
+{
+	bool val = canUseGuessImpl();
+	if(!val && child_)
+	{
+		val = child_->canUseGuess();
+	}
+	return val;
+}
+
 int Registration::getMinVisualCorrespondences() const
 {
 	int min = this->getMinVisualCorrespondencesImpl();
@@ -197,7 +207,7 @@ Transform Registration::computeTransformationMod(
 	}
 
 	Transform t = computeTransformationImpl(from, to, guess, info);
-	if(repeatOnce_ && guess.isNull() && !t.isNull())
+	if(repeatOnce_ && guess.isNull() && !t.isNull() && this->canUseGuess())
 	{
 		// redo with guess to get a more accurate transform
 		t = computeTransformationImpl(from, to, t, info);

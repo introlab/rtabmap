@@ -65,13 +65,13 @@ Link::Link(int from,
 
 double Link::rotVariance() const
 {
-	double min = uMin3(infMatrix_.at<double>(3,3), infMatrix_.at<double>(4,4), infMatrix_.at<double>(5,5));
+	double min = uMax3(infMatrix_.at<double>(3,3), infMatrix_.at<double>(4,4), infMatrix_.at<double>(5,5));
 	UASSERT(min > 0.0);
 	return 1.0/min;
 }
 double Link::transVariance() const
 {
-	double min = uMin3(infMatrix_.at<double>(0,0), infMatrix_.at<double>(1,1), infMatrix_.at<double>(2,2));
+	double min = uMax3(infMatrix_.at<double>(0,0), infMatrix_.at<double>(1,1), infMatrix_.at<double>(2,2));
 	UASSERT(min > 0.0);
 	return 1.0/min;
 }

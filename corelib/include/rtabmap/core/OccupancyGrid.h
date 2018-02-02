@@ -44,6 +44,7 @@ public:
 	void parseParameters(const ParametersMap & parameters);
 	void setCellSize(float cellSize);
 	float getCellSize() const {return cellSize_;}
+	void setCloudAssembling(bool enabled);
 	float getMinMapSize() const {return minMapSize_;}
 	bool isGridFromDepth() const {return occupancyFromCloud_;}
 	bool isFullUpdate() const {return fullUpdate_;}
@@ -73,7 +74,9 @@ public:
 			const cv::Mat & ground,
 			const cv::Mat & obstacles);
 	void update(const std::map<int, Transform> & poses);
-	const cv::Mat getMap(float & xMin, float & yMin) const;
+	cv::Mat getMap(float & xMin, float & yMin) const;
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapGround() const {return assembledGround_;}
+	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapObstacles() const {return assembledObstacles_;}
 
 private:
 	ParametersMap parameters_;
@@ -109,13 +112,17 @@ private:
 	bool erode_;
 	float footprintRadius_;
 
-	std::map<int, std::pair<cv::Mat, cv::Mat> > cache_;
+	std::map<int, std::pair<cv::Mat, cv::Mat> > cache_; //<node id, <ground, obstacles> >
 	cv::Mat map_;
 	cv::Mat mapInfo_;
 	std::map<int, std::pair<int, int> > cellCount_; //<node Id, cells>
 	float xMin_;
 	float yMin_;
 	std::map<int, Transform> addedNodes_;
+
+	bool cloudAssembling_;
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledGround_;
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr assembledObstacles_;
 };
 
 }

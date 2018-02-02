@@ -156,7 +156,7 @@ Transform estimateMotion3DTo2D(
 
 						Eigen::Vector4f v1(objPt.x - transform.x(), objPt.y - transform.y(), objPt.z - transform.z(), 0);
 						Eigen::Vector4f v2(newPt.x - transform.x(), newPt.y - transform.y(), newPt.z - transform.z(), 0);
-						errorSqrdAngles[oi++] = pcl::getAngle3D(v1, v2)*10.0f;
+						errorSqrdAngles[oi++] = pcl::getAngle3D(v1, v2);
 					}
 				}
 

@@ -161,10 +161,10 @@ bool exportPoses(
 
 bool importPoses(
 		const std::string & filePath,
-		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe
+		int format, // 0=Raw, 1=RGBD-SLAM, 2=KITTI, 3=TORO, 4=g2o, 5=NewCollege(t,x,y), 6=Malaga Urban GPS, 7=St Lucia INS, 8=Karlsruhe, 9=EuRoC MAC
 		std::map<int, Transform> & poses,
 		std::multimap<int, Link> * constraints, // optional for formats 3 and 4
-		std::map<int, double> * stamps) // optional for format 1
+		std::map<int, double> * stamps) // optional for format 1 and 9
 {
 	UDEBUG("%s format=%d", filePath.c_str(), format);
 	if(format==3) // TORO
@@ -202,12 +202,50 @@ bool importPoses(
 			std::string str;
 			std::getline(file, str);
 
+			if(str.size() && str.at(str.size()-1) == '\r')
+			{
+				str = str.substr(0, str.size()-1);
+			}
+
 			if(str.empty() || str.at(0) == '#' || str.at(0) == '%')
 			{
 				continue;
 			}
 
-			if(format == 8) // Karlsruhe format
+			if(format == 9) // EuRoC format
+			{
+				std::list<std::string> strList = uSplit(str, ',');
+				if(strList.size() ==  17)
+				{
+					double stamp = uStr2Double(strList.front())/1000000000.0;
+					strList.pop_front();
+					std::vector<std::string> v = uListToVector(strList);
+					Transform pose(uStr2Float(v[0]), uStr2Float(v[1]), uStr2Float(v[2]), // x y z
+							uStr2Float(v[4]), uStr2Float(v[5]), uStr2Float(v[6]), uStr2Float(v[3])); // qw qx qy qz -> qx qy qz qw
+					if(pose.isNull())
+					{
+						UWARN("Null transform read!? line parsed: \"%s\"", str.c_str());
+					}
+					else
+					{
+						if(stamps)
+						{
+							stamps->insert(std::make_pair(id, stamp));
+						}
+						// we need to rotate from IMU frame to world frame
+						Transform t( 0, 0, 1, 0,
+								   0, -1, 0, 0,
+								   1, 0, 0, 0);
+						pose = pose * t;
+						poses.insert(std::make_pair(id, pose));
+					}
+				}
+				else
+				{
+					UERROR("Error parsing \"%s\" with EuRoC MAV format (should have 17 values: stamp x y z qw qx qy qz vx vy vz vr vp vy ax ay az)", str.c_str());
+				}
+			}
+			else if(format == 8) // Karlsruhe format
 			{
 				std::vector<std::string> strList = uListToVector(uSplit(str));
 				if(strList.size() ==  10)
@@ -364,7 +402,7 @@ bool importPoses(
 				}
 				else
 				{
-					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y)", str.c_str());
+					UERROR("Error parsing \"%s\" with NewCollege format (should have 3 values: stamp x y, found %d)", str.c_str(), (int)strList.size());
 				}
 			}
 			else if(format == 1) // rgbd-slam format
@@ -909,6 +947,20 @@ std::multimap<int, int>::const_iterator findLink(
 		}
 	}
 	return links.end();
+}
+
+std::multimap<int, Link> filterDuplicateLinks(
+		const std::multimap<int, Link> & links)
+{
+	std::multimap<int, Link> output;
+	for(std::multimap<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+	{
+		if(graph::findLink(output, iter->second.from(), iter->second.to(), true) == output.end())
+		{
+			output.insert(*iter);
+		}
+	}
+	return output;
 }
 
 std::multimap<int, Link> filterLinks(
@@ -1820,6 +1872,20 @@ int findNearestNode(
 		const rtabmap::Transform & targetPose)
 {
 	int id = 0;
+	std::vector<int> nearestNodes = findNearestNodes(nodes, targetPose, 1);
+	if(nearestNodes.size())
+	{
+		id = nearestNodes[0];
+	}
+	return id;
+}
+
+std::vector<int> findNearestNodes(
+		const std::map<int, rtabmap::Transform> & nodes,
+		const rtabmap::Transform & targetPose,
+		int k)
+{
+	std::vector<int> nearestIds;
 	if(nodes.size() && !targetPose.isNull())
 	{
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
@@ -1837,14 +1903,15 @@ int findNearestNode(
 		std::vector<int> ind;
 		std::vector<float> dist;
 		pcl::PointXYZ pt(targetPose.x(), targetPose.y(), targetPose.z());
-		kdTree->nearestKSearch(pt, 1, ind, dist);
-		if(ind.size() && dist.size() && ind[0] >= 0)
+		kdTree->nearestKSearch(pt, k, ind, dist);
+
+		nearestIds.resize(ind.size());
+		for(unsigned int i=0; i<ind.size(); ++i)
 		{
-			//UDEBUG("Nearest node = %d: %f", ids[ind[0]], dist[0]);
-			id = ids[ind[0]];
+			nearestIds[i] = ids[ind[i]];
 		}
 	}
-	return id;
+	return nearestIds;
 }
 
 // return <id, sqrd distance>, excluding query

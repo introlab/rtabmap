@@ -965,7 +965,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						{
 							if(baseline > 0.0)
 							{
-								UWARN("Stereo camera model detected but current "
+								UDEBUG("Stereo camera model detected but current "
 										"observation (pt=%d to cam=%d) has null depth (%f m), adding "
 										"mono observation instead.",
 										vpt3d->id()-stepVertexId, camId, depth);

@@ -87,7 +87,8 @@ public:
 			float voxelSize = 0.0f,
 			int normalsK = 0,        // compute normals if > 0
 			float normalsRadius = 0, // compute normals if > 0
-			const Transform & localTransform=Transform::getIdentity())
+			const Transform & localTransform=Transform::getIdentity(),
+			bool forceGroundNormalsUp = false)
 	{
 		_scanPath = dir;
 		_scanLocalTransform = localTransform;
@@ -96,6 +97,7 @@ public:
 		_scanNormalsK = normalsK;
 		_scanNormalsRadius = normalsRadius;
 		_scanVoxelSize = voxelSize;
+		_scanForceGroundNormalsUp = forceGroundNormalsUp;
 	}
 
 	void setDepthFromScan(bool enabled, int fillHoles = 1, bool fillHolesFromBorder = false)
@@ -161,6 +163,7 @@ private:
 	float _scanVoxelSize;
 	int _scanNormalsK;
 	float _scanNormalsRadius;
+	bool _scanForceGroundNormalsUp;
 
 	bool _depthFromScan;
 	int _depthFromScanFillHoles; // <0:horizontal 0:disabled >0:vertical

@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UConversion.h>
 #include <rtabmap/utilite/UMath.h>
+#include <rtabmap/utilite/UProcessInfo.h>
 
 #include <pcl/search/kdtree.h>
 #include <pcl/filters/crop_box.h>
@@ -79,6 +80,7 @@ Rtabmap::Rtabmap() :
 	_publishLastSignatureData(Parameters::defaultRtabmapPublishLastSignature()),
 	_publishPdf(Parameters::defaultRtabmapPublishPdf()),
 	_publishLikelihood(Parameters::defaultRtabmapPublishLikelihood()),
+	_publishRAMUsage(Parameters::defaultRtabmapPublishRAMUsage()),
 	_computeRMSE(Parameters::defaultRtabmapComputeRMSE()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 700 ms
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
@@ -401,6 +403,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLastSignature(), _publishLastSignatureData);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishPdf(), _publishPdf);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLikelihood(), _publishLikelihood);
+	Parameters::parse(parameters, Parameters::kRtabmapPublishRAMUsage(), _publishRAMUsage);
 	Parameters::parse(parameters, Parameters::kRtabmapComputeRMSE(), _computeRMSE);
 	Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), _maxTimeAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
@@ -1506,6 +1509,7 @@ bool Rtabmap::process(
 				true,
 				true,
 				false,
+				true,
 				std::set<int>(),
 				&timeGetNeighborsTimeDb);
 		ULOGGER_DEBUG("neighbors of %d in time = %d", retrievalId, (int)neighbors.size());
@@ -1559,6 +1563,7 @@ bool Rtabmap::process(
 				neighborhoodSize,
 				_maxRetrieved,
 				true,
+				false,
 				false,
 				false,
 				std::set<int>(),
@@ -1975,7 +1980,7 @@ bool Rtabmap::process(
 											nearestId,
 											transform.prettyPrint().c_str());
 									UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-									_memory->addLink(Link(signature->id(), nearestId, Link::kLocalSpaceClosure, transform, info.covariance.inv()));
+									_memory->addLink(Link(signature->id(), nearestId, Link::kGlobalClosure, transform, info.covariance.inv()));
 									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
 									if(loopClosureVisualInliers == 0)
@@ -2246,14 +2251,14 @@ bool Rtabmap::process(
 			{
 				UWARN("Graph optimization failed! Rejecting last loop closures added.");
 				for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
-                              	{
-                                	_memory->removeLink(iter->first, iter->second);
-                                        UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
-                                 }
-                                updateConstraints = false;
-                                _loopClosureHypothesis.first = 0;
-                                lastProximitySpaceClosureId = 0;
-                                rejectedHypothesis = true;
+				{
+					_memory->removeLink(iter->first, iter->second);
+					UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+				}
+				updateConstraints = false;
+				_loopClosureHypothesis.first = 0;
+				lastProximitySpaceClosureId = 0;
+				rejectedHypothesis = true;
 			}
 			else if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
 			  _optimizationMaxLinearError > 0.0f &&
@@ -2438,6 +2443,10 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kMemorySmall_movement(), smallDisplacement?1.0f:0);
 			statistics_.addStatistic(Statistics::kMemoryDistance_travelled(), _distanceTravelled);
 			statistics_.addStatistic(Statistics::kMemoryFast_movement(), tooFastMovement?1.0f:0);
+			if(_publishRAMUsage)
+			{
+				statistics_.addStatistic(Statistics::kMemoryRAM_usage(), UProcessInfo::getMemoryUsage()/(1024*1024));
+			}
 
 			if(_publishLikelihood || _publishPdf)
 			{
@@ -3068,7 +3077,7 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transfo
 			std::map<int, Transform> path;
 			// select nearest pose and iterate neighbors from there
 			int nearestId = rtabmap::graph::findNearestNode(poses, target);
-			std::map<int, int> ids = _memory->getNeighborsId(nearestId, maxGraphDepth, 0, true, true, true, nodesSet);
+			std::map<int, int> ids = _memory->getNeighborsId(nearestId, maxGraphDepth, 0, true, true, true, true, nodesSet);
 
 			for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
 			{

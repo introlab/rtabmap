@@ -118,6 +118,7 @@ public:
 	const Statistics & getStatistics() const;
 	//bool getMetricData(int locationId, cv::Mat & rgb, cv::Mat & depth, float & depthConstant, Transform & pose, Transform & localTransform) const;
 	const std::map<int, Transform> & getLocalOptimizedPoses() const {return _optimizedPoses;}
+	const std::multimap<int, Link> & getLocalConstraints() const {return _constraints;}
 	Transform getPose(int locationId) const;
 	Transform getMapCorrection() const {return _mapCorrection;}
 	const Memory * getMemory() const {return _memory;}
@@ -211,6 +212,7 @@ private:
 	bool _publishLastSignatureData;
 	bool _publishPdf;
 	bool _publishLikelihood;
+	bool _publishRAMUsage;
 	bool _computeRMSE;
 	float _maxTimeAllowed; // in ms
 	unsigned int _maxMemoryAllowed; // signatures count in WM

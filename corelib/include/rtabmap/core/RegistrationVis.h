@@ -61,6 +61,7 @@ protected:
 			RegistrationInfo & info) const;
 
 	virtual bool isImageRequiredImpl() const {return true;}
+	virtual bool canUseGuessImpl() const {return _correspondencesApproach != 0 || _guessWinSize>0;}
 	virtual int getMinVisualCorrespondencesImpl() const {return _minInliers;}
 
 private:
@@ -83,6 +84,7 @@ private:
 	int _guessWinSize;
 	bool _guessMatchToProjection;
 	int _bundleAdjustment;
+	bool _depthAsMask;
 
 	ParametersMap _featureParameters;
 	ParametersMap _bundleParameters;

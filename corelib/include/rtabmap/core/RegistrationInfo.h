@@ -70,6 +70,7 @@ public:
 	std::vector<int> inliersIDs;
 	int matches;
 	std::vector<int> matchesIDs;
+	std::vector<int> projectedIDs; // "From" IDs
 
 	// RegistrationIcp
 	float icpInliersRatio;

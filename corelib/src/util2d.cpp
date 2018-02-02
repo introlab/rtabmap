@@ -2019,7 +2019,7 @@ cv::Mat exposureFusion(const std::vector<cv::Mat> & images)
 	fusion.convertTo(rgb8, CV_8UC3, 255.0);
 	fusion = rgb8;
 #else
-	UWARN("Exposure fusion is only avaiable when rtabmap is built with OpenCV3.");
+	UWARN("Exposure fusion is only available when rtabmap is built with OpenCV3.");
 	if (images.size())
 	{
 		fusion = images[0].clone();

@@ -35,13 +35,26 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 namespace rtabmap {
 
-OctoMap::OctoMap(float voxelSize, float occupancyThr, bool fullUpdate) :
-		octree_(new octomap::ColorOcTree(voxelSize)),
+OctoMap::OctoMap(const ParametersMap & parameters, float occupancyThr) :
+		hasColor_(false),
+		fullUpdate_(Parameters::defaultGridGlobalFullUpdate())
+{
+	float cellSize = Parameters::defaultGridCellSize();
+	Parameters::parse(parameters, Parameters::kGridCellSize(), cellSize);
+	UASSERT(cellSize>0.0f);
+
+	octree_ = new octomap::ColorOcTree(cellSize);
+	octree_->setOccupancyThres(occupancyThr);
+	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
+}
+
+OctoMap::OctoMap(float cellSize, float occupancyThr, bool fullUpdate) :
+		octree_(new octomap::ColorOcTree(cellSize)),
 		hasColor_(false),
 		fullUpdate_(fullUpdate)
 {
 	octree_->setOccupancyThres(occupancyThr);
-	UASSERT(voxelSize>0.0f);
+	UASSERT(cellSize>0.0f);
 }
 
 OctoMap::~OctoMap()
@@ -174,7 +187,8 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				}
 				else if(jter == transforms.end() && iter->second.nodeRefId_ > 0)
 				{
-					UWARN("Could not find a transform for point linked to node %d (transforms=%d)", iter->second.nodeRefId_, (int)transforms.size());
+					// Note: normal if old nodes were transfered to LTM
+					//UWARN("Could not find a transform for point linked to node %d (transforms=%d)", iter->second.nodeRefId_, (int)transforms.size());
 				}
 			}
 			UDEBUG("%d/%d", copied, (int)occupiedCells_.size());
@@ -191,25 +205,29 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	// https://github.com/OctoMap/octomap_mapping/blob/jade-devel/octomap_server/src/OctomapServer.cpp#L356
 	//
 	std::list<std::pair<int, Transform> > orderedPoses;
+
 	int lastId = addedNodes_.size()?addedNodes_.rbegin()->first:0;
 	UDEBUG("Last id = %d", lastId);
-	if(lastId >= 0)
+
+	// add old poses that were not in the current map (they were just retrieved from LTM)
+	for(std::map<int, Transform>::const_iterator iter=poses.upper_bound(0); iter!=poses.end(); ++iter)
 	{
-		for(std::map<int, Transform>::const_iterator iter=poses.upper_bound(lastId); iter!=poses.end(); ++iter)
+		if(addedNodes_.find(iter->first) == addedNodes_.end())
 		{
 			orderedPoses.push_back(*iter);
 		}
-		// insert negative after
-		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	}
+
+	// insert negative after
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		if(iter->first < 0)
 		{
-			if(iter->first < 0)
-			{
-				orderedPoses.push_back(*iter);
-			}
-			else
-			{
-				break;
-			}
+			orderedPoses.push_back(*iter);
+		}
+		else
+		{
+			break;
 		}
 	}
 
@@ -259,7 +277,8 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				octomap::point3d point(pt.x, pt.y, pt.z);
 
 				// only clear space (ground points)
-				if (octree_->computeRayKeys(sensorOrigin, point, keyRay_))
+				if ((iter->first < 0 || iter->first>lastId) &&
+					octree_->computeRayKeys(sensorOrigin, point, keyRay_))
 				{
 					free_cells.insert(keyRay_.begin(), keyRay_.end());
 				}
@@ -267,6 +286,16 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				octomap::OcTreeKey key;
 				if (octree_->coordToKeyChecked(point, key))
 				{
+					if(iter->first >0 && iter->first<lastId)
+					{
+						octomap::ColorOcTreeNode * n = octree_->search(key);
+						if(n && occupiedCells_.find(n) != occupiedCells_.end() && occupiedCells_.at(n).nodeRefId_ > iter->first)
+						{
+							// The cell has been updated from more recent node, don't update the cell
+							continue;
+						}
+					}
+
 					ground_cells.insert(key);
 
 					octomap::ColorOcTreeNode * n = octree_->updateNode(key, false);
@@ -309,7 +338,8 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				octomap::point3d point(pt.x, pt.y, pt.z);
 
 				// free cells
-				if (octree_->computeRayKeys(sensorOrigin, point, keyRay_))
+				if ((iter->first < 0 || iter->first>lastId) &&
+					octree_->computeRayKeys(sensorOrigin, point, keyRay_))
 				{
 					free_cells.insert(keyRay_.begin(), keyRay_.end());
 				}
@@ -317,6 +347,16 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				octomap::OcTreeKey key;
 				if (octree_->coordToKeyChecked(point, key))
 				{
+					if(iter->first >0 && iter->first<lastId)
+					{
+						octomap::ColorOcTreeNode * n = octree_->search(key);
+						if(n && occupiedCells_.find(n) != occupiedCells_.end() && occupiedCells_.at(n).nodeRefId_ > iter->first)
+						{
+							// The cell has been updated from more recent node, don't update the cell
+							continue;
+						}
+					}
+
 					occupied_cells.insert(key);
 
 					octomap::ColorOcTreeNode * n = octree_->updateNode(key, true);

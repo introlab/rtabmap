@@ -2629,6 +2629,59 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mls(
 	return cloud_with_normals;
 }
 
+void adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp)
+{
+	for(unsigned int i=0; i<cloud->size(); ++i)
+	{
+		pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
+		if(pcl::isFinite(normal))
+		{
+			Eigen::Vector3f v = viewpoint - cloud->points[i].getVector3fMap();
+			Eigen::Vector3f n(normal.x, normal.y, normal.z);
+
+			float result = v.dot(n);
+			if(result < 0
+			 || (forceGroundNormalsUp && normal.z < -0.8 && cloud->points[i].normal_z < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+			{
+				//UWARN("Reverse %d of n=%f,%f,%f result=%f", i, cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z, result);
+				//reverse normal
+				cloud->points[i].normal_x *= -1.0f;
+				cloud->points[i].normal_y *= -1.0f;
+				cloud->points[i].normal_z *= -1.0f;
+			}
+		}
+	}
+}
+
+void adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp)
+{
+	for(unsigned int i=0; i<cloud->size(); ++i)
+	{
+		pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
+		if(pcl::isFinite(normal))
+		{
+			Eigen::Vector3f v = viewpoint - cloud->points[i].getVector3fMap();
+			Eigen::Vector3f n(normal.x, normal.y, normal.z);
+
+			float result = v.dot(n);
+			if(result < 0
+				|| (forceGroundNormalsUp && normal.z < -0.8 && cloud->points[i].normal_z < viewpoint[3])) // some far velodyne rays on road can have normals toward ground
+			{
+				//reverse normal
+				cloud->points[i].normal_x *= -1.0f;
+				cloud->points[i].normal_y *= -1.0f;
+				cloud->points[i].normal_z *= -1.0f;
+			}
+		}
+	}
+}
+
 void adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,

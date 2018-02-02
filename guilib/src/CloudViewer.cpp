@@ -1857,6 +1857,8 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 							yAxis[0], yAxis[1], yAxis[2],0,
 							zAxis[0], zAxis[1], zAxis[2],0);
 
+				PR.normalizeRotation();
+
 				Transform P(PR[0], PR[1], PR[2], cameras.front().pos[0],
 							PR[4], PR[5], PR[6], cameras.front().pos[1],
 							PR[8], PR[9], PR[10], cameras.front().pos[2]);

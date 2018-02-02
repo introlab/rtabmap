@@ -41,6 +41,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UProcessInfo.h"
 #include <pcl/common/common.h>
+#include <yaml-cpp/yaml.h>
 #include <stdio.h>
 #include <signal.h>
 
@@ -50,45 +51,17 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-kitti_dataset [options] path\n"
-			"  path               Folder of the sequence (e.g., \"~/KITTI/dataset/sequences/07\")\n"
-			"                        containing least calib.txt, times.txt, image_0 and image_1 folders.\n"
+			"  path               Folder of the sequence (e.g., \"~/EuRoC/V1_03_difficult\")\n"
+			"                        containing least mav0/cam0/sensor.yaml, mav0/cam1/sensor.yaml, mav0/cam0/data and mav0/cam1/data folders.\n"
 			"                        Optional image_2, image_3 and velodyne folders.\n"
 			"  --output           Output directory. By default, results are saved in \"path\".\n"
 			"  --output_name      Output database name (default \"rtabmap\").\n"
-			"  --gt \"path\"        Ground truth path (e.g., ~/KITTI/devkit/cpp/data/odometry/poses/07.txt)\n"
 			"  --quiet            Don't show log messages and iteration updates.\n"
-			"  --color            Use color images for stereo (image_2 and image_3 folders).\n"
-			"  --scaling          Scale stereo baseline on some sequences (03-04-05-06).\n"
-			"  --disp             Generate full disparity.\n"
 			"  --exposure_comp    Do exposure compensation between left and right images.\n"
-			"  --scan             Include velodyne scan in node's data.\n"
-			"  --scan_step #      Scan downsample step (default=1).\n"
-			"  --scan_voxel #.#   Scan voxel size (default 0.5 m).\n"
-			"  --scan_k           Scan normal K (default 0).\n"
-			"  --scan_radius      Scan normal radius (default 0).\n\n"
+			"  --disp             Generate full disparity.\n"
 			"%s\n"
 			"Example:\n\n"
-			"   $ rtabmap-kitti_dataset \\\n"
-			"       --Vis/BundleAdjustment 1\\\n"
-			"       --Vis/PnPRefineIterations 0\\\n"
-			"       --Vis/MaxFeatures 1800\\\n"
-			"       --Vis/BundleAdjustment 1\\\n"
-			"       --Vis/Iterations 300\\\n"
-			"       --GFTT/QualityLevel 0.01\\\n"
-			"       --GFTT/MinDistance 7\\\n"
-			"       --Odom/GuessMotion true\\\n"
-			"       --OdomF2M/BundleAdjustment 1\\\n"
-			"       --Mem/UseOdomFeatures true\\\n"
-			"       --Kp/DetectorStrategy true\\\n"
-			"       --Kp/MaxFeatures 900\\\n"
-			"       --Rtabmap/DetectionRate 2\\\n"
-			"       --Rtabmap/CreateIntermediateNodes true\\\n"
-			"       --RGBD/ProximityBySpace false\\\n"
-			"       --Stereo/MaxLevel 5\\\n"
-			"       --Stereo/MaxDisparity 256\\\n"
-			"       --Stereo/MinDisparity 0.5\\\n"
-			"       --gt \"~/KITTI/devkit/cpp/data/odometry/poses/07.txt\"\\\n"
-			"       ~/KITTI/dataset/sequences/07\n\n", rtabmap::Parameters::showUsage());
+			"   $ rtabmap-euroc_dataset --Rtabmap/DetectionRate 4 ~/EuRoC/V1_03_difficult\n\n", rtabmap::Parameters::showUsage());
 	exit(1);
 }
 
@@ -114,16 +87,8 @@ int main(int argc, char * argv[])
 	std::string output;
 	std::string outputName = "rtabmap";
 	std::string seq;
-	bool color = false;
-	bool scaling = false;
-	bool scan = false;
 	bool disp = false;
 	bool exposureCompensation = false;
-	int scanStep = 1;
-	float scanVoxel = 0.5f;
-	int scanNormalK = 0;
-	float scanNormalRadius = 0.0f;
-	std::string gtPath;
 	bool quiet = false;
 	if(argc < 2)
 	{
@@ -144,58 +109,6 @@ int main(int argc, char * argv[])
 			else if(std::strcmp(argv[i], "--quiet") == 0)
 			{
 				quiet = true;
-			}
-			else if(std::strcmp(argv[i], "--scan_step") == 0)
-			{
-				scanStep = atoi(argv[++i]);
-				if(scanStep <= 0)
-				{
-					printf("scan_step should be > 0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--scan_voxel") == 0)
-			{
-				scanVoxel = atof(argv[++i]);
-				if(scanVoxel < 0.0f)
-				{
-					printf("scan_voxel should be >= 0.0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--scan_k") == 0)
-			{
-				scanNormalK = atoi(argv[++i]);
-				if(scanNormalK < 0)
-				{
-					printf("scanNormalK should be >= 0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--scan_radius") == 0)
-			{
-				scanNormalRadius = atof(argv[++i]);
-				if(scanNormalRadius < 0.0f)
-				{
-					printf("scanNormalRadius should be >= 0\n");
-					showUsage();
-				}
-			}
-			else if(std::strcmp(argv[i], "--gt") == 0)
-			{
-				gtPath = argv[++i];
-			}
-			else if(std::strcmp(argv[i], "--color") == 0)
-			{
-				color = true;
-			}
-			else if(std::strcmp(argv[i], "--scaling") == 0)
-			{
-				scaling = true;
-			}
-			else if(std::strcmp(argv[i], "--scan") == 0)
-			{
-				scan = true;
 			}
 			else if(std::strcmp(argv[i], "--disp") == 0)
 			{
@@ -224,16 +137,16 @@ int main(int argc, char * argv[])
 	}
 
 	seq = uSplit(path, '/').back();
-	if(seq.empty() || !(uStr2Int(seq)>=0 && uStr2Int(seq)<=21))
+	std::string pathLeftImages  = path+"/mav0/cam0/data";
+	std::string pathRightImages = path+"/mav0/cam1/data";
+	std::string pathCalibLeft = path+"/mav0/cam0/sensor.yaml";
+	std::string pathCalibRight = path+"/mav0/cam1/sensor.yaml";
+	std::string pathGt = path+"/mav0/state_groundtruth_estimate0/data.csv";
+	if(!UFile::exists(pathGt))
 	{
-		UWARN("Sequence number \"%s\" should be between 0 and 21 (official KITTI datasets).", seq.c_str());
-		seq.clear();
+		UWARN("Ground truth file path doesn't exist: \"%s\", benchmark values won't be computed.", pathGt.c_str());
+		pathGt.clear();
 	}
-	std::string pathLeftImages  = path+(color?"/image_2":"/image_0");
-	std::string pathRightImages = path+(color?"/image_3":"/image_1");
-	std::string pathCalib = path+"/calib.txt";
-	std::string pathTimes = path+"/times.txt";
-	std::string pathScan;
 
 	printf("Paths:\n"
 			"   Sequence number:  %s\n"
@@ -242,128 +155,22 @@ int main(int argc, char * argv[])
 			"   Output name:      %s\n"
 			"   left images:      %s\n"
 			"   right images:     %s\n"
-			"   calib.txt:        %s\n"
-			"   times.txt:        %s\n",
+			"   left calib:       %s\n"
+			"   right calib:      %s\n",
 			seq.c_str(),
 			path.c_str(),
 			output.c_str(),
 			outputName.c_str(),
 			pathLeftImages.c_str(),
 			pathRightImages.c_str(),
-			pathCalib.c_str(),
-			pathTimes.c_str());
-	if(!gtPath.empty())
+			pathCalibLeft.c_str(),
+			pathCalibRight.c_str());
+	if(!pathGt.empty())
 	{
-		gtPath = uReplaceChar(gtPath, '~', UDirectory::homeDir());
-		gtPath = uReplaceChar(gtPath, '\\', '/');
-		if(!UFile::exists(gtPath))
-		{
-			UWARN("Ground truth file path doesn't exist: \"%s\", benchmark values won't be computed.", gtPath.c_str());
-			gtPath.clear();
-		}
-		else
-		{
-			printf("   Ground Truth:      %s\n", gtPath.c_str());
-		}
+		printf("   Ground truth:     %s\n", pathGt.c_str());
 	}
 	printf("   Exposure Compensation: %s\n", exposureCompensation?"true":"false");
-	printf("   Disparity:         %s\n", disp?"true":"false");
-	if(scan)
-	{
-		pathScan = path+"/velodyne";
-		printf("   Scan:               %s\n", pathScan.c_str());
-		printf("   Scan step:          %d\n", scanStep);
-		printf("   Scan voxel:         %fm\n", scanVoxel);
-		printf("   Scan normal k:      %d\n", scanNormalK);
-		printf("   Scan normal radius: %f\n", scanNormalRadius);
-	}
-
-	// convert calib.txt to rtabmap format (yaml)
-	FILE * pFile = 0;
-	pFile = fopen(pathCalib.c_str(),"r");
-	if(!pFile)
-	{
-		UERROR("Cannot open calibration file \"%s\"", pathCalib.c_str());
-		return -1;
-	}
-	cv::Mat_<double> P0(3,4);
-	cv::Mat_<double> P1(3,4);
-	cv::Mat_<double> P2(3,4);
-	cv::Mat_<double> P3(3,4);
-	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-			&P0(0, 0), &P0(0, 1), &P0(0, 2), &P0(0, 3),
-			&P0(1, 0), &P0(1, 1), &P0(1, 2), &P0(1, 3),
-			&P0(2, 0), &P0(2, 1), &P0(2, 2), &P0(2, 3)) != 12)
-	{
-		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
-		return -1;
-	}
-	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-			&P1(0, 0), &P1(0, 1), &P1(0, 2), &P1(0, 3),
-			&P1(1, 0), &P1(1, 1), &P1(1, 2), &P1(1, 3),
-			&P1(2, 0), &P1(2, 1), &P1(2, 2), &P1(2, 3)) != 12)
-	{
-		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
-		return -1;
-	}
-	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-			&P2(0, 0), &P2(0, 1), &P2(0, 2), &P2(0, 3),
-			&P2(1, 0), &P2(1, 1), &P2(1, 2), &P2(1, 3),
-			&P2(2, 0), &P2(2, 1), &P2(2, 2), &P2(2, 3)) != 12)
-	{
-		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
-		return -1;
-	}
-	if(fscanf (pFile, "%*s %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf %lf",
-			&P3(0, 0), &P3(0, 1), &P3(0, 2), &P3(0, 3),
-			&P3(1, 0), &P3(1, 1), &P3(1, 2), &P3(1, 3),
-			&P3(2, 0), &P3(2, 1), &P3(2, 2), &P3(2, 3)) != 12)
-	{
-		UERROR("Failed to parse calibration file \"%s\"", pathCalib.c_str());
-		return -1;
-	}
-	fclose (pFile);
-	// get image size
-	UDirectory dir(pathLeftImages);
-	std::string firstImage = dir.getNextFileName();
-	cv::Mat image = cv::imread(dir.getNextFilePath());
-	if(image.empty())
-	{
-		UERROR("Failed to read first image of \"%s\"", firstImage.c_str());
-		return -1;
-	}
-
-	if(scaling)
-	{
-		// scale baseline
-		if(uStr2Int(seq) == 3 || uStr2Int(seq) == 5 || uStr2Int(seq) == 9)
-		{
-			P1.at<double>(0,3) *= 0.9905;
-			printf("   Baseline scaling factor: %f\n", 0.9905);
-		}
-		else if(uStr2Int(seq) == 4)
-		{
-			P1.at<double>(0,3) *= 0.987000;
-			printf("   Baseline scaling factor: %f\n", 0.987000);
-		}
-		else if(uStr2Int(seq) == 6)
-		{
-			P1.at<double>(0,3) *= 0.985000;
-			printf("   Baseline scaling factor: %f\n", 0.985000);
-		}
-	}
-
-	StereoCameraModel model(outputName+"_calib",
-			image.size(), P0.colRange(0,3), cv::Mat(), cv::Mat(), P0,
-			image.size(), P1.colRange(0,3), cv::Mat(), cv::Mat(), P1,
-			cv::Mat(), cv::Mat(), cv::Mat(), cv::Mat());
-	if(!model.save(output, true))
-	{
-		UERROR("Could not save calibration!");
-		return -1;
-	}
-	printf("Saved calibration \"%s\" to \"%s\"\n", (outputName+"_calib").c_str(), output.c_str());
-
+	printf("   Disparity:        %s\n", disp?"true":"false");
 	if(!parameters.empty())
 	{
 		printf("Parameters:\n");
@@ -372,8 +179,63 @@ int main(int argc, char * argv[])
 			printf("   %s=%s\n", iter->first.c_str(), iter->second.c_str());
 		}
 	}
-
 	printf("RTAB-Map version: %s\n", RTABMAP_VERSION);
+
+	std::vector<CameraModel> models;
+	int rateHz = 20;
+	for(int k=0; k<2; ++k)
+	{
+		// Left calibration
+		std::string calibPath = k==0?pathCalibLeft:pathCalibRight;
+		YAML::Node config = YAML::LoadFile(calibPath);
+		if(config.IsNull())
+		{
+			UERROR("Cannot open calibration file \"%s\"", calibPath.c_str());
+			return -1;
+		}
+
+		YAML::Node T_BS = config["T_BS"];
+		YAML::Node data = T_BS["data"];
+		UASSERT(data.size() == 16);
+		rateHz = config["rate_hz"].as<int>();
+		YAML::Node resolution = config["resolution"];
+		UASSERT(resolution.size() == 2);
+		YAML::Node intrinsics = config["intrinsics"];
+		UASSERT(intrinsics.size() == 4);
+		YAML::Node distortion_coefficients = config["distortion_coefficients"];
+		UASSERT(distortion_coefficients.size() == 4 || distortion_coefficients.size() == 5 || distortion_coefficients.size() == 8);
+
+		cv::Mat K = cv::Mat::eye(3, 3, CV_64FC1);
+		K.at<double>(0,0) = intrinsics[0].as<double>();
+		K.at<double>(1,1) = intrinsics[1].as<double>();
+		K.at<double>(0,2) = intrinsics[2].as<double>();
+		K.at<double>(1,2) = intrinsics[3].as<double>();
+		cv::Mat R = cv::Mat::eye(3, 3, CV_64FC1);
+		cv::Mat P = cv::Mat::zeros(3, 4, CV_64FC1);
+		K.copyTo(cv::Mat(P, cv::Range(0,3), cv::Range(0,3)));
+
+		cv::Mat D = cv::Mat::zeros(1, distortion_coefficients.size(), CV_64FC1);
+		for(unsigned int i=0; i<distortion_coefficients.size(); ++i)
+		{
+			D.at<double>(i) = distortion_coefficients[i].as<double>();
+		}
+
+		Transform t(data[0].as<float>(), data[1].as<float>(), data[2].as<float>(), data[3].as<float>(),
+					data[4].as<float>(), data[5].as<float>(), data[6].as<float>(), data[7].as<float>(),
+					data[8].as<float>(), data[9].as<float>(), data[10].as<float>(), data[11].as<float>());
+
+		models.push_back(CameraModel(outputName+"_calib", cv::Size(resolution[0].as<int>(),resolution[1].as<int>()), K, D, R, P, t));
+		UASSERT(models.back().isValidForRectification());
+	}
+
+	StereoCameraModel model(outputName+"_calib", models[0], models[1], models[1].localTransform().inverse() * models[0].localTransform());
+	if(!model.save(output, true))
+	{
+		UERROR("Could not save calibration!");
+		return -1;
+	}
+	printf("Saved calibration \"%s\" to \"%s\"\n", (outputName+"_calib").c_str(), output.c_str());
+
 
 	if(quiet)
 	{
@@ -381,15 +243,15 @@ int main(int argc, char * argv[])
 	}
 
 	// We use CameraThread only to use postUpdate() method
-	Transform opticalRotation(0,0,1,0, -1,0,0,color?-0.06:0, 0,-1,0,0);
+	Transform opticalRotation(0,0,1,0, 0,-1,0,0, 1,0,0,0);
 	CameraThread cameraThread(new
 		CameraStereoImages(
 				pathLeftImages,
 				pathRightImages,
-				false, // assume that images are already rectified
+				true,
 				0.0f,
-				opticalRotation), parameters);
-	((CameraStereoImages*)cameraThread.camera())->setTimestamps(false, pathTimes, false);
+				opticalRotation*models[0].localTransform()), parameters);
+	((CameraStereoImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(exposureCompensation)
 	{
 		cameraThread.setStereoExposureCompensation(true);
@@ -398,21 +260,9 @@ int main(int argc, char * argv[])
 	{
 		cameraThread.setStereoToDepth(true);
 	}
-	if(!gtPath.empty())
+	if(!pathGt.empty())
 	{
-		((CameraStereoImages*)cameraThread.camera())->setGroundTruthPath(gtPath, 2);
-	}
-	if(!pathScan.empty())
-	{
-		((CameraStereoImages*)cameraThread.camera())->setScanPath(
-						pathScan,
-						130000,
-						scanStep,
-						scanVoxel,
-						scanNormalK,
-						scanNormalRadius,
-						Transform(-0.27f, 0.0f, 0.08, 0.0f, 0.0f, 0.0f),
-						true);
+		((CameraStereoImages*)cameraThread.camera())->setGroundTruthPath(pathGt, 9);
 	}
 
 	float detectionRate = Parameters::defaultRtabmapDetectionRate();
@@ -422,8 +272,7 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
 	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
 
-	// assuming source is 10 Hz
-	int mapUpdate = 10 / detectionRate;
+	int mapUpdate = rateHz / detectionRate;
 	if(mapUpdate < 1)
 	{
 		mapUpdate = 1;
@@ -459,12 +308,8 @@ int main(int argc, char * argv[])
 			cameraThread.postUpdate(&data, &cameraInfo);
 			cameraInfo.timeTotal = timer.ticks();
 
-
 			OdometryInfo odomInfo;
 			Transform pose = odom->process(data, &odomInfo);
-			float speed = 0.0f;
-			if(odomInfo.interval>0.0)
-				speed = odomInfo.transform.x()/odomInfo.interval*3.6;
 			if(odomInfo.keyFrameAdded)
 			{
 				++odomKeyFrames;
@@ -512,7 +357,6 @@ int main(int argc, char * argv[])
 				externalStats.insert(std::make_pair("Odometry/LocalBundleOutliers/", odomInfo.localBundleOutliers));
 				externalStats.insert(std::make_pair("Odometry/TotalTime/ms", odomInfo.timeEstimation*1000.0f));
 				externalStats.insert(std::make_pair("Odometry/Registration/ms", odomInfo.reg.totalTime*1000.0f));
-				externalStats.insert(std::make_pair("Odometry/Speed/kph", speed));
 				externalStats.insert(std::make_pair("Odometry/Inliers/", odomInfo.reg.inliers));
 				externalStats.insert(std::make_pair("Odometry/Features/", odomInfo.features));
 				externalStats.insert(std::make_pair("Odometry/DistanceTravelled/m", odomInfo.distanceTravelled));
@@ -541,30 +385,26 @@ int main(int argc, char * argv[])
 				{
 					if(rmse >= 0.0f)
 					{
-						//printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%f, kfs=%d)=%dms, slam=%dms, rmse=%fm, noise stddev=%fm %frad",
-						//		iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.icpInliersRatio, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
-						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%f, kfs=%d)=%dms, slam=%dms, rmse=%fm",
-								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.icpInliersRatio, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse);
+						printf("Iteration %d/%d: camera=%dms, odom(quality=%f, kfs=%d)=%dms, slam=%dms, rmse=%fm",
+								iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.icpInliersRatio, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse);
 					}
 					else
 					{
-						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%f, kfs=%d)=%dms, slam=%dms",
-								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.icpInliersRatio, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+						printf("Iteration %d/%d: camera=%dms, odom(quality=%f, kfs=%d)=%dms, slam=%dms",
+								iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.icpInliersRatio, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
 					}
 				}
 				else
 				{
 					if(rmse >= 0.0f)
 					{
-						//printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm, noise stddev=%fm %frad",
-						//		iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse, sqrt(odomInfo.reg.covariance.at<double>(0,0)), sqrt(odomInfo.reg.covariance.at<double>(3,3)));
-						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm",
-								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse);
+						printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms, rmse=%fm",
+								iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f), rmse);
 					}
 					else
 					{
-						printf("Iteration %d/%d: speed=%dkm/h camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms",
-								iteration, totalImages, int(speed), int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
+						printf("Iteration %d/%d: camera=%dms, odom(quality=%d/%d, kfs=%d)=%dms, slam=%dms",
+								iteration, totalImages, int(cameraInfo.timeTotal*1000.0f), odomInfo.reg.inliers, odomInfo.features, odomKeyFrames, int(odomInfo.timeEstimation*1000.0f), int(slamTime*1000.0f));
 					}
 				}
 				if(processData && rtabmap.getLoopClosureId()>0)
@@ -593,7 +433,13 @@ int main(int argc, char * argv[])
 		printf("Saving trajectory ...\n");
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
-		rtabmap.getGraph(poses, links, true, true);
+		std::map<int, Signature> signatures;
+		std::map<int, double> stamps;
+		rtabmap.getGraph(poses, links, true, true, &signatures);
+		for(std::map<int, Signature>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
+		{
+			stamps.insert(std::make_pair(iter->first, iter->second.getStamp()));
+		}
 		std::string pathTrajectory = output+"/"+outputName+"_poses.txt";
 		if(poses.size() && graph::exportPoses(pathTrajectory, 2, poses, links))
 		{
@@ -604,7 +450,7 @@ int main(int argc, char * argv[])
 			printf("Saving %s... failed!\n", pathTrajectory.c_str());
 		}
 
-		if(!gtPath.empty())
+		if(!pathGt.empty())
 		{
 			// Log ground truth statistics
 			std::map<int, Transform> groundTruth;
@@ -623,14 +469,6 @@ int main(int argc, char * argv[])
 					groundTruth.insert(std::make_pair(iter->first, gtPose));
 				}
 			}
-
-			// compute KITTI statistics
-			float t_err = 0.0f;
-			float r_err = 0.0f;
-			graph::calcKittiSequenceErrors(uValues(groundTruth), uValues(poses), t_err, r_err);
-			printf("Ground truth comparison:\n");
-			printf("   KITTI t_err = %f %%\n", t_err);
-			printf("   KITTI r_err = %f deg/m\n", r_err);
 
 			// compute RMSE statistics
 			float translational_rmse = 0.0f;
@@ -664,7 +502,7 @@ int main(int argc, char * argv[])
 			printf("   translational_rmse=   %f m\n", translational_rmse);
 			printf("   rotational_rmse=      %f deg\n", rotational_rmse);
 
-			pFile = 0;
+			FILE * pFile = 0;
 			std::string pathErrors = output+"/"+outputName+"_rmse.txt";
 			pFile = fopen(pathErrors.c_str(),"w");
 			if(!pFile)
@@ -672,8 +510,6 @@ int main(int argc, char * argv[])
 				UERROR("could not save RMSE results to \"%s\"", pathErrors.c_str());
 			}
 			fprintf(pFile, "Ground truth comparison:\n");
-			fprintf(pFile, "  KITTI t_err =         %f %%\n", t_err);
-			fprintf(pFile, "  KITTI r_err =         %f deg/m\n", r_err);
 			fprintf(pFile, "  translational_rmse=   %f\n", translational_rmse);
 			fprintf(pFile, "  translational_mean=   %f\n", translational_mean);
 			fprintf(pFile, "  translational_median= %f\n", translational_median);

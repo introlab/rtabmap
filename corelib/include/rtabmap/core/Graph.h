@@ -123,6 +123,8 @@ std::multimap<int, int>::const_iterator RTABMAP_EXP findLink(
 		int to,
 		bool checkBothWays = true);
 
+std::multimap<int, Link> RTABMAP_EXP filterDuplicateLinks(
+		const std::multimap<int, Link> & links);
 std::multimap<int, Link> RTABMAP_EXP filterLinks(
 		const std::multimap<int, Link> & links,
 		Link::Type filteredType);
@@ -226,6 +228,11 @@ std::list<std::pair<int, Transform> > RTABMAP_EXP computePath(
 int RTABMAP_EXP findNearestNode(
 		const std::map<int, rtabmap::Transform> & nodes,
 		const rtabmap::Transform & targetPose);
+
+std::vector<int> RTABMAP_EXP findNearestNodes(
+		const std::map<int, rtabmap::Transform> & nodes,
+		const rtabmap::Transform & targetPose,
+		int k);
 
 /**
  * Get nodes near the query

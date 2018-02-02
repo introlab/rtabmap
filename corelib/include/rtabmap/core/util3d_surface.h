@@ -304,6 +304,14 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
 		int dilationIterations = 0);     // VOXEL_GRID_DILATION
 
+void RTABMAP_EXP adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
+		bool forceGroundNormalsUp = false);
+void RTABMAP_EXP adjustNormalsToViewPoint(
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),
+		bool forceGroundNormalsUp = false);
 void RTABMAP_EXP adjustNormalsToViewPoints(
 		const std::map<int, Transform> & poses,
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & rawCloud,

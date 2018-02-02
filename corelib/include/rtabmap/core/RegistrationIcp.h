@@ -52,6 +52,7 @@ protected:
 			Transform guess,
 			RegistrationInfo & info) const;
 	virtual bool isScanRequiredImpl() const {return true;}
+	virtual bool canUseGuessImpl() const {return true;}
 	virtual float getMinGeometryCorrespondencesRatioImpl() const {return _correspondenceRatio;}
 
 private:

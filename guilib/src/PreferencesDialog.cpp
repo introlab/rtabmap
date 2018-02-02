@@ -451,7 +451,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	connect(_ui->groupBox_octomap, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_octomap_treeDepth, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->checkBox_octomap_fullUpdate, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_octomap_2dgrid, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_octomap_show3dMap, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->checkBox_octomap_cubeRendering, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -612,6 +611,8 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->doubleSpinBox_cameraImages_scanVoxelSize, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_cameraImages_scanNormalsK, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_cameraImages_scanNormalsRadius, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_cameraImages_scanForceGroundNormalsUp, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+
 
 	//Rtabmap basic
 	connect(_ui->general_doubleSpinBox_timeThr, SIGNAL(valueChanged(double)), _ui->general_doubleSpinBox_timeThr_2, SLOT(setValue(double)));
@@ -641,6 +642,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_publishPdf->setObjectName(Parameters::kRtabmapPublishPdf().c_str());
 	_ui->general_checkBox_publishLikelihood->setObjectName(Parameters::kRtabmapPublishLikelihood().c_str());
 	_ui->general_checkBox_publishRMSE->setObjectName(Parameters::kRtabmapComputeRMSE().c_str());
+	_ui->general_checkBox_publishRAM->setObjectName(Parameters::kRtabmapPublishRAMUsage().c_str());
 	_ui->general_checkBox_statisticLogsBufferedInRAM->setObjectName(Parameters::kRtabmapStatisticLogsBufferedInRAM().c_str());
 	_ui->groupBox_statistics->setObjectName(Parameters::kRtabmapStatisticLogged().c_str());
 	_ui->general_checkBox_statisticLoggedHeaders->setObjectName(Parameters::kRtabmapStatisticLoggedHeaders().c_str());
@@ -703,10 +705,12 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->comboBox_dictionary_strategy->setObjectName(Parameters::kKpNNStrategy().c_str());
 	_ui->checkBox_dictionary_incremental->setObjectName(Parameters::kKpIncrementalDictionary().c_str());
 	_ui->checkBox_kp_incrementalFlann->setObjectName(Parameters::kKpIncrementalFlann().c_str());
+	_ui->surf_doubleSpinBox_rebalancingFactor->setObjectName(Parameters::kKpFlannRebalancingFactor().c_str());
 	_ui->comboBox_detector_strategy->setObjectName(Parameters::kKpDetectorStrategy().c_str());
 	_ui->surf_doubleSpinBox_nndrRatio->setObjectName(Parameters::kKpNndrRatio().c_str());
 	_ui->surf_doubleSpinBox_maxDepth->setObjectName(Parameters::kKpMaxDepth().c_str());
 	_ui->surf_doubleSpinBox_minDepth->setObjectName(Parameters::kKpMinDepth().c_str());
+	_ui->checkBox_memDepthAsMask->setObjectName(Parameters::kMemDepthAsMask().c_str());
 	_ui->surf_spinBox_wordsPerImageTarget->setObjectName(Parameters::kKpMaxFeatures().c_str());
 	_ui->spinBox_KPGridRows->setObjectName(Parameters::kKpGridRows().c_str());
 	_ui->spinBox_KPGridCols->setObjectName(Parameters::kKpGridCols().c_str());
@@ -861,9 +865,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->loopClosure_pnpReprojError->setObjectName(Parameters::kVisPnPReprojError().c_str());
 	_ui->loopClosure_pnpFlags->setObjectName(Parameters::kVisPnPFlags().c_str());
 	_ui->loopClosure_pnpRefineIterations->setObjectName(Parameters::kVisPnPRefineIterations().c_str());
-	_ui->loopClosure_correspondencesType->setObjectName(Parameters::kVisCorType().c_str());
-	connect(_ui->loopClosure_correspondencesType, SIGNAL(currentIndexChanged(int)), _ui->stackedWidget_loopClosureCorrespondences, SLOT(setCurrentIndex(int)));
-	_ui->stackedWidget_loopClosureCorrespondences->setCurrentIndex(Parameters::defaultVisCorType());
 	_ui->reextract_nn->setObjectName(Parameters::kVisCorNNType().c_str());
 	_ui->reextract_nndrRatio->setObjectName(Parameters::kVisCorNNDR().c_str());
 	_ui->spinBox_visCorGuessWinSize->setObjectName(Parameters::kVisCorGuessWinSize().c_str());
@@ -874,6 +875,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->reextract_gridcols->setObjectName(Parameters::kVisGridCols().c_str());
 	_ui->loopClosure_bowMaxDepth->setObjectName(Parameters::kVisMaxDepth().c_str());
 	_ui->loopClosure_bowMinDepth->setObjectName(Parameters::kVisMinDepth().c_str());
+	_ui->checkBox_visDepthAsMask->setObjectName(Parameters::kVisDepthAsMask().c_str());
 	_ui->loopClosure_roi->setObjectName(Parameters::kVisRoiRatios().c_str());
 	_ui->subpix_winSize->setObjectName(Parameters::kVisSubPixWinSize().c_str());
 	_ui->subpix_iterations->setObjectName(Parameters::kVisSubPixIterations().c_str());
@@ -937,6 +939,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 
 	_ui->checkBox_grid_fullUpdate->setObjectName(Parameters::kGridGlobalFullUpdate().c_str());
 	_ui->doubleSpinBox_grid_minMapSize->setObjectName(Parameters::kGridGlobalMinSize().c_str());
+	_ui->spinBox_grid_maxNodes->setObjectName(Parameters::kGridGlobalMaxNodes().c_str());
 	_ui->doubleSpinBox_grid_footprintRadius->setObjectName(Parameters::kGridGlobalFootprintRadius().c_str());
 	_ui->checkBox_grid_erode->setObjectName(Parameters::kGridGlobalEroded().c_str());
 
@@ -964,6 +967,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_odom_f2m_scanAngle->setObjectName(Parameters::kOdomF2MScanSubtractAngle().c_str());
 	_ui->odom_f2m_bundleStrategy->setObjectName(Parameters::kOdomF2MBundleAdjustment().c_str());
 	_ui->odom_f2m_bundleMaxFrames->setObjectName(Parameters::kOdomF2MBundleAdjustmentMaxFrames().c_str());
+
+	//Odometry Frame To Frame
+	_ui->comboBox_odomf2f_corType->setObjectName(Parameters::kVisCorType().c_str());
 
 	//Odometry Mono
 	_ui->doubleSpinBox_minFlow->setObjectName(Parameters::kOdomMonoInitMinFlow().c_str());
@@ -1041,6 +1047,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_OdomORBSLAM2ThDepth->setObjectName(Parameters::kOdomORBSLAM2ThDepth().c_str());
 	_ui->doubleSpinBox_OdomORBSLAM2Fps->setObjectName(Parameters::kOdomORBSLAM2Fps().c_str());
 	_ui->spinBox_OdomORBSLAM2MaxFeatures->setObjectName(Parameters::kOdomORBSLAM2MaxFeatures().c_str());
+	_ui->spinBox_OdomORBSLAM2MapSize->setObjectName(Parameters::kOdomORBSLAM2MapSize().c_str());
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
@@ -1457,7 +1464,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 
 		_ui->groupBox_octomap->setChecked(false);
 		_ui->spinBox_octomap_treeDepth->setValue(16);
-		_ui->checkBox_octomap_fullUpdate->setChecked(false);
 		_ui->checkBox_octomap_2dgrid->setChecked(true);
 		_ui->checkBox_octomap_show3dMap->setChecked(true);
 		_ui->checkBox_octomap_cubeRendering->setChecked(false);
@@ -1595,6 +1601,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(0.025f);
 		_ui->spinBox_cameraImages_scanNormalsK->setValue(20);
 		_ui->doubleSpinBox_cameraImages_scanNormalsRadius->setValue(0.0);
+		_ui->checkBox_cameraImages_scanForceGroundNormalsUp->setChecked(false);
 
 		_ui->groupBox_depthFromScan->setChecked(false);
 		_ui->groupBox_depthFromScan_fillHoles->setChecked(true);
@@ -1845,7 +1852,6 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 
 	_ui->groupBox_octomap->setChecked(settings.value("octomap", _ui->groupBox_octomap->isChecked()).toBool());
 	_ui->spinBox_octomap_treeDepth->setValue(settings.value("octomap_depth", _ui->spinBox_octomap_treeDepth->value()).toInt());
-	_ui->checkBox_octomap_fullUpdate->setChecked(settings.value("octomap_full_update", _ui->checkBox_octomap_fullUpdate->isChecked()).toBool());
 	_ui->checkBox_octomap_2dgrid->setChecked(settings.value("octomap_2dgrid", _ui->checkBox_octomap_2dgrid->isChecked()).toBool());
 	_ui->checkBox_octomap_show3dMap->setChecked(settings.value("octomap_3dmap", _ui->checkBox_octomap_show3dMap->isChecked()).toBool());
 	_ui->checkBox_octomap_cubeRendering->setChecked(settings.value("octomap_cube", _ui->checkBox_octomap_cubeRendering->isChecked()).toBool());
@@ -1997,6 +2003,8 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->doubleSpinBox_cameraImages_scanVoxelSize->setValue(settings.value("voxelSize", _ui->doubleSpinBox_cameraImages_scanVoxelSize->value()).toDouble());
 	_ui->spinBox_cameraImages_scanNormalsK->setValue(settings.value("normalsK", _ui->spinBox_cameraImages_scanNormalsK->value()).toInt());
 	_ui->doubleSpinBox_cameraImages_scanNormalsRadius->setValue(settings.value("normalsRadius", _ui->doubleSpinBox_cameraImages_scanNormalsRadius->value()).toDouble());
+	_ui->checkBox_cameraImages_scanForceGroundNormalsUp->setChecked(settings.value("normalsUp", _ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked()).toBool());
+
 	settings.endGroup();//ScanFromDepth
 
 	settings.beginGroup("DepthFromScan");
@@ -2247,7 +2255,6 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 
 	settings.setValue("octomap",                     _ui->groupBox_octomap->isChecked());
 	settings.setValue("octomap_depth",               _ui->spinBox_octomap_treeDepth->value());
-	settings.setValue("octomap_full_update",         _ui->checkBox_octomap_fullUpdate->isChecked());
 	settings.setValue("octomap_2dgrid",              _ui->checkBox_octomap_2dgrid->isChecked());
 	settings.setValue("octomap_3dmap",               _ui->checkBox_octomap_show3dMap->isChecked());
 	settings.setValue("octomap_cube",                _ui->checkBox_octomap_cubeRendering->isChecked());
@@ -2401,6 +2408,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("voxelSize", 			_ui->doubleSpinBox_cameraImages_scanVoxelSize->value());
 	settings.setValue("normalsK", 			_ui->spinBox_cameraImages_scanNormalsK->value());
 	settings.setValue("normalsRadius", 		_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value());
+	settings.setValue("normalsUp", 	        _ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
 	settings.endGroup();
 
 	settings.beginGroup("DepthFromScan");
@@ -2582,15 +2590,6 @@ bool PreferencesDialog::validateForm()
 		QMessageBox::warning(this, tr("Parameter warning"),
 				tr("Selected odometry local bundle adjustment optimization strategy (cvsba) is not available. RTAB-Map is not built "
 				   "with cvsba. Bundle adjustment is disabled."));
-		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
-	}
-	if(_ui->odom_strategy->currentIndex() == 0 && // F2M
-		_ui->odom_f2m_bundleStrategy->currentIndex() > 0 &&
-		_ui->loopClosure_correspondencesType->currentIndex() == 1)
-	{
-		QMessageBox::warning(this, tr("Parameter warning"),
-				tr("Odometry local bundle adjustment optimization cannot be used at the same time than Optical Flow correspondences "
-					"strategy (see Visual Registration panel). Bundle adjustment is disabled."));
 		_ui->odom_f2m_bundleStrategy->setCurrentIndex(0);
 	}
 
@@ -3066,6 +3065,9 @@ rtabmap::ParametersMap PreferencesDialog::getAllParameters() const
 	ParametersMap parameters = _parameters;
 	uInsert(parameters, _modifiedParameters);
 
+	// It will be added manually for odometry
+	parameters.erase(Parameters::kVisCorType());
+
 	return parameters;
 }
 
@@ -3328,7 +3330,7 @@ void PreferencesDialog::selectSourceImagesPathOdom()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Odometry (*.txt *.log *.toro *.g2o)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Odometry (*.txt *.log *.toro *.g2o *.csv)"));
 	if(path.size())
 	{
 		QStringList list;
@@ -3352,7 +3354,7 @@ void PreferencesDialog::selectSourceImagesPathGt()
 	{
 		dir = getWorkingDirectory();
 	}
-	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ground Truth (*.txt *.log *.toro *.g2o)"));
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file"), dir, tr("Ground Truth (*.txt *.log *.toro *.g2o *.csv)"));
 	if(path.size())
 	{
 		QStringList list;
@@ -4334,7 +4336,7 @@ int PreferencesDialog::getOctomapTreeDepth() const
 }
 bool PreferencesDialog::isOctomapFullUpdate() const
 {
-	return _ui->checkBox_octomap_fullUpdate->isChecked();
+	return uStr2Bool(this->getParameter(Parameters::kGridGlobalFullUpdate()));
 }
 double PreferencesDialog::getOctomapOccupancyThr() const
 {
@@ -4851,7 +4853,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
 						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
-						this->getLaserLocalTransform());
+						this->getLaserLocalTransform(),
+						_ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
 		((CameraRGBDImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
@@ -4899,7 +4902,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
 						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
-						this->getLaserLocalTransform());
+						this->getLaserLocalTransform(),
+						_ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
 		((CameraStereoImages*)camera)->setTimestamps(
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
@@ -5005,7 +5009,8 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 						_ui->doubleSpinBox_cameraImages_scanVoxelSize->value(),
 						_ui->spinBox_cameraImages_scanNormalsK->value(),
 						_ui->doubleSpinBox_cameraImages_scanNormalsRadius->value(),
-						this->getLaserLocalTransform());
+						this->getLaserLocalTransform(),
+						_ui->checkBox_cameraImages_scanForceGroundNormalsUp->isChecked());
 		((CameraImages*)camera)->setDepthFromScan(
 				_ui->groupBox_depthFromScan->isChecked(),
 				!_ui->groupBox_depthFromScan_fillHoles->isChecked()?0:_ui->radioButton_depthFromScan_vertical->isChecked()?1:-1,
@@ -5220,6 +5225,15 @@ void PreferencesDialog::testOdometry()
 	{
 		uInsert(parameters, ParametersPair(Parameters::kRegStrategy(), uNumber2Str(getOdomRegistrationApproach())));
 	}
+
+	int odomStrategy = Parameters::defaultOdomStrategy();
+	Parameters::parse(parameters, Parameters::kOdomStrategy(), odomStrategy);
+	if(odomStrategy == 1)
+	{
+		// Only Frame To Frame supports  all VisCorType
+		parameters.insert(ParametersPair(Parameters::kVisCorType(), this->getParameter(Parameters::kVisCorType())));
+	}
+
 	Odometry * odometry = Odometry::create(parameters);
 
 	OdometryThread odomThread(

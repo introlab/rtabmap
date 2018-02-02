@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/Parameters.h>
 
 #include <map>
 #include <string>
@@ -57,7 +58,8 @@ public:
 
 class RTABMAP_EXP OctoMap {
 public:
-	OctoMap(float voxelSize = 0.1f, float occupancyThr = 0.5f, bool fullUpdate = false);
+	OctoMap(const ParametersMap & parameters, float occupancyThr = 0.5f);
+	OctoMap(float cellSize = 0.1f, float occupancyThr = 0.5f, bool fullUpdate = false);
 
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	void addToCache(int nodeId,

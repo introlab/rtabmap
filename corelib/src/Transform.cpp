@@ -92,6 +92,11 @@ Transform::Transform(float x, float y, float theta)
 	*this = fromEigen3f(t);
 }
 
+Transform Transform::clone() const
+{
+	return Transform(data_.clone());
+}
+
 bool Transform::isNull() const
 {
 	return (data_.empty() ||

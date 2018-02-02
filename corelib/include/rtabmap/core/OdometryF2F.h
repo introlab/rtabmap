@@ -59,6 +59,7 @@ private:
 	Registration * registrationPipeline_;
 	Signature refFrame_;
 	Transform lastKeyFramePose_;
+	ParametersMap parameters_;
 };
 
 }

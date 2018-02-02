@@ -56,6 +56,8 @@ public:
 	// x,y, theta
 	Transform(float x, float y, float theta);
 
+	Transform clone() const;
+
 	float r11() const {return data()[0];}
 	float r12() const {return data()[1];}
 	float r13() const {return data()[2];}

@@ -1070,7 +1070,7 @@ cv::Mat DBDriver::loadOptimizedMesh(
 				std::map<int, Transform> * poses,
 				std::vector<std::vector<std::vector<unsigned int> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
-				std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>> > * texCoords,
+				std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else
 				std::vector<std::vector<Eigen::Vector2f> > * texCoords,
 #endif

@@ -155,7 +155,12 @@ bool databaseRecovery(
 		}
 		else
 		{
-			if(!rtabmap.process(data, info.odomPose, info.odomCovariance))
+			if(!odometryIgnored && !info.odomCovariance.empty() && info.odomCovariance.at<double>(0,0)>=9999)
+			{
+				status = uFormat("High variance detected, triggering a new map...");
+				rtabmap.triggerNewMap();
+			}
+			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity))
 			{
 				status = uFormat("Failed processing node %d.", data.id());
 			}

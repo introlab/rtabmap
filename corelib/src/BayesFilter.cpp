@@ -30,6 +30,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/Parameters.h"
 #include <iostream>
+#include <set>
+#include <unordered_set>
 
 #include "rtabmap/utilite/UtiLite.h"
 
@@ -125,6 +127,7 @@ void BayesFilter::reset()
 {
 	_posterior.clear();
 	_prediction = cv::Mat();
+	_neighborsIndex.clear();
 }
 
 const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory, const std::map<int, float> & likelihood)
@@ -219,7 +222,7 @@ const std::map<int, float> & BayesFilter::computePosterior(const Memory * memory
 	return _posterior;
 }
 
-cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids) const
+cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector<int> & ids)
 {
 	if(!_fullPredictionUpdate && !_prediction.empty())
 	{
@@ -236,12 +239,16 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 	UTimer timerGlobal;
 	timerGlobal.start();
 
-	std::map<int, int> idToIndexMap;
+	std::unordered_map<int,int> idToIndexMap;
+	idToIndexMap.reserve(ids.size());
 	for(unsigned int i=0; i<ids.size(); ++i)
 	{
-		UASSERT_MSG(ids[i] != 0, "Signature id is null ?!?");
-		idToIndexMap.insert(idToIndexMap.end(), std::make_pair(ids[i], i));
+		if(ids[i]>0)
+		{
+			idToIndexMap[ids[i]] = i;
+		}
 	}
+
 
 	//int rows = prediction.rows;
 	cv::Mat prediction = cv::Mat::zeros(ids.size(), ids.size(), CV_32FC1);
@@ -260,7 +267,13 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 				// Set high values (gaussians curves) to loop closure neighbors
 
 				// ADD prob for each neighbors
-				std::map<int, int> neighbors = memory->getNeighborsId(ids[i], _predictionLC.size()-1, 0, false, false, true);
+				std::map<int, int> neighbors = memory->getNeighborsId(ids[i], _predictionLC.size()-1, 0, false, false, true, true);
+
+				if(!_fullPredictionUpdate)
+				{
+					uInsert(_neighborsIndex, std::make_pair(ids[i], neighbors));
+				}
+
 				std::list<int> idsLoopMargin;
 				//filter neighbors in STM
 				for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end();)
@@ -271,7 +284,7 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 					}
 					else
 					{
-						if(iter->second == 0)
+						if(iter->second == 0 && idToIndexMap.find(iter->first)!=idToIndexMap.end())
 						{
 							idsLoopMargin.push_back(iter->first);
 						}
@@ -288,10 +301,16 @@ cv::Mat BayesFilter::generatePrediction(const Memory * memory, const std::vector
 				// same neighbor tree for loop signatures (margin = 0)
 				for(std::list<int>::iterator iter = idsLoopMargin.begin(); iter!=idsLoopMargin.end(); ++iter)
 				{
+					if(!_fullPredictionUpdate)
+					{
+						uInsert(_neighborsIndex, std::make_pair(*iter, neighbors));
+					}
+
 					float sum = 0.0f; // sum values added
-					sum += this->addNeighborProb(prediction, idToIndexMap.at(*iter), neighbors, idToIndexMap);
+					int index = idToIndexMap.at(*iter);
+					sum += this->addNeighborProb(prediction, index, neighbors, idToIndexMap);
 					idsDone.insert(*iter);
-					this->normalize(prediction, idToIndexMap.at(*iter), sum, ids[0]<0);
+					this->normalize(prediction, index, sum, ids[0]<0);
 				}
 			}
 			else
@@ -405,7 +424,7 @@ void BayesFilter::normalize(cv::Mat & prediction, unsigned int index, float adde
 cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 		const Memory * memory,
 		const std::vector<int> & oldIds,
-		const std::vector<int> & newIds) const
+		const std::vector<int> & newIds)
 {
 	UTimer timer;
 	UDEBUG("");
@@ -417,34 +436,32 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 		oldIds.size() == (unsigned int)oldPrediction.rows);
 
 	cv::Mat prediction = cv::Mat::zeros(newIds.size(), newIds.size(), CV_32FC1);
+	UDEBUG("time creating prediction = %fs", timer.restart());
 
 	// Create id to index maps
-	std::map<int, int> oldIdToIndexMap;
-	std::map<int, int> newIdToIndexMap;
-	for(unsigned int i=0; i<oldIds.size() || i<newIds.size(); ++i)
+	std::unordered_set<int> oldIdsSet(oldIds.begin(), oldIds.end());
+	UDEBUG("time creating old ids set = %fs", timer.restart());
+
+	std::unordered_map<int,int> newIdToIndexMap;
+	newIdToIndexMap.reserve(newIds.size());
+	for(unsigned int i=0; i<newIds.size(); ++i)
 	{
-		if(i<oldIds.size())
+		if(newIds[i]>0)
 		{
-			UASSERT(oldIds[i]);
-			oldIdToIndexMap.insert(oldIdToIndexMap.end(), std::make_pair(oldIds[i], i));
-			//UDEBUG("oldIdToIndexMap[%d] = %d", oldIds[i], i);
-		}
-		if(i<newIds.size())
-		{
-			UASSERT(newIds[i]);
-			newIdToIndexMap.insert(newIdToIndexMap.end(), std::make_pair(newIds[i], i));
-			//UDEBUG("newIdToIndexMap[%d] = %d", newIds[i], i);
+			newIdToIndexMap[newIds[i]] = i;
 		}
 	}
-	UDEBUG("time creating id-index maps = %fs", timer.restart());
+
+	UDEBUG("time creating id-index vector (size=%d oldIds.back()=%d newIds.back()=%d) = %fs", (int)newIdToIndexMap.size(), oldIds.back(), newIds.back(), timer.restart());
 
 	//Get removed ids
 	std::set<int> removedIds;
 	for(unsigned int i=0; i<oldIds.size(); ++i)
 	{
-		if(!uContains(newIdToIndexMap, oldIds[i]))
+		if(oldIds[i] > 0 && newIdToIndexMap.find(oldIds[i]) == newIdToIndexMap.end())
 		{
 			removedIds.insert(removedIds.end(), oldIds[i]);
+			_neighborsIndex.erase(oldIds[i]);
 			UDEBUG("removed id=%d at oldIndex=%d", oldIds[i], i);
 		}
 	}
@@ -476,16 +493,31 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 				UDEBUG("From removed id %d, %d neighbors to update.", oldIds[i], count);
 			}
 		}
-		if(i<newIds.size() && !uContains(oldIdToIndexMap,newIds[i]))
+		if(i<newIds.size() && oldIdsSet.find(newIds[i]) == oldIdsSet.end())
 		{
-			std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, true);
+			if(_neighborsIndex.find(newIds[i]) == _neighborsIndex.end())
+			{
+				std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, true, true);
+
+				for(std::map<int, int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+				{
+					std::map<int, std::map<int, int> >::iterator jter = _neighborsIndex.find(iter->first);
+					if(jter != _neighborsIndex.end())
+					{
+						uInsert(jter->second, std::make_pair(newIds[i], iter->second));
+					}
+				}
+				_neighborsIndex.insert(std::make_pair(newIds[i], neighbors));
+			}
+			const std::map<int, int> & neighbors = _neighborsIndex.at(newIds[i]);
+
 			float sum = this->addNeighborProb(prediction, i, neighbors, newIdToIndexMap);
 			this->normalize(prediction, i, sum, newIds[0]<0);
 			++added;
 			int count = 0;
-			for(std::map<int,int>::iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
+			for(std::map<int,int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 			{
-				if(uContains(oldIdToIndexMap, iter->first) &&
+				if(oldIdsSet.find(iter->first)!=oldIdsSet.end() &&
 				   removedIds.find(iter->first) == removedIds.end())
 				{
 					idsToUpdate.insert(iter->first);
@@ -497,51 +529,35 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	}
 	UDEBUG("time getting %d ids to update = %fs", idsToUpdate.size(), timer.restart());
 
+	UTimer t1;
+	double e0=0,e1=0, e2=0, e3=0, e4=0;
 	// update modified/added ids
 	int modified = 0;
-	std::set<int> idsDone;
 	for(std::set<int>::iterator iter = idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
 	{
-		if(idsDone.find(*iter) == idsDone.end() && *iter > 0)
+		int id = *iter;
+		if(id > 0 && id<(int)newIdToIndexMap.size())
 		{
-			std::map<int, int> neighbors = memory->getNeighborsId(*iter, _predictionLC.size()-1, 0, false, false, true);
+			int index = newIdToIndexMap.at(id);
 
-			std::list<int> idsLoopMargin;
-			//filter neighbors in STM
-			for(std::map<int, int>::iterator jter=neighbors.begin(); jter!=neighbors.end();)
+			if(index > 0)
 			{
-				if(memory->isInSTM(jter->first))
-				{
-					neighbors.erase(jter++);
-				}
-				else
-				{
-					if(jter->second == 0)
-					{
-						idsLoopMargin.push_back(jter->first);
-					}
-					++jter;
-				}
-			}
+				e0 = t1.ticks();
+				std::map<int, std::map<int, int> >::iterator kter = _neighborsIndex.find(id);
+				UASSERT_MSG(kter != _neighborsIndex.end(), uFormat("Did not find %d (current index size=%d)", id, (int)_neighborsIndex.size()).c_str());
+				const std::map<int, int> & neighbors = kter->second;
+				e1+=t1.ticks();
 
-			// should at least have 1 id in idsMarginLoop
-			if(idsLoopMargin.size() == 0)
-			{
-				UFATAL("No 0 margin neighbor for signature %d !?!?", *iter);
-			}
-
-			// same neighbor tree for loop signatures (margin = 0)
-			for(std::list<int>::iterator iter = idsLoopMargin.begin(); iter!=idsLoopMargin.end(); ++iter)
-			{
-				int index = newIdToIndexMap.at(*iter);
 				float sum = this->addNeighborProb(prediction, index, neighbors, newIdToIndexMap);
-				idsDone.insert(*iter);
+				e3+=t1.ticks();
+
 				this->normalize(prediction, index, sum, newIds[0]<0);
 				++modified;
+				e4+=t1.ticks();
 			}
 		}
 	}
-	UDEBUG("time updating modified/added %d ids = %fs", idsToUpdate.size(), timer.restart());
+	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
 
 	//UDEBUG("oldIds.size()=%d, oldPrediction.cols=%d, oldPrediction.rows=%d", oldIds.size(), oldPrediction.cols, oldPrediction.rows);
 	//UDEBUG("newIdToIndexMap.size()=%d, prediction.cols=%d, prediction.rows=%d", newIdToIndexMap.size(), prediction.cols, prediction.rows);
@@ -624,20 +640,22 @@ void BayesFilter::updatePosterior(const Memory * memory, const std::vector<int> 
 	_posterior = newPosterior;
 }
 
-float BayesFilter::addNeighborProb(cv::Mat & prediction, unsigned int col, const std::map<int, int> & neighbors, const std::map<int, int> & idToIndexMap) const
+float BayesFilter::addNeighborProb(cv::Mat & prediction, unsigned int col, const std::map<int, int> & neighbors, const std::unordered_map<int, int> & idToIndex) const
 {
-	UASSERT((unsigned int)prediction.cols == idToIndexMap.size() &&
-			(unsigned int)prediction.rows == idToIndexMap.size() &&
-			col < (unsigned int)prediction.cols &&
+	UASSERT(col < (unsigned int)prediction.cols &&
 			col < (unsigned int)prediction.rows);
 
-	float sum=0;
+	float sum=0.0f;
+	float * dataPtr = (float*)prediction.data;
 	for(std::map<int, int>::const_iterator iter=neighbors.begin(); iter!=neighbors.end(); ++iter)
 	{
-		int index = uValue(idToIndexMap, iter->first, -1);
-		if(index >= 0)
+		if(iter->first>=0)
 		{
-			sum += ((float*)prediction.data)[col + index*prediction.cols] = _predictionLC[iter->second+1];
+			std::unordered_map<int, int>::const_iterator jter = idToIndex.find(iter->first);
+			if(jter != idToIndex.end())
+			{
+				sum += dataPtr[col + jter->second*prediction.cols] = _predictionLC[iter->second+1];
+			}
 		}
 	}
 	return sum;

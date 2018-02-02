@@ -240,6 +240,26 @@ pcl::PointXYZ projectDepthTo3D(
 	return pt;
 }
 
+Eigen::Vector3f projectDepthTo3DRay(
+		const cv::Size & imageSize,
+		float x, float y,
+		float cx, float cy,
+		float fx, float fy)
+{
+	Eigen::Vector3f ray;
+
+	// Use correct principal point from calibration
+	cx = cx > 0.0f ? cx : float(imageSize.width/2) - 0.5f; //cameraInfo.K.at(2)
+	cy = cy > 0.0f ? cy : float(imageSize.height/2) - 0.5f; //cameraInfo.K.at(5)
+
+	// Fill in XYZ
+	ray[0] = (x - cx) / fx;
+	ray[1] = (y - cy) / fy;
+	ray[2] = 1.0f;
+
+	return ray;
+}
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr cloudFromDepth(
 		const cv::Mat & imageDepth,
 		float cx, float cy,

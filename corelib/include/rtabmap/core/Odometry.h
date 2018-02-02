@@ -93,6 +93,7 @@ private:
 	float _kalmanMeasurementNoise;
 	int _imageDecimation;
 	bool _alignWithGround;
+	bool _publishRAMUsage;
 	Transform _pose;
 	int _resetCurrentCount;
 	double previousStamp_;

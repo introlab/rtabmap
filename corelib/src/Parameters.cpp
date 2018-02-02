@@ -172,7 +172,8 @@ rtabmap::ParametersMap Parameters::getDefaultOdometryParameters(bool stereo, boo
 			(icp && group.compare("Icp") == 0) ||
 			(vis && Parameters::isFeatureParameter(iter->first)) ||
 			group.compare("Reg") == 0 ||
-			(vis && group.compare("Vis") == 0))
+			(vis && group.compare("Vis") == 0) ||
+			iter->first.compare(kRtabmapPublishRAMUsage())==0)
 		{
 			if(stereo)
 			{

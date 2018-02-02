@@ -59,6 +59,7 @@ public:
 	float timeCapture;
 	float timeDisparity;
 	float timeMirroring;
+	float timeStereoExposureCompensation;
 	float timeImageDecimation;
 	float timeScanFromDepth;
 	float timeUndistortDepth;

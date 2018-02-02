@@ -84,6 +84,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_generateIds(Parameters::defaultMemGenerateIds()),
 	_badSignaturesIgnored(Parameters::defaultMemBadSignaturesIgnored()),
 	_mapLabelsAdded(Parameters::defaultMemMapLabelsAdded()),
+	_depthAsMask(Parameters::defaultMemDepthAsMask()),
 	_imagePreDecimation(Parameters::defaultMemImagePreDecimation()),
 	_imagePostDecimation(Parameters::defaultMemImagePostDecimation()),
 	_compressionParallelized(Parameters::defaultMemCompressionParallelized()),
@@ -98,6 +99,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_useOdometryFeatures(Parameters::defaultMemUseOdomFeatures()),
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
+	_visCorType(Parameters::defaultVisCorType()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -428,38 +430,49 @@ Memory::~Memory()
 void Memory::parseParameters(const ParametersMap & parameters)
 {
 	uInsert(parameters_, parameters);
+	ParametersMap params = parameters;
 
 	UDEBUG("");
 	ParametersMap::const_iterator iter;
 
-	Parameters::parse(parameters, Parameters::kMemBinDataKept(), _binDataKept);
-	Parameters::parse(parameters, Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
-	Parameters::parse(parameters, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
-	Parameters::parse(parameters, Parameters::kMemReduceGraph(), _reduceGraph);
-	Parameters::parse(parameters, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
-	Parameters::parse(parameters, Parameters::kMemIntermediateNodeDataKept(), _saveIntermediateNodeData);
-	Parameters::parse(parameters, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
-	Parameters::parse(parameters, Parameters::kMemGenerateIds(), _generateIds);
-	Parameters::parse(parameters, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
-	Parameters::parse(parameters, Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
-	Parameters::parse(parameters, Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
-	Parameters::parse(parameters, Parameters::kMemRecentWmRatio(), _recentWmRatio);
-	Parameters::parse(parameters, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
-	Parameters::parse(parameters, Parameters::kMemSTMSize(), _maxStMemSize);
-	Parameters::parse(parameters, Parameters::kMemImagePreDecimation(), _imagePreDecimation);
-	Parameters::parse(parameters, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
-	Parameters::parse(parameters, Parameters::kMemCompressionParallelized(), _compressionParallelized);
-	Parameters::parse(parameters, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
-	Parameters::parse(parameters, Parameters::kMemLaserScanVoxelSize(), _laserScanVoxelSize);
-	Parameters::parse(parameters, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
-	Parameters::parse(parameters, Parameters::kMemLaserScanNormalRadius(), _laserScanNormalRadius);
-	Parameters::parse(parameters, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
-	Parameters::parse(parameters, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
-	Parameters::parse(parameters, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
-	Parameters::parse(parameters, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
-	Parameters::parse(parameters, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
-	Parameters::parse(parameters, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
-	Parameters::parse(parameters, Parameters::kVisMaxFeatures(), _visMaxFeatures);
+	Parameters::parse(params, Parameters::kMemBinDataKept(), _binDataKept);
+	Parameters::parse(params, Parameters::kMemRawDescriptorsKept(), _rawDescriptorsKept);
+	Parameters::parse(params, Parameters::kMemSaveDepth16Format(), _saveDepth16Format);
+	Parameters::parse(params, Parameters::kMemReduceGraph(), _reduceGraph);
+	Parameters::parse(params, Parameters::kMemNotLinkedNodesKept(), _notLinkedNodesKeptInDb);
+	Parameters::parse(params, Parameters::kMemIntermediateNodeDataKept(), _saveIntermediateNodeData);
+	Parameters::parse(params, Parameters::kMemRehearsalIdUpdatedToNewOne(), _idUpdatedToNewOneRehearsal);
+	Parameters::parse(params, Parameters::kMemGenerateIds(), _generateIds);
+	Parameters::parse(params, Parameters::kMemBadSignaturesIgnored(), _badSignaturesIgnored);
+	Parameters::parse(params, Parameters::kMemMapLabelsAdded(), _mapLabelsAdded);
+	Parameters::parse(params, Parameters::kMemRehearsalSimilarity(), _similarityThreshold);
+	Parameters::parse(params, Parameters::kMemRecentWmRatio(), _recentWmRatio);
+	Parameters::parse(params, Parameters::kMemTransferSortingByWeightId(), _transferSortingByWeightId);
+	Parameters::parse(params, Parameters::kMemSTMSize(), _maxStMemSize);
+	Parameters::parse(params, Parameters::kMemDepthAsMask(), _depthAsMask);
+	Parameters::parse(params, Parameters::kMemImagePreDecimation(), _imagePreDecimation);
+	Parameters::parse(params, Parameters::kMemImagePostDecimation(), _imagePostDecimation);
+	Parameters::parse(params, Parameters::kMemCompressionParallelized(), _compressionParallelized);
+	Parameters::parse(params, Parameters::kMemLaserScanDownsampleStepSize(), _laserScanDownsampleStepSize);
+	Parameters::parse(params, Parameters::kMemLaserScanVoxelSize(), _laserScanVoxelSize);
+	Parameters::parse(params, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
+	Parameters::parse(params, Parameters::kMemLaserScanNormalRadius(), _laserScanNormalRadius);
+	Parameters::parse(params, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
+	Parameters::parse(params, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
+	Parameters::parse(params, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
+	Parameters::parse(params, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
+	Parameters::parse(params, Parameters::kMemUseOdomFeatures(), _useOdometryFeatures);
+	Parameters::parse(params, Parameters::kRGBDCreateOccupancyGrid(), _createOccupancyGrid);
+	Parameters::parse(params, Parameters::kVisMaxFeatures(), _visMaxFeatures);
+	Parameters::parse(params, Parameters::kVisCorType(), _visCorType);
+	if(_visCorType != 0)
+	{
+		UWARN("%s is not 0 (Features Matching), the only approach supported for loop closure transformation estimation. Setting to 0...",
+				Parameters::kVisCorType().c_str());
+		_visCorType = 0;
+		uInsert(parameters_, ParametersPair(Parameters::kVisCorType(), "0"));
+		uInsert(params, ParametersPair(Parameters::kVisCorType(), "0"));
+	}
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -477,23 +490,23 @@ void Memory::parseParameters(const ParametersMap & parameters)
 
 	if(_dbDriver)
 	{
-		_dbDriver->parseParameters(parameters);
+		_dbDriver->parseParameters(params);
 	}
 
 	// Keypoint stuff
 	if(_vwd)
 	{
-		_vwd->parseParameters(parameters);
+		_vwd->parseParameters(params);
 	}
 
-	Parameters::parse(parameters, Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
-	Parameters::parse(parameters, Parameters::kKpParallelized(), _parallelized);
-	Parameters::parse(parameters, Parameters::kKpBadSignRatio(), _badSignRatio);
+	Parameters::parse(params, Parameters::kKpTfIdfLikelihoodUsed(), _tfIdfLikelihoodUsed);
+	Parameters::parse(params, Parameters::kKpParallelized(), _parallelized);
+	Parameters::parse(params, Parameters::kKpBadSignRatio(), _badSignRatio);
 
 	//Keypoint detector
 	UASSERT(_feature2D != 0);
 	Feature2D::Type detectorStrategy = Feature2D::kFeatureUndef;
-	if((iter=parameters.find(Parameters::kKpDetectorStrategy())) != parameters.end())
+	if((iter=params.find(Parameters::kKpDetectorStrategy())) != params.end())
 	{
 		detectorStrategy = (Feature2D::Type)std::atoi((*iter).second.c_str());
 	}
@@ -517,11 +530,11 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	}
 	else if(_feature2D)
 	{
-		_feature2D->parseParameters(parameters);
+		_feature2D->parseParameters(params);
 	}
 
 	Registration::Type regStrategy = Registration::kTypeUndef;
-	if((iter=parameters.find(Parameters::kRegStrategy())) != parameters.end())
+	if((iter=params.find(Parameters::kRegStrategy())) != params.end())
 	{
 		regStrategy = (Registration::Type)std::atoi((*iter).second.c_str());
 	}
@@ -538,23 +551,23 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	}
 	else if(_registrationPipeline)
 	{
-		_registrationPipeline->parseParameters(parameters);
+		_registrationPipeline->parseParameters(params);
 	}
 
 	if(_registrationIcp)
 	{
-		_registrationIcp->parseParameters(parameters);
+		_registrationIcp->parseParameters(params);
 	}
 
 	if(_occupancy)
 	{
-		_occupancy->parseParameters(parameters);
+		_occupancy->parseParameters(params);
 	}
 
-	// do this after all parameters are parsed
+	// do this after all params are parsed
 	// SLAM mode vs Localization mode
-	iter = parameters.find(Parameters::kMemIncrementalMemory());
-	if(iter != parameters.end())
+	iter = params.find(Parameters::kMemIncrementalMemory());
+	if(iter != params.end())
 	{
 		bool value = uStr2Bool(iter->second.c_str());
 		if(value == false && _incrementalMemory)
@@ -577,6 +590,24 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			}
 		}
 		_incrementalMemory = value;
+	}
+
+	if(_useOdometryFeatures)
+	{
+		int visFeatureType = Parameters::defaultVisFeatureType();
+		int kpDetectorStrategy = Parameters::defaultKpDetectorStrategy();
+		Parameters::parse(parameters_, Parameters::kVisFeatureType(), visFeatureType);
+		Parameters::parse(parameters_, Parameters::kKpDetectorStrategy(), kpDetectorStrategy);
+		if(visFeatureType != kpDetectorStrategy)
+		{
+			UWARN("%s is enabled, but %s and %s parameters are not the same! Disabling %s...",
+					Parameters::kMemUseOdomFeatures().c_str(),
+					Parameters::kVisFeatureType().c_str(),
+					Parameters::kKpDetectorStrategy().c_str(),
+					Parameters::kMemUseOdomFeatures().c_str());
+			_useOdometryFeatures = false;
+			uInsert(parameters_, ParametersPair(Parameters::kMemUseOdomFeatures(), "false"));
+		}
 	}
 }
 
@@ -1065,6 +1096,7 @@ std::map<int, int> Memory::getNeighborsId(
 		bool incrementMarginOnLoop, // default false
 		bool ignoreLoopIds, // default false
 		bool ignoreIntermediateNodes, // default false
+		bool ignoreLocalSpaceLoopIds, // default false, ignored if ignoreLoopIds=true
 		const std::set<int> & nodesSet,
 		double * dbAccessTime
 		) const
@@ -1150,7 +1182,7 @@ std::map<int, int> Memory::getNeighborsId(
 								nextMargin.insert(iter->first);
 							}
 						}
-						else if(!ignoreLoopIds)
+						else if(!ignoreLoopIds && (!ignoreLocalSpaceLoopIds || iter->second.type()!=Link::kLocalSpaceClosure))
 						{
 							if(incrementMarginOnLoop)
 							{
@@ -1709,7 +1741,7 @@ cv::Mat Memory::loadOptimizedMesh(
 			std::map<int, Transform> * poses,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
-			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>> > * texCoords,
+			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
 #else
 			std::vector<std::vector<Eigen::Vector2f> > * texCoords,
 #endif
@@ -2277,13 +2309,13 @@ Transform Memory::computeTransform(
 
 	// make sure we have all data needed
 	// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
-	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && fromS.sensorData().imageCompressed().empty()) ||
+	if((((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired()) && fromS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().empty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
 		fromS.sensorData() = getNodeData(fromS.id());
 	}
-	if(((_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
+	if((((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
 	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().empty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
@@ -2292,13 +2324,13 @@ Transform Memory::computeTransform(
 	// uncompress only what we need
 	cv::Mat imgBuf, depthBuf, laserBuf, userBuf;
 	fromS.sensorData().uncompressData(
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&imgBuf:0,
+			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 	toS.sensorData().uncompressData(
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&imgBuf:0,
-			(_reextractLoopClosureFeatures && _registrationPipeline->isImageRequired())?&depthBuf:0,
+			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&imgBuf:0,
+			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&depthBuf:0,
 			_registrationPipeline->isScanRequired()?&laserBuf:0,
 			_registrationPipeline->isUserDataRequired()?&userBuf:0);
 
@@ -2331,11 +2363,14 @@ Transform Memory::computeTransform(
 			tmpTo.setWordsDescriptors(std::multimap<int, cv::Mat>());
 		}
 
-		if(guess.isNull() && !_registrationPipeline->isImageRequired())
+		if(guess.isNull() && (!_registrationPipeline->isImageRequired() || _visCorType==1))
 		{
 			UDEBUG("");
 			// no visual in the pipeline, make visual registration for guess
-			RegistrationVis regVis(parameters_);
+			// make sure feature matching is used instead of optical flow to compute the guess
+			ParametersMap parameters = parameters_;
+			uInsert(parameters, ParametersPair(Parameters::kVisCorType(), "0"));
+			RegistrationVis regVis(parameters);
 			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
 			if(!guess.isNull())
 			{
@@ -3399,7 +3434,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		meanWordsPerLocation = _vwd->getTotalActiveReferences() / treeSize;
 	}
 
-	if(_parallelized)
+	if(_parallelized && !isIntermediateNode)
 	{
 		UDEBUG("Start dictionary update thread");
 		preUpdateThread.start();
@@ -3447,7 +3482,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			}
 
 			cv::Mat depthMask;
-			if(!decimatedData.depthRaw().empty())
+			if(!decimatedData.depthRaw().empty() && _depthAsMask)
 			{
 				if(imageMono.rows % decimatedData.depthRaw().rows == 0 &&
 					imageMono.cols % decimatedData.depthRaw().cols == 0 &&
@@ -3607,20 +3642,20 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		UDEBUG("Joining dictionary update thread... thread finished!");
 	}
 
+	t = timer.ticks();
+	if(stats) stats->addStatistic(Statistics::kTimingMemJoining_dictionary_update(), t*1000.0f);
+	if(_parallelized)
+	{
+		UDEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
+	}
+	else
+	{
+		UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
+	}
+
 	std::list<int> wordIds;
 	if(descriptors.rows)
 	{
-		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemJoining_dictionary_update(), t*1000.0f);
-		if(_parallelized)
-		{
-			UDEBUG("time descriptor and memory update (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
-		}
-		else
-		{
-			UDEBUG("time descriptor (%d of size=%d) = %fs", descriptors.rows, descriptors.cols, t);
-		}
-
 		// In case the number of features we want to do quantization is lower
 		// than extracted ones (that would be used for transform estimation)
 		std::vector<bool> inliers;

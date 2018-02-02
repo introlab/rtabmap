@@ -823,13 +823,13 @@ void UPlotCurve::draw(QPainter * painter, const QRect & limits)
 				}
 			}
 
-			if(limits.contains(item->pos().toPoint()) && limits.contains((item->pos() + QPointF(item->rect().width(), item->rect().height())).toPoint()))
+			/*if(limits.contains(item->pos().toPoint()) && limits.contains((item->pos() + QPointF(item->rect().width(), item->rect().height())).toPoint()))
 			{
 				painter->save();
 				painter->setPen(QPen(_itemsColor));
 				painter->drawEllipse(item->pos()+QPointF(item->rect().width()/2, item->rect().height()/2), (int)item->rect().width()/2, (int)item->rect().height()/2);
 				painter->restore();
-			}
+			}*/
 		}
 	}
 }
@@ -1833,7 +1833,7 @@ UPlot::UPlot(QWidget *parent) :
 	_lowestRefreshRate = 99;
 	_refreshStartTime.start();
 
-	_penStyleCount = rand() % 10 + 1; // rand 1->10
+	_penStyleCount = 0;
 	_workingDirectory = QDir::homePath();
 }
 
@@ -2081,6 +2081,28 @@ bool UPlot::contains(const QString & curveName)
 
 QPen UPlot::getRandomPenColored()
 {
+	int penStyle = 0;
+	bool colorNotUsed = false;
+	for(int i=0; i<12; ++i)
+	{
+		QColor tmp((Qt::GlobalColor)((penStyle+i) % 12 + 7 ));
+		bool colorAlreadyUsed = false;
+		for(QList<UPlotCurve*>::const_iterator iter = _curves.constBegin(); iter!=_curves.constEnd() && !colorAlreadyUsed; ++iter)
+		{
+			colorAlreadyUsed = (*iter)->pen().color() == tmp;
+		}
+		if(!colorAlreadyUsed)
+		{
+			colorNotUsed = true;
+			penStyle+=i;
+			break;
+		}
+	}
+	if(colorNotUsed)
+	{
+		_penStyleCount = penStyle;
+	}
+
 	return QPen((Qt::GlobalColor)(_penStyleCount++ % 12 + 7 ));
 }
 

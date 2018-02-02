@@ -320,6 +320,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->spinBox_optimizationDepth, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
+	connect(ui_->doubleSpinBox_optimizationScale, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
@@ -354,15 +355,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(updateStatistics()));
 	// Graph view
-	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_ignoreGlobalLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_ignoreLocalLoopSpace, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_ignoreLocalLoopTime, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_ignoreUserLoop, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->spinBox_optimizationDepth, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_gridErode, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
-	connect(ui_->checkBox_octomap, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_gridCellSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -484,13 +477,6 @@ void DatabaseViewer::readSettings()
 	ui_->graphViewer->loadSettings(settings, "GraphView");
 
 	settings.beginGroup("optimization");
-	ui_->checkBox_spanAllMaps->setChecked(settings.value("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked()).toBool());
-	ui_->checkBox_ignorePoseCorrection->setChecked(settings.value("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked()).toBool());
-	ui_->checkBox_ignoreGlobalLoop->setChecked(settings.value("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked()).toBool());
-	ui_->checkBox_ignoreLocalLoopSpace->setChecked(settings.value("ignoreLocalLoopSpace", ui_->checkBox_ignoreLocalLoopSpace->isChecked()).toBool());
-	ui_->checkBox_ignoreLocalLoopTime->setChecked(settings.value("ignoreLocalLoopTime", ui_->checkBox_ignoreLocalLoopTime->isChecked()).toBool());
-	ui_->checkBox_ignoreUserLoop->setChecked(settings.value("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked()).toBool());
-	ui_->spinBox_optimizationDepth->setValue(settings.value("depth", ui_->spinBox_optimizationDepth->value()).toInt());
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(settings.value("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value()).toDouble());
 	ui_->doubleSpinBox_voxelSize->setValue(settings.value("voxelSize", ui_->doubleSpinBox_voxelSize->value()).toDouble());
 
@@ -502,10 +488,6 @@ void DatabaseViewer::readSettings()
 	ui_->doubleSpinBox_posefilteringRadius->setValue(settings.value("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value()).toDouble());
 	ui_->doubleSpinBox_posefilteringAngle->setValue(settings.value("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value()).toDouble());
 	ui_->checkBox_gridErode->setChecked(settings.value("erode", ui_->checkBox_gridErode->isChecked()).toBool());
-	if(ui_->checkBox_octomap->isEnabled())
-	{
-		ui_->checkBox_octomap->setChecked(settings.value("octomap", ui_->checkBox_octomap->isChecked()).toBool());
-	}
 	settings.endGroup();
 
 	settings.beginGroup("mesh");
@@ -576,17 +558,6 @@ void DatabaseViewer::writeSettings()
 
 	// save optimization settings
 	settings.beginGroup("optimization");
-	//settings.setValue("iterations", ui_->spinBox_iterations->value());
-	settings.setValue("spanToAllMaps", ui_->checkBox_spanAllMaps->isChecked());
-	//settings.setValue("robust", ui_->checkBox_robust->isChecked());
-	settings.setValue("ignorePoseCorrection", ui_->checkBox_ignorePoseCorrection->isChecked());
-	settings.setValue("ignoreGlobalLoop", ui_->checkBox_ignoreGlobalLoop->isChecked());
-	settings.setValue("ignoreLocalLoopSpace", ui_->checkBox_ignoreLocalLoopSpace->isChecked());
-	settings.setValue("ignoreLocalLoopTime", ui_->checkBox_ignoreLocalLoopTime->isChecked());
-	settings.setValue("ignoreUserLoop", ui_->checkBox_ignoreUserLoop->isChecked());
-	//settings.setValue("strategy", ui_->comboBox_graphOptimizer->currentIndex());
-	//settings.setValue("slam2d", ui_->checkBox_2dslam->isChecked());
-	settings.setValue("depth", ui_->spinBox_optimizationDepth->value());
 	settings.setValue("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value());
 	settings.setValue("voxelSize", ui_->doubleSpinBox_voxelSize->value());
 	settings.endGroup();
@@ -598,7 +569,6 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value());
 	settings.setValue("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value());
 	settings.setValue("erode", ui_->checkBox_gridErode->isChecked());
-	settings.setValue("octomap", ui_->checkBox_octomap->isChecked());
 	settings.endGroup();
 
 	settings.beginGroup("mesh");
@@ -666,6 +636,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreLocalLoopTime->setChecked(false);
 	ui_->checkBox_ignoreUserLoop->setChecked(false);
 	ui_->spinBox_optimizationDepth->setValue(0);
+	ui_->doubleSpinBox_optimizationScale->setValue(1.0);
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
 
@@ -925,6 +896,10 @@ bool DatabaseViewer::closeDatabase()
 		ui_->toolBox_statistics->clear();
 		databaseFileName_.clear();
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+		ui_->doubleSpinBox_optimizationScale->setVisible(false);
+		ui_->label_scale_title->setVisible(false);
+		ui_->label_rmse->setVisible(false);
+		ui_->label_rmse_title->setVisible(false);
 		ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
 		ui_->label_alignPosesWithGroundTruth->setVisible(false);
 		ui_->label_optimizeFrom->setText(tr("Optimize from"));
@@ -968,6 +943,7 @@ bool DatabaseViewer::closeDatabase()
 		ui_->label_timeOptimization->clear();
 		ui_->label_pathLength->clear();
 		ui_->label_poses->clear();
+		ui_->label_rmse->clear();
 		ui_->spinBox_optimizationsFrom->setEnabled(false);
 
 		ui_->graphicsView_A->clear();
@@ -1435,6 +1411,10 @@ void DatabaseViewer::updateIds()
 	gpsPoses_.clear();
 	gpsValues_.clear();
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+	ui_->doubleSpinBox_optimizationScale->setVisible(false);
+	ui_->label_scale_title->setVisible(false);
+	ui_->label_rmse->setVisible(false);
+	ui_->label_rmse_title->setVisible(false);
 	ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
 	ui_->label_alignPosesWithGroundTruth->setVisible(false);
 	ui_->menuExport_GPS->setEnabled(false);
@@ -1569,6 +1549,10 @@ void DatabaseViewer::updateIds()
 	if(!groundTruthPoses_.empty() || !gpsPoses_.empty())
 	{
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(true);
+		ui_->doubleSpinBox_optimizationScale->setVisible(true);
+		ui_->label_scale_title->setVisible(true);
+		ui_->label_rmse->setVisible(true);
+		ui_->label_rmse_title->setVisible(true);
 		ui_->label_alignPosesWithGroundTruth->setVisible(true);
 		if(!groundTruthPoses_.empty())
 		{
@@ -1595,6 +1579,7 @@ void DatabaseViewer::updateIds()
 
 	UINFO("Update database info...");
 	ui_->textEdit_info->clear();
+	ui_->textEdit_info->append(tr("Path:\t\t%1").arg(dbDriver_->getUrl().c_str()));
 	ui_->textEdit_info->append(tr("Version:\t\t%1").arg(dbDriver_->getDatabaseVersion().c_str()));
 	ui_->textEdit_info->append(tr("Sessions:\t\t%1").arg(sessions));
 	if(hasReducedGraph)
@@ -1720,7 +1705,7 @@ void DatabaseViewer::updateIds()
 			{
 				neighborLinks_.append(iter->second);
 			}
-			else
+			else if(iter->second.type()!=rtabmap::Link::kPosePrior)
 			{
 				loopLinks_.append(iter->second);
 			}
@@ -1784,6 +1769,7 @@ void DatabaseViewer::updateStatistics()
 		std::map<int, std::pair<std::map<std::string, float>, double> > allStats = dbDriver_->getAllStatistics();
 
 		std::map<std::string, std::pair<std::vector<float>, std::vector<float> > > allData;
+		std::map<std::string, int > allDataOi;
 
 		for(int i=0; i<ids_.size(); ++i)
 		{
@@ -1804,15 +1790,21 @@ void DatabaseViewer::updateStatistics()
 				{
 					//initialize data vectors
 					allData.insert(std::make_pair(iter->first, std::make_pair(std::vector<float>(ids_.size(), 0.0f), std::vector<float>(ids_.size(), 0.0f) )));
+					allDataOi.insert(std::make_pair(iter->first, 0));
 				}
 
-				allData.at(iter->first).first[i] = ui_->checkBox_timeStats->isChecked()?float(stamp-firstStamp):ids_[i];
-				allData.at(iter->first).second[i] = iter->second;
+				int & oi = allDataOi.at(iter->first);
+				allData.at(iter->first).first[oi] = ui_->checkBox_timeStats->isChecked()?float(stamp-firstStamp):ids_[i];
+				allData.at(iter->first).second[oi] = iter->second;
+				++oi;
 			}
 		}
 
 		for(std::map<std::string, std::pair<std::vector<float>, std::vector<float> > >::iterator iter=allData.begin(); iter!=allData.end(); ++iter)
 		{
+			int oi = allDataOi.at(iter->first);
+			iter->second.first.resize(oi);
+			iter->second.second.resize(oi);
 			ui_->toolBox_statistics->updateStat(iter->first.c_str(), iter->second.first, iter->second.second, true);
 		}
 	}
@@ -3420,16 +3412,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 
 		UTimer timer;
 		ParametersMap parameters = ui_->parameters_toolbox->getParameters();
-		bool opticalFlow = uStr2Bool(parameters.at(Parameters::kStereoOpticalFlow()));
-		Stereo * stereo = 0;
-		if(opticalFlow)
-		{
-			stereo = new StereoOpticalFlow(parameters);
-		}
-		else
-		{
-			stereo = new Stereo(parameters);
-		}
+		Stereo * stereo = Stereo::create(parameters);
 
 		// generate kpts
 		std::vector<cv::KeyPoint> kpts;
@@ -3576,7 +3559,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 						rightKpts[i].pt.x,
 						rightKpts[i].pt.y,
 						c,
-						QString("%1: (%2,%3) -> (%4,%5)").arg(i).arg(kpts[i].pt.x).arg(kpts[i].pt.y).arg(rightKpts[i].pt.x).arg(rightKpts[i].pt.y));
+						QString("%1: (%2,%3) -> (%4,%5) d=%6").arg(i).arg(kpts[i].pt.x).arg(kpts[i].pt.y).arg(rightKpts[i].pt.x).arg(rightKpts[i].pt.y).arg(kpts[i].pt.x - rightKpts[i].pt.x));
 			}
 		}
 		ui_->graphicsView_stereo->update();
@@ -4329,6 +4312,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 					rotational_max);
 
 			// ground truth live statistics
+			ui_->label_rmse->setNum(translational_rmse);
 			UINFO("translational_rmse=%f", translational_rmse);
 			UINFO("translational_mean=%f", translational_mean);
 			UINFO("translational_median=%f", translational_median);
@@ -4611,6 +4595,7 @@ void DatabaseViewer::updateGraphView()
 {
 	ui_->label_loopClosures->clear();
 	ui_->label_poses->clear();
+	ui_->label_rmse->clear();
 
 	if(odomPoses_.size())
 	{
@@ -4649,6 +4634,7 @@ void DatabaseViewer::updateGraphView()
 
 		ui_->menuExport_poses->setEnabled(true);
 		std::multimap<int, rtabmap::Link> links = links_;
+		loopLinks_.clear();
 
 		// filter current map if not spanning to all maps
 		if(!ui_->checkBox_spanAllMaps->isChecked() && uContains(mapIds_, fromId) && mapIds_.at(fromId) >= 0)
@@ -4718,6 +4704,7 @@ void DatabaseViewer::updateGraphView()
 					links.erase(iter++);
 					continue;
 				}
+				loopLinks_.push_back(iter->second);
 				++totalGlobal;
 			}
 			else if(iter->second.type() == Link::kLocalSpaceClosure)
@@ -4727,6 +4714,7 @@ void DatabaseViewer::updateGraphView()
 					links.erase(iter++);
 					continue;
 				}
+				loopLinks_.push_back(iter->second);
 				++totalLocalSpace;
 			}
 			else if(iter->second.type() == Link::kLocalTimeClosure)
@@ -4736,6 +4724,7 @@ void DatabaseViewer::updateGraphView()
 					links.erase(iter++);
 					continue;
 				}
+				loopLinks_.push_back(iter->second);
 				++totalLocalTime;
 			}
 			else if(iter->second.type() == Link::kUserClosure)
@@ -4745,14 +4734,37 @@ void DatabaseViewer::updateGraphView()
 					links.erase(iter++);
 					continue;
 				}
+				loopLinks_.push_back(iter->second);
 				++totalUser;
 			}
 			else if(iter->second.type() == Link::kPosePrior)
 			{
 				++totalPriors;
 			}
+			else
+			{
+				loopLinks_.push_back(iter->second);
+			}
+			Transform t = iter->second.transform().clone();
+			t.x() *= ui_->doubleSpinBox_optimizationScale->value();
+			t.y() *= ui_->doubleSpinBox_optimizationScale->value();
+			t.z() *= ui_->doubleSpinBox_optimizationScale->value();
+			iter->second.setTransform(t);
 			++iter;
 		}
+		ui_->horizontalSlider_loops->blockSignals(true);
+		if(loopLinks_.size() == 0)
+		{
+			ui_->horizontalSlider_loops->setEnabled(false);
+		}
+		else
+		{
+			ui_->horizontalSlider_loops->setEnabled(true);
+			ui_->horizontalSlider_loops->setMaximum(loopLinks_.size()-1);
+		}
+		ui_->horizontalSlider_loops->setValue(0);
+		ui_->horizontalSlider_loops->blockSignals(false);
+
 		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7)")
 				.arg(totalNeighbor)
 				.arg(totalNeighborMerged)
@@ -5447,9 +5459,7 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 		std::multimap<int, Link> linksIn = updateLinksWithModifications(links_);
 		linksIn.insert(std::make_pair(newLink.from(), newLink));
 		const Link * maxLinearLink = 0;
-		const Link * maxAngularLink = 0;
-		float maxLinearError = 0.0f;
-		float maxAngularError = 0.0f;
+		float maxLinearErrorRatio = 0.0f;
 		Optimizer * optimizer = Optimizer::create(ui_->parameters_toolbox->getParameters());
 		std::map<int, Transform> poses;
 		std::multimap<int, Link> links;
@@ -5480,43 +5490,31 @@ bool DatabaseViewer::addConstraint(int from, int to, bool silent)
 							fabs(iter->second.transform().x() - t.x()),
 							fabs(iter->second.transform().y() - t.y()),
 							fabs(iter->second.transform().z() - t.z()));
-					Eigen::Vector3f vA = t1.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-					Eigen::Vector3f vB = t2.toEigen3f().linear()*Eigen::Vector3f(1,0,0);
-					float angularError = pcl::getAngle3D(Eigen::Vector4f(vA[0], vA[1], vA[2], 0), Eigen::Vector4f(vB[0], vB[1], vB[2], 0));
-					if(linearError > maxLinearError)
+					float stddev = sqrt(iter->second.transVariance());
+					float linearErrorRatio = linearError/stddev;
+					if(linearErrorRatio > maxLinearErrorRatio)
 					{
-						maxLinearError = linearError;
+						maxLinearErrorRatio = linearErrorRatio;
 						maxLinearLink = &iter->second;
-					}
-					if(angularError > maxAngularError)
-					{
-						maxAngularError = angularError;
-						maxAngularLink = &iter->second;
 					}
 				}
 			}
 			if(maxLinearLink)
 			{
-				UINFO("Max optimization linear error = %f m (link %d->%d)", maxLinearError, maxLinearLink->from(), maxLinearLink->to());
-			}
-			if(maxAngularLink)
-			{
-				UINFO("Max optimization angular error = %f deg (link %d->%d)", maxAngularError*180.0f/M_PI, maxAngularLink->from(), maxAngularLink->to());
+				UINFO("Max optimization linear error ratio = %f (link %d->%d)", maxLinearErrorRatio, maxLinearLink->from(), maxLinearLink->to());
 			}
 
-			if(maxLinearError > maxOptimizationError)
+			if(maxLinearErrorRatio > maxOptimizationError)
 			{
 				msg = uFormat("Rejecting edge %d->%d because "
-						  "graph error is too large after optimization (%f m for edge %d->%d, %f deg for edge %d->%d). "
-						  "\"%s\" is %f m.",
+						  "graph error is too large after optimization (ratio %f for edge %d->%d, stddev=%f). "
+						  "\"%s\" is %f.",
 						  newLink.from(),
 						  newLink.to(),
-						  maxLinearError,
+						  maxLinearErrorRatio,
 						  maxLinearLink->from(),
 						  maxLinearLink->to(),
-						  maxAngularError*180.0f/M_PI,
-						  maxAngularLink?maxAngularLink->from():0,
-						  maxAngularLink?maxAngularLink->to():0,
+						  sqrt(maxLinearLink->transVariance()),
 						  Parameters::kRGBDOptimizeMaxError().c_str(),
 						  maxOptimizationError);
 			}

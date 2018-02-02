@@ -39,6 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UConversion.h"
+#include "rtabmap/utilite/UProcessInfo.h"
 #include "rtabmap/core/ParticleFilter.h"
 #include "rtabmap/core/util2d.h"
 
@@ -99,6 +100,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_kalmanMeasurementNoise(Parameters::defaultOdomKalmanMeasurementNoise()),
 		_imageDecimation(Parameters::defaultOdomImageDecimation()),
 		_alignWithGround(Parameters::defaultOdomAlignWithGround()),
+		_publishRAMUsage(Parameters::defaultRtabmapPublishRAMUsage()),
 		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
@@ -125,6 +127,8 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomKalmanMeasurementNoise(), _kalmanMeasurementNoise);
 	Parameters::parse(parameters, Parameters::kOdomImageDecimation(), _imageDecimation);
 	Parameters::parse(parameters, Parameters::kOdomAlignWithGround(), _alignWithGround);
+	Parameters::parse(parameters, Parameters::kRtabmapPublishRAMUsage(), _publishRAMUsage);
+
 	if(_imageDecimation == 0)
 	{
 		_imageDecimation = 1;
@@ -398,6 +402,10 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 		info->stamp = data.stamp();
 		info->interval = dt;
 		info->transform = t;
+		if(_publishRAMUsage)
+		{
+			info->memoryUsage = UProcessInfo::getMemoryUsage()/(1024*1024);
+		}
 
 		if(!data.groundTruth().isNull())
 		{

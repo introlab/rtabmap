@@ -64,6 +64,7 @@ VWDictionary::VWDictionary(const ParametersMap & parameters) :
 	_totalActiveReferences(0),
 	_incrementalDictionary(Parameters::defaultKpIncrementalDictionary()),
 	_incrementalFlann(Parameters::defaultKpIncrementalFlann()),
+	_rebalancingFactor(Parameters::defaultKpFlannRebalancingFactor()),
 	_nndrRatio(Parameters::defaultKpNndrRatio()),
 	_dictionaryPath(Parameters::defaultKpDictionaryPath()),
 	_newWordsComparedTogether(Parameters::defaultKpNewWordsComparedTogether()),
@@ -88,6 +89,7 @@ void VWDictionary::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kKpNndrRatio(), _nndrRatio);
 	Parameters::parse(parameters, Parameters::kKpNewWordsComparedTogether(), _newWordsComparedTogether);
 	Parameters::parse(parameters, Parameters::kKpIncrementalFlann(), _incrementalFlann);
+	Parameters::parse(parameters, Parameters::kKpFlannRebalancingFactor(), _rebalancingFactor);
 
 	UASSERT_MSG(_nndrRatio > 0.0f, uFormat("String=%s value=%f", uContains(parameters, Parameters::kKpNndrRatio())?parameters.at(Parameters::kKpNndrRatio()).c_str():"", _nndrRatio).c_str());
 
@@ -363,15 +365,15 @@ void VWDictionary::update()
 						switch(_strategy)
 						{
 						case kNNFlannNaive:
-							_flannIndex->buildLinearIndex(descriptor, useDistanceL1_);
+							_flannIndex->buildLinearIndex(descriptor, useDistanceL1_, _rebalancingFactor);
 							break;
 						case kNNFlannKdTree:
 							UASSERT_MSG(descriptor.type() == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-							_flannIndex->buildKDTreeIndex(descriptor, KDTREE_SIZE, useDistanceL1_);
+							_flannIndex->buildKDTreeIndex(descriptor, KDTREE_SIZE, useDistanceL1_, _rebalancingFactor);
 							break;
 						case kNNFlannLSH:
 							UASSERT_MSG(descriptor.type() == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-							_flannIndex->buildLSHIndex(descriptor, 12, 20, 2);
+							_flannIndex->buildLSHIndex(descriptor, 12, 20, 2, _rebalancingFactor);
 							break;
 						default:
 							UFATAL("Not supposed to be here!");
@@ -486,15 +488,15 @@ void VWDictionary::update()
 				switch(_strategy)
 				{
 				case kNNFlannNaive:
-					_flannIndex->buildLinearIndex(_dataTree, useDistanceL1_);
+					_flannIndex->buildLinearIndex(_dataTree, useDistanceL1_, _rebalancingFactor);
 					break;
 				case kNNFlannKdTree:
 					UASSERT_MSG(type == CV_32F, "To use KdTree dictionary, float descriptors are required!");
-					_flannIndex->buildKDTreeIndex(_dataTree, KDTREE_SIZE, useDistanceL1_);
+					_flannIndex->buildKDTreeIndex(_dataTree, KDTREE_SIZE, useDistanceL1_, _rebalancingFactor);
 					break;
 				case kNNFlannLSH:
 					UASSERT_MSG(type == CV_8U, "To use LSH dictionary, binary descriptors are required!");
-					_flannIndex->buildLSHIndex(_dataTree, 12, 20, 2);
+					_flannIndex->buildLSHIndex(_dataTree, 12, 20, 2, _rebalancingFactor);
 					break;
 				default:
 					break;

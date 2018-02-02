@@ -114,6 +114,7 @@ private:
 	bool _newWordsComparedTogether;
 	int _lastWordId;
 	bool useDistanceL1_;
+	float _rebalancingFactor;
 	FlannIndex * _flannIndex;
 	cv::Mat _dataTree;
 	NNStrategy _strategy;

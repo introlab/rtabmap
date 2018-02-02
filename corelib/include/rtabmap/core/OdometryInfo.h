@@ -54,6 +54,7 @@ public:
 		stamp(0),
 		interval(0),
 		distanceTravelled(0.0f),
+		memoryUsage(0),
 		type(0)
 	{}
 
@@ -80,6 +81,7 @@ public:
 		output.transformFiltered = transformFiltered;
 		output.transformGroundTruth = transformGroundTruth;
 		output.distanceTravelled = distanceTravelled;
+		output.memoryUsage = memoryUsage;
 		output.type = type;
 		return output;
 	}
@@ -104,6 +106,7 @@ public:
 	Transform transformFiltered;
 	Transform transformGroundTruth;
 	float distanceTravelled;
+	int memoryUsage; //MB
 
 	int type;
 

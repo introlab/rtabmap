@@ -932,6 +932,7 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 	_ui->statsToolBox->updateStat("Camera/Time decimation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeImageDecimation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Camera/Time disparity/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeDisparity*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Camera/Time mirroring/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeMirroring*1000.0f, _preferencesDialog->isCacheSavedInFigures());
+	_ui->statsToolBox->updateStat("Camera/Time exposure compensation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeStereoExposureCompensation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 
 	emit(cameraInfoProcessed());
@@ -2103,6 +2104,32 @@ void MainWindow::updateMapCloud(
 	else if(_currentGTPosesMap.size() == 0)
 	{
 		_ui->actionAnchor_clouds_to_ground_truth->setChecked(false);
+	}
+
+	int maxNodes = uStr2Int(_preferencesDialog->getParameter(Parameters::kGridGlobalMaxNodes()));
+	if(maxNodes > 0 && poses.size()>1)
+	{
+		std::vector<int> nodes = graph::findNearestNodes(poses, poses.rbegin()->second, maxNodes);
+		std::map<int, Transform> nearestPoses;
+		nearestPoses.insert(*poses.rbegin());
+		for(std::vector<int>::iterator iter=nodes.begin(); iter!=nodes.end(); ++iter)
+		{
+			std::map<int, Transform>::iterator pter = poses.find(*iter);
+			if(pter != poses.end())
+			{
+				nearestPoses.insert(*pter);
+			}
+		}
+		//add negative...
+		for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+		{
+			if(iter->first > 0)
+			{
+				break;
+			}
+			nearestPoses.insert(*iter);
+		}
+		poses=nearestPoses;
 	}
 
 	// Map updated! regenerate the assembled cloud, last pose is the new one
@@ -4649,6 +4676,14 @@ void MainWindow::startDetection()
 				if(_preferencesDialog->getOdomRegistrationApproach() < 3)
 				{
 					uInsert(odomParameters, ParametersPair(Parameters::kRegStrategy(), uNumber2Str(_preferencesDialog->getOdomRegistrationApproach())));
+				}
+				odomParameters.erase(Parameters::kRtabmapPublishRAMUsage()); // as odometry is in the same process than rtabmap, don't get RAM usage in odometry.
+				int odomStrategy = Parameters::defaultOdomStrategy();
+				Parameters::parse(odomParameters, Parameters::kOdomStrategy(), odomStrategy);
+				if(odomStrategy == 1)
+				{
+					// Only Frame To Frame supports all VisCorType
+					odomParameters.insert(ParametersPair(Parameters::kVisCorType(), _preferencesDialog->getParameter(Parameters::kVisCorType())));
 				}
 				Odometry * odom = Odometry::create(odomParameters);
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());

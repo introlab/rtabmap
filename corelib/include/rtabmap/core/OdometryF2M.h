@@ -71,6 +71,7 @@ private:
 	Registration * regPipeline_;
 	Signature * map_;
 	Signature * lastFrame_;
+	int lastFrameOldestNewId_;
 	std::vector<std::pair<pcl::PointCloud<pcl::PointNormal>::Ptr, pcl::IndicesPtr> > scansBuffer_;
 
 	std::map<int, std::map<int, cv::Point3f> > bundleWordReferences_; //<WordId, <FrameId, pt2D+depth>>
