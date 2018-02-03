@@ -17,6 +17,14 @@ FIND_LIBRARY(CHOLMOD_LIB cholmod)
 FIND_PATH(G2O_INCLUDE_DIR g2o/core/base_vertex.h 
   PATHS "C:\\Program Files\\g2o\\include")
 
+FIND_FILE(G2O_CONFIG_FILE g2o/config.h 
+  PATHS ${G2O_INCLUDE_DIR}
+  NO_DEFAULT_PATH)
+
+#ifdef G2O_NUMBER_FORMAT_STR
+#define G2O_CPP11 // we assume that if G2O_NUMBER_FORMAT_STR is defined, this is the new g2o code with c++11 interface
+#endif
+
 # Macro to unify finding both the debug and release versions of the
 # libraries; this is adapted from the rtabmap config
 
@@ -75,7 +83,7 @@ ENDIF(G2O_SOLVER_CHOLMOD OR G2O_SOLVER_CSPARSE OR G2O_SOLVER_DENSE OR G2O_SOLVER
 
 # G2O itself declared found if we found the core libraries and at least one solver
 SET(G2O_FOUND "NO")
-IF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_SOLVERS_FOUND)
+IF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_CONFIG_FILE AND G2O_SOLVERS_FOUND)
   SET(G2O_INCLUDE_DIRS ${G2O_INCLUDE_DIR})
   SET(G2O_LIBRARIES 
 	${G2O_CORE_LIBRARY}
@@ -105,5 +113,15 @@ IF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_SOLVERS_FO
 	  ${CHOLMOD_LIB})
   ENDIF(G2O_SOLVER_CHOLMOD)
 
+  FILE(READ ${G2O_CONFIG_FILE} TMPTXT)
+  STRING(FIND "${TMPTXT}" "G2O_NUMBER_FORMAT_STR" matchres)
+  IF(${matchres} EQUAL -1)
+    MESSAGE(STATUS "Old g2o version detected with c++03 interface (config file: ${G2O_CONFIG_FILE}).")
+    SET(G2O_CPP11 0)
+  ELSE()
+    MESSAGE(WARNING "Latest g2o version detected with c++11 interface (config file: ${G2O_CONFIG_FILE}). Make sure g2o is built with \"-DBUILD_WITH_MARCH_NATIVE=OFF\" to avoid segmentation faults caused by Eigen.")
+    SET(G2O_CPP11 1)
+  ENDIF()
+
   SET(G2O_FOUND "YES")
-ENDIF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_SOLVERS_FOUND)
+ENDIF(G2O_STUFF_LIBRARY AND G2O_CORE_LIBRARY AND G2O_INCLUDE_DIR AND G2O_CONFIG_FILE AND G2O_SOLVERS_FOUND)

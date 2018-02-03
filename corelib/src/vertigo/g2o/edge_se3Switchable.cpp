@@ -31,7 +31,7 @@ EdgeSE3Switchable::EdgeSE3Switchable() : g2o::BaseMultiEdge<6, Eigen::Isometry3d
 // ================================================
 bool EdgeSE3Switchable::read(std::istream& is)
   {    
-    g2o::Vector7d meas;
+ /*   g2o::Vector7d meas;
     for (int i=0; i<7; i++) 
       is >> meas[i];
     // normalize the quaternion to recover numerical precision lost by storing as human readable text
@@ -44,18 +44,20 @@ bool EdgeSE3Switchable::read(std::istream& is)
         if (i!=j)
           information()(j,i) = information()(i,j);
       }
-    return true;
+    return true;*/
+	return false;
 
   }
 // ================================================
 bool EdgeSE3Switchable::write(std::ostream& os) const
 {
-    g2o::Vector7d meas = g2o::internal::toVectorQT(measurement());
+   /* g2o::Vector7d meas = g2o::internal::toVectorQT(measurement());
     for (int i=0; i<7; i++) os  << meas[i] << " ";
     for (int i = 0; i < 6; ++i)
       for (int j = i; j < 6; ++j)
         os << " " << information()(i, j);
-    return os.good();
+    return os.good();*/
+	return false;
 }
 
 // ================================================

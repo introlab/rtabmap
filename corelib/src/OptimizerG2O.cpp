@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <set>
 
+#include <rtabmap/core/Version.h>
 #include <rtabmap/core/OptimizerG2O.h>
 #include <rtabmap/core/util3d_transforms.h>
 #include <rtabmap/core/util3d_motion_estimation.h>
@@ -82,7 +83,7 @@ typedef g2o::LinearSolverCSparse<SlamBlockSolver::PoseMatrixType> SlamLinearCSpa
 typedef g2o::LinearSolverCholmod<SlamBlockSolver::PoseMatrixType> SlamLinearCholmodSolver;
 #endif
 
-#ifdef RTABMAP_VERTIGO
+#if defined(RTABMAP_VERTIGO)
 #include "vertigo/g2o/edge_switchPrior.h"
 #include "vertigo/g2o/edge_se2Switchable.h"
 #include "vertigo/g2o/edge_se3Switchable.h"
@@ -190,6 +191,55 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		odomOffset->setId(PARAM_OFFSET);
 		optimizer.addParameter(odomOffset);
 
+#ifdef RTABMAP_G2O_CPP11
+
+		std::unique_ptr<SlamBlockSolver> blockSolver;
+
+		if(solver_ == 3)
+		{
+			//eigen
+			auto linearSolver = g2o::make_unique<SlamLinearEigenSolver>();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = g2o::make_unique<SlamBlockSolver>(std::move(linearSolver));
+		}
+#ifdef G2O_HAVE_CHOLMOD
+		else if(solver_ == 2)
+		{
+			//chmold
+			auto linearSolver = g2o::make_unique<SlamLinearCholmodSolver>();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = g2o::make_unique<SlamBlockSolver>(std::move(linearSolver));
+		}
+#endif
+#ifdef G2O_HAVE_CSPARSE
+		else if(solver_ == 0)
+		{
+
+			//csparse
+			auto linearSolver = g2o::make_unique<SlamLinearCSparseSolver>();
+			linearSolver->setBlockOrdering(false);
+			blockSolver = g2o::make_unique<SlamBlockSolver>(std::move(linearSolver));
+		}
+#endif
+		else
+		{
+			//pcg
+			auto linearSolver = g2o::make_unique<SlamLinearPCGSolver>();
+			blockSolver = g2o::make_unique<SlamBlockSolver>(std::move(linearSolver));
+		}
+
+		if(optimizer_ == 1)
+		{
+
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(std::move(blockSolver)));
+		}
+		else
+		{
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(std::move(blockSolver)));
+		}
+
+#else
+
 		SlamBlockSolver * blockSolver = 0;
 
 		if(solver_ == 3)
@@ -199,26 +249,25 @@ std::map<int, Transform> OptimizerG2O::optimize(
 			linearSolver->setBlockOrdering(false);
 			blockSolver = new SlamBlockSolver(linearSolver);
 		}
+#ifdef G2O_HAVE_CHOLMOD
 		else if(solver_ == 2)
 		{
-#ifdef G2O_HAVE_CHOLMOD
 			//chmold
 			SlamLinearCholmodSolver * linearSolver = new SlamLinearCholmodSolver();
 			linearSolver->setBlockOrdering(false);
 			blockSolver = new SlamBlockSolver(linearSolver);
-#endif
 		}
+#endif
+#ifdef G2O_HAVE_CSPARSE
 		else if(solver_ == 0)
 		{
-#ifdef G2O_HAVE_CSPARSE
 			//csparse
 			SlamLinearCSparseSolver* linearSolver = new SlamLinearCSparseSolver();
 			linearSolver->setBlockOrdering(false);
 			blockSolver = new SlamBlockSolver(linearSolver);
-#endif
 		}
-
-		if(blockSolver == 0)
+#endif
+		else
 		{
 			//pcg
 			SlamLinearPCGSolver * linearSolver = new SlamLinearPCGSolver();
@@ -233,7 +282,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		{
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(blockSolver));
 		}
-
+#endif
 		// detect if there is a global pose prior set, if so remove rootId
 		if(!priorsIgnored())
 		{
@@ -282,7 +331,9 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		}
 
 		UDEBUG("fill edges to g2o...");
+#if defined(RTABMAP_VERTIGO)
 		int vertigoVertexId = poses.rbegin()->first+1;
+#endif
 		for(std::multimap<int, Link>::const_iterator iter=edgeConstraints.begin(); iter!=edgeConstraints.end(); ++iter)
 		{
 			int id1 = iter->second.from();
@@ -342,7 +393,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 			}
 			else
 			{
-#ifdef RTABMAP_VERTIGO
+#if defined(RTABMAP_VERTIGO)
 				VertexSwitchLinear * v = 0;
 				if(this->isRobust() &&
 				   iter->second.type() != Link::kNeighbor &&
@@ -388,7 +439,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 						information(2,2) = iter->second.infMatrix().at<double>(5,5); // theta-theta
 					}
 
-#ifdef RTABMAP_VERTIGO
+#if defined(RTABMAP_VERTIGO)
 					if(this->isRobust() &&
 					   iter->second.type() != Link::kNeighbor  &&
 					   iter->second.type() != Link::kNeighborMerged)
@@ -433,7 +484,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					constraint = a.linear();
 					constraint.translation() = a.translation();
 
-#ifdef RTABMAP_VERTIGO
+#if defined(RTABMAP_VERTIGO)
 					if(this->isRobust() &&
 					   iter->second.type() != Link::kNeighbor &&
 					   iter->second.type() != Link::kNeighborMerged)
@@ -739,7 +790,11 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 	{
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
+#ifdef RTABMAP_G2O_CPP11
+		std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linearSolver;
+#else
 		g2o::BlockSolver_6_3::LinearSolverType * linearSolver = 0;
+#endif
 
 #ifdef RTABMAP_ORB_SLAM2
 		linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
@@ -747,42 +802,66 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		if(solver_ == 3)
 		{
 			//eigen
+#ifdef RTABMAP_G2O_CPP11
+			linearSolver = g2o::make_unique<g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType> >();
+#else
 			linearSolver = new g2o::LinearSolverEigen<g2o::BlockSolver_6_3::PoseMatrixType>();
+#endif
 		}
+#ifdef G2O_HAVE_CHOLMOD
 		else if(solver_ == 2)
 		{
-#ifdef G2O_HAVE_CHOLMOD
 			//chmold
+#ifdef RTABMAP_G2O_CPP11
+			linearSolver = g2o::make_unique<g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType> >();
+#else
 			linearSolver = new g2o::LinearSolverCholmod<g2o::BlockSolver_6_3::PoseMatrixType>();
 #endif
 		}
+#endif
+#ifdef G2O_HAVE_CSPARSE
 		else if(solver_ == 0)
 		{
-#ifdef G2O_HAVE_CSPARSE
 			//csparse
+#ifdef RTABMAP_G2O_CPP11
+			linearSolver = g2o::make_unique<g2o::LinearSolverCSparse<g2o::BlockSolver_6_3::PoseMatrixType> >();
+#else
 			linearSolver = new g2o::LinearSolverCSparse<g2o::BlockSolver_6_3::PoseMatrixType>();
 #endif
 		}
-
-		if(linearSolver == 0)
+#endif
+		else
 		{
 			//pcg
+#ifdef RTABMAP_G2O_CPP11
+			linearSolver = g2o::make_unique<g2o::LinearSolverPCG<g2o::BlockSolver_6_3::PoseMatrixType> >();
+#else
 			linearSolver = new g2o::LinearSolverPCG<g2o::BlockSolver_6_3::PoseMatrixType>();
-		}
 #endif
-
-		g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+		}
+#endif // RTABMAP_ORB_SLAM2
 
 #ifndef RTABMAP_ORB_SLAM2
 		if(optimizer_ == 1)
 		{
-			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(solver_ptr));
+#ifdef RTABMAP_G2O_CPP11
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(
+					g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linearSolver))));
+#else
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmGaussNewton(new g2o::BlockSolver_6_3(linearSolver)));
+#endif
 		}
 		else
 #endif
 		{
-			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(solver_ptr));
+#ifdef RTABMAP_G2O_CPP11
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(
+					g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linearSolver))));
+#else
+			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(new g2o::BlockSolver_6_3(linearSolver)));
+#endif
 		}
+
 
 		UDEBUG("fill poses to g2o...");
 		for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); )
