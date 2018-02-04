@@ -234,6 +234,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 		_referential(0),
 		_originReferential(0),
 		_gridCellSize(0.0f),
+		_nodeVisible(true),
 		_localRadius(0),
 		_loopClosureOutlierThr(0),
 		_maxLinkLength(0.02f),
@@ -281,15 +282,15 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_gridMap->setParentItem(_root);
 
 	_graphRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
-	_graphRoot->setZValue(2);
+	_graphRoot->setZValue(4);
 	_graphRoot->setParentItem(_root);
 
 	_globalPathRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
-	_globalPathRoot->setZValue(3);
+	_globalPathRoot->setZValue(5);
 	_globalPathRoot->setParentItem(_root);
 
 	_localPathRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
-	_localPathRoot->setZValue(4);
+	_localPathRoot->setZValue(6);
 	_localPathRoot->setParentItem(_root);
 
 	_gtGraphRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
@@ -297,7 +298,7 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_gtGraphRoot->setParentItem(_root);
 
 	_gpsGraphRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
-	_gpsGraphRoot->setZValue(2);
+	_gpsGraphRoot->setZValue(3);
 	_gpsGraphRoot->setParentItem(_root);
 
 	this->restoreDefaults();
@@ -349,6 +350,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 				item->setZValue(20);
 				item->setColor(_nodeColor);
 				item->setParentItem(_graphRoot);
+				item->setVisible(_nodeVisible);
 				_nodeItems.insert(iter->first, item);
 			}
 		}
@@ -565,6 +567,7 @@ void GraphViewer::updateGTGraph(const std::map<int, Transform> & poses)
 				item->setZValue(20);
 				item->setColor(_gtPathColor);
 				item->setParentItem(_gtGraphRoot);
+				item->setVisible(_nodeVisible);
 				_gtNodeItems.insert(iter->first, item);
 			}
 
@@ -694,6 +697,7 @@ void GraphViewer::updateGPSGraph(
 				item->setZValue(20);
 				item->setColor(_gpsPathColor);
 				item->setParentItem(_gpsGraphRoot);
+				item->setVisible(_nodeVisible);
 				_gpsNodeItems.insert(iter->first, item);
 			}
 
@@ -1141,6 +1145,22 @@ void GraphViewer::setWorkingDirectory(const QString & path)
 {
 	_workingDirectory = path;
 }
+void GraphViewer::setNodeVisible(bool visible)
+{
+	_nodeVisible = visible;
+	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
+	{
+		iter.value()->setVisible(_nodeVisible);
+	}
+	for(QMap<int, NodeItem*>::iterator iter=_gtNodeItems.begin(); iter!=_gtNodeItems.end(); ++iter)
+	{
+		iter.value()->setVisible(_nodeVisible);
+	}
+	for(QMap<int, NodeItem*>::iterator iter=_gpsNodeItems.begin(); iter!=_gpsNodeItems.end(); ++iter)
+	{
+		iter.value()->setVisible(_nodeVisible);
+	}
+}
 void GraphViewer::setNodeRadius(float radius)
 {
 	_nodeRadius = radius;
@@ -1506,6 +1526,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	menu.addSeparator();
 	QAction * aShowHideGridMap;
 	QAction * aShowHideGraph;
+	QAction * aShowHideGraphNodes;
 	QAction * aShowHideOrigin;
 	QAction * aShowHideReferential;
 	QAction * aShowHideLocalRadius;
@@ -1554,6 +1575,14 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	{
 		aShowHideGraph = menu.addAction(tr("Show graph"));
 	}
+	if(_nodeVisible)
+	{
+		aShowHideGraphNodes = menu.addAction(tr("Hide graph nodes"));
+	}
+	else
+	{
+		aShowHideGraphNodes = menu.addAction(tr("Show graph nodes"));
+	}
 	if(_globalPathRoot->isVisible())
 	{
 		aShowHideGlobalPath = menu.addAction(tr("Hide global path"));
@@ -1590,6 +1619,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	aOrientationENU->setCheckable(true);
 	aOrientationENU->setChecked(_orientationENU);
 	aShowHideGraph->setEnabled(_nodeItems.size());
+	aShowHideGraphNodes->setEnabled(_nodeItems.size() && _graphRoot->isVisible());
 	aShowHideGlobalPath->setEnabled(_globalPathLinkItems.size());
 	aShowHideLocalPath->setEnabled(_localPathLinkItems.size());
 	aShowHideGtGraph->setEnabled(_gtNodeItems.size());
@@ -1656,7 +1686,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 
 				svgGen.setFileName( targetDir + name );
 				svgGen.setSize(sceneSize);
-				svgGen.setViewBox(QRect(0, 0, sceneSize.width(), sceneSize.height()));
+				// add 1% border to make sure values are not cropped
+				int borderH = sceneSize.width()/100;
+				int borderV = sceneSize.height()/100;
+				svgGen.setViewBox(QRect(-borderH, -borderV, sceneSize.width()+borderH*2, sceneSize.height()+borderV*2));
 				svgGen.setTitle(tr("RTAB-Map graph"));
 				svgGen.setDescription(tr("RTAB-Map map and graph"));
 
@@ -1891,6 +1924,10 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 	else if(r == aShowHideGraph)
 	{
 		this->setGraphVisible(!this->isGraphVisible());
+	}
+	else if(r == aShowHideGraphNodes)
+	{
+		this->setNodeVisible(!_nodeVisible);
 	}
 	else if(r == aShowHideGlobalPath)
 	{
