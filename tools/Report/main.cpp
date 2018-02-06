@@ -41,7 +41,7 @@ using namespace rtabmap;
 void showUsage()
 {
 	printf("\nUsage:\n"
-			"rtabmap-report [\"Statistic/Id\"] [--latex] [--kitti] [--scale] path\n"
+			"rtabmap-report [\"Statistic/Id\"] [--latex] [--kitti] [--scale] [--poses] path\n"
 			"  path               Directory containing rtabmap databases or path of a database.\n\n");
 	exit(1);
 }
@@ -57,6 +57,7 @@ int main(int argc, char * argv[])
 
 	bool outputLatex = false;
 	bool outputScaled = false;
+	bool outputPoses = false;
 	bool outputKittiError = false;
 	std::map<std::string, UPlot*> figures;
 	for(int i=1; i<argc-1; ++i)
@@ -72,6 +73,10 @@ int main(int argc, char * argv[])
 		else if(strcmp(argv[i], "--scale") == 0)
 		{
 			outputScaled = true;
+		}
+		else if(strcmp(argv[i], "--poses") == 0)
+		{
+			outputPoses = true;
 		}
 		else
 		{
@@ -168,7 +173,6 @@ int main(int argc, char * argv[])
 					slamTime.reserve(ids.size());
 					float rmse = -1;
 					float maxRMSE = -1;
-					float rmseAng = -1;
 					float maxOdomRAM = -1;
 					float maxMapRAM = -1;
 					std::map<std::string, UPlotCurve*> curves;
@@ -203,10 +207,6 @@ int main(int argc, char * argv[])
 									{
 										maxRMSE = rmse;
 									}
-								}
-								if(uContains(stat, Statistics::kGtRotational_rmse()))
-								{
-									rmseAng = stat.at(Statistics::kGtRotational_rmse());
 								}
 								if(uContains(stat, std::string("Camera/TotalTime/ms")))
 								{
@@ -280,8 +280,9 @@ int main(int argc, char * argv[])
 
 					UERROR("");
 					float bestScale = 1.0f;
-					float bestRMSE = rmse;
-					float bestRMSEAng = rmseAng;
+					float bestRMSE = -1;
+					float bestRMSEAng = -1;
+					Transform bestGtToMap = Transform::getIdentity();
 					float kitti_t_err = 0.0f;
 					float kitti_r_err = 0.0f;
 					if(ids.size())
@@ -303,65 +304,67 @@ int main(int argc, char * argv[])
 							}
 						}
 
-						if(outputScaled)
+						for(float scale=outputScaled?0.900f:1.0f; scale<1.100f; scale+=0.001)
 						{
-							for(float scale=0.900f; scale<1.100f; scale+=0.001)
+							std::map<int, Transform> scaledPoses;
+							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 							{
-								std::map<int, Transform> scaledPoses;
-								for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-								{
-									Transform t = iter->second.clone();
-									t.x() *= scale;
-									t.y() *= scale;
-									t.z() *= scale;
-									scaledPoses.insert(std::make_pair(iter->first, t));
-								}
-								// compute RMSE statistics
-								float translational_rmse = 0.0f;
-								float translational_mean = 0.0f;
-								float translational_median = 0.0f;
-								float translational_std = 0.0f;
-								float translational_min = 0.0f;
-								float translational_max = 0.0f;
-								float rotational_rmse = 0.0f;
-								float rotational_mean = 0.0f;
-								float rotational_median = 0.0f;
-								float rotational_std = 0.0f;
-								float rotational_min = 0.0f;
-								float rotational_max = 0.0f;
-								graph::calcRMSE(
-										groundTruth,
-										scaledPoses,
-										translational_rmse,
-										translational_mean,
-										translational_median,
-										translational_std,
-										translational_min,
-										translational_max,
-										rotational_rmse,
-										rotational_mean,
-										rotational_median,
-										rotational_std,
-										rotational_min,
-										rotational_max);
+								Transform t = iter->second.clone();
+								t.x() *= scale;
+								t.y() *= scale;
+								t.z() *= scale;
+								scaledPoses.insert(std::make_pair(iter->first, t));
+							}
+							// compute RMSE statistics
+							float translational_rmse = 0.0f;
+							float translational_mean = 0.0f;
+							float translational_median = 0.0f;
+							float translational_std = 0.0f;
+							float translational_min = 0.0f;
+							float translational_max = 0.0f;
+							float rotational_rmse = 0.0f;
+							float rotational_mean = 0.0f;
+							float rotational_median = 0.0f;
+							float rotational_std = 0.0f;
+							float rotational_min = 0.0f;
+							float rotational_max = 0.0f;
+							Transform gtToMap = graph::calcRMSE(
+									groundTruth,
+									scaledPoses,
+									translational_rmse,
+									translational_mean,
+									translational_median,
+									translational_std,
+									translational_min,
+									translational_max,
+									rotational_rmse,
+									rotational_mean,
+									rotational_median,
+									rotational_std,
+									rotational_min,
+									rotational_max);
 
-								if(scale!=0.900f && translational_rmse > bestRMSE)
-								{
-									break;
-								}
-								bestRMSE = translational_rmse;
-								bestRMSEAng = rotational_rmse;
-								bestScale = scale;
-							}
-							if(bestScale!=1.0f)
+							if(bestRMSE!=-1 && translational_rmse > bestRMSE)
 							{
-								for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-								{
-									iter->second.x()*=bestScale;
-									iter->second.y()*=bestScale;
-									iter->second.z()*=bestScale;
-								}
+								break;
 							}
+							bestRMSE = translational_rmse;
+							bestRMSEAng = rotational_rmse;
+							bestScale = scale;
+							bestGtToMap = gtToMap;
+							if(!outputScaled)
+							{
+								// just did iteration without any scale, then exit
+								break;
+							}
+						}
+
+						for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+						{
+							iter->second.x()*=bestScale;
+							iter->second.y()*=bestScale;
+							iter->second.z()*=bestScale;
+							iter->second = bestGtToMap * iter->second;
 						}
 
 						if(outputKittiError)
@@ -375,6 +378,26 @@ int main(int argc, char * argv[])
 							{
 								printf("Cannot compute KITTI statistics as optimized poses and ground truth don't have the same size (%d vs %d).\n",
 										(int)poses.size(), (int)groundTruth.size());
+							}
+						}
+
+						if(outputPoses)
+						{
+							std::string dir = UDirectory::getDir(filePath);
+							std::string dbName = UFile::getName(filePath);
+							dbName = dbName.substr(0, dbName.size()-3); // remove db
+							std::string path = dir+UDirectory::separator()+dbName+"_poses.txt";
+							if(!graph::exportPoses(path, outputKittiError?2:0, poses))
+							{
+								printf("Could not export the poses to \"%s\"!?!\n", path.c_str());
+							}
+							if(groundTruth.size())
+							{
+								path = dir+UDirectory::separator()+dbName+"_gt.txt";
+								if(!graph::exportPoses(path, outputKittiError?2:0, groundTruth))
+								{
+									printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
+								}
 							}
 						}
 					}

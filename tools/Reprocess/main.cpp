@@ -357,14 +357,26 @@ int main(int argc, char * argv[])
 	}
 	if(assemble3dMap)
 	{
-		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_map.pcd";
+		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_obstacles.pcd";
 		if(pcl::io::savePCDFileBinary(outputPath, *grid.getMapObstacles()) == 0)
 		{
-			printf("Saving 3d cloud map \"%s\"... done!\n", outputPath.c_str());
+			printf("Saving 3d obstacles \"%s\"... done!\n", outputPath.c_str());
 		}
 		else
 		{
-			printf("Saving 3d cloud map \"%s\"... failed!\n", outputPath.c_str());
+			printf("Saving 3d obstacles \"%s\"... failed!\n", outputPath.c_str());
+		}
+		if(grid.getMapGround()->size())
+		{
+			outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_ground.pcd";
+			if(pcl::io::savePCDFileBinary(outputPath, *grid.getMapGround()) == 0)
+			{
+				printf("Saving 3d ground \"%s\"... done!\n", outputPath.c_str());
+			}
+			else
+			{
+				printf("Saving 3d ground \"%s\"... failed!\n", outputPath.c_str());
+			}
 		}
 	}
 #ifdef RTABMAP_OCTOMAP
@@ -414,16 +426,28 @@ int main(int argc, char * argv[])
 	}
 	if(assemble3dOctoMap)
 	{
-		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_octomap.pcd";
-		std::vector<int> obstacles;
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap.createCloud(0, &obstacles);
+		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_octomap_occupied.pcd";
+		std::vector<int> obstacles, emptySpace;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap.createCloud(0, &obstacles, &emptySpace);
 		if(pcl::io::savePCDFile(outputPath, *cloud, obstacles, true) == 0)
 		{
-			printf("Saving octomap cloud \"%s\"... done!\n", outputPath.c_str());
+			printf("Saving obstacles cloud \"%s\"... done!\n", outputPath.c_str());
 		}
 		else
 		{
-			printf("Saving octomap cloud \"%s\"... failed!\n", outputPath.c_str());
+			printf("Saving obstacles cloud \"%s\"... failed!\n", outputPath.c_str());
+		}
+		if(emptySpace.size())
+		{
+			outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_octomap_empty.pcd";
+			if(pcl::io::savePCDFile(outputPath, *cloud, emptySpace, true) == 0)
+			{
+				printf("Saving empty space cloud \"%s\"... done!\n", outputPath.c_str());
+			}
+			else
+			{
+				printf("Saving empty space cloud \"%s\"... failed!\n", outputPath.c_str());
+			}
 		}
 	}
 #endif

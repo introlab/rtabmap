@@ -696,6 +696,10 @@ bool DatabaseViewer::openDatabase(const QString & path)
 			ui_->actionOpen_database->setEnabled(false);
 
 			pathDatabase_ = UDirectory::getDir(path.toStdString()).c_str();
+			if(pathDatabase_.isEmpty() || pathDatabase_.compare(".") == 0)
+			{
+				pathDatabase_ = QDir::currentPath();
+			}
 			databaseFileName_ = UFile::getName(path.toStdString());
 			ui_->graphViewer->setWorkingDirectory(pathDatabase_);
 
