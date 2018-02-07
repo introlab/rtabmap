@@ -561,6 +561,7 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 				_neighborsIndex.insert(std::make_pair(newIds[i], neighbors));
 			}
 			const std::map<int, int> & neighbors = _neighborsIndex.at(newIds[i]);
+			//std::map<int, int> neighbors = memory->getNeighborsId(newIds[i], _predictionLC.size()-1, 0, false, false, true, true);
 
 			float sum = addNeighborProb(prediction, i, neighbors, _predictionLC, newIdToIndexMap);
 			this->normalize(prediction, i, sum, newIds[0]<0);
@@ -587,25 +588,23 @@ cv::Mat BayesFilter::updatePrediction(const cv::Mat & oldPrediction,
 	for(std::set<int>::iterator iter = idsToUpdate.begin(); iter!=idsToUpdate.end(); ++iter)
 	{
 		int id = *iter;
-		if(id > 0 && id<(int)newIdToIndexMap.size())
+		if(id > 0)
 		{
 			int index = newIdToIndexMap.at(id);
 
-			if(index > 0)
-			{
-				e0 = t1.ticks();
-				std::map<int, std::map<int, int> >::iterator kter = _neighborsIndex.find(id);
-				UASSERT_MSG(kter != _neighborsIndex.end(), uFormat("Did not find %d (current index size=%d)", id, (int)_neighborsIndex.size()).c_str());
-				const std::map<int, int> & neighbors = kter->second;
-				e1+=t1.ticks();
+			e0 = t1.ticks();
+			std::map<int, std::map<int, int> >::iterator kter = _neighborsIndex.find(id);
+			UASSERT_MSG(kter != _neighborsIndex.end(), uFormat("Did not find %d (current index size=%d)", id, (int)_neighborsIndex.size()).c_str());
+			const std::map<int, int> & neighbors = kter->second;
+			//std::map<int, int> neighbors = memory->getNeighborsId(id, _predictionLC.size()-1, 0, false, false, true, true);
+			e1+=t1.ticks();
 
-				float sum = addNeighborProb(prediction, index, neighbors, _predictionLC, newIdToIndexMap);
-				e3+=t1.ticks();
+			float sum = addNeighborProb(prediction, index, neighbors, _predictionLC, newIdToIndexMap);
+			e3+=t1.ticks();
 
-				this->normalize(prediction, index, sum, newIds[0]<0);
-				++modified;
-				e4+=t1.ticks();
-			}
+			this->normalize(prediction, index, sum, newIds[0]<0);
+			++modified;
+			e4+=t1.ticks();
 		}
 	}
 	UDEBUG("time updating modified/added %d ids = %fs (e0=%f e1=%f e2=%f e3=%f e4=%f)", idsToUpdate.size(), timer.restart(), e0, e1, e2, e3, e4);
