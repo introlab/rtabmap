@@ -40,6 +40,23 @@ namespace rtabmap {
 // RtabmapColorOcTree
 //////////////////////////////////////
 
+RtabmapColorOcTreeNode* RtabmapColorOcTreeNode::getChild(unsigned int i) {
+#ifdef OCTOMAP_PRE_18
+  return static_cast<RtabmapColorOcTreeNode*> (OcTreeNode::getChild(i));
+#else
+	UFATAL("This function should not be used with octomap >= 1.8");
+	return 0;
+#endif
+}
+const RtabmapColorOcTreeNode* RtabmapColorOcTreeNode::getChild(unsigned int i) const {
+#ifdef OCTOMAP_PRE_18
+  return static_cast<const RtabmapColorOcTreeNode*> (OcTreeNode::getChild(i));
+#else
+	UFATAL("This function should not be used with octomap >= 1.8");
+	return 0;
+#endif
+}
+
 //octomap <1.8
 bool RtabmapColorOcTreeNode::pruneNode() {
 #ifdef OCTOMAP_PRE_18
@@ -72,6 +89,18 @@ void RtabmapColorOcTreeNode::expandNode() {
 	}
 #else
 	UFATAL("This function should not be used with octomap >= 1.8");
+#endif
+}
+
+//octomap <1.8
+bool RtabmapColorOcTreeNode::createChild(unsigned int i) {
+#ifdef OCTOMAP_PRE_18
+  if (children == NULL) allocChildren();
+  children[i] = new RtabmapColorOcTreeNode();
+  return true;
+#else
+	UFATAL("This function should not be used with octomap >= 1.8");
+	return false;
 #endif
 }
 

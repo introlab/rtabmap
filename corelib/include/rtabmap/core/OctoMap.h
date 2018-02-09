@@ -66,19 +66,11 @@ public:
 	const octomap::point3d & getPointRef() const {return pointRef_;}
 
 	// following methods defined for octomap < 1.8 compatibility
-	inline RtabmapColorOcTreeNode* getChild(unsigned int i) {
-	  return static_cast<RtabmapColorOcTreeNode*> (OcTreeNode::getChild(i));
-	}
-	inline const RtabmapColorOcTreeNode* getChild(unsigned int i) const {
-	  return static_cast<const RtabmapColorOcTreeNode*> (OcTreeNode::getChild(i));
-	}
+	RtabmapColorOcTreeNode* getChild(unsigned int i);
+	const RtabmapColorOcTreeNode* getChild(unsigned int i) const;
 	bool pruneNode();
 	void expandNode();
-	bool createChild(unsigned int i) {
-	  if (children == NULL) allocChildren();
-	  children[i] = new RtabmapColorOcTreeNode();
-	  return true;
-	}
+	bool createChild(unsigned int i);
 
 private:
 	int nodeRefId_;
