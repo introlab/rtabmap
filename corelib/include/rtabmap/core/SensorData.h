@@ -175,14 +175,16 @@ public:
 			cv::Mat * laserScanRaw = 0,
 			cv::Mat * userDataRaw = 0,
 			cv::Mat * groundCellsRaw = 0,
-			cv::Mat * obstacleCellsRaw = 0);
+			cv::Mat * obstacleCellsRaw = 0,
+			cv::Mat * emptyCellsRaw = 0);
 	void uncompressDataConst(
 			cv::Mat * imageRaw,
 			cv::Mat * depthOrRightRaw,
 			cv::Mat * laserScanRaw = 0,
 			cv::Mat * userDataRaw = 0,
 			cv::Mat * groundCellsRaw = 0,
-			cv::Mat * obstacleCellsRaw = 0) const;
+			cv::Mat * obstacleCellsRaw = 0,
+			cv::Mat * emptyCellsRaw = 0) const;
 
 	const std::vector<CameraModel> & cameraModels() const {return _cameraModels;}
 	const StereoCameraModel & stereoCameraModel() const {return _stereoCameraModel;}
@@ -203,6 +205,7 @@ public:
 	void setOccupancyGrid(
 			const cv::Mat & ground,
 			const cv::Mat & obstacles,
+			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewPoint);
 	// remove raw occupancy grids
@@ -211,6 +214,8 @@ public:
 	const cv::Mat & gridGroundCellsCompressed() const {return _groundCellsCompressed;}
 	const cv::Mat & gridObstacleCellsRaw() const {return _obstacleCellsRaw;}
 	const cv::Mat & gridObstacleCellsCompressed() const {return _obstacleCellsCompressed;}
+	const cv::Mat & gridEmptyCellsRaw() const {return _emptyCellsRaw;}
+	const cv::Mat & gridEmptyCellsCompressed() const {return _emptyCellsCompressed;}
 	float gridCellSize() const {return _cellSize;}
 	const cv::Point3f & gridViewPoint() const {return _viewPoint;}
 
@@ -261,8 +266,10 @@ private:
 	// occupancy grid
 	cv::Mat _groundCellsCompressed;
 	cv::Mat _obstacleCellsCompressed;
+	cv::Mat _emptyCellsCompressed;
 	cv::Mat _groundCellsRaw;
 	cv::Mat _obstacleCellsRaw;
+	cv::Mat _emptyCellsRaw;
 	float _cellSize;
 	cv::Point3f _viewPoint;
 

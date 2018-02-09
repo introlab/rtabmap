@@ -196,9 +196,9 @@ private:
 	std::multimap<int, rtabmap::Link> linksRefined_;
 	std::multimap<int, rtabmap::Link> linksAdded_;
 	std::multimap<int, rtabmap::Link> linksRemoved_;
-	std::map<int, std::pair<cv::Mat, cv::Mat> > localMaps_; // <ground, obstacles>
+	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > localMaps_; // < <ground, obstacles>, empty>
 	std::map<int, std::pair<float, cv::Point3f> > localMapsInfo_; // <cell size, viewpoint>
-	std::map<int, std::pair<cv::Mat, cv::Mat> > generatedLocalMaps_; // <ground, obstacles>
+	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > generatedLocalMaps_; // < <ground, obstacles>, empty>
 	std::map<int, std::pair<float, cv::Point3f> > generatedLocalMapsInfo_; // <cell size, viewpoint>
 	std::map<int, cv::Mat> modifiedDepthImages_;
 	OctoMap * octomap_;

@@ -89,6 +89,7 @@ private:
 			int nodeId,
 			const cv::Mat & ground,
 			const cv::Mat & obstacles,
+			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewpoint) const;
 
@@ -163,6 +164,7 @@ private:
 			int nodeId,
 			const cv::Mat & ground,
 			const cv::Mat & obstacles,
+			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewpoint) const;
 

@@ -254,9 +254,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_occupancyGrid = new OccupancyGrid(_preferencesDialog->getAllParameters());
 #ifdef RTABMAP_OCTOMAP
 	_octomap = new OctoMap(
-			_preferencesDialog->getGridMapResolution(),
+			_occupancyGrid->getCellSize(),
 			_preferencesDialog->getOctomapOccupancyThr(),
-			_preferencesDialog->isOctomapFullUpdate());
+			_occupancyGrid->isFullUpdate(),
+			_occupancyGrid->getUpdateError());
 #endif
 
 	// Timer
@@ -1860,7 +1861,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 
 			std::map<int, Transform> poses = stat.poses();
-			Transform groundTruthOffset = alignPosesToGroundTruth(poses, groundTruth, stat.stamp(), stat.refImageId());
 			UDEBUG("time= %d ms", time.restart());
 
 			if(!_odometryReceived && poses.size() && poses.rbegin()->first == stat.refImageId())
@@ -1913,7 +1913,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			_odometryReceived = false;
 
-			_odometryCorrection = groundTruthOffset * stat.mapCorrection();
+			_odometryCorrection = stat.mapCorrection();
 
 			UDEBUG("time= %d ms", time.restart());
 
@@ -2243,10 +2243,11 @@ void MainWindow::updateMapCloud(
 				{
 					cv::Mat ground;
 					cv::Mat obstacles;
+					cv::Mat empty;
 
-					jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles);
+					jter->sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
 
-					_occupancyGrid->addToCache(iter->first, ground, obstacles);
+					_occupancyGrid->addToCache(iter->first, ground, obstacles, empty);
 
 #ifdef RTABMAP_OCTOMAP
 					if(updateOctomap)
@@ -2255,7 +2256,7 @@ void MainWindow::updateMapCloud(
 						   (obstacles.empty() || obstacles.channels() > 2))
 						{
 							cv::Point3f viewpoint = jter->sensorData().gridViewPoint();
-							_octomap->addToCache(iter->first, ground, obstacles, viewpoint);
+							_octomap->addToCache(iter->first, ground, obstacles, empty, viewpoint);
 						}
 						else if(!ground.empty() || !obstacles.empty())
 						{
@@ -2370,6 +2371,13 @@ void MainWindow::updateMapCloud(
 			}
 		}
 	}
+
+	Transform mapToGt = Transform::getIdentity();
+	if(_preferencesDialog->isGroundTruthAligned() && _currentGTPosesMap.size())
+	{
+		mapToGt = alignPosesToGroundTruth(_currentPosesMap, _currentGTPosesMap).inverse();
+	}
+
 	if((_preferencesDialog->isGraphsShown() || _preferencesDialog->isFrustumsShown(0)) && _currentPosesMap.size())
 	{
 		UTimer timerGraph;
@@ -2436,7 +2444,8 @@ void MainWindow::updateMapCloud(
 				{
 					kter = graphs.insert(std::make_pair(mapId, pcl::PointCloud<pcl::PointXYZ>::Ptr(new pcl::PointCloud<pcl::PointXYZ>))).first;
 				}
-				pcl::PointXYZ pt(iter->second.x(), iter->second.y(), iter->second.z());
+				Transform t = mapToGt*iter->second;
+				pcl::PointXYZ pt(t.x(), t.y(), t.z());
 				kter->second->push_back(pt);
 			}
 		}
@@ -2524,9 +2533,9 @@ void MainWindow::updateMapCloud(
 	{
 		UDEBUG("");
 		UTimer time;
-		if(_preferencesDialog->isOctomapCubeRendering())
+		if(_preferencesDialog->getOctomapRenderingType() > 0)
 		{
-			_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth());
+			_cloudViewer->addOctomap(_octomap, _preferencesDialog->getOctomapTreeDepth(), _preferencesDialog->getOctomapRenderingType()>1);
 		}
 		else
 		{
@@ -2551,13 +2560,25 @@ void MainWindow::updateMapCloud(
 	if(_ui->graphicsView_graphView->isVisible())
 	{
 		_ui->graphicsView_graphView->updateGraph(posesIn, constraints, mapIdsIn);
-		_ui->graphicsView_graphView->updateGTGraph(_currentGTPosesMap);
+		if(_preferencesDialog->isGroundTruthAligned() && !mapToGt.isIdentity())
+		{
+			std::map<int, Transform> gtPoses = _currentGTPosesMap;
+			for(std::map<int, Transform>::iterator iter=gtPoses.begin(); iter!=gtPoses.end(); ++iter)
+			{
+				iter->second = mapToGt * iter->second;
+			}
+			_ui->graphicsView_graphView->updateGTGraph(gtPoses);
+		}
+		else
+		{
+			_ui->graphicsView_graphView->updateGTGraph(_currentGTPosesMap);
+		}
 	}
 	cv::Mat map8U;
 	if((_ui->graphicsView_graphView->isVisible() || _preferencesDialog->getGridMapShown()))
 	{
 		float xMin, yMin;
-		float resolution = _preferencesDialog->getGridMapResolution();
+		float resolution = _occupancyGrid->getCellSize();
 		cv::Mat map8S;
 #ifdef RTABMAP_OCTOMAP
 		if(_preferencesDialog->isOctomap2dGrid())
@@ -3323,10 +3344,8 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 }
 
 Transform MainWindow::alignPosesToGroundTruth(
-		std::map<int, Transform> & poses,
-		const std::map<int, Transform> & groundTruth,
-		double stamp,
-		int refId)
+		const std::map<int, Transform> & poses,
+		const std::map<int, Transform> & groundTruth)
 {
 	Transform t = Transform::getIdentity();
 	if(groundTruth.size() && poses.size())
@@ -3344,7 +3363,7 @@ Transform MainWindow::alignPosesToGroundTruth(
 		float rotational_min = 0.0f;
 		float rotational_max = 0.0f;
 
-		Transform gtToMap = graph::calcRMSE(
+		t = graph::calcRMSE(
 				groundTruth,
 				poses,
 				translational_rmse,
@@ -3359,16 +3378,6 @@ Transform MainWindow::alignPosesToGroundTruth(
 				rotational_std,
 				rotational_min,
 				rotational_max);
-
-		if(_preferencesDialog->isGroundTruthAligned())
-		{
-			t = gtToMap;
-
-			for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-			{
-				iter->second = gtToMap * iter->second;
-			}
-		}
 
 		// ground truth live statistics
 		UINFO("translational_rmse=%f", translational_rmse);
@@ -3653,7 +3662,6 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			_progressCanceled = false;
 			QApplication::processEvents();
 			std::map<int, Transform> poses = event.getPoses();
-			alignPosesToGroundTruth(poses, groundTruth);
 			this->updateMapCloud(poses, event.getConstraints(), mapIds, labels, groundTruth, true);
 			_progressDialog->appendText("Updating the 3D map cloud... done.");
 		}
@@ -4725,9 +4733,10 @@ void MainWindow::startDetection()
 	UASSERT(_octomap != 0);
 	delete _octomap;
 	_octomap = new OctoMap(
-			_preferencesDialog->getGridMapResolution(),
+			_occupancyGrid->getCellSize(),
 			_preferencesDialog->getOctomapOccupancyThr(),
-			_preferencesDialog->isOctomapFullUpdate());
+			_occupancyGrid->isFullUpdate(),
+			_occupancyGrid->getUpdateError());
 #endif
 
 	// clear odometry visual stuff
@@ -5577,7 +5586,6 @@ void MainWindow::postProcessing()
 	}
 
 	_progressDialog->appendText(tr("Updating map..."));
-	alignPosesToGroundTruth(optimizedPoses, _currentGTPosesMap);
 	this->updateMapCloud(
 			optimizedPoses,
 			std::multimap<int, Link>(_currentLinksMap),
@@ -6043,9 +6051,10 @@ void MainWindow::clearTheCache()
 	UASSERT(_octomap != 0);
 	delete _octomap;
 	_octomap = new OctoMap(
-			_preferencesDialog->getGridMapResolution(),
+			_occupancyGrid->getCellSize(),
 			_preferencesDialog->getOctomapOccupancyThr(),
-			_preferencesDialog->isOctomapFullUpdate());
+			_occupancyGrid->isFullUpdate(),
+			_occupancyGrid->getUpdateError());
 #endif
 	_occupancyGrid->clear();
 }

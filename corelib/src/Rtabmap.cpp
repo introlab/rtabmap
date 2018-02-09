@@ -2128,7 +2128,7 @@ bool Rtabmap::process(
 									}
 									else
 									{
-										UWARN("Local scan matching rejected: %s", info.rejectedMsg.c_str());
+										UINFO("Local scan matching rejected: %s", info.rejectedMsg.c_str());
 									}
 								}
 							}

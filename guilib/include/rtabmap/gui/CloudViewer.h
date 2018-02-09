@@ -142,7 +142,7 @@ public:
 			const cv::Mat & texture,
 			const Transform & pose = Transform::getIdentity());
 
-	bool addOctomap(const OctoMap * octomap, unsigned int treeDepth = 0);
+	bool addOctomap(const OctoMap * octomap, unsigned int treeDepth = 0, bool volumeRepresentation = true);
 	void removeOctomap();
 
 	// Only one texture per mesh is supported!

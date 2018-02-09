@@ -32,6 +32,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UTimer.h>
 
+#ifdef RTABMAP_OCTOMAP
+#include <rtabmap/core/OctoMap.h>
+#endif
+
 #include <pcl/io/pcd_io.h>
 
 namespace rtabmap {
@@ -64,16 +68,18 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	noiseFilteringMinNeighbors_(Parameters::defaultGridNoiseFilteringMinNeighbors()),
 	scan2dUnknownSpaceFilled_(Parameters::defaultGridScan2dUnknownSpaceFilled()),
 	scan2dMaxUnknownSpaceFilledRange_(Parameters::defaultGridScan2dMaxFilledRange()),
-	projRayTracing_(Parameters::defaultGridProjRayTracing()),
+	rayTracing_(Parameters::defaultGridRayTracing()),
 	fullUpdate_(Parameters::defaultGridGlobalFullUpdate()),
 	minMapSize_(Parameters::defaultGridGlobalMinSize()),
 	erode_(Parameters::defaultGridGlobalEroded()),
 	footprintRadius_(Parameters::defaultGridGlobalFootprintRadius()),
+	updateError_(Parameters::defaultGridGlobalUpdateError()),
 	xMin_(0.0f),
 	yMin_(0.0f),
 	cloudAssembling_(false),
 	assembledGround_(new pcl::PointCloud<pcl::PointXYZRGB>),
-	assembledObstacles_(new pcl::PointCloud<pcl::PointXYZRGB>)
+	assembledObstacles_(new pcl::PointCloud<pcl::PointXYZRGB>),
+	assembledEmptyCells_(new pcl::PointCloud<pcl::PointXYZRGB>)
 {
 	this->parseParameters(parameters);
 }
@@ -117,11 +123,12 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringMinNeighbors(), noiseFilteringMinNeighbors_);
 	Parameters::parse(parameters, Parameters::kGridScan2dUnknownSpaceFilled(), scan2dUnknownSpaceFilled_);
 	Parameters::parse(parameters, Parameters::kGridScan2dMaxFilledRange(), scan2dMaxUnknownSpaceFilledRange_);
-	Parameters::parse(parameters, Parameters::kGridProjRayTracing(), projRayTracing_);
+	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
 	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
 	Parameters::parse(parameters, Parameters::kGridGlobalMinSize(), minMapSize_);
 	Parameters::parse(parameters, Parameters::kGridGlobalEroded(), erode_);
 	Parameters::parse(parameters, Parameters::kGridGlobalFootprintRadius(), footprintRadius_);
+	Parameters::parse(parameters, Parameters::kGridGlobalUpdateError(), updateError_);
 
 	UASSERT(minMapSize_ >= 0.0f);
 
@@ -213,8 +220,9 @@ void OccupancyGrid::setCloudAssembling(bool enabled)
 
 void OccupancyGrid::createLocalMap(
 		const Signature & node,
-		cv::Mat & ground,
-		cv::Mat & obstacles,
+		cv::Mat & groundCells,
+		cv::Mat & obstacleCells,
+		cv::Mat & emptyCells,
 		cv::Point3f & viewPoint) const
 {
 	UDEBUG("scan channels=%d, occupancyFromCloud_=%d normalsSegmentation_=%d grid3D_=%d",
@@ -233,11 +241,13 @@ void OccupancyGrid::createLocalMap(
 				util3d::transformLaserScan(node.sensorData().laserScanRaw(), node.sensorData().laserScanInfo().localTransform()),
 				cv::Mat(),
 				viewPoint,
-				ground,
-				obstacles,
+				emptyCells,
+				obstacleCells,
 				cellSize_,
 				scan2dUnknownSpaceFilled_,
 				node.sensorData().laserScanInfo().maxRange()>scan2dMaxUnknownSpaceFilledRange_?scan2dMaxUnknownSpaceFilledRange_:node.sensorData().laserScanInfo().maxRange());
+
+		UDEBUG("ground=%d obstacles=%d channels=%d", emptyCells.cols, obstacleCells.cols, obstacleCells.cols?obstacleCells.channels():emptyCells.channels());
 	}
 	else
 	{
@@ -300,94 +310,149 @@ void OccupancyGrid::createLocalMap(
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 			}
 		}
+		createLocalMap(cloud, indices, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
+	}
+}
 
-		if(projMapFrame_)
+void OccupancyGrid::createLocalMap(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, // in base_link frame
+		const Transform & pose,
+		cv::Mat & groundCells,
+		cv::Mat & obstacleCells,
+		cv::Mat & emptyCells,
+		cv::Point3f & viewPointInOut) const
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	UASSERT_MSG(cloud->size() && cloud->is_dense, uFormat("Use interface with indices if cloud is not dense.").c_str());
+	createLocalMap(cloud, indices, pose, groundCells, obstacleCells, emptyCells, viewPointInOut);
+}
+
+void OccupancyGrid::createLocalMap(
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, // in base_link frame
+		const pcl::IndicesPtr & indices,
+		const Transform & pose,
+		cv::Mat & groundCells,
+		cv::Mat & obstacleCells,
+		cv::Mat & emptyCells,
+		cv::Point3f & viewPointInOut) const
+{
+	if(projMapFrame_)
+	{
+		//we should rotate viewPoint in /map frame
+		float roll, pitch, yaw;
+		pose.getEulerAngles(roll, pitch, yaw);
+		Transform viewpointRotated = Transform(0,0,0,roll,pitch,0) * Transform(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z, 0,0,0);
+		viewPointInOut.x = viewpointRotated.x();
+		viewPointInOut.y = viewpointRotated.y();
+		viewPointInOut.z = viewpointRotated.z();
+	}
+
+	if((cloud->is_dense && cloud->size()) ||
+		(!cloud->is_dense && indices->size()))
+	{
+		pcl::IndicesPtr groundIndices(new std::vector<int>);
+		pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudSegmented = this->segmentCloud<pcl::PointXYZRGB>(
+				cloud,
+				indices,
+				pose,
+				viewPointInOut,
+				groundIndices,
+				obstaclesIndices);
+
+		if(!groundIndices->empty() || !obstaclesIndices->empty())
 		{
-			//we should rotate viewPoint in /map frame
-			float roll, pitch, yaw;
-			node.getPose().getEulerAngles(roll, pitch, yaw);
-			Transform viewpointRotated = Transform(0,0,0,roll,pitch,0) * Transform(viewPoint.x, viewPoint.y, viewPoint.z, 0,0,0);
-			viewPoint.x = viewpointRotated.x();
-			viewPoint.y = viewpointRotated.y();
-			viewPoint.z = viewpointRotated.z();
-		}
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 
-		if((cloud->is_dense && cloud->size()) ||
-			(!cloud->is_dense && indices->size()))
-		{
-			pcl::IndicesPtr groundIndices(new std::vector<int>);
-			pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
-			cloud = this->segmentCloud<pcl::PointXYZRGB>(
-					cloud,
-					indices,
-					node.getPose(),
-					viewPoint,
-					groundIndices,
-					obstaclesIndices);
-
-			if(!groundIndices->empty() || !obstaclesIndices->empty())
+			if(groundIndices->size())
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+				pcl::copyPointCloud(*cloudSegmented, *groundIndices, *groundCloud);
+			}
 
-				if(groundIndices->size())
+			if(obstaclesIndices->size())
+			{
+				pcl::copyPointCloud(*cloudSegmented, *obstaclesIndices, *obstaclesCloud);
+			}
+
+			if(grid3D_)
+			{
+				UDEBUG("");
+				if(groundIsObstacle_)
 				{
-					pcl::copyPointCloud(*cloud, *groundIndices, *groundCloud);
+					*obstaclesCloud += *groundCloud;
+					groundCloud->clear();
 				}
 
-				if(obstaclesIndices->size())
-				{
-					pcl::copyPointCloud(*cloud, *obstaclesIndices, *obstaclesCloud);
-				}
+				// transform back in base frame
+				float roll, pitch, yaw;
+				pose.getEulerAngles(roll, pitch, yaw);
+				Transform tinv = Transform(0,0, projMapFrame_?pose.z():0, roll, pitch, 0).inverse();
 
-				if(grid3D_)
+				if(rayTracing_)
 				{
-					UDEBUG("");
-					if(groundIsObstacle_)
+#ifdef RTABMAP_OCTOMAP
+					if(!groundCloud->empty() || !obstaclesCloud->empty())
 					{
-						*obstaclesCloud += *groundCloud;
-						groundCloud->clear();
-					}
+						//create local octomap
+						OctoMap octomap(cellSize_);
+						octomap.addToCache(1, groundCloud, obstaclesCloud, pcl::PointXYZ(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z));
+						std::map<int, Transform> poses;
+						poses.insert(std::make_pair(1, Transform::getIdentity()));
+						octomap.update(poses);
 
-					// transform back in base frame
-					float roll, pitch, yaw;
-					node.getPose().getEulerAngles(roll, pitch, yaw);
-					Transform tinv = Transform(0,0, projMapFrame_?node.getPose().z():0, roll, pitch, 0).inverse();
-					ground = util3d::laserScanFromPointCloud(*groundCloud, tinv);
-					obstacles = util3d::laserScanFromPointCloud(*obstaclesCloud, tinv);
+						obstaclesIndices->clear();
+						groundIndices->clear();
+						pcl::IndicesPtr emptyIndices(new std::vector<int>);
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithRayTracing = octomap.createCloud(0, obstaclesIndices.get(), emptyIndices.get(), groundIndices.get());
+						UDEBUG("ground=%d obstacles=%d empty=%d", (int)groundIndices->size(), (int)obstaclesIndices->size(), (int)emptyIndices->size());
+						groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, groundIndices, tinv);
+						obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, obstaclesIndices, tinv);
+						emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, emptyIndices, tinv);
+					}
 				}
 				else
+#else
+					UWARN("RTAB-Map is not built with OctoMap dependency, 3D ray tracing is ignored. Set \"%s\" to false to avoid this warning.", Parameters::kGridRayTracing().c_str());
+				}
+#endif
 				{
-					UDEBUG("groundCloud=%d, obstaclesCloud=%d", (int)groundCloud->size(), (int)obstaclesCloud->size());
-					// projection on the xy plane
-					util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(
-							groundCloud,
-							obstaclesCloud,
-							ground,
-							obstacles,
-							cellSize_);
+					groundCells = util3d::laserScanFromPointCloud(*groundCloud, tinv);
+					obstacleCells = util3d::laserScanFromPointCloud(*obstaclesCloud, tinv);
+				}
 
-					if(projRayTracing_)
-					{
-						cv::Mat laserScan = obstacles;
-						cv::Mat laserScanNoHit = ground;
-						obstacles = cv::Mat();
-						ground = cv::Mat();
-						util3d::occupancy2DFromLaserScan(
-								laserScan,
-								laserScanNoHit,
-								viewPoint,
-								ground,
-								obstacles,
-								cellSize_,
-								false, // don't fill unknown space
-								0);
-					}
+			}
+			else
+			{
+				UDEBUG("groundCloud=%d, obstaclesCloud=%d", (int)groundCloud->size(), (int)obstaclesCloud->size());
+				// projection on the xy plane
+				util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(
+						groundCloud,
+						obstaclesCloud,
+						groundCells,
+						obstacleCells,
+						cellSize_);
+
+				if(rayTracing_)
+				{
+					cv::Mat laserScan = obstacleCells;
+					cv::Mat laserScanNoHit = groundCells;
+					obstacleCells = cv::Mat();
+					groundCells = cv::Mat();
+					util3d::occupancy2DFromLaserScan(
+							laserScan,
+							laserScanNoHit,
+							viewPointInOut,
+							emptyCells,
+							obstacleCells,
+							cellSize_,
+							false, // don't fill unknown space
+							0);
 				}
 			}
 		}
 	}
-	UDEBUG("ground=%d obstacles=%d channels=%d", ground.cols, obstacles.cols, ground.cols?ground.channels():obstacles.channels());
+	UDEBUG("ground=%d obstacles=%d empty=%d, channels=%d", groundCells.cols, obstacleCells.cols, emptyCells.cols, obstacleCells.cols?obstacleCells.channels():groundCells.channels());
 }
 
 void OccupancyGrid::clear()
@@ -417,10 +482,11 @@ cv::Mat OccupancyGrid::getMap(float & xMin, float & yMin) const
 void OccupancyGrid::addToCache(
 		int nodeId,
 		const cv::Mat & ground,
-		const cv::Mat & obstacles)
+		const cv::Mat & obstacles,
+		const cv::Mat & empty)
 {
 	UDEBUG("nodeId=%d", nodeId);
-	uInsert(cache_, std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+	uInsert(cache_, std::make_pair(nodeId, std::make_pair(std::make_pair(ground, obstacles), empty)));
 }
 
 void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
@@ -442,6 +508,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 	bool graphOptimized = false; // If a loop closure happened (e.g., poses are modified)
 	bool graphChanged = addedNodes_.size()>0; // If the new map doesn't have any node from the previous map
 	std::map<int, Transform> transforms;
+	float updateErrorSqrd = updateError_*updateError_;
 	for(std::map<int, Transform>::iterator iter=addedNodes_.begin(); iter!=addedNodes_.end(); ++iter)
 	{
 		std::map<int, Transform>::const_iterator jter = posesIn.find(iter->first);
@@ -451,7 +518,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 			UASSERT(!iter->second.isNull() && !jter->second.isNull());
 			Transform t = Transform::getIdentity();
-			if(iter->second.getDistanceSquared(jter->second) > 0.0001)
+			if(iter->second.getDistanceSquared(jter->second) > updateErrorSqrd)
 			{
 				t = jter->second * iter->second.inverse();
 				graphOptimized = true;
@@ -487,6 +554,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 	bool assembledGroundUpdated = false;
 	bool assembledObstaclesUpdated = false;
+	bool assembledEmptyCellsUpdated = false;
 
 	if(graphOptimized || graphChanged)
 	{
@@ -676,22 +744,22 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 		{
 			if(uContains(cache_, iter->first))
 			{
-				const std::pair<cv::Mat, cv::Mat> & pair = cache_.at(iter->first);
+				const std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> & pair = cache_.at(iter->first);
 
 				//ground
-				if(pair.first.cols)
+				if(pair.first.first.cols)
 				{
-					if(pair.first.rows > 1 && pair.first.cols == 1)
+					if(pair.first.first.rows > 1 && pair.first.first.cols == 1)
 					{
-						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.first.rows, pair.first.cols);
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.first.first.rows, pair.first.first.cols);
 					}
-					cv::Mat ground(1, pair.first.cols, CV_32FC2);
+					cv::Mat ground(1, pair.first.first.cols, CV_32FC2);
 					for(int i=0; i<ground.cols; ++i)
 					{
-						const float * vi = pair.first.ptr<float>(0,i);
+						const float * vi = pair.first.first.ptr<float>(0,i);
 						float * vo = ground.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(pair.first.channels() != 2 && pair.first.channels() != 5)
+						if(pair.first.first.channels() != 2 && pair.first.first.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -715,25 +783,67 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 					if(cloudAssembling_)
 					{
-						*assembledGround_ += *util3d::laserScanToPointCloudRGB(pair.first, iter->second, 0, 255, 0);
+						*assembledGround_ += *util3d::laserScanToPointCloudRGB(pair.first.first, iter->second, 0, 255, 0);
 						assembledGroundUpdated = true;
 					}
 				}
 
-				//obstacles
+				//empty
 				if(pair.second.cols)
 				{
 					if(pair.second.rows > 1 && pair.second.cols == 1)
 					{
 						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.second.rows, pair.second.cols);
 					}
-					cv::Mat obstacles(1, pair.second.cols, CV_32FC2);
-					for(int i=0; i<obstacles.cols; ++i)
+					cv::Mat ground(1, pair.second.cols, CV_32FC2);
+					for(int i=0; i<ground.cols; ++i)
 					{
 						const float * vi = pair.second.ptr<float>(0,i);
+						float * vo = ground.ptr<float>(0,i);
+						cv::Point3f vt;
+						if(pair.second.channels() != 2 && pair.second.channels() != 5)
+						{
+							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
+						}
+						else
+						{
+							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], 0), iter->second);
+						}
+						vo[0] = vt.x;
+						vo[1] = vt.y;
+						if(minX > vo[0])
+							minX = vo[0];
+						else if(maxX < vo[0])
+							maxX = vo[0];
+
+						if(minY > vo[1])
+							minY = vo[1];
+						else if(maxY < vo[1])
+							maxY = vo[1];
+					}
+					uInsert(emptyLocalMaps, std::make_pair(iter->first, ground));
+
+					if(cloudAssembling_)
+					{
+						*assembledEmptyCells_ += *util3d::laserScanToPointCloudRGB(pair.second, iter->second, 0, 255, 0);
+						assembledEmptyCellsUpdated = true;
+					}
+				}
+
+				//obstacles
+				if(pair.first.second.cols)
+				{
+					if(pair.first.second.rows > 1 && pair.first.second.cols == 1)
+					{
+						UFATAL("Occupancy local maps should be 1 row and X cols! (rows=%d cols=%d)", pair.first.second.rows, pair.first.second.cols);
+					}
+					cv::Mat obstacles(1, pair.first.second.cols, CV_32FC2);
+					for(int i=0; i<obstacles.cols; ++i)
+					{
+						const float * vi = pair.first.second.ptr<float>(0,i);
 						float * vo = obstacles.ptr<float>(0,i);
 						cv::Point3f vt;
-						if(pair.first.channels() != 2 && pair.first.channels() != 5)
+						if(pair.first.second.channels() != 2 && pair.first.second.channels() != 5)
 						{
 							vt = util3d::transformPoint(cv::Point3f(vi[0], vi[1], vi[2]), iter->second);
 						}
@@ -757,7 +867,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 					if(cloudAssembling_)
 					{
-						*assembledObstacles_ += *util3d::laserScanToPointCloudRGB(pair.second, iter->second, 255, 0, 0);
+						*assembledObstacles_ += *util3d::laserScanToPointCloudRGB(pair.first.second, iter->second, 255, 0, 0);
 						assembledObstaclesUpdated = true;
 					}
 				}
@@ -1165,6 +1275,10 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 		{
 			assembledObstacles_ = util3d::voxelize(assembledObstacles_, cellSize_);
 		}
+		if(assembledEmptyCellsUpdated && assembledEmptyCells_->size() > 1)
+		{
+			assembledEmptyCells_ = util3d::voxelize(assembledEmptyCells_, cellSize_);
+		}
 	}
 
 	if(!fullUpdate_ && !cloudAssembling_)
@@ -1174,7 +1288,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 	else
 	{
 		//clear only negative ids
-		for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter=cache_.begin(); iter!=cache_.end();)
+		for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=cache_.begin(); iter!=cache_.end();)
 		{
 			if(iter->first < 0)
 			{

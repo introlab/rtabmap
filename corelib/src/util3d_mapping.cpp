@@ -48,8 +48,8 @@ namespace util3d
 
 void occupancy2DFromLaserScan(
 		const cv::Mat & scan,
-		cv::Mat & ground,
-		cv::Mat & obstacles,
+		cv::Mat & empty,
+		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled,
 		float scanMaxRange)
@@ -59,8 +59,8 @@ void occupancy2DFromLaserScan(
 			scan,
 			cv::Mat(),
 			viewpoint,
-			ground,
-			obstacles,
+			empty,
+			occupied,
 			cellSize,
 			unknownSpaceFilled,
 			scanMaxRange);
@@ -69,21 +69,21 @@ void occupancy2DFromLaserScan(
 void occupancy2DFromLaserScan(
 		const cv::Mat & scan,
 		const cv::Point3f & viewpoint,
-		cv::Mat & ground,
-		cv::Mat & obstacles,
+		cv::Mat & empty,
+		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled,
 		float scanMaxRange)
 {
-	occupancy2DFromLaserScan(scan, cv::Mat(), viewpoint, ground, obstacles, cellSize, unknownSpaceFilled, scanMaxRange);
+	occupancy2DFromLaserScan(scan, cv::Mat(), viewpoint, empty, occupied, cellSize, unknownSpaceFilled, scanMaxRange);
 }
 
 void occupancy2DFromLaserScan(
 		const cv::Mat & scanHit,
 		const cv::Mat & scanNoHit,
 		const cv::Point3f & viewpoint,
-		cv::Mat & ground,
-		cv::Mat & obstacles,
+		cv::Mat & empty,
+		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled,
 		float scanMaxRange)
@@ -105,27 +105,27 @@ void occupancy2DFromLaserScan(
 	float xMin, yMin;
 	cv::Mat map8S = create2DMap(poses, scans, viewpoints, cellSize, unknownSpaceFilled, xMin, yMin, 0.0f, scanMaxRange);
 
-	// find ground cells
-	std::list<int> groundIndices;
+	// find empty cells
+	std::list<int> emptyIndices;
 	for(unsigned int i=0; i< map8S.total(); ++i)
 	{
 		if(map8S.data[i] == 0)
 		{
-			groundIndices.push_back(i);
+			emptyIndices.push_back(i);
 		}
 	}
 
 	// Convert to position matrices, get points to each center of the cells
-	ground = cv::Mat();
-	if(groundIndices.size())
+	empty = cv::Mat();
+	if(emptyIndices.size())
 	{
-		ground = cv::Mat(1, (int)groundIndices.size(), CV_32FC2);
+		empty = cv::Mat(1, (int)emptyIndices.size(), CV_32FC2);
 		int i=0;
-		for(std::list<int>::iterator iter=groundIndices.begin();iter!=groundIndices.end(); ++iter)
+		for(std::list<int>::iterator iter=emptyIndices.begin();iter!=emptyIndices.end(); ++iter)
 		{
 			int y = *iter / map8S.cols;
 			int x = *iter - y*map8S.cols;
-			cv::Vec2f * ptr = ground.ptr<cv::Vec2f>();
+			cv::Vec2f * ptr = empty.ptr<cv::Vec2f>();
 			ptr[i][0] = (float(x))*cellSize + xMin;
 			ptr[i][1] = (float(y))*cellSize + yMin;
 			++i;
@@ -133,7 +133,7 @@ void occupancy2DFromLaserScan(
 	}
 
 	// copy directly obstacles precise positions
-	obstacles = scanHit.clone();
+	occupied = scanHit.clone();
 }
 
 /**

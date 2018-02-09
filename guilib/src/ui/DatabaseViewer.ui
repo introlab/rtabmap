@@ -61,7 +61,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>395</width>
+           <width>326</width>
            <height>242</height>
           </rect>
          </property>
@@ -253,7 +253,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>394</width>
+           <width>325</width>
            <height>242</height>
           </rect>
          </property>
@@ -1163,7 +1163,7 @@
      <item>
       <widget class="QToolBox" name="toolBox">
        <property name="currentIndex">
-        <number>0</number>
+        <number>1</number>
        </property>
        <widget class="QWidget" name="page_3">
         <property name="geometry">
@@ -1332,8 +1332,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>302</width>
-          <height>696</height>
+          <width>451</width>
+          <height>668</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1341,7 +1341,7 @@
         </attribute>
         <layout class="QVBoxLayout" name="verticalLayout_16">
          <item>
-          <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,1">
+          <layout class="QGridLayout" name="gridLayout_9" columnstretch="0,0">
            <item row="7" column="1">
             <widget class="QLabel" name="label_51">
              <property name="text">
@@ -1374,7 +1374,7 @@
              </property>
             </widget>
            </item>
-           <item row="2" column="1">
+           <item row="1" column="1">
             <widget class="QLabel" name="label_53">
              <property name="text">
               <string>OctoMap</string>
@@ -1391,41 +1391,7 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="QLabel" name="label_44">
-             <property name="text">
-              <string>Errode</string>
-             </property>
-            </widget>
-           </item>
            <item row="1" column="0">
-            <widget class="QCheckBox" name="checkBox_gridErode">
-             <property name="text">
-              <string/>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QLabel" name="label_46">
-             <property name="text">
-              <string>Grid cell size</string>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <widget class="QDoubleSpinBox" name="doubleSpinBox_gridCellSize">
-             <property name="decimals">
-              <number>3</number>
-             </property>
-             <property name="minimum">
-              <double>0.001000000000000</double>
-             </property>
-             <property name="singleStep">
-              <double>0.010000000000000</double>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="0">
             <widget class="QCheckBox" name="checkBox_octomap">
              <property name="text">
               <string/>
@@ -1455,26 +1421,6 @@
             </widget>
            </item>
            <item row="5" column="0">
-            <widget class="QCheckBox" name="checkBox_grid_cubes">
-             <property name="text">
-              <string/>
-             </property>
-             <property name="checked">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="4" column="0">
-            <widget class="QCheckBox" name="checkBox_grid_empty">
-             <property name="text">
-              <string/>
-             </property>
-             <property name="checked">
-              <bool>false</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="0">
             <widget class="QSpinBox" name="spinBox_grid_depth">
              <property name="prefix">
               <string/>
@@ -1490,25 +1436,83 @@
              </property>
             </widget>
            </item>
-           <item row="4" column="1">
-            <widget class="QLabel" name="label_octomap_empty">
+           <item row="6" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_regenerateFromSavedGrid">
              <property name="text">
-              <string>OctoMap: Empty space</string>
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="1">
+            <widget class="QLabel" name="label_octomap_cubes">
+             <property name="text">
+              <string>OctoMap: Rendering type</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
              </property>
             </widget>
            </item>
            <item row="5" column="1">
-            <widget class="QLabel" name="label_octomap_cubes">
-             <property name="text">
-              <string>OctoMap: Cubes rendering</string>
-             </property>
-            </widget>
-           </item>
-           <item row="6" column="1">
             <widget class="QLabel" name="label_octomap_depth">
              <property name="text">
               <string>OctoMap: Tree depth</string>
              </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QCheckBox" name="checkBox_grid_empty">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="6" column="1">
+            <widget class="QLabel" name="label_55">
+             <property name="text">
+              <string>Local grid: regenerate from saved grid instead of sensors</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QLabel" name="label_octomap_empty">
+             <property name="text">
+              <string>Global grid/OctoMap: show empty space</string>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="4" column="0">
+            <widget class="QComboBox" name="comboBox_octomap_rendering_type">
+             <item>
+              <property name="text">
+               <string>Point Cloud</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Cube</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Volume</string>
+              </property>
+             </item>
             </widget>
            </item>
           </layout>

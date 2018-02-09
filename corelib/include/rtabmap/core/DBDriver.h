@@ -92,6 +92,7 @@ public:
 				int nodeId,
 				const cv::Mat & ground,
 				const cv::Mat & obstacles,
+				const cv::Mat & empty,
 				float cellSize,
 				const cv::Point3f & viewpoint);
 	void updateDepthImage(int nodeId, const cv::Mat & image);
@@ -216,6 +217,7 @@ private:
 				int nodeId,
 				const cv::Mat & ground,
 				const cv::Mat & obstacles,
+				const cv::Mat & empty,
 				float cellSize,
 				const cv::Point3f & viewpoint) const = 0;
 

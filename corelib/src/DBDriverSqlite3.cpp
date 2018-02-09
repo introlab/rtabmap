@@ -1220,7 +1220,14 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 			}
 			if(occupancyGrid)
 			{
-				fields << "ground_cells, obstacle_cells, cell_size, view_point_x, view_point_y, view_point_z";
+				if(uStrNumCmp(_version, "0.16.0") >= 0)
+				{
+					fields << "ground_cells, obstacle_cells, empty_cells, cell_size, view_point_x, view_point_y, view_point_z";
+				}
+				else
+				{
+					fields << "ground_cells, obstacle_cells, cell_size, view_point_x, view_point_y, view_point_z";
+				}
 			}
 
 			query << "SELECT " << fields.str().c_str() << " "
@@ -1557,6 +1564,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				// Occupancy grid
 				cv::Mat groundCellsCompressed;
 				cv::Mat obstacleCellsCompressed;
+				cv::Mat emptyCellsCompressed;
 				float cellSize = 0.0f;
 				cv::Point3f viewPoint;
 				if(uStrNumCmp(_version, "0.11.10") >= 0 && occupancyGrid)
@@ -1577,6 +1585,18 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 					{
 						obstacleCellsCompressed = cv::Mat(1, dataSize, CV_8UC1);
 						memcpy((void*)obstacleCellsCompressed.data, data, dataSize);
+					}
+
+					if(uStrNumCmp(_version, "0.16.0") >= 0)
+					{
+						// empty
+						data = sqlite3_column_blob(ppStmt, index);
+						dataSize = sqlite3_column_bytes(ppStmt, index++);
+						if(dataSize > 0 && data)
+						{
+							emptyCellsCompressed = cv::Mat(1, dataSize, CV_8UC1);
+							memcpy((void*)emptyCellsCompressed.data, data, dataSize);
+						}
 					}
 
 					cellSize = sqlite3_column_double(ppStmt, index++);
@@ -1612,11 +1632,11 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				}
 				if(occupancyGrid)
 				{
-					(*iter)->sensorData().setOccupancyGrid(groundCellsCompressed, obstacleCellsCompressed, cellSize, viewPoint);
+					(*iter)->sensorData().setOccupancyGrid(groundCellsCompressed, obstacleCellsCompressed, emptyCellsCompressed, cellSize, viewPoint);
 				}
 				else
 				{
-					(*iter)->sensorData().setOccupancyGrid(tmp.gridGroundCellsCompressed(), tmp.gridObstacleCellsCompressed(), tmp.gridCellSize(), tmp.gridViewPoint());
+					(*iter)->sensorData().setOccupancyGrid(tmp.gridGroundCellsCompressed(), tmp.gridObstacleCellsCompressed(), tmp.gridEmptyCellsCompressed(), tmp.gridCellSize(), tmp.gridViewPoint());
 				}
 				rc = sqlite3_step(ppStmt); // next result...
 			}
@@ -3881,6 +3901,7 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 			int nodeId,
 			const cv::Mat & ground,
 			const cv::Mat & obstacles,
+			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewpoint) const
 {
@@ -3903,6 +3924,7 @@ void DBDriverSqlite3::updateOccupancyGridQuery(
 				nodeId,
 				ground,
 				obstacles,
+				empty,
 				cellSize,
 				viewpoint);
 
@@ -4834,7 +4856,11 @@ void DBDriverSqlite3::stepDepthUpdate(sqlite3_stmt * ppStmt, int nodeId, const c
 std::string DBDriverSqlite3::queryStepSensorData() const
 {
 	UASSERT(uStrNumCmp(_version, "0.10.0") >= 0);
-	if(uStrNumCmp(_version, "0.11.10") >= 0)
+	if(uStrNumCmp(_version, "0.16.0") >= 0)
+	{
+		return "INSERT INTO Data(id, image, depth, calibration, scan_info, scan, user_data, ground_cells, obstacle_cells, empty_cells, cell_size, view_point_x, view_point_y, view_point_z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+	}
+	else if(uStrNumCmp(_version, "0.11.10") >= 0)
 	{
 		return "INSERT INTO Data(id, image, depth, calibration, scan_info, scan, user_data, ground_cells, obstacle_cells, cell_size, view_point_x, view_point_y, view_point_z) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?);";
 	}
@@ -5044,6 +5070,21 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 		{
 			rc = sqlite3_bind_blob(ppStmt, index++, sensorData.gridObstacleCellsCompressed().data, (int)sensorData.gridObstacleCellsCompressed().cols, SQLITE_STATIC);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		if(uStrNumCmp(_version, "0.16.0") >= 0)
+		{
+			//empty_cells
+			if(sensorData.gridEmptyCellsCompressed().empty())
+			{
+				rc = sqlite3_bind_null(ppStmt, index++);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
+			else
+			{
+				rc = sqlite3_bind_blob(ppStmt, index++, sensorData.gridEmptyCellsCompressed().data, (int)sensorData.gridEmptyCellsCompressed().cols, SQLITE_STATIC);
+				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			}
 		}
 
 		//cell_size
@@ -5308,22 +5349,29 @@ void DBDriverSqlite3::stepKeypoint(sqlite3_stmt * ppStmt,
 std::string DBDriverSqlite3::queryStepOccupancyGridUpdate() const
 {
 	UASSERT(uStrNumCmp(_version, "0.11.10") >= 0);
+	if(uStrNumCmp(_version, "0.16.0") >= 0)
+	{
+		return "UPDATE Data SET ground_cells=?, obstacle_cells=?, empty_cells=?, cell_size=?, view_point_x=?, view_point_y=?, view_point_z=? WHERE id=?;";
+	}
 	return "UPDATE Data SET ground_cells=?, obstacle_cells=?, cell_size=?, view_point_x=?, view_point_y=?, view_point_z=? WHERE id=?;";
 }
 void DBDriverSqlite3::stepOccupancyGridUpdate(sqlite3_stmt * ppStmt,
 		int nodeId,
 		const cv::Mat & ground,
 		const cv::Mat & obstacles,
+		const cv::Mat & empty,
 		float cellSize,
 		const cv::Point3f & viewpoint) const
 {
 	UASSERT(uStrNumCmp(_version, "0.11.10") >= 0);
 	UASSERT(ground.empty() || ground.type() == CV_8UC1); // compressed
 	UASSERT(obstacles.empty() || obstacles.type() == CV_8UC1); // compressed
-	UDEBUG("Update occupancy grid %d: ground=%d obstacles=%d cell=%f viewpoint=(%f,%f,%f)",
+	UASSERT(empty.empty() || empty.type() == CV_8UC1); // compressed
+	UDEBUG("Update occupancy grid %d: ground=%d obstacles=%d empty=%d cell=%f viewpoint=(%f,%f,%f)",
 			nodeId,
 			ground.cols,
 			obstacles.cols,
+			empty.cols,
 			cellSize,
 			viewpoint.x,
 			viewpoint.y,
@@ -5359,6 +5407,21 @@ void DBDriverSqlite3::stepOccupancyGridUpdate(sqlite3_stmt * ppStmt,
 	{
 		rc = sqlite3_bind_blob(ppStmt, index++, obstacles.data, obstacles.cols, SQLITE_STATIC);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+	}
+
+	if(uStrNumCmp(_version, "0.16.0") >= 0)
+	{
+		//empty_cells
+		if(empty.empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			rc = sqlite3_bind_blob(ppStmt, index++, empty.data, empty.cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
 	}
 
 	//cell_size

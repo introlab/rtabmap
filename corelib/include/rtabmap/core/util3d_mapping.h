@@ -45,8 +45,8 @@ namespace util3d
 
 RTABMAP_DEPRECATED(void RTABMAP_EXP occupancy2DFromLaserScan(
 		const cv::Mat & scan, // in /base_link frame
-		cv::Mat & ground,
-		cv::Mat & obstacles,
+		cv::Mat & empty,
+		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled = false,
 		float scanMaxRange = 0.0f), "Use interface with \"viewpoint\" parameter to make sure the ray tracing origin is from the sensor and not the base.");
@@ -54,8 +54,8 @@ RTABMAP_DEPRECATED(void RTABMAP_EXP occupancy2DFromLaserScan(
 RTABMAP_DEPRECATED(void RTABMAP_EXP occupancy2DFromLaserScan(
 		const cv::Mat & scan, // in /base_link frame
 		const cv::Point3f & viewpoint, // /base_link -> /base_scan
-		cv::Mat & ground,
-		cv::Mat & obstacles,
+		cv::Mat & empty,
+		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled = false,
 		float scanMaxRange = 0.0f), "Use interface with scanHit/scanNoHit parameters: scanNoHit set to null matrix has the same functionality than this method.");
@@ -64,8 +64,8 @@ void RTABMAP_EXP occupancy2DFromLaserScan(
 		const cv::Mat & scanHit, // in /base_link frame
 		const cv::Mat & scanNoHit, // in /base_link frame
 		const cv::Point3f & viewpoint, // /base_link -> /base_scan
-		cv::Mat & ground,
-		cv::Mat & obstacles,
+		cv::Mat & empty,
+		cv::Mat & occupied,
 		float cellSize,
 		bool unknownSpaceFilled = false,
 		float scanMaxRange = 0.0f); // would be set if unknownSpaceFilled=true

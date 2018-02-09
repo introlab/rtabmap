@@ -254,14 +254,14 @@ int main(int argc, char * argv[])
 #endif
 						if(updateGridMap || updateOctoMap)
 						{
-							cv::Mat ground, obstacles;
-							stats.getSignatures().find(id)->second.sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles);
+							cv::Mat ground, obstacles, empty;
+							stats.getSignatures().find(id)->second.sensorData().uncompressDataConst(0, 0, 0, 0, &ground, &obstacles, &empty);
 
 							timeUpdateInit = t.ticks();
 
 							if(updateGridMap)
 							{
-								grid.addToCache(id, ground, obstacles);
+								grid.addToCache(id, ground, obstacles, empty);
 								grid.update(stats.poses());
 								timeUpdateGrid = t.ticks() + timeUpdateInit;
 							}
@@ -269,7 +269,7 @@ int main(int argc, char * argv[])
 							if(updateOctoMap)
 							{
 								const cv::Point3f & viewpoint = stats.getSignatures().find(id)->second.sensorData().gridViewPoint();
-								octomap.addToCache(id, ground, obstacles, viewpoint);
+								octomap.addToCache(id, ground, obstacles, empty, viewpoint);
 								octomap.update(stats.poses());
 								timeUpdateOctoMap = t.ticks() + timeUpdateInit;
 							}
@@ -378,6 +378,18 @@ int main(int argc, char * argv[])
 				printf("Saving 3d ground \"%s\"... failed!\n", outputPath.c_str());
 			}
 		}
+		if(grid.getMapEmptyCells()->size())
+		{
+			outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_empty.pcd";
+			if(pcl::io::savePCDFileBinary(outputPath, *grid.getMapEmptyCells()) == 0)
+			{
+				printf("Saving 3d empty cells \"%s\"... done!\n", outputPath.c_str());
+			}
+			else
+			{
+				printf("Saving 3d empty cells \"%s\"... failed!\n", outputPath.c_str());
+			}
+		}
 	}
 #ifdef RTABMAP_OCTOMAP
 	if(assemble2dOctoMap)
@@ -427,8 +439,8 @@ int main(int argc, char * argv[])
 	if(assemble3dOctoMap)
 	{
 		std::string outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_octomap_occupied.pcd";
-		std::vector<int> obstacles, emptySpace;
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap.createCloud(0, &obstacles, &emptySpace);
+		std::vector<int> obstacles, emptySpace, ground;
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap.createCloud(0, &obstacles, &emptySpace, &ground);
 		if(pcl::io::savePCDFile(outputPath, *cloud, obstacles, true) == 0)
 		{
 			printf("Saving obstacles cloud \"%s\"... done!\n", outputPath.c_str());
@@ -436,6 +448,18 @@ int main(int argc, char * argv[])
 		else
 		{
 			printf("Saving obstacles cloud \"%s\"... failed!\n", outputPath.c_str());
+		}
+		if(ground.size())
+		{
+			outputPath = outputDatabasePath.substr(0, outputDatabasePath.size()-3) + "_octomap_ground.pcd";
+			if(pcl::io::savePCDFile(outputPath, *cloud, ground, true) == 0)
+			{
+				printf("Saving empty space cloud \"%s\"... done!\n", outputPath.c_str());
+			}
+			else
+			{
+				printf("Saving empty space cloud \"%s\"... failed!\n", outputPath.c_str());
+			}
 		}
 		if(emptySpace.size())
 		{

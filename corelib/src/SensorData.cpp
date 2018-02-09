@@ -476,12 +476,14 @@ void SensorData::setUserData(const cv::Mat & userData)
 void SensorData::setOccupancyGrid(
 			const cv::Mat & ground,
 			const cv::Mat & obstacles,
+			const cv::Mat & empty,
 			float cellSize,
 			const cv::Point3f & viewPoint)
 {
-	UDEBUG("ground=%d obstacles=%d", ground.cols, obstacles.cols);
+	UDEBUG("ground=%d obstacles=%d empty=%d", ground.cols, obstacles.cols, empty.cols);
 	if((!ground.empty() && (!_groundCellsCompressed.empty() || !_groundCellsRaw.empty())) ||
-	   (!obstacles.empty() && (!_obstacleCellsCompressed.empty() || !_obstacleCellsRaw.empty())))
+	   (!obstacles.empty() && (!_obstacleCellsCompressed.empty() || !_obstacleCellsRaw.empty())) ||
+	   (!empty.empty() && (!_emptyCellsCompressed.empty() || !_emptyCellsRaw.empty())))
 	{
 		UWARN("Occupancy grid cannot be overwritten! id=%d", this->id());
 		return;
@@ -491,9 +493,12 @@ void SensorData::setOccupancyGrid(
 	_groundCellsCompressed = cv::Mat();
 	_obstacleCellsRaw = cv::Mat();
 	_obstacleCellsCompressed = cv::Mat();
+	_emptyCellsRaw = cv::Mat();
+	_emptyCellsCompressed = cv::Mat();
 
 	CompressionThread ctGround(ground);
 	CompressionThread ctObstacles(obstacles);
+	CompressionThread ctEmpty(empty);
 
 	if(!ground.empty())
 	{
@@ -521,8 +526,22 @@ void SensorData::setOccupancyGrid(
 			_obstacleCellsCompressed = obstacles;
 		}
 	}
+	if(!empty.empty())
+	{
+		if(empty.type() == CV_32FC2 || empty.type() == CV_32FC3 || empty.type() == CV_32FC(4) || empty.type() == CV_32FC(5) || empty.type() == CV_32FC(6) || empty.type() == CV_32FC(7))
+		{
+			_emptyCellsRaw = empty;
+			ctEmpty.start();
+		}
+		else if(empty.type() == CV_8UC1)
+		{
+			UASSERT(empty.type() == CV_8UC1); // Bytes
+			_emptyCellsCompressed = empty;
+		}
+	}
 	ctGround.join();
 	ctObstacles.join();
+	ctEmpty.join();
 	if(!_groundCellsRaw.empty())
 	{
 		_groundCellsCompressed = ctGround.getCompressedData();
@@ -531,6 +550,10 @@ void SensorData::setOccupancyGrid(
 	{
 		_obstacleCellsCompressed = ctObstacles.getCompressedData();
 	}
+	if(!_emptyCellsRaw.empty())
+	{
+		_emptyCellsCompressed = ctEmpty.getCompressedData();
+	}
 
 	_cellSize = cellSize;
 	_viewPoint = viewPoint;
@@ -538,13 +561,14 @@ void SensorData::setOccupancyGrid(
 
 void SensorData::uncompressData()
 {
-	cv::Mat tmpA, tmpB, tmpC, tmpD, tmpE, tmpF;
+	cv::Mat tmpA, tmpB, tmpC, tmpD, tmpE, tmpF, tmpG;
 	uncompressData(_imageCompressed.empty()?0:&tmpA,
 				_depthOrRightCompressed.empty()?0:&tmpB,
 				_laserScanCompressed.empty()?0:&tmpC,
 				_userDataCompressed.empty()?0:&tmpD,
 				_groundCellsCompressed.empty()?0:&tmpE,
-				_obstacleCellsCompressed.empty()?0:&tmpF);
+				_obstacleCellsCompressed.empty()?0:&tmpF,
+				_emptyCellsCompressed.empty()?0:&tmpG);
 }
 
 void SensorData::uncompressData(
@@ -553,15 +577,17 @@ void SensorData::uncompressData(
 		cv::Mat * laserScanRaw,
 		cv::Mat * userDataRaw,
 		cv::Mat * groundCellsRaw,
-		cv::Mat * obstacleCellsRaw)
+		cv::Mat * obstacleCellsRaw,
+		cv::Mat * emptyCellsRaw)
 {
-	UDEBUG("%d data(%d,%d,%d,%d,%d)", this->id(), imageRaw?1:0, depthRaw?1:0, laserScanRaw?1:0, userDataRaw?1:0, groundCellsRaw?1:0, obstacleCellsRaw?1:0);
+	UDEBUG("%d data(%d,%d,%d,%d,%d,%d,%d)", this->id(), imageRaw?1:0, depthRaw?1:0, laserScanRaw?1:0, userDataRaw?1:0, groundCellsRaw?1:0, obstacleCellsRaw?1:0, emptyCellsRaw?1:0);
 	if(imageRaw == 0 &&
 		depthRaw == 0 &&
 		laserScanRaw == 0 &&
 		userDataRaw == 0 &&
 		groundCellsRaw == 0 &&
-		obstacleCellsRaw == 0)
+		obstacleCellsRaw == 0 &&
+		emptyCellsRaw == 0)
 	{
 		return;
 	}
@@ -571,7 +597,8 @@ void SensorData::uncompressData(
 			laserScanRaw,
 			userDataRaw,
 			groundCellsRaw,
-			obstacleCellsRaw);
+			obstacleCellsRaw,
+			emptyCellsRaw);
 
 	if(imageRaw && !imageRaw->empty() && _imageRaw.empty())
 	{
@@ -609,6 +636,10 @@ void SensorData::uncompressData(
 	{
 		_obstacleCellsRaw = *obstacleCellsRaw;
 	}
+	if(emptyCellsRaw && !emptyCellsRaw->empty() && _emptyCellsRaw.empty())
+	{
+		_emptyCellsRaw = *emptyCellsRaw;
+	}
 }
 
 void SensorData::uncompressDataConst(
@@ -617,7 +648,8 @@ void SensorData::uncompressDataConst(
 		cv::Mat * laserScanRaw,
 		cv::Mat * userDataRaw,
 		cv::Mat * groundCellsRaw,
-		cv::Mat * obstacleCellsRaw) const
+		cv::Mat * obstacleCellsRaw,
+		cv::Mat * emptyCellsRaw) const
 {
 	if(imageRaw)
 	{
@@ -643,12 +675,17 @@ void SensorData::uncompressDataConst(
 	{
 		*obstacleCellsRaw = _obstacleCellsRaw;
 	}
+	if(emptyCellsRaw)
+	{
+		*emptyCellsRaw = _emptyCellsRaw;
+	}
 	if( (imageRaw && imageRaw->empty()) ||
 		(depthRaw && depthRaw->empty()) ||
 		(laserScanRaw && laserScanRaw->empty()) ||
 		(userDataRaw && userDataRaw->empty()) ||
 		(groundCellsRaw && groundCellsRaw->empty()) ||
-		(obstacleCellsRaw && obstacleCellsRaw->empty()))
+		(obstacleCellsRaw && obstacleCellsRaw->empty()) ||
+		(emptyCellsRaw && emptyCellsRaw->empty()))
 	{
 		rtabmap::CompressionThread ctImage(_imageCompressed, true);
 		rtabmap::CompressionThread ctDepth(_depthOrRightCompressed, true);
@@ -656,6 +693,7 @@ void SensorData::uncompressDataConst(
 		rtabmap::CompressionThread ctUserData(_userDataCompressed, false);
 		rtabmap::CompressionThread ctGroundCells(_groundCellsCompressed, false);
 		rtabmap::CompressionThread ctObstacleCells(_obstacleCellsCompressed, false);
+		rtabmap::CompressionThread ctEmptyCells(_emptyCellsCompressed, false);
 		if(imageRaw && imageRaw->empty() && !_imageCompressed.empty())
 		{
 			UASSERT(_imageCompressed.type() == CV_8UC1);
@@ -686,12 +724,18 @@ void SensorData::uncompressDataConst(
 			UASSERT(_obstacleCellsCompressed.type() == CV_8UC1);
 			ctObstacleCells.start();
 		}
+		if(emptyCellsRaw && emptyCellsRaw->empty() && !_emptyCellsCompressed.empty())
+		{
+			UASSERT(_emptyCellsCompressed.type() == CV_8UC1);
+			ctEmptyCells.start();
+		}
 		ctImage.join();
 		ctDepth.join();
 		ctLaserScan.join();
 		ctUserData.join();
 		ctGroundCells.join();
 		ctObstacleCells.join();
+		ctEmptyCells.join();
 
 		if(imageRaw && imageRaw->empty())
 		{
@@ -763,6 +807,10 @@ void SensorData::uncompressDataConst(
 		{
 			*obstacleCellsRaw = ctObstacleCells.getUncompressedData();
 		}
+		if(emptyCellsRaw && emptyCellsRaw->empty())
+		{
+			*emptyCellsRaw = ctEmptyCells.getUncompressedData();
+		}
 	}
 }
 
@@ -789,6 +837,8 @@ long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			_groundCellsRaw.total()*_groundCellsRaw.elemSize() +
 			_obstacleCellsCompressed.total()*_obstacleCellsCompressed.elemSize() +
 			_obstacleCellsRaw.total()*_obstacleCellsRaw.elemSize()+
+			_emptyCellsCompressed.total()*_emptyCellsCompressed.elemSize() +
+			_emptyCellsRaw.total()*_emptyCellsRaw.elemSize()+
 			_keypoints.size() * sizeof(float) * 7 +
 			_keypoints3D.size() * sizeof(float)*3 +
 			_descriptors.total()*_descriptors.elemSize();

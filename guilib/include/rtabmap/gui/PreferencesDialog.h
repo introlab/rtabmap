@@ -173,10 +173,9 @@ public:
 	bool isCloudsShown(int index) const;      // 0=map, 1=odom
 	bool isOctomapUpdated() const;
 	bool isOctomapShown() const;
-	bool isOctomapCubeRendering() const;
+	int getOctomapRenderingType() const;
 	bool isOctomap2dGrid() const;
 	int getOctomapTreeDepth() const;
-	bool isOctomapFullUpdate() const;
 	double getOctomapOccupancyThr() const;
 	int getOctomapPointSize() const;
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
@@ -205,7 +204,6 @@ public:
 	double getSubtractFilteringAngle() const;
 
 	bool getGridMapShown() const;
-	double getGridMapResolution() const;;
 	bool isGridMapFrom3DCloud() const;
 	bool projMapFrame() const;
 	double projMaxGroundAngle() const;
@@ -305,7 +303,6 @@ private slots:
 	void updateKpROI();
 	void updateStereoDisparityVisibility();
 	void useOdomFeatures();
-	void useGridProjRayTracing();
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void changeOdometryORBSLAM2Vocabulary();

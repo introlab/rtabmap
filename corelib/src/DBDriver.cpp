@@ -475,17 +475,19 @@ void DBDriver::updateOccupancyGrid(
 		int nodeId,
 		const cv::Mat & ground,
 		const cv::Mat & obstacles,
+		const cv::Mat & empty,
 		float cellSize,
 		const cv::Point3f & viewpoint)
 {
 	_dbSafeAccessMutex.lock();
 	//just to make sure the occupancy grids are compressed for convenience
 	SensorData data;
-	data.setOccupancyGrid(ground, obstacles, cellSize, viewpoint);
+	data.setOccupancyGrid(ground, obstacles, empty, cellSize, viewpoint);
 	this->updateOccupancyGridQuery(
 			nodeId,
 			data.gridGroundCellsCompressed(),
 			data.gridObstacleCellsCompressed(),
+			data.gridEmptyCellsCompressed(),
 			cellSize,
 			viewpoint);
 	_dbSafeAccessMutex.unlock();

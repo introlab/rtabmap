@@ -1358,27 +1358,60 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, co
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const Transform & transform)
 {
-	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(4));
+	return laserScanFromPointCloud(cloud, pcl::IndicesPtr(), transform);
+}
+
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::IndicesPtr & indices, const Transform & transform)
+{
+	cv::Mat laserScan;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
-	for(unsigned int i=0; i<cloud.size(); ++i)
+	if(indices.get())
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		laserScan = cv::Mat(1, (int)indices->size(), CV_32FC(4));
+		for(unsigned int i=0; i<indices->size(); ++i)
 		{
-			pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(i), transform3f);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.z;
+			float * ptr = laserScan.ptr<float>(0, i);
+			int index = indices->at(i);
+			if(!nullTransform)
+			{
+				pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(index), transform3f);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.z;
+			}
+			else
+			{
+				ptr[0] = cloud.at(index).x;
+				ptr[1] = cloud.at(index).y;
+				ptr[2] = cloud.at(index).z;
+			}
+			int * ptrInt = (int*)ptr;
+			ptrInt[3] = int(cloud.at(index).b) | (int(cloud.at(index).g) << 8) | (int(cloud.at(index).r) << 16);
 		}
-		else
+	}
+	else
+	{
+		laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC(4));
+		for(unsigned int i=0; i<cloud.size(); ++i)
 		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = cloud.at(i).z;
+			float * ptr = laserScan.ptr<float>(0, i);
+			if(!nullTransform)
+			{
+				pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(i), transform3f);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.z;
+			}
+			else
+			{
+				ptr[0] = cloud.at(i).x;
+				ptr[1] = cloud.at(i).y;
+				ptr[2] = cloud.at(i).z;
+			}
+			int * ptrInt = (int*)ptr;
+			ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
 		}
-		int * ptrInt = (int*)ptr;
-		ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
 	}
 	return laserScan;
 }

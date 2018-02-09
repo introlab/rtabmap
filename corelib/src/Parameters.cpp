@@ -225,6 +225,10 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	if(removedParameters_.empty())
 	{
 		// removed parameters
+
+		// 0.16.0
+		removedParameters_.insert(std::make_pair("Grid/ProjRayTracing",           std::make_pair(true,  Parameters::kGridRayTracing())));
+
 		// 0.15.1
 		removedParameters_.insert(std::make_pair("Reg/VarianceFromInliersCount",  std::make_pair(false, "")));
 		removedParameters_.insert(std::make_pair("Reg/VarianceNormalized",        std::make_pair(false, "")));

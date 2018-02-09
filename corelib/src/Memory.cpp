@@ -4043,19 +4043,19 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	}
 
 	// Occupancy grid map stuff
-	cv::Mat ground, obstacles;
+	cv::Mat ground, obstacles, empty;
 	float cellSize = 0.0f;
 	cv::Point3f viewPoint(0,0,0);
 	if(_createOccupancyGrid && !data.depthOrRightRaw().empty() && !isIntermediateNode)
 	{
-		_occupancy->createLocalMap(*s, ground, obstacles, viewPoint);
+		_occupancy->createLocalMap(*s, ground, obstacles, empty, viewPoint);
 		cellSize = _occupancy->getCellSize();
 
 		t = timer.ticks();
 		if(stats) stats->addStatistic(Statistics::kTimingMemOccupancy_grid(), t*1000.0f);
 		UDEBUG("time grid map = %fs", t);
 	}
-	s->sensorData().setOccupancyGrid(ground, obstacles, cellSize, viewPoint);
+	s->sensorData().setOccupancyGrid(ground, obstacles, empty, cellSize, viewPoint);
 
 	// prior
 	if(!isIntermediateNode)

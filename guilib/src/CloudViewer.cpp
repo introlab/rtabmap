@@ -52,6 +52,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkCubeSource.h>
 #include <vtkGlyph3D.h>
 #include <vtkGlyph3DMapper.h>
+#include <vtkSmartVolumeMapper.h>
+#include <vtkVolumeProperty.h>
+#include <vtkColorTransferFunction.h>
+#include <vtkPiecewiseFunction.h>
+#include <vtkImageData.h>
 #include <vtkLookupTable.h>
 #include <vtkTextureUnitManager.h>
 #include <vtkJPEGReader.h>
@@ -792,7 +797,7 @@ bool CloudViewer::addCloudTextureMesh(
 	return false;
 }
 
-bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth)
+bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth, bool volumeRepresentation)
 {
 	UDEBUG("");
 #ifdef RTABMAP_OCTOMAP
@@ -811,78 +816,190 @@ bool CloudViewer::addOctomap(const OctoMap * octomap, unsigned int treeDepth)
 		treeDepth = octomap->octree()->getTreeDepth();
 	}
 
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get());
-	if(obstacles->size())
+	//get the renderer of the visualizer object
+	vtkRenderer *renderer = _visualizer->getRenderWindow()->GetRenderers()->GetFirstRenderer();
+
+	if(!volumeRepresentation)
 	{
-		//get the renderer of the visualizer object
-		vtkRenderer *renderer = _visualizer->getRenderWindow()->GetRenderers()->GetFirstRenderer();
-
-		if(_octomapActor)
+		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(treeDepth, obstacles.get(), 0, 0, false);
+		if(obstacles->size())
 		{
-			renderer->RemoveActor(_octomapActor);
-			_octomapActor = 0;
+			if(_octomapActor)
+			{
+				renderer->RemoveActor(_octomapActor);
+				_octomapActor = 0;
+			}
+
+			//vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
+			//colors->SetName("colors");
+			//colors->SetNumberOfComponents(3);
+			vtkSmartPointer<vtkFloatArray> colors = vtkSmartPointer<vtkFloatArray>::New();
+			colors->SetName("colors");
+			colors->SetNumberOfValues(obstacles->size());
+
+			vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
+			lut->SetNumberOfTableValues(obstacles->size());
+			lut->Build();
+
+			// Create points
+			vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
+			points->SetNumberOfPoints(obstacles->size());
+			double s = octomap->octree()->getNodeSize(treeDepth) / 2.0;
+			for (unsigned int i = 0; i < obstacles->size(); i++)
+			{
+				points->InsertPoint(i,
+						cloud->at(obstacles->at(i)).x,
+						cloud->at(obstacles->at(i)).y,
+						cloud->at(obstacles->at(i)).z);
+				colors->InsertValue(i,i);
+
+				lut->SetTableValue(i,
+						double(cloud->at(obstacles->at(i)).r) / 255.0,
+						double(cloud->at(obstacles->at(i)).g) / 255.0,
+						double(cloud->at(obstacles->at(i)).b) / 255.0);
+			}
+
+			// Combine into a polydata
+			vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
+			polydata->SetPoints(points);
+			polydata->GetPointData()->SetScalars(colors);
+
+			// Create anything you want here, we will use a cube for the demo.
+			vtkSmartPointer<vtkCubeSource> cubeSource = vtkSmartPointer<vtkCubeSource>::New();
+			cubeSource->SetBounds(-s, s, -s, s, -s, s);
+
+			vtkSmartPointer<vtkGlyph3DMapper> mapper = vtkSmartPointer<vtkGlyph3DMapper>::New();
+			mapper->SetSourceConnection(cubeSource->GetOutputPort());
+	#if VTK_MAJOR_VERSION <= 5
+			mapper->SetInputConnection(polydata->GetProducerPort());
+	#else
+			mapper->SetInputData(polydata);
+	#endif
+			mapper->SetScalarRange(0, obstacles->size() - 1);
+			mapper->SetLookupTable(lut);
+			mapper->ScalingOff();
+			mapper->Update();
+
+			vtkSmartPointer<vtkActor> octomapActor = vtkSmartPointer<vtkActor>::New();
+			octomapActor->SetMapper(mapper);
+
+			octomapActor->GetProperty()->SetRepresentationToSurface();
+			octomapActor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
+			octomapActor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+
+			renderer->AddActor(octomapActor);
+			_octomapActor = octomapActor.GetPointer();
+			return true;
 		}
-
-		//vtkSmartPointer<vtkUnsignedCharArray> colors = vtkSmartPointer<vtkUnsignedCharArray>::New();
-		//colors->SetName("colors");
-		//colors->SetNumberOfComponents(3);
-		vtkSmartPointer<vtkFloatArray> colors = vtkSmartPointer<vtkFloatArray>::New();
-		colors->SetName("colors");
-		colors->SetNumberOfValues(obstacles->size());
-
-		vtkSmartPointer<vtkLookupTable> lut = vtkSmartPointer<vtkLookupTable>::New();
-		lut->SetNumberOfTableValues(obstacles->size());
-		lut->Build();
-
-		// Create points
-		vtkSmartPointer<vtkPoints> points = vtkSmartPointer<vtkPoints>::New();
-		double s = octomap->octree()->getNodeSize(treeDepth) / 2.0;
-		for (unsigned int i = 0; i < obstacles->size(); i++)
+	}
+	else
+	{
+		if(octomap->octree()->size())
 		{
-			points->InsertNextPoint(
-					cloud->at(obstacles->at(i)).x,
-					cloud->at(obstacles->at(i)).y,
-					cloud->at(obstacles->at(i)).z);
-			colors->InsertValue(i,i);
+			if(_octomapActor)
+			{
+				renderer->RemoveActor(_octomapActor);
+				_octomapActor = 0;
+			}
+			// Create an image data
+			vtkSmartPointer<vtkImageData> imageData =
+					vtkSmartPointer<vtkImageData>::New();
 
-			lut->SetTableValue(i,
-					double(cloud->at(obstacles->at(i)).r) / 255.0,
-					double(cloud->at(obstacles->at(i)).g) / 255.0,
-					double(cloud->at(obstacles->at(i)).b) / 255.0);
-		}
+			double sizeX, sizeY, sizeZ;
+			double minX, minY, minZ;
+			double maxX, maxY, maxZ;
+			octomap->getGridMin(minX, minY, minZ);
+			octomap->getGridMax(maxX, maxY, maxZ);
+			sizeX = maxX-minX;
+			sizeY = maxY-minY;
+			sizeZ = maxZ-minZ;
+			double cellSize = octomap->octree()->getNodeSize(treeDepth);
 
-		// Combine into a polydata
-		vtkSmartPointer<vtkPolyData> polydata = vtkSmartPointer<vtkPolyData>::New();
-		polydata->SetPoints(points);
-		polydata->GetPointData()->SetScalars(colors);
-
-		// Create anything you want here, we will use a cube for the demo.
-		vtkSmartPointer<vtkCubeSource> cubeSource = vtkSmartPointer<vtkCubeSource>::New();
-		cubeSource->SetBounds(-s, s, -s, s, -s, s);
-
-		vtkSmartPointer<vtkGlyph3DMapper> mapper = vtkSmartPointer<vtkGlyph3DMapper>::New();
-		mapper->SetSourceConnection(cubeSource->GetOutputPort());
+			UTimer t;
+			// Specify the size of the image data
+			imageData->SetExtent(0, int(sizeX/cellSize+0.5), 0, int(sizeY/cellSize+0.5), 0, int(sizeZ/cellSize+0.5)); // 3D image
 #if VTK_MAJOR_VERSION <= 5
-		mapper->SetInputConnection(polydata->GetProducerPort());
+			imageData->SetNumberOfScalarComponents(4);
+			imageData->SetScalarTypeToUnsignedChar();
 #else
-		mapper->SetInputData(polydata);
+			imageData->AllocateScalars(VTK_UNSIGNED_CHAR,4);
 #endif
-		mapper->SetScalarRange(0, obstacles->size() - 1);
-		mapper->SetLookupTable(lut);
-		mapper->ScalingOff();
-		mapper->Update();
 
-		vtkSmartPointer<vtkActor> octomapActor = vtkSmartPointer<vtkActor>::New();
-		octomapActor->SetMapper(mapper);
+			int dims[3];
+			imageData->GetDimensions(dims);
 
-		octomapActor->GetProperty()->SetRepresentationToSurface();
-		octomapActor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
-		octomapActor->GetProperty()->SetLighting(_aSetLighting->isChecked());
+			memset(imageData->GetScalarPointer(), 0, imageData->GetScalarSize()*imageData->GetNumberOfScalarComponents()*dims[0]*dims[1]*dims[2]);
 
-		renderer->AddActor(octomapActor);
-		_octomapActor = octomapActor.GetPointer();
+			for (RtabmapColorOcTree::iterator it = octomap->octree()->begin(treeDepth); it != octomap->octree()->end(); ++it)
+			{
+				if(octomap->octree()->isNodeOccupied(*it))
+				{
+					octomap::point3d pt = octomap->octree()->keyToCoord(it.getKey());
+					int x = (pt.x()-minX) / cellSize;
+					int y = (pt.y()-minY) / cellSize;
+					int z = (pt.z()-minZ) / cellSize;
+					if(x>=0 && x<dims[0] && y>=0 && y<dims[1] && z>=0 && z<dims[2])
+					{
+						unsigned char* pixel = static_cast<unsigned char*>(imageData->GetScalarPointer(x,y,z));
+						if(octomap->octree()->getTreeDepth() == it.getDepth() && it->isColorSet())
+						{
+							pixel[0] = it->getColor().r;
+							pixel[1] = it->getColor().g;
+							pixel[2] = it->getColor().b;
+						}
+						else
+						{
+							// Gradiant color on z axis
+							float H = (maxZ - pt.z())*299.0f/(maxZ-minZ);
+							float r,g,b;
+							OctoMap::HSVtoRGB(&r, &g, &b, H, 1, 1);
+							pixel[0] = r*255.0f;
+							pixel[1] = g*255.0f;
+							pixel[2] = b*255.0f;
+						}
+						pixel[3] = 255;
+					}
+				}
+			}
+			vtkSmartPointer<vtkSmartVolumeMapper> volumeMapper =
+					vtkSmartPointer<vtkSmartVolumeMapper>::New();
+			volumeMapper->SetBlendModeToComposite(); // composite first
+#if VTK_MAJOR_VERSION <= 5
+			volumeMapper->SetInputConnection(imageData->GetProducerPort());
+#else
+			volumeMapper->SetInputData(imageData);
+#endif
+			vtkSmartPointer<vtkVolumeProperty> volumeProperty =
+					vtkSmartPointer<vtkVolumeProperty>::New();
+			volumeProperty->ShadeOff();
+			volumeProperty->IndependentComponentsOff();
 
-		return true;
+			vtkSmartPointer<vtkPiecewiseFunction> compositeOpacity =
+					vtkSmartPointer<vtkPiecewiseFunction>::New();
+			compositeOpacity->AddPoint(0.0,0.0);
+			compositeOpacity->AddPoint(255.0,1.0);
+			volumeProperty->SetScalarOpacity(0, compositeOpacity); // composite first.
+
+			vtkSmartPointer<vtkVolume> volume =
+					vtkSmartPointer<vtkVolume>::New();
+			volume->SetMapper(volumeMapper);
+			volume->SetProperty(volumeProperty);
+			volume->SetScale(cellSize);
+			volume->SetPosition(minX, minY, minZ);
+			renderer->AddViewProp(volume);
+
+			// 3D texture mode. For coverage.
+#if !defined(VTK_LEGACY_REMOVE) && !defined(VTK_OPENGL2)
+			volumeMapper->SetRequestedRenderModeToRayCastAndTexture();
+#endif // VTK_LEGACY_REMOVE
+
+			// Software mode, for coverage. It also makes sure we will get the same
+			// regression image on all platforms.
+			volumeMapper->SetRequestedRenderModeToRayCast();
+			_octomapActor = volume.GetPointer();
+
+			return true;
+		}
 	}
 #endif
 	return false;
@@ -1913,6 +2030,12 @@ void CloudViewer::updateCameraFrustum(const Transform & pose, const StereoCamera
 {
 	std::vector<CameraModel> models;
 	models.push_back(model.left());
+	CameraModel right = model.right();
+	if(!model.left().localTransform().isNull())
+	{
+		right.setLocalTransform(model.left().localTransform() * Transform(model.baseline(), 0, 0, 0, 0, 0));
+	}
+	models.push_back(right);
 	updateCameraFrustums(pose, models);
 }
 
