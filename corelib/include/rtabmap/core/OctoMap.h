@@ -147,8 +147,11 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
        public:
          StaticMemberInitializer() {
         	 RtabmapColorOcTree* tree = new RtabmapColorOcTree(0.1);
-           tree->clearKeyRays();
-           AbstractOcTree::registerTreeType(tree);
+
+        	 // octomap >=1.8 (to save some memory)
+           //tree->clearKeyRays();
+
+        	 AbstractOcTree::registerTreeType(tree);
          }
 
          /**
