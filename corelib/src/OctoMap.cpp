@@ -40,6 +40,41 @@ namespace rtabmap {
 // RtabmapColorOcTree
 //////////////////////////////////////
 
+//octomap <1.8
+bool RtabmapColorOcTreeNode::pruneNode() {
+#ifdef OCTOMAP_PRE_18
+	// checks for equal occupancy only, color ignored
+	if (!this->collapsible()) return false;
+	// set occupancy value
+	setLogOdds(getChild(0)->getLogOdds());
+	// set color to average color
+	if (isColorSet()) color = getAverageChildColor();
+	// delete children
+	for (unsigned int i=0;i<8;i++) {
+		delete children[i];
+	}
+	delete[] children;
+	children = NULL;
+	return true;
+#else
+	UFATAL("This function should not be used with octomap >= 1.8");
+	return false;
+#endif
+}
+//octomap <1.8
+void RtabmapColorOcTreeNode::expandNode() {
+#ifdef OCTOMAP_PRE_18
+	assert(!hasChildren());
+	for (unsigned int k=0; k<8; k++) {
+		createChild(k);
+		children[k]->setValue(value);
+		getChild(k)->setColor(color);
+	}
+#else
+	UFATAL("This function should not be used with octomap >= 1.8");
+#endif
+}
+
 RtabmapColorOcTree::RtabmapColorOcTree(double resolution)
 	: OccupancyOcTreeBase<RtabmapColorOcTreeNode>(resolution) {
 	RtabmapColorOcTreeMemberInit.ensureLinking();
@@ -57,6 +92,7 @@ RtabmapColorOcTreeNode* RtabmapColorOcTree::setNodeColor(const octomap::OcTreeKe
 }
 
 bool RtabmapColorOcTree::pruneNode(RtabmapColorOcTreeNode* node) {
+#ifndef OCTOMAP_PRE_18
 	if (!isNodeCollapsible(node))
 		return false;
 
@@ -74,9 +110,14 @@ bool RtabmapColorOcTree::pruneNode(RtabmapColorOcTreeNode* node) {
 	node->children = NULL;
 
 	return true;
+#else
+	UFATAL("This function should not be used with octomap < 1.8");
+	return false;
+#endif
 }
 
 bool RtabmapColorOcTree::isNodeCollapsible(const RtabmapColorOcTreeNode* node) const{
+#ifndef OCTOMAP_PRE_18
 	// all children must exist, must not have children of
 	// their own and have the same occupancy probability
 	if (!nodeChildExists(node, 0))
@@ -93,6 +134,10 @@ bool RtabmapColorOcTree::isNodeCollapsible(const RtabmapColorOcTreeNode* node) c
 	}
 
 	return true;
+#else
+	UFATAL("This function should not be used with octomap < 1.8");
+	return false;
+#endif
 }
 
 RtabmapColorOcTreeNode* RtabmapColorOcTree::averageNodeColor(const octomap::OcTreeKey& key,
@@ -142,6 +187,7 @@ void RtabmapColorOcTree::updateInnerOccupancy() {
 }
 
 void RtabmapColorOcTree::updateInnerOccupancyRecurs(RtabmapColorOcTreeNode* node, unsigned int depth) {
+#ifndef OCTOMAP_PRE_18
 	// only recurse and update for inner nodes:
 	if (nodeHasChildren(node)){
 		// return early for last level:
@@ -155,7 +201,32 @@ void RtabmapColorOcTree::updateInnerOccupancyRecurs(RtabmapColorOcTreeNode* node
 		node->updateOccupancyChildren();
 		node->updateColorChildren();
 	}
+#else
+	// only recurse and update for inner nodes:
+	if (node->hasChildren()){
+	  // return early for last level:
+	  if (depth < this->tree_depth){
+		for (unsigned int i=0; i<8; i++) {
+		  if (node->childExists(i)) {
+			updateInnerOccupancyRecurs(node->getChild(i), depth+1);
+		  }
+		}
+	  }
+	  node->updateOccupancyChildren();
+	  node->updateColorChildren();
+	}
+#endif
 }
+
+RtabmapColorOcTree::StaticMemberInitializer::StaticMemberInitializer() {
+	 RtabmapColorOcTree* tree = new RtabmapColorOcTree(0.1);
+
+#ifndef OCTOMAP_PRE_18
+     tree->clearKeyRays();
+#endif
+
+	 AbstractOcTree::registerTreeType(tree);
+ }
 
 
 //////////////////////////////////////
@@ -452,9 +523,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				{
 					pt = pcl::transformPoint(cloudIter->second.first->at(i), t);
 				}
-
 				octomap::point3d point(pt.x, pt.y, pt.z);
-
 				// only clear space (ground points)
 				if (computeRays &&
 					(iter->first < 0 || iter->first>lastId) &&
@@ -477,8 +546,8 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 					}
 
 					updateMinMax(point);
-
 					RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
+
 					if(n)
 					{
 						if(!hasColor_ && (pt.r !=0 || pt.g != 0 || pt.b != 0))

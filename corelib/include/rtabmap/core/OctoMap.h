@@ -65,6 +65,21 @@ public:
 	char getOccupancyType() const {return type_;}
 	const octomap::point3d & getPointRef() const {return pointRef_;}
 
+	// following methods defined for octomap < 1.8 compatibility
+	inline RtabmapColorOcTreeNode* getChild(unsigned int i) {
+	  return static_cast<RtabmapColorOcTreeNode*> (OcTreeNode::getChild(i));
+	}
+	inline const RtabmapColorOcTreeNode* getChild(unsigned int i) const {
+	  return static_cast<const RtabmapColorOcTreeNode*> (OcTreeNode::getChild(i));
+	}
+	bool pruneNode();
+	void expandNode();
+	bool createChild(unsigned int i) {
+	  if (children == NULL) allocChildren();
+	  children[i] = new RtabmapColorOcTreeNode();
+	  return true;
+	}
+
 private:
 	int nodeRefId_;
 	char type_; // -1=undefined, 0=empty, 100=obstacle, 1=ground
@@ -145,14 +160,7 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
      */
     class StaticMemberInitializer{
        public:
-         StaticMemberInitializer() {
-        	 RtabmapColorOcTree* tree = new RtabmapColorOcTree(0.1);
-
-        	 // octomap >=1.8 (to save some memory)
-           //tree->clearKeyRays();
-
-        	 AbstractOcTree::registerTreeType(tree);
-         }
+         StaticMemberInitializer();
 
          /**
          * Dummy function to ensure that MSVC does not drop the
