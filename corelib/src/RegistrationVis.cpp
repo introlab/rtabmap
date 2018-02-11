@@ -1602,7 +1602,6 @@ Transform RegistrationVis::computeTransformationImpl(
 				{
 					transforms[0] = optimizedPoses.rbegin()->second;
 				}
-				transforms[1].setNull();
 				// update 3D points, both from and to signatures
 				/*std::multimap<int, cv::Point3f> cpyWordsFrom3 = fromSignature.getWords3();
 				std::multimap<int, cv::Point3f> cpyWordsTo3 = toSignature.getWords3();
@@ -1618,6 +1617,11 @@ Transform RegistrationVis::computeTransformationImpl(
 				fromSignature.setWords3(cpyWordsFrom3);
 				toSignature.setWords3(cpyWordsTo3);*/
 			}
+			else
+			{
+				transforms[0].setNull();
+			}
+			transforms[1].setNull();
 		}
 
 		info.inliersIDs = allInliers;

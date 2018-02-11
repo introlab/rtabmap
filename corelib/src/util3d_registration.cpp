@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/sample_consensus/ransac.h>
 #include <pcl/common/common.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UMath.h>
 
 namespace rtabmap
 {
@@ -202,7 +203,9 @@ Transform transformFromXYZCorrespondences(
 				}
 				if(covariance)
 				{
-					*covariance *= model->computeVariance();
+					double variance =  model->computeVariance();
+					UASSERT(uIsFinite(variance));
+					*covariance *= variance;
 				}
 
 				// get best transformation

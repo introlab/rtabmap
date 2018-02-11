@@ -4630,6 +4630,7 @@ void MainWindow::startDetection()
 	_camera->setColorOnly(_preferencesDialog->isSourceRGBDColorOnly());
 	_camera->setImageDecimation(_preferencesDialog->getSourceImageDecimation());
 	_camera->setStereoToDepth(_preferencesDialog->isSourceStereoDepthGenerated());
+	_camera->setStereoExposureCompensation(_preferencesDialog->isSourceStereoExposureCompensation());
 	_camera->setScanFromDepth(
 			_preferencesDialog->isSourceScanFromDepth(),
 			_preferencesDialog->getSourceScanFromDepthDecimation(),

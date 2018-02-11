@@ -4913,18 +4913,7 @@ void DatabaseViewer::updateGraphView()
 			iter->second.setTransform(t);
 			++iter;
 		}
-		ui_->horizontalSlider_loops->blockSignals(true);
-		if(loopLinks_.size() == 0)
-		{
-			ui_->horizontalSlider_loops->setEnabled(false);
-		}
-		else
-		{
-			ui_->horizontalSlider_loops->setEnabled(true);
-			ui_->horizontalSlider_loops->setMaximum(loopLinks_.size()-1);
-		}
-		ui_->horizontalSlider_loops->setValue(0);
-		ui_->horizontalSlider_loops->blockSignals(false);
+		updateLoopClosuresSlider();
 
 		ui_->label_loopClosures->setText(tr("(%1, %2, %3, %4, %5, %6, %7)")
 				.arg(totalNeighbor)
@@ -5470,7 +5459,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 	{
 		QMessageBox::warning(this,
 				tr("Refine link"),
-				tr("Cannot find a transformation between nodes %1 and %2").arg(from).arg(to));
+				tr("Cannot find a transformation between nodes %1 and %2: %3").arg(from).arg(to).arg(info.rejectedMsg.c_str()));
 	}
 }
 

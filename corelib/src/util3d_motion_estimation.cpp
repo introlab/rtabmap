@@ -167,10 +167,11 @@ Transform estimateMotion3DTo2D(
 					std::sort(errorSqrdDists.begin(), errorSqrdDists.end());
 					//divide by 4 instead of 2 to ignore very very far features (stereo)
 					double median_error_sqr = 2.1981 * (double)errorSqrdDists[errorSqrdDists.size () >> 2];
-
+					UASSERT(uIsFinite(median_error_sqr));
 					(*covariance)(cv::Range(0,3), cv::Range(0,3)) *= median_error_sqr;
 					std::sort(errorSqrdAngles.begin(), errorSqrdAngles.end());
 					median_error_sqr = 2.1981 * (double)errorSqrdAngles[errorSqrdAngles.size () >> 2];
+					UASSERT(uIsFinite(median_error_sqr));
 					(*covariance)(cv::Range(3,6), cv::Range(3,6)) *= median_error_sqr;
 				}
 				else
@@ -188,6 +189,7 @@ Transform estimateMotion3DTo2D(
 				{
 					err += uNormSquared(imagePoints.at(inliers[i]).x - imagePointsReproj.at(inliers[i]).x, imagePoints.at(inliers[i]).y - imagePointsReproj.at(inliers[i]).y);
 				}
+				UASSERT(uIsFinite(err));
 				*covariance *= std::sqrt(err/float(inliers.size()));
 			}
 		}

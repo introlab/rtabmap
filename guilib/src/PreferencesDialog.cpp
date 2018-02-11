@@ -592,6 +592,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkbox_rgbd_colorOnly, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->spinBox_source_imageDecimation, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_stereo_depthGenerated, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkBox_stereo_exposureCompensation, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->pushButton_calibrate, SIGNAL(clicked()), this, SLOT(calibrate()));
 	connect(_ui->pushButton_calibrate_simple, SIGNAL(clicked()), this, SLOT(calibrateSimple()));
 	connect(_ui->toolButton_openniOniPath, SIGNAL(clicked()), this, SLOT(selectSourceOniPath()));
@@ -1536,6 +1537,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkbox_rgbd_colorOnly->setChecked(false);
 		_ui->spinBox_source_imageDecimation->setValue(1);
 		_ui->checkbox_stereo_depthGenerated->setChecked(false);
+		_ui->checkBox_stereo_exposureCompensation->setChecked(false);
 		_ui->openni2_autoWhiteBalance->setChecked(true);
 		_ui->openni2_autoExposure->setChecked(true);
 		_ui->openni2_exposure->setValue(0);
@@ -1899,6 +1901,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	settings.beginGroup("stereo");
 	_ui->comboBox_cameraStereo->setCurrentIndex(settings.value("driver", _ui->comboBox_cameraStereo->currentIndex()).toInt());
 	_ui->checkbox_stereo_depthGenerated->setChecked(settings.value("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked()).toBool());
+	_ui->checkBox_stereo_exposureCompensation->setChecked(settings.value("exposureCompensation", _ui->checkBox_stereo_exposureCompensation->isChecked()).toBool());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -2304,6 +2307,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.beginGroup("stereo");
 	settings.setValue("driver", 	_ui->comboBox_cameraStereo->currentIndex());
 	settings.setValue("depthGenerated", _ui->checkbox_stereo_depthGenerated->isChecked());
+	settings.setValue("exposureCompensation", _ui->checkBox_stereo_exposureCompensation->isChecked());
 	settings.endGroup(); // stereo
 
 	settings.beginGroup("rgb");
@@ -4686,6 +4690,10 @@ bool PreferencesDialog::isSourceStereoDepthGenerated() const
 {
 	return _ui->checkbox_stereo_depthGenerated->isChecked();
 }
+bool PreferencesDialog::isSourceStereoExposureCompensation() const
+{
+	return _ui->checkBox_stereo_exposureCompensation->isChecked();
+}
 bool PreferencesDialog::isSourceScanFromDepth() const
 {
 	return _ui->groupBox_scanFromDepth->isChecked();
@@ -5233,6 +5241,7 @@ void PreferencesDialog::testOdometry()
 	cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 	cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
 	cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
+	cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
 	cameraThread.setScanFromDepth(
 			_ui->groupBox_scanFromDepth->isChecked(),
 			_ui->spinBox_cameraScanFromDepth_decimation->value(),
@@ -5282,6 +5291,7 @@ void PreferencesDialog::testCamera()
 		cameraThread.setColorOnly(_ui->checkbox_rgbd_colorOnly->isChecked());
 		cameraThread.setImageDecimation(_ui->spinBox_source_imageDecimation->value());
 		cameraThread.setStereoToDepth(_ui->checkbox_stereo_depthGenerated->isChecked());
+		cameraThread.setStereoExposureCompensation(_ui->checkBox_stereo_exposureCompensation->isChecked());
 		cameraThread.setScanFromDepth(
 				_ui->groupBox_scanFromDepth->isChecked(),
 				_ui->spinBox_cameraScanFromDepth_decimation->value(),

@@ -238,6 +238,7 @@ public:
 	double getBilateralSigmaR() const;
 	int getSourceImageDecimation() const;
 	bool isSourceStereoDepthGenerated() const;
+	bool isSourceStereoExposureCompensation() const;
 	bool isSourceScanFromDepth() const;
 	int getSourceScanFromDepthDecimation() const;
 	double getSourceScanFromDepthMaxDepth() const;
