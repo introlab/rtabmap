@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QDesktopWidget>
+#include <QColorDialog>
 #include <QGraphicsLineItem>
 #include <QtGui/QCloseEvent>
 #include <QGraphicsOpacityEffect>
@@ -368,6 +369,16 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_detectMore_angle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->spinBox_detectMore_iterations, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 
+	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
+	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
+	connect(ui_->lineEdit_emptyColor, SIGNAL(textChanged(const QString &)), this, SLOT(configModified()));
+	connect(ui_->lineEdit_obstacleColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
+	connect(ui_->lineEdit_groundColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
+	connect(ui_->lineEdit_emptyColor, SIGNAL(textChanged(const QString &)), this, SLOT(updateGrid()));
+	connect(ui_->toolButton_obstacleColor, SIGNAL(clicked(bool)), this, SLOT(selectObstacleColor()));
+	connect(ui_->toolButton_groundColor, SIGNAL(clicked(bool)), this, SLOT(selectGroundColor()));
+	connect(ui_->toolButton_emptyColor, SIGNAL(clicked(bool)), this, SLOT(selectEmptyColor()));
+
 	connect(exportDialog_, SIGNAL(configChanged()), this, SLOT(configModified()));
 
 	// dockwidget
@@ -482,6 +493,9 @@ void DatabaseViewer::readSettings()
 	ui_->groupBox_posefiltering->setChecked(settings.value("poseFiltering", ui_->groupBox_posefiltering->isChecked()).toBool());
 	ui_->doubleSpinBox_posefilteringRadius->setValue(settings.value("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value()).toDouble());
 	ui_->doubleSpinBox_posefilteringAngle->setValue(settings.value("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value()).toDouble());
+	ui_->lineEdit_obstacleColor->setText(settings.value("colorObstacle", ui_->lineEdit_obstacleColor->text()).toString());
+	ui_->lineEdit_groundColor->setText(settings.value("colorGround", ui_->lineEdit_groundColor->text()).toString());
+	ui_->lineEdit_emptyColor->setText(settings.value("colorEmpty", ui_->lineEdit_emptyColor->text()).toString());
 	settings.endGroup();
 
 	settings.beginGroup("mesh");
@@ -561,6 +575,9 @@ void DatabaseViewer::writeSettings()
 	settings.setValue("poseFiltering", ui_->groupBox_posefiltering->isChecked());
 	settings.setValue("poseFilteringRadius", ui_->doubleSpinBox_posefilteringRadius->value());
 	settings.setValue("poseFilteringAngle", ui_->doubleSpinBox_posefilteringAngle->value());
+	settings.setValue("colorObstacle", ui_->lineEdit_obstacleColor->text());
+	settings.setValue("colorGround", ui_->lineEdit_groundColor->text());
+	settings.setValue("colorEmpty", ui_->lineEdit_emptyColor->text());
 	settings.endGroup();
 
 	settings.beginGroup("mesh");
@@ -635,7 +652,11 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->groupBox_posefiltering->setChecked(false);
 	ui_->doubleSpinBox_posefilteringRadius->setValue(0.1);
 	ui_->doubleSpinBox_posefilteringAngle->setValue(30);
+	ui_->checkBox_grid_empty->setChecked(true);
 	ui_->checkBox_octomap->setChecked(false);
+	ui_->lineEdit_obstacleColor->setText(QColor(Qt::red).name());
+	ui_->lineEdit_groundColor->setText(QColor(Qt::green).name());
+	ui_->lineEdit_emptyColor->setText(QColor(Qt::yellow).name());
 
 	ui_->checkBox_mesh_quad->setChecked(true);
 	ui_->spinBox_mesh_angleTolerance->setValue(15);
@@ -1806,6 +1827,30 @@ void DatabaseViewer::updateStatistics()
 	UDEBUG("");
 }
 
+void DatabaseViewer::selectObstacleColor()
+{
+	QColor c = QColorDialog::getColor(ui_->lineEdit_obstacleColor->text(), this);
+	if(c.isValid())
+	{
+		ui_->lineEdit_obstacleColor->setText(c.name());
+	}
+}
+void DatabaseViewer::selectGroundColor()
+{
+	QColor c = QColorDialog::getColor(ui_->lineEdit_groundColor->text(), this);
+	if(c.isValid())
+	{
+		ui_->lineEdit_groundColor->setText(c.name());
+	}
+}
+void DatabaseViewer::selectEmptyColor()
+{
+	QColor c = QColorDialog::getColor(ui_->lineEdit_emptyColor->text(), this);
+	if(c.isValid())
+	{
+		ui_->lineEdit_emptyColor->setText(c.name());
+	}
+}
 void DatabaseViewer::editDepthImage()
 {
 	if(dbDriver_ && ids_.size())
@@ -3265,21 +3310,21 @@ void DatabaseViewer::update(int value,
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(ui_->spinBox_grid_depth->value(), obstacles.get(), empty.get(), ground.get());
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 										pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
-										cloudViewer_->addCloud("obstacles", obstaclesCloud);
+										cloudViewer_->addCloud("obstacles", obstaclesCloud, Transform::getIdentity(), QColor(ui_->lineEdit_obstacleColor->text()));
 										cloudViewer_->setCloudPointSize("obstacles", 5);
 
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 										pcl::copyPointCloud(*cloud, *ground, *groundCloud);
-										cloudViewer_->addCloud("ground", groundCloud);
+										cloudViewer_->addCloud("ground", groundCloud, Transform::getIdentity(), QColor(ui_->lineEdit_groundColor->text()));
 										cloudViewer_->setCloudPointSize("ground", 5);
 
 										if(ui_->checkBox_grid_empty->isChecked())
 										{
 											pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCloud(new pcl::PointCloud<pcl::PointXYZ>);
 											pcl::copyPointCloud(*cloud, *empty, *emptyCloud);
-											cloudViewer_->addCloud("empty_cells", emptyCloud, Transform::getIdentity(), Qt::white);
+											cloudViewer_->addCloud("empty_cells", emptyCloud, Transform::getIdentity(), QColor(ui_->lineEdit_emptyColor->text()));
 											cloudViewer_->setCloudOpacity("empty_cells", 0.5);
-											cloudViewer_->setCloudPointSize("empty_cells", 1);
+											cloudViewer_->setCloudPointSize("empty_cells", 5);
 										}
 									}
 									else
@@ -3294,11 +3339,11 @@ void DatabaseViewer::update(int value,
 									cloudViewer_->addCloud("ground",
 											util3d::laserScanToPointCloud(localMaps.begin()->second.first.first),
 											pose,
-											Qt::green);
+											QColor(ui_->lineEdit_groundColor->text()));
 									cloudViewer_->addCloud("obstacles",
 											util3d::laserScanToPointCloud(localMaps.begin()->second.first.second),
 											pose,
-											Qt::red);
+											QColor(ui_->lineEdit_obstacleColor->text()));
 									cloudViewer_->setCloudPointSize("ground", 5);
 									cloudViewer_->setCloudPointSize("obstacles", 5);
 
@@ -3307,8 +3352,8 @@ void DatabaseViewer::update(int value,
 										cloudViewer_->addCloud("empty_cells",
 												util3d::laserScanToPointCloud(localMaps.begin()->second.second),
 												pose,
-												Qt::white);
-										cloudViewer_->setCloudPointSize("empty_cells", 1);
+												QColor(ui_->lineEdit_emptyColor->text()));
+										cloudViewer_->setCloudPointSize("empty_cells", 5);
 										cloudViewer_->setCloudOpacity("empty_cells", 0.5);
 									}
 								}
@@ -4668,7 +4713,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						occupancyGridViewer_->addCloud("groundRGB",
 								groundRGB,
 								Transform::getIdentity(),
-								Qt::green);
+								QColor(ui_->lineEdit_groundColor->text()));
 						occupancyGridViewer_->setCloudPointSize("groundRGB", 5);
 					}
 					if(groundXYZ->size())
@@ -4677,7 +4722,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						occupancyGridViewer_->addCloud("groundXYZ",
 								groundXYZ,
 								Transform::getIdentity(),
-								Qt::green);
+								QColor(ui_->lineEdit_groundColor->text()));
 						occupancyGridViewer_->setCloudPointSize("groundXYZ", 5);
 					}
 					if(obstaclesRGB->size())
@@ -4686,7 +4731,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						occupancyGridViewer_->addCloud("obstaclesRGB",
 								obstaclesRGB,
 								Transform::getIdentity(),
-								Qt::red);
+								QColor(ui_->lineEdit_obstacleColor->text()));
 						occupancyGridViewer_->setCloudPointSize("obstaclesRGB", 5);
 					}
 					if(obstaclesXYZ->size())
@@ -4695,7 +4740,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						occupancyGridViewer_->addCloud("obstaclesXYZ",
 								obstaclesXYZ,
 								Transform::getIdentity(),
-								Qt::red);
+								QColor(ui_->lineEdit_obstacleColor->text()));
 						occupancyGridViewer_->setCloudPointSize("obstaclesXYZ", 5);
 					}
 					if(emptyCellsRGB->size())
@@ -4704,8 +4749,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						occupancyGridViewer_->addCloud("emptyCellsRGB",
 								emptyCellsRGB,
 								Transform::getIdentity(),
-								Qt::white);
-						occupancyGridViewer_->setCloudPointSize("emptyCellsRGB", 1);
+								QColor(ui_->lineEdit_emptyColor->text()));
+						occupancyGridViewer_->setCloudPointSize("emptyCellsRGB", 5);
 						occupancyGridViewer_->setCloudOpacity("emptyCellsRGB", 0.5);
 					}
 					if(emptyCellsXYZ->size())
@@ -4714,8 +4759,8 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						occupancyGridViewer_->addCloud("emptyCellsXYZ",
 								emptyCellsXYZ,
 								Transform::getIdentity(),
-								Qt::white);
-						occupancyGridViewer_->setCloudPointSize("emptyCellsXYZ", 1);
+								QColor(ui_->lineEdit_emptyColor->text()));
+						occupancyGridViewer_->setCloudPointSize("emptyCellsXYZ", 5);
 						occupancyGridViewer_->setCloudOpacity("emptyCellsXYZ", 0.5);
 					}
 					occupancyGridViewer_->update();

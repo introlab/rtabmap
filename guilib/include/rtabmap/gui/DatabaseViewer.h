@@ -88,6 +88,9 @@ private slots:
 	bool closeDatabase();
 	void recoverDatabase();
 	void updateStatistics();
+	void selectObstacleColor();
+	void selectGroundColor();
+	void selectEmptyColor();
 	void editDepthImage();
 	void generateGraph();
 	void exportDatabase();
