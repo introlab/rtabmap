@@ -139,7 +139,11 @@ cv::Mat uncompressImage(const cv::Mat & bytes)
 #endif
 		if(image.type() == CV_8UC4)
 		{
-			image = cv::Mat(image.size(), CV_32FC1, image.data).clone();
+			// Using clone() or copyTo() caused a memory leak !?!?
+			// image = cv::Mat(image.size(), CV_32FC1, image.data).clone();
+			cv::Mat depth(image.size(), CV_32FC1);
+			memcpy(depth.data, image.data, image.total()*image.elemSize());
+			image = depth;
 		}
 	}
 	return image;

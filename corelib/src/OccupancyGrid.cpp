@@ -277,12 +277,7 @@ void OccupancyGrid::createLocalMap(
 				// update viewpoint
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 
-				if(scan.channels() == 6)
-				{
-					pcl::PointCloud<pcl::PointNormal>::Ptr cloud = util3d::laserScanToPointCloudNormal(scan, t);
-					createLocalMap<pcl::PointNormal>(cloud, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
-				}
-				else if(scan.channels() == 7)
+				if(scan.channels() == 6 || scan.channels() == 7)
 				{
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::laserScanToPointCloudRGBNormal(scan, t);
 					createLocalMap<pcl::PointXYZRGBNormal>(cloud, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);

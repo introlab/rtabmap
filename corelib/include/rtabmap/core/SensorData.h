@@ -125,7 +125,7 @@ public:
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
 
-	virtual ~SensorData() {}
+	virtual ~SensorData();
 
 	bool isValid() const {
 		return !(_id == 0 &&

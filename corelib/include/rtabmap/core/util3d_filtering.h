@@ -564,10 +564,11 @@ pcl::IndicesPtr RTABMAP_EXP extractIndices(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		bool negative);
-pcl::IndicesPtr RTABMAP_EXP extractIndices(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		bool negative);
+// PCL default lacks of pcl::PointNormal type support
+//pcl::IndicesPtr RTABMAP_EXP extractIndices(
+//		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+//		const pcl::IndicesPtr & indices,
+//		bool negative);
 pcl::IndicesPtr RTABMAP_EXP extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
@@ -587,11 +588,12 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP extractIndices(
 		const pcl::IndicesPtr & indices,
 		bool negative,
 		bool keepOrganized);
-pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP extractIndices(
-		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
-		const pcl::IndicesPtr & indices,
-		bool negative,
-		bool keepOrganized);
+// PCL default lacks of pcl::PointNormal type support
+//pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP extractIndices(
+//		const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
+//		const pcl::IndicesPtr & indices,
+//		bool negative,
+//		bool keepOrganized);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP extractIndices(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,

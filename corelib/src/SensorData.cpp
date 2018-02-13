@@ -427,6 +427,10 @@ SensorData::SensorData(
 	}
 }
 
+SensorData::~SensorData()
+{
+}
+
 void SensorData::setUserDataRaw(const cv::Mat & userDataRaw)
 {
 	if(!userDataRaw.empty() && !_userDataRaw.empty())
