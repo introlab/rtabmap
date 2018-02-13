@@ -5022,11 +5022,19 @@ void DatabaseViewer::updateGraphView()
 		graphes_.push_back(finalPoses);
 		graphLinks_ = linksOut;
 		ui_->label_poses->setNum((int)finalPoses.size());
-		delete optimizer;
 		if(posesOut.size() && finalPoses.empty())
 		{
-			QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+			if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
+			{
+				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
+						"Give a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+			}
 		}
+		delete optimizer;
 
 		if(uContains(groundTruthPoses_, fromId) && uContains(posesOut, fromId))
 		{
