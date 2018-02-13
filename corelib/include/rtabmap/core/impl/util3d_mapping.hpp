@@ -112,8 +112,7 @@ void segmentObstaclesFromGround(
 						{
 							Eigen::Vector4f centroid(0,0,0,1);
 							pcl::compute3DCentroid(*cloud, *clusteredFlatSurfaces.at(i), centroid);
-							if(centroid[2] >= min[2]-0.01 &&
-							  (centroid[2] <= max[2]+0.01 || (maxGroundHeight!=0.0f && centroid[2] <= maxGroundHeight+0.01))) // epsilon
+							if(maxGroundHeight==0.0f || centroid[2] <= maxGroundHeight) // epsilon
 							{
 								ground = util3d::concatenate(ground, clusteredFlatSurfaces.at(i));
 							}

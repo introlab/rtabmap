@@ -228,6 +228,8 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 
 		// 0.16.0
 		removedParameters_.insert(std::make_pair("Grid/ProjRayTracing",           std::make_pair(true,  Parameters::kGridRayTracing())));
+		removedParameters_.insert(std::make_pair("Grid/DepthMin",                 std::make_pair(true,  Parameters::kGridRangeMin())));
+		removedParameters_.insert(std::make_pair("Grid/DepthMax",                 std::make_pair(true,  Parameters::kGridRangeMax())));
 
 		// 0.15.1
 		removedParameters_.insert(std::make_pair("Reg/VarianceFromInliersCount",  std::make_pair(false, "")));

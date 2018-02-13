@@ -45,14 +45,34 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		pcl::IndicesPtr * flatObstacles) const
 {
 	typename pcl::PointCloud<PointT>::Ptr cloud(new pcl::PointCloud<PointT>);
-
-	// voxelize to grid cell size
-	cloud = util3d::voxelize(cloudIn, indicesIn, cellSize_);
 	pcl::IndicesPtr indices(new std::vector<int>);
-	indices->resize(cloud->size());
-	for(unsigned int i=0; i<indices->size(); ++i)
+
+	if(preVoxelFiltering_)
 	{
-		indices->at(i) = i;
+		// voxelize to grid cell size
+		cloud = util3d::voxelize(cloudIn, indicesIn, cellSize_);
+
+		indices->resize(cloud->size());
+		for(unsigned int i=0; i<indices->size(); ++i)
+		{
+			indices->at(i) = i;
+		}
+	}
+	else
+	{
+		cloud = cloudIn;
+		if(indicesIn->empty() && cloud->is_dense)
+		{
+			indices->resize(cloud->size());
+			for(unsigned int i=0; i<indices->size(); ++i)
+			{
+				indices->at(i) = i;
+			}
+		}
+		else
+		{
+			indices = indicesIn;
+		}
 	}
 
 	// add pose rotation without yaw
@@ -164,6 +184,74 @@ typename pcl::PointCloud<PointT>::Ptr OccupancyGrid::segmentCloud(
 		}
 	}
 	return cloud;
+}
+
+template<typename PointT>
+void OccupancyGrid::createLocalMap(
+		const typename pcl::PointCloud<PointT>::Ptr cloud, // in base_link frame
+		const Transform & pose,
+		cv::Mat & groundCells,
+		cv::Mat & obstacleCells,
+		cv::Mat & emptyCells,
+		cv::Point3f & viewPointInOut) const
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	createLocalMap<PointT>(cloud, indices, pose, groundCells, obstacleCells, emptyCells, viewPointInOut);
+}
+
+template<typename PointT>
+void OccupancyGrid::createLocalMap(
+		const typename pcl::PointCloud<PointT>::Ptr cloud, // in base_link frame
+		const pcl::IndicesPtr & indices,
+		const Transform & pose,
+		cv::Mat & groundCells,
+		cv::Mat & obstacleCells,
+		cv::Mat & emptyCells,
+		cv::Point3f & viewPointInOut) const
+{
+	if(projMapFrame_)
+	{
+		//we should rotate viewPoint in /map frame
+		float roll, pitch, yaw;
+		pose.getEulerAngles(roll, pitch, yaw);
+		Transform viewpointRotated = Transform(0,0,0,roll,pitch,0) * Transform(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z, 0,0,0);
+		viewPointInOut.x = viewpointRotated.x();
+		viewPointInOut.y = viewpointRotated.y();
+		viewPointInOut.z = viewpointRotated.z();
+	}
+
+	if((cloud->is_dense && cloud->size()) ||
+		(!cloud->is_dense && indices->size()))
+	{
+		pcl::IndicesPtr groundIndices(new std::vector<int>);
+		pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
+		typename pcl::PointCloud<PointT>::Ptr cloudSegmented = segmentCloud<PointT>(
+				cloud,
+				indices,
+				pose,
+				viewPointInOut,
+				groundIndices,
+				obstaclesIndices);
+
+		if(!groundIndices->empty() || !obstaclesIndices->empty())
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+
+			if(groundIndices->size())
+			{
+				pcl::copyPointCloud(*cloudSegmented, *groundIndices, *groundCloud);
+			}
+
+			if(obstaclesIndices->size())
+			{
+				pcl::copyPointCloud(*cloudSegmented, *obstaclesIndices, *obstaclesCloud);
+			}
+
+			createLocalMapImpl(groundCloud, obstaclesCloud, pose, groundCells, obstacleCells, emptyCells, viewPointInOut);
+		}
+	}
+	UDEBUG("ground=%d obstacles=%d empty=%d, channels=%d", groundCells.cols, obstacleCells.cols, emptyCells.cols, obstacleCells.cols?obstacleCells.channels():groundCells.channels());
 }
 
 }

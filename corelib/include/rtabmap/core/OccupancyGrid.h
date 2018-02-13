@@ -70,15 +70,17 @@ public:
 			cv::Mat & emptyCells,
 			cv::Point3f & viewPoint) const;
 
+	template<typename PointT>
 	void createLocalMap(
-			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, // in base_link frame
+			const typename pcl::PointCloud<PointT>::Ptr cloud, // in base_link frame
 			const Transform & pose,
 			cv::Mat & groundCells,
 			cv::Mat & obstacleCells,
 			cv::Mat & emptyCells,
 			cv::Point3f & viewPointInOut) const;
+	template<typename PointT>
 	void createLocalMap(
-			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud, // in base_link frame
+			const typename pcl::PointCloud<PointT>::Ptr cloud, // in base_link frame
 			const pcl::IndicesPtr & indices,
 			const Transform & pose,
 			cv::Mat & groundCells,
@@ -99,6 +101,16 @@ public:
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapEmptyCells() const {return assembledEmptyCells_;}
 
 private:
+	void createLocalMapImpl(
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & groundCloud,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstaclesCloud,
+			const Transform & pose,
+			cv::Mat & groundCells,
+			cv::Mat & obstacleCells,
+			cv::Mat & emptyCells,
+			const cv::Point3f & viewPoint) const;
+
+private:
 	ParametersMap parameters_;
 	int cloudDecimation_;
 	float cloudMaxDepth_;
@@ -109,6 +121,7 @@ private:
 	float footprintHeight_;
 	int scanDecimation_;
 	float cellSize_;
+	bool preVoxelFiltering_;
 	bool occupancyFromCloud_;
 	bool projMapFrame_;
 	float maxObstacleHeight_;

@@ -327,7 +327,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->checkBox_grid_2d, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->comboBox_octomap_rendering_type, SIGNAL(currentIndexChanged(int)), this, SLOT(updateOctomapView()));
 	connect(ui_->spinBox_grid_depth, SIGNAL(valueChanged(int)), this, SLOT(updateOctomapView()));
-	connect(ui_->checkBox_grid_empty, SIGNAL(stateChanged(int)), this, SLOT(updateOctomapView()));
+	connect(ui_->checkBox_grid_empty, SIGNAL(stateChanged(int)), this, SLOT(updateGrid()));
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(update3dView()));
@@ -2411,7 +2411,7 @@ void DatabaseViewer::regenerateLocalMaps()
 						viewpoint = cv::Point3f(t.x(), t.y(), t.z());
 					}
 
-					grid.createLocalMap(cloud, s.getPose(), ground, obstacles, empty, viewpoint);
+					grid.createLocalMap<pcl::PointXYZRGB>(cloud, s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
@@ -2533,7 +2533,7 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 						viewpoint = cv::Point3f(t.x(), t.y(), t.z());
 					}
 
-					grid.createLocalMap(cloud, s.getPose(), ground, obstacles, empty, viewpoint);
+					grid.createLocalMap<pcl::PointXYZRGB>(cloud, s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
@@ -4575,7 +4575,7 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 #ifdef RTABMAP_OCTOMAP
 			if(ui_->checkBox_octomap->isChecked())
 			{
-				octomap_ = new OctoMap(cellSize);
+				octomap_ = new OctoMap(parameters);
 				bool updateAborted = false;
 				for(std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator iter=localMaps.begin(); iter!=localMaps.end(); ++iter)
 				{

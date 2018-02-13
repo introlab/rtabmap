@@ -455,7 +455,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_octomap_show3dMap, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->comboBox_octomap_renderingType, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->spinBox_octomap_pointSize, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
-	connect(_ui->doubleSpinBox_octomap_occupancyThr, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 	connect(_ui->groupBox_organized, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 	connect(_ui->doubleSpinBox_mesh_angleTolerance, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -912,9 +911,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->groupBox_grid_3d->setObjectName(Parameters::kGrid3D().c_str());
 	_ui->checkBox_grid_groundObstacle->setObjectName(Parameters::kGridGroundIsObstacle().c_str());
 	_ui->doubleSpinBox_grid_resolution->setObjectName(Parameters::kGridCellSize().c_str());
+	_ui->checkBox_grid_preVoxelFiltering->setObjectName(Parameters::kGridPreVoxelFiltering().c_str());
 	_ui->spinBox_grid_decimation->setObjectName(Parameters::kGridDepthDecimation().c_str());
-	_ui->doubleSpinBox_grid_maxDepth->setObjectName(Parameters::kGridDepthMax().c_str());
-	_ui->doubleSpinBox_grid_minDepth->setObjectName(Parameters::kGridDepthMin().c_str());
+	_ui->doubleSpinBox_grid_maxDepth->setObjectName(Parameters::kGridRangeMax().c_str());
+	_ui->doubleSpinBox_grid_minDepth->setObjectName(Parameters::kGridRangeMin().c_str());
 	_ui->lineEdit_grid_roi->setObjectName(Parameters::kGridDepthRoiRatios().c_str());
 	_ui->checkBox_grid_projRayTracing->setObjectName(Parameters::kGridRayTracing().c_str());
 	_ui->doubleSpinBox_grid_footprintLength->setObjectName(Parameters::kGridFootprintLength().c_str());
@@ -942,6 +942,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_minMapSize->setObjectName(Parameters::kGridGlobalMinSize().c_str());
 	_ui->spinBox_grid_maxNodes->setObjectName(Parameters::kGridGlobalMaxNodes().c_str());
 	_ui->doubleSpinBox_grid_footprintRadius->setObjectName(Parameters::kGridGlobalFootprintRadius().c_str());
+	_ui->doubleSpinBox_grid_octomapOccThr->setObjectName(Parameters::kGridGlobalOctoMapOccupancyThr().c_str());
 	_ui->checkBox_grid_erode->setObjectName(Parameters::kGridGlobalEroded().c_str());
 
 	//Odometry
@@ -1469,7 +1470,6 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_octomap_show3dMap->setChecked(true);
 		_ui->comboBox_octomap_renderingType->setCurrentIndex(0);
 		_ui->spinBox_octomap_pointSize->setValue(5);
-		_ui->doubleSpinBox_octomap_occupancyThr->setValue(0.5);
 	}
 	else if(groupBox->objectName() == _ui->groupBox_logging1->objectName())
 	{
@@ -1857,7 +1857,6 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_octomap_2dgrid->setChecked(settings.value("octomap_2dgrid", _ui->checkBox_octomap_2dgrid->isChecked()).toBool());
 	_ui->checkBox_octomap_show3dMap->setChecked(settings.value("octomap_3dmap", _ui->checkBox_octomap_show3dMap->isChecked()).toBool());
 	_ui->comboBox_octomap_renderingType->setCurrentIndex(settings.value("octomap_rendering_type", _ui->comboBox_octomap_renderingType->currentIndex()).toInt());
-	_ui->doubleSpinBox_octomap_occupancyThr->setValue(settings.value("octomap_occupancy_thr", _ui->doubleSpinBox_octomap_occupancyThr->value()).toDouble());
 	_ui->spinBox_octomap_pointSize->setValue(settings.value("octomap_point_size", _ui->spinBox_octomap_pointSize->value()).toInt());
 
 	_ui->groupBox_organized->setChecked(settings.value("meshing", _ui->groupBox_organized->isChecked()).toBool());
@@ -2261,7 +2260,6 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("octomap_2dgrid",              _ui->checkBox_octomap_2dgrid->isChecked());
 	settings.setValue("octomap_3dmap",               _ui->checkBox_octomap_show3dMap->isChecked());
 	settings.setValue("octomap_rendering_type",      _ui->comboBox_octomap_renderingType->currentIndex());
-	settings.setValue("octomap_occupancy_thr",       _ui->doubleSpinBox_octomap_occupancyThr->value());
 	settings.setValue("octomap_point_size",          _ui->spinBox_octomap_pointSize->value());
 
 
@@ -4321,10 +4319,6 @@ bool PreferencesDialog::isOctomap2dGrid() const
 int PreferencesDialog::getOctomapTreeDepth() const
 {
 	return _ui->spinBox_octomap_treeDepth->value();
-}
-double PreferencesDialog::getOctomapOccupancyThr() const
-{
-	return _ui->doubleSpinBox_octomap_occupancyThr->value();
 }
 int PreferencesDialog::getOctomapPointSize() const
 {

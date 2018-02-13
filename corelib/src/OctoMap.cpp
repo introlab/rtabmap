@@ -262,7 +262,7 @@ RtabmapColorOcTree::StaticMemberInitializer::StaticMemberInitializer() {
 // OctoMap
 //////////////////////////////////////
 
-OctoMap::OctoMap(const ParametersMap & parameters, float occupancyThr) :
+OctoMap::OctoMap(const ParametersMap & parameters) :
 		hasColor_(false),
 		fullUpdate_(Parameters::defaultGridGlobalFullUpdate()),
 		updateError_(Parameters::defaultGridGlobalUpdateError())
@@ -273,6 +273,9 @@ OctoMap::OctoMap(const ParametersMap & parameters, float occupancyThr) :
 
 	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
 	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
+
+	float occupancyThr = Parameters::defaultGridGlobalOctoMapOccupancyThr();
+	Parameters::parse(parameters, Parameters::kGridGlobalOctoMapOccupancyThr(), occupancyThr);
 
 	octree_ = new RtabmapColorOcTree(cellSize);
 	octree_->setOccupancyThres(occupancyThr);
@@ -313,12 +316,13 @@ void OctoMap::clear()
 }
 
 void OctoMap::addToCache(int nodeId,
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
+		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
 		const pcl::PointXYZ & viewPoint)
 {
 	UDEBUG("nodeId=%d", nodeId);
-	uInsert(cacheClouds_, std::make_pair(nodeId, std::make_pair(ground, obstacles)));
+	cacheClouds_.erase(nodeId);
+	cacheClouds_.insert(std::make_pair(nodeId, std::make_pair(ground, obstacles)));
 	uInsert(cacheViewPoints_, std::make_pair(nodeId, cv::Point3f(viewPoint.x, viewPoint.y, viewPoint.z)));
 }
 void OctoMap::addToCache(int nodeId,
@@ -509,7 +513,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	UDEBUG("orderedPoses = %d", (int)orderedPoses.size());
 	for(std::list<std::pair<int, Transform> >::const_iterator iter=orderedPoses.begin(); iter!=orderedPoses.end(); ++iter)
 	{
-		std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::iterator cloudIter;
+		std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::iterator cloudIter;
 		std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> >::iterator occupancyIter;
 		std::map<int, cv::Point3f>::iterator viewPointIter;
 		cloudIter = cacheClouds_.find(iter->first);
@@ -575,7 +579,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 					}
 
 					updateMinMax(point);
-					RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
+					RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
 
 					if(n)
 					{
@@ -659,11 +663,24 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			// mark free cells only if not seen occupied in this cloud
 			for(octomap::KeySet::iterator it = free_cells.begin(), end=free_cells.end(); it!= end; ++it)
 			{
+				if(iter->first > 0)
+				{
+					RtabmapColorOcTreeNode * n = octree_->search(*it);
+					if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
+					{
+						// The cell has been updated from current node or more recent node, don't update the cell
+						continue;
+					}
+				}
+
 				RtabmapColorOcTreeNode * n = octree_->updateNode(*it, false);
 				if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
 				{
 					n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
-					n->setNodeRefId(iter->first);
+					if(iter->first > 0)
+					{
+						n->setNodeRefId(iter->first);
+					}
 				}
 			}
 
@@ -683,23 +700,27 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 					octomap::OcTreeKey key;
 					if (octree_->coordToKeyChecked(point, key))
 					{
-						updateMinMax(point);
 
-						if(iter->first >0 && iter->first<lastId)
+						if(iter->first >0)
 						{
 							RtabmapColorOcTreeNode * n = octree_->search(key);
-							if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
+							if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
 							{
-								// The cell has been updated from more recent node, don't update the cell
+								// The cell has been updated from current node or more recent node, don't update the cell
 								continue;
 							}
 						}
+
+						updateMinMax(point);
 
 						RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
 						if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
 						{
 							n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
-							n->setNodeRefId(iter->first);
+							if(iter->first > 0)
+							{
+								n->setNodeRefId(iter->first);
+							}
 						}
 					}
 				}
@@ -847,7 +868,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 	float halfCellSize = octree_->getNodeSize(treeDepth)/2.0f;
 	for (RtabmapColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
 	{
-		if(octree_->isNodeOccupied(*it) && (obstacleIndices != 0 || addAllPoints))
+		if(octree_->isNodeOccupied(*it) && (obstacleIndices != 0 || groundIndices != 0 || addAllPoints))
 		{
 			octomap::point3d pt = octree_->keyToCoord(it.getKey());
 			if(octree_->getTreeDepth() == it.getDepth() && hasColor_)
@@ -879,20 +900,6 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 				(*cloud)[oi].z = pt.z();
 			}
 
-			if(obstacleIndices)
-			{
-				obstacleIndices->at(si++) = oi;
-			}
-
-			++oi;
-		}
-		else if(!octree_->isNodeOccupied(*it) && (emptyIndices != 0 || groundIndices != 0 || addAllPoints))
-		{
-			octomap::point3d pt = octree_->keyToCoord(it.getKey());
-			(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
-			(*cloud)[oi].x = pt.x()-halfCellSize;
-			(*cloud)[oi].y = pt.y()-halfCellSize;
-			(*cloud)[oi].z = pt.z();
 			if(it->getOccupancyType() == RtabmapColorOcTreeNode::kTypeGround)
 			{
 				if(groundIndices)
@@ -900,7 +907,21 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 					groundIndices->at(gi++) = oi;
 				}
 			}
-			else if(emptyIndices)
+			else if(obstacleIndices)
+			{
+				obstacleIndices->at(si++) = oi;
+			}
+
+			++oi;
+		}
+		else if(!octree_->isNodeOccupied(*it) && (emptyIndices != 0 || addAllPoints))
+		{
+			octomap::point3d pt = octree_->keyToCoord(it.getKey());
+			(*cloud)[oi]  = pcl::PointXYZRGB(it->getColor().r, it->getColor().g, it->getColor().b);
+			(*cloud)[oi].x = pt.x()-halfCellSize;
+			(*cloud)[oi].y = pt.y()-halfCellSize;
+			(*cloud)[oi].z = pt.z();
+			if(emptyIndices)
 			{
 				emptyIndices->at(ei++) = oi;
 			}
@@ -950,7 +971,7 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 	for (RtabmapColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
 	{
 		octomap::point3d pt = octree_->keyToCoord(it.getKey());
-		if(octree_->isNodeOccupied(*it))
+		if(octree_->isNodeOccupied(*it) && it->getOccupancyType() == RtabmapColorOcTreeNode::kTypeObstacle)
 		{
 			(*obstacles)[oi++]  = pcl::PointXYZ(pt.x()-halfCellSize, pt.y()-halfCellSize, 0); // projected on ground
 		}

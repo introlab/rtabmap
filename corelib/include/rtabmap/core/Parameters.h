@@ -589,14 +589,15 @@ class RTABMAP_EXP Parameters
     // Occupancy Grid
     RTABMAP_PARAM(Grid, FromDepth,               bool,   true,    "Create occupancy grid from depth image(s), otherwise it is created from laser scan.");
     RTABMAP_PARAM(Grid, DepthDecimation,         int,    4,       uFormat("[%s=true] Decimation of the depth image before creating cloud. Negative decimation is done from RGB size instead of depth size (if depth is smaller than RGB, it may be interpolated depending of the decimation value).", kGridDepthDecimation().c_str()));
-    RTABMAP_PARAM(Grid, DepthMin,                float,  0.0,     uFormat("[%s=true] Minimum cloud's depth from sensor.", kGridFromDepth().c_str()));
-    RTABMAP_PARAM(Grid, DepthMax,                float,  4.0,     uFormat("[%s=true] Maximum cloud's depth from sensor. 0=inf.", kGridFromDepth().c_str()));
+    RTABMAP_PARAM(Grid, RangeMin,                float,  0.0,     "Minimum range from sensor.");
+    RTABMAP_PARAM(Grid, RangeMax,                float,  5.0,     "Maximum range from sensor. 0=inf.");
     RTABMAP_PARAM_STR(Grid, DepthRoiRatios,      "0.0 0.0 0.0 0.0", uFormat("[%s=true] Region of interest ratios [left, right, top, bottom].", kGridFromDepth().c_str()));
     RTABMAP_PARAM(Grid, FootprintLength,         float,  0.0,     "Footprint length used to filter points over the footprint of the robot.");
     RTABMAP_PARAM(Grid, FootprintWidth,          float,  0.0,     "Footprint width used to filter points over the footprint of the robot. Footprint length should be set.");
     RTABMAP_PARAM(Grid, FootprintHeight,         float,  0.0,     "Footprint height used to filter points over the footprint of the robot. Footprint length and width should be set.");
     RTABMAP_PARAM(Grid, ScanDecimation,          int,    1,       uFormat("[%s=false] Decimation of the laser scan before creating cloud.", kGridFromDepth().c_str()));
     RTABMAP_PARAM(Grid, CellSize,                float,  0.05,    "Resolution of the occupancy grid.");
+    RTABMAP_PARAM(Grid, PreVoxelFiltering,       bool,   true,    uFormat("Input cloud is downsampled by voxel filter (voxel size is \"%s\") before doing segmentation of obstacles and ground.", kGridCellSize().c_str()));
     RTABMAP_PARAM(Grid, MapFrameProjection,      bool,   false,   "Projection in map frame. On a 3D terrain and a fixed local camera transform (the cloud is created relative to ground), you may want to disable this to do the projection in robot frame instead.");
     RTABMAP_PARAM(Grid, NormalsSegmentation,     bool,   true,    "Segment ground from obstacles using point normals, otherwise a fast passthrough is used.");
     RTABMAP_PARAM(Grid, MaxObstacleHeight,       float,  0.0,     "Maximum obstacles height (0=disabled).");
@@ -625,6 +626,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(GridGlobal, MinSize,              float,  0.0,     "Minimum map size (m).");
     RTABMAP_PARAM(GridGlobal, Eroded,               bool,   false,   "Erode obstacle cells.");
     RTABMAP_PARAM(GridGlobal, MaxNodes,             int,    0,       "Maximum nodes assembled in the map starting from the last node (0=unlimited).");
+    RTABMAP_PARAM(GridGlobal, OctoMapOccupancyThr,  float,  0.5,     "OctoMap occupancy threshold (value between 0 and 1).");
 
 public:
     virtual ~Parameters();

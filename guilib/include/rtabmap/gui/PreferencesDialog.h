@@ -176,7 +176,6 @@ public:
 	int getOctomapRenderingType() const;
 	bool isOctomap2dGrid() const;
 	int getOctomapTreeDepth() const;
-	double getOctomapOccupancyThr() const;
 	int getOctomapPointSize() const;
 	int getCloudDecimation(int index) const;   // 0=map, 1=odom
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom

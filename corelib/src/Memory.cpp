@@ -324,8 +324,9 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			// Memory is empty, save parameters
 			ParametersMap parameters = Parameters::getDefaultParameters();
 			uInsert(parameters, parameters_);
+			parameters.erase(Parameters::kRtabmapWorkingDirectory()); // don't save working directory as it is machine dependent
 			UDEBUG("");
-			_dbDriver->addInfoAfterRun(0, 0,	0, 0, 0, parameters);
+			_dbDriver->addInfoAfterRun(0, 0, 0, 0, 0, parameters);
 		}
 	}
 	else
@@ -1395,6 +1396,7 @@ void Memory::clear()
 		{
 			ParametersMap parameters = Parameters::getDefaultParameters();
 			uInsert(parameters, parameters_);
+			parameters.erase(Parameters::kRtabmapWorkingDirectory()); // don't save working directory as it is machine dependent
 			UDEBUG("");
 			_dbDriver->addInfoAfterRun(memSize,
 					_lastSignature?_lastSignature->id():0,

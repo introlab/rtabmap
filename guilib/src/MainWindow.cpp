@@ -251,13 +251,10 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_preferencesDialog->loadWindowGeometry(_aboutDialog);
 	setupMainLayout(_preferencesDialog->isVerticalLayoutUsed());
 
-	_occupancyGrid = new OccupancyGrid(_preferencesDialog->getAllParameters());
+	ParametersMap parameters = _preferencesDialog->getAllParameters();
+	_occupancyGrid = new OccupancyGrid();
 #ifdef RTABMAP_OCTOMAP
-	_octomap = new OctoMap(
-			_occupancyGrid->getCellSize(),
-			_preferencesDialog->getOctomapOccupancyThr(),
-			_occupancyGrid->isFullUpdate(),
-			_occupancyGrid->getUpdateError());
+	_octomap = new OctoMap(parameters);
 #endif
 
 	// Timer
@@ -4733,11 +4730,7 @@ void MainWindow::startDetection()
 #ifdef RTABMAP_OCTOMAP
 	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(
-			_occupancyGrid->getCellSize(),
-			_preferencesDialog->getOctomapOccupancyThr(),
-			_occupancyGrid->isFullUpdate(),
-			_occupancyGrid->getUpdateError());
+	_octomap = new OctoMap(parameters);
 #endif
 
 	// clear odometry visual stuff
@@ -6051,11 +6044,7 @@ void MainWindow::clearTheCache()
 	// re-create one if the resolution has changed
 	UASSERT(_octomap != 0);
 	delete _octomap;
-	_octomap = new OctoMap(
-			_occupancyGrid->getCellSize(),
-			_preferencesDialog->getOctomapOccupancyThr(),
-			_occupancyGrid->isFullUpdate(),
-			_occupancyGrid->getUpdateError());
+	_octomap = new OctoMap(_preferencesDialog->getAllParameters());
 #endif
 	_occupancyGrid->clear();
 }

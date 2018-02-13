@@ -55,14 +55,14 @@ public:
 public:
 	friend class RtabmapColorOcTree; // needs access to node children (inherited)
 
-	RtabmapColorOcTreeNode() : ColorOcTreeNode(), nodeRefId_(0), type_(-1) {}
+	RtabmapColorOcTreeNode() : ColorOcTreeNode(), nodeRefId_(0), type_(kTypeUnknown) {}
 	RtabmapColorOcTreeNode(const RtabmapColorOcTreeNode& rhs) : ColorOcTreeNode(rhs), nodeRefId_(rhs.nodeRefId_), type_(rhs.type_) {}
 
 	void setNodeRefId(int nodeRefId) {nodeRefId_ = nodeRefId;}
 	void setOccupancyType(char type) {type_=type;}
 	void setPointRef(const octomap::point3d & point) {pointRef_ = point;}
 	int getNodeRefId() const {return nodeRefId_;}
-	char getOccupancyType() const {return type_;}
+	int getOccupancyType() const {return type_;}
 	const octomap::point3d & getPointRef() const {return pointRef_;}
 
 	// following methods defined for octomap < 1.8 compatibility
@@ -74,7 +74,7 @@ public:
 
 private:
 	int nodeRefId_;
-	char type_; // -1=undefined, 0=empty, 100=obstacle, 1=ground
+	int type_; // -1=undefined, 0=empty, 100=obstacle, 1=ground
 	octomap::point3d pointRef_;
 };
 
@@ -171,13 +171,13 @@ public:
 	static void HSVtoRGB(float *r, float *g, float *b, float h, float s, float v);
 
 public:
-	OctoMap(const ParametersMap & parameters, float occupancyThr = 0.5f);
+	OctoMap(const ParametersMap & parameters);
 	OctoMap(float cellSize = 0.1f, float occupancyThr = 0.5f, bool fullUpdate = false, float updateError=0.01f);
 
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	void addToCache(int nodeId,
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & ground,
+			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstacles,
 			const pcl::PointXYZ & viewPoint);
 	void addToCache(int nodeId,
 			const cv::Mat & ground,
@@ -215,7 +215,7 @@ private:
 
 private:
 	std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > cache_; // [id: < <ground, obstacles>, empty>]
-	std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > cacheClouds_; // [id: <ground, obstacles>]
+	std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> > cacheClouds_; // [id: <ground, obstacles>]
 	std::map<int, cv::Point3f> cacheViewPoints_;
 	RtabmapColorOcTree * octree_;
 	std::map<int, Transform> addedNodes_;
