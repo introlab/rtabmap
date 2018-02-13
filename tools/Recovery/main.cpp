@@ -30,6 +30,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
 using namespace rtabmap;
 
@@ -52,9 +53,21 @@ class RecoveryProgressState: public ProgressState
 		return true;
 	}
 };
+RecoveryProgressState state;
+
+// catch ctrl-c
+void sighandler(int sig)
+{
+	printf("\nSignal %d caught...\n", sig);
+	state.setCanceled(true);
+}
 
 int main(int argc, char * argv[])
 {
+	signal(SIGABRT, &sighandler);
+	signal(SIGTERM, &sighandler);
+	signal(SIGINT, &sighandler);
+
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kError);
 
@@ -74,7 +87,6 @@ int main(int argc, char * argv[])
 
 	std::string databasePath = argv[argc-1];
 
-	RecoveryProgressState state;
 	std::string errorMsg;
 	printf("Recovering \"%s\"\n", databasePath.c_str());
 	if(!databaseRecovery(databasePath, keepBackup, &errorMsg, &state))

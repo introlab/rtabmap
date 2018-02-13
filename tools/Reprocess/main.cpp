@@ -40,6 +40,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
 #include <stdlib.h>
 #include <pcl/io/pcd_io.h>
+#include <signal.h>
 
 using namespace rtabmap;
 
@@ -58,18 +59,20 @@ void showUsage()
 	exit(1);
 }
 
-class RecoveryProgressState: public ProgressState
+// catch ctrl-c
+bool g_loopForever = true;
+void sighandler(int sig)
 {
-	virtual bool callback(const std::string & msg) const
-	{
-		if(!msg.empty())
-			printf("%s\n", msg.c_str());
-		return true;
-	}
-};
+	printf("\nSignal %d caught...\n", sig);
+	g_loopForever = false;
+}
 
 int main(int argc, char * argv[])
 {
+	signal(SIGABRT, &sighandler);
+	signal(SIGTERM, &sighandler);
+	signal(SIGINT, &sighandler);
+
 	ULogger::setType(ULogger::kTypeConsole);
 	ULogger::setLevel(ULogger::kError);
 
@@ -204,7 +207,7 @@ int main(int argc, char * argv[])
 	int processed = 0;
 	CameraInfo info;
 	SensorData data = dbReader.takeImage(&info);
-	while(data.isValid())
+	while(data.isValid() && g_loopForever)
 	{
 		UTimer iterationTime;
 		std::string status;

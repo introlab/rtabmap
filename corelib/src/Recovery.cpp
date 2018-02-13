@@ -183,7 +183,7 @@ bool databaseRecovery(
 		{
 			rtabmap.close(false);
 			if(errorMsg)
-				*errorMsg = "Recovery canceled";
+				*errorMsg = uFormat("Recovery canceled, renaming back \"%s\" to \"%s\".", backupPath.c_str(), databasePath.c_str());
 
 			// put back the file as before
 			UFile::erase(databasePath);
