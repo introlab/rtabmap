@@ -3254,6 +3254,29 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 	else
 	{
 		optimizedPoses = _graphOptimizer->optimize(fromId, poses, edgeConstraints, 0, error, iterationsDone);
+
+		if(!poses.empty() && optimizedPoses.empty() && guessPoses.empty())
+		{
+			UERROR("Optimization has failed, trying incremental optimization instead, this may take a while (poses=%d, links=%d)...", (int)poses.size(), (int)edgeConstraints.size());
+			optimizedPoses = _graphOptimizer->optimizeIncremental(fromId, poses, edgeConstraints, 0, error, iterationsDone);
+
+			if(optimizedPoses.empty())
+			{
+				if(!_graphOptimizer->isCovarianceIgnored() || _graphOptimizer->type() != Optimizer::kTypeTORO)
+				{
+					UERROR("Incremental optimization also failed. You may try changing parameters to %s=0 and %s=true.",
+							Parameters::kOptimizerStrategy().c_str(), Parameters::kOptimizerVarianceIgnored().c_str());
+				}
+				else
+				{
+					UERROR("Incremental optimization also failed.");
+				}
+			}
+			else
+			{
+				UERROR("Incremental optimization succeeded!");
+			}
+		}
 	}
 	UINFO("Optimization time %f s", timer.ticks());
 

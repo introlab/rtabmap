@@ -100,7 +100,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	editDepthDialog_(new QDialog(this)),
 	savedMaximized_(false),
 	firstCall_(true),
-	iniFilePath_(ini)
+	iniFilePath_(ini),
+	useLastOptimizedGraphAsGuess_(false)
 {
 	pathDatabase_ = QDir::homePath()+"/Documents/RTAB-Map"; //use home directory by default
 
@@ -970,6 +971,8 @@ bool DatabaseViewer::closeDatabase()
 		stereoViewer_->update();
 
 		ui_->toolBox_statistics->clear();
+
+		useLastOptimizedGraphAsGuess_ = false;
 	}
 
 	ui_->actionClose_database->setEnabled(dbDriver_ != 0);
@@ -4815,6 +4818,12 @@ void DatabaseViewer::updateGraphView()
 			return;
 		}
 
+		std::map<int, Transform> optimizedGraphGuess;
+		if(graphes_.size() && useLastOptimizedGraphAsGuess_)
+		{
+			optimizedGraphGuess = graphes_.back();
+		}
+
 		graphes_.clear();
 		graphLinks_.clear();
 
@@ -5014,6 +5023,22 @@ void DatabaseViewer::updateGraphView()
 				posesOut,
 				linksOut,
 				ui_->spinBox_optimizationDepth->value());
+		if(optimizedGraphGuess.size() == posesOut.size())
+		{
+			bool identical=true;
+			for(std::map<int, Transform>::iterator iter=posesOut.begin(); iter!=posesOut.end(); ++iter)
+			{
+				if(!uContains(optimizedGraphGuess, iter->first))
+				{
+					identical = false;
+					break;
+				}
+			}
+			if(identical)
+			{
+				posesOut = optimizedGraphGuess;
+			}
+		}
 		UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)linksOut.size());
 		QTime time;
 		time.start();
@@ -5024,14 +5049,30 @@ void DatabaseViewer::updateGraphView()
 		ui_->label_poses->setNum((int)finalPoses.size());
 		if(posesOut.size() && finalPoses.empty())
 		{
-			if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
+			UWARN("Optimization failed, trying incremental optimization instead... this may take a while (poses=%d, links=%d).", (int)posesOut.size(), (int)linksOut.size());
+			finalPoses = optimizer->optimizeIncremental(fromId, posesOut, linksOut, &graphes_);
+
+			if(finalPoses.empty())
 			{
-				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
-						"Give a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
+				UWARN("Incremental optimization also failed.");
+				if(!optimizer->isCovarianceIgnored() || optimizer->type() != Optimizer::kTypeTORO)
+				{
+					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors. "
+							"Give it a try with %1=0 and %2=true.").arg(Parameters::kOptimizerStrategy().c_str()).arg(Parameters::kOptimizerVarianceIgnored().c_str()));
+				}
+				else
+				{
+					QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+				}
 			}
 			else
 			{
-				QMessageBox::warning(this, tr("Graph optimization error!"), tr("Graph optimization has failed. See the terminal for potential errors."));
+				UWARN("Incremental optimization succeeded!");
+				QMessageBox::information(this, tr("Incremental optimization succeeded!"), tr("Graph optimization has failed but "
+						"incremental optimization succeeded. Next optimizations will use the current "
+						"best optimized poses as first guess instead of odometry poses."));
+				useLastOptimizedGraphAsGuess_ = true;
+
 			}
 		}
 		delete optimizer;

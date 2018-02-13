@@ -263,6 +263,66 @@ void Optimizer::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kOptimizerPriorsIgnored(), priorsIgnored_);
 }
 
+std::map<int, Transform> Optimizer::optimizeIncremental(
+		int rootId,
+		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & constraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes,
+		double * finalError,
+		int * iterationsDone)
+{
+	std::map<int, Transform> incGraph;
+	std::multimap<int, Link> incGraphLinks;
+	incGraph.insert(*poses.begin());
+	int i=0;
+	std::multimap<int, Link> constraintsCpy = constraints;
+	UDEBUG("Incremental optimization... poses=%d comstraints=%d", (int)poses.size(), (int)constraints.size());
+	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+	{
+		bool hasLoopClosure = false;
+		for(std::multimap<int, Link>::iterator jter=constraintsCpy.lower_bound(iter->first); jter!=constraintsCpy.end() && jter->first==iter->first; ++jter)
+		{
+			if(jter->second.type() == Link::kNeighbor || jter->second.type() == Link::kNeighborMerged)
+			{
+				incGraph.insert(std::make_pair(jter->second.to(), incGraph.at(iter->first) * jter->second.transform()));
+				incGraphLinks.insert(*jter);
+			}
+			else
+			{
+				if(!uContains(incGraph, jter->second.to()) && jter->second.to() > iter->first)
+				{
+					// node not yet in graph, switch link direction
+					constraintsCpy.insert(std::make_pair(jter->second.to(), jter->second.inverse()));
+				}
+				else
+				{
+					UASSERT(uContains(incGraph, jter->second.to()));
+					incGraphLinks.insert(*jter);
+					hasLoopClosure = true;
+				}
+			}
+		}
+		if(hasLoopClosure)
+		{
+			incGraph = this->optimize(incGraph.begin()->first, incGraph, incGraphLinks);
+			if(incGraph.empty())
+			{
+				UWARN("Failed incremental optimization...");
+				break;
+			}
+		}
+		UDEBUG("Iteration %d/%d %s", ++i, (int)poses.size(), hasLoopClosure?"*":"");
+	}
+	if(!incGraph.empty() && incGraph.size() == poses.size())
+	{
+		UASSERT(incGraphLinks.size() == constraints.size());
+		return this->optimize(rootId, incGraph, incGraphLinks, intermediateGraphes, finalError, iterationsDone);
+	}
+
+	UDEBUG("Failed incremental optimization");
+	return std::map<int, Transform>();
+}
+
 std::map<int, Transform> Optimizer::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,

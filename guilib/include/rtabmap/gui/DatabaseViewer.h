@@ -212,6 +212,8 @@ private:
 	bool savedMaximized_;
 	bool firstCall_;
 	QString iniFilePath_;
+
+	bool useLastOptimizedGraphAsGuess_;
 };
 
 }
