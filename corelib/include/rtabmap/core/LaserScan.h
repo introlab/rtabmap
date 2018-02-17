@@ -28,11 +28,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef CORELIB_INCLUDE_RTABMAP_CORE_LASERSCAN_H_
 #define CORELIB_INCLUDE_RTABMAP_CORE_LASERSCAN_H_
 
+#include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
+
 #include <rtabmap/core/Transform.h>
 
 namespace rtabmap {
 
-class LaserScan
+class RTABMAP_EXP LaserScan
 {
 public:
 	enum Format{kUnknown=0,

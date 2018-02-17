@@ -3934,7 +3934,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
+						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
 						compressedImage,
 						compressedDepth,
 						stereoCameraModel,
@@ -3942,7 +3942,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						0,
 						compressedUserData):
 				SensorData(
-						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
+						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
 						compressedImage,
 						compressedDepth,
 						cameraModels,
@@ -3992,7 +3992,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
+						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -4000,7 +4000,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						0,
 						compressedUserData):
 				SensorData(
-						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
+						LaserScan(compressedScan, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
@@ -4016,7 +4016,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	// set raw data
 	s->sensorData().setImageRaw(image);
 	s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-	s->sensorData().setLaserScanRaw(data.laserScanRaw());
+	s->sensorData().setLaserScanRaw(laserScan);
 	s->sensorData().setUserDataRaw(data.userDataRaw());
 
 	s->sensorData().setGroundTruth(data.groundTruth());
