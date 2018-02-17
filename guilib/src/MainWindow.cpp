@@ -1099,6 +1099,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						}
 					}
 					_cloudViewer->setCloudVisibility("cloudOdom", true);
+					_cloudViewer->setCloudColorIndex("cloudOdom", _preferencesDialog->getCloudColorScheme(1));
 					_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
 					_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 
@@ -1122,6 +1123,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						else
 						{
 							_cloudViewer->setCloudVisibility("scanMapOdom", true);
+							_cloudViewer->setCloudColorIndex("scanMapOdom", _preferencesDialog->getScanColorScheme(1));
 							_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
 							_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
 						}
@@ -1133,9 +1135,14 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				{
 					LaserScan scan = odom.data().laserScanRaw();
 
-					if(_preferencesDialog->getDownsamplingStepScan(1) > 0)
+					if(_preferencesDialog->getDownsamplingStepScan(1) > 1 ||
+						_preferencesDialog->getScanMaxRange(1) > 0.0f ||
+						_preferencesDialog->getScanMinRange(1) > 0.0f)
 					{
-						scan = util3d::downsample(scan, _preferencesDialog->getDownsamplingStepScan(1));
+						scan = util3d::commonFiltering(scan,
+								_preferencesDialog->getDownsamplingStepScan(1),
+								_preferencesDialog->getScanMinRange(1),
+								_preferencesDialog->getScanMaxRange(1));
 					}
 
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
@@ -1152,6 +1159,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					else
 					{
 						_cloudViewer->setCloudVisibility("scanOdom", true);
+						_cloudViewer->setCloudColorIndex("scanOdom", _preferencesDialog->getScanColorScheme(1));
 						_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 						_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 						scanUpdated = true;
@@ -2169,6 +2177,7 @@ void MainWindow::updateMapCloud(
 						}
 					}
 					_cloudViewer->setCloudVisibility(cloudName, (_cloudViewer->isVisible() && _preferencesDialog->isCloudsShown(0)));
+					_cloudViewer->setCloudColorIndex(cloudName, _preferencesDialog->getCloudColorScheme(0));
 					_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 					_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 				}
@@ -2210,6 +2219,7 @@ void MainWindow::updateMapCloud(
 						}
 					}
 					_cloudViewer->setCloudVisibility(scanName, _preferencesDialog->isScansShown(0));
+					_cloudViewer->setCloudColorIndex(scanName, _preferencesDialog->getScanColorScheme(0));
 					_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 					_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 				}
@@ -2643,6 +2653,7 @@ void MainWindow::updateMapCloud(
 		{
 			UDEBUG("");
 			_cloudViewer->updateCloudPose("cloudOdom", _odometryCorrection);
+			_cloudViewer->setCloudColorIndex("cloudOdom", _preferencesDialog->getCloudColorScheme(1));
 			_cloudViewer->setCloudOpacity("cloudOdom", _preferencesDialog->getCloudOpacity(1));
 			_cloudViewer->setCloudPointSize("cloudOdom", _preferencesDialog->getCloudPointSize(1));
 		}
@@ -2658,6 +2669,7 @@ void MainWindow::updateMapCloud(
 		{
 			UDEBUG("");
 			_cloudViewer->updateCloudPose("scanOdom", _odometryCorrection);
+			_cloudViewer->setCloudColorIndex("scanOdom", _preferencesDialog->getScanColorScheme(1));
 			_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 			_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 		}
@@ -2673,6 +2685,7 @@ void MainWindow::updateMapCloud(
 		{
 			UDEBUG("");
 			_cloudViewer->updateCloudPose("scanMapOdom", _odometryCorrection);
+			_cloudViewer->setCloudColorIndex("scanMapOdom", _preferencesDialog->getScanColorScheme(1));
 			_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
 			_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
 		}
@@ -3016,6 +3029,7 @@ std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> MainWindow::c
 					_cachedClouds.insert(std::make_pair(nodeId, outputPair));
 					_createdCloudsMemoryUsage += (long)(output->size() * sizeof(pcl::PointXYZRGB) + indices->size()*sizeof(int));
 				}
+				_cloudViewer->setCloudColorIndex(cloudName, _preferencesDialog->getCloudColorScheme(0));
 				_cloudViewer->setCloudOpacity(cloudName, _preferencesDialog->getCloudOpacity(0));
 				_cloudViewer->setCloudPointSize(cloudName, _preferencesDialog->getCloudPointSize(0));
 			}
@@ -3054,18 +3068,29 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		LaserScan scan;
 		iter->sensorData().uncompressData(0, 0, &scan);
 
-		if(_preferencesDialog->getDownsamplingStepScan(0) > 0)
+		if(_preferencesDialog->getDownsamplingStepScan(0) > 1 ||
+			_preferencesDialog->getScanMaxRange(0) > 0.0f ||
+			_preferencesDialog->getScanMinRange(0) > 0.0f)
 		{
-			scan = util3d::downsample(scan, _preferencesDialog->getDownsamplingStepScan(0));
+			scan = util3d::commonFiltering(scan,
+					_preferencesDialog->getDownsamplingStepScan(0),
+					_preferencesDialog->getScanMinRange(0),
+					_preferencesDialog->getScanMaxRange(0));
 		}
 
 		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB;
+		pcl::PointCloud<pcl::PointXYZI>::Ptr cloudI;
 		pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals;
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudRGBWithNormals;
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudIWithNormals;
 		if(scan.hasNormals() && scan.hasRGB() && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
 		{
 			cloudRGBWithNormals = util3d::laserScanToPointCloudRGBNormal(scan, scan.localTransform());
+		}
+		else if(scan.hasNormals() && scan.hasIntensity() && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
+		{
+			cloudIWithNormals = util3d::laserScanToPointCloudINormal(scan, scan.localTransform());
 		}
 		else if((scan.hasNormals()) && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
 		{
@@ -3074,6 +3099,10 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		else if(scan.hasRGB())
 		{
 			cloudRGB = util3d::laserScanToPointCloudRGB(scan, scan.localTransform());
+		}
+		else if(scan.hasIntensity())
+		{
+			cloudI = util3d::laserScanToPointCloudI(scan, scan.localTransform());
 		}
 		else
 		{
@@ -3089,6 +3118,10 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			if(cloudRGB.get())
 			{
 				cloudRGB = util3d::voxelize(cloudRGB, _preferencesDialog->getCloudVoxelSizeScan(0));
+			}
+			if(cloudI.get())
+			{
+				cloudI = util3d::voxelize(cloudI, _preferencesDialog->getCloudVoxelSizeScan(0));
 			}
 		}
 
@@ -3109,6 +3142,19 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 
 				//transform back in sensor frame
 				cloudRGBWithNormals = util3d::transformPointCloud(cloudTransformed, pose.inverse());
+			}
+			if(cloudIWithNormals.get())
+			{
+				// perform in /map frame
+				pcl::PointCloud<pcl::PointXYZINormal>::Ptr cloudTransformed = util3d::transformPointCloud(cloudIWithNormals, pose);
+				cloudTransformed = rtabmap::util3d::passThrough(
+						cloudTransformed,
+						"z",
+						_preferencesDialog->getScanFloorFilteringHeight()==0.0?(float)std::numeric_limits<int>::min():_preferencesDialog->getScanFloorFilteringHeight(),
+						_preferencesDialog->getScanCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getScanCeilingFilteringHeight());
+
+				//transform back in sensor frame
+				cloudIWithNormals = util3d::transformPointCloud(cloudTransformed, pose.inverse());
 			}
 			if(cloudWithNormals.get())
 			{
@@ -3136,6 +3182,19 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 				//transform back in sensor frame
 				cloudRGB = util3d::transformPointCloud(cloudTransformed, pose.inverse());
 			}
+			if(cloudI.get())
+			{
+				// perform in /map frame
+				pcl::PointCloud<pcl::PointXYZI>::Ptr cloudTransformed = util3d::transformPointCloud(cloudI, pose);
+				cloudTransformed = rtabmap::util3d::passThrough(
+						cloudTransformed,
+						"z",
+						_preferencesDialog->getScanFloorFilteringHeight()==0.0?(float)std::numeric_limits<int>::min():_preferencesDialog->getScanFloorFilteringHeight(),
+						_preferencesDialog->getScanCeilingFilteringHeight()==0.0?(float)std::numeric_limits<int>::max():_preferencesDialog->getScanCeilingFilteringHeight());
+
+				//transform back in sensor frame
+				cloudI = util3d::transformPointCloud(cloudTransformed, pose.inverse());
+			}
 			if(cloud.get())
 			{
 				// perform in /map frame
@@ -3151,7 +3210,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			}
 		}
 
-		if(	(cloud.get() || cloudRGB.get()) &&
+		if(	(cloud.get() || cloudRGB.get() || cloudI.get()) &&
 		   (_preferencesDialog->getScanNormalKSearch() > 0 || _preferencesDialog->getScanNormalRadiusSearch() > 0.0))
 		{
 			Eigen::Vector3f scanViewpoint(
@@ -3174,13 +3233,27 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 				pcl::concatenateFields(*cloud, *normals, *cloudWithNormals);
 				cloud.reset();
 			}
-			else
+			else if(cloudRGB.get() && cloudRGB->size())
 			{
-				UASSERT(cloudRGB.get() && cloudRGB->size()); // Assuming 4 channels cannot be 2D
+				// Assuming 3D
 				normals = util3d::computeNormals(cloudRGB, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
 				cloudRGBWithNormals.reset(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 				pcl::concatenateFields(*cloudRGB, *normals, *cloudRGBWithNormals);
 				cloudRGB.reset();
+			}
+			else if(cloudI.get())
+			{
+				if(scan.is2d())
+				{
+					normals = util3d::computeFastOrganizedNormals2D(cloudI, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
+				}
+				else
+				{
+					normals = util3d::computeNormals(cloudI, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
+				}
+				cloudIWithNormals.reset(new pcl::PointCloud<pcl::PointXYZINormal>);
+				pcl::concatenateFields(*cloud, *normals, *cloudIWithNormals);
+				cloudI.reset();
 			}
 		}
 
@@ -3196,6 +3269,21 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			if(added && nodeId > 0)
 			{
 				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGBWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZRGBNormal, scan.localTransform());
+			}
+		}
+		else if(cloudIWithNormals.get())
+		{
+			added = _cloudViewer->addCloud(scanName, cloudIWithNormals, pose, color);
+			if(added && nodeId > 0)
+			{
+				if(scan.is2d())
+				{
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYINormal, scan.localTransform());
+				}
+				else
+				{
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudIWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZINormal, scan.localTransform());
+				}
 			}
 		}
 		else if(cloudWithNormals.get())
@@ -3219,6 +3307,21 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			if(added && nodeId > 0)
 			{
 				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGB, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZRGB, scan.localTransform());
+			}
+		}
+		else if(cloudI.get())
+		{
+			added = _cloudViewer->addCloud(scanName, cloudI, pose, color);
+			if(added && nodeId > 0)
+			{
+				if(scan.is2d())
+				{
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYI, scan.localTransform());
+				}
+				else
+				{
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudI, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZI, scan.localTransform());
+				}
 			}
 		}
 		else
@@ -3248,6 +3351,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in scan frame
 			}
 
+			_cloudViewer->setCloudColorIndex(scanName, _preferencesDialog->getScanColorScheme(0));
 			_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
 			_cloudViewer->setCloudPointSize(scanName, _preferencesDialog->getScanPointSize(0));
 		}

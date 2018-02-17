@@ -528,7 +528,8 @@ bool CloudViewer::addCloud(
 		const pcl::PCLPointCloud2Ptr & binaryCloud,
 		const Transform & pose,
 		bool rgb,
-		bool haveNormals,
+		bool hasNormals,
+		bool hasIntensity,
 		const QColor & color)
 {
 	int previousColorIndex = -1;
@@ -541,7 +542,7 @@ bool CloudViewer::addCloud(
 	Eigen::Vector4f origin(pose.x(), pose.y(), pose.z(), 0.0f);
 	Eigen::Quaternionf orientation = Eigen::Quaternionf(pose.toEigen3f().linear());
 
-	if(haveNormals && _aShowNormals->isChecked())
+	if(hasNormals && _aShowNormals->isChecked())
 	{
 		pcl::PointCloud<pcl::PointNormal>::Ptr cloud_xyz (new pcl::PointCloud<pcl::PointNormal>);
 		pcl::fromPCLPointCloud2 (*binaryCloud, *cloud_xyz);
@@ -580,12 +581,18 @@ bool CloudViewer::addCloud(
 			colorHandler.reset(new pcl::visualization::PointCloudColorHandlerRGBField<pcl::PCLPointCloud2>(binaryCloud));
 			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
 		}
+		else if(hasIntensity)
+		{
+			//rgb
+			colorHandler.reset(new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2>(binaryCloud, "intensity"));
+			_visualizer->addPointCloud (binaryCloud, colorHandler, origin, orientation, id);
+		}
 		else if(previousColorIndex == 5)
 		{
 			previousColorIndex = -1;
 		}
 
-		if(haveNormals)
+		if(hasNormals)
 		{
 			//normals
 			colorHandler.reset (new pcl::visualization::PointCloudColorHandlerGenericField<pcl::PCLPointCloud2> (binaryCloud, "normal_x"));
@@ -604,7 +611,7 @@ bool CloudViewer::addCloud(
 		{
 			_visualizer->updateColorHandlerIndex(id, previousColorIndex);
 		}
-		else if(rgb)
+		else if(rgb || hasIntensity)
 		{
 			_visualizer->updateColorHandlerIndex(id, 5);
 		}
@@ -627,7 +634,7 @@ bool CloudViewer::addCloud(
 {
 	pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 	pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-	return addCloud(id, binaryCloud, pose, true, true, color);
+	return addCloud(id, binaryCloud, pose, true, true, false, color);
 }
 
 bool CloudViewer::addCloud(
@@ -638,7 +645,29 @@ bool CloudViewer::addCloud(
 {
 	pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 	pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-	return addCloud(id, binaryCloud, pose, true, false, color);
+	return addCloud(id, binaryCloud, pose, true, false, false, color);
+}
+
+bool CloudViewer::addCloud(
+		const std::string & id,
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
+	pcl::toPCLPointCloud2(*cloud, *binaryCloud);
+	return addCloud(id, binaryCloud, pose, false, true, true, color);
+}
+
+bool CloudViewer::addCloud(
+		const std::string & id,
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const Transform & pose,
+		const QColor & color)
+{
+	pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
+	pcl::toPCLPointCloud2(*cloud, *binaryCloud);
+	return addCloud(id, binaryCloud, pose, false, false, true, color);
 }
 
 bool CloudViewer::addCloud(
@@ -649,7 +678,7 @@ bool CloudViewer::addCloud(
 {
 	pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 	pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-	return addCloud(id, binaryCloud, pose, false, true, color);
+	return addCloud(id, binaryCloud, pose, false, true, false, color);
 }
 
 bool CloudViewer::addCloud(
@@ -660,7 +689,7 @@ bool CloudViewer::addCloud(
 {
 	pcl::PCLPointCloud2Ptr binaryCloud(new pcl::PCLPointCloud2);
 	pcl::toPCLPointCloud2(*cloud, *binaryCloud);
-	return addCloud(id, binaryCloud, pose, false, false, color);
+	return addCloud(id, binaryCloud, pose, false, false, false, color);
 }
 
 bool CloudViewer::addCloudMesh(
@@ -2130,6 +2159,14 @@ bool CloudViewer::getCloudVisibility(const std::string & id)
 		UERROR("Cannot find actor named \"%s\".", id.c_str());
 	}
 	return false;
+}
+
+void CloudViewer::setCloudColorIndex(const std::string & id, int index)
+{
+	if(index>0)
+	{
+		_visualizer->updateColorHandlerIndex(id, index-1);
+	}
 }
 
 void CloudViewer::setCloudOpacity(const std::string & id, double opacity)

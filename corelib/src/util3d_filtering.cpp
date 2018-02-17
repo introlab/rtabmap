@@ -68,8 +68,8 @@ namespace rtabmap
 namespace util3d
 {
 
-void commonFiltering(
-		LaserScan & scan,
+LaserScan commonFiltering(
+		const LaserScan & scanIn,
 		int downsamplingStep,
 		float rangeMin,
 		float rangeMax,
@@ -78,6 +78,7 @@ void commonFiltering(
 		float normalRadius,
 		bool forceGroundNormalsUp)
 {
+	LaserScan scan = scanIn;
 	UDEBUG("scan size=%d format=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f",
 			scan.size(), (int)scan.format(), downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius);
 	if(!scan.isEmpty())
@@ -256,6 +257,7 @@ void commonFiltering(
 			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,0), forceGroundNormalsUp);
 		}
 	}
+	return scan;
 }
 
 LaserScan rangeFiltering(
@@ -415,6 +417,10 @@ pcl::PointCloud<pcl::PointXYZI>::Ptr voxelize(const pcl::PointCloud<pcl::PointXY
 {
 	return voxelizeImpl<pcl::PointXYZI>(cloud, indices, voxelSize);
 }
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, const pcl::IndicesPtr & indices, float voxelSize)
+{
+	return voxelizeImpl<pcl::PointXYZINormal>(cloud, indices, voxelSize);
+}
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, float voxelSize)
 {
@@ -437,6 +443,11 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(const pcl::PointCloud<pcl:
 	return voxelize(cloud, indices, voxelSize);
 }
 pcl::PointCloud<pcl::PointXYZI>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, float voxelSize)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return voxelize(cloud, indices, voxelSize);
+}
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, float voxelSize)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	return voxelize(cloud, indices, voxelSize);
@@ -494,6 +505,10 @@ pcl::IndicesPtr passThrough(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud
 {
 	return passThroughImpl<pcl::PointXYZRGB>(cloud, indices, axis, min, max, negative);
 }
+pcl::IndicesPtr passThrough(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, const pcl::IndicesPtr & indices, const std::string & axis, float min, float max, bool negative)
+{
+	return passThroughImpl<pcl::PointXYZI>(cloud, indices, axis, min, max, negative);
+}
 pcl::IndicesPtr passThrough(const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, const pcl::IndicesPtr & indices, const std::string & axis, float min, float max, bool negative)
 {
 	return passThroughImpl<pcl::PointNormal>(cloud, indices, axis, min, max, negative);
@@ -501,6 +516,10 @@ pcl::IndicesPtr passThrough(const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud
 pcl::IndicesPtr passThrough(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud, const pcl::IndicesPtr & indices, const std::string & axis, float min, float max, bool negative)
 {
 	return passThroughImpl<pcl::PointXYZRGBNormal>(cloud, indices, axis, min, max, negative);
+}
+pcl::IndicesPtr passThrough(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, const pcl::IndicesPtr & indices, const std::string & axis, float min, float max, bool negative)
+{
+	return passThroughImpl<pcl::PointXYZINormal>(cloud, indices, axis, min, max, negative);
 }
 
 template<typename PointT>
@@ -531,6 +550,10 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr passThrough(const pcl::PointCloud<pcl::Po
 {
 	return passThroughImpl<pcl::PointXYZRGB>(cloud, axis, min ,max, negative);
 }
+pcl::PointCloud<pcl::PointXYZI>::Ptr passThrough(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, const std::string & axis, float min, float max, bool negative)
+{
+	return passThroughImpl<pcl::PointXYZI>(cloud, axis, min ,max, negative);
+}
 pcl::PointCloud<pcl::PointNormal>::Ptr passThrough(const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, const std::string & axis, float min, float max, bool negative)
 {
 	return passThroughImpl<pcl::PointNormal>(cloud, axis, min ,max, negative);
@@ -538,6 +561,10 @@ pcl::PointCloud<pcl::PointNormal>::Ptr passThrough(const pcl::PointCloud<pcl::Po
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr passThrough(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud, const std::string & axis, float min, float max, bool negative)
 {
 	return passThroughImpl<pcl::PointXYZRGBNormal>(cloud, axis, min ,max, negative);
+}
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr passThrough(const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud, const std::string & axis, float min, float max, bool negative)
+{
+	return passThroughImpl<pcl::PointXYZINormal>(cloud, axis, min ,max, negative);
 }
 
 template<typename PointT>

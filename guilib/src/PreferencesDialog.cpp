@@ -363,6 +363,10 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingRoiRatios[0] = _ui->lineEdit_roiRatios;
 	_3dRenderingRoiRatios[1] = _ui->lineEdit_roiRatios_odom;
 
+	_3dRenderingColorScheme.resize(2);
+	_3dRenderingColorScheme[0] = _ui->spinBox_colorScheme;
+	_3dRenderingColorScheme[1] = _ui->spinBox_colorScheme_odom;
+
 	_3dRenderingOpacity.resize(2);
 	_3dRenderingOpacity[0] = _ui->doubleSpinBox_opacity;
 	_3dRenderingOpacity[1] = _ui->doubleSpinBox_opacity_odom;
@@ -379,9 +383,21 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_3dRenderingDownsamplingScan[0] = _ui->spinBox_downsamplingScan;
 	_3dRenderingDownsamplingScan[1] = _ui->spinBox_downsamplingScan_odom;
 
+	_3dRenderingMaxRange.resize(2);
+	_3dRenderingMaxRange[0] = _ui->doubleSpinBox_maxRange;
+	_3dRenderingMaxRange[1] = _ui->doubleSpinBox_maxRange_odom;
+
+	_3dRenderingMinRange.resize(2);
+	_3dRenderingMinRange[0] = _ui->doubleSpinBox_minRange;
+	_3dRenderingMinRange[1] = _ui->doubleSpinBox_minRange_odom;
+
 	_3dRenderingVoxelSizeScan.resize(2);
 	_3dRenderingVoxelSizeScan[0] = _ui->doubleSpinBox_voxelSizeScan;
 	_3dRenderingVoxelSizeScan[1] = _ui->doubleSpinBox_voxelSizeScan_odom;
+
+	_3dRenderingColorSchemeScan.resize(2);
+	_3dRenderingColorSchemeScan[0] = _ui->spinBox_colorSchemeScan;
+	_3dRenderingColorSchemeScan[1] = _ui->spinBox_colorSchemeScan_odom;
 
 	_3dRenderingOpacityScan.resize(2);
 	_3dRenderingOpacityScan[0] = _ui->doubleSpinBox_opacity_scan;
@@ -415,9 +431,13 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 		connect(_3dRenderingShowFrustums[i], SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 
 		connect(_3dRenderingDownsamplingScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingMaxRange[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingMinRange[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingVoxelSizeScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingColorScheme[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingOpacity[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSize[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
+		connect(_3dRenderingColorSchemeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingOpacityScan[i], SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeScan[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
 		connect(_3dRenderingPtSizeFeatures[i], SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteCloudRenderingPanel()));
@@ -1414,9 +1434,13 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 			_3dRenderingShowFrustums[i]->setChecked(false);
 
 			_3dRenderingDownsamplingScan[i]->setValue(1);
+			_3dRenderingMaxRange[i]->setValue(0.0);
+			_3dRenderingMinRange[i]->setValue(0.0);
 			_3dRenderingVoxelSizeScan[i]->setValue(0.0);
+			_3dRenderingColorScheme[i]->setValue(0);
 			_3dRenderingOpacity[i]->setValue(i==0?1.0:0.75);
 			_3dRenderingPtSize[i]->setValue(2);
+			_3dRenderingColorSchemeScan[i]->setValue(0);
 			_3dRenderingOpacityScan[i]->setValue(i==0?1.0:0.5);
 			_3dRenderingPtSizeScan[i]->setValue(2);
 			_3dRenderingPtSizeFeatures[i]->setValue(3);
@@ -1818,9 +1842,13 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 		_3dRenderingShowFrustums[i]->setChecked(settings.value(QString("showFrustums%1").arg(i), _3dRenderingShowFrustums[i]->isChecked()).toBool());
 
 		_3dRenderingDownsamplingScan[i]->setValue(settings.value(QString("downsamplingScan%1").arg(i), _3dRenderingDownsamplingScan[i]->value()).toInt());
+		_3dRenderingMaxRange[i]->setValue(settings.value(QString("maxRange%1").arg(i), _3dRenderingMaxRange[i]->value()).toDouble());
+		_3dRenderingMinRange[i]->setValue(settings.value(QString("minRange%1").arg(i), _3dRenderingMinRange[i]->value()).toDouble());
 		_3dRenderingVoxelSizeScan[i]->setValue(settings.value(QString("voxelSizeScan%1").arg(i), _3dRenderingVoxelSizeScan[i]->value()).toDouble());
+		_3dRenderingColorScheme[i]->setValue(settings.value(QString("colorScheme%1").arg(i), _3dRenderingColorScheme[i]->value()).toInt());
 		_3dRenderingOpacity[i]->setValue(settings.value(QString("opacity%1").arg(i), _3dRenderingOpacity[i]->value()).toDouble());
 		_3dRenderingPtSize[i]->setValue(settings.value(QString("ptSize%1").arg(i), _3dRenderingPtSize[i]->value()).toInt());
+		_3dRenderingColorSchemeScan[i]->setValue(settings.value(QString("colorSchemeScan%1").arg(i), _3dRenderingColorSchemeScan[i]->value()).toInt());
 		_3dRenderingOpacityScan[i]->setValue(settings.value(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value()).toDouble());
 		_3dRenderingPtSizeScan[i]->setValue(settings.value(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value()).toInt());
 		_3dRenderingPtSizeFeatures[i]->setValue(settings.value(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value()).toInt());
@@ -2221,9 +2249,13 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 		settings.setValue(QString("showFrustums%1").arg(i), _3dRenderingShowFrustums[i]->isChecked());
 
 		settings.setValue(QString("downsamplingScan%1").arg(i), _3dRenderingDownsamplingScan[i]->value());
+		settings.setValue(QString("maxRange%1").arg(i), _3dRenderingMaxRange[i]->value());
+		settings.setValue(QString("minRange%1").arg(i), _3dRenderingMinRange[i]->value());
 		settings.setValue(QString("voxelSizeScan%1").arg(i), _3dRenderingVoxelSizeScan[i]->value());
+		settings.setValue(QString("colorScheme%1").arg(i), _3dRenderingColorScheme[i]->value());
 		settings.setValue(QString("opacity%1").arg(i), _3dRenderingOpacity[i]->value());
 		settings.setValue(QString("ptSize%1").arg(i), _3dRenderingPtSize[i]->value());
+		settings.setValue(QString("colorSchemeScan%1").arg(i), _3dRenderingColorSchemeScan[i]->value());
 		settings.setValue(QString("opacityScan%1").arg(i), _3dRenderingOpacityScan[i]->value());
 		settings.setValue(QString("ptSizeScan%1").arg(i), _3dRenderingPtSizeScan[i]->value());
 		settings.setValue(QString("ptSizeFeatures%1").arg(i), _3dRenderingPtSizeFeatures[i]->value());
@@ -4431,6 +4463,11 @@ std::vector<float> PreferencesDialog::getCloudRoiRatios(int index) const
 	}
 	return roiRatios;
 }
+int PreferencesDialog::getCloudColorScheme(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingColorScheme[index]->value();
+}
 double PreferencesDialog::getCloudOpacity(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
@@ -4452,10 +4489,25 @@ int PreferencesDialog::getDownsamplingStepScan(int index) const
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingDownsamplingScan[index]->value();
 }
+double PreferencesDialog::getScanMaxRange(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingMaxRange[index]->value();
+}
+double PreferencesDialog::getScanMinRange(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingMinRange[index]->value();
+}
 double PreferencesDialog::getCloudVoxelSizeScan(int index) const
 {
 	UASSERT(index >= 0 && index <= 1);
 	return _3dRenderingVoxelSizeScan[index]->value();
+}
+int PreferencesDialog::getScanColorScheme(int index) const
+{
+	UASSERT(index >= 0 && index <= 1);
+	return _3dRenderingColorSchemeScan[index]->value();
 }
 double PreferencesDialog::getScanOpacity(int index) const
 {

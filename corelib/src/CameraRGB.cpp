@@ -753,7 +753,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				}
 			}
 			// filter the scan after registration
-			util3d::commonFiltering(scan, _scanDownsampleStep, 0, 0, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp);
+			scan = util3d::commonFiltering(scan, _scanDownsampleStep, 0, 0, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp);
 		}
 	}
 	else

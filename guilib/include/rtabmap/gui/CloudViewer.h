@@ -85,7 +85,8 @@ public:
 			const pcl::PCLPointCloud2Ptr & binaryCloud,
 			const Transform & pose,
 			bool rgb,
-			bool haveNormals,
+			bool hasNormals,
+			bool hasIntensity,
 			const QColor & color = QColor());
 
 	bool addCloud(
@@ -97,6 +98,18 @@ public:
 	bool addCloud(
 			const std::string & id,
 			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
+			const Transform & pose = Transform::getIdentity(),
+			const QColor & color = QColor());
+
+	bool addCloud(
+				const std::string & id,
+				const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+				const Transform & pose = Transform::getIdentity(),
+				const QColor & color = QColor());
+
+	bool addCloud(
+			const std::string & id,
+			const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 			const Transform & pose = Transform::getIdentity(),
 			const QColor & color = QColor());
 
@@ -287,6 +300,7 @@ public slots:
 	void setDefaultBackgroundColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
 	void setCloudVisibility(const std::string & id, bool isVisible);
+	void setCloudColorIndex(const std::string & id, int index);
 	void setCloudOpacity(const std::string & id, double opacity = 1.0);
 	void setCloudPointSize(const std::string & id, int size);
 	virtual void clear();

@@ -181,12 +181,16 @@ public:
 	double getCloudMaxDepth(int index) const;  // 0=map, 1=odom
 	double getCloudMinDepth(int index) const;  // 0=map, 1=odom
 	std::vector<float> getCloudRoiRatios(int index) const; // 0=map, 1=odom
+	int getCloudColorScheme(int index) const;   // 0=map, 1=odom
 	double getCloudOpacity(int index) const;   // 0=map, 1=odom
 	int getCloudPointSize(int index) const;    // 0=map, 1=odom
 
 	bool isScansShown(int index) const;       // 0=map, 1=odom
 	int getDownsamplingStepScan(int index) const; // 0=map, 1=odom
+	double getScanMaxRange(int index) const; // 0=map, 1=odom
+	double getScanMinRange(int index) const; // 0=map, 1=odom
 	double getCloudVoxelSizeScan(int index) const; // 0=map, 1=odom
+	int getScanColorScheme(int index) const;    // 0=map, 1=odom
 	double getScanOpacity(int index) const;    // 0=map, 1=odom
 	int getScanPointSize(int index) const;     // 0=map, 1=odom
 
@@ -390,11 +394,15 @@ private:
 	QVector<QDoubleSpinBox*> _3dRenderingMaxDepth;
 	QVector<QDoubleSpinBox*> _3dRenderingMinDepth;
 	QVector<QLineEdit*> _3dRenderingRoiRatios;
+	QVector<QSpinBox*> _3dRenderingColorScheme;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacity;
 	QVector<QSpinBox*> _3dRenderingPtSize;
 	QVector<QCheckBox*> _3dRenderingShowScans;
 	QVector<QSpinBox*> _3dRenderingDownsamplingScan;
+	QVector<QDoubleSpinBox*> _3dRenderingMaxRange;
+	QVector<QDoubleSpinBox*> _3dRenderingMinRange;
 	QVector<QDoubleSpinBox*> _3dRenderingVoxelSizeScan;
+	QVector<QSpinBox*> _3dRenderingColorSchemeScan;
 	QVector<QDoubleSpinBox*> _3dRenderingOpacityScan;
 	QVector<QSpinBox*> _3dRenderingPtSizeScan;
 	QVector<QCheckBox*> _3dRenderingShowFeatures;

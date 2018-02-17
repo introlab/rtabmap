@@ -3195,6 +3195,15 @@ void DatabaseViewer::update(int value,
 							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
+						else if(data.laserScanRaw().hasIntensity() && data.laserScanRaw().hasNormals())
+						{
+							pcl::PointCloud<pcl::PointXYZINormal>::Ptr scan = util3d::laserScanToPointCloudINormal(data.laserScanRaw(), data.laserScanRaw().localTransform());
+							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
+							{
+								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
+							}
+							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
+						}
 						else if(data.laserScanRaw().hasNormals())
 						{
 							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanRaw().localTransform());

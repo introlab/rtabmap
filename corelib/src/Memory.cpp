@@ -3851,7 +3851,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	LaserScan laserScan = data.laserScanRaw();
 	if(!isIntermediateNode && laserScan.size())
 	{
-		util3d::commonFiltering(laserScan,
+		laserScan = util3d::commonFiltering(laserScan,
 				_laserScanDownsampleStepSize,
 				0,
 				0,
