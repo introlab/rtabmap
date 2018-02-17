@@ -129,7 +129,7 @@ private:
 
 	virtual void loadNodeDataQuery(std::list<Signature *> & signatures, bool images=true, bool scan=true, bool userData=true, bool occupancyGrid=true) const;
 	virtual bool getCalibrationQuery(int signatureId, std::vector<CameraModel> & models, StereoCameraModel & stereoModel) const;
-	virtual bool getLaserScanInfoQuery(int signatureId, LaserScanInfo & info) const;
+	virtual bool getLaserScanInfoQuery(int signatureId, LaserScan & info) const;
 	virtual bool getNodeInfoQuery(int signatureId, Transform & pose, int & mapId, int & weight, std::string & label, double & stamp, Transform & groundTruthPose, std::vector<float> & velocity, GPS & gps) const;
 	virtual void getAllNodeIdsQuery(std::set<int> & ids, bool ignoreChildren, bool ignoreBadSignatures) const;
 	virtual void getAllLinksQuery(std::multimap<int, Link> & links, bool ignoreNullLinks) const;

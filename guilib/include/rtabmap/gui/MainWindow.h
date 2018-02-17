@@ -276,7 +276,7 @@ protected:
 	const std::map<int, int> & currentMapIds() const { return _currentMapIds; }    // <nodeId, mapId>
 	const std::map<int, std::string> & currentLabels() const { return _currentLabels; }  // <nodeId, label>
 	const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds() const { return _cachedClouds; }
-	const std::map<int, cv::Mat> & createdScans() const { return _createdScans; }
+	const std::map<int, LaserScan> & createdScans() const { return _createdScans; }
 	const std::map<int, pcl::PointCloud<pcl::PointXYZRGB>::Ptr> & createdFeatures() const { return _createdFeatures; }
 
 	const rtabmap::OccupancyGrid * occupancyGrid() const { return _occupancyGrid; }
@@ -337,7 +337,7 @@ private:
 	std::set<int> _cachedEmptyClouds;
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
 
-	std::map<int, cv::Mat> _createdScans;
+	std::map<int, LaserScan> _createdScans;
 
 	rtabmap::OccupancyGrid * _occupancyGrid;
 	rtabmap::OctoMap * _octomap;

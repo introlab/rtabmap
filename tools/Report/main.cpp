@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UPlot.h>
+#include <rtabmap/utilite/ULogger.h>
 #include <QApplication>
 #include <stdio.h>
 

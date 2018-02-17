@@ -642,7 +642,7 @@ void DBDriver::getNodeData(
 	{
 		const Signature * s = _trashSignatures.at(signatureId);
 		if(!s->sensorData().imageCompressed().empty() ||
-			!s->sensorData().laserScanCompressed().empty() ||
+			!s->sensorData().laserScanCompressed().isEmpty() ||
 			!s->sensorData().userDataCompressed().empty() ||
 			s->sensorData().gridCellSize() != 0.0f ||
 			!s->isSaved())
@@ -693,7 +693,7 @@ bool DBDriver::getCalibration(
 
 bool DBDriver::getLaserScanInfo(
 		int signatureId,
-		LaserScanInfo & info) const
+		LaserScan & info) const
 {
 	UDEBUG("");
 	bool found = false;
@@ -701,7 +701,7 @@ bool DBDriver::getLaserScanInfo(
 	_trashesMutex.lock();
 	if(uContains(_trashSignatures, signatureId))
 	{
-		info = _trashSignatures.at(signatureId)->sensorData().laserScanInfo();
+		info = _trashSignatures.at(signatureId)->sensorData().laserScanCompressed();
 		found = true;
 	}
 	_trashesMutex.unlock();

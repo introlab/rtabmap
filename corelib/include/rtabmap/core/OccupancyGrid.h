@@ -46,7 +46,7 @@ public:
 	float getCellSize() const {return cellSize_;}
 	void setCloudAssembling(bool enabled);
 	float getMinMapSize() const {return minMapSize_;}
-	bool isGridFromDepth() const {return occupancyFromCloud_;}
+	bool isGridFromDepth() const {return occupancyFromDepth_;}
 	bool isFullUpdate() const {return fullUpdate_;}
 	float getUpdateError() const {return updateError_;}
 	bool isMapFrameProjection() const {return projMapFrame_;}
@@ -122,7 +122,7 @@ private:
 	int scanDecimation_;
 	float cellSize_;
 	bool preVoxelFiltering_;
-	bool occupancyFromCloud_;
+	bool occupancyFromDepth_;
 	bool projMapFrame_;
 	float maxObstacleHeight_;
 	int normalKSearch_;

@@ -52,7 +52,7 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	scanDecimation_(Parameters::defaultGridScanDecimation()),
 	cellSize_(Parameters::defaultGridCellSize()),
 	preVoxelFiltering_(Parameters::defaultGridPreVoxelFiltering()),
-	occupancyFromCloud_(Parameters::defaultGridFromDepth()),
+	occupancyFromDepth_(Parameters::defaultGridFromDepth()),
 	projMapFrame_(Parameters::defaultGridMapFrameProjection()),
 	maxObstacleHeight_(Parameters::defaultGridMaxObstacleHeight()),
 	normalKSearch_(Parameters::defaultGridNormalK()),
@@ -87,7 +87,7 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 
 void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 {
-	Parameters::parse(parameters, Parameters::kGridFromDepth(), occupancyFromCloud_);
+	Parameters::parse(parameters, Parameters::kGridFromDepth(), occupancyFromDepth_);
 	Parameters::parse(parameters, Parameters::kGridDepthDecimation(), cloudDecimation_);
 	if(cloudDecimation_ == 0)
 	{
@@ -228,46 +228,46 @@ void OccupancyGrid::createLocalMap(
 		cv::Mat & emptyCells,
 		cv::Point3f & viewPoint) const
 {
-	UDEBUG("scan channels=%d, occupancyFromCloud_=%d normalsSegmentation_=%d grid3D_=%d",
-			node.sensorData().laserScanRaw().empty()?0:node.sensorData().laserScanRaw().channels(), occupancyFromCloud_?1:0, normalsSegmentation_?1:0, grid3D_?1:0);
+	UDEBUG("scan format=%d, occupancyFromDepth_=%d normalsSegmentation_=%d grid3D_=%d",
+			node.sensorData().laserScanRaw().isEmpty()?0:node.sensorData().laserScanRaw().format(), occupancyFromDepth_?1:0, normalsSegmentation_?1:0, grid3D_?1:0);
 
-	if((node.sensorData().laserScanRaw().channels() == 2 || node.sensorData().laserScanRaw().channels() == 5) && !occupancyFromCloud_)
+	if((node.sensorData().laserScanRaw().is2d()) && !occupancyFromDepth_)
 	{
 		UDEBUG("2D laser scan");
 		//2D
 		viewPoint = cv::Point3f(
-				node.sensorData().laserScanInfo().localTransform().x(),
-				node.sensorData().laserScanInfo().localTransform().y(),
-				node.sensorData().laserScanInfo().localTransform().z());
+				node.sensorData().laserScanRaw().localTransform().x(),
+				node.sensorData().laserScanRaw().localTransform().y(),
+				node.sensorData().laserScanRaw().localTransform().z());
 
-		cv::Mat scan = node.sensorData().laserScanRaw();
+		LaserScan scan = node.sensorData().laserScanRaw();
 		if(cloudMinDepth_ > 0.0f || cloudMaxDepth_ > 0.0f)
 		{
 			scan = util3d::rangeFiltering(scan, cloudMinDepth_, cloudMaxDepth_);
 		}
 
 		util3d::occupancy2DFromLaserScan(
-				util3d::transformLaserScan(scan, node.sensorData().laserScanInfo().localTransform()),
+				util3d::transformLaserScan(scan, node.sensorData().laserScanRaw().localTransform()).data(),
 				cv::Mat(),
 				viewPoint,
 				emptyCells,
 				obstacleCells,
 				cellSize_,
 				scan2dUnknownSpaceFilled_,
-				node.sensorData().laserScanInfo().maxRange()>scan2dMaxUnknownSpaceFilledRange_?scan2dMaxUnknownSpaceFilledRange_:node.sensorData().laserScanInfo().maxRange());
+				node.sensorData().laserScanRaw().maxRange()>scan2dMaxUnknownSpaceFilledRange_?scan2dMaxUnknownSpaceFilledRange_:node.sensorData().laserScanRaw().maxRange());
 
 		UDEBUG("ground=%d obstacles=%d channels=%d", emptyCells.cols, obstacleCells.cols, obstacleCells.cols?obstacleCells.channels():emptyCells.channels());
 	}
 	else
 	{
 		// 3D
-		if(!occupancyFromCloud_)
+		if(!occupancyFromDepth_)
 		{
-			if(!node.sensorData().laserScanRaw().empty())
+			if(!node.sensorData().laserScanRaw().isEmpty())
 			{
 				UDEBUG("3D laser scan");
-				const Transform & t = node.sensorData().laserScanInfo().localTransform();
-				cv::Mat scan = util3d::downsample(node.sensorData().laserScanRaw(), scanDecimation_);
+				const Transform & t = node.sensorData().laserScanRaw().localTransform();
+				LaserScan scan = util3d::downsample(node.sensorData().laserScanRaw(), scanDecimation_);
 
 				if(cloudMinDepth_ > 0.0f || cloudMaxDepth_ > 0.0f)
 				{
@@ -277,12 +277,14 @@ void OccupancyGrid::createLocalMap(
 				// update viewpoint
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 
-				if(scan.channels() == 6 || scan.channels() == 7)
+				UDEBUG("scan format=%d", scan.format());
+				if(scan.hasNormals())
 				{
 					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::laserScanToPointCloudRGBNormal(scan, t);
+					pcl::io::savePCDFile("test.pcd", *cloud);
 					createLocalMap<pcl::PointXYZRGBNormal>(cloud, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
 				}
-				else if(scan.channels() == 4)
+				else if(scan.hasRGB())
 				{
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(scan, t);
 					createLocalMap<pcl::PointXYZRGB>(cloud, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
@@ -359,7 +361,7 @@ void OccupancyGrid::createLocalMapImpl(
 {
 	if(grid3D_)
 	{
-		UDEBUG("");
+		UDEBUG("ground=%d obstacles=%d", (int)groundCloud->size(), (int)obstaclesCloud->size());
 		if(groundIsObstacle_)
 		{
 			*obstaclesCloud += *groundCloud;
@@ -763,7 +765,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 					if(cloudAssembling_)
 					{
-						*assembledGround_ += *util3d::laserScanToPointCloudRGB(pair.first.first, iter->second, 0, 255, 0);
+						*assembledGround_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(pair.first.first), iter->second, 0, 255, 0);
 						assembledGroundUpdated = true;
 					}
 				}
@@ -805,7 +807,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 					if(cloudAssembling_)
 					{
-						*assembledEmptyCells_ += *util3d::laserScanToPointCloudRGB(pair.second, iter->second, 0, 255, 0);
+						*assembledEmptyCells_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(pair.second), iter->second, 0, 255, 0);
 						assembledEmptyCellsUpdated = true;
 					}
 				}
@@ -847,7 +849,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 
 					if(cloudAssembling_)
 					{
-						*assembledObstacles_ += *util3d::laserScanToPointCloudRGB(pair.first.second, iter->second, 255, 0, 0);
+						*assembledObstacles_ += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(pair.first.second), iter->second, 255, 0, 0);
 						assembledObstaclesUpdated = true;
 					}
 				}

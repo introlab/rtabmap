@@ -30,11 +30,11 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/RtabmapExp.h>
 #include <rtabmap/core/Transform.h>
-
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/pcl_base.h>
 #include <pcl/ModelCoefficients.h>
+#include <rtabmap/core/LaserScan.h>
 
 namespace rtabmap
 {
@@ -42,13 +42,29 @@ namespace rtabmap
 namespace util3d
 {
 
-cv::Mat RTABMAP_EXP rangeFiltering(
-		const cv::Mat & scan,
+/**
+ * Do some filtering approaches and try to
+ * avoid converting between pcl and opencv and to avoid not needed
+ * operations like computing normals while the scan has already
+ * normals and voxel filtering is not used.
+ */
+void RTABMAP_EXP commonFiltering(
+		LaserScan & scan,
+		int downsamplingStep,
+		float rangeMin = 0.0f,
+		float rangeMax = 0.0f,
+		float voxelSize = 0.0f,
+		int normalK = 0,
+		float normalRadius = 0.0f,
+		bool forceGroundNormalsUp = false);
+
+LaserScan RTABMAP_EXP rangeFiltering(
+		const LaserScan & scan,
 		float rangeMin,
 		float rangeMax);
 
-cv::Mat RTABMAP_EXP downsample(
-		const cv::Mat & cloud,
+LaserScan RTABMAP_EXP downsample(
+		const LaserScan & cloud,
 		int step);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP downsample(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
@@ -79,6 +95,10 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		float voxelSize);
+pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP voxelize(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		float voxelSize);
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		float voxelSize);
@@ -90,6 +110,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP voxelize(
 		float voxelSize);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP voxelize(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		float voxelSize);
+pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP voxelize(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		float voxelSize);
 
 inline pcl::PointCloud<pcl::PointXYZ>::Ptr uniformSampling(

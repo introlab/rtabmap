@@ -46,6 +46,7 @@ SET(SRC_FILES
 	Graph.cpp
 	Compression.cpp
 	Link.cpp
+	LaserScan.cpp
 	
 	Optimizer.cpp
 	OptimizerTORO.cpp

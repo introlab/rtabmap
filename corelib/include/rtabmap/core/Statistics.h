@@ -136,9 +136,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Add_new_words, ms);
 	RTABMAP_STATS(TimingMem, Compressing_data, ms);
 	RTABMAP_STATS(TimingMem, Post_decimation, ms);
-	RTABMAP_STATS(TimingMem, Scan_downsampling, ms);
-	RTABMAP_STATS(TimingMem, Scan_voxel_filtering, ms);
-	RTABMAP_STATS(TimingMem, Scan_normals, ms);
+	RTABMAP_STATS(TimingMem, Scan_filtering, ms);
 	RTABMAP_STATS(TimingMem, Occupancy_grid, ms);
 
 	RTABMAP_STATS(Keypoint, Dictionary_size, words);

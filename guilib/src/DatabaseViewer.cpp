@@ -1194,7 +1194,8 @@ void DatabaseViewer::exportDatabase()
 
 					SensorData data;
 					dbDriver_->getNodeData(id, data);
-					cv::Mat depth, rgb, scan, userData;
+					cv::Mat depth, rgb, userData;
+					LaserScan scan;
 					data.uncompressDataConst(
 							!dialog.isRgbExported()?0:&rgb,
 							!dialog.isDepthExported()?0:&depth,
@@ -1216,9 +1217,6 @@ void DatabaseViewer::exportDatabase()
 					{
 						sensorData = rtabmap::SensorData(
 							scan,
-							LaserScanInfo(dialog.isDepth2dExported()?data.laserScanInfo().maxPoints():0,
-										  dialog.isDepth2dExported()?data.laserScanInfo().maxRange():0,
-										  dialog.isDepth2dExported()?data.laserScanInfo().localTransform():Transform::getIdentity()),
 							rgb,
 							depth,
 							data.cameraModels(),
@@ -1230,9 +1228,6 @@ void DatabaseViewer::exportDatabase()
 					{
 						sensorData = rtabmap::SensorData(
 							scan,
-							LaserScanInfo(dialog.isDepth2dExported()?data.laserScanInfo().maxPoints():0,
-										  dialog.isDepth2dExported()?data.laserScanInfo().maxRange():0,
-										  dialog.isDepth2dExported()?data.laserScanInfo().localTransform():Transform::getIdentity()),
 							rgb,
 							depth,
 							data.stereoCameraModel(),
@@ -2065,17 +2060,10 @@ void DatabaseViewer::exportPoses(int format)
 				}
 				else
 				{
-					LaserScanInfo info;
+					LaserScan info;
 					if(dbDriver_->getLaserScanInfo(iter->first, info))
 					{
-						if(!info.localTransform().isNull())
-						{
-							localTransform = info.localTransform();
-						}
-						else
-						{
-							UWARN("Invalid scan info for node %d", iter->first);
-						}
+						localTransform = info.localTransform();
 					}
 					else
 					{
@@ -2380,8 +2368,8 @@ void DatabaseViewer::regenerateLocalMaps()
 
 			if(ui_->checkBox_grid_regenerateFromSavedGrid->isChecked() && s.sensorData().gridCellSize() > 0.0f)
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(s.sensorData().gridObstacleCellsRaw());
-				*cloud+=*util3d::laserScanToPointCloudRGB(s.sensorData().gridGroundCellsRaw());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(s.sensorData().gridObstacleCellsRaw()));
+				*cloud+=*util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(s.sensorData().gridGroundCellsRaw()));
 
 				if(cloud->size())
 				{
@@ -2502,8 +2490,8 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 
 			if(ui_->checkBox_grid_regenerateFromSavedGrid->isChecked() && s.sensorData().gridCellSize() > 0.0f)
 			{
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(s.sensorData().gridObstacleCellsRaw());
-				*cloud+=*util3d::laserScanToPointCloudRGB(s.sensorData().gridGroundCellsRaw());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(s.sensorData().gridObstacleCellsRaw()));
+				*cloud+=*util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(s.sensorData().gridGroundCellsRaw()));
 
 				if(cloud->size())
 				{
@@ -2600,7 +2588,7 @@ void DatabaseViewer::view3DMap()
 				mapIds_,
 				QMap<int, Signature>(),
 				std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >(),
-				std::map<int, cv::Mat>(),
+				std::map<int, LaserScan>(),
 				pathDatabase_,
 				ui_->parameters_toolbox->getParameters());
 	}
@@ -2643,7 +2631,7 @@ void DatabaseViewer::generate3DMap()
 				mapIds_,
 				QMap<int, Signature>(),
 				std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >(),
-				std::map<int, cv::Mat>(),
+				std::map<int, LaserScan>(),
 				pathDatabase_,
 				ui_->parameters_toolbox->getParameters());
 	}
@@ -3196,29 +3184,29 @@ void DatabaseViewer::update(int value,
 					}
 
 					//add scan
-					if(ui_->checkBox_showScan->isChecked() && data.laserScanRaw().cols)
+					if(ui_->checkBox_showScan->isChecked() && data.laserScanRaw().size())
 					{
-						if(data.laserScanRaw().channels() == 7)
+						if(data.laserScanRaw().hasRGB() && data.laserScanRaw().hasNormals())
 						{
-							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr scan = util3d::laserScanToPointCloudRGBNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr scan = util3d::laserScanToPointCloudRGBNormal(data.laserScanRaw(), data.laserScanRaw().localTransform());
 							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 							{
 								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
 							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
-						else if(data.laserScanRaw().channels() == 6)
+						else if(data.laserScanRaw().hasNormals())
 						{
-							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanRaw().localTransform());
 							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 							{
 								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
 							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
-						else if(data.laserScanRaw().channels() == 4)
+						else if(data.laserScanRaw().hasRGB())
 						{
-							pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan = util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan = util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform());
 							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 							{
 								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
@@ -3227,7 +3215,7 @@ void DatabaseViewer::update(int value,
 						}
 						else
 						{
-							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanInfo().localTransform());
+							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanRaw().localTransform());
 							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 							{
 								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
@@ -3340,11 +3328,11 @@ void DatabaseViewer::update(int value,
 								{
 									// occupancy cloud
 									cloudViewer_->addCloud("ground",
-											util3d::laserScanToPointCloud(localMaps.begin()->second.first.first),
+											util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(localMaps.begin()->second.first.first)),
 											pose,
 											QColor(ui_->lineEdit_groundColor->text()));
 									cloudViewer_->addCloud("obstacles",
-											util3d::laserScanToPointCloud(localMaps.begin()->second.first.second),
+											util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(localMaps.begin()->second.first.second)),
 											pose,
 											QColor(ui_->lineEdit_obstacleColor->text()));
 									cloudViewer_->setCloudPointSize("ground", 5);
@@ -3353,7 +3341,7 @@ void DatabaseViewer::update(int value,
 									if(ui_->checkBox_grid_empty->isChecked())
 									{
 										cloudViewer_->addCloud("empty_cells",
-												util3d::laserScanToPointCloud(localMaps.begin()->second.second),
+												util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(localMaps.begin()->second.second)),
 												pose,
 												QColor(ui_->lineEdit_emptyColor->text()));
 										cloudViewer_->setCloudPointSize("empty_cells", 5);
@@ -4257,17 +4245,17 @@ void DatabaseViewer::updateConstraintView(
 								//create scan
 								SensorData data;
 								dbDriver_->getNodeData(iter->first, data);
-								cv::Mat scan;
+								LaserScan scan;
 								data.uncompressDataConst(0, 0, &scan, 0);
-								if(!scan.empty())
+								if(!scan.isEmpty())
 								{
-									if(scan.channels() >= 5 && ui_->doubleSpinBox_voxelSize->value() == 0.0)
+									if(scan.hasNormals() && ui_->doubleSpinBox_voxelSize->value() == 0.0)
 									{
-										*assembledNormalScans += *util3d::laserScanToPointCloudNormal(scan, iter->second*data.laserScanInfo().localTransform());
+										*assembledNormalScans += *util3d::laserScanToPointCloudNormal(scan, iter->second*scan.localTransform());
 									}
 									else
 									{
-										*assembledScans += *util3d::laserScanToPointCloud(scan, iter->second*data.laserScanInfo().localTransform());
+										*assembledScans += *util3d::laserScanToPointCloud(scan, iter->second*scan.localTransform());
 									}
 								}
 							}
@@ -4297,12 +4285,12 @@ void DatabaseViewer::updateConstraintView(
 			// Added loop closure scans
 			constraintsViewer_->removeCloud("scan0");
 			constraintsViewer_->removeCloud("scan1");
-			if(!dataFrom.laserScanRaw().empty())
+			if(!dataFrom.laserScanRaw().isEmpty())
 			{
-				if(dataFrom.laserScanRaw().channels() >= 5)
+				if(dataFrom.laserScanRaw().hasNormals())
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
-					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
+					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanRaw().localTransform());
 					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 					{
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
@@ -4312,7 +4300,7 @@ void DatabaseViewer::updateConstraintView(
 				else
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
-					scan = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanInfo().localTransform());
+					scan = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanRaw().localTransform());
 					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 					{
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
@@ -4320,12 +4308,12 @@ void DatabaseViewer::updateConstraintView(
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 				}
 			}
-			if(!dataTo.laserScanRaw().empty())
+			if(!dataTo.laserScanRaw().isEmpty())
 			{
-				if(dataTo.laserScanRaw().channels() >= 5)
+				if(dataTo.laserScanRaw().hasNormals())
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
-					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
+					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanRaw().localTransform());
 					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 					{
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
@@ -4335,7 +4323,7 @@ void DatabaseViewer::updateConstraintView(
 				else
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
-					scan = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), t*dataTo.laserScanInfo().localTransform());
+					scan = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), t*dataTo.laserScanRaw().localTransform());
 					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
 					{
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
@@ -4676,22 +4664,22 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 						{
 							if(iter->second.first.first.channels() == 4)
 							{
-								*groundRGB += *util3d::laserScanToPointCloudRGB(iter->second.first.first, pose);
+								*groundRGB += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(iter->second.first.first), pose);
 							}
 							else
 							{
-								*groundXYZ += *util3d::laserScanToPointCloud(iter->second.first.first, iter->second.first.first.channels()==2?pose2d:pose);
+								*groundXYZ += *util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(iter->second.first.first), iter->second.first.first.channels()==2?pose2d:pose);
 							}
 						}
 						if(!iter->second.first.second.empty())
 						{
 							if(iter->second.first.second.channels() == 4)
 							{
-								*obstaclesRGB += *util3d::laserScanToPointCloudRGB(iter->second.first.second, pose);
+								*obstaclesRGB += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(iter->second.first.second), pose);
 							}
 							else
 							{
-								*obstaclesXYZ += *util3d::laserScanToPointCloud(iter->second.first.second, iter->second.first.second.channels()==2?pose2d:pose);
+								*obstaclesXYZ += *util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(iter->second.first.second), iter->second.first.second.channels()==2?pose2d:pose);
 							}
 						}
 						if(ui_->checkBox_grid_empty->isChecked())
@@ -4700,11 +4688,11 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 							{
 								if(iter->second.second.channels() == 4)
 								{
-									*emptyCellsRGB += *util3d::laserScanToPointCloudRGB(iter->second.second, pose);
+									*emptyCellsRGB += *util3d::laserScanToPointCloudRGB(LaserScan::backwardCompatibility(iter->second.second), pose);
 								}
 								else
 								{
-									*emptyCellsXYZ += *util3d::laserScanToPointCloud(iter->second.second, iter->second.second.channels()==2?pose2d:pose);
+									*emptyCellsXYZ += *util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(iter->second.second), iter->second.second.channels()==2?pose2d:pose);
 								}
 							}
 						}
@@ -5365,46 +5353,35 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		}
 
 		Transform toPoseInv = filteredScanPoses.at(currentLink.to()).inverse();
-		cv::Mat fromScan;
+		LaserScan fromScan;
 		dataFrom.uncompressData(0,0,&fromScan);
-		int maxPoints = fromScan.cols;
+		int maxPoints = fromScan.size();
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
-		bool is2D = true;
 		for(std::map<int, Transform>::const_iterator iter = filteredScanPoses.begin(); iter!=filteredScanPoses.end(); ++iter)
 		{
 			if(iter->first != currentLink.from())
 			{
 				SensorData data;
 				dbDriver_->getNodeData(iter->first, data);
-				cv::Mat scan;
-				if(!data.laserScanCompressed().empty())
+				if(!data.laserScanCompressed().isEmpty())
 				{
-					cv::Mat scan;
+					LaserScan scan;
 					data.uncompressData(0, 0, &scan);
-					if(!scan.empty())
+					if(!scan.isEmpty() && fromScan.format() == scan.format())
 					{
-						if(scan.channels() != 2 && scan.channels() != 5)
+						if(scan.hasNormals())
 						{
-							is2D = false;
-						}
-
-						if(scan.channels() >= 5)
-						{
-							*assembledToNormalClouds += *util3d::laserScanToPointCloudNormal(
-									scan,
-									toPoseInv * iter->second * data.laserScanInfo().localTransform());
+							*assembledToNormalClouds += *util3d::laserScanToPointCloudNormal(scan, toPoseInv * iter->second * scan.localTransform());
 						}
 						else
 						{
-							*assembledToClouds += *util3d::laserScanToPointCloud(
-									scan,
-									toPoseInv * iter->second * data.laserScanInfo().localTransform());
+							*assembledToClouds += *util3d::laserScanToPointCloud(scan, toPoseInv * iter->second * scan.localTransform());
 						}
 
-						if(scan.cols > maxPoints)
+						if(scan.size() > maxPoints)
 						{
-							maxPoints = scan.cols;
+							maxPoints = scan.size();
 						}
 					}
 				}
@@ -5418,19 +5395,20 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 		cv::Mat assembledScan;
 		if(assembledToNormalClouds->size())
 		{
-			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
+			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
 		}
 		else if(assembledToClouds->size())
 		{
-			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToClouds):util3d::laserScanFromPointCloud(*assembledToClouds);
+			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToClouds):util3d::laserScanFromPointCloud(*assembledToClouds);
 		}
 		SensorData assembledData;
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
-		assembledData.setLaserScanRaw(assembledScan,
-				LaserScanInfo(
-					dataFrom.laserScanInfo().maxPoints()?dataFrom.laserScanInfo().maxPoints():maxPoints,
-							dataFrom.laserScanInfo().maxRange(),
-					is2D?Transform(0,0,dataFrom.laserScanInfo().localTransform().z(),0,0,0):Transform::getIdentity()));
+		assembledData.setLaserScanRaw(LaserScan(
+				assembledScan,
+				fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
+				fromScan.maxRange(),
+				fromScan.format(),
+				fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		RegistrationIcp registrationIcp(parameters);
 		transform = registrationIcp.computeTransformation(dataFrom, assembledData, currentLink.transform(), &info);
@@ -5463,10 +5441,10 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 						0,
 						ui_->parameters_toolbox->getParameters());
 				int maxLaserScans = cloudFrom->size();
-				dataFrom.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), LaserScanInfo(maxLaserScans, 0));
-				dataTo.setLaserScanRaw(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), LaserScanInfo(maxLaserScans, 0));
+				dataFrom.setLaserScanRaw(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudFrom), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
+				dataTo.setLaserScanRaw(LaserScan(util3d::laserScanFromPointCloud(*util3d::removeNaNFromPointCloud(cloudTo), Transform()), maxLaserScans, 0, LaserScan::kXYZ));
 
-				if(!dataFrom.laserScanCompressed().empty() || !dataTo.laserScanCompressed().empty())
+				if(!dataFrom.laserScanCompressed().isEmpty() || !dataTo.laserScanCompressed().isEmpty())
 				{
 					UWARN("There are laser scans in data, but generate laser scan from "
 						  "depth image option is activated. Ignoring saved laser scans...");
@@ -5474,7 +5452,7 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 			}
 			else
 			{
-				cv::Mat tmpA, tmpB;
+				LaserScan tmpA, tmpB;
 				dataFrom.uncompressData(0, 0, &tmpA);
 				dataTo.uncompressData(0, 0, &tmpB);
 			}

@@ -71,7 +71,7 @@ public:
 			const std::map<int, int> & mapIds,
 			const QMap<int, Signature> & cachedSignatures,
 			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-			const std::map<int, cv::Mat> & cachedScans,
+			const std::map<int, LaserScan> & cachedScans,
 			const QString & workingDirectory,
 			const ParametersMap & parameters);
 
@@ -81,7 +81,7 @@ public:
 			const std::map<int, int> & mapIds,
 			const QMap<int, Signature> & cachedSignatures,
 			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-			const std::map<int, cv::Mat> & cachedScans,
+			const std::map<int, LaserScan> & cachedScans,
 			const QString & workingDirectory,
 			const ParametersMap & parameters);
 
@@ -104,7 +104,7 @@ private:
 			const std::map<int, Transform> & poses,
 			const QMap<int, Signature> & cachedSignatures,
 			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-			const std::map<int, cv::Mat> & cachedScans,
+			const std::map<int, LaserScan> & cachedScans,
 			const ParametersMap & parameters,
 			bool & has2dScans) const;
 	bool getExportedClouds(
@@ -113,7 +113,7 @@ private:
 				const std::map<int, int> & mapIds,
 				const QMap<int, Signature> & cachedSignatures,
 				const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-				const std::map<int, cv::Mat> & cachedScans,
+				const std::map<int, LaserScan> & cachedScans,
 				const QString & workingDirectory,
 				const ParametersMap & parameters,
 				std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,

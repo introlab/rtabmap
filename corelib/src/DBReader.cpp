@@ -443,7 +443,7 @@ SensorData DBReader::getNextData(CameraInfo * info)
 			data.setGroundTruth(groundTruth);
 			data.setGPS(gps);
 			UDEBUG("Laser=%d RGB/Left=%d Depth/Right=%d, UserData=%d",
-					data.laserScanRaw().empty()?0:1,
+					data.laserScanRaw().isEmpty()?0:1,
 					data.imageRaw().empty()?0:1,
 					data.depthOrRightRaw().empty()?0:1,
 					data.userDataRaw().empty()?0:1);

@@ -33,10 +33,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/StereoCameraModel.h>
 #include <rtabmap/core/Transform.h>
-#include <rtabmap/core/LaserScanInfo.h>
 #include <rtabmap/core/GeodeticCoords.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
+#include <rtabmap/core/LaserScan.h>
 
 namespace rtabmap
 {
@@ -76,8 +76,7 @@ public:
 
 	// RGB-D constructor + laser scan
 	SensorData(
-			const cv::Mat & laserScan,
-			const LaserScanInfo & laserScanInfo,
+			const LaserScan & laserScan,
 			const cv::Mat & rgb,
 			const cv::Mat & depth,
 			const CameraModel & cameraModel,
@@ -96,8 +95,7 @@ public:
 
 	// Multi-cameras RGB-D constructor + laser scan
 	SensorData(
-			const cv::Mat & laserScan,
-			const LaserScanInfo & laserScanInfo,
+			const LaserScan & laserScan,
 			const cv::Mat & rgb,
 			const cv::Mat & depth,
 			const std::vector<CameraModel> & cameraModels,
@@ -116,8 +114,7 @@ public:
 
 	// Stereo constructor + laser scan
 	SensorData(
-			const cv::Mat & laserScan,
-			const LaserScanInfo & laserScanInfo,
+			const LaserScan & laserScan,
 			const cv::Mat & left,
 			const cv::Mat & right,
 			const StereoCameraModel & cameraModel,
@@ -134,8 +131,8 @@ public:
 			_imageCompressed.empty() &&
 			_depthOrRightRaw.empty() &&
 			_depthOrRightCompressed.empty() &&
-			_laserScanRaw.empty() &&
-			_laserScanCompressed.empty() &&
+			_laserScanRaw.isEmpty() &&
+			_laserScanCompressed.isEmpty() &&
 			_cameraModels.size() == 0 &&
 			!_stereoCameraModel.isValidForProjection() &&
 			_userDataRaw.empty() &&
@@ -148,18 +145,17 @@ public:
 	void setId(int id) {_id = id;}
 	double stamp() const {return _stamp;}
 	void setStamp(double stamp) {_stamp = stamp;}
-	const LaserScanInfo & laserScanInfo() const {return _laserScanInfo;}
 
 	const cv::Mat & imageCompressed() const {return _imageCompressed;}
 	const cv::Mat & depthOrRightCompressed() const {return _depthOrRightCompressed;}
-	const cv::Mat & laserScanCompressed() const {return _laserScanCompressed;}
+	const LaserScan & laserScanCompressed() const {return _laserScanCompressed;}
 
 	const cv::Mat & imageRaw() const {return _imageRaw;}
 	const cv::Mat & depthOrRightRaw() const {return _depthOrRightRaw;}
-	const cv::Mat & laserScanRaw() const {return _laserScanRaw;}
+	const LaserScan & laserScanRaw() const {return _laserScanRaw;}
 	void setImageRaw(const cv::Mat & imageRaw) {_imageRaw = imageRaw;}
 	void setDepthOrRightRaw(const cv::Mat & depthOrImageRaw) {_depthOrRightRaw =depthOrImageRaw;}
-	void setLaserScanRaw(const cv::Mat & laserScanRaw, const LaserScanInfo & info) {_laserScanRaw =laserScanRaw;_laserScanInfo = info;}
+	void setLaserScanRaw(const LaserScan & laserScanRaw) {_laserScanRaw =laserScanRaw;}
 	void setCameraModel(const CameraModel & model) {_cameraModels.clear(); _cameraModels.push_back(model);}
 	void setCameraModels(const std::vector<CameraModel> & models) {_cameraModels = models;}
 	void setStereoCameraModel(const StereoCameraModel & stereoCameraModel) {_stereoCameraModel = stereoCameraModel;}
@@ -172,7 +168,7 @@ public:
 	void uncompressData(
 			cv::Mat * imageRaw,
 			cv::Mat * depthOrRightRaw,
-			cv::Mat * laserScanRaw = 0,
+			LaserScan * laserScanRaw = 0,
 			cv::Mat * userDataRaw = 0,
 			cv::Mat * groundCellsRaw = 0,
 			cv::Mat * obstacleCellsRaw = 0,
@@ -180,7 +176,7 @@ public:
 	void uncompressDataConst(
 			cv::Mat * imageRaw,
 			cv::Mat * depthOrRightRaw,
-			cv::Mat * laserScanRaw = 0,
+			LaserScan * laserScanRaw = 0,
 			cv::Mat * userDataRaw = 0,
 			cv::Mat * groundCellsRaw = 0,
 			cv::Mat * obstacleCellsRaw = 0,
@@ -238,7 +234,7 @@ public:
 	const GPS & gps() const {return gps_;}
 
 	long getMemoryUsed() const; // Return memory usage in Bytes
-	void clearCompressedData() {_imageCompressed=cv::Mat(); _depthOrRightCompressed=cv::Mat(); _laserScanCompressed=cv::Mat(); _userDataCompressed=cv::Mat();}
+	void clearCompressedData() {_imageCompressed=cv::Mat(); _depthOrRightCompressed=cv::Mat(); _laserScanCompressed.clear(); _userDataCompressed=cv::Mat();}
 
 	bool isPointVisibleFromCameras(const cv::Point3f & pt) const; // assuming point is in robot frame
 
@@ -248,16 +244,14 @@ private:
 
 	cv::Mat _imageCompressed;          // compressed image
 	cv::Mat _depthOrRightCompressed;   // compressed image
-	cv::Mat _laserScanCompressed;      // compressed data
+	LaserScan _laserScanCompressed;      // compressed data
 
 	cv::Mat _imageRaw;          // CV_8UC1 or CV_8UC3
 	cv::Mat _depthOrRightRaw;   // depth CV_16UC1 or CV_32FC1, right image CV_8UC1
-	cv::Mat _laserScanRaw;      // CV_32FC2 or CV_32FC3
+	LaserScan _laserScanRaw;
 
 	std::vector<CameraModel> _cameraModels;
 	StereoCameraModel _stereoCameraModel;
-
-	LaserScanInfo _laserScanInfo;
 
 	// user data
 	cv::Mat _userDataCompressed;      // compressed data

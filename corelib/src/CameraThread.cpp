@@ -325,7 +325,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		!data.depthRaw().empty())
 	{
 		UDEBUG("");
-		if(data.laserScanRaw().empty())
+		if(data.laserScanRaw().size())
 		{
 			UASSERT(_scanDecimation >= 1);
 			UTimer timer;
@@ -339,6 +339,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 			float maxPoints = (data.depthRaw().rows/_scanDecimation)*(data.depthRaw().cols/_scanDecimation);
 			cv::Mat scan;
 			const Transform & baseToScan = data.cameraModels()[0].localTransform();
+			LaserScan::Format format = LaserScan::kXYZRGB;
 			if(validIndices->size())
 			{
 				if(_scanVoxelSize>0.0f)
@@ -363,6 +364,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 						pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 						pcl::concatenateFields(*cloud, *normals, *cloudNormals);
 						scan = util3d::laserScanFromPointCloud(*cloudNormals, baseToScan.inverse());
+						format = LaserScan::kXYZRGBNormal;
 					}
 					else
 					{
@@ -370,7 +372,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 					}
 				}
 			}
-			data.setLaserScanRaw(scan, LaserScanInfo((int)maxPoints, _scanMaxDepth, baseToScan));
+			data.setLaserScanRaw(LaserScan(scan, (int)maxPoints, _scanMaxDepth, format, baseToScan));
 			if(info) info->timeScanFromDepth = timer.ticks();
 		}
 		else

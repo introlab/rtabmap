@@ -302,10 +302,10 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 	if(scanShown_->isChecked())
 	{
 		// scan local map
-		if(!odom.info().localScanMap.empty())
+		if(!odom.info().localScanMap.isEmpty())
 		{
 			pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-			cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
+			cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap, odom.info().localScanMap.localTransform());
 			if(!cloudView_->addCloud("scanMapOdom", cloud, Transform::getIdentity(), Qt::blue))
 			{
 				UERROR("Adding scanMapOdom to viewer failed!");
@@ -317,12 +317,12 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 			}
 		}
 		// scan cloud
-		if(!odom.data().laserScanRaw().empty())
+		if(!odom.data().laserScanRaw().isEmpty())
 		{
-			cv::Mat scan = odom.data().laserScanRaw();
+			LaserScan scan = odom.data().laserScanRaw();
 
 			pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-			cloud = util3d::laserScanToPointCloudNormal(scan, odom.pose());
+			cloud = util3d::laserScanToPointCloudNormal(scan, odom.pose() * scan.localTransform());
 
 			if(!cloudView_->addCloud("scanOdom", cloud, Transform::getIdentity(), Qt::magenta))
 			{

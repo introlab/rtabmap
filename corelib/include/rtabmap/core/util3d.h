@@ -196,6 +196,7 @@ pcl::PointCloud<pcl::PointXYZ> RTABMAP_EXP laserScanFromDepthImages(
 		float maxDepth,
 		float minDepth);
 
+LaserScan RTABMAP_EXP laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud);
 // return CV_32FC3  (x,y,z)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
 // return CV_32FC6 (x,y,z,normal_x,normal_y,normal_z)
@@ -204,34 +205,55 @@ cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ>
 // return CV_32FC4 (x,y,z,rgb)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const Transform & transform = Transform());
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform());
+// return CV_32FC4 (x,y,z,I)
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform = Transform());
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::IndicesPtr & indices, const Transform & transform = Transform());
 // return CV_32FC7 (x,y,z,rgb,normal_x,normal_y,normal_z)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
-// return CV_32FC7 (x,y,z,rgb,normal_x,normal_y,normal_z)
 cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const Transform & transform = Transform());
+// return CV_32FC7 (x,y,z,I,normal_x,normal_y,normal_z)
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
+cv::Mat RTABMAP_EXP laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform = Transform());
 // return CV_32FC2  (x,y)
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform = Transform());
+// return CV_32FC3  (x,y,I)
+cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform = Transform());
 // return CV_32FC5  (x,y,normal_x, normal_y, normal_z)
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform = Transform());
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
-// For laserScan of type CV_32FC2, z is set to null.
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const cv::Mat & laserScan, const Transform & transform = Transform());
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
-pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP laserScanToPointCloudNormal(const cv::Mat & laserScan, const Transform & transform = Transform());
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to default r,g,b parameters.
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP laserScanToPointCloudRGB(const cv::Mat & laserScan, const Transform & transform = Transform(), unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to default r,g,b parameters.
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP laserScanToPointCloudRGBNormal(const cv::Mat & laserScan, const Transform & transform = Transform(), unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
+// return CV_32FC6  (x,y,I,normal_x, normal_y, normal_z)
+cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform = Transform());
+cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform());
 
-// For laserScan of type CV_32FC2, z is set to null.
-pcl::PointXYZ RTABMAP_EXP laserScanToPoint(const cv::Mat & laserScan, int index);
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
-pcl::PointNormal RTABMAP_EXP laserScanToPointNormal(const cv::Mat & laserScan, int index);
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to default r,g,b parameters.
-pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const cv::Mat & laserScan, int index, unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC6, rgb is set to default r,g,b parameters.
-// For laserScan of type CV_32FC2, CV_32FC3 and CV_32FC4, normals are set to null.
-pcl::PointXYZRGBNormal RTABMAP_EXP laserScanToPointRGBNormal(const cv::Mat & laserScan, int index, unsigned char r, unsigned char g, unsigned char b);
+// For 2d laserScan, z is set to null.
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const LaserScan & laserScan, const Transform & transform = Transform());
+// For laserScan without normals, normals are set to null.
+pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP laserScanToPointCloudNormal(const LaserScan & laserScan, const Transform & transform = Transform());
+// For laserScan without rgb, rgb is set to default r,g,b parameters.
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP laserScanToPointCloudRGB(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
+// For laserScan without intensity, intensity is set to intensity parameter.
+pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP laserScanToPointCloudI(const LaserScan & laserScan, const Transform & transform = Transform(), float intensity = 0.0f);
+// For laserScan without rgb, rgb is set to default r,g,b parameters.
+// For laserScan without normals, normals are set to null.
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP laserScanToPointCloudRGBNormal(const LaserScan & laserScan, const Transform & transform = Transform(), unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
+// For laserScan without intensity, intensity is set to default intensity parameter.
+// For laserScan without normals, normals are set to null.
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP laserScanToPointCloudINormal(const LaserScan & laserScan, const Transform & transform = Transform(), float intensity = 0.0f);
+
+// For 2d laserScan, z is set to null.
+pcl::PointXYZ RTABMAP_EXP laserScanToPoint(const LaserScan & laserScan, int index);
+// For laserScan without normals, normals are set to null.
+pcl::PointNormal RTABMAP_EXP laserScanToPointNormal(const LaserScan & laserScan, int index);
+// For laserScan without rgb, rgb is set to default r,g,b parameters.
+pcl::PointXYZRGB RTABMAP_EXP laserScanToPointRGB(const LaserScan & laserScan, int index, unsigned char r = 255, unsigned char g = 255, unsigned char b = 255);
+// For laserScan without intensity, intensity is set to intensity parameter.
+pcl::PointXYZI RTABMAP_EXP laserScanToPointI(const LaserScan & laserScan, int index, float intensity);
+// For laserScan without rgb, rgb is set to default r,g,b parameters.
+// For laserScan without normals, normals are set to null.
+pcl::PointXYZRGBNormal RTABMAP_EXP laserScanToPointRGBNormal(const LaserScan & laserScan, int index, unsigned char r, unsigned char g, unsigned char b);
+// For laserScan without intensity, intensity is set to default intensity parameter.
+// For laserScan without normals, normals are set to null.
+pcl::PointXYZINormal RTABMAP_EXP laserScanToPointINormal(const LaserScan & laserScan, int index, float intensity);
 
 void RTABMAP_EXP getMinMax3D(const cv::Mat & laserScan, cv::Point3f & min, cv::Point3f & max);
 void RTABMAP_EXP getMinMax3D(const cv::Mat & laserScan, pcl::PointXYZ & min, pcl::PointXYZ & max);
@@ -316,22 +338,22 @@ void RTABMAP_EXP savePCDWords(
 		const std::multimap<int, cv::Point3f> & words,
 		const Transform & transform = Transform::getIdentity());
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadBINCloud(const std::string & fileName, int dim);
+/**
+ * Assume KITTI velodyne format
+ * Return scan 4 channels (format=XYZI).
+ */
+cv::Mat RTABMAP_EXP loadBINScan(const std::string & fileName);
+pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadBINCloud(const std::string & fileName);
+RTABMAP_DEPRECATED(pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadBINCloud(const std::string & fileName, int dim), "Use interface without dim argument.");
 
-// Load *.pcd, *.ply or *.bin (KITTI format) with optional filtering.
-// If normals are computed (normalsK>0), the returned scan type is CV_32FC6 instead of CV_32FC3
-cv::Mat RTABMAP_EXP loadScan(
+// Load *.pcd, *.ply or *.bin (KITTI format).
+LaserScan RTABMAP_EXP loadScan(const std::string & path);
+
+RTABMAP_DEPRECATED(pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadCloud(
 		const std::string & path,
 		const Transform & transform = Transform::getIdentity(),
 		int downsampleStep = 1,
-		float voxelSize = 0.0f,
-		int normalsK = 0);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP loadCloud(
-		const std::string & path,
-		const Transform & transform = Transform::getIdentity(),
-		int downsampleStep = 1,
-		float voxelSize = 0.0f);
+		float voxelSize = 0.0f), "Use loadScan() instead.");
 
 } // namespace util3d
 } // namespace rtabmap

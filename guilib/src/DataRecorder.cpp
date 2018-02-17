@@ -141,7 +141,7 @@ void DataRecorder::addData(const rtabmap::SensorData & data, const Transform & p
 		const Signature * s = memory_->getLastWorkingSignature();
 		totalSizeKB_ += (int)s->sensorData().imageCompressed().total()/1000;
 		totalSizeKB_ += (int)s->sensorData().depthOrRightCompressed().total()/1000;
-		totalSizeKB_ += (int)s->sensorData().laserScanCompressed().total()/1000;
+		totalSizeKB_ += (int)s->sensorData().laserScanCompressed().data().total()/1000;
 		memory_->cleanup();
 
 		if(++count_ % 30)

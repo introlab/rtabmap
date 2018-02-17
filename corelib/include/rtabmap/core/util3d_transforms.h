@@ -34,6 +34,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/point_types.h>
 #include <pcl/pcl_base.h>
 #include <rtabmap/core/Transform.h>
+#include <rtabmap/core/LaserScan.h>
 
 namespace rtabmap
 {
@@ -41,15 +42,15 @@ namespace rtabmap
 namespace util3d
 {
 
-cv::Mat RTABMAP_EXP transformLaserScan(
-		const cv::Mat & laserScan,
+LaserScan RTABMAP_EXP transformLaserScan(
+		const LaserScan & laserScan,
 		const Transform & transform);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const Transform & transform);
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const Transform & transform);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud,
@@ -60,13 +61,16 @@ pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP transformPointCloud(
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
 		const Transform & transform);
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Transform & transform);
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
-pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP transformPointCloud(
-		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+pcl::PointCloud<pcl::PointXYZI>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr RTABMAP_EXP transformPointCloud(
@@ -79,6 +83,10 @@ pcl::PointCloud<pcl::PointNormal>::Ptr RTABMAP_EXP transformPointCloud(
 		const Transform & transform);
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform);
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr RTABMAP_EXP transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		const Transform & transform);
 
@@ -88,6 +96,9 @@ cv::Point3f RTABMAP_EXP transformPoint(
 pcl::PointXYZ RTABMAP_EXP transformPoint(
 		const pcl::PointXYZ & pt,
 		const Transform & transform);
+pcl::PointXYZI RTABMAP_EXP transformPoint(
+		const pcl::PointXYZI & pt,
+		const Transform & transform);
 pcl::PointXYZRGB RTABMAP_EXP transformPoint(
 		const pcl::PointXYZRGB & pt,
 		const Transform & transform);
@@ -96,6 +107,9 @@ pcl::PointNormal RTABMAP_EXP transformPoint(
 		const Transform & transform);
 pcl::PointXYZRGBNormal RTABMAP_EXP transformPoint(
 		const pcl::PointXYZRGBNormal & point,
+		const Transform & transform);
+pcl::PointXYZINormal RTABMAP_EXP transformPoint(
+		const pcl::PointXYZINormal & point,
 		const Transform & transform);
 
 } // namespace util3d

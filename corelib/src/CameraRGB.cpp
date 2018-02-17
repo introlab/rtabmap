@@ -529,12 +529,11 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 	_captureDelay = 0.0;
 
 	cv::Mat img;
-	cv::Mat scan;
+	LaserScan scan(cv::Mat(), _scanMaxPts, 0, LaserScan::kUnknown, _scanLocalTransform);
 	double stamp = UTimer::now();
 	Transform odometryPose;
 	Transform groundTruthPose;
 	cv::Mat depthFromScan;
-	int scanMaxPts = _scanMaxPts;
 	UDEBUG("");
 	if(_dir->isValid())
 	{
@@ -729,8 +728,9 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		if(!scanFilePath.empty())
 		{
 			// load without filtering
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::loadCloud(scanFilePath, _scanLocalTransform);
-			UDEBUG("Loaded scan=%d points", (int)cloud->size());
+			scan = util3d::loadScan(scanFilePath);
+			scan = LaserScan(scan.data(), _scanMaxPts, 0.0f, scan.format(), _scanLocalTransform);
+			UDEBUG("Loaded scan=%d points", (int)scan.size());
 			if(_depthFromScan && !img.empty())
 			{
 				UDEBUG("Computing depth from scan...");
@@ -744,6 +744,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				}
 				else
 				{
+					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, scan.localTransform());
 					depthFromScan = util3d::projectCloudToCamera(img.size(), _model.K(), cloud, _model.localTransform());
 					if(_depthFromScanFillHoles!=0)
 					{
@@ -752,39 +753,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 				}
 			}
 			// filter the scan after registration
-			int previousSize = (int)cloud->size();
-			if(_scanDownsampleStep > 1 && cloud->size())
-			{
-				cloud = util3d::downsample(cloud, _scanDownsampleStep);
-				int scanMaxPtsTmp = scanMaxPts;
-				scanMaxPts/=_scanDownsampleStep;
-				UDEBUG("Downsampling scan (step=%d): %d -> %d (scanMaxPts=%d->%d)", _scanDownsampleStep, previousSize, (int)cloud->size(), scanMaxPtsTmp, scanMaxPts);
-			}
-			previousSize = (int)cloud->size();
-			if(_scanVoxelSize > 0.0f && cloud->size())
-			{
-				cloud = util3d::voxelize(cloud, _scanVoxelSize);
-				float ratio = float(cloud->size()) / previousSize;
-				int scanMaxPtsTmp = scanMaxPts;
-				scanMaxPts = int(float(scanMaxPts) * ratio);
-				UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", _scanVoxelSize, previousSize, (int)cloud->size(), scanMaxPtsTmp, scanMaxPts);
-			}
-			if((_scanNormalsK > 0 || _scanNormalsRadius) && cloud->size())
-			{
-				pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, _scanNormalsK, _scanNormalsRadius);
-				pcl::PointCloud<pcl::PointNormal>::Ptr cloudNormals(new pcl::PointCloud<pcl::PointNormal>);
-				pcl::concatenateFields(*cloud, *normals, *cloudNormals);
-				if(_scanForceGroundNormalsUp)
-				{
-					util3d::adjustNormalsToViewPoint(cloudNormals, Eigen::Vector3f(0,0,0), _scanForceGroundNormalsUp);
-				}
-				scan = util3d::laserScanFromPointCloud(*cloudNormals, _scanLocalTransform.inverse());
-				UDEBUG("Normals computed (k=%d radius=%f)", _scanNormalsK, _scanNormalsRadius);
-			}
-			else
-			{
-				scan = util3d::laserScanFromPointCloud(*cloud, _scanLocalTransform.inverse());
-			}
+			util3d::commonFiltering(scan, _scanDownsampleStep, 0, 0, _scanVoxelSize, _scanNormalsK, _scanNormalsRadius, _scanForceGroundNormalsUp);
 		}
 	}
 	else
@@ -797,7 +766,7 @@ SensorData CameraImages::captureImage(CameraInfo * info)
 		_model.setImageSize(img.size());
 	}
 
-	SensorData data(scan, LaserScanInfo(scan.empty()?0:scanMaxPts, 0, _scanLocalTransform), _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
+	SensorData data(scan, _isDepth?cv::Mat():img, _isDepth?img:depthFromScan, _model, this->getNextSeqID(), stamp);
 	data.setGroundTruth(groundTruthPose);
 
 	if(info && !odometryPose.isNull())

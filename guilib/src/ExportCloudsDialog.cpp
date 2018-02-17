@@ -734,7 +734,7 @@ void ExportCloudsDialog::exportClouds(
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-		const std::map<int, cv::Mat> & cachedScans,
+		const std::map<int, LaserScan> & cachedScans,
 		const QString & workingDirectory,
 		const ParametersMap & parameters)
 {
@@ -796,7 +796,7 @@ void ExportCloudsDialog::viewClouds(
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-		const std::map<int, cv::Mat> & cachedScans,
+		const std::map<int, LaserScan> & cachedScans,
 		const QString & workingDirectory,
 		const ParametersMap & parameters)
 {
@@ -1099,7 +1099,7 @@ bool ExportCloudsDialog::getExportedClouds(
 		const std::map<int, int> & mapIds,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-		const std::map<int, cv::Mat> & cachedScans,
+		const std::map<int, LaserScan> & cachedScans,
 		const QString & workingDirectory,
 		const ParametersMap & parameters,
 		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & cloudsWithNormals,
@@ -1297,20 +1297,27 @@ bool ExportCloudsDialog::getExportedClouds(
 				}
 				else
 				{
-					LaserScanInfo info;
-					if(cachedSignatures.contains(iter->first))
+					if(uContains(cachedScans, iter->first))
+					{
+						iter->second *= cachedScans.at(iter->first).localTransform();
+					}
+					else if(cachedSignatures.contains(iter->first))
 					{
 						const SensorData & data = cachedSignatures.find(iter->first)->sensorData();
-						info = data.laserScanInfo();
+						if(!data.laserScanCompressed().isEmpty())
+						{
+							iter->second *= data.laserScanCompressed().localTransform();
+						}
+						else if(!data.laserScanRaw().isEmpty())
+						{
+							iter->second *= data.laserScanRaw().localTransform();
+						}
 					}
 					else if(_dbDriver)
 					{
-						_dbDriver->getLaserScanInfo(iter->first, info);
-					}
-
-					if(!info.localTransform().isNull())
-					{
-						iter->second *= info.localTransform();
+						LaserScan scan;
+						_dbDriver->getLaserScanInfo(iter->first, scan);
+						iter->second *= scan.localTransform();
 					}
 				}
 			}
@@ -2407,7 +2414,7 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 		const std::map<int, Transform> & poses,
 		const QMap<int, Signature> & cachedSignatures,
 		const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-		const std::map<int, cv::Mat> & cachedScans,
+		const std::map<int, LaserScan> & cachedScans,
 		const ParametersMap & parameters,
 		bool & has2dScans) const
 {
@@ -2429,7 +2436,8 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			if(_ui->checkBox_regenerate->isChecked())
 			{
 				SensorData data;
-				cv::Mat image, depth, scan;
+				cv::Mat image, depth;
+				LaserScan scan;
 				if(cachedSignatures.contains(iter->first))
 				{
 					const Signature & s = cachedSignatures.find(iter->first).value();
@@ -2558,19 +2566,17 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 						}
 					}
 				}
-				else if(!_ui->checkBox_fromDepth->isChecked() && !scan.empty())
+				else if(!_ui->checkBox_fromDepth->isChecked() && !scan.isEmpty())
 				{
-					bool is2D = scan.channels() == 2;
+					bool is2D = scan.is2d();
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
 					localTransform = Transform::getIdentity();
 					Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
-					if(!data.laserScanInfo().localTransform().isNull())
-					{
-						localTransform = data.laserScanInfo().localTransform();
-						viewPoint[0] = localTransform.x();
-						viewPoint[1] = localTransform.y();
-						viewPoint[2] = localTransform.z();
-					}
+					localTransform = scan.localTransform();
+					viewPoint[0] = localTransform.x();
+					viewPoint[1] = localTransform.y();
+					viewPoint[2] = localTransform.z();
+
 					cloudWithoutNormals = util3d::laserScanToPointCloudRGB(scan, localTransform); // put in base frame by default
 					if(cloudWithoutNormals->size())
 					{
@@ -2686,30 +2692,15 @@ std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr, pcl::Indic
 			else if(!_ui->checkBox_fromDepth->isChecked() && uContains(cachedScans, iter->first))
 			{
 				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithoutNormals;
-				localTransform = Transform::getIdentity();
+
+				localTransform = cachedScans.at(iter->first).localTransform();
 				Eigen::Vector3f viewPoint(0.0f,0.0f,0.0f);
+				viewPoint[0] = localTransform.x();
+				viewPoint[1] = localTransform.y();
+				viewPoint[2] = localTransform.z();
 
-				LaserScanInfo info;
-				if(cachedSignatures.contains(iter->first))
-				{
-					const Signature & s = cachedSignatures.find(iter->first).value();
-					info = s.sensorData().laserScanInfo();
-				}
-				else if(_dbDriver)
-				{
-					_dbDriver->getLaserScanInfo(iter->first, info);
-				}
-
-				if(!info.localTransform().isNull())
-				{
-					viewPoint[0] = localTransform.x();
-					viewPoint[1] = localTransform.y();
-					viewPoint[2] = localTransform.z();
-					localTransform = info.localTransform().inverse();
-				}
-
-				bool is2D = cachedScans.at(iter->first).channels() == 2;
-				cloudWithoutNormals = util3d::laserScanToPointCloudRGB(cachedScans.at(iter->first)); // already in base frame
+				bool is2D = cachedScans.at(iter->first).is2d();
+				cloudWithoutNormals = util3d::laserScanToPointCloudRGB(cachedScans.at(iter->first), cachedScans.at(iter->first).localTransform());
 				if(cloudWithoutNormals->size())
 				{
 					if(_ui->doubleSpinBox_voxelSize_assembled->value()>0.0)

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>976</width>
-    <height>747</height>
+    <height>739</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -63,25 +63,16 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>678</width>
-            <height>2811</height>
+            <y>-1377</y>
+            <width>673</width>
+            <height>2834</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -95,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>16</number>
+                <number>5</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2592,7 +2583,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <item row="3" column="0">
                        <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
                         <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 1 -1 0 0 0 -1 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 0&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = [0 0 1 0; 0 -1 0 0; 1 0 0 0; 0 0 0 1]*T_BS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 1 -1 0 0 0 -1 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1 0 -1 0 0 0 0 -1 0 1.67&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 1.67&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = [0 0 1 0; 0 -1 0 0; 1 0 0 0; 0 0 0 1]*T_BS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="text">
                          <string>0 0 1 -1 0 0 0 -1 0</string>
@@ -4722,16 +4713,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -4976,7 +4958,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                          <item row="10" column="1">
                           <widget class="QLineEdit" name="lineEdit_cameraImages_laser_transform">
                            <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /scan = -0.27 0 0.08 0 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /scan = -0.27 0 0.08 0 0 0&lt;br/&gt;KITTI: /base_footprint to /scan = -0.27 0 1.75 0 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                            </property>
                            <property name="text">
                             <string>0 0 0 0 0 0</string>
@@ -13579,16 +13561,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13668,16 +13641,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13789,16 +13753,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>

@@ -544,12 +544,18 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			unsigned int maxGroundPts = occupancyIter != cache_.end()?occupancyIter->second.first.first.cols:cloudIter->second.first->size();
 			UDEBUG("%d: compute free cells (from %d ground points)", iter->first, (int)maxGroundPts);
 			Eigen::Affine3f t = iter->second.toEigen3f();
+			LaserScan tmpGround;
+			if(occupancyIter != cache_.end())
+			{
+				tmpGround = LaserScan::backwardCompatibility(occupancyIter->second.first.first);
+				UASSERT(tmpGround.size() == maxGroundPts);
+			}
 			for (unsigned int i=0; i<maxGroundPts; ++i)
 			{
 				pcl::PointXYZRGB pt;
 				if(occupancyIter != cache_.end())
 				{
-					pt = util3d::laserScanToPointRGB(occupancyIter->second.first.first, i);
+					pt = util3d::laserScanToPointRGB(tmpGround, i);
 					pt = pcl::transformPoint(pt, t);
 				}
 				else
@@ -602,12 +608,18 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			// all other points: free on ray, occupied on endpoint:
 			unsigned int maxObstaclePts = occupancyIter != cache_.end()?occupancyIter->second.first.second.cols:cloudIter->second.second->size();
 			UDEBUG("%d: compute occupied cells (from %d obstacle points)", iter->first, (int)maxObstaclePts);
+			LaserScan tmpObstacle;
+			if(occupancyIter != cache_.end())
+			{
+				tmpObstacle = LaserScan::backwardCompatibility(occupancyIter->second.first.second);
+				UASSERT(tmpObstacle.size() == maxObstaclePts);
+			}
 			for (unsigned int i=0; i<maxObstaclePts; ++i)
 			{
 				pcl::PointXYZRGB pt;
 				if(occupancyIter != cache_.end())
 				{
-					pt = util3d::laserScanToPointRGB(occupancyIter->second.first.second, i);
+					pt = util3d::laserScanToPointRGB(tmpObstacle, i);
 					pt = pcl::transformPoint(pt, t);
 				}
 				else
@@ -689,10 +701,12 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			{
 				unsigned int maxEmptyPts = occupancyIter->second.second.cols;
 				UDEBUG("%d: compute free cells (from %d empty points)", iter->first, (int)maxEmptyPts);
+				LaserScan tmpEmpty = LaserScan::backwardCompatibility(occupancyIter->second.second);
+				UASSERT(tmpEmpty.size() == maxEmptyPts);
 				for (unsigned int i=0; i<maxEmptyPts; ++i)
 				{
 					pcl::PointXYZ pt;
-					pt = util3d::laserScanToPoint(occupancyIter->second.second, i);
+					pt = util3d::laserScanToPoint(tmpEmpty, i);
 					pt = pcl::transformPoint(pt, t);
 
 					octomap::point3d point(pt.x, pt.y, pt.z);

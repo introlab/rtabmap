@@ -1109,7 +1109,7 @@ bool Rtabmap::process(
 					//============================================================
 					// Refine neighbor links
 					//============================================================
-					if(!signature->sensorData().laserScanCompressed().empty())
+					if(!signature->sensorData().laserScanCompressed().isEmpty())
 					{
 						UINFO("Odometry refining: guess = %s", guess.prettyPrint().c_str());
 						RegistrationInfo info;
@@ -1156,7 +1156,7 @@ bool Rtabmap::process(
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_rotation(), info.icpRotation);
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_translation(), info.icpTranslation);
 						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_complexity(), info.icpStructuralComplexity);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().cols);
+						statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().size());
 					}
 				}
 				timeNeighborLinkRefining = timer.ticks();
@@ -2014,7 +2014,7 @@ bool Rtabmap::process(
 				//
 				UDEBUG("Proximity detection (local loop closure in SPACE with scan matching)");
 				if( _proximityMaxNeighbors > 0 &&
-					!signature->sensorData().laserScanCompressed().empty() &&
+					!signature->sensorData().laserScanCompressed().isEmpty() &&
 					(_memory->isIncremental() || lastProximitySpaceClosureId == 0))
 				{
 					// In localization mode, no need to check local loop

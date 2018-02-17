@@ -580,8 +580,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		if(jter!=scans.end() && (jter->second.first.cols || jter->second.second.cols))
 		{
 			UASSERT(!iter->second.isNull());
-			cv::Mat hit = util3d::transformLaserScan(jter->second.first, iter->second);
-			cv::Mat noHit = util3d::transformLaserScan(jter->second.second, iter->second);
+			cv::Mat hit = util3d::transformLaserScan(LaserScan::backwardCompatibility(jter->second.first), iter->second).data();
+			cv::Mat noHit = util3d::transformLaserScan(LaserScan::backwardCompatibility(jter->second.second), iter->second).data();
 			pcl::PointXYZ min, max;
 			if(!hit.empty())
 			{

@@ -36,52 +36,50 @@ namespace rtabmap
 namespace util3d
 {
 
-cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transform)
+LaserScan transformLaserScan(const LaserScan & laserScan, const Transform & transform)
 {
-	UASSERT(laserScan.empty() || laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7));
-
-	cv::Mat output = laserScan.clone();
+	cv::Mat output = laserScan.data().clone();
 
 	if(!transform.isNull() && !transform.isIdentity())
 	{
 		Eigen::Affine3f transform3f = transform.toEigen3f();
-		for(int i=0; i<laserScan.cols; ++i)
+		for(int i=0; i<laserScan.size(); ++i)
 		{
-			const float * ptr = laserScan.ptr<float>(0, i);
+			const float * ptr = laserScan.data().ptr<float>(0, i);
 			float * out = output.ptr<float>(0, i);
-			if(laserScan.type() == CV_32FC2)
+			if(laserScan.format() == LaserScan::kXY || laserScan.format() == LaserScan::kXYI)
 			{
 				pcl::PointXYZ pt(ptr[0], ptr[1], 0);
 				pt = pcl::transformPoint(pt, transform3f);
 				out[0] = pt.x;
 				out[1] = pt.y;
 			}
-			else if(laserScan.type() == CV_32FC3 || laserScan.type() == CV_32FC(4))
+			else if(laserScan.format() == LaserScan::kXYZ || laserScan.format() == LaserScan::kXYZI || laserScan.format() == LaserScan::kXYZRGB)
 			{
-				const float * ptr = laserScan.ptr<float>(0, i);
 				pcl::PointXYZ pt(ptr[0], ptr[1], ptr[2]);
 				pt = pcl::transformPoint(pt, transform3f);
 				out[0] = pt.x;
 				out[1] = pt.y;
 				out[2] = pt.z;
 			}
-			else if(laserScan.type() == CV_32FC(5))
+			else if(laserScan.format() == LaserScan::kXYNormal || laserScan.format() == LaserScan::kXYINormal)
 			{
+				int nOffset = laserScan.format() == LaserScan::kXYINormal?1:0;
 				pcl::PointNormal pt;
 				pt.x=ptr[0];
 				pt.y=ptr[1];
 				pt.z=0;
-				pt.normal_x=ptr[2];
-				pt.normal_y=ptr[3];
-				pt.normal_z=ptr[4];
+				pt.normal_x=ptr[nOffset+2];
+				pt.normal_y=ptr[nOffset+3];
+				pt.normal_z=ptr[nOffset+4];
 				pt = util3d::transformPoint(pt, transform);
 				out[0] = pt.x;
 				out[1] = pt.y;
-				out[2] = pt.normal_x;
-				out[3] = pt.normal_y;
-				out[4] = pt.normal_z;
+				out[nOffset+2] = pt.normal_x;
+				out[nOffset+3] = pt.normal_y;
+				out[nOffset+4] = pt.normal_z;
 			}
-			else if(laserScan.type() == CV_32FC(6))
+			else if(laserScan.format() == LaserScan::kXYZNormal)
 			{
 				pcl::PointNormal pt;
 				pt.x=ptr[0];
@@ -98,7 +96,7 @@ cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transfor
 				out[4] = pt.normal_y;
 				out[5] = pt.normal_z;
 			}
-			else // 7 channels
+			else if(laserScan.format() == LaserScan::kXYZINormal || laserScan.format() == LaserScan::kXYZRGBNormal)
 			{
 				pcl::PointNormal pt;
 				pt.x=ptr[0];
@@ -115,9 +113,13 @@ cv::Mat transformLaserScan(const cv::Mat & laserScan, const Transform & transfor
 				out[5] = pt.normal_y;
 				out[6] = pt.normal_z;
 			}
+			else
+			{
+				UERROR("Unknown laser scan format! (%d)", laserScan.format());
+			}
 		}
 	}
-	return output;
+	return LaserScan(output, laserScan.maxPoints(), laserScan.maxRange(), laserScan.format(), laserScan.localTransform());
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
@@ -125,6 +127,14 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZI>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZI>::Ptr output(new pcl::PointCloud<pcl::PointXYZI>);
 	pcl::transformPointCloud(*cloud, *output, transform.toEigen4f());
 	return output;
 }
@@ -152,6 +162,14 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
 	pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
 	return output;
 }
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZINormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZINormal>);
+	pcl::transformPointCloudWithNormals(*cloud, *output, transform.toEigen4f());
+	return output;
+}
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
@@ -159,6 +177,15 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);
+	pcl::transformPointCloud(*cloud, *indices, *output, transform.toEigen4f());
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZI>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZI>::Ptr output(new pcl::PointCloud<pcl::PointXYZI>);
 	pcl::transformPointCloud(*cloud, *indices, *output, transform.toEigen4f());
 	return output;
 }
@@ -186,6 +213,15 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr transformPointCloud(
 		const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+	pcl::transformPointCloudWithNormals(*cloud, *indices, *output, transform.toEigen4f());
+	return output;
+}
+pcl::PointCloud<pcl::PointXYZINormal>::Ptr transformPointCloud(
+		const pcl::PointCloud<pcl::PointXYZINormal>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		const Transform & transform)
+{
+	pcl::PointCloud<pcl::PointXYZINormal>::Ptr output(new pcl::PointCloud<pcl::PointXYZINormal>);
 	pcl::transformPointCloudWithNormals(*cloud, *indices, *output, transform.toEigen4f());
 	return output;
 }
@@ -202,6 +238,12 @@ cv::Point3f transformPoint(
 }
 pcl::PointXYZ transformPoint(
 		const pcl::PointXYZ & pt,
+		const Transform & transform)
+{
+	return pcl::transformPoint(pt, transform.toEigen3f());
+}
+pcl::PointXYZI transformPoint(
+		const pcl::PointXYZI & pt,
 		const Transform & transform)
 {
 	return pcl::transformPoint(pt, transform.toEigen3f());
@@ -248,6 +290,25 @@ pcl::PointXYZRGBNormal transformPoint(
 	ret.normal_z = static_cast<float> (transform (2, 0) * nt.coeffRef (0) + transform (2, 1) * nt.coeffRef (1) + transform (2, 2) * nt.coeffRef (2));
 
 	ret.rgb = point.rgb;
+	return ret;
+}
+pcl::PointXYZINormal transformPoint(
+		const pcl::PointXYZINormal & point,
+		const Transform & transform)
+{
+	pcl::PointXYZINormal ret;
+	Eigen::Matrix<float, 3, 1> pt (point.x, point.y, point.z);
+	ret.x = static_cast<float> (transform (0, 0) * pt.coeffRef (0) + transform (0, 1) * pt.coeffRef (1) + transform (0, 2) * pt.coeffRef (2) + transform (0, 3));
+	ret.y = static_cast<float> (transform (1, 0) * pt.coeffRef (0) + transform (1, 1) * pt.coeffRef (1) + transform (1, 2) * pt.coeffRef (2) + transform (1, 3));
+	ret.z = static_cast<float> (transform (2, 0) * pt.coeffRef (0) + transform (2, 1) * pt.coeffRef (1) + transform (2, 2) * pt.coeffRef (2) + transform (2, 3));
+
+	// Rotate normals
+	Eigen::Matrix<float, 3, 1> nt (point.normal_x, point.normal_y, point.normal_z);
+	ret.normal_x = static_cast<float> (transform (0, 0) * nt.coeffRef (0) + transform (0, 1) * nt.coeffRef (1) + transform (0, 2) * nt.coeffRef (2));
+	ret.normal_y = static_cast<float> (transform (1, 0) * nt.coeffRef (0) + transform (1, 1) * nt.coeffRef (1) + transform (1, 2) * nt.coeffRef (2));
+	ret.normal_z = static_cast<float> (transform (2, 0) * nt.coeffRef (0) + transform (2, 1) * nt.coeffRef (1) + transform (2, 2) * nt.coeffRef (2));
+
+	ret.intensity = point.intensity;
 	return ret;
 }
 

@@ -35,7 +35,7 @@ CREATE TABLE Data (
 	calibration BLOB,         -- fx, fy, cx, cy, [baseline,] width, height, local_transform
 	
 	scan BLOB,                -- compressed data (Laser scan)
-	scan_info BLOB,           -- scan_max_pts, scan_max_range, local_transform
+	scan_info BLOB,           -- scan_max_pts, scan_max_range, scan_format, local_transform
 	
 	ground_cells BLOB,        -- compressed data (occupancy grid)
 	obstacle_cells BLOB,      -- compressed data (occupancy grid)

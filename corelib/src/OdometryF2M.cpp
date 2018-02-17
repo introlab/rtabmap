@@ -70,6 +70,7 @@ OdometryF2M::OdometryF2M(const ParametersMap & parameters) :
 	bundleMaxFrames_(Parameters::defaultOdomF2MBundleAdjustmentMaxFrames()),
 	map_(new Signature(-1)),
 	lastFrame_(new Signature(1)),
+	lastFrameOldestNewId_(0),
 	bundleSeq_(0),
 	sba_(0)
 {
@@ -207,7 +208,7 @@ Transform OdometryF2M::computeTransform(
 	// Generate keypoints from the new data
 	if(lastFrame_->sensorData().isValid())
 	{
-		if((map_->getWords3().size() || !map_->sensorData().laserScanRaw().empty()) &&
+		if((map_->getWords3().size() || !map_->sensorData().laserScanRaw().isEmpty()) &&
 			lastFrame_->sensorData().isValid())
 		{
 			Signature tmpMap;
@@ -489,7 +490,7 @@ Transform OdometryF2M::computeTransform(
 				Transform newFramePose = this->getPose()*output;
 
 				// fields to update
-				cv::Mat mapScan = tmpMap.sensorData().laserScanRaw();
+				LaserScan mapScan = tmpMap.sensorData().laserScanRaw();
 				std::multimap<int, cv::KeyPoint> mapWords = tmpMap.getWords();
 				std::multimap<int, cv::Point3f> mapPoints = tmpMap.getWords3();
 				std::multimap<int, cv::Mat> mapDescriptors = tmpMap.getWordsDescriptors();
@@ -765,10 +766,10 @@ Transform OdometryF2M::computeTransform(
 					UDEBUG("scankeyframeThr=%f icpInliersRatio=%f", scanKeyFrameThr_, regInfo.icpInliersRatio);
 					UINFO("Update local scan map %d (ratio=%f < %f)", lastFrame_->id(), regInfo.icpInliersRatio, scanKeyFrameThr_);
 
-					if(lastFrame_->sensorData().laserScanRaw().cols)
+					if(lastFrame_->sensorData().laserScanRaw().size())
 					{
-						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(mapScan, tmpMap.sensorData().laserScanInfo().localTransform());
-						pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanInfo().localTransform());
+						pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(mapScan, tmpMap.sensorData().laserScanRaw().localTransform());
+						pcl::PointCloud<pcl::PointNormal>::Ptr frameCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform());
 
 						pcl::IndicesPtr frameCloudNormalsIndices(new std::vector<int>);
 						int newPoints;
@@ -856,15 +857,15 @@ Transform OdometryF2M::computeTransform(
 									*mapCloudNormals += *scansBuffer_.back().first;
 								}
 							}
-							if(mapScan.channels() == 2 || mapScan.channels() == 5)
+							if(mapScan.is2d())
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
-								mapScan = util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint);
+								mapScan = LaserScan(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYNormal);
 							}
 							else
 							{
 								Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
-								mapScan = util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint);
+								mapScan = LaserScan(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint), 0, 0.0f, LaserScan::kXYZNormal);
 							}
 							modified=true;
 						}
@@ -876,16 +877,26 @@ Transform OdometryF2M::computeTransform(
 				{
 					*map_ = tmpMap;
 
-					if(mapScan.channels() == 2 || mapScan.channels() == 5)
+					if(mapScan.is2d())
 					{
 
-						map_->sensorData().setLaserScanRaw(mapScan,
-									LaserScanInfo(0, 0.0f, Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanInfo().localTransform().z(),0,0,0)));
+						map_->sensorData().setLaserScanRaw(
+								LaserScan(
+										mapScan.data(),
+										0,
+										0.0f,
+										mapScan.format(),
+										Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
 					}
 					else
 					{
-						map_->sensorData().setLaserScanRaw(mapScan,
-								LaserScanInfo(0, 0.0f, newFramePose.translation()));
+						map_->sensorData().setLaserScanRaw(
+								LaserScan(
+										mapScan.data(),
+										0,
+										0.0f,
+										mapScan.format(),
+										newFramePose.translation()));
 					}
 
 					map_->setWords(mapWords);
@@ -898,11 +909,11 @@ Transform OdometryF2M::computeTransform(
 			{
 				// use tmpMap instead of map_ to make sure that correspondences with the new frame matches
 				info->localMapSize = (int)tmpMap.getWords3().size();
-				info->localScanMapSize = tmpMap.sensorData().laserScanRaw().cols;
+				info->localScanMapSize = tmpMap.sensorData().laserScanRaw().size();
 				if(this->isInfoDataFilled())
 				{
 					info->localMap = uMultimapToMap(tmpMap.getWords3());
-					info->localScanMap = util3d::transformLaserScan(tmpMap.sensorData().laserScanRaw(), tmpMap.sensorData().laserScanInfo().localTransform());
+					info->localScanMap = tmpMap.sensorData().laserScanRaw();
 				}
 			}
 		}
@@ -1030,22 +1041,32 @@ Transform OdometryF2M::computeTransform(
 			}
 			if(regPipeline_->isScanRequired())
 			{
-				if (lastFrame_->sensorData().laserScanRaw().cols)
+				if (lastFrame_->sensorData().laserScanRaw().size())
 				{
 					frameValid = true;
-					pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanInfo().localTransform());
+					pcl::PointCloud<pcl::PointNormal>::Ptr mapCloudNormals = util3d::laserScanToPointCloudNormal(lastFrame_->sensorData().laserScanRaw(), newFramePose * lastFrame_->sensorData().laserScanRaw().localTransform());
 					scansBuffer_.push_back(std::make_pair(mapCloudNormals, pcl::IndicesPtr(new std::vector<int>)));
-					if(lastFrame_->sensorData().laserScanRaw().channels() == 2 || lastFrame_->sensorData().laserScanRaw().channels() == 5)
+					if(lastFrame_->sensorData().laserScanRaw().is2d())
 					{
 						Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(),0,0,0,0);
-						map_->sensorData().setLaserScanRaw(util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
-								LaserScanInfo(0, 0.0f, Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanInfo().localTransform().z(),0,0,0)));
+						map_->sensorData().setLaserScanRaw(
+								LaserScan(
+										util3d::laserScan2dFromPointCloud(*mapCloudNormals, mapViewpoint),
+										0,
+										0.0f,
+										LaserScan::kXYNormal,
+										Transform(newFramePose.x(), newFramePose.y(), lastFrame_->sensorData().laserScanRaw().localTransform().z(),0,0,0)));
 					}
 					else
 					{
 						Transform mapViewpoint(-newFramePose.x(), -newFramePose.y(), -newFramePose.z(),0,0,0);
-						map_->sensorData().setLaserScanRaw(util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
-								LaserScanInfo(0, 0.0f, newFramePose.translation()));
+						map_->sensorData().setLaserScanRaw(
+								LaserScan(
+										util3d::laserScanFromPointCloud(*mapCloudNormals, mapViewpoint),
+										0,
+										0.0f,
+										LaserScan::kXYZNormal,
+										newFramePose.translation()));
 					}
 					addKeyFrame = true;
 				}
@@ -1064,12 +1085,12 @@ Transform OdometryF2M::computeTransform(
 			if(info)
 			{
 				info->localMapSize = (int)map_->getWords3().size();
-				info->localScanMapSize = map_->sensorData().laserScanRaw().cols;
+				info->localScanMapSize = map_->sensorData().laserScanRaw().size();
 
 				if(this->isInfoDataFilled())
 				{
 					info->localMap = uMultimapToMap(map_->getWords3());
-					info->localScanMap = util3d::transformLaserScan(map_->sensorData().laserScanRaw(), map_->sensorData().laserScanInfo().localTransform());
+					info->localScanMap = map_->sensorData().laserScanRaw();
 				}
 			}
 		}
@@ -1114,7 +1135,7 @@ Transform OdometryF2M::computeTransform(
 			regInfo.covariance.at<double>(0,0),
 			regInfo.covariance.at<double>(5,5),
 			regPipeline_->isImageRequired()?(int)map_->getWords3().size():0,
-			regPipeline_->isScanRequired()?(int)map_->sensorData().laserScanRaw().cols:0);
+			regPipeline_->isScanRequired()?(int)map_->sensorData().laserScanRaw().size():0);
 
 	return output;
 }

@@ -1109,12 +1109,12 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			if(_preferencesDialog->isScansShown(1))
 			{
 				// F2M: scan local map
-				if(!odom.info().localScanMap.empty())
+				if(!odom.info().localScanMap.isEmpty())
 				{
 					if(!lost)
 					{
 						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-						cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap);
+						cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap, odom.info().localScanMap.localTransform());
 						if(!_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
 						{
 							UERROR("Adding scanMapOdom to viewer failed!");
@@ -1129,9 +1129,9 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					scanUpdated = true;
 				}
 				// scan cloud
-				if(!odom.data().laserScanRaw().empty())
+				if(!odom.data().laserScanRaw().isEmpty())
 				{
-					cv::Mat scan = odom.data().laserScanRaw();
+					LaserScan scan = odom.data().laserScanRaw();
 
 					if(_preferencesDialog->getDownsamplingStepScan(1) > 0)
 					{
@@ -1139,7 +1139,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					}
 
 					pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
-					cloud = util3d::laserScanToPointCloudNormal(scan, pose*odom.data().laserScanInfo().localTransform());
+					cloud = util3d::laserScanToPointCloudNormal(scan, pose*scan.localTransform());
 					if(_preferencesDialog->getCloudVoxelSizeScan(1) > 0.0)
 					{
 						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
@@ -1953,7 +1953,13 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			s.sensorData().setImageRaw(cv::Mat());
 			s.sensorData().setDepthOrRightRaw(cv::Mat());
 			s.sensorData().setUserDataRaw(cv::Mat());
-			s.sensorData().setLaserScanRaw(cv::Mat(), signature.sensorData().laserScanInfo());
+			s.sensorData().setLaserScanRaw(
+					LaserScan(
+							cv::Mat(),
+							signature.sensorData().laserScanRaw().maxPoints(),
+							signature.sensorData().laserScanRaw().maxRange(),
+							signature.sensorData().laserScanRaw().format(),
+							signature.sensorData().laserScanRaw().localTransform()));
 			s.sensorData().clearOccupancyGridRaw();
 			_cachedMemoryUsage += s.sensorData().getMemoryUsed();
 		}
@@ -2210,7 +2216,7 @@ void MainWindow::updateMapCloud(
 				else if(_cachedSignatures.contains(iter->first))
 				{
 					QMap<int, Signature>::iterator jter = _cachedSignatures.find(iter->first);
-					if(!jter->sensorData().laserScanCompressed().empty() || !jter->sensorData().laserScanRaw().empty())
+					if(!jter->sensorData().laserScanCompressed().isEmpty() || !jter->sensorData().laserScanRaw().isEmpty())
 					{
 						this->createAndAddScanToMap(iter->first, iter->second, uValue(mapIds, iter->first, -1));
 					}
@@ -3043,9 +3049,9 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		return;
 	}
 
-	if(!iter->sensorData().laserScanCompressed().empty() || !iter->sensorData().laserScanRaw().empty())
+	if(!iter->sensorData().laserScanCompressed().isEmpty() || !iter->sensorData().laserScanRaw().isEmpty())
 	{
-		cv::Mat scan;
+		LaserScan scan;
 		iter->sensorData().uncompressData(0, 0, &scan);
 
 		if(_preferencesDialog->getDownsamplingStepScan(0) > 0)
@@ -3057,21 +3063,21 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudRGB;
 		pcl::PointCloud<pcl::PointNormal>::Ptr cloudWithNormals;
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudRGBWithNormals;
-		if(scan.channels() == 7 && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
+		if(scan.hasNormals() && scan.hasRGB() && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
 		{
-			cloudRGBWithNormals = util3d::laserScanToPointCloudRGBNormal(scan, iter->sensorData().laserScanInfo().localTransform());
+			cloudRGBWithNormals = util3d::laserScanToPointCloudRGBNormal(scan, scan.localTransform());
 		}
-		else if((scan.channels() == 5 || scan.channels() == 6) && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
+		else if((scan.hasNormals()) && _preferencesDialog->getCloudVoxelSizeScan(0) <= 0.0)
 		{
-			cloudWithNormals = util3d::laserScanToPointCloudNormal(scan, iter->sensorData().laserScanInfo().localTransform());
+			cloudWithNormals = util3d::laserScanToPointCloudNormal(scan, scan.localTransform());
 		}
-		else if(scan.channels() == 4)
+		else if(scan.hasRGB())
 		{
-			cloudRGB = util3d::laserScanToPointCloudRGB(scan, iter->sensorData().laserScanInfo().localTransform());
+			cloudRGB = util3d::laserScanToPointCloudRGB(scan, scan.localTransform());
 		}
 		else
 		{
-			cloud = util3d::laserScanToPointCloud(scan, iter->sensorData().laserScanInfo().localTransform());
+			cloud = util3d::laserScanToPointCloud(scan, scan.localTransform());
 		}
 
 		if(_preferencesDialog->getCloudVoxelSizeScan(0) > 0.0)
@@ -3087,7 +3093,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		}
 
 		// Do ceiling/floor filtering
-		if((scan.channels() > 2 && scan.channels() != 5) && // don't filter 2D scans
+		if((!scan.is2d()) && // don't filter 2D scans
 		   (_preferencesDialog->getScanFloorFilteringHeight() != 0.0 ||
 		   _preferencesDialog->getScanCeilingFilteringHeight() != 0.0))
 		{
@@ -3149,14 +3155,14 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		   (_preferencesDialog->getScanNormalKSearch() > 0 || _preferencesDialog->getScanNormalRadiusSearch() > 0.0))
 		{
 			Eigen::Vector3f scanViewpoint(
-				iter->sensorData().laserScanInfo().localTransform().x(),
-				iter->sensorData().laserScanInfo().localTransform().y(),
-				iter->sensorData().laserScanInfo().localTransform().z());
+					scan.localTransform().x(),
+					scan.localTransform().y(),
+					scan.localTransform().z());
 
 			pcl::PointCloud<pcl::Normal>::Ptr normals;
 			if(cloud.get() && cloud->size())
 			{
-				if(scan.channels() == 2 || scan.channels() == 5)
+				if(scan.is2d())
 				{
 					normals = util3d::computeFastOrganizedNormals2D(cloud, _preferencesDialog->getScanNormalKSearch(), _preferencesDialog->getScanNormalRadiusSearch(), scanViewpoint);
 				}
@@ -3189,7 +3195,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudRGBWithNormals, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = util3d::laserScanFromPointCloud(*cloudRGBWithNormals);
+				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGBWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZRGBNormal, scan.localTransform());
 			}
 		}
 		else if(cloudWithNormals.get())
@@ -3197,13 +3203,13 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudWithNormals, pose, color);
 			if(added && nodeId > 0)
 			{
-				if(scan.channels() == 5)
+				if(scan.is2d())
 				{
-					scan = util3d::laserScan2dFromPointCloud(*cloudWithNormals);
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYNormal, scan.localTransform());
 				}
 				else
 				{
-					scan = util3d::laserScanFromPointCloud(*cloudWithNormals);
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloudWithNormals, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZNormal, scan.localTransform());
 				}
 			}
 		}
@@ -3212,7 +3218,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloudRGB, pose, color);
 			if(added && nodeId > 0)
 			{
-				scan = util3d::laserScanFromPointCloud(*cloudRGB);
+				scan = LaserScan(util3d::laserScanFromPointCloud(*cloudRGB, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZRGB, scan.localTransform());
 			}
 		}
 		else
@@ -3221,13 +3227,13 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 			added = _cloudViewer->addCloud(scanName, cloud, pose, color);
 			if(added && nodeId > 0)
 			{
-				if(scan.channels() == 2)
+				if(scan.is2d())
 				{
-					scan = util3d::laserScan2dFromPointCloud(*cloud);
+					scan = LaserScan(util3d::laserScan2dFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXY, scan.localTransform());
 				}
 				else
 				{
-					scan = util3d::laserScanFromPointCloud(*cloud);
+					scan = LaserScan(util3d::laserScanFromPointCloud(*cloud, scan.localTransform().inverse()), scan.maxPoints(), scan.maxRange(), LaserScan::kXYZ, scan.localTransform());
 				}
 			}
 		}
@@ -3239,7 +3245,7 @@ void MainWindow::createAndAddScanToMap(int nodeId, const Transform & pose, int m
 		{
 			if(nodeId > 0)
 			{
-				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in base_link frame
+				_createdScans.insert(std::make_pair(nodeId, scan)); // keep scan in scan frame
 			}
 
 			_cloudViewer->setCloudOpacity(scanName, _preferencesDialog->getScanOpacity(0));
@@ -4955,9 +4961,13 @@ void MainWindow::exportPoses(int format)
 					}
 					else
 					{
-						if(!_cachedSignatures[iter->first].sensorData().laserScanInfo().localTransform().isNull())
+						if(!_cachedSignatures[iter->first].sensorData().laserScanRaw().localTransform().isNull())
 						{
-							localTransform = _cachedSignatures[iter->first].sensorData().laserScanInfo().localTransform();
+							localTransform = _cachedSignatures[iter->first].sensorData().laserScanRaw().localTransform();
+						}
+						else if(!_cachedSignatures[iter->first].sensorData().laserScanCompressed().localTransform().isNull())
+						{
+							localTransform = _cachedSignatures[iter->first].sensorData().laserScanCompressed().localTransform();
 						}
 						else
 						{
@@ -5489,12 +5499,12 @@ void MainWindow::postProcessing()
 					Signature & signatureFrom = _cachedSignatures[from];
 					Signature & signatureTo = _cachedSignatures[to];
 
-					cv::Mat tmp;
+					LaserScan tmp;
 					signatureFrom.sensorData().uncompressData(0,0,&tmp);
 					signatureTo.sensorData().uncompressData(0,0,&tmp);
 
-					if(!signatureFrom.sensorData().laserScanRaw().empty() &&
-					   !signatureTo.sensorData().laserScanRaw().empty())
+					if(!signatureFrom.sensorData().laserScanRaw().isEmpty() &&
+					   !signatureTo.sensorData().laserScanRaw().isEmpty())
 					{
 						RegistrationInfo info;
 						Transform transform = regIcp.computeTransformation(signatureFrom.sensorData(), signatureTo.sensorData(), iter->second.transform(), &info);

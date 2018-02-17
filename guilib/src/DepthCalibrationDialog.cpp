@@ -315,7 +315,8 @@ void DepthCalibrationDialog::calibrate(
 					const Signature & s = cachedSignatures.find(iter->first).value();
 					SensorData data = s.sensorData();
 
-					cv::Mat  depth, laserScan;
+					cv::Mat  depth;
+					LaserScan laserScan;
 					data.uncompressData(0, &depth, _ui->checkBox_laserScan->isChecked()?&laserScan:0);
 					if(data.cameraModels().size() == 1 && data.cameraModels()[0].isValidForProjection() && !depth.empty())
 					{

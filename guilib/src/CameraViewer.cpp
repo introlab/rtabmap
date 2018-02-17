@@ -157,7 +157,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 		}
 	}
 
-	if(!data.laserScanRaw().empty())
+	if(!data.laserScanRaw().isEmpty())
 	{
 		showScanCheckbox_->setEnabled(true);
 		if(showScanCheckbox_->isChecked())

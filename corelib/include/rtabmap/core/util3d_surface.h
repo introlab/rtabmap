@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/core/Transform.h>
 #include <rtabmap/core/CameraModel.h>
 #include <rtabmap/core/ProgressState.h>
+#include <rtabmap/core/LaserScan.h>
 #include <set>
 #include <list>
 
@@ -227,6 +228,11 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		int searchK = 20,
+		float searchRadius = 0.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		const pcl::IndicesPtr & indices,
 		int searchK = 20,
@@ -238,14 +244,30 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
 		int searchK = 20,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		const pcl::IndicesPtr & indices,
+		int searchK = 20,
+		float searchRadius = 0.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals2D(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
 		int searchK = 5,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeNormals2D(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
+		int searchK = 5,
+		float searchRadius = 0.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals2D(
 		const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud,
+		int searchK = 5,
+		float searchRadius = 0.0f,
+		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
+pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals2D(
+		const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud,
 		int searchK = 5,
 		float searchRadius = 0.0f,
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
@@ -263,7 +285,7 @@ pcl::PointCloud<pcl::Normal>::Ptr RTABMAP_EXP computeFastOrganizedNormals(
 		const Eigen::Vector3f & viewPoint = Eigen::Vector3f(0,0,0));
 
 float RTABMAP_EXP computeNormalsComplexity(
-		const cv::Mat & scan,
+		const LaserScan & scan,
 		cv::Mat * pcaEigenVectors = 0,
 		cv::Mat * pcaEigenValues = 0);
 float RTABMAP_EXP computeNormalsComplexity(
@@ -304,6 +326,10 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr RTABMAP_EXP mls(
 		float dilationVoxelSize = 1.0f,  // VOXEL_GRID_DILATION
 		int dilationIterations = 0);     // VOXEL_GRID_DILATION
 
+LaserScan RTABMAP_EXP adjustNormalsToViewPoint(
+		const LaserScan & scan,
+		const Eigen::Vector3f & viewpoint,
+		bool forceGroundNormalsUp);
 void RTABMAP_EXP adjustNormalsToViewPoint(
 		pcl::PointCloud<pcl::PointNormal>::Ptr & cloud,
 		const Eigen::Vector3f & viewpoint = Eigen::Vector3f(0,0,0),

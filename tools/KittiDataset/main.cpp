@@ -58,7 +58,7 @@ void showUsage()
 			"  --gt \"path\"        Ground truth path (e.g., ~/KITTI/devkit/cpp/data/odometry/poses/07.txt)\n"
 			"  --quiet            Don't show log messages and iteration updates.\n"
 			"  --color            Use color images for stereo (image_2 and image_3 folders).\n"
-			"  --scaling          Scale stereo baseline on some sequences (03-04-05-06).\n"
+			"  --height           Add car's height to camera local transform (1.67m).\n"
 			"  --disp             Generate full disparity.\n"
 			"  --exposure_comp    Do exposure compensation between left and right images.\n"
 			"  --scan             Include velodyne scan in node's data.\n"
@@ -107,7 +107,7 @@ int main(int argc, char * argv[])
 	std::string outputName = "rtabmap";
 	std::string seq;
 	bool color = false;
-	bool scaling = false;
+	bool height = false;
 	bool scan = false;
 	bool disp = false;
 	bool exposureCompensation = false;
@@ -181,9 +181,9 @@ int main(int argc, char * argv[])
 			{
 				color = true;
 			}
-			else if(std::strcmp(argv[i], "--scaling") == 0)
+			else if(std::strcmp(argv[i], "--height") == 0)
 			{
-				scaling = true;
+				height = true;
 			}
 			else if(std::strcmp(argv[i], "--scan") == 0)
 			{
@@ -325,26 +325,6 @@ int main(int argc, char * argv[])
 		return -1;
 	}
 
-	if(scaling)
-	{
-		// scale baseline
-		if(uStr2Int(seq) == 3 || uStr2Int(seq) == 5 || uStr2Int(seq) == 9)
-		{
-			P1.at<double>(0,3) *= 0.9905;
-			printf("   Baseline scaling factor: %f\n", 0.9905);
-		}
-		else if(uStr2Int(seq) == 4)
-		{
-			P1.at<double>(0,3) *= 0.987000;
-			printf("   Baseline scaling factor: %f\n", 0.987000);
-		}
-		else if(uStr2Int(seq) == 6)
-		{
-			P1.at<double>(0,3) *= 0.985000;
-			printf("   Baseline scaling factor: %f\n", 0.985000);
-		}
-	}
-
 	StereoCameraModel model(outputName+"_calib",
 			image.size(), P0.colRange(0,3), cv::Mat(), cv::Mat(), P0,
 			image.size(), P1.colRange(0,3), cv::Mat(), cv::Mat(), P1,
@@ -373,7 +353,7 @@ int main(int argc, char * argv[])
 	}
 
 	// We use CameraThread only to use postUpdate() method
-	Transform opticalRotation(0,0,1,0, -1,0,0,color?-0.06:0, 0,-1,0,0);
+	Transform opticalRotation(0,0,1,0, -1,0,0,color?-0.06:0, 0,-1,0,height?1.67:0.0);
 	CameraThread cameraThread(new
 		CameraStereoImages(
 				pathLeftImages,
@@ -403,7 +383,7 @@ int main(int argc, char * argv[])
 						scanVoxel,
 						scanNormalK,
 						scanNormalRadius,
-						Transform(-0.27f, 0.0f, 0.08, 0.0f, 0.0f, 0.0f),
+						Transform(-0.27f, 0.0f, 0.08+(height?1.67f:0.0f), 0.0f, 0.0f, 0.0f),
 						true);
 	}
 
@@ -529,7 +509,7 @@ int main(int argc, char * argv[])
 					rmse = rtabmap.getStatistics().data().at(Statistics::kGtTranslational_rmse());
 				}
 
-				if(data.keypoints().size() == 0 && data.laserScanRaw().cols)
+				if(data.keypoints().size() == 0 && data.laserScanRaw().size())
 				{
 					if(rmse >= 0.0f)
 					{

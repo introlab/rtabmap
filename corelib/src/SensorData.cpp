@@ -159,8 +159,7 @@ SensorData::SensorData(
 
 // RGB-D constructor + laser scan
 SensorData::SensorData(
-		const cv::Mat & laserScan,
-		const LaserScanInfo & laserScanInfo,
+		const LaserScan & laserScan,
 		const cv::Mat & rgb,
 		const cv::Mat & depth,
 		const CameraModel & cameraModel,
@@ -170,7 +169,6 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_cameraModels(std::vector<CameraModel>(1, cameraModel)),
-		_laserScanInfo(laserScanInfo),
 		_cellSize(0.0f)
 {
 	if(rgb.rows == 1)
@@ -196,13 +194,12 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3  || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7))
+	if(!laserScan.isCompressed())
 	{
 		_laserScanRaw = laserScan;
 	}
-	else if(!laserScan.empty())
+	else
 	{
-		UASSERT(laserScan.type() == CV_8UC1); // Bytes
 		_laserScanCompressed = laserScan;
 	}
 
@@ -264,8 +261,7 @@ SensorData::SensorData(
 
 // Multi-cameras RGB-D constructor + laser scan
 SensorData::SensorData(
-		const cv::Mat & laserScan,
-		const LaserScanInfo & laserScanInfo,
+		const LaserScan & laserScan,
 		const cv::Mat & rgb,
 		const cv::Mat & depth,
 		const std::vector<CameraModel> & cameraModels,
@@ -275,7 +271,6 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_cameraModels(cameraModels),
-		_laserScanInfo(laserScanInfo),
 		_cellSize(0.0f)
 {
 	if(rgb.rows == 1)
@@ -301,13 +296,12 @@ SensorData::SensorData(
 		_depthOrRightRaw = depth;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3  || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7))
+	if(!laserScan.isCompressed())
 	{
 		_laserScanRaw = laserScan;
 	}
-	else if(!laserScan.empty())
+	else
 	{
-		UASSERT(laserScan.type() == CV_8UC1); // Bytes
 		_laserScanCompressed = laserScan;
 	}
 
@@ -371,8 +365,7 @@ SensorData::SensorData(
 
 // Stereo constructor + 2d laser scan
 SensorData::SensorData(
-		const cv::Mat & laserScan,
-		const LaserScanInfo & laserScanInfo,
+		const LaserScan & laserScan,
 		const cv::Mat & left,
 		const cv::Mat & right,
 		const StereoCameraModel & cameraModel,
@@ -382,7 +375,6 @@ SensorData::SensorData(
 		_id(id),
 		_stamp(stamp),
 		_stereoCameraModel(cameraModel),
-		_laserScanInfo(laserScanInfo),
 		_cellSize(0.0f)
 {
 	if(left.rows == 1)
@@ -407,13 +399,12 @@ SensorData::SensorData(
 		_depthOrRightRaw = right;
 	}
 
-	if(laserScan.type() == CV_32FC2 || laserScan.type() == CV_32FC3  || laserScan.type() == CV_32FC(4) || laserScan.type() == CV_32FC(5) || laserScan.type() == CV_32FC(6) || laserScan.type() == CV_32FC(7))
+	if(!laserScan.isCompressed())
 	{
 		_laserScanRaw = laserScan;
 	}
-	else if(!laserScan.empty())
+	else
 	{
-		UASSERT(laserScan.type() == CV_8UC1); // Bytes
 		_laserScanCompressed = laserScan;
 	}
 
@@ -565,10 +556,11 @@ void SensorData::setOccupancyGrid(
 
 void SensorData::uncompressData()
 {
-	cv::Mat tmpA, tmpB, tmpC, tmpD, tmpE, tmpF, tmpG;
+	cv::Mat tmpA, tmpB, tmpD, tmpE, tmpF, tmpG;
+	LaserScan tmpC;
 	uncompressData(_imageCompressed.empty()?0:&tmpA,
 				_depthOrRightCompressed.empty()?0:&tmpB,
-				_laserScanCompressed.empty()?0:&tmpC,
+				_laserScanCompressed.isEmpty()?0:&tmpC,
 				_userDataCompressed.empty()?0:&tmpD,
 				_groundCellsCompressed.empty()?0:&tmpE,
 				_obstacleCellsCompressed.empty()?0:&tmpF,
@@ -578,7 +570,7 @@ void SensorData::uncompressData()
 void SensorData::uncompressData(
 		cv::Mat * imageRaw,
 		cv::Mat * depthRaw,
-		cv::Mat * laserScanRaw,
+		LaserScan * laserScanRaw,
 		cv::Mat * userDataRaw,
 		cv::Mat * groundCellsRaw,
 		cv::Mat * obstacleCellsRaw,
@@ -624,9 +616,13 @@ void SensorData::uncompressData(
 	{
 		_depthOrRightRaw = *depthRaw;
 	}
-	if(laserScanRaw && !laserScanRaw->empty() && _laserScanRaw.empty())
+	if(laserScanRaw && !laserScanRaw->isEmpty() && _laserScanRaw.isEmpty())
 	{
 		_laserScanRaw = *laserScanRaw;
+		if(_laserScanCompressed.format() == LaserScan::kUnknown)
+		{
+			_laserScanCompressed = LaserScan(_laserScanCompressed.data(), _laserScanCompressed.maxPoints(), _laserScanCompressed.maxRange(), _laserScanRaw.format(), _laserScanCompressed.localTransform());
+		}
 	}
 	if(userDataRaw && !userDataRaw->empty() && _userDataRaw.empty())
 	{
@@ -649,7 +645,7 @@ void SensorData::uncompressData(
 void SensorData::uncompressDataConst(
 		cv::Mat * imageRaw,
 		cv::Mat * depthRaw,
-		cv::Mat * laserScanRaw,
+		LaserScan * laserScanRaw,
 		cv::Mat * userDataRaw,
 		cv::Mat * groundCellsRaw,
 		cv::Mat * obstacleCellsRaw,
@@ -685,7 +681,7 @@ void SensorData::uncompressDataConst(
 	}
 	if( (imageRaw && imageRaw->empty()) ||
 		(depthRaw && depthRaw->empty()) ||
-		(laserScanRaw && laserScanRaw->empty()) ||
+		(laserScanRaw && laserScanRaw->isEmpty()) ||
 		(userDataRaw && userDataRaw->empty()) ||
 		(groundCellsRaw && groundCellsRaw->empty()) ||
 		(obstacleCellsRaw && obstacleCellsRaw->empty()) ||
@@ -693,7 +689,7 @@ void SensorData::uncompressDataConst(
 	{
 		rtabmap::CompressionThread ctImage(_imageCompressed, true);
 		rtabmap::CompressionThread ctDepth(_depthOrRightCompressed, true);
-		rtabmap::CompressionThread ctLaserScan(_laserScanCompressed, false);
+		rtabmap::CompressionThread ctLaserScan(_laserScanCompressed.data(), false);
 		rtabmap::CompressionThread ctUserData(_userDataCompressed, false);
 		rtabmap::CompressionThread ctGroundCells(_groundCellsCompressed, false);
 		rtabmap::CompressionThread ctObstacleCells(_obstacleCellsCompressed, false);
@@ -708,9 +704,9 @@ void SensorData::uncompressDataConst(
 			UASSERT(_depthOrRightCompressed.type() == CV_8UC1);
 			ctDepth.start();
 		}
-		if(laserScanRaw && laserScanRaw->empty() && !_laserScanCompressed.empty())
+		if(laserScanRaw && laserScanRaw->isEmpty() && !_laserScanCompressed.isEmpty())
 		{
-			UASSERT(_laserScanCompressed.type() == CV_8UC1);
+			UASSERT(_laserScanCompressed.isCompressed());
 			ctLaserScan.start();
 		}
 		if(userDataRaw && userDataRaw->empty() && !_userDataCompressed.empty())
@@ -771,13 +767,13 @@ void SensorData::uncompressDataConst(
 				}
 			}
 		}
-		if(laserScanRaw && laserScanRaw->empty())
+		if(laserScanRaw && laserScanRaw->isEmpty())
 		{
-			*laserScanRaw = ctLaserScan.getUncompressedData();
+			*laserScanRaw = LaserScan(ctLaserScan.getUncompressedData(), _laserScanCompressed.maxPoints(), _laserScanCompressed.maxRange(), _laserScanCompressed.format(), _laserScanCompressed.localTransform());
 
-			if(laserScanRaw->empty())
+			if(laserScanRaw->isEmpty())
 			{
-				if(_laserScanCompressed.empty())
+				if(_laserScanCompressed.isEmpty())
 				{
 					UWARN("Requested laser scan data, but the sensor data (%d) doesn't have laser scan.", this->id());
 				}
@@ -835,8 +831,8 @@ long SensorData::getMemoryUsed() const // Return memory usage in Bytes
 			_depthOrRightRaw.total()*_depthOrRightRaw.elemSize() +
 			_userDataCompressed.total()*_userDataCompressed.elemSize() +
 			_userDataRaw.total()*_userDataRaw.elemSize() +
-			_laserScanCompressed.total()*_laserScanCompressed.elemSize() +
-			_laserScanRaw.total()*_laserScanRaw.elemSize() +
+			_laserScanCompressed.data().total()*_laserScanCompressed.data().elemSize() +
+			_laserScanRaw.data().total()*_laserScanRaw.data().elemSize() +
 			_groundCellsCompressed.total()*_groundCellsCompressed.elemSize() +
 			_groundCellsRaw.total()*_groundCellsRaw.elemSize() +
 			_obstacleCellsCompressed.total()*_obstacleCellsCompressed.elemSize() +

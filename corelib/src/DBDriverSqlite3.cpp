@@ -1496,6 +1496,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 
 				int laserScanMaxPts = 0;
 				float laserScanMaxRange = 0.0f;
+				int laserScanFormat = 0;
 				Transform scanLocalTransform = Transform::getIdentity();
 				if(uStrNumCmp(_version, "0.11.10") < 0 || scan)
 				{
@@ -1508,7 +1509,22 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						if(dataSize > 0 && data)
 						{
 							float * dataFloat = (float*)data;
-							memcpy(scanLocalTransform.data(), dataFloat+2, scanLocalTransform.size()*sizeof(float));
+
+							if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (scanLocalTransform.size()+3)*sizeof(float))
+							{
+								// new in 0.16.1
+								laserScanFormat = (int)dataFloat[2];
+								memcpy(scanLocalTransform.data(), dataFloat+3, scanLocalTransform.size()*sizeof(float));
+							}
+							else if(dataSize == (scanLocalTransform.size()+2)*sizeof(float))
+							{
+								memcpy(scanLocalTransform.data(), dataFloat+2, scanLocalTransform.size()*sizeof(float));
+							}
+							else
+							{
+								UFATAL("Unexpected size %d for laser scan info!", dataSize);
+							}
+
 							if(uStrNumCmp(_version, "0.15.2") < 0)
 							{
 								scanLocalTransform.normalizeRotation();
@@ -1609,8 +1625,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				if(models.size())
 				{
 					(*iter)->sensorData() = SensorData(
-							scan?scanCompressed:tmp.laserScanCompressed(),
-						    scan?LaserScanInfo(laserScanMaxPts, laserScanMaxRange, scanLocalTransform):tmp.laserScanInfo(),
+						    scan?LaserScan(scanCompressed, laserScanMaxPts, laserScanMaxRange, (LaserScan::Format)laserScanFormat, scanLocalTransform):tmp.laserScanCompressed(),
 							images?imageCompressed:tmp.imageCompressed(),
 							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
 							images?models:tmp.cameraModels(),
@@ -1621,8 +1636,7 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 				else
 				{
 					(*iter)->sensorData() = SensorData(
-							scan?scanCompressed:tmp.laserScanCompressed(),
-							scan?LaserScanInfo(laserScanMaxPts, laserScanMaxRange, scanLocalTransform):tmp.laserScanInfo(),
+							scan?LaserScan(scanCompressed, laserScanMaxPts, laserScanMaxRange, (LaserScan::Format)laserScanFormat, scanLocalTransform):tmp.laserScanCompressed(),
 							images?imageCompressed:tmp.imageCompressed(),
 							images?depthOrRightCompressed:tmp.depthOrRightCompressed(),
 							images?stereoModel:tmp.stereoCameraModel(),
@@ -1855,7 +1869,7 @@ bool DBDriverSqlite3::getCalibrationQuery(
 
 bool DBDriverSqlite3::getLaserScanInfoQuery(
 		int signatureId,
-		LaserScanInfo & info) const
+		LaserScan & info) const
 {
 	bool found = false;
 	if(_ppDb && signatureId)
@@ -1884,6 +1898,7 @@ bool DBDriverSqlite3::getLaserScanInfoQuery(
 		Transform localTransform = Transform::getIdentity();
 		int maxPts = 0;
 		float maxRange = 0.0f;
+		int format = 0;
 
 		// Process the result if one
 		rc = sqlite3_step(ppStmt);
@@ -1899,7 +1914,20 @@ bool DBDriverSqlite3::getLaserScanInfoQuery(
 			if(dataSize > 0 && data)
 			{
 				float * dataFloat = (float*)data;
-				memcpy(localTransform.data(), dataFloat+2, localTransform.size()*sizeof(float));
+				if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (localTransform.size()+3)*sizeof(float))
+				{
+					// new in 0.16.1
+					format = (int)dataFloat[2];
+					memcpy(localTransform.data(), dataFloat+3, localTransform.size()*sizeof(float));
+				}
+				else if(dataSize == (localTransform.size()+2)*sizeof(float))
+				{
+					memcpy(localTransform.data(), dataFloat+2, localTransform.size()*sizeof(float));
+				}
+				else
+				{
+					UFATAL("Unexpected size %d for laser scan info!", dataSize);
+				}
 				if(uStrNumCmp(_version, "0.15.2") < 0)
 				{
 					localTransform.normalizeRotation();
@@ -1907,7 +1935,7 @@ bool DBDriverSqlite3::getLaserScanInfoQuery(
 				maxPts = (int)dataFloat[0];
 				maxRange = dataFloat[1];
 
-				info = LaserScanInfo(maxPts, maxRange, localTransform);
+				info = LaserScan(cv::Mat(), maxPts, maxRange, (LaserScan::Format)format, localTransform);
 			}
 
 			rc = sqlite3_step(ppStmt); // next result...
@@ -3676,7 +3704,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			// raw data are not kept in database
 			_memoryUsedEstimate -= (*i)->sensorData().imageRaw().total() * (*i)->sensorData().imageRaw().elemSize();
 			_memoryUsedEstimate -= (*i)->sensorData().depthOrRightRaw().total() * (*i)->sensorData().depthOrRightRaw().elemSize();
-			_memoryUsedEstimate -= (*i)->sensorData().laserScanRaw().total() * (*i)->sensorData().laserScanRaw().elemSize();
+			_memoryUsedEstimate -= (*i)->sensorData().laserScanRaw().data().total() * (*i)->sensorData().laserScanRaw().data().elemSize();
 
 			stepNode(ppStmt, *i);
 		}
@@ -3755,7 +3783,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			{
 				if(!(*i)->sensorData().imageCompressed().empty() ||
 				   !(*i)->sensorData().depthOrRightCompressed().empty() ||
-				   !(*i)->sensorData().laserScanCompressed().empty() ||
+				   !(*i)->sensorData().laserScanCompressed().isEmpty() ||
 				   !(*i)->sensorData().userDataCompressed().empty() ||
 				   !(*i)->sensorData().cameraModels().size() ||
 				   !(*i)->sensorData().stereoCameraModel().isValidForProjection())
@@ -3798,7 +3826,7 @@ void DBDriverSqlite3::saveQuery(const std::list<Signature *> & signatures)
 			for(std::list<Signature *>::const_iterator i=signatures.begin(); i!=signatures.end(); ++i)
 			{
 				//metric
-				if(!(*i)->sensorData().depthOrRightCompressed().empty() || !(*i)->sensorData().laserScanCompressed().empty())
+				if(!(*i)->sensorData().depthOrRightCompressed().empty() || !(*i)->sensorData().laserScanCompressed().isEmpty())
 				{
 					UASSERT((*i)->id() == (*i)->sensorData().id());
 					stepDepth(ppStmt, (*i)->sensorData());
@@ -4741,7 +4769,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 	UDEBUG("Save depth %d (size=%d) depth2d = %d",
 			sensorData.id(),
 			(int)sensorData.depthOrRightCompressed().cols,
-			(int)sensorData.laserScanCompressed().cols);
+			sensorData.laserScanCompressed().size());
 	if(!ppStmt)
 	{
 		UFATAL("");
@@ -4805,9 +4833,9 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 	rc = sqlite3_bind_blob(ppStmt, index++, localTransform.data(), localTransform.size()*sizeof(float), SQLITE_STATIC);
 	UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
-	if(!sensorData.laserScanCompressed().empty())
+	if(!sensorData.laserScanCompressed().isEmpty())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, sensorData.laserScanCompressed().data, (int)sensorData.laserScanCompressed().cols, SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, sensorData.laserScanCompressed().data().data, (int)sensorData.laserScanCompressed().size(), SQLITE_STATIC);
 	}
 	else
 	{
@@ -4817,7 +4845,7 @@ void DBDriverSqlite3::stepDepth(sqlite3_stmt * ppStmt, const SensorData & sensor
 
 	if(uStrNumCmp(_version, "0.8.11") >= 0)
 	{
-		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanInfo().maxPoints());
+		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanCompressed().maxPoints());
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 	}
 
@@ -4914,7 +4942,7 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 			sensorData.id(),
 			(int)sensorData.imageCompressed().cols,
 			(int)sensorData.depthOrRightCompressed().cols,
-			(int)sensorData.laserScanCompressed().cols);
+			sensorData.laserScanCompressed().size());
 	if(!ppStmt)
 	{
 		UFATAL("");
@@ -5013,15 +5041,28 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	std::vector<float> scanInfo;
 	if(uStrNumCmp(_version, "0.11.10") >= 0)
 	{
-		if(sensorData.laserScanInfo().maxPoints() > 0 ||
-			sensorData.laserScanInfo().maxRange() > 0 ||
-			(!sensorData.laserScanInfo().localTransform().isNull() && !sensorData.laserScanInfo().localTransform().isIdentity()))
+		if(sensorData.laserScanCompressed().maxPoints() > 0 ||
+			sensorData.laserScanCompressed().maxRange() > 0 ||
+			(uStrNumCmp(_version, "0.16.1")>=0 && sensorData.laserScanCompressed().format() != LaserScan::kUnknown) ||
+			(!sensorData.laserScanCompressed().localTransform().isNull() && !sensorData.laserScanCompressed().localTransform().isIdentity()))
 		{
-			scanInfo.resize(2 + Transform().size());
-			scanInfo[0] = sensorData.laserScanInfo().maxPoints();
-			scanInfo[1] = sensorData.laserScanInfo().maxRange();
-			const Transform & localTransform = sensorData.laserScanInfo().localTransform();
-			memcpy(scanInfo.data()+2, localTransform.data(), localTransform.size()*sizeof(float));
+			if(uStrNumCmp(_version, "0.16.1") >=0)
+			{
+				scanInfo.resize(3 + Transform().size());
+				scanInfo[0] = sensorData.laserScanCompressed().maxPoints();
+				scanInfo[1] = sensorData.laserScanCompressed().maxRange();
+				scanInfo[2] = sensorData.laserScanCompressed().format();
+				const Transform & localTransform = sensorData.laserScanCompressed().localTransform();
+				memcpy(scanInfo.data()+3, localTransform.data(), localTransform.size()*sizeof(float));
+			}
+			else
+			{
+				scanInfo.resize(2 + Transform().size());
+				scanInfo[0] = sensorData.laserScanCompressed().maxPoints();
+				scanInfo[1] = sensorData.laserScanCompressed().maxRange();
+				const Transform & localTransform = sensorData.laserScanCompressed().localTransform();
+				memcpy(scanInfo.data()+2, localTransform.data(), localTransform.size()*sizeof(float));
+			}
 		}
 
 		if(scanInfo.size())
@@ -5038,21 +5079,21 @@ void DBDriverSqlite3::stepSensorData(sqlite3_stmt * ppStmt,
 	else
 	{
 		// scan_max_pts
-		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanInfo().maxPoints());
+		rc = sqlite3_bind_int(ppStmt, index++, sensorData.laserScanCompressed().maxPoints());
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 		// scan_max_range
 		if(uStrNumCmp(_version, "0.10.7") >= 0)
 		{
-			rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanInfo().maxRange());
+			rc = sqlite3_bind_double(ppStmt, index++, sensorData.laserScanCompressed().maxRange());
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 		}
 	}
 
 	// scan
-	if(!sensorData.laserScanCompressed().empty())
+	if(!sensorData.laserScanCompressed().isEmpty())
 	{
-		rc = sqlite3_bind_blob(ppStmt, index++, sensorData.laserScanCompressed().data, (int)sensorData.laserScanCompressed().cols, SQLITE_STATIC);
+		rc = sqlite3_bind_blob(ppStmt, index++, sensorData.laserScanCompressed().data().data, sensorData.laserScanCompressed().size(), SQLITE_STATIC);
 	}
 	else
 	{

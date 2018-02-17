@@ -43,6 +43,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/segmentation/sac_segmentation.h>
 
+#include <rtabmap/core/util3d.h>
+#include <rtabmap/core/util3d_surface.h>
+
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UConversion.h>
@@ -65,28 +68,36 @@ namespace rtabmap
 namespace util3d
 {
 
-cv::Mat rangeFiltering(
-		const cv::Mat & scan,
+void commonFiltering(
+		LaserScan & scan,
+		int downsamplingStep,
 		float rangeMin,
-		float rangeMax)
+		float rangeMax,
+		float voxelSize,
+		int normalK,
+		float normalRadius,
+		bool forceGroundNormalsUp)
 {
-	UASSERT(rangeMin >=0.0f && rangeMax>=0.0f);
-	cv::Mat output;
-
-	if(!scan.empty())
+	UDEBUG("scan size=%d format=%d, step=%d, rangeMin=%f, rangeMax=%f, voxel=%f, normalK=%d, normalRadius=%f",
+			scan.size(), (int)scan.format(), downsamplingStep, rangeMin, rangeMax, voxelSize, normalK, normalRadius);
+	if(!scan.isEmpty())
 	{
-		if(rangeMin > 0.0f || rangeMax > 0.0f)
+		// combined downsampling and range filtering step
+		if(downsamplingStep<=1 || scan.size() <= downsamplingStep)
 		{
-			UASSERT(scan.type() == CV_32FC2 || scan.type() == CV_32FC3 || scan.type() == CV_32FC(4) || scan.type() == CV_32FC(5) || scan.type() == CV_32FC(6)  || scan.type() == CV_32FC(7));
-			UASSERT(scan.rows == 1);
-			output = cv::Mat(1, scan.cols, scan.type());
-			bool is2d = scan.type() == CV_32FC2 || scan.type() == CV_32FC(5);
+			downsamplingStep = 1;
+		}
+
+		if(downsamplingStep > 1 || rangeMin > 0.0f || rangeMax > 0.0f)
+		{
+			cv::Mat tmp = cv::Mat(1, scan.size()/downsamplingStep, scan.dataType());
+			bool is2d = scan.is2d();
 			int oi = 0;
 			float rangeMinSqrd = rangeMin * rangeMin;
 			float rangeMaxSqrd = rangeMax * rangeMax;
-			for(int i=0; i<scan.cols; ++i)
+			for(int i=0; i<scan.size()-downsamplingStep+1; i+=downsamplingStep)
 			{
-				const float * ptr = scan.ptr<float>(0, i);
+				const float * ptr = scan.data().ptr<float>(0, i);
 				float r;
 				if(is2d)
 				{
@@ -106,43 +117,216 @@ cv::Mat rangeFiltering(
 					continue;
 				}
 
-				cv::Mat(scan, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
+				cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(tmp, cv::Range::all(), cv::Range(oi,oi+1)));
 				++oi;
 			}
-			output = cv::Mat(output, cv::Range::all(), cv::Range(0, oi));
+			int previousSize = scan.size();
+			int scanMaxPtsTmp = scan.maxPoints();
+			scan = LaserScan(cv::Mat(tmp, cv::Range::all(), cv::Range(0, oi)), scanMaxPtsTmp/downsamplingStep, scan.maxRange(), scan.format(), scan.localTransform());
+			UDEBUG("Downsampling scan (step=%d): %d -> %d (scanMaxPts=%d->%d)", downsamplingStep, previousSize, scan.size(), scanMaxPtsTmp, scan.maxPoints());
 		}
-		else
+
+		if(scan.size() && (voxelSize > 0.0f || ((normalK > 0 || normalRadius>0.0f) && !scan.hasNormals())))
 		{
-			output = scan.clone();
+			// convert to compatible PCL format and filter it
+			if(scan.hasRGB())
+			{
+				UASSERT(!scan.is2d());
+				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = laserScanToPointCloudRGB(scan);
+				if(cloud->size())
+				{
+					int scanMaxPts = scan.maxPoints();
+					if(voxelSize > 0.0f)
+					{
+						cloud = voxelize(cloud, voxelSize);
+						float ratio = float(cloud->size()) / scan.size();
+						scanMaxPts = int(float(scanMaxPts) * ratio);
+						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), cloud->size(), scan.maxPoints(), scanMaxPts);
+					}
+					if(cloud->size() && (normalK > 0 || normalRadius>0.0f))
+					{
+						pcl::PointCloud<pcl::Normal>::Ptr normals = util3d::computeNormals(cloud, normalK, normalRadius);
+						scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYZRGBNormal, scan.localTransform());
+						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
+					}
+					else
+					{
+						if(scan.hasNormals())
+						{
+							UWARN("Voxel filter i applied, but normal parameters are not set and input scan has normals. The returned scan has no normals.");
+						}
+						scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYZRGB, scan.localTransform());
+					}
+				}
+			}
+			else if(scan.hasIntensity())
+			{
+				pcl::PointCloud<pcl::PointXYZI>::Ptr cloud = laserScanToPointCloudI(scan);
+				if(cloud->size())
+				{
+					int scanMaxPts = scan.maxPoints();
+					if(voxelSize > 0.0f)
+					{
+						cloud = voxelize(cloud, voxelSize);
+						float ratio = float(cloud->size()) / scan.size();
+						scanMaxPts = int(float(scanMaxPts) * ratio);
+						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), cloud->size(), scan.maxPoints(), scanMaxPts);
+					}
+					if(cloud->size() && (normalK > 0 || normalRadius>0.0f))
+					{
+						pcl::PointCloud<pcl::Normal>::Ptr normals;
+						if(scan.is2d())
+						{
+							normals = util3d::computeNormals2D(cloud, normalK, normalRadius);
+							scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYINormal, scan.localTransform());
+						}
+						else
+						{
+							normals = util3d::computeNormals(cloud, normalK, normalRadius);
+							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYZINormal, scan.localTransform());
+						}
+						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
+					}
+					else
+					{
+						if(scan.hasNormals())
+						{
+							UWARN("Voxel filter i applied, but normal parameters are not set and input scan has normals. The returned scan has no normals.");
+						}
+						if(scan.is2d())
+						{
+							scan = LaserScan(laserScan2dFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYI, scan.localTransform());
+						}
+						else
+						{
+							scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYZI, scan.localTransform());
+						}
+					}
+				}
+			}
+			else
+			{
+				pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = laserScanToPointCloud(scan);
+				if(cloud->size())
+				{
+					int scanMaxPts = scan.maxPoints();
+					if(voxelSize > 0.0f)
+					{
+						cloud = voxelize(cloud, voxelSize);
+						float ratio = float(cloud->size()) / scan.size();
+						scanMaxPts = int(float(scanMaxPts) * ratio);
+						UDEBUG("Voxel filtering scan (voxel=%f m): %d -> %d (scanMaxPts=%d->%d)", voxelSize, scan.size(), cloud->size(), scan.maxPoints(), scanMaxPts);
+					}
+					if(cloud->size() && (normalK > 0 || normalRadius>0.0f))
+					{
+						pcl::PointCloud<pcl::Normal>::Ptr normals;
+						if(scan.is2d())
+						{
+							normals = util3d::computeNormals2D(cloud, normalK, normalRadius);
+							scan = LaserScan(laserScan2dFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYNormal, scan.localTransform());
+						}
+						else
+						{
+							normals = util3d::computeNormals(cloud, normalK, normalRadius);
+							scan = LaserScan(laserScanFromPointCloud(*cloud, *normals), scanMaxPts, scan.maxRange(), LaserScan::kXYZNormal, scan.localTransform());
+						}
+						UDEBUG("Normals computed (k=%d radius=%f)", normalK, normalRadius);
+					}
+					else
+					{
+						if(scan.hasNormals())
+						{
+							UWARN("Voxel filter i applied, but normal parameters are not set and input scan has normals. The returned scan has no normals.");
+						}
+						if(scan.is2d())
+						{
+							scan = LaserScan(laserScan2dFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXY, scan.localTransform());
+						}
+						else
+						{
+							scan = LaserScan(laserScanFromPointCloud(*cloud), scanMaxPts, scan.maxRange(), LaserScan::kXYZ, scan.localTransform());
+						}
+					}
+				}
+			}
+		}
+
+		if(scan.size() && !scan.is2d() && scan.hasNormals() && forceGroundNormalsUp)
+		{
+			scan = util3d::adjustNormalsToViewPoint(scan, Eigen::Vector3f(0,0,0), forceGroundNormalsUp);
+		}
+	}
+}
+
+LaserScan rangeFiltering(
+		const LaserScan & scan,
+		float rangeMin,
+		float rangeMax)
+{
+	UASSERT(rangeMin >=0.0f && rangeMax>=0.0f);
+	if(!scan.isEmpty())
+	{
+		if(rangeMin > 0.0f || rangeMax > 0.0f)
+		{
+			cv::Mat output = cv::Mat(1, scan.size(), scan.dataType());
+			bool is2d = scan.is2d();
+			int oi = 0;
+			float rangeMinSqrd = rangeMin * rangeMin;
+			float rangeMaxSqrd = rangeMax * rangeMax;
+			for(int i=0; i<scan.size(); ++i)
+			{
+				const float * ptr = scan.data().ptr<float>(0, i);
+				float r;
+				if(is2d)
+				{
+					r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
+				}
+				else
+				{
+					r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
+				}
+
+				if(rangeMin > 0.0f && r < rangeMinSqrd)
+				{
+					continue;
+				}
+				if(rangeMax > 0.0f && r > rangeMaxSqrd)
+				{
+					continue;
+				}
+
+				cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
+				++oi;
+			}
+			return LaserScan(cv::Mat(output, cv::Range::all(), cv::Range(0, oi)), scan.maxPoints(), scan.maxRange(), scan.format(), scan.localTransform());
 		}
 	}
 
-	return output;
+	return scan;
 }
 
-cv::Mat downsample(
-		const cv::Mat & cloud,
+LaserScan downsample(
+		const LaserScan & scan,
 		int step)
 {
 	UASSERT(step > 0);
-	cv::Mat output;
-	if(step <= 1 || cloud.cols <= step)
+	if(step <= 1 || scan.size() <= step)
 	{
 		// no sampling
-		output = cloud.clone();
+		return scan;
 	}
 	else
 	{
-		int finalSize = cloud.cols/step;
-		output = cv::Mat(1, finalSize, cloud.type());
+		int finalSize = scan.size()/step;
+		cv::Mat output = cv::Mat(1, finalSize, scan.dataType());
 		int oi = 0;
-		for(int i=0; i<cloud.cols-step+1; i+=step)
+		for(int i=0; i<scan.size()-step+1; i+=step)
 		{
-			cv::Mat(cloud, cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
+			cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(output, cv::Range::all(), cv::Range(oi,oi+1)));
 			++oi;
 		}
+		return LaserScan(output, scan.maxPoints()/step, scan.maxRange(), scan.format(), scan.localTransform());
 	}
-	return output;
 }
 template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr downsampleImpl(
@@ -227,6 +411,10 @@ pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(const pcl::PointCloud<pcl:
 {
 	return voxelizeImpl<pcl::PointXYZRGBNormal>(cloud, indices, voxelSize);
 }
+pcl::PointCloud<pcl::PointXYZI>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, const pcl::IndicesPtr & indices, float voxelSize)
+{
+	return voxelizeImpl<pcl::PointXYZI>(cloud, indices, voxelSize);
+}
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud, float voxelSize)
 {
@@ -244,6 +432,11 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr voxelize(const pcl::PointCloud<pcl::Point
 	return voxelize(cloud, indices, voxelSize);
 }
 pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud, float voxelSize)
+{
+	pcl::IndicesPtr indices(new std::vector<int>);
+	return voxelize(cloud, indices, voxelSize);
+}
+pcl::PointCloud<pcl::PointXYZI>::Ptr voxelize(const pcl::PointCloud<pcl::PointXYZI>::Ptr & cloud, float voxelSize)
 {
 	pcl::IndicesPtr indices(new std::vector<int>);
 	return voxelize(cloud, indices, voxelSize);

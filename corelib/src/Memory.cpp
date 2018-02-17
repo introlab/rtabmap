@@ -2261,7 +2261,9 @@ void Memory::removeRawData(int id, bool image, bool scan, bool userData)
 		}
 		if(scan && !_registrationPipeline->isScanRequired())
 		{
-			s->sensorData().setLaserScanRaw(cv::Mat(), s->sensorData().laserScanInfo());
+			LaserScan scan = s->sensorData().laserScanRaw();
+			scan.clear();
+			s->sensorData().setLaserScanRaw(scan);
 		}
 		if(userData && !_registrationPipeline->isUserDataRequired())
 		{
@@ -2312,19 +2314,20 @@ Transform Memory::computeTransform(
 	// make sure we have all data needed
 	// load binary data from database if not in RAM (if image is already here, scan and userData should be or they are null)
 	if((((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired()) && fromS.sensorData().imageCompressed().empty()) ||
-	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().empty()) ||
+	   (_registrationPipeline->isScanRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && fromS.sensorData().imageCompressed().empty() && fromS.sensorData().userDataCompressed().empty()))
 	{
 		fromS.sensorData() = getNodeData(fromS.id());
 	}
 	if((((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired()) && toS.sensorData().imageCompressed().empty()) ||
-	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().empty()) ||
+	   (_registrationPipeline->isScanRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().laserScanCompressed().isEmpty()) ||
 	   (_registrationPipeline->isUserDataRequired() && toS.sensorData().imageCompressed().empty() && toS.sensorData().userDataCompressed().empty()))
 	{
 		toS.sensorData() = getNodeData(toS.id());
 	}
 	// uncompress only what we need
-	cv::Mat imgBuf, depthBuf, laserBuf, userBuf;
+	cv::Mat imgBuf, depthBuf, userBuf;
+	LaserScan laserBuf;
 	fromS.sensorData().uncompressData(
 			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&imgBuf:0,
 			((_reextractLoopClosureFeatures || _visCorType==1) && _registrationPipeline->isImageRequired())?&depthBuf:0,
@@ -2422,12 +2425,12 @@ Transform Memory::computeIcpTransform(
 		std::list<Signature*> depthsToLoad;
 		//if image is already here, scan should be or it is null
 		if(fromS->sensorData().imageCompressed().empty() &&
-		   fromS->sensorData().laserScanCompressed().empty())
+		   fromS->sensorData().laserScanCompressed().isEmpty())
 		{
 			depthsToLoad.push_back(fromS);
 		}
 		if(toS->sensorData().imageCompressed().empty() &&
-		   toS->sensorData().laserScanCompressed().empty())
+		   toS->sensorData().laserScanCompressed().isEmpty())
 		{
 			depthsToLoad.push_back(toS);
 		}
@@ -2442,7 +2445,7 @@ Transform Memory::computeIcpTransform(
 	if(fromS && toS)
 	{
 		//make sure data are uncompressed
-		cv::Mat tmp1, tmp2;
+		LaserScan tmp1, tmp2;
 		fromS->sensorData().uncompressData(0, 0, &tmp1);
 		toS->sensorData().uncompressData(0, 0, &tmp2);
 
@@ -2494,7 +2497,7 @@ Transform Memory::computeIcpTransformMulti(
 		UASSERT(s != 0);
 		//if image is already here, scan should be or it is null
 		if(s->sensorData().imageCompressed().empty() &&
-		   s->sensorData().laserScanCompressed().empty())
+		   s->sensorData().laserScanCompressed().isEmpty())
 		{
 			depthToLoad.push_back(s);
 		}
@@ -2505,53 +2508,70 @@ Transform Memory::computeIcpTransformMulti(
 	}
 
 	Signature * fromS = _getSignature(fromId);
-	cv::Mat fromScan;
+	LaserScan fromScan;
 	fromS->sensorData().uncompressData(0, 0, &fromScan);
 
 	Transform t;
-	if(!fromScan.empty())
+	if(!fromScan.isEmpty())
 	{
 		// Create a fake signature with all scans merged in oldId referential
 		SensorData assembledData;
 		Transform toPoseInv = poses.at(toId).inverse();
 		std::string msg;
-		int maxPoints = fromScan.cols;
+		int maxPoints = fromScan.size();
 		pcl::PointCloud<pcl::PointXYZ>::Ptr assembledToClouds(new pcl::PointCloud<pcl::PointXYZ>);
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
+		pcl::PointCloud<pcl::PointXYZI>::Ptr assembledToIClouds(new pcl::PointCloud<pcl::PointXYZI>);
+		pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembledToNormalIClouds(new pcl::PointCloud<pcl::PointXYZINormal>);
 		bool is2D = true;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first != fromId)
 			{
 				Signature * s = this->_getSignature(iter->first);
-				if(!s->sensorData().laserScanCompressed().empty())
+				if(!s->sensorData().laserScanCompressed().isEmpty())
 				{
-					cv::Mat scan;
+					LaserScan scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					if(!scan.empty())
+					if(!scan.isEmpty() && scan.format() == fromS->sensorData().laserScanRaw().format())
 					{
-						if(scan.channels() != 2 && scan.channels() != 5)
-						{
-							is2D = false;
-						}
+						is2D = !scan.is2d();
 
-						if(scan.channels() >= 5)
+						if(scan.hasIntensity())
 						{
-							*assembledToNormalClouds += *util3d::laserScanToPointCloudNormal(
-									scan,
-									toPoseInv * iter->second * s->sensorData().laserScanInfo().localTransform());
+							if(scan.hasNormals())
+							{
+								*assembledToNormalIClouds += *util3d::laserScanToPointCloudINormal(scan,
+										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+							}
+							else
+							{
+								*assembledToIClouds += *util3d::laserScanToPointCloudI(scan,
+										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+							}
 						}
 						else
 						{
-							*assembledToClouds += *util3d::laserScanToPointCloud(
-									scan,
-									toPoseInv * iter->second * s->sensorData().laserScanInfo().localTransform());
+							if(scan.hasNormals())
+							{
+								*assembledToNormalClouds += *util3d::laserScanToPointCloudNormal(scan,
+										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+							}
+							else
+							{
+								*assembledToClouds += *util3d::laserScanToPointCloud(scan,
+										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+							}
 						}
 
-						if(scan.cols > maxPoints)
+						if(scan.size() > maxPoints)
 						{
-							maxPoints = scan.cols;
+							maxPoints = scan.size();
 						}
+					}
+					else if(!scan.isEmpty())
+					{
+						UWARN("Incompatible scan format %d vs %d", (int)fromS->sensorData().laserScanRaw().format(), (int)scan.format());
 					}
 				}
 				else
@@ -2570,12 +2590,21 @@ Transform Memory::computeIcpTransformMulti(
 		{
 			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToClouds):util3d::laserScanFromPointCloud(*assembledToClouds);
 		}
+		else if(assembledToNormalIClouds->size())
+		{
+			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToNormalIClouds):util3d::laserScanFromPointCloud(*assembledToNormalIClouds);
+		}
+		else if(assembledToIClouds->size())
+		{
+			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
+		}
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
-		assembledData.setLaserScanRaw(assembledScan,
-				LaserScanInfo(
-					fromS->sensorData().laserScanInfo().maxPoints()?fromS->sensorData().laserScanInfo().maxPoints():maxPoints,
-					fromS->sensorData().laserScanInfo().maxRange(),
-					is2D?Transform(0,0,fromS->sensorData().laserScanInfo().localTransform().z(),0,0,0):Transform::getIdentity()));
+		assembledData.setLaserScanRaw(
+				LaserScan(assembledScan,
+					fromS->sensorData().laserScanRaw().maxPoints()?fromS->sensorData().laserScanRaw().maxPoints():maxPoints,
+					fromS->sensorData().laserScanRaw().maxRange(),
+					fromS->sensorData().laserScanRaw().format(),
+					is2D?Transform(0,0,fromS->sensorData().laserScanRaw().localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		t = _registrationIcp->computeTransformation(fromS->sensorData(), assembledData, guess, info);
@@ -3265,7 +3294,7 @@ SensorData Memory::getSignatureDataConst(int locationId,
 	SensorData r;
 	const Signature * s = this->getSignature(locationId);
 	if(s && (!s->sensorData().imageCompressed().empty() ||
-			!s->sensorData().laserScanCompressed().empty() ||
+			!s->sensorData().laserScanCompressed().isEmpty() ||
 			!s->sensorData().userDataCompressed().empty() ||
 			s->sensorData().gridCellSize() != 0.0f))
 	{
@@ -3378,7 +3407,6 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						data.depthOrRightRaw().rows,
 						data.depthOrRightRaw().type(),
 						CV_16UC1, CV_32FC1, CV_8UC1).c_str());
-	UASSERT(data.laserScanRaw().empty() || data.laserScanRaw().type() == CV_32FC2 || data.laserScanRaw().type() == CV_32FC3 || data.laserScanRaw().type() == CV_32FC(4) || data.laserScanRaw().type() == CV_32FC(5) || data.laserScanRaw().type() == CV_32FC(6) || data.laserScanRaw().type() == CV_32FC(7));
 
 	if(!data.depthOrRightRaw().empty() &&
 		data.cameraModels().size() == 0 &&
@@ -3821,55 +3849,19 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		UDEBUG("time post-decimation = %fs", t);
 	}
 
-	// downsampling the laser scan?
-	cv::Mat laserScan = data.laserScanRaw();
-	int maxLaserScanMaxPts = data.laserScanInfo().maxPoints();
-	if(!laserScan.empty() && _laserScanDownsampleStepSize > 1 && !isIntermediateNode)
+	// Filter the laser scan?
+	LaserScan laserScan = data.laserScanRaw();
+	if(!isIntermediateNode && laserScan.size())
 	{
-		laserScan = util3d::downsample(laserScan, _laserScanDownsampleStepSize);
-		maxLaserScanMaxPts /= _laserScanDownsampleStepSize;
-
+		util3d::commonFiltering(laserScan,
+				_laserScanDownsampleStepSize,
+				0,
+				0,
+				_laserScanVoxelSize,
+				_laserScanNormalK,
+				_laserScanNormalRadius);
 		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemScan_downsampling(), t*1000.0f);
-		UDEBUG("time downsampling scan = %fs", t);
-	}
-	if(!laserScan.empty() && _laserScanVoxelSize > 0.0f && !isIntermediateNode)
-	{
-		float pointsBeforeFiltering = laserScan.cols;
-		if(laserScan.channels() == 4 || laserScan.channels() == 7)
-		{
-			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(laserScan);
-			cloud = util3d::voxelize(cloud, _laserScanVoxelSize);
-			laserScan = util3d::laserScanFromPointCloud(*cloud);
-		}
-		else
-		{
-			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(laserScan);
-			cloud = util3d::voxelize(cloud, _laserScanVoxelSize);
-			if(laserScan.channels() == 2 || laserScan.channels() == 5)
-			{
-				laserScan = util3d::laserScan2dFromPointCloud(*cloud);
-			}
-			else
-			{
-				laserScan = util3d::laserScanFromPointCloud(*cloud);
-			}
-		}
-		float ratio = float(laserScan.cols) / pointsBeforeFiltering;
-		maxLaserScanMaxPts = int(float(maxLaserScanMaxPts) * ratio);
-
-		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemScan_voxel_filtering(), t*1000.0f);
-		UDEBUG("time voxel filtering scan = %fs", t);
-	}
-	if(!laserScan.empty() &&
-		(_laserScanNormalK > 0 || _laserScanNormalRadius>0.0f) &&
-		laserScan.channels() > 1 && laserScan.channels() < 5 &&
-		!isIntermediateNode)
-	{
-		laserScan = util3d::computeNormals(laserScan, _laserScanNormalK, _laserScanNormalRadius);
-		t = timer.ticks();
-		if(stats) stats->addStatistic(Statistics::kTimingMemScan_normals(), t*1000.0f);
+		if(stats) stats->addStatistic(Statistics::kTimingMemScan_filtering(), t*1000.0f);
 		UDEBUG("time normals scan = %fs", t);
 	}
 
@@ -3879,7 +3871,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		UDEBUG("Bin data kept: rgb=%d, depth=%d, scan=%d, userData=%d",
 				image.empty()?0:1,
 				depthOrRightImage.empty()?0:1,
-				laserScan.empty()?0:1,
+				laserScan.isEmpty()?0:1,
 				data.userDataRaw().empty()?0:1);
 
 		std::vector<unsigned char> imageBytes;
@@ -3899,7 +3891,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		{
 			rtabmap::CompressionThread ctImage(image, std::string(".jpg"));
 			rtabmap::CompressionThread ctDepth(depthOrRightImage, std::string(".png"));
-			rtabmap::CompressionThread ctLaserScan(laserScan);
+			rtabmap::CompressionThread ctLaserScan(laserScan.data());
 			rtabmap::CompressionThread ctUserData(data.userDataRaw());
 			if(!image.empty())
 			{
@@ -3909,7 +3901,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			{
 				ctDepth.start();
 			}
-			if(!laserScan.empty())
+			if(!laserScan.isEmpty())
 			{
 				ctLaserScan.start();
 			}
@@ -3931,7 +3923,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		{
 			compressedImage = compressImage2(image, std::string(".jpg"));
 			compressedDepth = compressImage2(depthOrRightImage, depthOrRightImage.type() == CV_32FC1 || depthOrRightImage.type() == CV_16UC1?std::string(".png"):std::string(".jpg"));
-			compressedScan = compressData2(laserScan);
+			compressedScan = compressData2(laserScan.data());
 			compressedUserData = compressData2(data.userDataRaw());
 		}
 
@@ -3944,8 +3936,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						compressedScan,
-						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
+						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
 						compressedImage,
 						compressedDepth,
 						stereoCameraModel,
@@ -3953,8 +3944,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						0,
 						compressedUserData):
 				SensorData(
-						compressedScan,
-						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
+						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
 						compressedImage,
 						compressedDepth,
 						cameraModels,
@@ -3965,7 +3955,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	else
 	{
 		UDEBUG("Bin data kept: scan=%d, userData=%d",
-						laserScan.empty()?0:1,
+						laserScan.isEmpty()?0:1,
 						data.userDataRaw().empty()?0:1);
 
 		// just compress user data and laser scan (scans can be used for local scan matching)
@@ -3974,12 +3964,12 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		if(_compressionParallelized)
 		{
 			rtabmap::CompressionThread ctUserData(data.userDataRaw());
-			rtabmap::CompressionThread ctLaserScan(laserScan);
+			rtabmap::CompressionThread ctLaserScan(laserScan.data());
 			if(!data.userDataRaw().empty() && !isIntermediateNode)
 			{
 				ctUserData.start();
 			}
-			if(!laserScan.empty() && !isIntermediateNode)
+			if(!laserScan.isEmpty() && !isIntermediateNode)
 			{
 				ctLaserScan.start();
 			}
@@ -3991,7 +3981,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		}
 		else
 		{
-			compressedScan = compressData2(laserScan);
+			compressedScan = compressData2(laserScan.data());
 			compressedUserData = compressData2(data.userDataRaw());
 		}
 
@@ -4004,8 +3994,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 			data.groundTruth(),
 			stereoCameraModel.isValidForProjection()?
 				SensorData(
-						compressedScan,
-						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
+						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						stereoCameraModel,
@@ -4013,8 +4002,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 						0,
 						compressedUserData):
 				SensorData(
-						compressedScan,
-						LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()),
+						LaserScan(compressedScan, data.laserScanRaw().maxPoints(), data.laserScanRaw().maxRange(), data.laserScanRaw().format(), data.laserScanRaw().localTransform()),
 						cv::Mat(),
 						cv::Mat(),
 						cameraModels,
@@ -4030,7 +4018,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	// set raw data
 	s->sensorData().setImageRaw(image);
 	s->sensorData().setDepthOrRightRaw(depthOrRightImage);
-	s->sensorData().setLaserScanRaw(laserScan, LaserScanInfo(maxLaserScanMaxPts, data.laserScanInfo().maxRange(), data.laserScanInfo().localTransform()));
+	s->sensorData().setLaserScanRaw(data.laserScanRaw());
 	s->sensorData().setUserDataRaw(data.userDataRaw());
 
 	s->sensorData().setGroundTruth(data.groundTruth());
