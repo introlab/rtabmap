@@ -27,6 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <rtabmap/core/LaserScan.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UConversion.h>
 
 namespace rtabmap {
 
@@ -139,12 +140,12 @@ LaserScan::LaserScan(const cv::Mat & data, int maxPoints, float maxRange, Format
 		}
 		else // verify that format corresponds to expected number of channels
 		{
-			UASSERT(data.channels() != 2 || (data.channels() == 2 && format == kXY));
-			UASSERT(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)));
-			UASSERT(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)));
-			UASSERT(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)));
-			UASSERT(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)));
-			UASSERT(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)));
+			UASSERT_MSG(data.channels() != 2 || (data.channels() == 2 && format == kXY), uFormat("format=%d", format).c_str());
+			UASSERT_MSG(data.channels() != 3 || (data.channels() == 3 && (format == kXYZ || format == kXYI)), uFormat("format=%d", format).c_str());
+			UASSERT_MSG(data.channels() != 4 || (data.channels() == 4 && (format == kXYZI || format == kXYZRGB)), uFormat("format=%d", format).c_str());
+			UASSERT_MSG(data.channels() != 5 || (data.channels() == 5 && (format == kXYNormal)), uFormat("format=%d", format).c_str());
+			UASSERT_MSG(data.channels() != 6 || (data.channels() == 6 && (format == kXYINormal || format == kXYZNormal)), uFormat("format=%d", format).c_str());
+			UASSERT_MSG(data.channels() != 7 || (data.channels() == 7 && (format == kXYZRGBNormal || format == kXYZINormal)), uFormat("format=%d", format).c_str());
 		}
 	}
 }

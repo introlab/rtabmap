@@ -2523,7 +2523,6 @@ Transform Memory::computeIcpTransformMulti(
 		pcl::PointCloud<pcl::PointNormal>::Ptr assembledToNormalClouds(new pcl::PointCloud<pcl::PointNormal>);
 		pcl::PointCloud<pcl::PointXYZI>::Ptr assembledToIClouds(new pcl::PointCloud<pcl::PointXYZI>);
 		pcl::PointCloud<pcl::PointXYZINormal>::Ptr assembledToNormalIClouds(new pcl::PointCloud<pcl::PointXYZINormal>);
-		bool is2D = true;
 		for(std::map<int, Transform>::const_iterator iter = poses.begin(); iter!=poses.end(); ++iter)
 		{
 			if(iter->first != fromId)
@@ -2533,21 +2532,19 @@ Transform Memory::computeIcpTransformMulti(
 				{
 					LaserScan scan;
 					s->sensorData().uncompressData(0, 0, &scan);
-					if(!scan.isEmpty() && scan.format() == fromS->sensorData().laserScanRaw().format())
+					if(!scan.isEmpty() && scan.format() == fromScan.format())
 					{
-						is2D = !scan.is2d();
-
 						if(scan.hasIntensity())
 						{
 							if(scan.hasNormals())
 							{
 								*assembledToNormalIClouds += *util3d::laserScanToPointCloudINormal(scan,
-										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+										toPoseInv * iter->second * scan.localTransform());
 							}
 							else
 							{
 								*assembledToIClouds += *util3d::laserScanToPointCloudI(scan,
-										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+										toPoseInv * iter->second * scan.localTransform());
 							}
 						}
 						else
@@ -2555,12 +2552,12 @@ Transform Memory::computeIcpTransformMulti(
 							if(scan.hasNormals())
 							{
 								*assembledToNormalClouds += *util3d::laserScanToPointCloudNormal(scan,
-										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+										toPoseInv * iter->second * scan.localTransform());
 							}
 							else
 							{
 								*assembledToClouds += *util3d::laserScanToPointCloud(scan,
-										toPoseInv * iter->second * s->sensorData().laserScanCompressed().localTransform());
+										toPoseInv * iter->second * scan.localTransform());
 							}
 						}
 
@@ -2571,7 +2568,7 @@ Transform Memory::computeIcpTransformMulti(
 					}
 					else if(!scan.isEmpty())
 					{
-						UWARN("Incompatible scan format %d vs %d", (int)fromS->sensorData().laserScanRaw().format(), (int)scan.format());
+						UWARN("Incompatible scan format %d vs %d", (int)fromScan.format(), (int)scan.format());
 					}
 				}
 				else
@@ -2584,27 +2581,28 @@ Transform Memory::computeIcpTransformMulti(
 		cv::Mat assembledScan;
 		if(assembledToNormalClouds->size())
 		{
-			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
+			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToNormalClouds):util3d::laserScanFromPointCloud(*assembledToNormalClouds);
 		}
 		else if(assembledToClouds->size())
 		{
-			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToClouds):util3d::laserScanFromPointCloud(*assembledToClouds);
+			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToClouds):util3d::laserScanFromPointCloud(*assembledToClouds);
 		}
 		else if(assembledToNormalIClouds->size())
 		{
-			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToNormalIClouds):util3d::laserScanFromPointCloud(*assembledToNormalIClouds);
+			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToNormalIClouds):util3d::laserScanFromPointCloud(*assembledToNormalIClouds);
 		}
 		else if(assembledToIClouds->size())
 		{
-			assembledScan = is2D?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
+			assembledScan = fromScan.is2d()?util3d::laserScan2dFromPointCloud(*assembledToIClouds):util3d::laserScanFromPointCloud(*assembledToIClouds);
 		}
+
 		// scans are in base frame but for 2d scans, set the height so that correspondences matching works
 		assembledData.setLaserScanRaw(
 				LaserScan(assembledScan,
-					fromS->sensorData().laserScanRaw().maxPoints()?fromS->sensorData().laserScanRaw().maxPoints():maxPoints,
-					fromS->sensorData().laserScanRaw().maxRange(),
-					fromS->sensorData().laserScanRaw().format(),
-					is2D?Transform(0,0,fromS->sensorData().laserScanRaw().localTransform().z(),0,0,0):Transform::getIdentity()));
+					fromScan.maxPoints()?fromScan.maxPoints():maxPoints,
+					fromScan.maxRange(),
+					fromScan.format(),
+					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		t = _registrationIcp->computeTransformation(fromS->sensorData(), assembledData, guess, info);
