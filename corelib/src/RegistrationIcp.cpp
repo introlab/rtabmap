@@ -148,6 +148,116 @@ DP pclToDP(const pcl::PointCloud<pcl::PointNormal>::Ptr & pclCloud, bool is2D)
 	return cloud;
 }
 
+DP laserScanToDP(const rtabmap::LaserScan & scan)
+{
+	UDEBUG("");
+	typedef DP::Label Label;
+	typedef DP::Labels Labels;
+	typedef DP::View View;
+
+	if (scan.isEmpty())
+		return DP();
+
+	// fill labels
+	// conversions of descriptor fields from pcl
+	// see http://www.ros.org/wiki/pcl/Overview
+	Labels featLabels;
+	Labels descLabels;
+	featLabels.push_back(Label("x", 1));
+	featLabels.push_back(Label("y", 1));
+	if(!scan.is2d())
+	{
+		featLabels.push_back(Label("z", 1));
+	}
+	featLabels.push_back(Label("pad", 1));
+
+	if(scan.hasNormals())
+	{
+		descLabels.push_back(Label("normals", 3));
+	}
+	if(scan.hasIntensity())
+	{
+		descLabels.push_back(Label("intensity", 1));
+	}
+
+	// create cloud
+	DP cloud(featLabels, descLabels, scan.size());
+	cloud.getFeatureViewByName("pad").setConstant(1);
+
+	// fill cloud
+	int nx = scan.getNormalsOffset();
+	int ny = nx+1;
+	int nz = ny+1;
+	int offsetI = scan.getIntensityOffset();
+	bool hasLocalTransform = !scan.localTransform().isNull() && !scan.localTransform().isIdentity();
+	View view(cloud.getFeatureViewByName("x"));
+	View viewNormalX(nx!=-1?cloud.getDescriptorRowViewByName("normals",0):view);
+	View viewNormalY(nx!=-1?cloud.getDescriptorRowViewByName("normals",1):view);
+	View viewNormalZ(nx!=-1?cloud.getDescriptorRowViewByName("normals",2):view);
+	View viewIntensity(offsetI!=-1?cloud.getDescriptorRowViewByName("intensity",0):view);
+	for(unsigned int i=0; i<scan.size(); ++i)
+	{
+		const float * ptr = scan.data().ptr<float>(0, i);
+
+		if(hasLocalTransform)
+		{
+			if(nx == -1)
+			{
+				cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
+				pt = rtabmap::util3d::transformPoint(pt, scan.localTransform());
+				view(0, i) = pt.x;
+				view(1, i) = pt.y;
+				if(!scan.is2d())
+				{
+					view(2, i) = pt.z;
+				}
+			}
+			else if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))
+			{
+				pcl::PointNormal pt;
+				pt.x=ptr[0];
+				pt.y=ptr[1];
+				pt.z=scan.is2d()?0:ptr[2];
+				pt.normal_x=ptr[nx];
+				pt.normal_y=ptr[ny];
+				pt.normal_z=ptr[nz];
+				pt = rtabmap::util3d::transformPoint(pt, scan.localTransform());
+				view(0, i) = pt.x;
+				view(1, i) = pt.y;
+				if(!scan.is2d())
+				{
+					view(2, i) = pt.z;
+				}
+				viewNormalX(0, i) = pt.normal_x;
+				viewNormalY(0, i) = pt.normal_y;
+				viewNormalZ(0, i) = pt.normal_z;
+			}
+		}
+		else if(nx!=-1 || (uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz])))
+		{
+			view(0, i) = ptr[0];
+			view(1, i) = ptr[1];
+			if(!scan.is2d())
+			{
+				view(2, i) = ptr[2];
+			}
+			if(nx!=-1)
+			{
+				viewNormalX(0, i) = ptr[nx];
+				viewNormalY(0, i) = ptr[ny];
+				viewNormalZ(0, i) = ptr[nz];
+			}
+		}
+
+		if(offsetI!=-1)
+		{
+			viewIntensity(0, i) = ptr[offsetI];
+		}
+	}
+
+	return cloud;
+}
+
 void pclFromDP(const DP & cloud, pcl::PointCloud<pcl::PointXYZ> & pclCloud)
 {
 	UDEBUG("");
@@ -469,8 +579,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 					if(_libpointmatcher)
 					{
 						// Load point clouds
-						DP data = pclToDP(fromCloudNormals, fromScan.is2d());
-						DP ref = pclToDP(toCloudNormals, toScan.is2d());
+						DP data = laserScanToDP(fromScan);
+						DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.maxRange(), toScan.format(), guess * toScan.localTransform()));
 
 						// Compute the transformation to express data in ref
 						PM::TransformationParameters T;
@@ -681,6 +791,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 											toScan.localTransform()));
 						}
 						UDEBUG("Compute normals (%d,%d) time = %f s", (int)fromCloudNormals->size(), (int)toCloudNormals->size(), timer.ticks());
+						fromScan = fromSignature.sensorData().laserScanRaw();
+						toScan = toSignature.sensorData().laserScanRaw();
 
 						if(toCloudNormals->size() && fromCloudNormals->size())
 						{
@@ -690,8 +802,8 @@ Transform RegistrationIcp::computeTransformationImpl(
 							if(_libpointmatcher)
 							{
 								// Load point clouds
-								DP data = pclToDP(fromCloudNormals, fromScan.is2d());
-								DP ref = pclToDP(toCloudNormals, toScan.is2d());
+								DP data = laserScanToDP(fromScan);
+								DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.maxRange(), toScan.format(), guess*toScan.localTransform()));
 
 								// Compute the transformation to express data in ref
 								PM::TransformationParameters T;
@@ -797,14 +909,16 @@ Transform RegistrationIcp::computeTransformationImpl(
 											LaserScan::kXYZ,
 											toScan.localTransform()));
 						}
+						fromScan = fromSignature.sensorData().laserScanRaw();
+						toScan = toSignature.sensorData().laserScanRaw();
 					}
 
 #ifdef RTABMAP_POINTMATCHER
 					if(_libpointmatcher)
 					{
 						// Load point clouds
-						DP data = pclToDP(fromCloudFiltered, fromScan.is2d());
-						DP ref = pclToDP(toCloudFiltered, toScan.is2d());
+						DP data = laserScanToDP(fromScan);
+						DP ref = laserScanToDP(LaserScan(toScan.data(), toScan.maxPoints(), toScan.maxRange(), toScan.format(), guess*toScan.localTransform()));
 
 						// Compute the transformation to express data in ref
 						PM::TransformationParameters T;

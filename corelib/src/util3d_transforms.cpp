@@ -43,79 +43,43 @@ LaserScan transformLaserScan(const LaserScan & laserScan, const Transform & tran
 	if(!transform.isNull() && !transform.isIdentity())
 	{
 		Eigen::Affine3f transform3f = transform.toEigen3f();
+		int nx = laserScan.getNormalsOffset();
+		int ny = nx+1;
+		int nz = ny+1;
 		for(int i=0; i<laserScan.size(); ++i)
 		{
 			const float * ptr = laserScan.data().ptr<float>(0, i);
 			float * out = output.ptr<float>(0, i);
-			if(laserScan.format() == LaserScan::kXY || laserScan.format() == LaserScan::kXYI)
+			if(nx == -1)
 			{
-				pcl::PointXYZ pt(ptr[0], ptr[1], 0);
+				pcl::PointXYZ pt(ptr[0], ptr[1], laserScan.is2d()?0:ptr[2]);
 				pt = pcl::transformPoint(pt, transform3f);
 				out[0] = pt.x;
 				out[1] = pt.y;
-			}
-			else if(laserScan.format() == LaserScan::kXYZ || laserScan.format() == LaserScan::kXYZI || laserScan.format() == LaserScan::kXYZRGB)
-			{
-				pcl::PointXYZ pt(ptr[0], ptr[1], ptr[2]);
-				pt = pcl::transformPoint(pt, transform3f);
-				out[0] = pt.x;
-				out[1] = pt.y;
-				out[2] = pt.z;
-			}
-			else if(laserScan.format() == LaserScan::kXYNormal || laserScan.format() == LaserScan::kXYINormal)
-			{
-				int nOffset = laserScan.format() == LaserScan::kXYINormal?1:0;
-				pcl::PointNormal pt;
-				pt.x=ptr[0];
-				pt.y=ptr[1];
-				pt.z=0;
-				pt.normal_x=ptr[nOffset+2];
-				pt.normal_y=ptr[nOffset+3];
-				pt.normal_z=ptr[nOffset+4];
-				pt = util3d::transformPoint(pt, transform);
-				out[0] = pt.x;
-				out[1] = pt.y;
-				out[nOffset+2] = pt.normal_x;
-				out[nOffset+3] = pt.normal_y;
-				out[nOffset+4] = pt.normal_z;
-			}
-			else if(laserScan.format() == LaserScan::kXYZNormal)
-			{
-				pcl::PointNormal pt;
-				pt.x=ptr[0];
-				pt.y=ptr[1];
-				pt.z=ptr[2];
-				pt.normal_x=ptr[3];
-				pt.normal_y=ptr[4];
-				pt.normal_z=ptr[5];
-				pt = util3d::transformPoint(pt, transform);
-				out[0] = pt.x;
-				out[1] = pt.y;
-				out[2] = pt.z;
-				out[3] = pt.normal_x;
-				out[4] = pt.normal_y;
-				out[5] = pt.normal_z;
-			}
-			else if(laserScan.format() == LaserScan::kXYZINormal || laserScan.format() == LaserScan::kXYZRGBNormal)
-			{
-				pcl::PointNormal pt;
-				pt.x=ptr[0];
-				pt.y=ptr[1];
-				pt.z=ptr[2];
-				pt.normal_x=ptr[4];
-				pt.normal_y=ptr[5];
-				pt.normal_z=ptr[6];
-				pt = util3d::transformPoint(pt, transform);
-				out[0] = pt.x;
-				out[1] = pt.y;
-				out[2] = pt.z;
-				out[4] = pt.normal_x;
-				out[5] = pt.normal_y;
-				out[6] = pt.normal_z;
+				if(!laserScan.is2d())
+				{
+					out[2] = pt.z;
+				}
 			}
 			else
 			{
-				UERROR("Unknown laser scan format! (%d)", laserScan.format());
+				pcl::PointNormal pt;
+				pt.x=ptr[0];
+				pt.y=ptr[1];
+				pt.z=laserScan.is2d()?0:ptr[2];
+				pt.normal_x=ptr[nx];
+				pt.normal_y=ptr[ny];
+				pt.normal_z=ptr[nz];
+				pt = util3d::transformPoint(pt, transform);
+				out[0] = pt.x;
+				out[1] = pt.y;
+				if(!laserScan.is2d())
+				{
+					out[2] = pt.z;
+				}
+				out[nx] = pt.normal_x;
+				out[ny] = pt.normal_y;
+				out[nz] = pt.normal_z;
 			}
 		}
 	}
