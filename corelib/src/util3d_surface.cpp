@@ -2700,7 +2700,7 @@ LaserScan adjustNormalsToViewPoint(
 		int ny = nx+1;
 		int nz = ny+1;
 		cv::Mat output = scan.data().clone();
-		for(unsigned int i=0; i<scan.size(); ++i)
+		for(int i=0; i<scan.size(); ++i)
 		{
 			float * ptr = output.ptr<float>(0, i);
 			if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))

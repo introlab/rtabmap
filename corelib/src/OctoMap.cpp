@@ -548,7 +548,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			if(occupancyIter != cache_.end())
 			{
 				tmpGround = LaserScan::backwardCompatibility(occupancyIter->second.first.first);
-				UASSERT(tmpGround.size() == maxGroundPts);
+				UASSERT(tmpGround.size() == (int)maxGroundPts);
 			}
 			for (unsigned int i=0; i<maxGroundPts; ++i)
 			{
@@ -612,7 +612,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 			if(occupancyIter != cache_.end())
 			{
 				tmpObstacle = LaserScan::backwardCompatibility(occupancyIter->second.first.second);
-				UASSERT(tmpObstacle.size() == maxObstaclePts);
+				UASSERT(tmpObstacle.size() == (int)maxObstaclePts);
 			}
 			for (unsigned int i=0; i<maxObstaclePts; ++i)
 			{
@@ -702,7 +702,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				unsigned int maxEmptyPts = occupancyIter->second.second.cols;
 				UDEBUG("%d: compute free cells (from %d empty points)", iter->first, (int)maxEmptyPts);
 				LaserScan tmpEmpty = LaserScan::backwardCompatibility(occupancyIter->second.second);
-				UASSERT(tmpEmpty.size() == maxEmptyPts);
+				UASSERT(tmpEmpty.size() == (int)maxEmptyPts);
 				for (unsigned int i=0; i<maxEmptyPts; ++i)
 				{
 					pcl::PointXYZ pt;

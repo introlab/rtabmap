@@ -1510,13 +1510,13 @@ void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, boo
 						{
 							float * dataFloat = (float*)data;
 
-							if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (scanLocalTransform.size()+3)*sizeof(float))
+							if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (int)((scanLocalTransform.size()+3)*sizeof(float)))
 							{
 								// new in 0.16.1
 								laserScanFormat = (int)dataFloat[2];
 								memcpy(scanLocalTransform.data(), dataFloat+3, scanLocalTransform.size()*sizeof(float));
 							}
-							else if(dataSize == (scanLocalTransform.size()+2)*sizeof(float))
+							else if(dataSize == (int)((scanLocalTransform.size()+2)*sizeof(float)))
 							{
 								memcpy(scanLocalTransform.data(), dataFloat+2, scanLocalTransform.size()*sizeof(float));
 							}
@@ -1914,13 +1914,13 @@ bool DBDriverSqlite3::getLaserScanInfoQuery(
 			if(dataSize > 0 && data)
 			{
 				float * dataFloat = (float*)data;
-				if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (localTransform.size()+3)*sizeof(float))
+				if(uStrNumCmp(_version, "0.16.1") >= 0 && dataSize == (int)((localTransform.size()+3)*sizeof(float)))
 				{
 					// new in 0.16.1
 					format = (int)dataFloat[2];
 					memcpy(localTransform.data(), dataFloat+3, localTransform.size()*sizeof(float));
 				}
-				else if(dataSize == (localTransform.size()+2)*sizeof(float))
+				else if(dataSize == (int)((localTransform.size()+2)*sizeof(float)))
 				{
 					memcpy(localTransform.data(), dataFloat+2, localTransform.size()*sizeof(float));
 				}

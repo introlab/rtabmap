@@ -2892,7 +2892,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr loadCloud(
 	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 	if(UFile::getExtension(fileName).compare("bin") == 0)
 	{
-		cloud = util3d::loadBINCloud(path, 4); // Assume KITTI velodyne format
+		cloud = util3d::loadBINCloud(path); // Assume KITTI velodyne format
 	}
 	else if(UFile::getExtension(fileName).compare("pcd") == 0)
 	{
