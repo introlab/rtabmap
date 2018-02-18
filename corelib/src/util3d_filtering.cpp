@@ -1640,11 +1640,10 @@ pcl::IndicesPtr extractIndices(const pcl::PointCloud<pcl::PointXYZ>::Ptr & cloud
 {
 	return extractIndicesImpl<pcl::PointXYZ>(cloud, indices, negative);
 }
-// PCL default lacks of pcl::PointNormal type support
-//pcl::IndicesPtr extractIndices(const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, const pcl::IndicesPtr & indices, bool negative)
-//{
-//	return extractIndicesImpl<pcl::PointNormal>(cloud, indices, negative);
-//}
+pcl::IndicesPtr extractIndices(const pcl::PointCloud<pcl::PointNormal>::Ptr & cloud, const pcl::IndicesPtr & indices, bool negative)
+{
+	return extractIndicesImpl<pcl::PointNormal>(cloud, indices, negative);
+}
 pcl::IndicesPtr extractIndices(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & cloud, const pcl::IndicesPtr & indices, bool negative)
 {
 	return extractIndicesImpl<pcl::PointXYZRGB>(cloud, indices, negative);

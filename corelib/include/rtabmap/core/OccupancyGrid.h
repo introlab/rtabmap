@@ -70,18 +70,8 @@ public:
 			cv::Mat & emptyCells,
 			cv::Point3f & viewPoint) const;
 
-	template<typename PointT>
 	void createLocalMap(
-			const typename pcl::PointCloud<PointT>::Ptr cloud, // in base_link frame
-			const Transform & pose,
-			cv::Mat & groundCells,
-			cv::Mat & obstacleCells,
-			cv::Mat & emptyCells,
-			cv::Point3f & viewPointInOut) const;
-	template<typename PointT>
-	void createLocalMap(
-			const typename pcl::PointCloud<PointT>::Ptr cloud, // in base_link frame
-			const pcl::IndicesPtr & indices,
+			const LaserScan & cloud,
 			const Transform & pose,
 			cv::Mat & groundCells,
 			cv::Mat & obstacleCells,
@@ -99,16 +89,6 @@ public:
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapGround() const {return assembledGround_;}
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapObstacles() const {return assembledObstacles_;}
 	const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & getMapEmptyCells() const {return assembledEmptyCells_;}
-
-private:
-	void createLocalMapImpl(
-			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & groundCloud,
-			const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstaclesCloud,
-			const Transform & pose,
-			cv::Mat & groundCells,
-			cv::Mat & obstacleCells,
-			cv::Mat & emptyCells,
-			const cv::Point3f & viewPoint) const;
 
 private:
 	ParametersMap parameters_;

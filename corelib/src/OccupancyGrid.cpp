@@ -268,32 +268,22 @@ void OccupancyGrid::createLocalMap(
 				UDEBUG("3D laser scan");
 				const Transform & t = node.sensorData().laserScanRaw().localTransform();
 				LaserScan scan = util3d::downsample(node.sensorData().laserScanRaw(), scanDecimation_);
-
-				if(cloudMinDepth_ > 0.0f || cloudMaxDepth_ > 0.0f)
+#ifdef RTABMAP_OCTOMAP
+				// clipping will be done in OctoMap
+				float maxRange = grid3D_&&rayTracing_?0.0f:cloudMaxDepth_;
+#else
+				float maxRange = cloudMaxDepth_;
+#endif
+				if(cloudMinDepth_ > 0.0f || maxRange > 0.0f)
 				{
-					scan = util3d::rangeFiltering(scan, cloudMinDepth_, cloudMaxDepth_);
+					scan = util3d::rangeFiltering(scan, cloudMinDepth_, maxRange);
 				}
 
 				// update viewpoint
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 
 				UDEBUG("scan format=%d", scan.format());
-				if(scan.hasNormals())
-				{
-					pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::laserScanToPointCloudRGBNormal(scan, t);
-					pcl::io::savePCDFile("test.pcd", *cloud);
-					createLocalMap<pcl::PointXYZRGBNormal>(cloud, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
-				}
-				else if(scan.hasRGB())
-				{
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(scan, t);
-					createLocalMap<pcl::PointXYZRGB>(cloud, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
-				}
-				else
-				{
-					pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, t);
-					createLocalMap<pcl::PointXYZ>(cloud, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
-				}
+				createLocalMap(scan, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
 			}
 			else
 			{
@@ -311,7 +301,12 @@ void OccupancyGrid::createLocalMap(
 			cloud = util3d::cloudRGBFromSensorData(
 					node.sensorData(),
 					cloudDecimation_,
+#ifdef RTABMAP_OCTOMAP
+					// clipping will be done in OctoMap
+					grid3D_&&rayTracing_?0.0f:cloudMaxDepth_,
+#else
 					cloudMaxDepth_,
+#endif
 					cloudMinDepth_,
 					indices.get(),
 					parameters_,
@@ -345,79 +340,168 @@ void OccupancyGrid::createLocalMap(
 				const Transform & t = node.sensorData().stereoCameraModel().localTransform();
 				viewPoint = cv::Point3f(t.x(), t.y(), t.z());
 			}
-			createLocalMap<pcl::PointXYZRGB>(cloud, indices, node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
+			createLocalMap(LaserScan(util3d::laserScanFromPointCloud(*cloud, indices), 0, 0.0f, LaserScan::kXYZRGB), node.getPose(), groundCells, obstacleCells, emptyCells, viewPoint);
 		}
 	}
 }
 
-void OccupancyGrid::createLocalMapImpl(
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & groundCloud,
-		const pcl::PointCloud<pcl::PointXYZRGB>::Ptr & obstaclesCloud,
+void OccupancyGrid::createLocalMap(
+		const LaserScan & scan,
 		const Transform & pose,
 		cv::Mat & groundCells,
 		cv::Mat & obstacleCells,
 		cv::Mat & emptyCells,
-		const cv::Point3f & viewPoint) const
+		cv::Point3f & viewPointInOut) const
 {
-	if(grid3D_)
+	if(projMapFrame_)
 	{
-		UDEBUG("ground=%d obstacles=%d", (int)groundCloud->size(), (int)obstaclesCloud->size());
-		if(groundIsObstacle_)
-		{
-			*obstaclesCloud += *groundCloud;
-			groundCloud->clear();
-		}
-
-		// transform back in base frame
+		//we should rotate viewPoint in /map frame
 		float roll, pitch, yaw;
 		pose.getEulerAngles(roll, pitch, yaw);
-		Transform tinv = Transform(0,0, projMapFrame_?pose.z():0, roll, pitch, 0).inverse();
+		Transform viewpointRotated = Transform(0,0,0,roll,pitch,0) * Transform(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z, 0,0,0);
+		viewPointInOut.x = viewpointRotated.x();
+		viewPointInOut.y = viewpointRotated.y();
+		viewPointInOut.z = viewpointRotated.z();
+	}
 
-		if(rayTracing_)
+	if(scan.size())
+	{
+		pcl::IndicesPtr groundIndices(new std::vector<int>);
+		pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
+		cv::Mat groundCloud;
+		cv::Mat obstaclesCloud;
+
+		if(scan.hasRGB() && scan.hasNormals())
 		{
-#ifdef RTABMAP_OCTOMAP
-			if(!groundCloud->empty() || !obstaclesCloud->empty())
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloud = util3d::laserScanToPointCloudRGBNormal(scan, scan.localTransform());
+			pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr cloudSegmented = segmentCloud<pcl::PointXYZRGBNormal>(cloud, pcl::IndicesPtr(new std::vector<int>), pose, viewPointInOut, groundIndices, obstaclesIndices);
+			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
+			if(grid3D_)
 			{
-				//create local octomap
-				OctoMap octomap(cellSize_);
-				octomap.addToCache(1, groundCloud, obstaclesCloud, pcl::PointXYZ(viewPoint.x, viewPoint.y, viewPoint.z));
-				std::map<int, Transform> poses;
-				poses.insert(std::make_pair(1, Transform::getIdentity()));
-				octomap.update(poses);
-
-				pcl::IndicesPtr groundIndices(new std::vector<int>);
-				pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
-				pcl::IndicesPtr emptyIndices(new std::vector<int>);
-				pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithRayTracing = octomap.createCloud(0, obstaclesIndices.get(), emptyIndices.get(), groundIndices.get());
-				UDEBUG("ground=%d obstacles=%d empty=%d", (int)groundIndices->size(), (int)obstaclesIndices->size(), (int)emptyIndices->size());
-				groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, groundIndices, tinv);
-				obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, obstaclesIndices, tinv);
-				emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, emptyIndices, tinv);
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+			}
+			else
+			{
+				util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGBNormal>(cloudSegmented, groundIndices, obstaclesIndices, groundCells, obstacleCells, cellSize_);
+			}
+		}
+		else if(scan.hasRGB())
+		{
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = util3d::laserScanToPointCloudRGB(scan, scan.localTransform());
+			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudSegmented = segmentCloud<pcl::PointXYZRGB>(cloud, pcl::IndicesPtr(new std::vector<int>), pose, viewPointInOut, groundIndices, obstaclesIndices);
+			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
+			if(grid3D_)
+			{
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+			}
+			else
+			{
+				util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(cloudSegmented, groundIndices, obstaclesIndices, groundCells, obstacleCells, cellSize_);
+			}
+		}
+		else if(scan.hasNormals())
+		{
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloud = util3d::laserScanToPointCloudNormal(scan, scan.localTransform());
+			pcl::PointCloud<pcl::PointNormal>::Ptr cloudSegmented = segmentCloud<pcl::PointNormal>(cloud, pcl::IndicesPtr(new std::vector<int>), pose, viewPointInOut, groundIndices, obstaclesIndices);
+			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
+			if(grid3D_)
+			{
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+			}
+			else
+			{
+				util3d::occupancy2DFromGroundObstacles<pcl::PointNormal>(cloudSegmented, groundIndices, obstaclesIndices, groundCells, obstacleCells, cellSize_);
 			}
 		}
 		else
-#else
-			UWARN("RTAB-Map is not built with OctoMap dependency, 3D ray tracing is ignored. Set \"%s\" to false to avoid this warning.", Parameters::kGridRayTracing().c_str());
-		}
-#endif
 		{
-			groundCells = util3d::laserScanFromPointCloud(*groundCloud, tinv);
-			obstacleCells = util3d::laserScanFromPointCloud(*obstaclesCloud, tinv);
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = util3d::laserScanToPointCloud(scan, scan.localTransform());
+			pcl::PointCloud<pcl::PointXYZ>::Ptr cloudSegmented = segmentCloud<pcl::PointXYZ>(cloud, pcl::IndicesPtr(new std::vector<int>), pose, viewPointInOut, groundIndices, obstaclesIndices);
+			UDEBUG("groundIndices=%d, obstaclesIndices=%d", (int)groundIndices->size(), (int)obstaclesIndices->size());
+			if(grid3D_)
+			{
+				groundCloud = util3d::laserScanFromPointCloud(*cloudSegmented, groundIndices);
+				obstaclesCloud = util3d::laserScanFromPointCloud(*cloudSegmented, obstaclesIndices);
+			}
+			else
+			{
+				util3d::occupancy2DFromGroundObstacles<pcl::PointXYZ>(cloudSegmented, groundIndices, obstaclesIndices, groundCells, obstacleCells, cellSize_);
+			}
 		}
 
-	}
-	else
-	{
-		UDEBUG("groundCloud=%d, obstaclesCloud=%d", (int)groundCloud->size(), (int)obstaclesCloud->size());
-		// projection on the xy plane
-		util3d::occupancy2DFromGroundObstacles<pcl::PointXYZRGB>(
-				groundCloud,
-				obstaclesCloud,
-				groundCells,
-				obstacleCells,
-				cellSize_);
+		if(grid3D_ && (!obstaclesCloud.empty() || !groundCloud.empty()))
+		{
+			UDEBUG("ground=%d obstacles=%d", groundCloud.cols, obstaclesCloud.cols);
+			if(groundIsObstacle_ && !groundCloud.empty())
+			{
+				if(obstaclesCloud.empty())
+				{
+					obstaclesCloud = groundCloud;
+					groundCloud = cv::Mat();
+				}
+				else
+				{
+					UASSERT(obstaclesCloud.type() == groundCloud.type());
+					cv::Mat merged(1,obstaclesCloud.cols+groundCloud.cols, obstaclesCloud.type());
+					obstaclesCloud.copyTo(merged(cv::Range::all(), cv::Range(0, obstaclesCloud.cols)));
+					groundCloud.copyTo(merged(cv::Range::all(), cv::Range(obstaclesCloud.cols, obstaclesCloud.cols+groundCloud.cols)));
+				}
+			}
 
-		if(rayTracing_)
+			// transform back in base frame
+			float roll, pitch, yaw;
+			pose.getEulerAngles(roll, pitch, yaw);
+			Transform tinv = Transform(0,0, projMapFrame_?pose.z():0, roll, pitch, 0).inverse();
+
+			if(rayTracing_)
+			{
+#ifdef RTABMAP_OCTOMAP
+				if(!groundCloud.empty() || !obstaclesCloud.empty())
+				{
+					//create local octomap
+					OctoMap octomap(cellSize_);
+					octomap.setMaxRange(cloudMaxDepth_);
+					octomap.addToCache(1, groundCloud, obstaclesCloud, cv::Mat(), cv::Point3f(viewPointInOut.x, viewPointInOut.y, viewPointInOut.z));
+					std::map<int, Transform> poses;
+					poses.insert(std::make_pair(1, Transform::getIdentity()));
+					octomap.update(poses);
+
+					pcl::IndicesPtr groundIndices(new std::vector<int>);
+					pcl::IndicesPtr obstaclesIndices(new std::vector<int>);
+					pcl::IndicesPtr emptyIndices(new std::vector<int>);
+					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloudWithRayTracing = octomap.createCloud(0, obstaclesIndices.get(), emptyIndices.get(), groundIndices.get());
+					UDEBUG("ground=%d obstacles=%d empty=%d", (int)groundIndices->size(), (int)obstaclesIndices->size(), (int)emptyIndices->size());
+					if(scan.hasRGB())
+					{
+						groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, groundIndices, tinv);
+						obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, obstaclesIndices, tinv);
+						emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing, emptyIndices, tinv);
+					}
+					else
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr cloudWithRayTracing2(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::copyPointCloud(*cloudWithRayTracing, *cloudWithRayTracing2);
+						groundCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, groundIndices, tinv);
+						obstacleCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, obstaclesIndices, tinv);
+						emptyCells = util3d::laserScanFromPointCloud(*cloudWithRayTracing2, emptyIndices, tinv);
+					}
+				}
+			}
+			else
+#else
+					UWARN("RTAB-Map is not built with OctoMap dependency, 3D ray tracing is ignored. Set \"%s\" to false to avoid this warning.", Parameters::kGridRayTracing().c_str());
+				}
+#endif
+			{
+				groundCells = util3d::transformLaserScan(LaserScan::backwardCompatibility(groundCloud), tinv).data();
+				obstacleCells = util3d::transformLaserScan(LaserScan::backwardCompatibility(obstaclesCloud), tinv).data();
+			}
+
+		}
+		else if(!grid3D_ && rayTracing_ && (!obstacleCells.empty() || !groundCells.empty()))
 		{
 			cv::Mat laserScan = obstacleCells;
 			cv::Mat laserScanNoHit = groundCells;
@@ -426,7 +510,7 @@ void OccupancyGrid::createLocalMapImpl(
 			util3d::occupancy2DFromLaserScan(
 					laserScan,
 					laserScanNoHit,
-					viewPoint,
+					viewPointInOut,
 					emptyCells,
 					obstacleCells,
 					cellSize_,
@@ -434,8 +518,8 @@ void OccupancyGrid::createLocalMapImpl(
 					0);
 		}
 	}
+	UDEBUG("ground=%d obstacles=%d empty=%d, channels=%d", groundCells.cols, obstacleCells.cols, emptyCells.cols, obstacleCells.cols?obstacleCells.channels():groundCells.channels());
 }
-
 
 void OccupancyGrid::clear()
 {

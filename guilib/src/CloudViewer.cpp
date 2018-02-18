@@ -611,7 +611,15 @@ bool CloudViewer::addCloud(
 		{
 			_visualizer->updateColorHandlerIndex(id, previousColorIndex);
 		}
-		else if(rgb || hasIntensity)
+		else if(rgb)
+		{
+			_visualizer->updateColorHandlerIndex(id, 5);
+		}
+		else if(hasNormals)
+		{
+			_visualizer->updateColorHandlerIndex(id, hasIntensity?8:7);
+		}
+		else if(hasIntensity)
 		{
 			_visualizer->updateColorHandlerIndex(id, 5);
 		}

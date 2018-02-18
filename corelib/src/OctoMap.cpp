@@ -265,7 +265,9 @@ RtabmapColorOcTree::StaticMemberInitializer::StaticMemberInitializer() {
 OctoMap::OctoMap(const ParametersMap & parameters) :
 		hasColor_(false),
 		fullUpdate_(Parameters::defaultGridGlobalFullUpdate()),
-		updateError_(Parameters::defaultGridGlobalUpdateError())
+		updateError_(Parameters::defaultGridGlobalUpdateError()),
+		rangeMax_(Parameters::defaultGridRangeMax()),
+		rayTracing_(Parameters::defaultGridRayTracing())
 {
 	float cellSize = Parameters::defaultGridCellSize();
 	Parameters::parse(parameters, Parameters::kGridCellSize(), cellSize);
@@ -281,13 +283,17 @@ OctoMap::OctoMap(const ParametersMap & parameters) :
 	octree_->setOccupancyThres(occupancyThr);
 	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
 	Parameters::parse(parameters, Parameters::kGridGlobalUpdateError(), updateError_);
+	Parameters::parse(parameters, Parameters::kGridRangeMax(), rangeMax_);
+	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
 }
 
 OctoMap::OctoMap(float cellSize, float occupancyThr, bool fullUpdate, float updateError) :
 		octree_(new RtabmapColorOcTree(cellSize)),
 		hasColor_(false),
 		fullUpdate_(fullUpdate),
-		updateError_(updateError)
+		updateError_(updateError),
+		rangeMax_(0.0f),
+		rayTracing_(true)
 {
 	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
 	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
@@ -511,6 +517,8 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 	}
 
 	UDEBUG("orderedPoses = %d", (int)orderedPoses.size());
+	float rangeMaxSqrd = rangeMax_*rangeMax_;
+	float cellSize = octree_->getResolution();
 	for(std::list<std::pair<int, Transform> >::const_iterator iter=orderedPoses.begin(); iter!=orderedPoses.end(); ++iter)
 	{
 		std::map<int, std::pair<const pcl::PointCloud<pcl::PointXYZRGB>::Ptr, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr> >::iterator cloudIter;
@@ -536,7 +544,7 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 				UERROR("Could not generate Key for origin ", sensorOrigin.x(), sensorOrigin.y(), sensorOrigin.z());
 			}
 
-			bool computeRays = occupancyIter == cache_.end() || occupancyIter->second.second.empty();
+			bool computeRays = rayTracing_ && (occupancyIter == cache_.end() || occupancyIter->second.second.empty());
 
 			// instead of direct scan insertion, compute update to filter ground:
 			octomap::KeySet free_cells;
@@ -563,44 +571,62 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 					pt = pcl::transformPoint(cloudIter->second.first->at(i), t);
 				}
 				octomap::point3d point(pt.x, pt.y, pt.z);
+				bool ignoreOccupiedCell = false;
+				if(rangeMaxSqrd > 0.0f)
+				{
+					octomap::point3d v(pt.x - cellSize - sensorOrigin.x(), pt.y - cellSize - sensorOrigin.y(), pt.z - cellSize - sensorOrigin.z());
+					if(v.norm_sq() > rangeMaxSqrd)
+					{
+						// compute new point to max range
+						v.normalize();
+						v*=rangeMax_;
+						point = sensorOrigin + v;
+						ignoreOccupiedCell=true;
+					}
+				}
+
+				if(!ignoreOccupiedCell)
+				{
+					// occupied endpoint
+					octomap::OcTreeKey key;
+					if (octree_->coordToKeyChecked(point, key))
+					{
+						if(iter->first >0 && iter->first<lastId)
+						{
+							RtabmapColorOcTreeNode * n = octree_->search(key);
+							if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
+							{
+								// The cell has been updated from more recent node, don't update the cell
+								continue;
+							}
+						}
+
+						updateMinMax(point);
+						RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
+
+						if(n)
+						{
+							if(!hasColor_ && !(pt.r ==0 && pt.g == 0 && pt.b == 0) && !(pt.r ==255 && pt.g == 255 && pt.b == 255))
+							{
+								hasColor_ = true;
+							}
+							octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
+							if(iter->first > 0)
+							{
+								n->setNodeRefId(iter->first);
+								n->setPointRef(point);
+							}
+							n->setOccupancyType(RtabmapColorOcTreeNode::kTypeGround);
+						}
+					}
+				}
+
 				// only clear space (ground points)
 				if (computeRays &&
 					(iter->first < 0 || iter->first>lastId) &&
 					octree_->computeRayKeys(sensorOrigin, point, keyRay_))
 				{
 					free_cells.insert(keyRay_.begin(), keyRay_.end());
-				}
-				// occupied endpoint
-				octomap::OcTreeKey key;
-				if (octree_->coordToKeyChecked(point, key))
-				{
-					if(iter->first >0 && iter->first<lastId)
-					{
-						RtabmapColorOcTreeNode * n = octree_->search(key);
-						if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
-						{
-							// The cell has been updated from more recent node, don't update the cell
-							continue;
-						}
-					}
-
-					updateMinMax(point);
-					RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
-
-					if(n)
-					{
-						if(!hasColor_ && (pt.r !=0 || pt.g != 0 || pt.b != 0))
-						{
-							hasColor_ = true;
-						}
-						octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
-						if(iter->first > 0)
-						{
-							n->setNodeRefId(iter->first);
-							n->setPointRef(point);
-						}
-						n->setOccupancyType(RtabmapColorOcTreeNode::kTypeGround);
-					}
 				}
 			}
 			UDEBUG("%d: ground cells=%d free cells=%d", iter->first, (int)maxGroundPts, (int)free_cells.size());
@@ -629,44 +655,62 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 
 				octomap::point3d point(pt.x, pt.y, pt.z);
 
+				bool ignoreOccupiedCell = false;
+				if(rangeMaxSqrd > 0.0f)
+				{
+					octomap::point3d v(pt.x - cellSize - sensorOrigin.x(), pt.y - cellSize - sensorOrigin.y(), pt.z - cellSize - sensorOrigin.z());
+					if(v.norm_sq() > rangeMaxSqrd)
+					{
+						// compute new point to max range
+						v.normalize();
+						v*=rangeMax_;
+						point = sensorOrigin + v;
+						ignoreOccupiedCell=true;
+					}
+				}
+
+				if(!ignoreOccupiedCell)
+				{
+					// occupied endpoint
+					octomap::OcTreeKey key;
+					if (octree_->coordToKeyChecked(point, key))
+					{
+						if(iter->first >0 && iter->first<lastId)
+						{
+							RtabmapColorOcTreeNode * n = octree_->search(key);
+							if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
+							{
+								// The cell has been updated from more recent node, don't update the cell
+								continue;
+							}
+						}
+
+						updateMinMax(point);
+
+						RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
+						if(n)
+						{
+							if(!hasColor_ && !(pt.r ==0 && pt.g == 0 && pt.b == 0) && !(pt.r ==255 && pt.g == 255 && pt.b == 255))
+							{
+								hasColor_ = true;
+							}
+							octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
+							if(iter->first > 0)
+							{
+								n->setNodeRefId(iter->first);
+								n->setPointRef(point);
+							}
+							n->setOccupancyType(RtabmapColorOcTreeNode::kTypeObstacle);
+						}
+					}
+				}
+
 				// free cells
 				if (computeRays &&
 					(iter->first < 0 || iter->first>lastId) &&
 					octree_->computeRayKeys(sensorOrigin, point, keyRay_))
 				{
 					free_cells.insert(keyRay_.begin(), keyRay_.end());
-				}
-				// occupied endpoint
-				octomap::OcTreeKey key;
-				if (octree_->coordToKeyChecked(point, key))
-				{
-					if(iter->first >0 && iter->first<lastId)
-					{
-						RtabmapColorOcTreeNode * n = octree_->search(key);
-						if(n && n->getNodeRefId() > 0 && n->getNodeRefId() > iter->first)
-						{
-							// The cell has been updated from more recent node, don't update the cell
-							continue;
-						}
-					}
-
-					updateMinMax(point);
-
-					RtabmapColorOcTreeNode * n = octree_->updateNode(key, true);
-					if(n)
-					{
-						if(!hasColor_ && (pt.r !=0 || pt.g != 0 || pt.b != 0))
-						{
-							hasColor_ = true;
-						}
-						octree_->averageNodeColor(key, pt.r, pt.g, pt.b);
-						if(iter->first > 0)
-						{
-							n->setNodeRefId(iter->first);
-							n->setPointRef(point);
-						}
-						n->setOccupancyType(RtabmapColorOcTreeNode::kTypeObstacle);
-					}
 				}
 			}
 			UDEBUG("%d: occupied cells=%d free cells=%d", iter->first, (int)maxObstaclePts, (int)free_cells.size());
@@ -711,29 +755,42 @@ void OctoMap::update(const std::map<int, Transform> & poses)
 
 					octomap::point3d point(pt.x, pt.y, pt.z);
 
-					octomap::OcTreeKey key;
-					if (octree_->coordToKeyChecked(point, key))
+					bool ignoreCell = false;
+					if(rangeMaxSqrd > 0.0f)
 					{
-
-						if(iter->first >0)
+						octomap::point3d v(pt.x - sensorOrigin.x(), pt.y - sensorOrigin.y(), pt.z - sensorOrigin.z());
+						if(v.norm_sq() > rangeMaxSqrd)
 						{
-							RtabmapColorOcTreeNode * n = octree_->search(key);
-							if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
-							{
-								// The cell has been updated from current node or more recent node, don't update the cell
-								continue;
-							}
+							ignoreCell=true;
 						}
+					}
 
-						updateMinMax(point);
-
-						RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
-						if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
+					if(!ignoreCell)
+					{
+						octomap::OcTreeKey key;
+						if (octree_->coordToKeyChecked(point, key))
 						{
-							n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
-							if(iter->first > 0)
+
+							if(iter->first >0)
 							{
-								n->setNodeRefId(iter->first);
+								RtabmapColorOcTreeNode * n = octree_->search(key);
+								if(n && n->getNodeRefId() > 0 && n->getNodeRefId() >= iter->first)
+								{
+									// The cell has been updated from current node or more recent node, don't update the cell
+									continue;
+								}
+							}
+
+							updateMinMax(point);
+
+							RtabmapColorOcTreeNode * n = octree_->updateNode(key, false);
+							if(n && n->getOccupancyType() == RtabmapColorOcTreeNode::kTypeUnknown)
+							{
+								n->setOccupancyType(RtabmapColorOcTreeNode::kTypeEmpty);
+								if(iter->first > 0)
+								{
+									n->setNodeRefId(iter->first);
+								}
 							}
 						}
 					}

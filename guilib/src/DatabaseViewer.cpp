@@ -2402,7 +2402,7 @@ void DatabaseViewer::regenerateLocalMaps()
 						viewpoint = cv::Point3f(t.x(), t.y(), t.z());
 					}
 
-					grid.createLocalMap<pcl::PointXYZRGB>(cloud, s.getPose(), ground, obstacles, empty, viewpoint);
+					grid.createLocalMap(LaserScan::backwardCompatibility(util3d::laserScanFromPointCloud(*cloud)), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
@@ -2524,7 +2524,7 @@ void DatabaseViewer::regenerateCurrentLocalMaps()
 						viewpoint = cv::Point3f(t.x(), t.y(), t.z());
 					}
 
-					grid.createLocalMap<pcl::PointXYZRGB>(cloud, s.getPose(), ground, obstacles, empty, viewpoint);
+					grid.createLocalMap(LaserScan::backwardCompatibility(util3d::laserScanFromPointCloud(*cloud)), s.getPose(), ground, obstacles, empty, viewpoint);
 				}
 			}
 			else
@@ -3308,15 +3308,30 @@ void DatabaseViewer::update(int value,
 										pcl::IndicesPtr empty(new std::vector<int>);
 										pcl::IndicesPtr ground(new std::vector<int>);
 										pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap->createCloud(ui_->spinBox_grid_depth->value(), obstacles.get(), empty.get(), ground.get());
-										pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-										pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
-										cloudViewer_->addCloud("obstacles", obstaclesCloud, Transform::getIdentity(), QColor(ui_->lineEdit_obstacleColor->text()));
-										cloudViewer_->setCloudPointSize("obstacles", 5);
+										if(octomap->hasColor())
+										{
+											pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+											pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
+											cloudViewer_->addCloud("obstacles", obstaclesCloud, Transform::getIdentity(), QColor(ui_->lineEdit_obstacleColor->text()));
+											cloudViewer_->setCloudPointSize("obstacles", 5);
 
-										pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-										pcl::copyPointCloud(*cloud, *ground, *groundCloud);
-										cloudViewer_->addCloud("ground", groundCloud, Transform::getIdentity(), QColor(ui_->lineEdit_groundColor->text()));
-										cloudViewer_->setCloudPointSize("ground", 5);
+											pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+											pcl::copyPointCloud(*cloud, *ground, *groundCloud);
+											cloudViewer_->addCloud("ground", groundCloud, Transform::getIdentity(), QColor(ui_->lineEdit_groundColor->text()));
+											cloudViewer_->setCloudPointSize("ground", 5);
+										}
+										else
+										{
+											pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
+											pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
+											cloudViewer_->addCloud("obstacles", obstaclesCloud, Transform::getIdentity(), QColor(ui_->lineEdit_obstacleColor->text()));
+											cloudViewer_->setCloudPointSize("obstacles", 5);
+
+											pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
+											pcl::copyPointCloud(*cloud, *ground, *groundCloud);
+											cloudViewer_->addCloud("ground", groundCloud, Transform::getIdentity(), QColor(ui_->lineEdit_groundColor->text()));
+											cloudViewer_->setCloudPointSize("ground", 5);
+										}
 
 										if(ui_->checkBox_grid_empty->isChecked())
 										{
@@ -3336,14 +3351,25 @@ void DatabaseViewer::update(int value,
 #endif
 								{
 									// occupancy cloud
-									cloudViewer_->addCloud("ground",
-											util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(localMaps.begin()->second.first.first)),
-											pose,
-											QColor(ui_->lineEdit_groundColor->text()));
-									cloudViewer_->addCloud("obstacles",
-											util3d::laserScanToPointCloud(LaserScan::backwardCompatibility(localMaps.begin()->second.first.second)),
-											pose,
-											QColor(ui_->lineEdit_obstacleColor->text()));
+									LaserScan scan = LaserScan::backwardCompatibility(localMaps.begin()->second.first.first);
+									if(scan.hasRGB())
+									{
+										cloudViewer_->addCloud("ground", util3d::laserScanToPointCloudRGB(scan), pose, QColor(ui_->lineEdit_groundColor->text()));
+									}
+									else
+									{
+										cloudViewer_->addCloud("ground", util3d::laserScanToPointCloud(scan), pose, QColor(ui_->lineEdit_groundColor->text()));
+									}
+									scan = LaserScan::backwardCompatibility(localMaps.begin()->second.first.first);
+									if(scan.hasRGB())
+									{
+										cloudViewer_->addCloud("obstacles", util3d::laserScanToPointCloudRGB(scan), pose, QColor(ui_->lineEdit_obstacleColor->text()));
+									}
+									else
+									{
+										cloudViewer_->addCloud("obstacles", util3d::laserScanToPointCloud(scan), pose, QColor(ui_->lineEdit_obstacleColor->text()));
+									}
+
 									cloudViewer_->setCloudPointSize("ground", 5);
 									cloudViewer_->setCloudPointSize("obstacles", 5);
 
@@ -5152,15 +5178,31 @@ void DatabaseViewer::updateOctomapView()
 					pcl::IndicesPtr empty(new std::vector<int>);
 					pcl::IndicesPtr ground(new std::vector<int>);
 					pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud = octomap_->createCloud(ui_->spinBox_grid_depth->value(), obstacles.get(), empty.get(), ground.get());
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-					pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
-					occupancyGridViewer_->addCloud("octomap_obstacles", obstaclesCloud, Transform::getIdentity(), Qt::red);
-					occupancyGridViewer_->setCloudPointSize("octomap_obstacles", 5);
 
-					pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-					pcl::copyPointCloud(*cloud, *ground, *groundCloud);
-					occupancyGridViewer_->addCloud("octomap_ground", groundCloud, Transform::getIdentity(), Qt::green);
-					occupancyGridViewer_->setCloudPointSize("octomap_ground", 5);
+					if(octomap_->hasColor())
+					{
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+						pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
+						occupancyGridViewer_->addCloud("octomap_obstacles", obstaclesCloud, Transform::getIdentity(), Qt::red);
+						occupancyGridViewer_->setCloudPointSize("octomap_obstacles", 5);
+
+						pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+						pcl::copyPointCloud(*cloud, *ground, *groundCloud);
+						occupancyGridViewer_->addCloud("octomap_ground", groundCloud, Transform::getIdentity(), Qt::green);
+						occupancyGridViewer_->setCloudPointSize("octomap_ground", 5);
+					}
+					else
+					{
+						pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
+						occupancyGridViewer_->addCloud("octomap_obstacles", obstaclesCloud, Transform::getIdentity(), Qt::red);
+						occupancyGridViewer_->setCloudPointSize("octomap_obstacles", 5);
+
+						pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
+						pcl::copyPointCloud(*cloud, *ground, *groundCloud);
+						occupancyGridViewer_->addCloud("octomap_ground", groundCloud, Transform::getIdentity(), Qt::green);
+						occupancyGridViewer_->setCloudPointSize("octomap_ground", 5);
+					}
 
 					if(ui_->checkBox_grid_empty->isChecked())
 					{

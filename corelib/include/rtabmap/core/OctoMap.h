@@ -210,6 +210,10 @@ public:
 	void getGridMin(double & x, double & y, double & z) const {x=minValues_[0];y=minValues_[1];z=minValues_[2];}
 	void getGridMax(double & x, double & y, double & z) const {x=maxValues_[0];y=maxValues_[1];z=maxValues_[2];}
 
+	void setMaxRange(float value) {rangeMax_ = value;}
+	void setRayTracing(bool enabled) {rayTracing_ = enabled;}
+	bool hasColor() const {return hasColor_;}
+
 private:
 	void updateMinMax(const octomap::point3d & point);
 
@@ -223,6 +227,8 @@ private:
 	bool hasColor_;
 	bool fullUpdate_;
 	float updateError_;
+	float rangeMax_;
+	bool rayTracing_;
 	double minValues_[3];
 	double maxValues_[3];
 };
