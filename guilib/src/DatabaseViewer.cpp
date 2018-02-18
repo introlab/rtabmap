@@ -3360,7 +3360,7 @@ void DatabaseViewer::update(int value,
 									{
 										cloudViewer_->addCloud("ground", util3d::laserScanToPointCloud(scan), pose, QColor(ui_->lineEdit_groundColor->text()));
 									}
-									scan = LaserScan::backwardCompatibility(localMaps.begin()->second.first.first);
+									scan = LaserScan::backwardCompatibility(localMaps.begin()->second.first.second);
 									if(scan.hasRGB())
 									{
 										cloudViewer_->addCloud("obstacles", util3d::laserScanToPointCloudRGB(scan), pose, QColor(ui_->lineEdit_obstacleColor->text()));
