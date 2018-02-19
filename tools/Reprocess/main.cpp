@@ -222,6 +222,7 @@ int main(int argc, char * argv[])
 				printf("High variance detected, triggering a new map...\n");
 				rtabmap.triggerNewMap();
 			}
+			UTimer t;
 			if(!rtabmap.process(data, info.odomPose, info.odomCovariance, info.odomVelocity, globalMapStats))
 			{
 				printf("Failed processing node %d.\n", data.id());
@@ -230,13 +231,13 @@ int main(int argc, char * argv[])
 			else if(assemble2dMap || assemble3dMap || assemble2dOctoMap || assemble3dOctoMap)
 			{
 				globalMapStats.clear();
+				double timeRtabmap = t.ticks();
 				double timeUpdateInit = 0.0;
 				double timeUpdateGrid = 0.0;
 #ifdef RTABMAP_OCTOMAP
 				double timeUpdateOctoMap = 0.0;
 #endif
 				const rtabmap::Statistics & stats = rtabmap.getStatistics();
-				UTimer t;
 				if(stats.poses().size() && stats.getSignatures().size())
 				{
 					int id = stats.poses().rbegin()->first;
@@ -302,6 +303,7 @@ int main(int argc, char * argv[])
 				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctoMapProjection/ms"), timePub2dOctoMap*1000.0f));
 				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/OctomapToCloud/ms"), timePub3dOctoMap*1000.0f));
 #endif
+				globalMapStats.insert(std::make_pair(std::string("GlobalGrid/TotalWithRtabmap/ms"), (timeUpdateGrid+timeUpdateOctoMap+timePub2dOctoMap+timePub3dOctoMap+timeRtabmap)*1000.0f));
 			}
 		}
 

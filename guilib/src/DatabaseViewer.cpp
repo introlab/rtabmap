@@ -5183,24 +5183,24 @@ void DatabaseViewer::updateOctomapView()
 					{
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 						pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
-						occupancyGridViewer_->addCloud("octomap_obstacles", obstaclesCloud, Transform::getIdentity(), Qt::red);
+						occupancyGridViewer_->addCloud("octomap_obstacles", obstaclesCloud, Transform::getIdentity(), QColor(ui_->lineEdit_obstacleColor->text()));
 						occupancyGridViewer_->setCloudPointSize("octomap_obstacles", 5);
 
 						pcl::PointCloud<pcl::PointXYZRGB>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 						pcl::copyPointCloud(*cloud, *ground, *groundCloud);
-						occupancyGridViewer_->addCloud("octomap_ground", groundCloud, Transform::getIdentity(), Qt::green);
+						occupancyGridViewer_->addCloud("octomap_ground", groundCloud, Transform::getIdentity(), QColor(ui_->lineEdit_groundColor->text()));
 						occupancyGridViewer_->setCloudPointSize("octomap_ground", 5);
 					}
 					else
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr obstaclesCloud(new pcl::PointCloud<pcl::PointXYZ>);
 						pcl::copyPointCloud(*cloud, *obstacles, *obstaclesCloud);
-						occupancyGridViewer_->addCloud("octomap_obstacles", obstaclesCloud, Transform::getIdentity(), Qt::red);
+						occupancyGridViewer_->addCloud("octomap_obstacles", obstaclesCloud, Transform::getIdentity(), QColor(ui_->lineEdit_obstacleColor->text()));
 						occupancyGridViewer_->setCloudPointSize("octomap_obstacles", 5);
 
 						pcl::PointCloud<pcl::PointXYZ>::Ptr groundCloud(new pcl::PointCloud<pcl::PointXYZ>);
 						pcl::copyPointCloud(*cloud, *ground, *groundCloud);
-						occupancyGridViewer_->addCloud("octomap_ground", groundCloud, Transform::getIdentity(), Qt::green);
+						occupancyGridViewer_->addCloud("octomap_ground", groundCloud, Transform::getIdentity(), QColor(ui_->lineEdit_groundColor->text()));
 						occupancyGridViewer_->setCloudPointSize("octomap_ground", 5);
 					}
 
@@ -5208,7 +5208,7 @@ void DatabaseViewer::updateOctomapView()
 					{
 						pcl::PointCloud<pcl::PointXYZ>::Ptr emptyCloud(new pcl::PointCloud<pcl::PointXYZ>);
 						pcl::copyPointCloud(*cloud, *empty, *emptyCloud);
-						occupancyGridViewer_->addCloud("octomap_empty", emptyCloud, Transform::getIdentity(), Qt::white);
+						occupancyGridViewer_->addCloud("octomap_empty", emptyCloud, Transform::getIdentity(), QColor(ui_->lineEdit_emptyColor->text()));
 						occupancyGridViewer_->setCloudOpacity("octomap_empty", 0.5);
 						occupancyGridViewer_->setCloudPointSize("octomap_empty", 5);
 					}
