@@ -1023,6 +1023,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr OctoMap::createCloud(
 
 cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCellSize, float minGridSize, unsigned int treeDepth)
 {
+	UDEBUG("minGridSize=%f, treeDepth=%d", minGridSize, (int)treeDepth);
 	UASSERT(treeDepth <= octree_->getTreeDepth());
 	if(treeDepth == 0)
 	{
@@ -1032,65 +1033,47 @@ cv::Mat OctoMap::createProjectionMap(float & xMin, float & yMin, float & gridCel
 	gridCellSize = octree_->getNodeSize(treeDepth);
 	float halfCellSize = gridCellSize/2.0f;
 
-	pcl::PointCloud<pcl::PointXYZ>::Ptr ground(new pcl::PointCloud<pcl::PointXYZ>);
-	pcl::PointCloud<pcl::PointXYZ>::Ptr obstacles(new pcl::PointCloud<pcl::PointXYZ>);
-
-	ground->resize(octree_->size());
-	obstacles->resize(octree_->size());
+	cv::Mat obstaclesMat = cv::Mat(1, (int)octree_->size(), CV_32FC2);
+	cv::Mat groundMat = cv::Mat(1, (int)octree_->size(), CV_32FC2);
 	int gi=0;
 	int oi=0;
+	cv::Vec2f * oPtr = obstaclesMat.ptr<cv::Vec2f>(0,0);
+	cv::Vec2f * gPtr = groundMat.ptr<cv::Vec2f>(0,0);
 	for (RtabmapColorOcTree::iterator it = octree_->begin(treeDepth); it != octree_->end(); ++it)
 	{
 		octomap::point3d pt = octree_->keyToCoord(it.getKey());
 		if(octree_->isNodeOccupied(*it) && it->getOccupancyType() == RtabmapColorOcTreeNode::kTypeObstacle)
 		{
-			(*obstacles)[oi++]  = pcl::PointXYZ(pt.x()-halfCellSize, pt.y()-halfCellSize, 0); // projected on ground
+			// projected on ground
+			oPtr[oi][0] = pt.x()-halfCellSize;
+			oPtr[oi][1] = pt.y()-halfCellSize;
+			++oi;
 		}
 		else
 		{
-			(*ground)[gi++]  = pcl::PointXYZ(pt.x()-halfCellSize, pt.y()-halfCellSize, 0); // projected on ground
+			// projected on ground
+			gPtr[gi][0] = pt.x()-halfCellSize;
+			gPtr[gi][1] = pt.y()-halfCellSize;
+			++gi;
 		}
 	}
-	obstacles->resize(oi);
-	ground->resize(gi);
-
-	if(obstacles->size())
-	{
-		obstacles = util3d::voxelize(obstacles, halfCellSize);
-	}
-	if(ground->size())
-	{
-		ground = util3d::voxelize(ground, halfCellSize);
-	}
-
-	cv::Mat obstaclesMat = cv::Mat(1, (int)obstacles->size(), CV_32FC2);
-	cv::Vec2f * ptr = obstaclesMat.ptr<cv::Vec2f>(0,0);
-	for(unsigned int i=0;i<obstacles->size(); ++i)
-	{
-		ptr[i][0] = obstacles->at(i).x;
-		ptr[i][1] = obstacles->at(i).y;
-	}
-
-	cv::Mat groundMat = cv::Mat(1, (int)ground->size(), CV_32FC2);
-	ptr = groundMat.ptr<cv::Vec2f>(0,0);
-	for(unsigned int i=0;i<ground->size(); ++i)
-	{
-		ptr[i][0] = ground->at(i).x;
-		ptr[i][1] = ground->at(i).y;
-	}
+	obstaclesMat = obstaclesMat(cv::Range::all(), cv::Range(0, oi));
+	groundMat = groundMat(cv::Range::all(), cv::Range(0, gi));
 
 	std::map<int, Transform> poses;
 	poses.insert(std::make_pair(1, Transform::getIdentity()));
 	std::map<int, std::pair<cv::Mat, cv::Mat> > maps;
 	maps.insert(std::make_pair(1, std::make_pair(groundMat, obstaclesMat)));
 
-	return util3d::create2DMapFromOccupancyLocalMaps(
+	cv::Mat map = util3d::create2DMapFromOccupancyLocalMaps(
 			poses,
 			maps,
 			gridCellSize,
 			xMin, yMin,
 			minGridSize,
 			false);
+	UDEBUG("");
+	return map;
 }
 
 bool OctoMap::writeBinary(const std::string & path)
