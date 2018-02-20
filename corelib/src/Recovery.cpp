@@ -136,9 +136,10 @@ bool databaseRecovery(
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, databasePath);
 
-	bool odometryIgnored = false;
-	Parameters::parse(parameters, Parameters::kRGBDEnabled(), odometryIgnored);
-	DBReader dbReader(backupPath, 0, !odometryIgnored);
+	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
+	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
+	bool odometryIgnored = !rgbdEnabled;
+	DBReader dbReader(backupPath, 0, odometryIgnored);
 	dbReader.init();
 
 	CameraInfo info;

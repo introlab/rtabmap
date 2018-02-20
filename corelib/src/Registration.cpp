@@ -207,10 +207,32 @@ Transform Registration::computeTransformationMod(
 	}
 
 	Transform t = computeTransformationImpl(from, to, guess, info);
-	if(repeatOnce_ && guess.isNull() && !t.isNull() && this->canUseGuess())
+
+	if(child_)
+	{
+		if(!t.isNull())
+		{
+			t = child_->computeTransformationMod(from, to, force3DoF_?t.to3DoF():t, &info);
+		}
+		else if(!guess.isNull())
+		{
+			UDEBUG("This registration approach failed, continue with the guess for the next registration");
+			t = child_->computeTransformationMod(from, to, guess, &info);
+		}
+	}
+	else if(repeatOnce_ && guess.isNull() && !t.isNull() && this->canUseGuess())
 	{
 		// redo with guess to get a more accurate transform
 		t = computeTransformationImpl(from, to, t, info);
+
+		if(!t.isNull() && force3DoF_)
+		{
+			t = t.to3DoF();
+		}
+	}
+	else if(!t.isNull() && force3DoF_)
+	{
+		t = t.to3DoF();
 	}
 
 	if(info.covariance.empty())
@@ -231,22 +253,6 @@ Transform Registration::computeTransformationMod(
 	if(info.covariance.at<double>(5,5)<=COVARIANCE_EPSILON)
 		info.covariance.at<double>(5,5) = COVARIANCE_EPSILON; // epsilon if exact transform
 
-	if(child_)
-	{
-		if(!t.isNull())
-		{
-			t = child_->computeTransformationMod(from, to, force3DoF_?t.to3DoF():t, &info);
-		}
-		else if(!guess.isNull())
-		{
-			UDEBUG("This registration approach failed, continue with the guess for the next registration");
-			t = child_->computeTransformationMod(from, to, guess, &info);
-		}
-	}
-	else if(!t.isNull() && force3DoF_)
-	{
-		t = t.to3DoF();
-	}
 
 	if(infoOut)
 	{

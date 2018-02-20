@@ -871,6 +871,7 @@ bool Rtabmap::process(
 	double timeMemoryUpdate = 0;
 	double timeNeighborLinkRefining = 0;
 	double timeProximityByTimeDetection = 0;
+	double timeProximityBySpaceVisualDetection = 0;
 	double timeProximityBySpaceDetection = 0;
 	double timeCleaningNeighbors = 0;
 	double timeReactivations = 0;
@@ -2009,6 +2010,9 @@ bool Rtabmap::process(
 					}
 				}
 
+				timeProximityBySpaceVisualDetection = timer.ticks();
+				ULOGGER_INFO("timeProximityBySpaceVisualDetection=%fs", timeProximityBySpaceVisualDetection);
+
 				//
 				// 2) compare locally with nearest locations by scan matching
 				//
@@ -2419,6 +2423,7 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kTimingMemory_update(), timeMemoryUpdate*1000);
 			statistics_.addStatistic(Statistics::kTimingNeighbor_link_refining(), timeNeighborLinkRefining*1000);
 			statistics_.addStatistic(Statistics::kTimingProximity_by_time(), timeProximityByTimeDetection*1000);
+			statistics_.addStatistic(Statistics::kTimingProximity_by_space_visual(), timeProximityBySpaceVisualDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingProximity_by_space(), timeProximityBySpaceDetection*1000);
 			statistics_.addStatistic(Statistics::kTimingReactivation(), timeReactivations*1000);
 			statistics_.addStatistic(Statistics::kTimingAdd_loop_closure_link(), timeAddLoopClosureLink*1000);
@@ -3077,6 +3082,11 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transfo
 			std::map<int, Transform> path;
 			// select nearest pose and iterate neighbors from there
 			int nearestId = rtabmap::graph::findNearestNode(poses, target);
+			if(nearestId == 0)
+			{
+				UWARN("Nearest id of %s in %d poses is 0 !? Returning empty path.", target.prettyPrint().c_str(), (int)poses.size());
+				break;
+			}
 			std::map<int, int> ids = _memory->getNeighborsId(nearestId, maxGraphDepth, 0, true, true, true, true, nodesSet);
 
 			for(std::map<int, int>::iterator iter=ids.begin(); iter!=ids.end(); ++iter)
@@ -3114,7 +3124,8 @@ std::map<int, std::map<int, Transform> > Rtabmap::getPaths(std::map<int, Transfo
 			}
 			else
 			{
-				UWARN(uFormat("path.size()=0!? nearestId=%d ids=%d", (int)path.size(), nearestId, (int)ids.size()).c_str());
+				UWARN(uFormat("path.size()=0!? nearestId=%d ids=%d, aborting...", (int)path.size(), nearestId, (int)ids.size()).c_str());
+				break;
 			}
 		}
 

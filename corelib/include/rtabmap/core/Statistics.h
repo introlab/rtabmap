@@ -108,6 +108,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Neighbor_link_refining, ms);
 	RTABMAP_STATS(Timing, Proximity_by_time, ms);
+	RTABMAP_STATS(Timing, Proximity_by_space_visual, ms);
 	RTABMAP_STATS(Timing, Proximity_by_space, ms);
 	RTABMAP_STATS(Timing, Cleaning_neighbors, ms);
 	RTABMAP_STATS(Timing, Reactivation, ms);

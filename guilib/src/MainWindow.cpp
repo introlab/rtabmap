@@ -1116,6 +1116,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					{
 						pcl::PointCloud<pcl::PointNormal>::Ptr cloud;
 						cloud = util3d::laserScanToPointCloudNormal(odom.info().localScanMap, odom.info().localScanMap.localTransform());
+						bool scanUpdated = _cloudViewer->getAddedClouds().contains("scanMapOdom");
 						if(!_cloudViewer->addCloud("scanMapOdom", cloud, _odometryCorrection, Qt::blue))
 						{
 							UERROR("Adding scanMapOdom to viewer failed!");
@@ -1123,7 +1124,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						else
 						{
 							_cloudViewer->setCloudVisibility("scanMapOdom", true);
-							_cloudViewer->setCloudColorIndex("scanMapOdom", _preferencesDialog->getScanColorScheme(1));
+							_cloudViewer->setCloudColorIndex("scanMapOdom", !scanUpdated && _preferencesDialog->getScanColorScheme(1)==0?2:_preferencesDialog->getScanColorScheme(1));
 							_cloudViewer->setCloudOpacity("scanMapOdom", _preferencesDialog->getScanOpacity(1));
 							_cloudViewer->setCloudPointSize("scanMapOdom", _preferencesDialog->getScanPointSize(1));
 						}
@@ -1152,6 +1153,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 						cloud = util3d::voxelize(cloud, _preferencesDialog->getCloudVoxelSizeScan(1));
 					}
 
+					bool scanUpdated = _cloudViewer->getAddedClouds().contains("scanOdom");
 					if(!_cloudViewer->addCloud("scanOdom", cloud, _odometryCorrection, Qt::magenta))
 					{
 						UERROR("Adding scanOdom to viewer failed!");
@@ -1159,7 +1161,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					else
 					{
 						_cloudViewer->setCloudVisibility("scanOdom", true);
-						_cloudViewer->setCloudColorIndex("scanOdom", _preferencesDialog->getScanColorScheme(1));
+						_cloudViewer->setCloudColorIndex("scanOdom", !scanUpdated && _preferencesDialog->getScanColorScheme(1)==0?2:_preferencesDialog->getScanColorScheme(1));
 						_cloudViewer->setCloudOpacity("scanOdom", _preferencesDialog->getScanOpacity(1));
 						_cloudViewer->setCloudPointSize("scanOdom", _preferencesDialog->getScanPointSize(1));
 						scanUpdated = true;

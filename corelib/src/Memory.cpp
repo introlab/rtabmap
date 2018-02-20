@@ -2375,6 +2375,7 @@ Transform Memory::computeTransform(
 			// make sure feature matching is used instead of optical flow to compute the guess
 			ParametersMap parameters = parameters_;
 			uInsert(parameters, ParametersPair(Parameters::kVisCorType(), "0"));
+			uInsert(parameters, ParametersPair(Parameters::kRegRepeatOnce(), "false"));
 			RegistrationVis regVis(parameters);
 			guess = regVis.computeTransformation(tmpFrom, tmpTo, guess, info);
 			if(!guess.isNull())
@@ -2475,7 +2476,7 @@ Transform Memory::computeIcpTransformMulti(
 	UASSERT(uContains(poses, fromId) && uContains(_signatures, fromId));
 	UASSERT(uContains(poses, toId) && uContains(_signatures, toId));
 
-	UDEBUG("Guess=%s", (poses.at(fromId).inverse() * poses.at(toId)).prettyPrint().c_str());
+	UDEBUG("%d -> %d, Guess=%s", fromId, toId, (poses.at(fromId).inverse() * poses.at(toId)).prettyPrint().c_str());
 	if(ULogger::level() == ULogger::kDebug)
 	{
 		std::string ids;

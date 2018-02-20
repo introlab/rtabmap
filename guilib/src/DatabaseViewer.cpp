@@ -4312,6 +4312,7 @@ void DatabaseViewer::updateConstraintView(
 						if(assembledNormalScans->size())
 						{
 							constraintsViewer_->addCloud("scan2normals", assembledNormalScans, pose, Qt::cyan);
+							constraintsViewer_->setCloudColorIndex("scan2normals", 2);
 						}
 						if(assembledScans->size())
 						{
@@ -4320,6 +4321,7 @@ void DatabaseViewer::updateConstraintView(
 								assembledScans = util3d::voxelize(assembledScans, ui_->doubleSpinBox_voxelSize->value());
 							}
 							constraintsViewer_->addCloud("scan2", assembledScans, pose, Qt::cyan);
+							constraintsViewer_->setCloudColorIndex("scan2", 2);
 						}
 						if(graph->size())
 						{
@@ -4343,6 +4345,7 @@ void DatabaseViewer::updateConstraintView(
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
 					}
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
+					constraintsViewer_->setCloudColorIndex("scan0", 2);
 				}
 				else
 				{
@@ -4353,6 +4356,7 @@ void DatabaseViewer::updateConstraintView(
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
 					}
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
+					constraintsViewer_->setCloudColorIndex("scan0", 2);
 				}
 			}
 			if(!dataTo.laserScanRaw().isEmpty())
@@ -4366,6 +4370,7 @@ void DatabaseViewer::updateConstraintView(
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
 					}
 					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
+					constraintsViewer_->setCloudColorIndex("scan1", 2);
 				}
 				else
 				{
@@ -4376,6 +4381,7 @@ void DatabaseViewer::updateConstraintView(
 						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
 					}
 					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
+					constraintsViewer_->setCloudColorIndex("scan1", 2);
 				}
 			}
 		}

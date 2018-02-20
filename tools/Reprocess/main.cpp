@@ -191,9 +191,10 @@ int main(int argc, char * argv[])
 	Rtabmap rtabmap;
 	rtabmap.init(parameters, outputDatabasePath);
 
-	bool odometryIgnored = false;
-	Parameters::parse(parameters, Parameters::kRGBDEnabled(), odometryIgnored);
-	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, !odometryIgnored);
+	bool rgbdEnabled = Parameters::defaultRGBDEnabled();
+	Parameters::parse(parameters, Parameters::kRGBDEnabled(), rgbdEnabled);
+	bool odometryIgnored = !rgbdEnabled;
+	DBReader dbReader(inputDatabasePath, useDatabaseRate?-1:0, odometryIgnored);
 	dbReader.init();
 
 	OccupancyGrid grid(parameters);
