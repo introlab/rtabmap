@@ -286,11 +286,11 @@ GraphViewer::GraphViewer(QWidget * parent) :
 	_graphRoot->setParentItem(_root);
 
 	_globalPathRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
-	_globalPathRoot->setZValue(5);
+	_globalPathRoot->setZValue(8);
 	_globalPathRoot->setParentItem(_root);
 
 	_localPathRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
-	_localPathRoot->setZValue(6);
+	_localPathRoot->setZValue(9);
 	_localPathRoot->setParentItem(_root);
 
 	_gtGraphRoot = (QGraphicsItem *)this->scene()->addEllipse(QRectF(-0.0001,-0.0001,0.0001,0.0001));
@@ -441,11 +441,12 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					if(_intraInterSessionColors)
 					{
 						linkItem->setColor(interSessionClosure?_loopInterSessionColor:_loopIntraSessionColor);
-						linkItem->setZValue(interSessionClosure?8:9);
+						linkItem->setZValue(interSessionClosure?6:7);
 					}
 					else
 					{
 						linkItem->setColor(_loopClosureLocalColor);
+						linkItem->setZValue(7);
 					}
 				}
 				else
@@ -458,6 +459,7 @@ void GraphViewer::updateGraph(const std::map<int, Transform> & poses,
 					else
 					{
 						linkItem->setColor(_loopClosureColor);
+						linkItem->setZValue(9);
 					}
 				}
 

@@ -348,8 +348,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	//connect(ui_->graphicsView_B, SIGNAL(configChanged()), this, SLOT(configModified()));
 	connect(ui_->comboBox_logger_level, SIGNAL(currentIndexChanged(int)), this, SLOT(configModified()));
 	connect(ui_->actionVertical_Layout, SIGNAL(toggled(bool)), this, SLOT(configModified()));
-	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_alignPosesWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_alignScansCloudsWithGroundTruth, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
 	connect(ui_->checkBox_ignoreIntermediateNodes, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_timeStats, SIGNAL(stateChanged(int)), this, SLOT(configModified()));
@@ -634,6 +634,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	// reset GUI parameters
 	ui_->comboBox_logger_level->setCurrentIndex(1);
 	ui_->checkBox_alignPosesWithGroundTruth->setChecked(true);
+	ui_->checkBox_alignScansCloudsWithGroundTruth->setChecked(false);
 	ui_->checkBox_ignoreIntermediateNodes->setChecked(false);
 	ui_->checkBox_timeStats->setChecked(true);
 
@@ -923,12 +924,14 @@ bool DatabaseViewer::closeDatabase()
 		ui_->toolBox_statistics->clear();
 		databaseFileName_.clear();
 		ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+		ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
 		ui_->doubleSpinBox_optimizationScale->setVisible(false);
 		ui_->label_scale_title->setVisible(false);
 		ui_->label_rmse->setVisible(false);
 		ui_->label_rmse_title->setVisible(false);
 		ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
 		ui_->label_alignPosesWithGroundTruth->setVisible(false);
+		ui_->label_alignScansCloudsWithGroundTruth->setVisible(false);
 		ui_->label_optimizeFrom->setText(tr("Optimize from"));
 		ui_->textEdit_info->clear();
 
@@ -1435,12 +1438,14 @@ void DatabaseViewer::updateIds()
 	gpsPoses_.clear();
 	gpsValues_.clear();
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
+	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
 	ui_->doubleSpinBox_optimizationScale->setVisible(false);
 	ui_->label_scale_title->setVisible(false);
 	ui_->label_rmse->setVisible(false);
 	ui_->label_rmse_title->setVisible(false);
 	ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
 	ui_->label_alignPosesWithGroundTruth->setVisible(false);
+	ui_->label_alignScansCloudsWithGroundTruth->setVisible(false);
 	ui_->menuExport_GPS->setEnabled(false);
 	ui_->actionPoses_KML->setEnabled(false);
 	links_.clear();
@@ -1578,9 +1583,12 @@ void DatabaseViewer::updateIds()
 		ui_->label_rmse->setVisible(true);
 		ui_->label_rmse_title->setVisible(true);
 		ui_->label_alignPosesWithGroundTruth->setVisible(true);
+
 		if(!groundTruthPoses_.empty())
 		{
 			ui_->label_alignPosesWithGroundTruth->setText(tr("Align poses with ground truth"));
+			ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(true);
+			ui_->label_alignScansCloudsWithGroundTruth->setVisible(true);
 		}
 		else
 		{
@@ -2018,7 +2026,15 @@ void DatabaseViewer::exportPoses(int format)
 		return;
 	}
 
-	std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	std::map<int, Transform> optimizedPoses;
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	{
+		optimizedPoses = groundTruthPoses_;
+	}
+	else
+	{
+		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	}
 
 	if(optimizedPoses.size())
 	{
@@ -2583,7 +2599,15 @@ void DatabaseViewer::view3DMap()
 		}
 	}
 
-	std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	std::map<int, Transform> optimizedPoses;
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	{
+		optimizedPoses = groundTruthPoses_;
+	}
+	else
+	{
+		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	}
 	if(ui_->groupBox_posefiltering->isChecked())
 	{
 		optimizedPoses = graph::radiusPosesFiltering(optimizedPoses,
@@ -2626,7 +2650,15 @@ void DatabaseViewer::generate3DMap()
 		}
 	}
 
-	std::map<int, Transform> optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	std::map<int, Transform> optimizedPoses;
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	{
+		optimizedPoses = groundTruthPoses_;
+	}
+	else
+	{
+		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	}
 	if(ui_->groupBox_posefiltering->isChecked())
 	{
 		optimizedPoses = graph::radiusPosesFiltering(optimizedPoses,
@@ -4492,7 +4524,15 @@ void DatabaseViewer::sliderIterationsValueChanged(int value)
 			}
 		}
 
-		std::map<int, rtabmap::Transform> graphFiltered = graph;
+		std::map<int, rtabmap::Transform> graphFiltered;
+		if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+		{
+			graphFiltered = groundTruthPoses_;
+		}
+		else
+		{
+			graphFiltered = graph;
+		}
 		if(ui_->groupBox_posefiltering->isChecked())
 		{
 			graphFiltered = graph::radiusPosesFiltering(graph,

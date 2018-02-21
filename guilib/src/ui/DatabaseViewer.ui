@@ -921,7 +921,7 @@
      </item>
      <item>
       <layout class="QGridLayout" name="gridLayout_5" columnstretch="0,1">
-       <item row="8" column="0">
+       <item row="9" column="0">
         <widget class="QLabel" name="label_loopClosures">
          <property name="text">
           <string/>
@@ -931,7 +931,7 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="0">
+       <item row="6" column="0">
         <widget class="QLabel" name="label_timeGrid">
          <property name="text">
           <string/>
@@ -941,7 +941,7 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item row="5" column="0">
         <widget class="QLabel" name="label_timeOptimization">
          <property name="text">
           <string/>
@@ -954,42 +954,42 @@
        <item row="0" column="0">
         <widget class="QSpinBox" name="spinBox_optimizationsFrom"/>
        </item>
-       <item row="7" column="1">
+       <item row="8" column="1">
         <widget class="QLabel" name="label_52">
          <property name="text">
           <string>Poses</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item row="5" column="1">
         <widget class="QLabel" name="label_39">
          <property name="text">
           <string>Time optimization (s)</string>
          </property>
         </widget>
        </item>
-       <item row="8" column="1">
+       <item row="9" column="1">
         <widget class="QLabel" name="label_41">
          <property name="text">
           <string>Links (N, NM, G, LS, LT, U, P)</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="4" column="1">
         <widget class="QLabel" name="label_10">
          <property name="text">
           <string>Path length (m)</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item row="6" column="1">
         <widget class="QLabel" name="label_45">
          <property name="text">
           <string>Time grid (s)</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+       <item row="4" column="0">
         <widget class="QLabel" name="label_pathLength">
          <property name="text">
           <string/>
@@ -1020,7 +1020,7 @@
          </item>
         </layout>
        </item>
-       <item row="7" column="0">
+       <item row="8" column="0">
         <widget class="QLabel" name="label_poses">
          <property name="text">
           <string/>
@@ -1040,6 +1040,16 @@
          </property>
         </widget>
        </item>
+       <item row="3" column="0">
+        <widget class="QCheckBox" name="checkBox_ignoreIntermediateNodes">
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="0">
         <widget class="QCheckBox" name="checkBox_alignPosesWithGroundTruth">
          <property name="text">
@@ -1050,18 +1060,18 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QCheckBox" name="checkBox_ignoreIntermediateNodes">
+       <item row="7" column="0">
+        <widget class="QLabel" name="label_rmse">
          <property name="text">
           <string/>
          </property>
-         <property name="checked">
-          <bool>false</bool>
+         <property name="textInteractionFlags">
+          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="label_alignPosesWithGroundTruth_2">
+       <item row="3" column="1">
+        <widget class="QLabel" name="label_ignoreINtermediateNdoes">
          <property name="text">
           <string>Ignore intermediate nodes</string>
          </property>
@@ -1070,20 +1080,30 @@
          </property>
         </widget>
        </item>
-       <item row="6" column="1">
+       <item row="7" column="1">
         <widget class="QLabel" name="label_rmse_title">
          <property name="text">
           <string>RMSE (m)</string>
          </property>
         </widget>
        </item>
-       <item row="6" column="0">
-        <widget class="QLabel" name="label_rmse">
+       <item row="2" column="1">
+        <widget class="QLabel" name="label_alignScansCloudsWithGroundTruth">
+         <property name="text">
+          <string>Align scans/clouds with ground truth</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QCheckBox" name="checkBox_alignScansCloudsWithGroundTruth">
          <property name="text">
           <string/>
          </property>
-         <property name="textInteractionFlags">
-          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+         <property name="checked">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
@@ -1840,8 +1860,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>205</width>
-          <height>117</height>
+          <width>298</width>
+          <height>179</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1940,8 +1960,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>185</width>
-          <height>487</height>
+          <width>433</width>
+          <height>198</height>
          </rect>
         </property>
         <attribute name="label">
