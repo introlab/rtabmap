@@ -2791,7 +2791,7 @@ void DatabaseViewer::refineAllLoopClosureLinks()
 	{
 		rtabmap::ProgressDialog * progressDialog = new rtabmap::ProgressDialog(this);
 		progressDialog->setAttribute(Qt::WA_DeleteOnClose);
-		progressDialog->setMaximumSteps(neighborLinks_.size());
+		progressDialog->setMaximumSteps(loopLinks_.size());
 		progressDialog->setCancelButtonVisible(true);
 		progressDialog->setMinimumWidth(800);
 		progressDialog->show();
@@ -5441,6 +5441,11 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 
 		RegistrationIcp registrationIcp(parameters);
 		transform = registrationIcp.computeTransformation(dataFrom, assembledData, currentLink.transform(), &info);
+		if(!transform.isNull())
+		{
+			// local scan matching proximity detection should have higher variance (see Rtabmap::process())
+			info.covariance*=100.0;
+		}
 	}
 	else
 	{
@@ -5507,8 +5512,6 @@ void DatabaseViewer::refineConstraint(int from, int to, bool silent)
 	{
 		if(!transform.isIdentity())
 		{
-			// normalize variance
-			info.covariance *= transform.getNorm();
 			if(info.covariance.at<double>(0,0)<=0.0)
 			{
 				info.covariance = cv::Mat::eye(6,6,CV_64FC1)*0.0001; // epsilon if exact transform
