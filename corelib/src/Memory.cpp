@@ -115,7 +115,14 @@ Memory::Memory(const ParametersMap & parameters) :
 	_feature2D = Feature2D::create(parameters);
 	_vwd = new VWDictionary(parameters);
 	_registrationPipeline = Registration::create(parameters);
-	_registrationIcp = new RegistrationIcp(parameters);
+
+	// for local scan matching, correspondences ratio should be two times higher as we expect more matches
+	float corRatio = Parameters::defaultIcpCorrespondenceRatio();
+	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), corRatio);
+	ParametersMap paramsMulti = parameters;
+	paramsMulti.insert(ParametersPair(Parameters::kIcpCorrespondenceRatio(), uNumber2Str(corRatio*2.0f)));
+	_registrationIcpMulti = new RegistrationIcp(paramsMulti);
+
 	_occupancy = new OccupancyGrid(parameters);
 	this->parseParameters(parameters);
 }
@@ -418,9 +425,9 @@ Memory::~Memory()
 	{
 		delete _registrationPipeline;
 	}
-	if(_registrationIcp)
+	if(_registrationIcpMulti)
 	{
-		delete _registrationIcp;
+		delete _registrationIcpMulti;
 	}
 	if(_occupancy)
 	{
@@ -555,9 +562,22 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		_registrationPipeline->parseParameters(params);
 	}
 
-	if(_registrationIcp)
+	if(_registrationIcpMulti)
 	{
-		_registrationIcp->parseParameters(params);
+		if(uContains(params, Parameters::kIcpCorrespondenceRatio()))
+		{
+			// for local scan matching, correspondences ratio should be two times higher as we expect more matches
+			// for local scan matching, correspondences ratio should be two times higher as we expect more matches
+			float corRatio = Parameters::defaultIcpCorrespondenceRatio();
+			Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), corRatio);
+			ParametersMap paramsMulti = params;
+			paramsMulti.at(Parameters::kIcpCorrespondenceRatio()) = uNumber2Str(corRatio*2.0f);
+			_registrationIcpMulti->parseParameters(paramsMulti);
+		}
+		else
+		{
+			_registrationIcpMulti->parseParameters(params);
+		}
 	}
 
 	if(_occupancy)
@@ -2393,7 +2413,15 @@ Transform Memory::computeTransform(
 			UDEBUG("");
 			// verify if it is a 180 degree transform, well verify > 90
 			float x,y,z, roll,pitch,yaw;
-			transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+			if(guess.isNull())
+			{
+				transform.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+			}
+			else
+			{
+				Transform guessError = guess.inverse() * transform;
+				guessError.getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
+			}
 			if(fabs(pitch) > CV_PI/2 ||
 			   fabs(yaw) > CV_PI/2)
 			{
@@ -2409,61 +2437,6 @@ Transform Memory::computeTransform(
 		}
 	}
 	return transform;
-}
-
-// compute transform fromId -> toId
-Transform Memory::computeIcpTransform(
-		int fromId,
-		int toId,
-		Transform guess,
-		RegistrationInfo * info)
-{
-	Signature * fromS = this->_getSignature(fromId);
-	Signature * toS = this->_getSignature(toId);
-
-	if(fromS && toS && _dbDriver)
-	{
-		std::list<Signature*> depthsToLoad;
-		//if image is already here, scan should be or it is null
-		if(fromS->sensorData().imageCompressed().empty() &&
-		   fromS->sensorData().laserScanCompressed().isEmpty())
-		{
-			depthsToLoad.push_back(fromS);
-		}
-		if(toS->sensorData().imageCompressed().empty() &&
-		   toS->sensorData().laserScanCompressed().isEmpty())
-		{
-			depthsToLoad.push_back(toS);
-		}
-
-		if(depthsToLoad.size())
-		{
-			_dbDriver->loadNodeData(depthsToLoad, false, true, false, false);
-		}
-	}
-
-	Transform t;
-	if(fromS && toS)
-	{
-		//make sure data are uncompressed
-		LaserScan tmp1, tmp2;
-		fromS->sensorData().uncompressData(0, 0, &tmp1);
-		toS->sensorData().uncompressData(0, 0, &tmp2);
-
-		// compute transform fromId -> toId
-		std::vector<int> inliersV;
-		t = _registrationIcp->computeTransformation(fromS->sensorData(), toS->sensorData(), guess, info);
-	}
-	else
-	{
-		std::string msg = uFormat("Did not find nodes %d and/or %d", fromId, toId);
-		if(info)
-		{
-			info->rejectedMsg = msg;
-		}
-		UWARN(msg.c_str());
-	}
-	return t;
 }
 
 // compute transform fromId -> multiple toId
@@ -2606,7 +2579,7 @@ Transform Memory::computeIcpTransformMulti(
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
 		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
-		t = _registrationIcp->computeTransformation(fromS->sensorData(), assembledData, guess, info);
+		t = _registrationIcpMulti->computeTransformation(fromS->sensorData(), assembledData, guess, info);
 	}
 
 	return t;

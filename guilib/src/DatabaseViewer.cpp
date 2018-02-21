@@ -477,7 +477,6 @@ void DatabaseViewer::readSettings()
 
 	ui_->comboBox_logger_level->setCurrentIndex(settings.value("loggerLevel", ui_->comboBox_logger_level->currentIndex()).toInt());
 	ui_->actionVertical_Layout->setChecked(settings.value("verticalLayout", ui_->actionVertical_Layout->isChecked()).toBool());
-	ui_->checkBox_alignPosesWithGroundTruth->setChecked(settings.value("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked()).toBool());
 	ui_->checkBox_ignoreIntermediateNodes->setChecked(settings.value("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked()).toBool());
 	ui_->checkBox_timeStats->setChecked(settings.value("timeStats", ui_->checkBox_timeStats->isChecked()).toBool());
 
@@ -558,7 +557,6 @@ void DatabaseViewer::writeSettings()
 
 	settings.setValue("loggerLevel", ui_->comboBox_logger_level->currentIndex());
 	settings.setValue("verticalLayout", ui_->actionVertical_Layout->isChecked());
-	settings.setValue("alignGroundTruth", ui_->checkBox_alignPosesWithGroundTruth->isChecked());
 	settings.setValue("ignoreIntermediateNodes", ui_->checkBox_ignoreIntermediateNodes->isChecked());
 	settings.setValue("timeStats", ui_->checkBox_timeStats->isChecked());
 

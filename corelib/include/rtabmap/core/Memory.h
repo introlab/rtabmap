@@ -223,7 +223,6 @@ public:
 
 	Transform computeTransform(Signature & fromS, Signature & toS, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false) const;
 	Transform computeTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0, bool useKnownCorrespondencesIfPossible = false);
-	Transform computeIcpTransform(int fromId, int toId, Transform guess, RegistrationInfo * info = 0);
 	Transform computeIcpTransformMulti(
 			int newId,
 			int oldId,
@@ -320,7 +319,7 @@ private:
 	bool _parallelized;
 
 	Registration * _registrationPipeline;
-	RegistrationIcp * _registrationIcp;
+	RegistrationIcp * _registrationIcpMulti;
 
 	OccupancyGrid * _occupancy;
 };

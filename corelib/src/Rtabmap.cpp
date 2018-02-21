@@ -1110,55 +1110,52 @@ bool Rtabmap::process(
 					//============================================================
 					// Refine neighbor links
 					//============================================================
-					if(!signature->sensorData().laserScanCompressed().isEmpty())
+					UINFO("Odometry refining: guess = %s", guess.prettyPrint().c_str());
+					RegistrationInfo info;
+					Transform t = _memory->computeTransform(oldId, signature->id(), guess, &info);
+					if(!t.isNull())
 					{
-						UINFO("Odometry refining: guess = %s", guess.prettyPrint().c_str());
-						RegistrationInfo info;
-						Transform t = _memory->computeIcpTransform(oldId, signature->id(), guess, &info);
-						if(!t.isNull())
-						{
-							UINFO("Odometry refining: update neighbor link (%d->%d, variance:lin=%f, ang=%f) from %s to %s",
-									oldId,
-									signature->id(),
-									info.covariance.at<double>(0,0),
-									info.covariance.at<double>(5,5),
-									guess.prettyPrint().c_str(),
-									t.prettyPrint().c_str());
-							UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
-							_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), t, info.covariance.inv()));
+						UINFO("Odometry refining: update neighbor link (%d->%d, variance:lin=%f, ang=%f) from %s to %s",
+								oldId,
+								signature->id(),
+								info.covariance.at<double>(0,0),
+								info.covariance.at<double>(5,5),
+								guess.prettyPrint().c_str(),
+								t.prettyPrint().c_str());
+						UASSERT(info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(5,5) > 0.0);
+						_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), t, info.covariance.inv()));
 
-							if(_optimizeFromGraphEnd)
-							{
-								// update all previous nodes
-								// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
-								// parameters just changed state, we should put back all poses without map correction.
-								Transform u = guess * t.inverse();
-								std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
-								UASSERT(jter!=_optimizedPoses.end());
-								Transform up = jter->second * u * jter->second.inverse();
-								Transform mapCorrectionInv = _mapCorrection.inverse();
-								for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
-								{
-									iter->second = mapCorrectionInv * up * iter->second;
-								}
-							}
-						}
-						else
+						if(_optimizeFromGraphEnd)
 						{
-							UINFO("Odometry refining rejected: %s", info.rejectedMsg.c_str());
-							if(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(0,0) != 1.0 && info.covariance.at<double>(5,5) > 0.0 && info.covariance.at<double>(5,5) != 1.0)
+							// update all previous nodes
+							// Normally _mapCorrection should be identity, but if _optimizeFromGraphEnd
+							// parameters just changed state, we should put back all poses without map correction.
+							Transform u = guess * t.inverse();
+							std::map<int, Transform>::iterator jter = _optimizedPoses.find(oldId);
+							UASSERT(jter!=_optimizedPoses.end());
+							Transform up = jter->second * u * jter->second.inverse();
+							Transform mapCorrectionInv = _mapCorrection.inverse();
+							for(std::map<int, Transform>::iterator iter=_optimizedPoses.begin(); iter!=_optimizedPoses.end(); ++iter)
 							{
-								_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, (info.covariance*100.0).inv()));
+								iter->second = mapCorrectionInv * up * iter->second;
 							}
 						}
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_inliers_ratio(), info.icpInliersRatio);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_rotation(), info.icpRotation);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_translation(), info.icpTranslation);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_complexity(), info.icpStructuralComplexity);
-						statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().size());
 					}
+					else
+					{
+						UINFO("Odometry refining rejected: %s", info.rejectedMsg.c_str());
+						if(!info.covariance.empty() && info.covariance.at<double>(0,0) > 0.0 && info.covariance.at<double>(0,0) != 1.0 && info.covariance.at<double>(5,5) > 0.0 && info.covariance.at<double>(5,5) != 1.0)
+						{
+							_memory->updateLink(Link(oldId, signature->id(), signature->getLinks().begin()->second.type(), guess, (info.covariance*100.0).inv()));
+						}
+					}
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningAccepted(), !t.isNull()?1.0f:0);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningInliers(), info.inliers);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_inliers_ratio(), info.icpInliersRatio);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_rotation(), info.icpRotation);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_translation(), info.icpTranslation);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningICP_complexity(), info.icpStructuralComplexity);
+					statistics_.addStatistic(Statistics::kNeighborLinkRefiningPts(), signature->sensorData().laserScanRaw().size());
 				}
 				timeNeighborLinkRefining = timer.ticks();
 				ULOGGER_INFO("timeOdometryRefining=%fs", timeNeighborLinkRefining);
