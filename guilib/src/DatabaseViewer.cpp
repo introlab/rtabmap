@@ -3201,46 +3201,26 @@ void DatabaseViewer::update(int value,
 						if(data.laserScanRaw().hasRGB() && data.laserScanRaw().hasNormals())
 						{
 							pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr scan = util3d::laserScanToPointCloudRGBNormal(data.laserScanRaw(), data.laserScanRaw().localTransform());
-							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-							{
-								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 						else if(data.laserScanRaw().hasIntensity() && data.laserScanRaw().hasNormals())
 						{
 							pcl::PointCloud<pcl::PointXYZINormal>::Ptr scan = util3d::laserScanToPointCloudINormal(data.laserScanRaw(), data.laserScanRaw().localTransform());
-							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-							{
-								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 						else if(data.laserScanRaw().hasNormals())
 						{
 							pcl::PointCloud<pcl::PointNormal>::Ptr scan = util3d::laserScanToPointCloudNormal(data.laserScanRaw(), data.laserScanRaw().localTransform());
-							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-							{
-								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 						else if(data.laserScanRaw().hasRGB())
 						{
 							pcl::PointCloud<pcl::PointXYZRGB>::Ptr scan = util3d::laserScanToPointCloudRGB(data.laserScanRaw(), data.laserScanRaw().localTransform());
-							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-							{
-								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 						else
 						{
 							pcl::PointCloud<pcl::PointXYZ>::Ptr scan = util3d::laserScanToPointCloud(data.laserScanRaw(), data.laserScanRaw().localTransform());
-							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-							{
-								scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-							}
 							cloudViewer_->addCloud("scan", scan, pose, Qt::yellow);
 						}
 					}
@@ -4296,7 +4276,7 @@ void DatabaseViewer::updateConstraintView(
 								data.uncompressDataConst(0, 0, &scan, 0);
 								if(!scan.isEmpty())
 								{
-									if(scan.hasNormals() && ui_->doubleSpinBox_voxelSize->value() == 0.0)
+									if(scan.hasNormals())
 									{
 										*assembledNormalScans += *util3d::laserScanToPointCloudNormal(scan, iter->second*scan.localTransform());
 									}
@@ -4316,10 +4296,6 @@ void DatabaseViewer::updateConstraintView(
 						}
 						if(assembledScans->size())
 						{
-							if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-							{
-								assembledScans = util3d::voxelize(assembledScans, ui_->doubleSpinBox_voxelSize->value());
-							}
 							constraintsViewer_->addCloud("scan2", assembledScans, pose, Qt::cyan);
 							constraintsViewer_->setCloudColorIndex("scan2", 2);
 						}
@@ -4340,10 +4316,6 @@ void DatabaseViewer::updateConstraintView(
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataFrom.laserScanRaw(), dataFrom.laserScanRaw().localTransform());
-					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-					{
-						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-					}
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 					constraintsViewer_->setCloudColorIndex("scan0", 2);
 				}
@@ -4351,10 +4323,6 @@ void DatabaseViewer::updateConstraintView(
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloud(dataFrom.laserScanRaw(), dataFrom.laserScanRaw().localTransform());
-					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-					{
-						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-					}
 					constraintsViewer_->addCloud("scan0", scan, pose, Qt::yellow);
 					constraintsViewer_->setCloudColorIndex("scan0", 2);
 				}
@@ -4365,10 +4333,6 @@ void DatabaseViewer::updateConstraintView(
 				{
 					pcl::PointCloud<pcl::PointNormal>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloudNormal(dataTo.laserScanRaw(), t*dataTo.laserScanRaw().localTransform());
-					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-					{
-						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-					}
 					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
 					constraintsViewer_->setCloudColorIndex("scan1", 2);
 				}
@@ -4376,10 +4340,6 @@ void DatabaseViewer::updateConstraintView(
 				{
 					pcl::PointCloud<pcl::PointXYZ>::Ptr scan;
 					scan = rtabmap::util3d::laserScanToPointCloud(dataTo.laserScanRaw(), t*dataTo.laserScanRaw().localTransform());
-					if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
-					{
-						scan = util3d::voxelize(scan, ui_->doubleSpinBox_voxelSize->value());
-					}
 					constraintsViewer_->addCloud("scan1", scan, pose, Qt::magenta);
 					constraintsViewer_->setCloudColorIndex("scan1", 2);
 				}
