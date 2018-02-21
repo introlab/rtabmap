@@ -662,6 +662,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_publishPdf->setObjectName(Parameters::kRtabmapPublishPdf().c_str());
 	_ui->general_checkBox_publishLikelihood->setObjectName(Parameters::kRtabmapPublishLikelihood().c_str());
 	_ui->general_checkBox_publishRMSE->setObjectName(Parameters::kRtabmapComputeRMSE().c_str());
+	_ui->general_checkBox_saveWMState->setObjectName(Parameters::kRtabmapSaveWMState().c_str());
 	_ui->general_checkBox_publishRAM->setObjectName(Parameters::kRtabmapPublishRAMUsage().c_str());
 	_ui->general_checkBox_statisticLogsBufferedInRAM->setObjectName(Parameters::kRtabmapStatisticLogsBufferedInRAM().c_str());
 	_ui->groupBox_statistics->setObjectName(Parameters::kRtabmapStatisticLogged().c_str());

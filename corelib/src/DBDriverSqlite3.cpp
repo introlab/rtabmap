@@ -875,7 +875,11 @@ long DBDriverSqlite3::getStatisticsMemoryUsedQuery() const
 	if(_ppDb)
 	{
 		std::string query;
-		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		if(uStrNumCmp(_version, "0.16.2") >= 0)
+		{
+			query = "SELECT sum(length(id) + length(stamp) + length(data) + length(wm_state)) FROM Statistics";
+		}
+		else if(uStrNumCmp(_version, "0.11.11") >= 0)
 		{
 			query = "SELECT sum(length(id) + length(stamp) + length(data)) FROM Statistics";
 		}
@@ -1059,7 +1063,7 @@ ParametersMap DBDriverSqlite3::getLastParametersQuery() const
 	return parameters;
 }
 
-std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, double & stamp) const
+std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, double & stamp, std::vector<int> * wmState) const
 {
 	UDEBUG("nodeId=%d", nodeId);
 	std::map<std::string, float> data;
@@ -1069,9 +1073,18 @@ std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, dou
 		{
 			std::stringstream query;
 
-			query << "SELECT stamp, data "
-				  << "FROM Statistics "
-				  << "WHERE id=" << nodeId << ";";
+			if(uStrNumCmp(_version, "0.16.2") >= 0 && wmState)
+			{
+				query << "SELECT stamp, data, wm_state "
+					  << "FROM Statistics "
+					  << "WHERE id=" << nodeId << ";";
+			}
+			else
+			{
+				query << "SELECT stamp, data "
+					  << "FROM Statistics "
+					  << "WHERE id=" << nodeId << ";";
+			}
 
 			int rc = SQLITE_OK;
 			sqlite3_stmt * ppStmt = 0;
@@ -1086,10 +1099,8 @@ std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, dou
 				std::string text;
 				if(uStrNumCmp(this->getDatabaseVersion(), "0.15.0") >= 0)
 				{
-					const void * dataPtr = 0;
-					int dataSize = 0;
-					dataPtr = sqlite3_column_blob(ppStmt, index);
-					dataSize = sqlite3_column_bytes(ppStmt, index++);
+					const void * dataPtr = sqlite3_column_blob(ppStmt, index);
+					int dataSize = sqlite3_column_bytes(ppStmt, index++);
 					if(dataSize>0 && dataPtr)
 					{
 						text = uncompressString(cv::Mat(1, dataSize, CV_8UC1, (void *)dataPtr));
@@ -1103,6 +1114,19 @@ std::map<std::string, float> DBDriverSqlite3::getStatisticsQuery(int nodeId, dou
 				if(text.size())
 				{
 					data = Statistics::deserializeData(text);
+				}
+
+				if(uStrNumCmp(_version, "0.16.2") >= 0 && wmState)
+				{
+					const void * dataPtr = sqlite3_column_blob(ppStmt, index);
+					int dataSize = sqlite3_column_bytes(ppStmt, index++);
+					if(dataSize>0 && dataPtr)
+					{
+						cv::Mat wmStateMat = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)dataPtr));
+						UASSERT(wmStateMat.type() == CV_32SC1 && wmStateMat.rows == 1);
+						wmState->resize(wmStateMat.cols);
+						memcpy(wmState->data(), wmStateMat.data, wmState->size()*sizeof(int));
+					}
 				}
 
 				rc = sqlite3_step(ppStmt);
@@ -4041,7 +4065,15 @@ void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
 			std::string param = Statistics::serializeData(statistics.data());
 			if(param.size() && statistics.refImageId()>0)
 			{
-				std::string query = "INSERT INTO Statistics(id, stamp, data) values(?,?,?);";
+				std::string query;
+				if(uStrNumCmp(this->getDatabaseVersion(), "0.16.2") >= 0)
+				{
+					query = "INSERT INTO Statistics(id, stamp, data, wm_state) values(?,?,?,?);";
+				}
+				else
+				{
+					query = "INSERT INTO Statistics(id, stamp, data) values(?,?,?);";
+				}
 				rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
@@ -4061,6 +4093,19 @@ void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
 				else
 				{
 					rc = sqlite3_bind_text(ppStmt, index++, param.c_str(), -1, SQLITE_STATIC);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
+
+				cv::Mat compressedWmState;
+				if(uStrNumCmp(this->getDatabaseVersion(), "0.16.2") >= 0 && !statistics.wmState().empty())
+				{
+					compressedWmState = compressData2(cv::Mat(1, statistics.wmState().size(), CV_32SC1, (void *)statistics.wmState().data()));
+					rc = sqlite3_bind_blob(ppStmt, index++, compressedWmState.data, compressedWmState.cols, SQLITE_STATIC);
+					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+				}
+				else
+				{
+					rc = sqlite3_bind_null(ppStmt, index++);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 				}
 

@@ -315,6 +315,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_wmState, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->graphViewer, SIGNAL(mapShownRequested()), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_ignorePoseCorrection, SIGNAL(stateChanged(int)), this, SLOT(updateConstraintView()));
@@ -639,6 +640,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_timeStats->setChecked(true);
 
 	ui_->checkBox_spanAllMaps->setChecked(true);
+	ui_->checkBox_wmState->setChecked(false);
 	ui_->checkBox_ignorePoseCorrection->setChecked(false);
 	ui_->checkBox_ignoreGlobalLoop->setChecked(false);
 	ui_->checkBox_ignoreLocalLoopSpace->setChecked(false);
@@ -907,6 +909,7 @@ bool DatabaseViewer::closeDatabase()
 		gpsValues_.clear();
 		mapIds_.clear();
 		weights_.clear();
+		wmStates_.clear();
 		links_.clear();
 		linksAdded_.clear();
 		linksRefined_.clear();
@@ -1433,10 +1436,12 @@ void DatabaseViewer::updateIds()
 	idToIndex_.clear();
 	mapIds_.clear();
 	weights_.clear();
+	wmStates_.clear();
 	odomPoses_.clear();
 	groundTruthPoses_.clear();
 	gpsPoses_.clear();
 	gpsValues_.clear();
+	ui_->checkBox_wmState->setVisible(false);
 	ui_->checkBox_alignPosesWithGroundTruth->setVisible(false);
 	ui_->checkBox_alignScansCloudsWithGroundTruth->setVisible(false);
 	ui_->doubleSpinBox_optimizationScale->setVisible(false);
@@ -1482,6 +1487,13 @@ void DatabaseViewer::updateIds()
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
+		std::vector<int> wmState;
+		dbDriver_->getStatistics(ids_[i], s, &wmState);
+		if(!wmState.empty())
+		{
+			wmStates_.insert(std::make_pair(ids_[i], wmState));
+			ui_->checkBox_wmState->setVisible(true);
+		}
 		if(w < 0)
 		{
 			ui_->checkBox_ignoreIntermediateNodes->setVisible(true);
@@ -4867,6 +4879,27 @@ void DatabaseViewer::updateGraphView()
 		graphLinks_.clear();
 
 		std::map<int, rtabmap::Transform> poses = odomPoses_;
+		if(ui_->checkBox_wmState->isChecked() && uContains(wmStates_, fromId))
+		{
+			std::map<int, rtabmap::Transform> wmPoses;
+			std::vector<int> & wmState = wmStates_.at(fromId);
+			for(unsigned int i=0; i<wmState.size(); ++i)
+			{
+				std::map<int, rtabmap::Transform>::iterator iter = poses.find(wmState[i]);
+				if(iter!=poses.end())
+				{
+					wmPoses.insert(*iter);
+				}
+			}
+			if(!wmPoses.empty())
+			{
+				poses = wmPoses;
+			}
+			else
+			{
+				UWARN("Empty WM poses!? Ignoring WM state... (root id=%d, wmState=%d)", fromId, wmState.size());
+			}
+		}
 
 		// filter current map if not spanning to all maps
 		if(!ui_->checkBox_spanAllMaps->isChecked() && uContains(mapIds_, fromId) && mapIds_.at(fromId) >= 0)

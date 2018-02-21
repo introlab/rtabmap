@@ -189,6 +189,7 @@ public:
 	void setLocalPath(const std::vector<int> & localPath) {_localPath=localPath;}
 	void setCurrentGoalId(int goal) {_currentGoalId=goal;}
 	void setReducedIds(const std::map<int, int> & reducedIds) {_reducedIds = reducedIds;}
+	void setWmState(const std::vector<int> & state) {_wmState = state;}
 
 	// getters
 	bool extended() const {return _extended;}
@@ -210,6 +211,7 @@ public:
 	const std::vector<int> & localPath() const {return _localPath;}
 	int currentGoalId() const {return _currentGoalId;}
 	const std::map<int, int> & reducedIds() const {return _reducedIds;}
+	const std::vector<int> & wmState() const {return _wmState;}
 
 	const std::map<std::string, float> & data() const {return _data;}
 
@@ -237,6 +239,8 @@ private:
 	int _currentGoalId;
 
 	std::map<int, int> _reducedIds;
+
+	std::vector<int> _wmState;
 
 	// Format for statistics (Plottable statistics must go in that map) :
 	// {"Group/Name/Unit", value}

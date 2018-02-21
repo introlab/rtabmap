@@ -245,11 +245,11 @@ ParametersMap DBDriver::getLastParameters() const
 	return parameters;
 }
 
-std::map<std::string, float> DBDriver::getStatistics(int nodeId, double & stamp) const
+std::map<std::string, float> DBDriver::getStatistics(int nodeId, double & stamp, std::vector<int> * wmState) const
 {
 	std::map<std::string, float> statistics;
 	_dbSafeAccessMutex.lock();
-	statistics = getStatisticsQuery(nodeId, stamp);
+	statistics = getStatisticsQuery(nodeId, stamp, wmState);
 	_dbSafeAccessMutex.unlock();
 	return statistics;
 }

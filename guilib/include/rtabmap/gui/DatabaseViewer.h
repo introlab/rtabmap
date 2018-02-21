@@ -183,6 +183,7 @@ private:
 	QList<int> ids_;
 	std::map<int, int> mapIds_;
 	std::map<int, int> weights_;
+	std::map<int, std::vector<int> > wmStates_;
 	QMap<int, int> idToIndex_;
 	QList<rtabmap::Link> neighborLinks_;
 	QList<rtabmap::Link> loopLinks_;

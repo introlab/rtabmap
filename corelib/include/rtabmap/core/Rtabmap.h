@@ -214,6 +214,7 @@ private:
 	bool _publishLikelihood;
 	bool _publishRAMUsage;
 	bool _computeRMSE;
+	bool _saveWMState;
 	float _maxTimeAllowed; // in ms
 	unsigned int _maxMemoryAllowed; // signatures count in WM
 	float _loopThr;

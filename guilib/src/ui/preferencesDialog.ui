@@ -63,7 +63,7 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-78</y>
+            <y>0</y>
             <width>673</width>
             <height>2834</height>
            </rect>
@@ -86,7 +86,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>1</number>
+                <number>7</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -6172,32 +6172,12 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QGroupBox" name="groupBox_publishing">
                       <property name="title">
-                       <string>Publish statistics (stuff to be shown in the GUI)</string>
+                       <string>Publish statistics (stuff to be shown in the GUI) and save them in database</string>
                       </property>
                       <property name="checkable">
                        <bool>true</bool>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_45" columnstretch="0,1">
-                       <item row="0" column="0">
-                        <widget class="QCheckBox" name="general_checkBox_publishRawData">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="1">
-                        <widget class="QLabel" name="label_91">
-                         <property name="text">
-                          <string>Publish signature data.</string>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="1" column="0">
                         <widget class="QCheckBox" name="general_checkBox_publishPdf">
                          <property name="text">
@@ -6228,6 +6208,36 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
+                       <item row="5" column="1">
+                        <widget class="QLabel" name="label_462">
+                         <property name="text">
+                          <string>Save working memory state after each update.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="0">
+                        <widget class="QCheckBox" name="general_checkBox_publishRawData">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="1">
+                        <widget class="QLabel" name="label_91">
+                         <property name="text">
+                          <string>Publish signature data.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="2" column="1">
                         <widget class="QLabel" name="label_116">
                          <property name="text">
@@ -6238,10 +6248,30 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
+                       <item row="4" column="1">
+                        <widget class="QLabel" name="label_452">
+                         <property name="text">
+                          <string>Publish RAM usage.</string>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="4" column="0">
+                        <widget class="QCheckBox" name="general_checkBox_publishRAM">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="3" column="1">
                         <widget class="QLabel" name="label_437">
                          <property name="text">
-                          <string>Compute RMSE when ground truth is available and publish it.</string>
+                          <string>Compute RMSE when ground truth is available.</string>
                          </property>
                          <property name="textInteractionFlags">
                           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
@@ -6258,18 +6288,8 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="1">
-                        <widget class="QLabel" name="label_452">
-                         <property name="text">
-                          <string>Publish RAM usage.</string>
-                         </property>
-                         <property name="textInteractionFlags">
-                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="4" column="0">
-                        <widget class="QCheckBox" name="general_checkBox_publishRAM">
+                       <item row="5" column="0">
+                        <widget class="QCheckBox" name="general_checkBox_saveWMState">
                          <property name="text">
                           <string/>
                          </property>

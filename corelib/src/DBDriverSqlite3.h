@@ -70,7 +70,7 @@ private:
 	virtual int getTotalNodesSizeQuery() const;
 	virtual int getTotalDictionarySizeQuery() const;
 	virtual ParametersMap getLastParametersQuery() const;
-	virtual std::map<std::string, float> getStatisticsQuery(int nodeId, double & stamp) const;
+	virtual std::map<std::string, float> getStatisticsQuery(int nodeId, double & stamp, std::vector<int> * wmState) const;
 	virtual std::map<int, std::pair<std::map<std::string, float>, double> > getAllStatisticsQuery() const;
 
 	virtual void executeNoResultQuery(const std::string & sql) const;

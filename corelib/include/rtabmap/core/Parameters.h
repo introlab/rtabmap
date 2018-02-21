@@ -174,6 +174,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Rtabmap, PublishLikelihood,            bool, true,  "Publishing likelihood.");
     RTABMAP_PARAM(Rtabmap, PublishRAMUsage,              bool, false, "Publishing RAM usage in statistics (may add a small overhead to get info from the system).");
     RTABMAP_PARAM(Rtabmap, ComputeRMSE,                  bool, true,  "Compute root mean square error (RMSE) and publish it in statistics, if ground truth is provided.");
+    RTABMAP_PARAM(Rtabmap, SaveWMState,                  bool, false, "Save working memory state after each update in statistics.");
     RTABMAP_PARAM(Rtabmap, TimeThr,                      float, 0,    "Maximum time allowed for the detector (ms) (0 means infinity).");
     RTABMAP_PARAM(Rtabmap, MemoryThr,                    int, 0,      "Maximum signatures in the Working Memory (ms) (0 means infinity).");
     RTABMAP_PARAM(Rtabmap, DetectionRate,                float, 1,    "Detection rate (Hz). RTAB-Map will filter input images to satisfy this rate.");

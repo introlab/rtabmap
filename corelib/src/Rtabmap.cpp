@@ -82,6 +82,7 @@ Rtabmap::Rtabmap() :
 	_publishLikelihood(Parameters::defaultRtabmapPublishLikelihood()),
 	_publishRAMUsage(Parameters::defaultRtabmapPublishRAMUsage()),
 	_computeRMSE(Parameters::defaultRtabmapComputeRMSE()),
+	_saveWMState(Parameters::defaultRtabmapSaveWMState()),
 	_maxTimeAllowed(Parameters::defaultRtabmapTimeThr()), // 700 ms
 	_maxMemoryAllowed(Parameters::defaultRtabmapMemoryThr()), // 0=inf
 	_loopThr(Parameters::defaultRtabmapLoopThr()),
@@ -405,6 +406,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRtabmapPublishLikelihood(), _publishLikelihood);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishRAMUsage(), _publishRAMUsage);
 	Parameters::parse(parameters, Parameters::kRtabmapComputeRMSE(), _computeRMSE);
+	Parameters::parse(parameters, Parameters::kRtabmapSaveWMState(), _saveWMState);
 	Parameters::parse(parameters, Parameters::kRtabmapTimeThr(), _maxTimeAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapMemoryThr(), _maxMemoryAllowed);
 	Parameters::parse(parameters, Parameters::kRtabmapLoopThr(), _loopThr);
@@ -2775,6 +2777,20 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kGtRotational_min(), rotational_min);
 			statistics_.addStatistic(Statistics::kGtRotational_max(), rotational_max);
 
+		}
+
+		if(_saveWMState && _memory->isIncremental())
+		{
+			std::vector<int> ids = uKeys(_memory->getWorkingMem());
+			if(_memory->getStMem().size())
+			{
+				ids.resize(ids.size() + _memory->getStMem().size());
+				for(std::set<int>::const_iterator iter=_memory->getStMem().begin(); iter!=_memory->getStMem().end(); ++iter)
+				{
+					ids.push_back(*iter);
+				}
+			}
+			statistics_.setWmState(ids);
 		}
 		UDEBUG("");
 	}
