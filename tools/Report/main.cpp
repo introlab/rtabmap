@@ -279,7 +279,6 @@ int main(int argc, char * argv[])
 						}
 					}
 
-					UERROR("");
 					float bestScale = 1.0f;
 					float bestRMSE = -1;
 					float bestRMSEAng = -1;
