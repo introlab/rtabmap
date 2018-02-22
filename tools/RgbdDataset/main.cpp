@@ -207,6 +207,7 @@ int main(int argc, char * argv[])
 	bool intermediateNodes = Parameters::defaultRtabmapCreateIntermediateNodes();
 	float detectionRate = Parameters::defaultRtabmapDetectionRate();
 	int odomStrategy = Parameters::defaultOdomStrategy();
+	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
 	Parameters::parse(parameters, Parameters::kOdomStrategy(), odomStrategy);
 	Parameters::parse(parameters, Parameters::kRtabmapDetectionRate(), detectionRate);
 	std::string databasePath = output+"/"+outputName+".db";
