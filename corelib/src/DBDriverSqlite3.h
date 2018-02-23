@@ -72,6 +72,7 @@ private:
 	virtual ParametersMap getLastParametersQuery() const;
 	virtual std::map<std::string, float> getStatisticsQuery(int nodeId, double & stamp, std::vector<int> * wmState) const;
 	virtual std::map<int, std::pair<std::map<std::string, float>, double> > getAllStatisticsQuery() const;
+	virtual std::map<int, std::vector<int> > getAllStatisticsWmStatesQuery() const;
 
 	virtual void executeNoResultQuery(const std::string & sql) const;
 

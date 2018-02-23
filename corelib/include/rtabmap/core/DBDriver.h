@@ -148,6 +148,7 @@ public:
 	ParametersMap getLastParameters() const;
 	std::map<std::string, float> getStatistics(int nodeId, double & stamp, std::vector<int> * wmState=0) const;
 	std::map<int, std::pair<std::map<std::string, float>, double> > getAllStatistics() const;
+	std::map<int, std::vector<int> > getAllStatisticsWmStates() const;
 
 	void executeNoResult(const std::string & sql) const;
 
@@ -200,6 +201,7 @@ private:
 	virtual ParametersMap getLastParametersQuery() const = 0;
 	virtual std::map<std::string, float> getStatisticsQuery(int nodeId, double & stamp, std::vector<int> * wmState) const = 0;
 	virtual std::map<int, std::pair<std::map<std::string, float>, double> > getAllStatisticsQuery() const = 0;
+	virtual std::map<int, std::vector<int> > getAllStatisticsWmStatesQuery() const = 0;
 
 	virtual void executeNoResultQuery(const std::string & sql) const = 0;
 

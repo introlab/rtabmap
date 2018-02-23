@@ -263,6 +263,15 @@ std::map<int, std::pair<std::map<std::string, float>, double> > DBDriver::getAll
 	return statistics;
 }
 
+std::map<int, std::vector<int> > DBDriver::getAllStatisticsWmStates() const
+{
+	std::map<int, std::vector<int> > wmStates;
+	_dbSafeAccessMutex.lock();
+	wmStates = getAllStatisticsWmStatesQuery();
+	_dbSafeAccessMutex.unlock();
+	return wmStates;
+}
+
 std::string DBDriver::getDatabaseVersion() const
 {
 	std::string version = "0.0.0";

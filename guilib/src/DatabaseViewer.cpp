@@ -314,6 +314,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->horizontalSlider_iterations, SIGNAL(valueChanged(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->horizontalSlider_iterations, SIGNAL(sliderMoved(int)), this, SLOT(sliderIterationsValueChanged(int)));
 	connect(ui_->spinBox_optimizationsFrom, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
+	connect(ui_->checkBox_iterativeOptimization, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_spanAllMaps, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->checkBox_wmState, SIGNAL(stateChanged(int)), this, SLOT(updateGraphView()));
 	connect(ui_->graphViewer, SIGNAL(mapShownRequested()), this, SLOT(updateGraphView()));
@@ -639,6 +640,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->checkBox_ignoreIntermediateNodes->setChecked(false);
 	ui_->checkBox_timeStats->setChecked(true);
 
+	ui_->checkBox_iterativeOptimization->setChecked(true);
 	ui_->checkBox_spanAllMaps->setChecked(true);
 	ui_->checkBox_wmState->setChecked(false);
 	ui_->checkBox_ignorePoseCorrection->setChecked(false);
@@ -933,9 +935,10 @@ bool DatabaseViewer::closeDatabase()
 		ui_->label_rmse->setVisible(false);
 		ui_->label_rmse_title->setVisible(false);
 		ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
+		ui_->label_ignoreINtermediateNdoes->setVisible(false);
 		ui_->label_alignPosesWithGroundTruth->setVisible(false);
 		ui_->label_alignScansCloudsWithGroundTruth->setVisible(false);
-		ui_->label_optimizeFrom->setText(tr("Optimize from"));
+		ui_->label_optimizeFrom->setText(tr("Root"));
 		ui_->textEdit_info->clear();
 
 		ui_->pushButton_refine->setEnabled(false);
@@ -989,6 +992,7 @@ bool DatabaseViewer::closeDatabase()
 		ui_->toolBox_statistics->clear();
 
 		useLastOptimizedGraphAsGuess_ = false;
+		lastOptimizedGraph_.clear();
 	}
 
 	ui_->actionClose_database->setEnabled(dbDriver_ != 0);
@@ -1449,6 +1453,7 @@ void DatabaseViewer::updateIds()
 	ui_->label_rmse->setVisible(false);
 	ui_->label_rmse_title->setVisible(false);
 	ui_->checkBox_ignoreIntermediateNodes->setVisible(false);
+	ui_->label_ignoreINtermediateNdoes->setVisible(false);
 	ui_->label_alignPosesWithGroundTruth->setVisible(false);
 	ui_->label_alignScansCloudsWithGroundTruth->setVisible(false);
 	ui_->menuExport_GPS->setEnabled(false);
@@ -1458,7 +1463,7 @@ void DatabaseViewer::updateIds()
 	linksRefined_.clear();
 	linksRemoved_.clear();
 	ui_->toolBox_statistics->clear();
-	ui_->label_optimizeFrom->setText(tr("Optimize from"));
+	ui_->label_optimizeFrom->setText(tr("Root"));
 	std::multimap<int, Link> links;
 	dbDriver_->getAllLinks(links, true);
 	UDEBUG("%d total links loaded", (int)links.size());
@@ -1473,6 +1478,7 @@ void DatabaseViewer::updateIds()
 	int badcountInLTM = 0;
 	int badCountInGraph = 0;
 	bool hasReducedGraph = false;
+	std::map<int, std::vector<int> > wmStates = dbDriver_->getAllStatisticsWmStates();
 	for(int i=0; i<ids_.size(); ++i)
 	{
 		idToIndex_.insert(ids_[i], i);
@@ -1487,16 +1493,15 @@ void DatabaseViewer::updateIds()
 		dbDriver_->getNodeInfo(ids_[i], p, mapId, w, l, s, g, v, gps);
 		mapIds_.insert(std::make_pair(ids_[i], mapId));
 		weights_.insert(std::make_pair(ids_[i], w));
-		std::vector<int> wmState;
-		dbDriver_->getStatistics(ids_[i], s, &wmState);
-		if(!wmState.empty())
+		if(wmStates.find(ids_[i]) != wmStates.end())
 		{
-			wmStates_.insert(std::make_pair(ids_[i], wmState));
+			wmStates_.insert(std::make_pair(ids_[i], wmStates.at(ids_[i])));
 			ui_->checkBox_wmState->setVisible(true);
 		}
 		if(w < 0)
 		{
 			ui_->checkBox_ignoreIntermediateNodes->setVisible(true);
+			ui_->label_ignoreINtermediateNdoes->setVisible(true);
 		}
 		if(i>0)
 		{
@@ -1730,7 +1735,7 @@ void DatabaseViewer::updateIds()
 			{
 				ui_->spinBox_optimizationsFrom->setRange(odomPoses_.begin()->first, odomPoses_.rbegin()->first);
 				ui_->spinBox_optimizationsFrom->setValue(odomPoses_.begin()->first);
-				ui_->label_optimizeFrom->setText(tr("Optimize from [%1, %2]").arg(odomPoses_.begin()->first).arg(odomPoses_.rbegin()->first));
+				ui_->label_optimizeFrom->setText(tr("Root [%1, %2]").arg(odomPoses_.begin()->first).arg(odomPoses_.rbegin()->first));
 			}
 		}
 	}
@@ -4872,7 +4877,7 @@ void DatabaseViewer::updateGraphView()
 		std::map<int, Transform> optimizedGraphGuess;
 		if(graphes_.size() && useLastOptimizedGraphAsGuess_)
 		{
-			optimizedGraphGuess = graphes_.back();
+			optimizedGraphGuess = lastOptimizedGraph_;
 		}
 
 		graphes_.clear();
@@ -5032,11 +5037,6 @@ void DatabaseViewer::updateGraphView()
 			{
 				loopLinks_.push_back(iter->second);
 			}
-			Transform t = iter->second.transform().clone();
-			t.x() *= ui_->doubleSpinBox_optimizationScale->value();
-			t.y() *= ui_->doubleSpinBox_optimizationScale->value();
-			t.z() *= ui_->doubleSpinBox_optimizationScale->value();
-			iter->second.setTransform(t);
 			++iter;
 		}
 		updateLoopClosuresSlider();
@@ -5114,7 +5114,7 @@ void DatabaseViewer::updateGraphView()
 		UINFO("Connected graph of %d poses and %d links", (int)posesOut.size(), (int)linksOut.size());
 		QTime time;
 		time.start();
-		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, &graphes_);
+		std::map<int, rtabmap::Transform> finalPoses = optimizer->optimize(fromId, posesOut, linksOut, ui_->checkBox_iterativeOptimization->isChecked()?&graphes_:0);
 		ui_->label_timeOptimization->setNum(double(time.elapsed())/1000.0);
 		graphes_.push_back(finalPoses);
 		graphLinks_ = linksOut;
@@ -5144,6 +5144,7 @@ void DatabaseViewer::updateGraphView()
 						"incremental optimization succeeded. Next optimizations will use the current "
 						"best optimized poses as first guess instead of odometry poses."));
 				useLastOptimizedGraphAsGuess_ = true;
+				lastOptimizedGraph_ = finalPoses;
 
 			}
 		}
@@ -5165,6 +5166,21 @@ void DatabaseViewer::updateGraphView()
 	}
 	if(graphes_.size())
 	{
+		if(ui_->doubleSpinBox_optimizationScale->value()!=-1.0)
+		{
+			// scale all poses
+			for(std::list<std::map<int, Transform> >::iterator iter=graphes_.begin(); iter!=graphes_.end(); ++iter)
+			{
+				for(std::map<int, Transform>::iterator jter=iter->begin(); jter!=iter->end(); ++jter)
+				{
+					jter->second = jter->second.clone();
+					jter->second.x() *= ui_->doubleSpinBox_optimizationScale->value();
+					jter->second.y() *= ui_->doubleSpinBox_optimizationScale->value();
+					jter->second.z() *= ui_->doubleSpinBox_optimizationScale->value();
+				}
+			}
+		}
+
 		ui_->horizontalSlider_iterations->setMaximum((int)graphes_.size()-1);
 		ui_->horizontalSlider_iterations->setValue((int)graphes_.size()-1);
 		ui_->horizontalSlider_iterations->setEnabled(true);

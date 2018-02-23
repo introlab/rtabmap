@@ -52,7 +52,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>353</width>
+           <width>415</width>
            <height>256</height>
           </rect>
          </property>
@@ -244,7 +244,7 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>353</width>
+           <width>415</width>
            <height>256</height>
           </rect>
          </property>
@@ -890,6 +890,19 @@
          </property>
         </widget>
        </item>
+       <item>
+        <widget class="QCheckBox" name="checkBox_iterativeOptimization">
+         <property name="toolTip">
+          <string>Iterative optimization. Intermediate optimization graphes will be computed. Depending on the graph optimizer used, final optimization may not give the same results.</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
       </layout>
      </item>
      <item>
@@ -977,7 +990,7 @@
          <item>
           <widget class="QLabel" name="label_optimizeFrom">
            <property name="text">
-            <string>Graph root</string>
+            <string>Root</string>
            </property>
           </widget>
          </item>
@@ -1161,7 +1174,7 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>419</width>
+          <width>310</width>
           <height>222</height>
          </rect>
         </property>
@@ -1323,8 +1336,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>419</width>
-          <height>831</height>
+          <width>280</width>
+          <height>915</height>
          </rect>
         </property>
         <attribute name="label">

@@ -1196,6 +1196,56 @@ std::map<int, std::pair<std::map<std::string, float>, double> > DBDriverSqlite3:
 	return data;
 }
 
+std::map<int, std::vector<int> > DBDriverSqlite3::getAllStatisticsWmStatesQuery() const
+{
+	UDEBUG("");
+	std::map<int, std::vector<int> > data;
+	if(_ppDb)
+	{
+		if(uStrNumCmp(_version, "0.16.2") >= 0)
+		{
+			std::stringstream query;
+
+			query << "SELECT id, wm_state "
+				  << "FROM Statistics;";
+
+			int rc = SQLITE_OK;
+			sqlite3_stmt * ppStmt = 0;
+			rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_step(ppStmt);
+			while(rc == SQLITE_ROW)
+			{
+				int index = 0;
+				int id = sqlite3_column_int(ppStmt, index++);
+
+				std::vector<int> wmState;
+				const void * dataPtr = sqlite3_column_blob(ppStmt, index);
+				int dataSize = sqlite3_column_bytes(ppStmt, index++);
+				if(dataSize>0 && dataPtr)
+				{
+					cv::Mat wmStateMat = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)dataPtr));
+					UASSERT(wmStateMat.type() == CV_32SC1 && wmStateMat.rows == 1);
+					wmState.resize(wmStateMat.cols);
+					memcpy(wmState.data(), wmStateMat.data, wmState.size()*sizeof(int));
+				}
+
+				if(!wmState.empty())
+				{
+					data.insert(std::make_pair(id, wmState));
+				}
+
+				rc = sqlite3_step(ppStmt);
+			}
+			UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_finalize(ppStmt);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+	}
+	UDEBUG("");
+	return data;
+}
+
 void DBDriverSqlite3::loadNodeDataQuery(std::list<Signature *> & signatures, bool images, bool scan, bool userData, bool occupancyGrid) const
 {
 	UDEBUG("load data for %d signatures", (int)signatures.size());

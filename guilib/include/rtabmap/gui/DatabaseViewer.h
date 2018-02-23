@@ -215,6 +215,7 @@ private:
 	QString iniFilePath_;
 
 	bool useLastOptimizedGraphAsGuess_;
+	std::map<int, Transform> lastOptimizedGraph_;
 };
 
 }
