@@ -2485,9 +2485,23 @@ Transform Memory::computeIcpTransformMulti(
 	LaserScan fromScan;
 	fromS->sensorData().uncompressData(0, 0, &fromScan);
 
+	Signature * toS = _getSignature(toId);
+	LaserScan toScan;
+	toS->sensorData().uncompressData(0, 0, &toScan);
+
 	Transform t;
-	if(!fromScan.isEmpty())
+	if(!fromScan.isEmpty() && !toScan.isEmpty())
 	{
+		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
+		float guessNorm = guess.getNorm();
+		if(fromScan.maxRange() > 0.0f && toScan.maxRange() > 0.0f &&
+			guessNorm > fromScan.maxRange() + toScan.maxRange())
+		{
+			// stop right known,it is impossible that scans overlay.
+			UINFO("Too far scans between %d and %d to compute transformation: guessNorm=%f, scan range from=%f to=%f", fromId, toId, guessNorm, fromScan.maxRange(), toScan.maxRange());
+			return t;
+		}
+
 		// Create a fake signature with all scans merged in oldId referential
 		SensorData assembledData;
 		Transform toPoseInv = poses.at(toId).inverse();
@@ -2578,7 +2592,6 @@ Transform Memory::computeIcpTransformMulti(
 					fromScan.format(),
 					fromScan.is2d()?Transform(0,0,fromScan.localTransform().z(),0,0,0):Transform::getIdentity()));
 
-		Transform guess = poses.at(fromId).inverse() * poses.at(toId);
 		t = _registrationIcpMulti->computeTransformation(fromS->sensorData(), assembledData, guess, info);
 	}
 
@@ -3825,6 +3838,33 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 	LaserScan laserScan = data.laserScanRaw();
 	if(!isIntermediateNode && laserScan.size())
 	{
+		if(laserScan.maxRange() == 0.0f)
+		{
+			bool id2d = laserScan.is2d();
+			float maxRange = 0.0f;
+			for(int i=0; i<laserScan.size(); ++i)
+			{
+				const float * ptr = laserScan.data().ptr<float>(0, i);
+				float r;
+				if(id2d)
+				{
+					r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
+				}
+				else
+				{
+					r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
+				}
+				if(r>maxRange)
+				{
+					maxRange = r;
+				}
+			}
+			if(maxRange > 0.0f)
+			{
+				laserScan=LaserScan(laserScan.data(), laserScan.maxPoints(), sqrt(maxRange), laserScan.format(), laserScan.localTransform());
+			}
+		}
+
 		laserScan = util3d::commonFiltering(laserScan,
 				_laserScanDownsampleStepSize,
 				0,

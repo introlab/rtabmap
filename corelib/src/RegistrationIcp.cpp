@@ -604,7 +604,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						catch(const std::exception & e)
 						{
-							UWARN("libpointmatcher has failed: %s", e.what());
+							msg = uFormat("libpointmatcher has failed: %s", e.what());
 						}
 					}
 					else
@@ -827,7 +827,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 								}
 								catch(const std::exception & e)
 								{
-									UWARN("libpointmatcher has failed: %s", e.what());
+									msg = uFormat("libpointmatcher has failed: %s", e.what());
 								}
 							}
 							else
@@ -965,7 +965,7 @@ Transform RegistrationIcp::computeTransformationImpl(
 						}
 						catch(const std::exception & e)
 						{
-							UWARN("libpointmatcher has failed: %s", e.what());
+							msg = uFormat("libpointmatcher has failed: %s", e.what());
 						}
 					}
 					else
@@ -1112,8 +1112,11 @@ Transform RegistrationIcp::computeTransformationImpl(
 			}
 			else
 			{
-				msg = uFormat("Cannot compute transform (converged=%s var=%f)",
-						hasConverged?"true":"false", variance);
+				if(msg.empty())
+				{
+					msg = uFormat("Cannot compute transform (converged=%s var=%f)",
+							hasConverged?"true":"false", variance);
+				}
 				UINFO(msg.c_str());
 			}
 		}

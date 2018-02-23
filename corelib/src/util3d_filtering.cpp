@@ -99,23 +99,27 @@ LaserScan commonFiltering(
 			for(int i=0; i<scan.size()-downsamplingStep+1; i+=downsamplingStep)
 			{
 				const float * ptr = scan.data().ptr<float>(0, i);
-				float r;
-				if(is2d)
-				{
-					r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
-				}
-				else
-				{
-					r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
-				}
 
-				if(rangeMin > 0.0f && r < rangeMinSqrd)
+				if(rangeMin>0.0f || rangeMax>0.0f)
 				{
-					continue;
-				}
-				if(rangeMax > 0.0f && r > rangeMaxSqrd)
-				{
-					continue;
+					float r;
+					if(is2d)
+					{
+						r = ptr[0]*ptr[0] + ptr[1]*ptr[1];
+					}
+					else
+					{
+						r = ptr[0]*ptr[0] + ptr[1]*ptr[1] + ptr[2]*ptr[2];
+					}
+
+					if(rangeMin > 0.0f && r < rangeMinSqrd)
+					{
+						continue;
+					}
+					if(rangeMax > 0.0f && r > rangeMaxSqrd)
+					{
+						continue;
+					}
 				}
 
 				cv::Mat(scan.data(), cv::Range::all(), cv::Range(i,i+1)).copyTo(cv::Mat(tmp, cv::Range::all(), cv::Range(oi,oi+1)));
@@ -123,7 +127,7 @@ LaserScan commonFiltering(
 			}
 			int previousSize = scan.size();
 			int scanMaxPtsTmp = scan.maxPoints();
-			scan = LaserScan(cv::Mat(tmp, cv::Range::all(), cv::Range(0, oi)), scanMaxPtsTmp/downsamplingStep, scan.maxRange(), scan.format(), scan.localTransform());
+			scan = LaserScan(cv::Mat(tmp, cv::Range::all(), cv::Range(0, oi)), scanMaxPtsTmp/downsamplingStep, rangeMax>0.0f&&rangeMax<scan.maxRange()?rangeMax:scan.maxRange(), scan.format(), scan.localTransform());
 			UDEBUG("Downsampling scan (step=%d): %d -> %d (scanMaxPts=%d->%d)", downsamplingStep, previousSize, scan.size(), scanMaxPtsTmp, scan.maxPoints());
 		}
 
