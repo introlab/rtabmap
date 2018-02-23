@@ -2016,9 +2016,12 @@ bool Rtabmap::process(
 				// 2) compare locally with nearest locations by scan matching
 				//
 				UDEBUG("Proximity detection (local loop closure in SPACE with scan matching)");
-				if( _proximityMaxNeighbors > 0 &&
-					!signature->sensorData().laserScanCompressed().isEmpty() &&
-					(_memory->isIncremental() || lastProximitySpaceClosureId == 0))
+				if( _proximityMaxNeighbors <= 0)
+				{
+					UDEBUG("Proximity by scan matching is disabled (%s=%d).", Parameters::kRGBDProximityPathMaxNeighbors().c_str(), _proximityMaxNeighbors);
+				}
+				else if(!signature->sensorData().laserScanCompressed().isEmpty() &&
+						(_memory->isIncremental() || lastProximitySpaceClosureId == 0))
 				{
 					// In localization mode, no need to check local loop
 					// closures if we are already localized by at least one
