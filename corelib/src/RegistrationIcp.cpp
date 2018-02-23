@@ -195,7 +195,7 @@ DP laserScanToDP(const rtabmap::LaserScan & scan)
 	View viewNormalY(nx!=-1?cloud.getDescriptorRowViewByName("normals",1):view);
 	View viewNormalZ(nx!=-1?cloud.getDescriptorRowViewByName("normals",2):view);
 	View viewIntensity(offsetI!=-1?cloud.getDescriptorRowViewByName("intensity",0):view);
-	for(unsigned int i=0; i<scan.size(); ++i)
+	for(int i=0; i<scan.size(); ++i)
 	{
 		const float * ptr = scan.data().ptr<float>(0, i);
 
