@@ -37,6 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <rtabmap/core/LaserScan.h>
+#include <rtabmap/core/IMU.h>
 
 namespace rtabmap
 {
@@ -122,6 +123,12 @@ public:
 			double stamp = 0.0,
 			const cv::Mat & userData = cv::Mat());
 
+	// IMU constructor
+	SensorData(
+			const IMU & imu,
+			int id = 0,
+			double stamp = 0.0);
+
 	virtual ~SensorData();
 
 	bool isValid() const {
@@ -138,7 +145,8 @@ public:
 			_userDataRaw.empty() &&
 			_userDataCompressed.empty() &&
 			_keypoints.size() == 0 &&
-			_descriptors.empty());
+			_descriptors.empty() &&
+			imu_.empty());
 	}
 
 	int id() const {return _id;}
@@ -233,6 +241,12 @@ public:
 	}
 	const GPS & gps() const {return gps_;}
 
+	void setIMU(const IMU & imu)
+	{
+		imu_ = imu;
+	}
+	const IMU & imu() const {return imu_;}
+
 	long getMemoryUsed() const; // Return memory usage in Bytes
 	void clearCompressedData() {_imageCompressed=cv::Mat(); _depthOrRightCompressed=cv::Mat(); _laserScanCompressed.clear(); _userDataCompressed=cv::Mat();}
 
@@ -278,6 +292,8 @@ private:
 	cv::Mat globalPoseCovariance_; // 6x6 double
 
 	GPS gps_;
+
+	IMU imu_;
 };
 
 }

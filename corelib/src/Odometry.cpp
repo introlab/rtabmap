@@ -31,6 +31,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/OdometryFovis.h"
 #include "rtabmap/core/OdometryViso2.h"
 #include "rtabmap/core/OdometryDVO.h"
+#include "rtabmap/core/OdometryOkvis.h"
 #include "rtabmap/core/OdometryORBSLAM2.h"
 #include "rtabmap/core/OdometryInfo.h"
 #include "rtabmap/core/util3d.h"
@@ -76,6 +77,9 @@ Odometry * Odometry::create(Odometry::Type & type, const ParametersMap & paramet
 	case Odometry::kTypeF2F:
 		odometry = new OdometryF2F(parameters);
 		break;
+	case Odometry::kTypeOkvis:
+		odometry = new OdometryOkvis(parameters);
+		break;
 	default:
 		odometry = new OdometryF2M(parameters);
 		type = Odometry::kTypeF2M;
@@ -101,6 +105,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 		_imageDecimation(Parameters::defaultOdomImageDecimation()),
 		_alignWithGround(Parameters::defaultOdomAlignWithGround()),
 		_publishRAMUsage(Parameters::defaultRtabmapPublishRAMUsage()),
+		_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
 		_pose(Transform::getIdentity()),
 		_resetCurrentCount(0),
 		previousStamp_(0),
@@ -128,6 +133,7 @@ Odometry::Odometry(const rtabmap::ParametersMap & parameters) :
 	Parameters::parse(parameters, Parameters::kOdomImageDecimation(), _imageDecimation);
 	Parameters::parse(parameters, Parameters::kOdomAlignWithGround(), _alignWithGround);
 	Parameters::parse(parameters, Parameters::kRtabmapPublishRAMUsage(), _publishRAMUsage);
+	Parameters::parse(parameters, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
 
 	if(_imageDecimation == 0)
 	{
@@ -226,6 +232,13 @@ Transform Odometry::process(SensorData & data, OdometryInfo * info)
 Transform Odometry::process(SensorData & data, const Transform & guessIn, OdometryInfo * info)
 {
 	UASSERT_MSG(data.id() >= 0, uFormat("Input data should have ID greater or equal than 0 (id=%d)!", data.id()).c_str());
+
+	if(!_imagesAlreadyRectified && !this->canProcessRawImages())
+	{
+		UERROR("Odometry approach chosen cannot process raw images (not rectified images). Make sure images "
+				"are rectified, and set %s parameter back to true.",
+				Parameters::kRtabmapImagesAlreadyRectified().c_str());
+	}
 
 	// Ground alignment
 	if(_pose.isIdentity() && _alignWithGround)
@@ -337,7 +350,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 
 	UTimer time;
 	Transform t;
-	if(_imageDecimation > 1)
+	if(_imageDecimation > 1 && !data.imageRaw().empty())
 	{
 		// Decimation of images with calibrations
 		SensorData decimatedData = data;

@@ -250,6 +250,9 @@ public:
 	double getSourceScanNormalsRadius() const;
 	Transform getSourceLocalTransform() const;    //Openni group
 	Transform getLaserLocalTransform() const; // directory images
+	Transform getIMULocalTransform() const; // directory images
+	QString getIMUPath() const;
+	int getIMURate() const;
 	Camera * createCamera(bool useRawImages = false, bool useColor = true); // return camera should be deleted if not null
 
 	int getIgnoredDCComponents() const;
@@ -310,6 +313,7 @@ private slots:
 	void changeWorkingDirectory();
 	void changeDictionaryPath();
 	void changeOdometryORBSLAM2Vocabulary();
+	void changeOdometryOKVISConfigPath();
 	void changeIcpPMConfigPath();
 	void readSettingsEnd();
 	void setupTreeView();
@@ -322,6 +326,7 @@ private slots:
 	void selectSourceRGBDImagesPathRGB();
 	void selectSourceRGBDImagesPathDepth();
 	void selectSourceImagesPathScans();
+	void selectSourceImagesPathIMU();
 	void selectSourceImagesPathOdom();
 	void selectSourceImagesPathGt();
 	void selectSourceStereoImagesPathLeft();

@@ -25,53 +25,40 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef ODOMETRYTHREAD_H_
-#define ODOMETRYTHREAD_H_
+#ifndef ODOMETRYOKVIS_H_
+#define ODOMETRYOKVIS_H_
 
-#include <rtabmap/core/RtabmapExp.h>
-#include <rtabmap/core/SensorData.h>
-#include <rtabmap/utilite/UThread.h>
-#include <rtabmap/utilite/UEventsHandler.h>
-#include <list>
+#include <rtabmap/core/Odometry.h>
+
+namespace okvis {
+	class ThreadedKFVio;
+}
 
 namespace rtabmap {
 
-class Odometry;
-
-class RTABMAP_EXP OdometryThread : public UThread, public UEventsHandler {
+class OkvisCallbackHandler;
+class RTABMAP_EXP OdometryOkvis : public Odometry
+{
 public:
-	// take ownership of Odometry
-	OdometryThread(Odometry * odometry, unsigned int dataBufferMaxSize = 1);
-	virtual ~OdometryThread();
+	OdometryOkvis(const rtabmap::ParametersMap & parameters = rtabmap::ParametersMap());
+	virtual ~OdometryOkvis();
 
-protected:
-	virtual bool handleEvent(UEvent * event);
-
-private:
-	virtual void mainLoopBegin();
-	virtual void mainLoopKill();
-
-	//============================================================
-	// MAIN LOOP
-	//============================================================
-	virtual void mainLoop();
-	void addData(const SensorData & data);
-	bool getData(SensorData & data);
+	virtual void reset(const Transform & initialPose = Transform::getIdentity());
+	virtual Odometry::Type getType() {return Odometry::kTypeOkvis;}
+	virtual bool canProcessRawImages() const {return true;}
 
 private:
-	USemaphore _dataAdded;
-	UMutex _dataMutex;
-	std::list<SensorData> _dataBuffer;
-	std::list<SensorData> _imuBuffer;
-	Odometry * _odometry;
-	unsigned int _dataBufferMaxSize;
-	bool _resetOdometry;
-	Transform _resetPose;
-	double _lastImuStamp;
-	double _imuEstimatedDelay;
+	virtual Transform computeTransform(SensorData & image, const Transform & guess = Transform(), OdometryInfo * info = 0);
+
+private:
+	std::string configFilename_;
+	OkvisCallbackHandler * okvisCallbackHandler_;
+	okvis::ThreadedKFVio * okvisEstimator_;
+	ParametersMap okvisParameters_;
+	IMU lastImu_; // only used for initialization
+	int imagesProcessed_;
 };
 
-} // namespace rtabmap
+}
 
-
-#endif /* ODOMETRYTHREAD_H_ */
+#endif /* ODOMETRYOKVIS_H_ */

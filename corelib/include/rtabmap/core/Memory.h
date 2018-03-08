@@ -297,6 +297,7 @@ private:
 	bool _createOccupancyGrid;
 	int _visMaxFeatures;
 	int _visCorType;
+	bool _imagesAlreadyRectified;
 
 	int _idCount;
 	int _idMapCount;

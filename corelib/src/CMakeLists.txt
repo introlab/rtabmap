@@ -66,7 +66,10 @@ SET(SRC_FILES
 	OdometryFovis.cpp
 	OdometryViso2.cpp
 	OdometryDVO.cpp
+	OdometryOkvis.cpp
 	OdometryORBSLAM2.cpp
+	
+	IMUThread.cpp
 	
 	Stereo.cpp
 	StereoDense.cpp
@@ -344,6 +347,23 @@ IF(dvo_core_FOUND)
 		${dvo_core_LIBRARIES}
 	)
 ENDIF(dvo_core_FOUND)
+
+IF(okvis_FOUND)
+    SET(INCLUDE_DIRS
+		${OKVIS_INCLUDE_DIRS}
+		${BRISK_INCLUDE_DIRS}
+		${OPENGV_INCLUDE_DIRS}
+		${CERES_INCLUDE_DIRS}
+		${INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${OKVIS_LIBRARIES}
+		${BRISK_LIBRARIES}
+		${OPENGV_LIBRARIES}
+		${CERES_LIBRARIES}
+		${LIBRARIES}
+	)
+ENDIF(okvis_FOUND)
 
 IF(ORB_SLAM2_FOUND)
     SET(INCLUDE_DIRS

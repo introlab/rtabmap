@@ -418,6 +418,17 @@ SensorData::SensorData(
 	}
 }
 
+SensorData::SensorData(
+	const IMU & imu,
+	int id,
+	double stamp) :
+		_id(id),
+		_stamp(stamp),
+		_cellSize(0.0f)
+{
+	imu_ = imu;
+}
+
 SensorData::~SensorData()
 {
 }

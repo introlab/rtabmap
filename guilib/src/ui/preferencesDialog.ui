@@ -63,16 +63,25 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>0</y>
-            <width>673</width>
-            <height>2834</height>
+            <y>-499</y>
+            <width>678</width>
+            <height>2811</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -86,7 +95,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>7</number>
+                <number>18</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -2687,7 +2696,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                       <item row="3" column="0">
                        <widget class="QLineEdit" name="lineEdit_sourceLocalTransform">
                         <property name="toolTip">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 1 -1 0 0 0 -1 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1 0 -1 0 0 0 0 -1 0 1.67&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 1.67&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = [0 0 1 0; 0 -1 0 0; 1 0 0 0; 0 0 0 1]*T_BS&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;KITTI: /base_link to /gray_camera = 0 0 1 -1 0 0 0 -1 0&lt;br/&gt;KITTI: /base_link to /color_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 0&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1 0 -1 0 0 0 0 -1 0 1.67&lt;br/&gt;KITTI: /base_footprint to /gray_camera = 0 0 1 0 -1 0 0 -0.06 0 -1 0 1.67&lt;/p&gt;&lt;p&gt;EuRoC MAV: /base_link to /cam0 = T_BS*T_SC0 = -0.0257742 0.00375623 0.999661 0.00981073 -0.999557 -0.0149672 -0.0257155 0.064677 0.0148655 -0.999881 0.00414038 -0.0216401&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                         <property name="text">
                          <string>0 0 1 -1 0 0 0 -1 0</string>
@@ -4817,11 +4826,27 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="margin">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
                         <number>0</number>
                        </property>
                        <item>
                         <layout class="QGridLayout" name="gridLayout_68" columnstretch="0,0,1">
+                         <item row="6" column="0">
+                          <widget class="QToolButton" name="toolButton_cameraImages_gt">
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="4" column="1">
                           <widget class="QLineEdit" name="lineEdit_cameraImages_odom">
                            <property name="text">
@@ -4889,6 +4914,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
+                         <item row="2" column="1">
+                          <widget class="QCheckBox" name="checkBox_cameraImages_syncTimeStamps">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
                          <item row="6" column="2">
                           <widget class="QLabel" name="label_288">
                            <property name="text">
@@ -4915,8 +4947,8 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="2" column="1">
-                          <widget class="QCheckBox" name="checkBox_cameraImages_syncTimeStamps">
+                         <item row="1" column="1">
+                          <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
                            <property name="text">
                             <string/>
                            </property>
@@ -4948,13 +4980,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="1" column="1">
-                          <widget class="QCheckBox" name="checkBox_cameraImages_timestamps">
-                           <property name="text">
-                            <string/>
-                           </property>
-                          </widget>
-                         </item>
                          <item row="9" column="1">
                           <widget class="QLineEdit" name="lineEdit_cameraImages_path_scans">
                            <property name="text">
@@ -4975,10 +5000,13 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                           </widget>
                          </item>
-                         <item row="6" column="0">
-                          <widget class="QToolButton" name="toolButton_cameraImages_gt">
-                           <property name="text">
-                            <string>...</string>
+                         <item row="11" column="1">
+                          <widget class="QSpinBox" name="spinBox_cameraImages_max_scan_pts">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="maximum">
+                            <number>99999999</number>
                            </property>
                           </widget>
                          </item>
@@ -5046,16 +5074,6 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                           <widget class="QToolButton" name="toolButton_cameraImages_path_scans">
                            <property name="text">
                             <string>...</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item row="11" column="1">
-                          <widget class="QSpinBox" name="spinBox_cameraImages_max_scan_pts">
-                           <property name="toolTip">
-                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                           </property>
-                           <property name="maximum">
-                            <number>99999999</number>
                            </property>
                           </widget>
                          </item>
@@ -5236,6 +5254,79 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                            </property>
                            <property name="value">
                             <double>0.020000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="13" column="2">
+                          <widget class="QLabel" name="label_464">
+                           <property name="text">
+                            <string>Local transform from /base_link to /imu_link. Mouse over the box to show formats.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="12" column="2">
+                          <widget class="QLabel" name="label_463">
+                           <property name="text">
+                            <string>Path to file containing optional IMU data (*.csv [EuRoC format]).</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="12" column="0">
+                          <widget class="QToolButton" name="toolButton_cameraImages_path_imu">
+                           <property name="text">
+                            <string>...</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="12" column="1">
+                          <widget class="QLineEdit" name="lineEdit_cameraImages_path_imu">
+                           <property name="text">
+                            <string/>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="13" column="1">
+                          <widget class="QLineEdit" name="lineEdit_cameraImages_imu_transform">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Format (3 values): x y z&lt;br/&gt;Format (6 values): x y z roll pitch yaw&lt;br/&gt;Format (7 values): x y z qx qy qz qw&lt;br/&gt;Format (9 values, 3x3 rotation): r11 r12 r13 r21 r22 r23 r31 r32 r33&lt;br/&gt;Format (12 values, 3x4 transform): r11 r12 r13 tx r21 r22 r23 ty r31 r32 r33 tz&lt;/p&gt;&lt;p&gt;EuRoC: /base_link to /imu = 0 0 1 0 -1 0 1 0 0&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="text">
+                            <string>0 0 0 0 0 0</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="14" column="2">
+                          <widget class="QLabel" name="label_465">
+                           <property name="text">
+                            <string>IMU Rate. To synchronize capture rate with IMU timestamps, set to 0. This can be set a little over the actual IMU rate to keep up with camera capture rate if images are dropped by odometry.</string>
+                           </property>
+                           <property name="wordWrap">
+                            <bool>true</bool>
+                           </property>
+                           <property name="textInteractionFlags">
+                            <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                           </property>
+                          </widget>
+                         </item>
+                         <item row="14" column="1">
+                          <widget class="QSpinBox" name="spinBox_cameraImages_max_imu_rate">
+                           <property name="toolTip">
+                            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;KITTI: 130 000 points&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                           </property>
+                           <property name="maximum">
+                            <number>99999999</number>
                            </property>
                           </widget>
                          </item>
@@ -6015,6 +6106,16 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
+                      <item row="3" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_createIntermediateNodes">
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="checked">
+                         <bool>false</bool>
+                        </property>
+                       </widget>
+                      </item>
                       <item row="1" column="0">
                        <widget class="QDoubleSpinBox" name="general_doubleSpinBox_detectionRate">
                         <property name="suffix">
@@ -6041,13 +6142,26 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </property>
                        </widget>
                       </item>
-                      <item row="3" column="0">
-                       <widget class="QCheckBox" name="general_checkBox_createIntermediateNodes">
+                      <item row="5" column="1">
+                       <widget class="QLabel" name="label_467">
+                        <property name="text">
+                         <string>Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false.</string>
+                        </property>
+                        <property name="wordWrap">
+                         <bool>true</bool>
+                        </property>
+                        <property name="textInteractionFlags">
+                         <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                        </property>
+                       </widget>
+                      </item>
+                      <item row="5" column="0">
+                       <widget class="QCheckBox" name="general_checkBox_imagesAlreadyRectified">
                         <property name="text">
                          <string/>
                         </property>
                         <property name="checked">
-                         <bool>false</bool>
+                         <bool>true</bool>
                         </property>
                        </widget>
                       </item>
@@ -10476,6 +10590,11 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <string>ORB SLAM 2</string>
                          </property>
                         </item>
+                        <item>
+                         <property name="text">
+                          <string>OKVIS</string>
+                         </property>
+                        </item>
                        </widget>
                       </item>
                       <item row="2" column="1">
@@ -10747,7 +10866,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                     <item>
                      <widget class="QStackedWidget" name="stackedWidget_odometryType">
                       <property name="currentIndex">
-                       <number>1</number>
+                       <number>6</number>
                       </property>
                       <widget class="QWidget" name="page_52">
                        <layout class="QVBoxLayout" name="verticalLayout_77">
@@ -12746,6 +12865,75 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                         </item>
                        </layout>
                       </widget>
+                      <widget class="QWidget" name="page_54">
+                       <layout class="QVBoxLayout" name="verticalLayout_85" stretch="0,1">
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_odomORBSLAM2_2">
+                          <property name="title">
+                           <string>OKVIS</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_128" stretch="0,1">
+                           <item>
+                            <widget class="QLabel" name="label_466">
+                             <property name="text">
+                              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;OKVIS: &lt;a href=&quot;https://github.com/ethz-asl/okvis&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;https://github.com/ethz-asl/okvis&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;p&gt;IMU input required. Currently tested only with EuRoC data set.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="openExternalLinks">
+                              <bool>true</bool>
+                             </property>
+                             <property name="textInteractionFlags">
+                              <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <layout class="QGridLayout" name="gridLayout_98" columnstretch="0,0,1">
+                             <item row="0" column="1">
+                              <widget class="QLineEdit" name="lineEdit_OdomOkvisPath"/>
+                             </item>
+                             <item row="0" column="2">
+                              <widget class="QLabel" name="label_469">
+                               <property name="text">
+                                <string>Path to OKVIS config file (*.yaml). While OKVIS requires calibrations in the config file, they are ignored as those from received images are used instead.</string>
+                               </property>
+                               <property name="wordWrap">
+                                <bool>true</bool>
+                               </property>
+                               <property name="textInteractionFlags">
+                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                               </property>
+                              </widget>
+                             </item>
+                             <item row="0" column="0">
+                              <widget class="QToolButton" name="toolButton_OdomOkvisPath">
+                               <property name="text">
+                                <string>...</string>
+                               </property>
+                              </widget>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="verticalSpacer_69">
+                          <property name="orientation">
+                           <enum>Qt::Vertical</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>20</width>
+                            <height>40</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </widget>
                       <widget class="QWidget" name="page_26">
                        <layout class="QVBoxLayout" name="verticalLayout_88">
                         <item>
@@ -13685,7 +13873,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13765,7 +13962,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -13877,7 +14083,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>

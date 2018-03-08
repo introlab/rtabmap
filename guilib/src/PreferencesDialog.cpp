@@ -56,6 +56,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraThread.h"
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
+#include "rtabmap/core/IMUThread.h"
 #include "rtabmap/core/Memory.h"
 #include "rtabmap/core/VWDictionary.h"
 #include "rtabmap/core/Optimizer.h"
@@ -171,6 +172,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 #ifndef RTABMAP_ORB_SLAM2
 	_ui->odom_strategy->setItemData(5, 0, Qt::UserRole - 1);
+#endif
+#ifndef RTABMAP_OKVIS
+	_ui->odom_strategy->setItemData(6, 0, Qt::UserRole - 1);
 #endif
 
 #ifndef RTABMAP_NONFREE
@@ -561,6 +565,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->toolButton_cameraRGBDImages_path_rgb, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesPathRGB()));
 	connect(_ui->toolButton_cameraRGBDImages_path_depth, SIGNAL(clicked()), this, SLOT(selectSourceRGBDImagesPathDepth()));
 	connect(_ui->toolButton_cameraImages_path_scans, SIGNAL(clicked()), this, SLOT(selectSourceImagesPathScans()));
+	connect(_ui->toolButton_cameraImages_path_imu, SIGNAL(clicked()), this, SLOT(selectSourceImagesPathIMU()));
 	connect(_ui->toolButton_cameraImages_odom, SIGNAL(clicked()), this, SLOT(selectSourceImagesPathOdom()));
 	connect(_ui->toolButton_cameraImages_gt, SIGNAL(clicked()), this, SLOT(selectSourceImagesPathGt()));
 	connect(_ui->lineEdit_cameraRGBDImages_path_rgb, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -579,6 +584,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->lineEdit_cameraImages_gt, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_cameraImages_gtFormat, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->doubleSpinBox_maxPoseTimeDiff, SIGNAL(valueChanged(double)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_cameraImages_path_imu, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->lineEdit_cameraImages_imu_transform, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->spinBox_cameraImages_max_imu_rate, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_depthFromScan, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->groupBox_depthFromScan_fillHoles, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->radioButton_depthFromScan_vertical, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteSourcePanel()));
@@ -674,6 +682,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->general_checkBox_createIntermediateNodes->setObjectName(Parameters::kRtabmapCreateIntermediateNodes().c_str());
 	_ui->general_spinBox_maxRetrieved->setObjectName(Parameters::kRtabmapMaxRetrieved().c_str());
 	_ui->general_checkBox_startNewMapOnLoopClosure->setObjectName(Parameters::kRtabmapStartNewMapOnLoopClosure().c_str());
+	_ui->general_checkBox_imagesAlreadyRectified->setObjectName(Parameters::kRtabmapImagesAlreadyRectified().c_str());
 	_ui->lineEdit_workingDirectory->setObjectName(Parameters::kRtabmapWorkingDirectory().c_str());
 	connect(_ui->toolButton_workingDirectory, SIGNAL(clicked()), this, SLOT(changeWorkingDirectory()));
 
@@ -1071,6 +1080,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_OdomORBSLAM2Fps->setObjectName(Parameters::kOdomORBSLAM2Fps().c_str());
 	_ui->spinBox_OdomORBSLAM2MaxFeatures->setObjectName(Parameters::kOdomORBSLAM2MaxFeatures().c_str());
 	_ui->spinBox_OdomORBSLAM2MapSize->setObjectName(Parameters::kOdomORBSLAM2MapSize().c_str());
+
+	// Odometry Okvis
+	_ui->lineEdit_OdomOkvisPath->setObjectName(Parameters::kOdomOKVISConfigPath().c_str());
+	connect(_ui->toolButton_OdomOkvisPath, SIGNAL(clicked()), this, SLOT(changeOdometryOKVISConfigPath()));
+
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
@@ -1621,6 +1635,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->lineEdit_cameraImages_gt->setText("");
 		_ui->comboBox_cameraImages_gtFormat->setCurrentIndex(0);
 		_ui->doubleSpinBox_maxPoseTimeDiff->setValue(0.02);
+		_ui->lineEdit_cameraImages_path_imu->setText("");
+		_ui->lineEdit_cameraImages_imu_transform->setText("0 0 1 0 -1 0 1 0 0");
+		_ui->spinBox_cameraImages_max_imu_rate->setValue(0);
 
 		_ui->groupBox_scanFromDepth->setChecked(false);
 		_ui->spinBox_cameraScanFromDepth_decimation->setValue(8);
@@ -2021,6 +2038,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->lineEdit_cameraImages_gt->setText(settings.value("gt_path", _ui->lineEdit_cameraImages_gt->text()).toString());
 	_ui->comboBox_cameraImages_gtFormat->setCurrentIndex(settings.value("gt_format", _ui->comboBox_cameraImages_gtFormat->currentIndex()).toInt());
 	_ui->doubleSpinBox_maxPoseTimeDiff->setValue(settings.value("max_pose_time_diff", _ui->doubleSpinBox_maxPoseTimeDiff->value()).toDouble());
+
+	_ui->lineEdit_cameraImages_path_imu->setText(settings.value("imu_path", _ui->lineEdit_cameraImages_path_imu->text()).toString());
+	_ui->lineEdit_cameraImages_imu_transform->setText(settings.value("imu_local_transform", _ui->lineEdit_cameraImages_imu_transform->text()).toString());
+	_ui->spinBox_cameraImages_max_imu_rate->setValue(settings.value("imu_rate", _ui->spinBox_cameraImages_max_imu_rate->value()).toInt());
 	settings.endGroup(); // images
 
 	settings.beginGroup("Video");
@@ -2430,6 +2451,9 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("gt_path",             _ui->lineEdit_cameraImages_gt->text());
 	settings.setValue("gt_format",           _ui->comboBox_cameraImages_gtFormat->currentIndex());
 	settings.setValue("max_pose_time_diff",  _ui->doubleSpinBox_maxPoseTimeDiff->value());
+	settings.setValue("imu_path",            _ui->lineEdit_cameraImages_path_imu->text());
+	settings.setValue("imu_local_transform", _ui->lineEdit_cameraImages_imu_transform->text());
+	settings.setValue("imu_rate",            _ui->spinBox_cameraImages_max_imu_rate->value());
 	settings.endGroup(); // images
 
 	settings.beginGroup("Video");
@@ -3344,6 +3368,21 @@ void PreferencesDialog::selectSourceImagesPathScans()
 	}
 }
 
+void PreferencesDialog::selectSourceImagesPathIMU()
+{
+	QString dir = _ui->lineEdit_cameraImages_path_imu->text();
+	if(dir.isEmpty())
+	{
+		dir = getWorkingDirectory();
+	}
+	QString path = QFileDialog::getOpenFileName(this, tr("Select file "), dir, tr("EuRoC IMU file (*.csv)"));
+	if(path.size())
+	{
+		_ui->lineEdit_cameraImages_path_imu->setText(path);
+	}
+}
+
+
 void PreferencesDialog::selectSourceRGBDImagesPathDepth()
 {
 	QString dir = _ui->lineEdit_cameraRGBDImages_path_depth->text();
@@ -4161,6 +4200,23 @@ void PreferencesDialog::changeOdometryORBSLAM2Vocabulary()
 	}
 }
 
+void PreferencesDialog::changeOdometryOKVISConfigPath()
+{
+	QString path;
+	if(_ui->lineEdit_OdomOkvisPath->text().isEmpty())
+	{
+		path = QFileDialog::getOpenFileName(this, tr("OKVIS Config"), this->getWorkingDirectory(), tr("OKVIS config (*.yaml)"));
+	}
+	else
+	{
+		path = QFileDialog::getOpenFileName(this, tr("OKVIS Config"), _ui->lineEdit_OdomOkvisPath->text(), tr("OKVIS config (*.yaml)"));
+	}
+	if(!path.isEmpty())
+	{
+		_ui->lineEdit_OdomOkvisPath->setText(path);
+	}
+}
+
 void PreferencesDialog::changeIcpPMConfigPath()
 {
 	QString path;
@@ -4701,6 +4757,24 @@ Transform PreferencesDialog::getLaserLocalTransform() const
 	return t;
 }
 
+QString PreferencesDialog::getIMUPath() const
+{
+	return _ui->lineEdit_cameraImages_path_imu->text();
+}
+Transform PreferencesDialog::getIMULocalTransform() const
+{
+	Transform t = Transform::fromString(_ui->lineEdit_cameraImages_imu_transform->text().replace("PI_2", QString::number(3.141592/2.0)).toStdString());
+	if(t.isNull())
+	{
+		return Transform::getIdentity();
+	}
+	return t;
+}
+int PreferencesDialog::getIMURate() const
+{
+	return _ui->spinBox_cameraImages_max_imu_rate->value();
+}
+
 bool PreferencesDialog::isSourceDatabaseStampsUsed() const
 {
 	return _ui->source_checkBox_useDbStamps->isChecked();
@@ -4939,6 +5013,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->checkBox_cameraImages_timestamps->isChecked(),
 				_ui->lineEdit_cameraImages_timestamps->text().toStdString(),
 				_ui->checkBox_cameraImages_syncTimeStamps->isChecked());
+
 	}
 	else if (driver == kSrcStereoUsb)
 	{
@@ -5251,6 +5326,31 @@ void PreferencesDialog::testOdometry()
 		return;
 	}
 
+	IMUThread * imuThread = 0;
+	if((this->getSourceDriver() == kSrcStereoImages ||
+	   this->getSourceDriver() == kSrcRGBDImages ||
+	   this->getSourceDriver() == kSrcImages) &&
+	   !_ui->lineEdit_cameraImages_path_imu->text().isEmpty())
+	{
+		if(this->getOdomStrategy() != Odometry::kTypeOkvis)
+		{
+			QMessageBox::warning(this, tr("Source IMU Path"),
+					tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);
+		}
+		else
+		{
+			imuThread = new IMUThread(_ui->spinBox_cameraImages_max_imu_rate->value(), this->getIMULocalTransform());
+			if(!imuThread->init(_ui->lineEdit_cameraImages_path_imu->text().toStdString()))
+			{
+				QMessageBox::warning(this, tr("Source IMU Path"),
+					tr("Initialization of IMU data has failed! Path=%1.").arg(_ui->lineEdit_cameraImages_path_imu->text()), QMessageBox::Ok);
+				delete camera;
+				delete imuThread;
+				return;
+			}
+		}
+	}
+
 	ParametersMap parameters = this->getAllParameters();
 	if(getOdomRegistrationApproach() < 3)
 	{
@@ -5309,16 +5409,31 @@ void PreferencesDialog::testOdometry()
 			cameraThread.setDistortionModel(_ui->lineEdit_source_distortionModel->text().toStdString());
 		}
 	}
+
 	UEventsManager::createPipe(&cameraThread, &odomThread, "CameraEvent");
+	if(imuThread)
+	{
+		UEventsManager::createPipe(imuThread, &odomThread, "IMUEvent");
+	}
 	UEventsManager::createPipe(&odomThread, odomViewer, "OdometryEvent");
 	UEventsManager::createPipe(odomViewer, &odomThread, "OdometryResetEvent");
 
 	odomThread.start();
 	cameraThread.start();
 
+	if(imuThread)
+	{
+		imuThread->start();
+	}
+
 	odomViewer->exec();
 	delete odomViewer;
 
+	if(imuThread)
+	{
+		imuThread->join(true);
+		delete imuThread;
+	}
 	cameraThread.join(true);
 	odomThread.join(true);
 }

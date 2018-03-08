@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/CameraRGB.h"
 #include "rtabmap/core/CameraStereo.h"
 #include "rtabmap/core/CameraThread.h"
+#include "rtabmap/core/IMUThread.h"
 #include "rtabmap/core/CameraEvent.h"
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/Parameters.h"
@@ -135,6 +136,7 @@ MainWindow::MainWindow(PreferencesDialog * prefDialog, QWidget * parent, bool sh
 	_state(kIdle),
 	_camera(0),
 	_odomThread(0),
+	_imuThread(0),
 	_preferencesDialog(0),
 	_aboutDialog(0),
 	_exportCloudsDialog(0),
@@ -759,6 +761,11 @@ void MainWindow::closeEvent(QCloseEvent* event)
 			UERROR("Camera must be already deleted here!");
 			delete _camera;
 			_camera = 0;
+			if(_imuThread)
+			{
+				delete _imuThread;
+				_imuThread = 0;
+			}
 		}
 		if(_odomThread)
 		{
@@ -1179,18 +1186,22 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 					int i=0;
 					for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
 					{
-						(*cloud)[i].x = iter->second.x;
-						(*cloud)[i].y = iter->second.y;
-						(*cloud)[i].z = iter->second.z;
-
-						// green = inlier, yellow = outliers
-						bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
-						(*cloud)[i].r = inlier?0:255;
-						(*cloud)[i].g = 255;
-						(*cloud)[i].b = 0;
-						if(!_preferencesDialog->isOdomOnlyInliersShown() || inlier)
+						// filter very far features from current location
+						if(uNormSquared(iter->second.x-odom.pose().x(), iter->second.y-odom.pose().y(), iter->second.z-odom.pose().z()) < 50*50)
 						{
-							++i;
+							(*cloud)[i].x = iter->second.x;
+							(*cloud)[i].y = iter->second.y;
+							(*cloud)[i].z = iter->second.z;
+
+							// green = inlier, yellow = outliers
+							bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
+							(*cloud)[i].r = inlier?0:255;
+							(*cloud)[i].g = 255;
+							(*cloud)[i].b = 0;
+							if(!_preferencesDialog->isOdomOnlyInliersShown() || inlier)
+							{
+								++i;
+							}
 						}
 					}
 					cloud->resize(i);
@@ -4788,6 +4799,13 @@ void MainWindow::startDetection()
 				_odomThread = 0;
 			}
 
+			if(_imuThread)
+			{
+				UERROR("ImuThread must be already deleted here?!");
+				delete _imuThread;
+				_imuThread = 0;
+			}
+
 			if(!camera->odomProvided() && !_preferencesDialog->isOdomDisabled())
 			{
 				ParametersMap odomParameters = parameters;
@@ -4803,12 +4821,42 @@ void MainWindow::startDetection()
 					// Only Frame To Frame supports all VisCorType
 					odomParameters.insert(ParametersPair(Parameters::kVisCorType(), _preferencesDialog->getParameter(Parameters::kVisCorType())));
 				}
+				_imuThread = 0;
+				if((_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcStereoImages ||
+					_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcRGBDImages ||
+					_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages) &&
+				   !_preferencesDialog->getIMUPath().isEmpty())
+				{
+					if(odomStrategy != Odometry::kTypeOkvis)
+					{
+						QMessageBox::warning(this, tr("Source IMU Path"),
+								tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);
+					}
+					else
+					{
+						_imuThread = new IMUThread(_preferencesDialog->getIMURate(), _preferencesDialog->getIMULocalTransform());
+						if(!_imuThread->init(_preferencesDialog->getIMUPath().toStdString()))
+						{
+							QMessageBox::warning(this, tr("Source IMU Path"),
+								tr("Initialization of IMU data has failed! Path=%1.").arg(_preferencesDialog->getIMUPath()), QMessageBox::Ok);
+							delete _camera;
+							_camera = 0;
+							delete _imuThread;
+							_imuThread = 0;
+							return;
+						}
+					}
+				}
 				Odometry * odom = Odometry::create(odomParameters);
 				_odomThread = new OdometryThread(odom, _preferencesDialog->getOdomBufferSize());
 
 				UEventsManager::addHandler(_odomThread);
 				UEventsManager::createPipe(_camera, _odomThread, "CameraEvent");
 				UEventsManager::createPipe(_camera, this, "CameraEvent");
+				if(_imuThread)
+				{
+					UEventsManager::createPipe(_imuThread, _odomThread, "IMUEvent");
+				}
 				_odomThread->start();
 			}
 		}
@@ -4910,6 +4958,11 @@ void MainWindow::stopDetection()
 
 	ULOGGER_DEBUG("");
 	// kill the processes
+	if(_imuThread)
+	{
+		_imuThread->join(true);
+	}
+
 	if(_camera)
 	{
 		_camera->join(true);
@@ -4922,6 +4975,11 @@ void MainWindow::stopDetection()
 	}
 
 	// delete the processes
+	if(_imuThread)
+	{
+		delete _imuThread;
+		_imuThread = 0;
+	}
 	if(_camera)
 	{
 		delete _camera;
@@ -7319,6 +7377,10 @@ void MainWindow::changeState(MainWindow::State newState)
 		if(_camera)
 		{
 			_camera->start();
+			if(_imuThread)
+			{
+				_imuThread->start();
+			}
 			ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 		}
 		break;
@@ -7351,6 +7413,10 @@ void MainWindow::changeState(MainWindow::State newState)
 			if(_camera)
 			{
 				_camera->start();
+				if(_imuThread)
+				{
+					_imuThread->start();
+				}
 				ULogger::setTreadIdFilter(_preferencesDialog->getGeneralLoggerThreads());
 			}
 		}
@@ -7384,6 +7450,10 @@ void MainWindow::changeState(MainWindow::State newState)
 			// kill sensors
 			if(_camera)
 			{
+				if(_imuThread)
+				{
+					_imuThread->join(true);
+				}
 				_camera->join(true);
 			}
 		}

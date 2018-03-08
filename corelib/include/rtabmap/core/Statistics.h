@@ -132,6 +132,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(TimingMem, Subpixel, ms);
 	RTABMAP_STATS(TimingMem, Stereo_correspondences, ms);
 	RTABMAP_STATS(TimingMem, Descriptors_extraction, ms);
+	RTABMAP_STATS(TimingMem, Rectification, ms);
 	RTABMAP_STATS(TimingMem, Keypoints_3D, ms);
 	RTABMAP_STATS(TimingMem, Joining_dictionary_update, ms);
 	RTABMAP_STATS(TimingMem, Add_new_words, ms);

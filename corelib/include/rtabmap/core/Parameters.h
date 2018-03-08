@@ -186,6 +186,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Rtabmap, StatisticLogged,              bool, false, "Logging enabled.");
     RTABMAP_PARAM(Rtabmap, StatisticLoggedHeaders,       bool, true,  "Add column header description to log files.");
     RTABMAP_PARAM(Rtabmap, StartNewMapOnLoopClosure,     bool, false, "Start a new map only if there is a global loop closure with a previous map.");
+    RTABMAP_PARAM(Rtabmap, ImagesAlreadyRectified,       bool, true,  "Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false.");
 
     // Hypotheses selection
     RTABMAP_PARAM(Rtabmap, LoopThr,           float, 0.11,      "Loop closing threshold.");
@@ -484,6 +485,9 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomORBSLAM2, Fps,             float,  0.0,   "Camera FPS.");
     RTABMAP_PARAM(OdomORBSLAM2, MaxFeatures,     int,    1000,  "Maximum ORB features extracted per frame.");
     RTABMAP_PARAM(OdomORBSLAM2, MapSize,         int,    3000,  "Maximum size of the feature map (0 means infinite).");
+
+    // Odometry OKVIS
+    RTABMAP_PARAM_STR(OdomOKVIS, ConfigPath,     "",  "Path of OKVIS config file.");
 
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");

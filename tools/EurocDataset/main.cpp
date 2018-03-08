@@ -52,13 +52,14 @@ void showUsage()
 	printf("\nUsage:\n"
 			"rtabmap-kitti_dataset [options] path\n"
 			"  path               Folder of the sequence (e.g., \"~/EuRoC/V1_03_difficult\")\n"
-			"                        containing least mav0/cam0/sensor.yaml, mav0/cam1/sensor.yaml, mav0/cam0/data and mav0/cam1/data folders.\n"
-			"                        Optional image_2, image_3 and velodyne folders.\n"
+			"                        containing least mav0/cam0/sensor.yaml, mav0/cam1/sensor.yaml and \n"
+			"                        mav0/cam0/data and mav0/cam1/data folders.\n"
 			"  --output           Output directory. By default, results are saved in \"path\".\n"
 			"  --output_name      Output database name (default \"rtabmap\").\n"
 			"  --quiet            Don't show log messages and iteration updates.\n"
 			"  --exposure_comp    Do exposure compensation between left and right images.\n"
 			"  --disp             Generate full disparity.\n"
+			"  --raw              Use raw images (not rectified, this only works with okvis odometry).\n"
 			"%s\n"
 			"Example:\n\n"
 			"   $ rtabmap-euroc_dataset \\\n"
@@ -93,6 +94,7 @@ int main(int argc, char * argv[])
 	std::string outputName = "rtabmap";
 	std::string seq;
 	bool disp = false;
+	bool raw = false;
 	bool exposureCompensation = false;
 	bool quiet = false;
 	if(argc < 2)
@@ -119,6 +121,10 @@ int main(int argc, char * argv[])
 			{
 				disp = true;
 			}
+			else if(std::strcmp(argv[i], "--raw") == 0)
+			{
+				raw = true;
+			}
 			else if(std::strcmp(argv[i], "--exposure_comp") == 0)
 			{
 				exposureCompensation = true;
@@ -139,6 +145,10 @@ int main(int argc, char * argv[])
 		}
 		parameters.insert(ParametersPair(Parameters::kRtabmapWorkingDirectory(), output));
 		parameters.insert(ParametersPair(Parameters::kRtabmapPublishRAMUsage(), "true"));
+		if(raw)
+		{
+			parameters.insert(ParametersPair(Parameters::kRtabmapImagesAlreadyRectified(), "false"));
+		}
 	}
 
 	seq = uSplit(path, '/').back();
@@ -147,6 +157,7 @@ int main(int argc, char * argv[])
 	std::string pathCalibLeft = path+"/mav0/cam0/sensor.yaml";
 	std::string pathCalibRight = path+"/mav0/cam1/sensor.yaml";
 	std::string pathGt = path+"/mav0/state_groundtruth_estimate0/data.csv";
+	std::string pathImu = path+"/mav0/imu0/data.csv";
 	if(!UFile::exists(pathGt))
 	{
 		UWARN("Ground truth file path doesn't exist: \"%s\", benchmark values won't be computed.", pathGt.c_str());
@@ -174,8 +185,15 @@ int main(int argc, char * argv[])
 	{
 		printf("   Ground truth:     %s\n", pathGt.c_str());
 	}
+	if(!pathImu.empty())
+	{
+		printf("   IMU:              %s\n", pathImu.c_str());
+	}
+
 	printf("   Exposure Compensation: %s\n", exposureCompensation?"true":"false");
 	printf("   Disparity:        %s\n", disp?"true":"false");
+	printf("   Raw images:       %s\n", raw?"true (Rtabmap/ImagesAlreadyRectified set to false)":"false");
+
 	if(!parameters.empty())
 	{
 		printf("Parameters:\n");
@@ -234,7 +252,7 @@ int main(int argc, char * argv[])
 	}
 
 	StereoCameraModel model(outputName+"_calib", models[0], models[1], models[1].localTransform().inverse() * models[0].localTransform());
-	if(!model.save(output, true))
+	if(!model.save(output, false))
 	{
 		UERROR("Could not save calibration!");
 		return -1;
@@ -248,14 +266,15 @@ int main(int argc, char * argv[])
 	}
 
 	// We use CameraThread only to use postUpdate() method
-	Transform opticalRotation(0,0,1,0, 0,-1,0,0, 1,0,0,0);
+	Transform baseToImu(0,0,1,0, 0,-1,0,0, 1,0,0,0);
 	CameraThread cameraThread(new
 		CameraStereoImages(
 				pathLeftImages,
 				pathRightImages,
-				true,
+				!raw,
 				0.0f,
-				opticalRotation*models[0].localTransform()), parameters);
+				baseToImu*models[0].localTransform()), parameters);
+	std::cout<<baseToImu*models[0].localTransform()<<std::endl;
 	((CameraStereoImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(exposureCompensation)
 	{
@@ -283,6 +302,31 @@ int main(int argc, char * argv[])
 		mapUpdate = 1;
 	}
 
+	std::ifstream imu_file;
+	if(odomStrategy == Odometry::kTypeOkvis)
+	{
+		// open the IMU file
+		std::string line;
+		imu_file.open(pathImu.c_str());
+		if (!imu_file.good()) {
+			UERROR("no imu file found at %s",pathImu.c_str());
+			return -1;
+		}
+		int number_of_lines = 0;
+		while (std::getline(imu_file, line))
+			++number_of_lines;
+		printf("No. IMU measurements: %d\n", number_of_lines-1);
+		if (number_of_lines - 1 <= 0) {
+			UERROR("no imu messages present in %s", pathImu.c_str());
+			return -1;
+		}
+		// set reading position to second line
+		imu_file.clear();
+		imu_file.seekg(0, std::ios::beg);
+		std::getline(imu_file, line);
+	}
+
+
 	std::string databasePath = output+"/"+outputName+".db";
 	UFile::erase(databasePath);
 	if(cameraThread.camera()->init(output, outputName+"_calib"))
@@ -300,8 +344,11 @@ int main(int argc, char * argv[])
 		UTimer totalTime;
 		UTimer timer;
 		CameraInfo cameraInfo;
+		UDEBUG("");
 		SensorData data = cameraThread.camera()->takeImage(&cameraInfo);
+		UDEBUG("");
 		int iteration = 0;
+		double start = data.stamp();
 
 		/////////////////////////////
 		// Processing dataset begin
@@ -310,17 +357,70 @@ int main(int argc, char * argv[])
 		int odomKeyFrames = 0;
 		while(data.isValid() && g_forever)
 		{
+			UDEBUG("");
+			if(odomStrategy == Odometry::kTypeOkvis)
+			{
+				// get all IMU measurements till then
+				double t_imu = start;
+				do {
+					std::string line;
+					if (!std::getline(imu_file, line)) {
+						std::cout << std::endl << "Finished parsing IMU." << std::endl << std::flush;
+						break;
+					}
+
+					std::stringstream stream(line);
+					std::string s;
+					std::getline(stream, s, ',');
+					std::string nanoseconds = s.substr(s.size() - 9, 9);
+					std::string seconds = s.substr(0, s.size() - 9);
+
+					Eigen::Vector3d gyr;
+					for (int j = 0; j < 3; ++j) {
+						std::getline(stream, s, ',');
+						gyr[j] = std::stof(s);
+					}
+
+					Eigen::Vector3d acc;
+					for (int j = 0; j < 3; ++j) {
+						std::getline(stream, s, ',');
+						acc[j] = std::stof(s);
+					}
+
+					t_imu = double(std::stoi(seconds)) + double(std::stoi(nanoseconds))*1e-9;
+
+					if (t_imu - start + 1 > 0) {
+						SensorData dataImu(IMU(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), baseToImu), 0, t_imu);
+						UDEBUG("");
+						odom->process(dataImu);
+						UDEBUG("");
+					}
+
+				} while (t_imu <= data.stamp());
+			}
+
+
 			cameraThread.postUpdate(&data, &cameraInfo);
 			cameraInfo.timeTotal = timer.ticks();
 
 			OdometryInfo odomInfo;
+			UDEBUG("");
 			Transform pose = odom->process(data, &odomInfo);
+			UDEBUG("");
+			if(odomStrategy == Odometry::kTypeOkvis && pose.isNull())
+			{
+				cameraInfo = CameraInfo();
+				timer.restart();
+				data = cameraThread.camera()->takeImage(&cameraInfo);
+				continue;
+			}
+
 			if(odomInfo.keyFrameAdded)
 			{
 				++odomKeyFrames;
 			}
 
-			if(odomStrategy == 2)
+			if(odomStrategy == Odometry::kTypeFovis)
 			{
 				//special case for FOVIS, set covariance 1 if 9999 is detected
 				if(!odomInfo.reg.covariance.empty() && odomInfo.reg.covariance.at<double>(0,0) >= 9999)

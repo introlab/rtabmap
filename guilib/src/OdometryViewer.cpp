@@ -344,23 +344,28 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 	// 3d features
 	if(featuresShown_->isChecked())
 	{
-		if(!odom.info().localMap.empty())
+		if(!odom.info().localMap.empty() && !odom.pose().isNull())
 		{
 			pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
 			cloud->resize(odom.info().localMap.size());
 			int i=0;
 			for(std::map<int, cv::Point3f>::const_iterator iter=odom.info().localMap.begin(); iter!=odom.info().localMap.end(); ++iter)
 			{
-				(*cloud)[i].x = iter->second.x;
-				(*cloud)[i].y = iter->second.y;
-				(*cloud)[i].z = iter->second.z;
+				// filter very far features from current location
+				if(uNormSquared(iter->second.x-odom.pose().x(), iter->second.y-odom.pose().y(), iter->second.z-odom.pose().z()) < 50*50)
+				{
+					(*cloud)[i].x = iter->second.x;
+					(*cloud)[i].y = iter->second.y;
+					(*cloud)[i].z = iter->second.z;
 
-				// green = inlier, yellow = outliers
-				bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
-				(*cloud)[i].r = inlier?0:255;
-				(*cloud)[i].g = 255;
-				(*cloud)[i++].b = 0;
+					// green = inlier, yellow = outliers
+					bool inlier = odom.info().words.find(iter->first) != odom.info().words.end();
+					(*cloud)[i].r = inlier?0:255;
+					(*cloud)[i].g = 255;
+					(*cloud)[i++].b = 0;
+				}
 			}
+			cloud->resize(i);
 
 			if(!cloudView_->addCloud("featuresOdom", cloud))
 			{

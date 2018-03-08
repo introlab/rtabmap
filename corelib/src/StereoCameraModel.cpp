@@ -224,9 +224,9 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 				UWARN("Missing \"rotation_matrix\" field in \"%s\"", filePath.c_str());
 			}
 
+			n = fs["translation_matrix"];
 			if(n.type() != cv::FileNode::NONE)
 			{
-				n = fs["translation_matrix"];
 				int rows = (int)n["rows"];
 				int cols = (int)n["cols"];
 				std::vector<double> data;
@@ -240,9 +240,9 @@ bool StereoCameraModel::load(const std::string & directory, const std::string & 
 				UWARN("Missing \"translation_matrix\" field in \"%s\"", filePath.c_str());
 			}
 
+			n = fs["essential_matrix"];
 			if(n.type() != cv::FileNode::NONE)
 			{
-				n = fs["essential_matrix"];
 				int rows = (int)n["rows"];
 				int cols = (int)n["cols"];
 				std::vector<double> data;

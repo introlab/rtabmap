@@ -100,6 +100,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_createOccupancyGrid(Parameters::defaultRGBDCreateOccupancyGrid()),
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
 	_visCorType(Parameters::defaultVisCorType()),
+	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -481,6 +482,8 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		uInsert(parameters_, ParametersPair(Parameters::kVisCorType(), "0"));
 		uInsert(params, ParametersPair(Parameters::kVisCorType(), "0"));
 	}
+	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
+
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
 	UASSERT_MSG(_similarityThreshold >= 0.0f && _similarityThreshold <= 1.0f, uFormat("value=%f", _similarityThreshold).c_str());
@@ -3372,9 +3375,10 @@ private:
 	VWDictionary * _vwp;
 };
 
-Signature * Memory::createSignature(const SensorData & data, const Transform & pose, Statistics * stats)
+Signature * Memory::createSignature(const SensorData & inputData, const Transform & pose, Statistics * stats)
 {
 	UDEBUG("");
+	SensorData data = inputData;
 	UASSERT(data.imageRaw().empty() ||
 			data.imageRaw().type() == CV_8UC1 ||
 			data.imageRaw().type() == CV_8UC3);
@@ -3398,7 +3402,7 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 		!data.stereoCameraModel().isValidForProjection() &&
 		!pose.isNull())
 	{
-		UERROR("Rectified images required! Calibrate your camera.");
+		UERROR("Camera calibration not valid, calibrate your camera!");
 		return 0;
 	}
 	UASSERT(_feature2D != 0);
@@ -3440,6 +3444,54 @@ Signature * Memory::createSignature(const SensorData & data, const Transform & p
 					_idCount);
 			return 0;
 		}
+	}
+
+	if(!_imagesAlreadyRectified && !data.imageRaw().empty())
+	{
+		if(!data.depthRaw().empty())
+		{
+			UERROR("RGB-D images should be already rectified! Make sure they are and set %s parameter back to true.",
+					Parameters::kRtabmapImagesAlreadyRectified().c_str());
+			return 0;
+		}
+		if(data.cameraModels().size())
+		{
+			UASSERT(int((data.imageRaw().cols/data.cameraModels().size())*data.cameraModels().size()) == data.imageRaw().cols);
+			int subImageWidth = data.imageRaw().cols/data.cameraModels().size();
+			cv::Mat rectifiedImages(data.imageRaw().size(), data.imageRaw().type());
+			for(unsigned int i=0; i<data.cameraModels().size(); ++i)
+			{
+				if(data.cameraModels()[i].isValidForRectification())
+				{
+					cv::Mat rectifiedImage = data.cameraModels()[i].rectifyImage(cv::Mat(data.imageRaw(), cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+					rectifiedImage.copyTo(cv::Mat(rectifiedImages, cv::Rect(subImageWidth*i, 0, subImageWidth, data.imageRaw().rows)));
+				}
+				else
+				{
+					UERROR("Calibration for camera %d cannot be used to rectify the image. Make sure to do a "
+						"full calibration. If images are already rectified, set %s parameter back to true.",
+						(int)i,
+						Parameters::kRtabmapImagesAlreadyRectified().c_str());
+					return 0;
+				}
+			}
+			data.setImageRaw(rectifiedImages);
+		}
+		else if(data.stereoCameraModel().isValidForRectification())
+		{
+			data.setImageRaw(data.stereoCameraModel().left().rectifyImage(data.imageRaw()));
+			data.setDepthOrRightRaw(data.stereoCameraModel().right().rectifyImage(data.rightRaw()));
+		}
+		else
+		{
+			UERROR("Stereo calibration cannot be used to rectify images. Make sure to do a "
+					"full stereo calibration. If images are already rectified, set %s parameter back to true.",
+					Parameters::kRtabmapImagesAlreadyRectified().c_str());
+			return 0;
+		}
+		t = timer.ticks();
+		if(stats) stats->addStatistic(Statistics::kTimingMemRectification(), t*1000.0f);
+		UDEBUG("time rectification = %fs", t);
 	}
 
 	int treeSize= int(_workingMem.size() + _stMem.size());

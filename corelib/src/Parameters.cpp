@@ -664,8 +664,14 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
-#ifndef RTABMAP_VISO2
+#ifndef RTABMAP_ORBSLAM2
 					if(group.compare("OdomORBSLAM2") == 0)
+					{
+						ignore = true;
+					}
+#endif
+#ifndef RTABMAP_OKVIS
+					if(group.compare("OdomOKVIS") == 0)
 					{
 						ignore = true;
 					}

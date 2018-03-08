@@ -48,6 +48,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 namespace rtabmap {
 class CameraThread;
 class OdometryThread;
+class IMUThread;
 class CloudViewer;
 class LoopClosureViewer;
 class OccupancyGrid;
@@ -298,6 +299,7 @@ private:
 	State _state;
 	rtabmap::CameraThread * _camera;
 	rtabmap::OdometryThread * _odomThread;
+	rtabmap::IMUThread * _imuThread;
 
 	//Dialogs
 	PreferencesDialog * _preferencesDialog;
