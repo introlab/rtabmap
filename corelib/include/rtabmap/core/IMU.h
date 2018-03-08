@@ -8,7 +8,7 @@
 #ifndef IMU_H_
 #define IMU_H_
 
-#include <opencv2/core.hpp>
+#include <opencv2/core/core.hpp>
 #include <rtabmap/utilite/ULogger.h>
 
 namespace rtabmap {
