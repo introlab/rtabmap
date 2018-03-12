@@ -69,6 +69,7 @@ public:
 
 	Transform getLastTransform()
 	{
+		UDEBUG("");
 		Transform tf;
 		mutex_.lock();
 		tf = transform_;
@@ -79,6 +80,7 @@ public:
 
 	std::map<int, cv::Point3f> getLastLandmarks()
 	{
+		UDEBUG("");
 		std::map<int, cv::Point3f> landmarks;
 		mutexLandmarks_.lock();
 		landmarks = landmarks_;
@@ -104,22 +106,14 @@ public:
 			const okvis::MapPointVector & landmarksVector,
 			const okvis::MapPointVector & /*transferredLandmarks*/)
 	{
-		bool notify = true;
+		UDEBUG("");
 		mutexLandmarks_.lock();
-		if(landmarks_.size())
-		{
-			notify = false;
-		}
 		landmarks_.clear();
 		for(unsigned int i=0; i<landmarksVector.size(); ++i)
 		{
 			landmarks_.insert(std::make_pair((int)landmarksVector[i].id, cv::Point3f(landmarksVector[i].point[0], landmarksVector[i].point[1], landmarksVector[i].point[2])));
 		}
 		mutexLandmarks_.unlock();
-		if(notify)
-		{
-			semLandmarks_.release();
-		}
 	}
 
 
@@ -129,8 +123,6 @@ private:
 	std::map<int, cv::Point3f> landmarks_;
 	UMutex mutex_;
 	UMutex mutexLandmarks_;
-	USemaphore semTf_;
-	USemaphore semLandmarks_;
 };
 #endif
 
@@ -156,6 +148,7 @@ OdometryOkvis::OdometryOkvis(const ParametersMap & parameters) :
 
 OdometryOkvis::~OdometryOkvis()
 {
+	UDEBUG("");
 #ifdef RTABMAP_OKVIS
 	if(okvisEstimator_)
 	{

@@ -2051,6 +2051,56 @@ void DatabaseViewer::exportPoses(int format)
 	else
 	{
 		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+
+		if(ui_->checkBox_alignPosesWithGroundTruth->isChecked())
+		{
+			std::map<int, Transform> refPoses = groundTruthPoses_;
+			if(refPoses.empty())
+			{
+				refPoses = gpsPoses_;
+			}
+
+			// Log ground truth statistics (in TUM's RGBD-SLAM format)
+			if(refPoses.size())
+			{
+				float translational_rmse = 0.0f;
+				float translational_mean = 0.0f;
+				float translational_median = 0.0f;
+				float translational_std = 0.0f;
+				float translational_min = 0.0f;
+				float translational_max = 0.0f;
+				float rotational_rmse = 0.0f;
+				float rotational_mean = 0.0f;
+				float rotational_median = 0.0f;
+				float rotational_std = 0.0f;
+				float rotational_min = 0.0f;
+				float rotational_max = 0.0f;
+
+				Transform gtToMap = graph::calcRMSE(
+						refPoses,
+						optimizedPoses,
+						translational_rmse,
+						translational_mean,
+						translational_median,
+						translational_std,
+						translational_min,
+						translational_max,
+						rotational_rmse,
+						rotational_mean,
+						rotational_median,
+						rotational_std,
+						rotational_min,
+						rotational_max);
+
+				if(ui_->checkBox_alignPosesWithGroundTruth->isChecked() && !gtToMap.isIdentity())
+				{
+					for(std::map<int, Transform>::iterator iter=optimizedPoses.begin(); iter!=optimizedPoses.end(); ++iter)
+					{
+						iter->second = gtToMap * iter->second;
+					}
+				}
+			}
+		}
 	}
 
 	if(optimizedPoses.size())
