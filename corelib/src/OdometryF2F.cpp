@@ -207,7 +207,8 @@ Transform OdometryF2F::computeTransform(
 			info->words = newFrame.getWords();
 
 			info->localScanMapSize = tmpRefFrame.sensorData().laserScanRaw().size();
-			info->localScanMap = util3d::transformLaserScan(tmpRefFrame.sensorData().laserScanRaw(), t);
+
+			info->localScanMap = util3d::transformLaserScan(tmpRefFrame.sensorData().laserScanRaw(), tmpRefFrame.sensorData().laserScanRaw().localTransform().inverse()*t*tmpRefFrame.sensorData().laserScanRaw().localTransform());
 		}
 	}
 	else
