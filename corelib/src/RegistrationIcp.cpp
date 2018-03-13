@@ -195,64 +195,97 @@ DP laserScanToDP(const rtabmap::LaserScan & scan)
 	View viewNormalY(nx!=-1?cloud.getDescriptorRowViewByName("normals",1):view);
 	View viewNormalZ(nx!=-1?cloud.getDescriptorRowViewByName("normals",2):view);
 	View viewIntensity(offsetI!=-1?cloud.getDescriptorRowViewByName("intensity",0):view);
+	int oi = 0;
 	for(int i=0; i<scan.size(); ++i)
 	{
 		const float * ptr = scan.data().ptr<float>(0, i);
 
-		if(hasLocalTransform)
+		if(uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && (scan.is2d() || uIsFinite(ptr[2])))
 		{
-			if(nx == -1)
+			if(hasLocalTransform)
 			{
-				cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
-				pt = rtabmap::util3d::transformPoint(pt, scan.localTransform());
-				view(0, i) = pt.x;
-				view(1, i) = pt.y;
-				if(!scan.is2d())
+				if(nx == -1)
 				{
-					view(2, i) = pt.z;
+					cv::Point3f pt(ptr[0], ptr[1], scan.is2d()?0:ptr[2]);
+					pt = rtabmap::util3d::transformPoint(pt, scan.localTransform());
+					view(0, oi) = pt.x;
+					view(1, oi) = pt.y;
+					if(!scan.is2d())
+					{
+						view(2, oi) = pt.z;
+					}
+					if(offsetI!=-1)
+					{
+						viewIntensity(0, oi) = ptr[offsetI];
+					}
+					++oi;
+				}
+				else if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))
+				{
+					pcl::PointNormal pt;
+					pt.x=ptr[0];
+					pt.y=ptr[1];
+					pt.z=scan.is2d()?0:ptr[2];
+					pt.normal_x=ptr[nx];
+					pt.normal_y=ptr[ny];
+					pt.normal_z=ptr[nz];
+					pt = rtabmap::util3d::transformPoint(pt, scan.localTransform());
+					view(0, oi) = pt.x;
+					view(1, oi) = pt.y;
+					if(!scan.is2d())
+					{
+						view(2, oi) = pt.z;
+					}
+					viewNormalX(0, oi) = pt.normal_x;
+					viewNormalY(0, oi) = pt.normal_y;
+					viewNormalZ(0, oi) = pt.normal_z;
+
+					if(offsetI!=-1)
+					{
+						viewIntensity(0, oi) = ptr[offsetI];
+					}
+
+					++oi;
+				}
+				else
+				{
+					UWARN("Ignoring point %d with invalid data: pos=%f %f %f, normal=%f %f %f", i, ptr[0], ptr[1], scan.is2d()?0:ptr[3], ptr[nx], ptr[ny], ptr[nz]);
 				}
 			}
-			else if(uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz]))
+			else if(nx==-1 || (uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz])))
 			{
-				pcl::PointNormal pt;
-				pt.x=ptr[0];
-				pt.y=ptr[1];
-				pt.z=scan.is2d()?0:ptr[2];
-				pt.normal_x=ptr[nx];
-				pt.normal_y=ptr[ny];
-				pt.normal_z=ptr[nz];
-				pt = rtabmap::util3d::transformPoint(pt, scan.localTransform());
-				view(0, i) = pt.x;
-				view(1, i) = pt.y;
+				view(0, oi) = ptr[0];
+				view(1, oi) = ptr[1];
 				if(!scan.is2d())
 				{
-					view(2, i) = pt.z;
+					view(2, oi) = ptr[2];
 				}
-				viewNormalX(0, i) = pt.normal_x;
-				viewNormalY(0, i) = pt.normal_y;
-				viewNormalZ(0, i) = pt.normal_z;
+				if(nx!=-1)
+				{
+					viewNormalX(0, oi) = ptr[nx];
+					viewNormalY(0, oi) = ptr[ny];
+					viewNormalZ(0, oi) = ptr[nz];
+				}
+				if(offsetI!=-1)
+				{
+					viewIntensity(0, oi) = ptr[offsetI];
+				}
+				++oi;
+			}
+			else
+			{
+				UWARN("Ignoring point %d with invalid data: pos=%f %f %f, normal=%f %f %f", i, ptr[0], ptr[1], scan.is2d()?0:ptr[3], ptr[nx], ptr[ny], ptr[nz]);
 			}
 		}
-		else if(nx!=-1 || (uIsFinite(ptr[nx]) && uIsFinite(ptr[ny]) && uIsFinite(ptr[nz])))
+		else
 		{
-			view(0, i) = ptr[0];
-			view(1, i) = ptr[1];
-			if(!scan.is2d())
-			{
-				view(2, i) = ptr[2];
-			}
-			if(nx!=-1)
-			{
-				viewNormalX(0, i) = ptr[nx];
-				viewNormalY(0, i) = ptr[ny];
-				viewNormalZ(0, i) = ptr[nz];
-			}
+			UWARN("Ignoring point %d with invalid data: pos=%f %f %f", i, ptr[0], ptr[1], scan.is2d()?0:ptr[3]);
 		}
 
-		if(offsetI!=-1)
-		{
-			viewIntensity(0, i) = ptr[offsetI];
-		}
+	}
+	if(oi != scan.size())
+	{
+		cloud.conservativeResize(oi);
 	}
 
 	return cloud;

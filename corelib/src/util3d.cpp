@@ -1371,7 +1371,7 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud)
 	}
 
 	UASSERT(cloud.data.size()/cloud.point_step == cloud.height*cloud.width);
-	cv::Mat laserScan(1, (int)cloud.data.size()/cloud.point_step, CV_32FC(LaserScan::channels(format)));
+	cv::Mat laserScan = cv::Mat(1, (int)cloud.data.size()/cloud.point_step, CV_32FC(LaserScan::channels(format)));
 
 	int oi=0;
 	for (uint32_t row = 0; row < cloud.height; ++row)
@@ -1383,10 +1383,12 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud)
 
 			float * ptr = laserScan.ptr<float>(0, oi);
 
+			bool valid = true;
 			if(laserScan.channels() == 2)
 			{
 				ptr[0] = *(float*)(msg_data + fieldOffsets[0]);
 				ptr[1] = *(float*)(msg_data + fieldOffsets[1]);
+				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]);
 			}
 			else if(laserScan.channels() == 3)
 			{
@@ -1399,6 +1401,7 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud)
 				else // XYZ
 				{
 					ptr[2] = *(float*)(msg_data + fieldOffsets[2]);
+					valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]);
 				}
 			}
 			else if(laserScan.channels() == 4)
@@ -1418,6 +1421,7 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud)
 					int * ptrInt = (int*)ptr;
 					ptrInt[3] = int(b) | (int(g) << 8) | (int(r) << 16);
 				}
+				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]);
 			}
 			else if(laserScan.channels() == 5)
 			{
@@ -1426,6 +1430,7 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud)
 				ptr[2] = *(float*)(msg_data + fieldOffsets[3]);
 				ptr[3] = *(float*)(msg_data + fieldOffsets[4]);
 				ptr[4] = *(float*)(msg_data + fieldOffsets[5]);
+				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[3]) && uIsFinite(ptr[4]);
 			}
 			else if(laserScan.channels() == 6)
 			{
@@ -1442,6 +1447,7 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud)
 				ptr[3] = *(float*)(msg_data + fieldOffsets[3]);
 				ptr[4] = *(float*)(msg_data + fieldOffsets[4]);
 				ptr[5] = *(float*)(msg_data + fieldOffsets[5]);
+				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[3]) && uIsFinite(ptr[4]) &&  uIsFinite(ptr[5]);
 			}
 			else if(laserScan.channels() == 7)
 			{
@@ -1463,26 +1469,24 @@ LaserScan laserScanFromPointCloud(const pcl::PCLPointCloud2 & cloud)
 				ptr[4] = *(float*)(msg_data + fieldOffsets[3]);
 				ptr[5] = *(float*)(msg_data + fieldOffsets[4]);
 				ptr[6] = *(float*)(msg_data + fieldOffsets[5]);
+				valid = uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && uIsFinite(ptr[2]) && uIsFinite(ptr[4]) && uIsFinite(ptr[5]) &&  uIsFinite(ptr[6]);
 			}
 			else
 			{
 				UFATAL("Cannot handle as many channels (%d)!", laserScan.channels());
 			}
 
-			if(uIsFinite(ptr[0]) && uIsFinite(ptr[1]) && (is3D || uIsFinite(ptr[1])))
+			if(valid)
 			{
 				++oi;
 			}
 		}
 	}
-	if(laserScan.cols == oi)
+	if(oi == 0)
 	{
-		return LaserScan(laserScan, 0, 0, format);
+		return LaserScan();
 	}
-	else
-	{
-		return LaserScan(laserScan(cv::Range::all(), cv::Range(0,oi)), 0, 0, format);
-	}
+	return  LaserScan(laserScan(cv::Range::all(), cv::Range(0,oi)), 0, 0, format);
 }
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform)
@@ -1494,25 +1498,29 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, co
 	cv::Mat laserScan;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
+	int oi = 0;
 	if(indices.get())
 	{
 		laserScan = cv::Mat(1, (int)indices->size(), CV_32FC3);
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
 			int index = indices->at(i);
-			float * ptr = laserScan.ptr<float>(0, i);
-			if(!nullTransform)
+			if(pcl::isFinite(cloud.at(index)))
 			{
-				pcl::PointXYZ pt = pcl::transformPoint(cloud.at(index), transform3f);
-				ptr[0] = pt.x;
-				ptr[1] = pt.y;
-				ptr[2] = pt.z;
-			}
-			else
-			{
-				ptr[0] = cloud.at(index).x;
-				ptr[1] = cloud.at(index).y;
-				ptr[2] = cloud.at(index).z;
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZ pt = pcl::transformPoint(cloud.at(index), transform3f);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(index).x;
+					ptr[1] = cloud.at(index).y;
+					ptr[2] = cloud.at(index).z;
+				}
 			}
 		}
 	}
@@ -1521,23 +1529,30 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, co
 		laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC3);
 		for(unsigned int i=0; i<cloud.size(); ++i)
 		{
-			float * ptr = laserScan.ptr<float>(0, i);
-			if(!nullTransform)
+			if(pcl::isFinite(cloud.at(i)))
 			{
-				pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
-				ptr[0] = pt.x;
-				ptr[1] = pt.y;
-				ptr[2] = pt.z;
-			}
-			else
-			{
-				ptr[0] = cloud.at(i).x;
-				ptr[1] = cloud.at(i).y;
-				ptr[2] = cloud.at(i).z;
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(i).x;
+					ptr[1] = cloud.at(i).y;
+					ptr[2] = cloud.at(i).z;
+				}
 			}
 		}
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform)
@@ -1548,31 +1563,38 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud,
 {
 	cv::Mat laserScan;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi=0;
 	if(indices.get())
 	{
 		laserScan = cv::Mat(1, (int)indices->size(), CV_32FC(6));
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
 			int index = indices->at(i);
-			float * ptr = laserScan.ptr<float>(0, i);
-			if(!nullTransform)
+			if(pcl::isFinite(cloud.at(index)) &&
+					uIsFinite(cloud.at(index).normal_x) &&
+					uIsFinite(cloud.at(index).normal_y) &&
+					uIsFinite(cloud.at(index).normal_z))
 			{
-				pcl::PointNormal pt = util3d::transformPoint(cloud.at(index), transform);
-				ptr[0] = pt.x;
-				ptr[1] = pt.y;
-				ptr[2] = pt.z;
-				ptr[3] = pt.normal_x;
-				ptr[4] = pt.normal_y;
-				ptr[5] = pt.normal_z;
-			}
-			else
-			{
-				ptr[0] = cloud.at(index).x;
-				ptr[1] = cloud.at(index).y;
-				ptr[2] = cloud.at(index).z;
-				ptr[3] = cloud.at(index).normal_x;
-				ptr[4] = cloud.at(index).normal_y;
-				ptr[5] = cloud.at(index).normal_z;
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointNormal pt = util3d::transformPoint(cloud.at(index), transform);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+					ptr[3] = pt.normal_x;
+					ptr[4] = pt.normal_y;
+					ptr[5] = pt.normal_z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(index).x;
+					ptr[1] = cloud.at(index).y;
+					ptr[2] = cloud.at(index).z;
+					ptr[3] = cloud.at(index).normal_x;
+					ptr[4] = cloud.at(index).normal_y;
+					ptr[5] = cloud.at(index).normal_z;
+				}
 			}
 		}
 	}
@@ -1581,10 +1603,62 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud,
 		laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC(6));
 		for(unsigned int i=0; i<cloud.size(); ++i)
 		{
-			float * ptr = laserScan.ptr<float>(0, i);
+			if(pcl::isFinite(cloud.at(i)) &&
+					uIsFinite(cloud.at(i).normal_x) &&
+					uIsFinite(cloud.at(i).normal_y) &&
+					uIsFinite(cloud.at(i).normal_z))
+			{
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointNormal pt = util3d::transformPoint(cloud.at(i), transform);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+					ptr[3] = pt.normal_x;
+					ptr[4] = pt.normal_y;
+					ptr[5] = pt.normal_z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(i).x;
+					ptr[1] = cloud.at(i).y;
+					ptr[2] = cloud.at(i).z;
+					ptr[3] = cloud.at(i).normal_x;
+					ptr[4] = cloud.at(i).normal_y;
+					ptr[5] = cloud.at(i).normal_z;
+				}
+			}
+		}
+	}
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
+}
+
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
+{
+	UASSERT(cloud.size() == normals.size());
+	cv::Mat laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC(6));
+	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi =0;
+	for(unsigned int i=0; i<cloud.size(); ++i)
+	{
+		if(pcl::isFinite(cloud.at(i)) && pcl::isFinite(normals.at(i)))
+		{
+			float * ptr = laserScan.ptr<float>(0, oi++);
 			if(!nullTransform)
 			{
-				pcl::PointNormal pt = util3d::transformPoint(cloud.at(i), transform);
+				pcl::PointNormal pt;
+				pt.x = cloud.at(i).x;
+				pt.y = cloud.at(i).y;
+				pt.z = cloud.at(i).z;
+				pt.normal_x = normals.at(i).normal_x;
+				pt.normal_y = normals.at(i).normal_y;
+				pt.normal_z = normals.at(i).normal_z;
+				pt = util3d::transformPoint(pt, transform);
 				ptr[0] = pt.x;
 				ptr[1] = pt.y;
 				ptr[2] = pt.z;
@@ -1597,51 +1671,17 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud,
 				ptr[0] = cloud.at(i).x;
 				ptr[1] = cloud.at(i).y;
 				ptr[2] = cloud.at(i).z;
-				ptr[3] = cloud.at(i).normal_x;
-				ptr[4] = cloud.at(i).normal_y;
-				ptr[5] = cloud.at(i).normal_z;
+				ptr[3] = normals.at(i).normal_x;
+				ptr[4] = normals.at(i).normal_y;
+				ptr[5] = normals.at(i).normal_z;
 			}
 		}
 	}
-	return laserScan;
-}
-
-cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
-{
-	UASSERT(cloud.size() == normals.size());
-	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(6));
-	bool nullTransform = transform.isNull() || transform.isIdentity();
-	for(unsigned int i=0; i<cloud.size(); ++i)
+	if(oi == 0)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
-		{
-			pcl::PointNormal pt;
-			pt.x = cloud.at(i).x;
-			pt.y = cloud.at(i).y;
-			pt.z = cloud.at(i).z;
-			pt.normal_x = normals.at(i).normal_x;
-			pt.normal_y = normals.at(i).normal_y;
-			pt.normal_z = normals.at(i).normal_z;
-			pt = util3d::transformPoint(pt, transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.z;
-			ptr[3] = pt.normal_x;
-			ptr[4] = pt.normal_y;
-			ptr[5] = pt.normal_z;
-		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = cloud.at(i).z;
-			ptr[3] = normals.at(i).normal_x;
-			ptr[4] = normals.at(i).normal_y;
-			ptr[5] = normals.at(i).normal_z;
-		}
+		return cv::Mat();
 	}
-	return laserScan;
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const Transform & transform)
@@ -1654,28 +1694,32 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 	cv::Mat laserScan;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
+	int oi=0;
 	if(indices.get())
 	{
 		laserScan = cv::Mat(1, (int)indices->size(), CV_32FC(4));
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
-			float * ptr = laserScan.ptr<float>(0, i);
 			int index = indices->at(i);
-			if(!nullTransform)
+			if(pcl::isFinite(cloud.at(index)))
 			{
-				pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(index), transform3f);
-				ptr[0] = pt.x;
-				ptr[1] = pt.y;
-				ptr[2] = pt.z;
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(index), transform3f);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(index).x;
+					ptr[1] = cloud.at(index).y;
+					ptr[2] = cloud.at(index).z;
+				}
+				int * ptrInt = (int*)ptr;
+				ptrInt[3] = int(cloud.at(index).b) | (int(cloud.at(index).g) << 8) | (int(cloud.at(index).r) << 16);
 			}
-			else
-			{
-				ptr[0] = cloud.at(index).x;
-				ptr[1] = cloud.at(index).y;
-				ptr[2] = cloud.at(index).z;
-			}
-			int * ptrInt = (int*)ptr;
-			ptrInt[3] = int(cloud.at(index).b) | (int(cloud.at(index).g) << 8) | (int(cloud.at(index).r) << 16);
 		}
 	}
 	else
@@ -1683,25 +1727,32 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 		laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC(4));
 		for(unsigned int i=0; i<cloud.size(); ++i)
 		{
-			float * ptr = laserScan.ptr<float>(0, i);
-			if(!nullTransform)
+			if(pcl::isFinite(cloud.at(i)))
 			{
-				pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(i), transform3f);
-				ptr[0] = pt.x;
-				ptr[1] = pt.y;
-				ptr[2] = pt.z;
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZRGB pt = pcl::transformPoint(cloud.at(i), transform3f);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(i).x;
+					ptr[1] = cloud.at(i).y;
+					ptr[2] = cloud.at(i).z;
+				}
+				int * ptrInt = (int*)ptr;
+				ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
 			}
-			else
-			{
-				ptr[0] = cloud.at(i).x;
-				ptr[1] = cloud.at(i).y;
-				ptr[2] = cloud.at(i).z;
-			}
-			int * ptrInt = (int*)ptr;
-			ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
 		}
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform)
@@ -1714,27 +1765,31 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, c
 	cv::Mat laserScan;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
+	int oi=0;
 	if(indices.get())
 	{
 		laserScan = cv::Mat(1, (int)indices->size(), CV_32FC(4));
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
-			float * ptr = laserScan.ptr<float>(0, i);
 			int index = indices->at(i);
-			if(!nullTransform)
+			if(pcl::isFinite(cloud.at(index)))
 			{
-				pcl::PointXYZI pt = pcl::transformPoint(cloud.at(index), transform3f);
-				ptr[0] = pt.x;
-				ptr[1] = pt.y;
-				ptr[2] = pt.z;
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZI pt = pcl::transformPoint(cloud.at(index), transform3f);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(index).x;
+					ptr[1] = cloud.at(index).y;
+					ptr[2] = cloud.at(index).z;
+				}
+				ptr[3] = cloud.at(index).intensity;
 			}
-			else
-			{
-				ptr[0] = cloud.at(index).x;
-				ptr[1] = cloud.at(index).y;
-				ptr[2] = cloud.at(index).z;
-			}
-			ptr[3] = cloud.at(index).intensity;
 		}
 	}
 	else
@@ -1742,24 +1797,31 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, c
 		laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC(4));
 		for(unsigned int i=0; i<cloud.size(); ++i)
 		{
-			float * ptr = laserScan.ptr<float>(0, i);
-			if(!nullTransform)
+			if(pcl::isFinite(cloud.at(i)))
 			{
-				pcl::PointXYZI pt = pcl::transformPoint(cloud.at(i), transform3f);
-				ptr[0] = pt.x;
-				ptr[1] = pt.y;
-				ptr[2] = pt.z;
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZI pt = pcl::transformPoint(cloud.at(i), transform3f);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(i).x;
+					ptr[1] = cloud.at(i).y;
+					ptr[2] = cloud.at(i).z;
+				}
+				ptr[3] = cloud.at(i).intensity;
 			}
-			else
-			{
-				ptr[0] = cloud.at(i).x;
-				ptr[1] = cloud.at(i).y;
-				ptr[2] = cloud.at(i).z;
-			}
-			ptr[3] = cloud.at(i).intensity;
 		}
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
@@ -1767,39 +1829,47 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGB> & cloud,
 	UASSERT(cloud.size() == normals.size());
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(7));
 	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi = 0;
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		if(pcl::isFinite(cloud.at(i)))
 		{
-			pcl::PointXYZRGBNormal pt;
-			pt.x = cloud.at(i).x;
-			pt.y = cloud.at(i).y;
-			pt.z = cloud.at(i).z;
-			pt.normal_x = normals.at(i).normal_x;
-			pt.normal_y = normals.at(i).normal_y;
-			pt.normal_z = normals.at(i).normal_z;
-			pt = util3d::transformPoint(pt, transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.z;
-			ptr[4] = pt.normal_x;
-			ptr[5] = pt.normal_y;
-			ptr[6] = pt.normal_z;
+			float * ptr = laserScan.ptr<float>(0, oi++);
+			if(!nullTransform)
+			{
+				pcl::PointXYZRGBNormal pt;
+				pt.x = cloud.at(i).x;
+				pt.y = cloud.at(i).y;
+				pt.z = cloud.at(i).z;
+				pt.normal_x = normals.at(i).normal_x;
+				pt.normal_y = normals.at(i).normal_y;
+				pt.normal_z = normals.at(i).normal_z;
+				pt = util3d::transformPoint(pt, transform);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.z;
+				ptr[4] = pt.normal_x;
+				ptr[5] = pt.normal_y;
+				ptr[6] = pt.normal_z;
+			}
+			else
+			{
+				ptr[0] = cloud.at(i).x;
+				ptr[1] = cloud.at(i).y;
+				ptr[2] = cloud.at(i).z;
+				ptr[4] = normals.at(i).normal_x;
+				ptr[5] = normals.at(i).normal_y;
+				ptr[6] = normals.at(i).normal_z;
+			}
+			int * ptrInt = (int*)ptr;
+			ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
 		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = cloud.at(i).z;
-			ptr[4] = normals.at(i).normal_x;
-			ptr[5] = normals.at(i).normal_y;
-			ptr[6] = normals.at(i).normal_z;
-		}
-		int * ptrInt = (int*)ptr;
-		ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & cloud, const Transform & transform)
@@ -1810,16 +1880,106 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & 
 {
 	cv::Mat laserScan;
 	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi = 0;
 	if(indices.get())
 	{
 		laserScan = cv::Mat(1, (int)indices->size(), CV_32FC(7));
 		for(unsigned int i=0; i<indices->size(); ++i)
 		{
 			int index = indices->at(i);
-			float * ptr = laserScan.ptr<float>(0, i);
+			if(pcl::isFinite(cloud.at(index)) &&
+					uIsFinite(cloud.at(index).normal_x) &&
+					uIsFinite(cloud.at(index).normal_y) &&
+					uIsFinite(cloud.at(index).normal_z))
+			{
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZRGBNormal pt = util3d::transformPoint(cloud.at(index), transform);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+					ptr[4] = pt.normal_x;
+					ptr[5] = pt.normal_y;
+					ptr[6] = pt.normal_z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(index).x;
+					ptr[1] = cloud.at(index).y;
+					ptr[2] = cloud.at(index).z;
+					ptr[4] = cloud.at(index).normal_x;
+					ptr[5] = cloud.at(index).normal_y;
+					ptr[6] = cloud.at(index).normal_z;
+				}
+				int * ptrInt = (int*)ptr;
+				ptrInt[3] = int(cloud.at(index).b) | (int(cloud.at(index).g) << 8) | (int(cloud.at(index).r) << 16);
+			}
+		}
+	}
+	else
+	{
+		laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC(7));
+		for(unsigned int i=0; i<cloud.size(); ++i)
+		{
+			if(pcl::isFinite(cloud.at(i)) &&
+					uIsFinite(cloud.at(i).normal_x) &&
+					uIsFinite(cloud.at(i).normal_y) &&
+					uIsFinite(cloud.at(i).normal_z))
+			{
+				float * ptr = laserScan.ptr<float>(0, oi++);
+				if(!nullTransform)
+				{
+					pcl::PointXYZRGBNormal pt = util3d::transformPoint(cloud.at(i), transform);
+					ptr[0] = pt.x;
+					ptr[1] = pt.y;
+					ptr[2] = pt.z;
+					ptr[4] = pt.normal_x;
+					ptr[5] = pt.normal_y;
+					ptr[6] = pt.normal_z;
+				}
+				else
+				{
+					ptr[0] = cloud.at(i).x;
+					ptr[1] = cloud.at(i).y;
+					ptr[2] = cloud.at(i).z;
+					ptr[4] = cloud.at(i).normal_x;
+					ptr[5] = cloud.at(i).normal_y;
+					ptr[6] = cloud.at(i).normal_z;
+				}
+				int * ptrInt = (int*)ptr;
+				ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
+			}
+		}
+	}
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
+}
+
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
+{
+	UASSERT(cloud.size() == normals.size());
+	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(7));
+	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi=0;
+	for(unsigned int i=0; i<cloud.size(); ++i)
+	{
+		if(pcl::isFinite(cloud.at(i)) && pcl::isFinite(normals.at(i)))
+		{
+			float * ptr = laserScan.ptr<float>(0, oi++);
 			if(!nullTransform)
 			{
-				pcl::PointXYZRGBNormal pt = util3d::transformPoint(cloud.at(index), transform);
+				pcl::PointXYZINormal pt;
+				pt.x = cloud.at(i).x;
+				pt.y = cloud.at(i).y;
+				pt.z = cloud.at(i).z;
+				pt.normal_x = normals.at(i).normal_x;
+				pt.normal_y = normals.at(i).normal_y;
+				pt.normal_z = normals.at(i).normal_z;
+				pt = util3d::transformPoint(pt, transform);
 				ptr[0] = pt.x;
 				ptr[1] = pt.y;
 				ptr[2] = pt.z;
@@ -1829,26 +1989,38 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & 
 			}
 			else
 			{
-				ptr[0] = cloud.at(index).x;
-				ptr[1] = cloud.at(index).y;
-				ptr[2] = cloud.at(index).z;
-				ptr[4] = cloud.at(index).normal_x;
-				ptr[5] = cloud.at(index).normal_y;
-				ptr[6] = cloud.at(index).normal_z;
+				ptr[0] = cloud.at(i).x;
+				ptr[1] = cloud.at(i).y;
+				ptr[2] = cloud.at(i).z;
+				ptr[4] = normals.at(i).normal_x;
+				ptr[5] = normals.at(i).normal_y;
+				ptr[6] = normals.at(i).normal_z;
 			}
-			int * ptrInt = (int*)ptr;
-			ptrInt[3] = int(cloud.at(index).b) | (int(cloud.at(index).g) << 8) | (int(cloud.at(index).r) << 16);
+			ptr[3] = cloud.at(i).intensity;
 		}
 	}
-	else
+	if(oi == 0)
 	{
-		laserScan = cv::Mat(1, (int)cloud.size(), CV_32FC(7));
-		for(unsigned int i=0; i<cloud.size(); ++i)
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
+}
+cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform)
+{
+	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(7));
+	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi = 0;
+	for(unsigned int i=0; i<cloud.size(); ++i)
+	{
+		if(pcl::isFinite(cloud.at(i)) &&
+				uIsFinite(cloud.at(i).normal_x) &&
+				uIsFinite(cloud.at(i).normal_y) &&
+				uIsFinite(cloud.at(i).normal_z))
 		{
-			float * ptr = laserScan.ptr<float>(0, i);
+			float * ptr = laserScan.ptr<float>(0, oi++);
 			if(!nullTransform)
 			{
-				pcl::PointXYZRGBNormal pt = util3d::transformPoint(cloud.at(i), transform);
+				pcl::PointXYZINormal pt = util3d::transformPoint(cloud.at(i), transform);
 				ptr[0] = pt.x;
 				ptr[1] = pt.y;
 				ptr[2] = pt.z;
@@ -1865,80 +2037,14 @@ cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZRGBNormal> & 
 				ptr[5] = cloud.at(i).normal_y;
 				ptr[6] = cloud.at(i).normal_z;
 			}
-			int * ptrInt = (int*)ptr;
-			ptrInt[3] = int(cloud.at(i).b) | (int(cloud.at(i).g) << 8) | (int(cloud.at(i).r) << 16);
+			ptr[3] = cloud.at(i).intensity;
 		}
 	}
-	return laserScan;
-}
-
-cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
-{
-	UASSERT(cloud.size() == normals.size());
-	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(7));
-	bool nullTransform = transform.isNull() || transform.isIdentity();
-	for(unsigned int i=0; i<cloud.size(); ++i)
+	if(oi == 0)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
-		{
-			pcl::PointXYZINormal pt;
-			pt.x = cloud.at(i).x;
-			pt.y = cloud.at(i).y;
-			pt.z = cloud.at(i).z;
-			pt.normal_x = normals.at(i).normal_x;
-			pt.normal_y = normals.at(i).normal_y;
-			pt.normal_z = normals.at(i).normal_z;
-			pt = util3d::transformPoint(pt, transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.z;
-			ptr[4] = pt.normal_x;
-			ptr[5] = pt.normal_y;
-			ptr[6] = pt.normal_z;
-		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = cloud.at(i).z;
-			ptr[4] = normals.at(i).normal_x;
-			ptr[5] = normals.at(i).normal_y;
-			ptr[6] = normals.at(i).normal_z;
-		}
-		ptr[3] = cloud.at(i).intensity;
+		return cv::Mat();
 	}
-	return laserScan;
-}
-cv::Mat laserScanFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform)
-{
-	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(7));
-	bool nullTransform = transform.isNull() || transform.isIdentity();
-	for(unsigned int i=0; i<cloud.size(); ++i)
-	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
-		{
-			pcl::PointXYZINormal pt = util3d::transformPoint(cloud.at(i), transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.z;
-			ptr[4] = pt.normal_x;
-			ptr[5] = pt.normal_y;
-			ptr[6] = pt.normal_z;
-		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = cloud.at(i).z;
-			ptr[4] = cloud.at(i).normal_x;
-			ptr[5] = cloud.at(i).normal_y;
-			ptr[6] = cloud.at(i).normal_z;
-		}
-		ptr[3] = cloud.at(i).intensity;
-	}
-	return laserScan;
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const Transform & transform)
@@ -1946,23 +2052,31 @@ cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, 
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC2);
 	bool nullTransform = transform.isNull();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
+	int oi=0;
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		if(pcl::isFinite(cloud.at(i)))
 		{
-			pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
+			float * ptr = laserScan.ptr<float>(0, oi++);
+			if(!nullTransform)
+			{
+				pcl::PointXYZ pt = pcl::transformPoint(cloud.at(i), transform3f);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+			}
+			else
+			{
+				ptr[0] = cloud.at(i).x;
+				ptr[1] = cloud.at(i).y;
+			}
 		}
 
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const Transform & transform)
@@ -1970,55 +2084,73 @@ cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud,
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC3);
 	bool nullTransform = transform.isNull();
 	Eigen::Affine3f transform3f = transform.toEigen3f();
+	int oi=0;
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		if(pcl::isFinite(cloud.at(i)))
 		{
-			pcl::PointXYZI pt = pcl::transformPoint(cloud.at(i), transform3f);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.intensity;
-		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = cloud.at(i).intensity;
+			float * ptr = laserScan.ptr<float>(0, oi++);
+			if(!nullTransform)
+			{
+				pcl::PointXYZI pt = pcl::transformPoint(cloud.at(i), transform3f);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.intensity;
+			}
+			else
+			{
+				ptr[0] = cloud.at(i).x;
+				ptr[1] = cloud.at(i).y;
+				ptr[2] = cloud.at(i).intensity;
+			}
 		}
 
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointNormal> & cloud, const Transform & transform)
 {
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(5));
 	bool nullTransform = transform.isNull();
+	int oi=0;
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		if(pcl::isFinite(cloud.at(i)) &&
+				uIsFinite(cloud.at(i).normal_x) &&
+				uIsFinite(cloud.at(i).normal_y) &&
+				uIsFinite(cloud.at(i).normal_z))
 		{
-			pcl::PointNormal pt = util3d::transformPoint(cloud.at(i), transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.normal_x;
-			ptr[3] = pt.normal_y;
-			ptr[4] = pt.normal_z;
+			float * ptr = laserScan.ptr<float>(0, oi++);
+			if(!nullTransform)
+			{
+				pcl::PointNormal pt = util3d::transformPoint(cloud.at(i), transform);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.normal_x;
+				ptr[3] = pt.normal_y;
+				ptr[4] = pt.normal_z;
+			}
+			else
+			{
+				const pcl::PointNormal & pt = cloud.at(i);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.normal_x;
+				ptr[3] = pt.normal_y;
+				ptr[4] = pt.normal_z;
+			}
 		}
-		else
-		{
-			const pcl::PointNormal & pt = cloud.at(i);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.normal_x;
-			ptr[3] = pt.normal_y;
-			ptr[4] = pt.normal_z;
-		}
-
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
@@ -2026,67 +2158,85 @@ cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZ> & cloud, 
 	UASSERT(cloud.size() == normals.size());
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(5));
 	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi=0;
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		if(pcl::isFinite(cloud.at(i)) && pcl::isFinite(normals.at(i)))
 		{
-			pcl::PointNormal pt;
-			pt.x = cloud.at(i).x;
-			pt.y = cloud.at(i).y;
-			pt.z = cloud.at(i).z;
-			pt.normal_x = normals.at(i).normal_x;
-			pt.normal_y = normals.at(i).normal_y;
-			pt.normal_z = normals.at(i).normal_z;
-			pt = util3d::transformPoint(pt, transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.normal_x;
-			ptr[3] = pt.normal_y;
-			ptr[4] = pt.normal_z;
-		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = normals.at(i).normal_x;
-			ptr[3] = normals.at(i).normal_y;
-			ptr[4] = normals.at(i).normal_z;
+			float * ptr = laserScan.ptr<float>(0, oi++);
+			if(!nullTransform)
+			{
+				pcl::PointNormal pt;
+				pt.x = cloud.at(i).x;
+				pt.y = cloud.at(i).y;
+				pt.z = cloud.at(i).z;
+				pt.normal_x = normals.at(i).normal_x;
+				pt.normal_y = normals.at(i).normal_y;
+				pt.normal_z = normals.at(i).normal_z;
+				pt = util3d::transformPoint(pt, transform);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.normal_x;
+				ptr[3] = pt.normal_y;
+				ptr[4] = pt.normal_z;
+			}
+			else
+			{
+				ptr[0] = cloud.at(i).x;
+				ptr[1] = cloud.at(i).y;
+				ptr[2] = normals.at(i).normal_x;
+				ptr[3] = normals.at(i).normal_y;
+				ptr[4] = normals.at(i).normal_z;
+			}
 		}
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform)
 {
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(6));
 	bool nullTransform = transform.isNull();
+	int oi=0;
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		if(pcl::isFinite(cloud.at(i)) &&
+				uIsFinite(cloud.at(i).normal_x) &&
+				uIsFinite(cloud.at(i).normal_y) &&
+				uIsFinite(cloud.at(i).normal_z))
 		{
-			pcl::PointXYZINormal pt = util3d::transformPoint(cloud.at(i), transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.intensity;
-			ptr[3] = pt.normal_x;
-			ptr[4] = pt.normal_y;
-			ptr[5] = pt.normal_z;
+			float * ptr = laserScan.ptr<float>(0, oi++);
+			if(!nullTransform)
+			{
+				pcl::PointXYZINormal pt = util3d::transformPoint(cloud.at(i), transform);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.intensity;
+				ptr[3] = pt.normal_x;
+				ptr[4] = pt.normal_y;
+				ptr[5] = pt.normal_z;
+			}
+			else
+			{
+				const pcl::PointXYZINormal & pt = cloud.at(i);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.intensity;
+				ptr[3] = pt.normal_x;
+				ptr[4] = pt.normal_y;
+				ptr[5] = pt.normal_z;
+			}
 		}
-		else
-		{
-			const pcl::PointXYZINormal & pt = cloud.at(i);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.intensity;
-			ptr[3] = pt.normal_x;
-			ptr[4] = pt.normal_y;
-			ptr[5] = pt.normal_z;
-		}
-
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform)
@@ -2094,37 +2244,45 @@ cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud,
 	UASSERT(cloud.size() == normals.size());
 	cv::Mat laserScan(1, (int)cloud.size(), CV_32FC(6));
 	bool nullTransform = transform.isNull() || transform.isIdentity();
+	int oi=0;
 	for(unsigned int i=0; i<cloud.size(); ++i)
 	{
-		float * ptr = laserScan.ptr<float>(0, i);
-		if(!nullTransform)
+		if(pcl::isFinite(cloud.at(i)) && pcl::isFinite(normals.at(i)))
 		{
-			pcl::PointXYZINormal pt;
-			pt.x = cloud.at(i).x;
-			pt.y = cloud.at(i).y;
-			pt.z = cloud.at(i).z;
-			pt.normal_x = normals.at(i).normal_x;
-			pt.normal_y = normals.at(i).normal_y;
-			pt.normal_z = normals.at(i).normal_z;
-			pt = util3d::transformPoint(pt, transform);
-			ptr[0] = pt.x;
-			ptr[1] = pt.y;
-			ptr[2] = pt.intensity;
-			ptr[3] = pt.normal_x;
-			ptr[4] = pt.normal_y;
-			ptr[5] = pt.normal_z;
-		}
-		else
-		{
-			ptr[0] = cloud.at(i).x;
-			ptr[1] = cloud.at(i).y;
-			ptr[2] = cloud.at(i).intensity;
-			ptr[3] = normals.at(i).normal_x;
-			ptr[4] = normals.at(i).normal_y;
-			ptr[5] = normals.at(i).normal_z;
+			float * ptr = laserScan.ptr<float>(0, oi++);
+			if(!nullTransform)
+			{
+				pcl::PointXYZINormal pt;
+				pt.x = cloud.at(i).x;
+				pt.y = cloud.at(i).y;
+				pt.z = cloud.at(i).z;
+				pt.normal_x = normals.at(i).normal_x;
+				pt.normal_y = normals.at(i).normal_y;
+				pt.normal_z = normals.at(i).normal_z;
+				pt = util3d::transformPoint(pt, transform);
+				ptr[0] = pt.x;
+				ptr[1] = pt.y;
+				ptr[2] = pt.intensity;
+				ptr[3] = pt.normal_x;
+				ptr[4] = pt.normal_y;
+				ptr[5] = pt.normal_z;
+			}
+			else
+			{
+				ptr[0] = cloud.at(i).x;
+				ptr[1] = cloud.at(i).y;
+				ptr[2] = cloud.at(i).intensity;
+				ptr[3] = normals.at(i).normal_x;
+				ptr[4] = normals.at(i).normal_y;
+				ptr[5] = normals.at(i).normal_z;
+			}
 		}
 	}
-	return laserScan;
+	if(oi == 0)
+	{
+		return cv::Mat();
+	}
+	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
 pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const LaserScan & laserScan, const Transform & transform)
