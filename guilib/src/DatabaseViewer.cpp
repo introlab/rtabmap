@@ -5215,20 +5215,6 @@ void DatabaseViewer::updateGraphView()
 			}
 		}
 		delete optimizer;
-
-		if(uContains(groundTruthPoses_, fromId) && uContains(posesOut, fromId))
-		{
-			// adjust the ground truth to fit the root
-			Transform t = posesOut.at(fromId) * groundTruthPoses_.at(fromId).inverse();
-			for(std::map<int, Transform>::iterator iter=groundTruthPoses_.begin(); iter!=groundTruthPoses_.end(); ++iter)
-			{
-				iter->second = t * iter->second;
-			}
-		}
-		else if(groundTruthPoses_.size())
-		{
-			UWARN("Could not find ground truth for root node %d", fromId);
-		}
 	}
 	if(graphes_.size())
 	{
