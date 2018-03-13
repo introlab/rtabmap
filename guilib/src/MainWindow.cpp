@@ -5217,6 +5217,22 @@ void MainWindow::exportPoses(int format)
 
 		if(!path.isEmpty())
 		{
+			if(QFileInfo(path).suffix() == "")
+			{
+				if(format == 3)
+				{
+					path += ".graph";
+				}
+				else if(format==4)
+				{
+					path += ".g2o";
+				}
+				else
+				{
+					path += ".txt";
+				}
+			}
+
 			_exportPosesFileName[format] = path;
 			bool saved = graph::exportPoses(path.toStdString(), format, poses, links, stamps);
 
