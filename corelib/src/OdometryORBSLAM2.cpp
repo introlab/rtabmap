@@ -296,7 +296,7 @@ protected:
 								// FIXME: Memory leak: ORB_SLAM2 doesn't delete after removing from the map...
 								// Not sure when it is safe to delete it, as if I delete just
 								// after setting the bad flag, the app crashes.
-								iter->second->SetBadFlag();
+								iter->second->SetErase();
 							}
 							else
 							{

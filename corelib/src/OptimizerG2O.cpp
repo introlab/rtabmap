@@ -790,7 +790,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 	{
 		g2o::SparseOptimizer optimizer;
 		optimizer.setVerbose(ULogger::level()==ULogger::kDebug);
-#ifdef RTABMAP_G2O_CPP11
+#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM2)
 		std::unique_ptr<g2o::BlockSolver_6_3::LinearSolverType> linearSolver;
 #else
 		g2o::BlockSolver_6_3::LinearSolverType * linearSolver = 0;
@@ -854,7 +854,7 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 		else
 #endif
 		{
-#ifdef RTABMAP_G2O_CPP11
+#if defined(RTABMAP_G2O_CPP11) and not defined(RTABMAP_ORB_SLAM2)
 			optimizer.setAlgorithm(new g2o::OptimizationAlgorithmLevenberg(
 					g2o::make_unique<g2o::BlockSolver_6_3>(std::move(linearSolver))));
 #else

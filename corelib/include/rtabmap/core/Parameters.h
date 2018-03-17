@@ -553,7 +553,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.1,   "Max distance for point correspondences.");
     RTABMAP_PARAM(Icp, Iterations,                int, 30,      "Max iterations.");
     RTABMAP_PARAM(Icp, Epsilon,                   float, 0,     "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
-    RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.2,   "Ratio of matching correspondences to accept the transform.");
+    RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.1,   "Ratio of matching correspondences to accept the transform.");
     RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
     RTABMAP_PARAM(Icp, PointToPlaneK,             int, 5,       "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
     RTABMAP_PARAM(Icp, PointToPlaneRadius,        float, 1.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
@@ -568,7 +568,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM_STR(Icp, PMConfig,             "",            uFormat("Configuration file (*.yaml) used by libpointmatcher. Note that data filters set for libpointmatcher are done after filtering done by rtabmap (i.e., %s, %s), so make sure to disable those in rtabmap if you want to use only those from libpointmatcher. Parameters %s, %s and %s are also ignored if configuration file is set.", kIcpVoxelSize().c_str(), kIcpDownsamplingStep().c_str(), kIcpIterations().c_str(), kIcpEpsilon().c_str(), kIcpMaxCorrespondenceDistance().c_str()).c_str());
     RTABMAP_PARAM(Icp, PMMatcherKnn,             int, 1,        "KDTreeMatcher/knn: number of nearest neighbors to consider it the reference. For convenience when configuration file is not set.");
     RTABMAP_PARAM(Icp, PMMatcherEpsilon,         float, 0.0,    "KDTreeMatcher/epsilon: approximation to use for the nearest-neighbor search. For convenience when configuration file is not set.");
-    RTABMAP_PARAM(Icp, PMOutlierRatio,           float, 0.85,   "TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.");
+    RTABMAP_PARAM(Icp, PMOutlierRatio,           float, 0.95,   "TrimmedDistOutlierFilter/ratio: For convenience when configuration file is not set. For kinect-like point cloud, use 0.65.");
 
     // Stereo disparity
     RTABMAP_PARAM(Stereo, WinWidth,              int, 15,       "Window width.");
