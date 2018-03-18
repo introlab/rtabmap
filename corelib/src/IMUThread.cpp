@@ -29,6 +29,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/IMU.h"
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/ULogger.h>
+#include <rtabmap/utilite/UConversion.h>
 
 namespace rtabmap
 {
@@ -123,16 +124,16 @@ void IMUThread::mainLoop()
 		Eigen::Vector3d gyr;
 		for (int j = 0; j < 3; ++j) {
 			std::getline(stream, s, ',');
-			gyr[j] = std::stof(s);
+			gyr[j] = uStr2Double(s);
 		}
 
 		Eigen::Vector3d acc;
 		for (int j = 0; j < 3; ++j) {
 			std::getline(stream, s, ',');
-			acc[j] = std::stof(s);
+			acc[j] = uStr2Double(s);
 		}
 
-		double stamp = double(std::stoi(seconds)) + double(std::stoi(nanoseconds))*1e-9;
+		double stamp = double(uStr2Int(seconds)) + double(uStr2Int(nanoseconds))*1e-9;
 		if(previousStamp_>0 && stamp > previousStamp_)
 		{
 			captureDelay_ = stamp - previousStamp_;

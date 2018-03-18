@@ -891,7 +891,7 @@ SensorData CameraTango::captureImage(CameraInfo * info)
 
 			if(rawScanPublished_)
 			{
-				data = SensorData(scan, LaserScanInfo(cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
+				data = SensorData(LaserScan::backwardCompatibility(scan, cloud.total()/scanDownsampling, 0, scanLocalTransform), rgb, depth, model, this->getNextSeqID(), rgbStamp);
 			}
 			else
 			{
