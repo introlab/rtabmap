@@ -56,10 +56,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/segmentation/impl/extract_clusters.hpp>
 #include <pcl/segmentation/extract_labeled_clusters.h>
 #include <pcl/segmentation/impl/extract_labeled_clusters.hpp>
+#include <pcl/filters/impl/extract_indices.hpp>
 
 PCL_INSTANTIATE(EuclideanClusterExtraction, (pcl::PointXYZRGBNormal))
 PCL_INSTANTIATE(extractEuclideanClusters, (pcl::PointXYZRGBNormal))
 PCL_INSTANTIATE(extractEuclideanClusters_indices, (pcl::PointXYZRGBNormal))
+PCL_INSTANTIATE(ExtractIndices, (pcl::PointNormal))
+
 #endif
 
 namespace rtabmap
