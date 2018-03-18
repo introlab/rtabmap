@@ -71,6 +71,7 @@ import android.os.Handler;
 import android.os.Debug;
 import android.os.IBinder;
 import android.os.Message;
+import android.preference.ListPreference;
 import android.preference.PreferenceManager;
 import android.text.Editable;
 import android.text.Html;
@@ -708,6 +709,15 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			String simThr = sharedPref.getString(getString(R.string.pref_key_sim_thr), getString(R.string.pref_default_sim_thr));
 			mMinInliers = sharedPref.getString(getString(R.string.pref_key_min_inliers), getString(R.string.pref_default_min_inliers));
 			mMaxOptimizationError = sharedPref.getString(getString(R.string.pref_key_opt_error), getString(R.string.pref_default_opt_error));
+			float maxOptimizationError = Float.parseFloat(mMaxOptimizationError);
+			if(maxOptimizationError >0 && maxOptimizationError<1) 
+	        	{
+	        		Log.w(TAG, "Migration of " + getString(R.string.pref_key_opt_error) + " from " + mMaxOptimizationError + " to " + getString(R.string.pref_default_opt_error)) ;
+		        	SharedPreferences.Editor editor = sharedPref.edit();
+				editor.putString(getString(R.string.pref_key_opt_error), getString(R.string.pref_default_opt_error));
+				editor.commit();
+				mMaxOptimizationError = getString(R.string.pref_default_opt_error);
+	        	}
 			mMaxFeatures = sharedPref.getString(getString(R.string.pref_key_features_voc), getString(R.string.pref_default_features_voc));
 			String maxFeaturesLoop = sharedPref.getString(getString(R.string.pref_key_features), getString(R.string.pref_default_features));
 			String featureType = sharedPref.getString(getString(R.string.pref_key_features_type), getString(R.string.pref_default_features_type));
@@ -1023,6 +1033,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			int matches,
 			int rejected,
 			float optimizationMaxError,
+			float optimizationMaxErrorRatio,
 			boolean fastMovement,
 			String[] statusTexts)
 	{
@@ -1110,7 +1121,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 				{
 					if(optimizationMaxError > 0.0f)
 					{
-						mToast.setText(String.format("Loop closure rejected, too high graph optimization error (%.3fm > %sm).", optimizationMaxError, mMaxOptimizationError));
+						mToast.setText(String.format("Loop closure rejected, too high graph optimization error (%.3fm: ratio=%.3f < factor=%sx).", optimizationMaxError, optimizationMaxErrorRatio, mMaxOptimizationError));
 					}
 					else
 					{
@@ -1158,6 +1169,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			final int rejected,
 			final float rehearsalValue,
 			final float optimizationMaxError,
+			final float optimizationMaxErrorRatio,
 			final float distanceTravelled,
 			final int fastMovement,
 			final float x,
@@ -1238,7 +1250,7 @@ public class RTABMapActivity extends Activity implements OnClickListener, OnItem
 			
 		runOnUiThread(new Runnable() {
 				public void run() {
-					updateStatsUI(loopClosureId, inliers, matches, rejected, optimizationMaxError, fastMovement!=0, statusTexts);
+					updateStatsUI(loopClosureId, inliers, matches, rejected, optimizationMaxError, optimizationMaxErrorRatio, fastMovement!=0, statusTexts);
 				} 
 		});
 	}

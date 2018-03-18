@@ -91,7 +91,7 @@
     <string name="pref_key_min_inliers">pref_key_min_inliers</string>
     <string name="pref_default_min_inliers">25</string>
     <string name="pref_key_opt_error">pref_key_opt_error</string>
-    <string name="pref_default_opt_error">0.1</string>
+    <string name="pref_default_opt_error">2</string>
     <string name="pref_key_features_voc">pref_key_features_voc</string>
     <string name="pref_default_features_voc">200</string>
     <string name="pref_key_features">pref_key_features</string>
@@ -333,7 +333,7 @@
     <string name="pref_title_min_inliers">Min Inliers</string>
     <string name="pref_summary_min_inliers">Minimum visual inliers to accept a loop closure.</string>
     <string name="pref_title_opt_error">Max Optimization Error</string>
-    <string name="pref_summary_opt_error">Reject any loop closures causing error corrections in the map higher than this threshold.</string>
+    <string name="pref_summary_opt_error">Reject any loop closures causing error corrections in the map higher than this factor of the link\'s variance.</string>
     <string name="pref_title_features_voc">Max Features Extracted (Vocabulary)</string>
     <string name="pref_summary_features_voc">Extracting more features per image would result in better loop closure hypotheses but more processing time is required.</string>
     <string name="pref_title_features">Max Features Extracted (Loop Closure)</string>
@@ -494,25 +494,29 @@
         <item>"10"</item>
     </string-array>
     <string-array name="pref_opt_error_keys">
-        <item>"1.0 m"</item>
-        <item>"0.5 m"</item>
-        <item>"0.35 m"</item>
-        <item>"0.2 m"</item>
-        <item>"0.1 m"</item>
-        <item>"0.05 m"</item>
-        <item>"0.025 m"</item>
-        <item>"0.01 m"</item>
+        <item>"10x"</item>
+        <item>"9x"</item>
+        <item>"8x"</item>
+        <item>"7x"</item>
+        <item>"6x"</item>
+        <item>"5x"</item>
+        <item>"4x"</item>
+        <item>"3x"</item>
+        <item>"2x"</item>
+        <item>"1x"</item>
         <item>"Disabled"</item>
     </string-array>
     <string-array name="pref_opt_error_values">
-        <item>"1.0"</item>
-        <item>"0.5"</item>
-        <item>"0.35"</item>
-        <item>"0.2"</item>
-        <item>"0.1"</item>
-        <item>"0.05"</item>
-        <item>"0.025"</item>
-        <item>"0.01"</item>
+        <item>"10"</item>
+        <item>"9"</item>
+        <item>"8"</item>
+        <item>"7"</item>
+        <item>"6"</item>
+        <item>"5"</item>
+        <item>"4"</item>
+        <item>"3"</item>
+        <item>"2"</item>
+        <item>"1"</item>
         <item>"0"</item>
     </string-array>
     <string-array name="pref_features_voc_keys">

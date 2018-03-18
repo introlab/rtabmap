@@ -95,7 +95,7 @@ rtabmap::ParametersMap RTABMapApp::getRtabmapParameters()
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeFromGraphEnd(), std::string("true")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisMinInliers(), std::string("25")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kVisEstimationType(), std::string("0"))); // 0=3D-3D 1=PnP
-	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("0.1")));
+	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDOptimizeMaxError(), std::string("1")));
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityPathMaxNeighbors(), std::string("0"))); // disable scan matching to merged nodes
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDProximityBySpace(), std::string("false"))); // just keep loop closure detection
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDLinearUpdate(), std::string("0.05")));
@@ -3305,6 +3305,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopVisual_matches(), uValue(stats.data(), rtabmap::Statistics::kLoopVisual_matches(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopRejectedHypothesis(), uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopOptimization_max_error(), uValue(stats.data(), rtabmap::Statistics::kLoopOptimization_max_error(), 0.0f)));
+			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopOptimization_max_error_ratio(), uValue(stats.data(), rtabmap::Statistics::kLoopOptimization_max_error_ratio(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryRehearsal_sim(), uValue(stats.data(), rtabmap::Statistics::kMemoryRehearsal_sim(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kLoopHighest_hypothesis_value(), uValue(stats.data(), rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f)));
 			uInsert(bufferedStatsData_, std::make_pair<std::string, float>(rtabmap::Statistics::kMemoryDistance_travelled(), uValue(stats.data(), rtabmap::Statistics::kMemoryDistance_travelled(), 0.0f)));
@@ -3322,6 +3323,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 		int matches = (int)uValue(bufferedStatsData_, rtabmap::Statistics::kLoopVisual_matches(), 0.0f);
 		int rejected = (int)uValue(bufferedStatsData_, rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
 		float optimizationMaxError = uValue(bufferedStatsData_, rtabmap::Statistics::kLoopOptimization_max_error(), 0.0f);
+		float optimizationMaxErrorRatio = uValue(bufferedStatsData_, rtabmap::Statistics::kLoopOptimization_max_error_ratio(), 0.0f);
 		float rehearsalValue = uValue(bufferedStatsData_, rtabmap::Statistics::kMemoryRehearsal_sim(), 0.0f);
 		float hypothesis = uValue(bufferedStatsData_, rtabmap::Statistics::kLoopHighest_hypothesis_value(), 0.0f);
 		float distanceTravelled = uValue(bufferedStatsData_, rtabmap::Statistics::kMemoryDistance_travelled(), 0.0f);
@@ -3345,7 +3347,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 				jclass clazz = env->GetObjectClass(RTABMapActivity);
 				if(clazz)
 				{
-					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIFIFIFFFIFFFFFF)V" );
+					jmethodID methodID = env->GetMethodID(clazz, "updateStatsCallback", "(IIIIFIIIIIIFIFIFFFFIFFFFFF)V" );
 					if(methodID)
 					{
 						env->CallVoidMethod(RTABMapActivity, methodID,
@@ -3366,6 +3368,7 @@ bool RTABMapApp::handleEvent(UEvent * event)
 								rejected,
 								rehearsalValue,
 								optimizationMaxError,
+								optimizationMaxErrorRatio,
 								distanceTravelled,
 								fastMovement,
 								x,

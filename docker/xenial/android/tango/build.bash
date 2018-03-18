@@ -11,7 +11,7 @@ prefix=$1
 git clone https://github.com/introlab/rtabmap.git rtabmap-tango
 
 # tango
-wget https://developers.google.com/tango/downloads/TangoSDK_Ikariotikos_C.zip
+wget 'https://docs.google.com/uc?authuser=0&id=12rHHkYM5k-UnQn-xGXs9JqYWhSXrgJr3&export=download' -O TangoSDK_Ikariotikos_C.zip
 unzip -qq TangoSDK_Ikariotikos_C.zip
 rm TangoSDK_Ikariotikos_C.zip
 cp -r lib_tango_client_api/include/* $prefix/armeabi-v7a/include/.
@@ -19,7 +19,7 @@ cp -r lib_tango_client_api/include/* $prefix/arm64-v8a/include/.
 cp -r lib_tango_client_api/lib/armeabi-v7a/* $prefix/armeabi-v7a/lib/.
 cp -r lib_tango_client_api/lib/arm64-v8a/* $prefix/arm64-v8a/lib/.
 rm -r lib_tango_client_api
-wget https://developers.google.com/tango/downloads/TangoSupport_Ikariotikos_C.zip
+wget 'https://docs.google.com/uc?authuser=0&id=1AqVuEVu5284X6OgrGWu12VTrx4pY99Jb&export=download' -O TangoSupport_Ikariotikos_C.zip
 unzip -qq TangoSupport_Ikariotikos_C.zip
 rm TangoSupport_Ikariotikos_C.zip
 cp -r lib_tango_support_api/include/* $prefix/armeabi-v7a/include/.
@@ -28,7 +28,7 @@ cp -r lib_tango_support_api/lib/armeabi-v7a/* $prefix/armeabi-v7a/lib/.
 cp -r lib_tango_support_api/lib/arm64-v8a/* $prefix/arm64-v8a/lib/.
 cp -r lib_tango_support_api/lib/* rtabmap-tango/app/android/jni/third-party/lib/.
 rm -r lib_tango_support_api
-wget https://developers.google.com/tango/downloads/TangoSDK_Ikariotikos_Java.jar
+wget 'https://docs.google.com/uc?authuser=0&id=1s5iPJ7xiridj9Jj--gCy2XiQFniheVm6&export=download' -O TangoSDK_Ikariotikos_Java.jar
 mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 
 # resource tool
