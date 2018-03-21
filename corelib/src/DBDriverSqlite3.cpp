@@ -4328,8 +4328,10 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 			}
 			else
 			{
+				UDEBUG("Cloud points=%d", cloud.cols);
 				compressedCloud	= compressData2(cloud);
 			}
+			UDEBUG("Cloud compressed bytes=%d", compressedCloud.cols);
 			rc = sqlite3_bind_blob(ppStmt, index++, compressedCloud.data, compressedCloud.cols, SQLITE_STATIC);
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
@@ -4392,6 +4394,7 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 				UASSERT(texCoords.empty() || polygons.size() == texCoords.size());
 				for(unsigned int t=0; t<polygons.size(); ++t)
 				{
+					UDEBUG("t=%d, polygons=%d", t, (int)polygons[t].size());
 					unsigned int materialPolygonIndices = 0;
 					for(unsigned int p=0; p<polygons[t].size(); ++p)
 					{
@@ -4446,6 +4449,7 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 					}
 				}
 
+				UDEBUG("serializedPolygons=%d", (int)serializedPolygons.size());
 				compressedPolygons = compressData2(cv::Mat(1,serializedPolygons.size(), CV_32SC1, serializedPolygons.data()));
 
 				// polygon size
@@ -4467,6 +4471,7 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 				}
 				else
 				{
+					UDEBUG("serializedTexCoords=%d", (int)serializedTexCoords.size());
 					compressedTexCoords = compressData2(cv::Mat(1,serializedTexCoords.size(), CV_32FC1, serializedTexCoords.data()));
 					rc = sqlite3_bind_blob(ppStmt, index++, compressedTexCoords.data, compressedTexCoords.cols, SQLITE_STATIC);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
