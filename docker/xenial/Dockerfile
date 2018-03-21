@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
       cmake \
       libproj-dev \
       libqt5svg5-dev \
+      libfreenect-dev \
+      libopenni2-dev \
       software-properties-common
 
 # Clone source code
