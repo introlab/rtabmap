@@ -121,7 +121,13 @@ Memory::Memory(const ParametersMap & parameters) :
 	float corRatio = Parameters::defaultIcpCorrespondenceRatio();
 	Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), corRatio);
 	ParametersMap paramsMulti = parameters;
-	paramsMulti.insert(ParametersPair(Parameters::kIcpCorrespondenceRatio(), uNumber2Str(corRatio*2.0f)));
+	paramsMulti.insert(ParametersPair(Parameters::kIcpCorrespondenceRatio(), uNumber2Str(corRatio>=0.5f?1.0f:corRatio*2.0f)));
+	if(corRatio >= 0.5)
+	{
+		UWARN(	"%s is >=0.5, which sets correspondence ratio for proximity detection using "
+			"laser scans to 100% (2 x Ratio). You may lower the ratio to accept proximity "
+			"detection with not full scans overlapping.");
+	}
 	_registrationIcpMulti = new RegistrationIcp(paramsMulti);
 
 	_occupancy = new OccupancyGrid(parameters);
@@ -570,11 +576,16 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		if(uContains(params, Parameters::kIcpCorrespondenceRatio()))
 		{
 			// for local scan matching, correspondences ratio should be two times higher as we expect more matches
-			// for local scan matching, correspondences ratio should be two times higher as we expect more matches
 			float corRatio = Parameters::defaultIcpCorrespondenceRatio();
 			Parameters::parse(parameters, Parameters::kIcpCorrespondenceRatio(), corRatio);
 			ParametersMap paramsMulti = params;
-			paramsMulti.at(Parameters::kIcpCorrespondenceRatio()) = uNumber2Str(corRatio*2.0f);
+			paramsMulti.insert(ParametersPair(Parameters::kIcpCorrespondenceRatio(), uNumber2Str(corRatio>=0.5f?1.0f:corRatio*2.0f)));
+			if(corRatio >= 0.5)
+			{
+				UWARN(	"%s is >=0.5, which sets correspondence ratio for proximity detection using "
+					"laser scans to 100% (2 x Ratio). You may lower the ratio to accept proximity "
+					"detection with not full scans overlapping.");
+			}
 			_registrationIcpMulti->parseParameters(paramsMulti);
 		}
 		else
