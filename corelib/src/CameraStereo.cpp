@@ -1147,7 +1147,7 @@ bool CameraStereoImages::init(const std::string & calibrationFolder, const std::
 	// look for calibration files
 	if(!calibrationFolder.empty() && !cameraName.empty())
 	{
-		if(!stereoModel_.load(calibrationFolder, cameraName, false))
+		if(!stereoModel_.load(calibrationFolder, cameraName, false) && !stereoModel_.isValidForProjection())
 		{
 			UWARN("Missing calibration files for camera \"%s\" in \"%s\" folder, you should calibrate the camera!",
 					cameraName.c_str(), calibrationFolder.c_str());
