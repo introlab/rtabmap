@@ -375,13 +375,13 @@ int main(int argc, char * argv[])
 					std::string nanoseconds = s.substr(s.size() - 9, 9);
 					std::string seconds = s.substr(0, s.size() - 9);
 
-					Eigen::Vector3d gyr;
+					cv::Vec3d gyr;
 					for (int j = 0; j < 3; ++j) {
 						std::getline(stream, s, ',');
 						gyr[j] = std::stof(s);
 					}
 
-					Eigen::Vector3d acc;
+					cv::Vec3d acc;
 					for (int j = 0; j < 3; ++j) {
 						std::getline(stream, s, ',');
 						acc[j] = std::stof(s);

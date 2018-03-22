@@ -200,7 +200,9 @@ Transform OdometryOkvis::computeTransform(
 				data.imu().angularVelocity()[2]);
 		if(okvisEstimator_ != 0)
 		{
-			imuUpdated = okvisEstimator_->addImuMeasurement(timeOkvis, data.imu().linearAcceleration(), data.imu().angularVelocity());
+			Eigen::Vector3d acc(data.imu().linearAcceleration()[0], data.imu().linearAcceleration()[1], data.imu().linearAcceleration()[2]);
+			Eigen::Vector3d ang(data.imu().angularVelocity()[0], data.imu().angularVelocity()[1], data.imu().angularVelocity()[2]);
+			imuUpdated = okvisEstimator_->addImuMeasurement(timeOkvis, acc, ang);
 		}
 		else
 		{
