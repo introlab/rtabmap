@@ -130,10 +130,8 @@ OdometryOkvis::OdometryOkvis(const ParametersMap & parameters) :
 	Odometry(parameters),
 #ifdef RTABMAP_OKVIS
 	okvisCallbackHandler_(new OkvisCallbackHandler),
-#else
-	okvisCallbackHandler_(0),
-#endif
 	okvisEstimator_(0),
+#endif
 	okvisParameters_(parameters),
 	imagesProcessed_(0)
 {

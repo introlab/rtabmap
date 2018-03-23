@@ -52,8 +52,10 @@ private:
 
 private:
 	std::string configFilename_;
+#ifdef RTABMAP_OKVIS
 	OkvisCallbackHandler * okvisCallbackHandler_;
 	okvis::ThreadedKFVio * okvisEstimator_;
+#endif
 	ParametersMap okvisParameters_;
 	IMU lastImu_; // only used for initialization
 	int imagesProcessed_;
