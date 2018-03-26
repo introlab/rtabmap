@@ -126,7 +126,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	{
 		UWARN(	"%s is >=0.5, which sets correspondence ratio for proximity detection using "
 			"laser scans to 100% (2 x Ratio). You may lower the ratio to accept proximity "
-			"detection with not full scans overlapping.");
+			"detection with not full scans overlapping.", Parameters::kIcpCorrespondenceRatio().c_str());
 	}
 	_registrationIcpMulti = new RegistrationIcp(paramsMulti);
 
@@ -584,7 +584,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 			{
 				UWARN(	"%s is >=0.5, which sets correspondence ratio for proximity detection using "
 					"laser scans to 100% (2 x Ratio). You may lower the ratio to accept proximity "
-					"detection with not full scans overlapping.");
+					"detection with not full scans overlapping.", Parameters::kIcpCorrespondenceRatio().c_str());
 			}
 			_registrationIcpMulti->parseParameters(paramsMulti);
 		}

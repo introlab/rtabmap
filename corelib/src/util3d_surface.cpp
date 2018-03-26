@@ -640,6 +640,11 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 				cam.depth = cv::Mat(depthIter->second, cv::Range(0, depthIter->second.rows), cv::Range(subWidth*i, subWidth*(i+1)));
 			}
 
+			UWARN("%f", cam.focal_length);
+			UWARN("%f", cam.height);
+			UWARN("%f", cam.width);
+			UWARN("cam.pose=%s", t.prettyPrint().c_str());
+
 			cameras.push_back(cam);
 		}
 	}
@@ -1990,7 +1995,7 @@ cv::Mat mergeTextures(
 			}
 		}
 	}
-	UDEBUG("globalTextures=%d", globalTextures.cols / globalTextures.rows);
+	UDEBUG("globalTextures=%d", globalTextures.cols?globalTextures.cols / globalTextures.rows:0);
 	return globalTextures;
 }
 

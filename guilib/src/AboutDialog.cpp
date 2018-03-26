@@ -73,6 +73,12 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_cputsdf->setText("No");
 	_ui->label_cputsdf_license->setEnabled(false);
 #endif
+#ifdef RTABMAP_OPENCHISEL
+	_ui->label_openchisel->setText("Yes");
+#else
+	_ui->label_openchisel->setText("No");
+#endif
+
 	_ui->label_freenect->setText(CameraFreenect::available()?"Yes":"No");
 	_ui->label_freenect_license->setEnabled(CameraFreenect::available());
 	_ui->label_openni2->setText(CameraOpenNI2::available()?"Yes":"No");
