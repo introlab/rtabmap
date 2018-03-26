@@ -10,6 +10,7 @@ modification, are permitted provided that the following conditions are met:
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
     * Neither the name of the Universite de Sherbrooke nor the
+
       names of its contributors may be used to endorse or promote products
       derived from this software without specific prior written permission.
 
@@ -378,16 +379,16 @@ int main(int argc, char * argv[])
 					cv::Vec3d gyr;
 					for (int j = 0; j < 3; ++j) {
 						std::getline(stream, s, ',');
-						gyr[j] = std::stof(s);
+						gyr[j] = uStr2Double(s);
 					}
 
 					cv::Vec3d acc;
 					for (int j = 0; j < 3; ++j) {
 						std::getline(stream, s, ',');
-						acc[j] = std::stof(s);
+						acc[j] = uStr2Double(s);
 					}
 
-					t_imu = double(std::stoi(seconds)) + double(std::stoi(nanoseconds))*1e-9;
+					t_imu = double(uStr2Int(seconds)) + double(uStr2Int(nanoseconds))*1e-9;
 
 					if (t_imu - start + 1 > 0) {
 						SensorData dataImu(IMU(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), baseToImu), 0, t_imu);
