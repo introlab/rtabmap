@@ -395,7 +395,7 @@ IF(WITH_CPUTSDF)
 ENDIF(WITH_CPUTSDF)
 
 IF(WITH_OPENCHISEL)
-    find_package(open_chisel)
+    find_package(open_chisel QUIET)
     if(open_chisel_FOUND)
         MESSAGE(STATUS "Found open_chisel: ${open_chisel_INCLUDE_DIRS}")
     endif(open_chisel_FOUND)
