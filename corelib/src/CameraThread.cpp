@@ -325,7 +325,7 @@ void CameraThread::postUpdate(SensorData * dataPtr, CameraInfo * info) const
 		!data.depthRaw().empty())
 	{
 		UDEBUG("");
-		if(data.laserScanRaw().size())
+		if(data.laserScanRaw().isEmpty())
 		{
 			UASSERT(_scanDecimation >= 1);
 			UTimer timer;
