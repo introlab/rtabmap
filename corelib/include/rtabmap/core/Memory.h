@@ -95,9 +95,12 @@ public:
 	void saveStatistics(const Statistics & statistics);
 	void savePreviewImage(const cv::Mat & image) const;
 	cv::Mat loadPreviewImage() const;
+	void saveOptimizedPoses(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
+	std::map<int, Transform> loadOptimizedPoses(Transform * lastlocalizationPose) const;
+	void save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSize) const;
+	cv::Mat load2DMap(float & xMin, float & yMin, float & cellSize) const;
 	void saveOptimizedMesh(
 			const cv::Mat & cloud,
-			const std::map<int, Transform> & poses = std::map<int, Transform>(), // if we want to do localization afterward using optimized mesh
 			const std::vector<std::vector<std::vector<unsigned int> > > & polygons = std::vector<std::vector<std::vector<unsigned int> > >(),      // Textures -> polygons -> vertices
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords = std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > >(), // Textures -> uv coords for each vertex of the polygons
@@ -106,7 +109,6 @@ public:
 #endif
 			const cv::Mat & textures = cv::Mat()) const; // concatenated textures (assuming square textures with all same size)
 	cv::Mat loadOptimizedMesh(
-			std::map<int, Transform> * poses = 0,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons = 0,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords = 0,

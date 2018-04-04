@@ -197,6 +197,24 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	}
 }
 
+void OccupancyGrid::setMap(const cv::Mat & map, float xMin, float yMin, float cellSize, const std::map<int, Transform> & poses)
+{
+	UDEBUG("map=%d/%d xMin=%f yMin=%f cellSize=%f poses=%d",
+			map.cols, map.rows, xMin, yMin, cellSize, (int)poses.size());
+	this->clear();
+	if(!poses.empty() && !map.empty())
+	{
+		UASSERT(cellSize > 0.0f);
+		UASSERT(map.type() == CV_8SC1);
+		map_ = map.clone();
+		mapInfo_ = cv::Mat::zeros(map.size(), CV_32FC3);
+		xMin_ = xMin;
+		yMin_ = yMin;
+		cellSize_ = cellSize;
+		addedNodes_ = poses;
+	}
+}
+
 void OccupancyGrid::setCellSize(float cellSize)
 {
 	UASSERT_MSG(cellSize > 0.0f, uFormat("Param name is \"%s\"", Parameters::kGridCellSize().c_str()).c_str());

@@ -336,6 +336,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(RGBD, NewMapOdomChangeDistance, float, 0,    "A new map is created if a change of odometry translation greater than X m is detected (0 m = disabled).");
     RTABMAP_PARAM(RGBD, OptimizeFromGraphEnd,     bool, false, "Optimize graph from the newest node. If false, the graph is optimized from the oldest node of the current graph (this adds an overhead computation to detect to oldest node of the current graph, but it can be useful to preserve the map referential from the oldest node). Warning when set to false: when some nodes are transferred, the first referential of the local map may change, resulting in momentary changes in robot/map position (which are annoying in teleoperation).");
     RTABMAP_PARAM(RGBD, OptimizeMaxError,         float, 1.0,   uFormat("Reject loop closures if optimization error ratio is greater than this value (0=disabled). Ratio is computed as absolute error over standard deviation of each link. This will help to detect when a wrong loop closure is added to the graph. Not compatible with \"%s\" if enabled.", kOptimizerRobust().c_str()));
+    RTABMAP_PARAM(RGBD, SavedLocalizationIgnored, bool, false, "Ignore last saved localization pose from previous session. If true, RTAB-Map won't assume it is restarting from the same place than where it shut down previously.");
     RTABMAP_PARAM(RGBD, GoalReachedRadius,        float, 0.5,  "Goal reached radius (m).");
     RTABMAP_PARAM(RGBD, PlanStuckIterations,      int, 0,      "Mark the current goal node on the path as unreachable if it is not updated after X iterations (0=disabled). If all upcoming nodes on the path are unreachabled, the plan fails.");
     RTABMAP_PARAM(RGBD, PlanLinearVelocity,       float, 0,    "Linear velocity (m/sec) used to compute path weights.");
@@ -550,11 +551,19 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Icp, MaxRotation,               float, 0.78,  "Maximum ICP rotation correction accepted (rad).");
     RTABMAP_PARAM(Icp, VoxelSize,                 float, 0.0,   "Uniform sampling voxel size (0=disabled).");
     RTABMAP_PARAM(Icp, DownsamplingStep,          int, 1,       "Downsampling step size (1=no sampling). This is done before uniform sampling.");
+#ifdef RTABMAP_POINTMATCHER
     RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.1,   "Max distance for point correspondences.");
+#else
+    RTABMAP_PARAM(Icp, MaxCorrespondenceDistance, float, 0.05,  "Max distance for point correspondences.");
+#endif
     RTABMAP_PARAM(Icp, Iterations,                int, 30,      "Max iterations.");
     RTABMAP_PARAM(Icp, Epsilon,                   float, 0,     "Set the transformation epsilon (maximum allowable difference between two consecutive transformations) in order for an optimization to be considered as having converged to the final solution.");
     RTABMAP_PARAM(Icp, CorrespondenceRatio,       float, 0.1,   "Ratio of matching correspondences to accept the transform.");
+#ifdef RTABMAP_POINTMATCHER
+    RTABMAP_PARAM(Icp, PointToPlane,              bool, true,   "Use point to plane ICP.");
+#else
     RTABMAP_PARAM(Icp, PointToPlane,              bool, false,  "Use point to plane ICP.");
+#endif
     RTABMAP_PARAM(Icp, PointToPlaneK,             int, 5,       "Number of neighbors to compute normals for point to plane if the cloud doesn't have already normals.");
     RTABMAP_PARAM(Icp, PointToPlaneRadius,        float, 1.0,   "Search radius to compute normals for point to plane if the cloud doesn't have already normals.");
     RTABMAP_PARAM(Icp, PointToPlaneMinComplexity, float, 0.02,  "Minimum structural complexity (0.0=low, 1.0=high) of the scan to do point to plane registration, otherwise point to point registration is done instead.");

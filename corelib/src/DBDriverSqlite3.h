@@ -101,9 +101,12 @@ private:
 	virtual void addStatisticsQuery(const Statistics & statistics) const;
 	virtual void savePreviewImageQuery(const cv::Mat & image) const;
 	virtual cv::Mat loadPreviewImageQuery() const;
+	virtual void saveOptimizedPosesQuery(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const;
+	virtual std::map<int, Transform> loadOptimizedPosesQuery(Transform * lastlocalizationPose) const;
+	virtual void save2DMapQuery(const cv::Mat & map, float xMin, float yMin, float cellSize) const;
+	virtual cv::Mat load2DMapQuery(float & xMin, float & yMin, float & cellSize) const;
 	virtual void saveOptimizedMeshQuery(
 			const cv::Mat & cloud,
-			const std::map<int, Transform> & poses,
 			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
@@ -112,7 +115,6 @@ private:
 #endif
 			const cv::Mat & textures) const;
 	virtual cv::Mat loadOptimizedMeshQuery(
-			std::map<int, Transform> * poses,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,

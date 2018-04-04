@@ -235,8 +235,6 @@ class RTABMapApp : public UEventsHandler {
   bool exportedMeshUpdated_;
   pcl::TextureMesh::Ptr optMesh_;
   cv::Mat optTexture_;
-  int optRefId_;
-  rtabmap::Transform * optRefPose_; // App crashes when loading native library if not dynamic
 
   // main_scene_ includes all drawable object for visualizing Tango device's
   // movement and point cloud.

@@ -1931,8 +1931,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 			_odometryReceived = false;
 
-			_odometryCorrection = stat.mapCorrection();
-
 			UDEBUG("time= %d ms", time.restart());
 
 			for(std::map<std::string, float>::iterator iter=updateCloudSats.begin(); iter!=updateCloudSats.end(); ++iter)
@@ -1940,6 +1938,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				_ui->statsToolBox->updateStat(iter->first.c_str(), _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), int(iter->second), _preferencesDialog->isCacheSavedInFigures());
 			}
 		}
+		_odometryCorrection = stat.mapCorrection();
 
 		if( _ui->graphicsView_graphView->isVisible())
 		{

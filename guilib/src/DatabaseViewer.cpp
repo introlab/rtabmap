@@ -246,6 +246,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionPoses_KML, SIGNAL(triggered()), this , SLOT(exportPosesKML()));
 	connect(ui_->actionGPS_TXT, SIGNAL(triggered()), this , SLOT(exportGPS_TXT()));
 	connect(ui_->actionGPS_KML, SIGNAL(triggered()), this , SLOT(exportGPS_KML()));
+	connect(ui_->actionExport_saved_2D_map, SIGNAL(triggered()), this , SLOT(exportSaved2DMap()));
+	connect(ui_->actionImport_2D_map, SIGNAL(triggered()), this , SLOT(import2DMap()));
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
@@ -266,9 +268,14 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->pushButton_reset->setEnabled(false);
 	ui_->pushButton_reject->setEnabled(false);
 
+	ui_->menuEdit->setEnabled(false);
+	ui_->actionGenerate_3D_map_pcd->setEnabled(false);
+	ui_->actionExport->setEnabled(false);
+	ui_->actionExtract_images->setEnabled(false);
 	ui_->menuExport_poses->setEnabled(false);
 	ui_->menuExport_GPS->setEnabled(false);
 	ui_->actionPoses_KML->setEnabled(false);
+	ui_->actionExport_saved_2D_map->setEnabled(false);
 
 	ui_->horizontalSlider_A->setTracking(false);
 	ui_->horizontalSlider_B->setTracking(false);
@@ -922,9 +929,15 @@ bool DatabaseViewer::closeDatabase()
 		generatedLocalMapsInfo_.clear();
 		ui_->graphViewer->clearAll();
 		occupancyGridViewer_->clear();
+		ui_->menuEdit->setEnabled(false);
+		ui_->actionGenerate_3D_map_pcd->setEnabled(false);
+		ui_->actionExport->setEnabled(false);
+		ui_->actionExtract_images->setEnabled(false);
 		ui_->menuExport_poses->setEnabled(false);
 		ui_->menuExport_GPS->setEnabled(false);
 		ui_->actionPoses_KML->setEnabled(false);
+		ui_->actionExport_saved_2D_map->setEnabled(false);
+		ui_->actionImport_2D_map->setEnabled(false);
 		ui_->checkBox_showOptimized->setEnabled(false);
 		ui_->toolBox_statistics->clear();
 		databaseFileName_.clear();
@@ -1456,8 +1469,15 @@ void DatabaseViewer::updateIds()
 	ui_->label_ignoreINtermediateNdoes->setVisible(false);
 	ui_->label_alignPosesWithGroundTruth->setVisible(false);
 	ui_->label_alignScansCloudsWithGroundTruth->setVisible(false);
+	ui_->menuEdit->setEnabled(true);
+	ui_->actionGenerate_3D_map_pcd->setEnabled(true);
+	ui_->actionExport->setEnabled(true);
+	ui_->actionExtract_images->setEnabled(true);
+	ui_->menuExport_poses->setEnabled(false);
 	ui_->menuExport_GPS->setEnabled(false);
 	ui_->actionPoses_KML->setEnabled(false);
+	ui_->actionExport_saved_2D_map->setEnabled(false);
+	ui_->actionImport_2D_map->setEnabled(false);
 	links_.clear();
 	linksAdded_.clear();
 	linksRefined_.clear();
@@ -1617,6 +1637,11 @@ void DatabaseViewer::updateIds()
 		ui_->menuExport_GPS->setEnabled(true);
 		ui_->actionPoses_KML->setEnabled(groundTruthPoses_.empty());
 	}
+
+	float xMin, yMin, cellSize;
+	bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
+	ui_->actionExport_saved_2D_map->setEnabled(hasMap);
+	ui_->actionImport_2D_map->setEnabled(hasMap);
 
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)odomPoses_.size(), (int)links_.size());
 
@@ -2313,6 +2338,81 @@ void DatabaseViewer::exportGPS(int format)
 						tr("Export poses..."),
 						tr("Failed to save GPS coordinates to \"%1\"!")
 						.arg(path));
+			}
+		}
+	}
+}
+
+void DatabaseViewer::exportSaved2DMap()
+{
+	if(!dbDriver_)
+	{
+		QMessageBox::warning(this, tr("Cannot export 2D map"), tr("A database must must loaded first...\nUse File->Open database."));
+		return;
+	}
+
+	float xMin, yMin, cellSize;
+	cv::Mat map = dbDriver_->load2DMap(xMin, yMin, cellSize);
+	if(map.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot export 2D map"), tr("The database doesn't contain a saved 2D map."));
+	}
+	else
+	{
+		cv::Mat map8U = rtabmap::util3d::convertMap2Image8U(map, true);
+		QString name = QFileInfo(databaseFileName_.c_str()).baseName();
+		QString path = QFileDialog::getSaveFileName(
+				this,
+				tr("Save File"),
+				pathDatabase_+"/" + name + ".pgm",
+				tr("Map (*.pgm)"));
+
+		if(!path.isEmpty())
+		{
+			if(QFileInfo(path).suffix() == "")
+			{
+				path += ".pgm";
+			}
+			cv::imwrite(path.toStdString(), map8U);
+			QMessageBox::information(this, tr("Export 2D map"), tr("Exported %1!").arg(path));
+		}
+	}
+}
+
+void DatabaseViewer::import2DMap()
+{
+	if(!dbDriver_)
+	{
+		QMessageBox::warning(this, tr("Cannot import 2D map"), tr("A database must must loaded first...\nUse File->Open database."));
+		return;
+	}
+
+	float xMin, yMin, cellSize;
+	cv::Mat mapOrg = dbDriver_->load2DMap(xMin, yMin, cellSize);
+	if(mapOrg.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot import 2D map"), tr("The database doesn't contain a saved 2D map."));
+	}
+	else
+	{
+		QString path = QFileDialog::getOpenFileName(
+						this,
+						tr("Open File"),
+						pathDatabase_,
+						tr("Map (*.pgm)"));
+		if(!path.isEmpty())
+		{
+			cv::Mat map8U = cv::imread(path.toStdString(), cv::IMREAD_UNCHANGED);
+			cv::Mat map = rtabmap::util3d::convertImage8U2Map(map8U, true);
+
+			if(mapOrg.cols == map.cols && mapOrg.rows == map8U.rows)
+			{
+				dbDriver_->save2DMap(map, xMin, yMin, cellSize);
+				QMessageBox::information(this, tr("Import 2D map"), tr("Imported %1!").arg(path));
+			}
+			else
+			{
+				QMessageBox::warning(this, tr("Import 2D map"), tr("Cannot import %1 as its size doesn't match the current saved map. Import 2D Map action should only be used to modify the map saved in the database.").arg(path));
 			}
 		}
 	}

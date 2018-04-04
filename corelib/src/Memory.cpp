@@ -361,7 +361,7 @@ void Memory::close(bool databaseSaved, bool postInitClosingEvents, const std::st
 	if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(RtabmapEventInit::kClosing));
 
 	bool databaseNameChanged = false;
-	if(databaseSaved)
+	if(databaseSaved && _dbDriver)
 	{
 		databaseNameChanged = ouputDatabasePath.size() && _dbDriver->getUrl().size() && _dbDriver->getUrl().compare(ouputDatabasePath) != 0?true:false;
 	}
@@ -1756,9 +1756,42 @@ cv::Mat Memory::loadPreviewImage() const
 	return cv::Mat();
 }
 
+void Memory::saveOptimizedPoses(const std::map<int, Transform> & optimizedPoses, const Transform & lastlocalizationPose) const
+{
+	if(_dbDriver)
+	{
+		_dbDriver->saveOptimizedPoses(optimizedPoses, lastlocalizationPose);
+	}
+}
+
+std::map<int, Transform> Memory::loadOptimizedPoses(Transform * lastlocalizationPose) const
+{
+	if(_dbDriver)
+	{
+		return _dbDriver->loadOptimizedPoses(lastlocalizationPose);
+	}
+	return std::map<int, Transform>();
+}
+
+void Memory::save2DMap(const cv::Mat & map, float xMin, float yMin, float cellSize) const
+{
+	if(_dbDriver)
+	{
+		_dbDriver->save2DMap(map, xMin, yMin, cellSize);
+	}
+}
+
+cv::Mat Memory::load2DMap(float & xMin, float & yMin, float & cellSize) const
+{
+	if(_dbDriver)
+	{
+		return _dbDriver->load2DMap(xMin, yMin, cellSize);
+	}
+	return cv::Mat();
+}
+
 void Memory::saveOptimizedMesh(
 		const cv::Mat & cloud,
-		const std::map<int, Transform> & poses,
 		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 		const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
@@ -1769,12 +1802,11 @@ void Memory::saveOptimizedMesh(
 {
 	if(_dbDriver)
 	{
-		_dbDriver->saveOptimizedMesh(cloud, poses, polygons, texCoords, textures);
+		_dbDriver->saveOptimizedMesh(cloud, polygons, texCoords, textures);
 	}
 }
 
 cv::Mat Memory::loadOptimizedMesh(
-			std::map<int, Transform> * poses,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
@@ -1785,7 +1817,7 @@ cv::Mat Memory::loadOptimizedMesh(
 {
 	if(_dbDriver)
 	{
-		return _dbDriver->loadOptimizedMesh(poses, polygons, texCoords, textures);
+		return _dbDriver->loadOptimizedMesh(polygons, texCoords, textures);
 	}
 	return cv::Mat();
 }

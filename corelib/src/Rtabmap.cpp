@@ -121,6 +121,7 @@ Rtabmap::Rtabmap() :
 	_pathStuckIterations(Parameters::defaultRGBDPlanStuckIterations()),
 	_pathLinearVelocity(Parameters::defaultRGBDPlanLinearVelocity()),
 	_pathAngularVelocity(Parameters::defaultRGBDPlanAngularVelocity()),
+	_savedLocalizationIgnored(Parameters::defaultRGBDSavedLocalizationIgnored()),
 	_loopClosureHypothesis(0,0.0f),
 	_highestHypothesis(0,0.0f),
 	_lastProcessTime(0.0),
@@ -309,6 +310,19 @@ void Rtabmap::init(const ParametersMap & parameters, const std::string & databas
 	// Parse all parameters
 	this->parseParameters(parameters);
 
+	Transform lastPose;
+	_optimizedPoses = _memory->loadOptimizedPoses(&lastPose);
+	if(_optimizedPoses.size())
+	{
+		if(!_savedLocalizationIgnored)
+		{
+			_lastLocalizationPose = lastPose;
+		}
+		std::map<int, Transform> tmp;
+		// Get just the links
+		_memory->getMetricConstraints(uKeysSet(_optimizedPoses), tmp, _constraints, false);
+	}
+
 	if(_databasePath.empty())
 	{
 		_statisticLogged = false;
@@ -337,11 +351,10 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	_loopClosureHypothesis = std::make_pair(0,0.0f);
 	_lastProcessTime = 0.0;
 	_someNodesHaveBeenTransferred = false;
-	_optimizedPoses.clear();
 	_constraints.clear();
 	_mapCorrection.setIdentity();
 	_mapCorrectionBackup.setNull();
-	_lastLocalizationPose.setNull();
+
 	_lastLocalizationNodeId = 0;
 	_distanceTravelled = 0.0f;
 	this->clearPath(0);
@@ -365,10 +378,14 @@ void Rtabmap::close(bool databaseSaved, const std::string & ouputDatabasePath)
 	}
 	if(_memory)
 	{
+		_memory->saveOptimizedPoses(_optimizedPoses, _lastLocalizationPose);
 		_memory->close(databaseSaved, true, ouputDatabasePath);
 		delete _memory;
 		_memory = 0;
 	}
+	_optimizedPoses.clear();
+	_lastLocalizationPose.setNull();
+
 	if(_bayesFilter)
 	{
 		delete _bayesFilter;
@@ -444,6 +461,7 @@ void Rtabmap::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kRGBDPlanStuckIterations(), _pathStuckIterations);
 	Parameters::parse(parameters, Parameters::kRGBDPlanLinearVelocity(), _pathLinearVelocity);
 	Parameters::parse(parameters, Parameters::kRGBDPlanAngularVelocity(), _pathAngularVelocity);
+	Parameters::parse(parameters, Parameters::kRGBDSavedLocalizationIgnored(), _savedLocalizationIgnored);
 
 	UASSERT(_rgbdLinearUpdate >= 0.0f);
 	UASSERT(_rgbdAngularUpdate >= 0.0f);
@@ -937,10 +955,24 @@ bool Rtabmap::process(
 	bool fakeOdom = false;
 	if(_rgbdSlamMode)
 	{
-		if(!_memory->isIncremental() && !odomPose.isNull() && !_mapCorrectionBackup.isNull())
+		if(!_memory->isIncremental() && !odomPose.isNull())
 		{
-			_mapCorrection = _mapCorrectionBackup;
-			_mapCorrectionBackup.setNull();
+			if(!_mapCorrectionBackup.isNull())
+			{
+				_mapCorrection = _mapCorrectionBackup;
+				_mapCorrectionBackup.setNull();
+			}
+			else if(_optimizedPoses.size() && _mapCorrection.isIdentity() && !_lastLocalizationPose.isNull() && _lastLocalizationNodeId == 0)
+			{
+				// Localization mode, set map->odom so that odom is moved back to last saved localization
+				_mapCorrection = _lastLocalizationPose * odomPose.inverse();
+				_lastLocalizationNodeId = graph::findNearestNode(_optimizedPoses, _lastLocalizationPose);
+				UWARN("Update map correction based on last localization saved in database! correction = %s, nearest id = %d of last pose = %s, odom = %s",
+						_mapCorrection.prettyPrint().c_str(),
+						_lastLocalizationNodeId,
+						_lastLocalizationPose.prettyPrint().c_str(),
+						odomPose.prettyPrint().c_str());
+			}
 		}
 
 		if(odomPose.isNull())

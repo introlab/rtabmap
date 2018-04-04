@@ -114,7 +114,8 @@ void RTABMAP_EXP rayTrace(const cv::Point2i & start,
 		cv::Mat & grid,
 		bool stopOnObstacle);
 
-cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S);
+cv::Mat RTABMAP_EXP convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat = false);
+cv::Mat RTABMAP_EXP convertImage8U2Map(const cv::Mat & map8U, bool pgmFormat = false);
 
 cv::Mat RTABMAP_EXP erodeMap(const cv::Mat & map);
 

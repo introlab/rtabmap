@@ -423,7 +423,7 @@ void RegistrationIcp::parseParameters(const ParametersMap & parameters)
 #ifndef RTABMAP_POINTMATCHER
 	if(_libpointmatcher)
 	{
-		UWARN("Parameter %s is set to true but RTAB-MAp has not been built with libpointmatcher support. Setting to false.", Parameters::kIcpPM().c_str());
+		UWARN("Parameter %s is set to true but RTAB-Map has not been built with libpointmatcher support. Setting to false.", Parameters::kIcpPM().c_str());
 		_libpointmatcher = false;
 	}
 #else

@@ -42,6 +42,7 @@ class RTABMAP_EXP OccupancyGrid
 public:
 	OccupancyGrid(const ParametersMap & parameters = ParametersMap());
 	void parseParameters(const ParametersMap & parameters);
+	void setMap(const cv::Mat & map, float xMin, float yMin, float cellSize, const std::map<int, Transform> & poses);
 	void setCellSize(float cellSize);
 	float getCellSize() const {return cellSize_;}
 	void setCloudAssembling(bool enabled);

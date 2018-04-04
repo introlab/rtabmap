@@ -188,8 +188,6 @@ RTABMapApp::RTABMapApp() :
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
 		optMesh_(new pcl::TextureMesh),
-		optRefId_(0),
-		optRefPose_(0),
 		mapToOdom_(rtabmap::Transform::getIdentity())
 
 {
@@ -321,12 +319,6 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	// Open visualization while we load (if there is an optimized mesh saved in database)
 	optMesh_.reset(new pcl::TextureMesh);
 	optTexture_ = cv::Mat();
-	optRefId_ = 0;
-	if(optRefPose_)
-	{
-		delete optRefPose_;
-		optRefPose_ = 0;
-	}
 	cv::Mat cloudMat;
 	std::vector<std::vector<std::vector<unsigned int> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
@@ -335,25 +327,18 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	std::vector<std::vector<Eigen::Vector2f> > texCoords;
 #endif
 	cv::Mat textures;
-	std::map<int, rtabmap::Transform> optPoses;
 	if(!databaseSource.empty())
 	{
 		UEventsManager::post(new rtabmap::RtabmapEventInit(rtabmap::RtabmapEventInit::kInfo, "Loading optimized cloud/mesh..."));
 		rtabmap::DBDriver * driver = rtabmap::DBDriver::create();
 		if(driver->openConnection(databaseSource))
 		{
-			cloudMat = driver->loadOptimizedMesh(&optPoses, &polygons, &texCoords, &textures);
+			cloudMat = driver->loadOptimizedMesh(&polygons, &texCoords, &textures);
 			if(!cloudMat.empty())
 			{
 				LOGI("Open: Found optimized mesh! Visualizing it.");
 				optMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
 				optTexture_ = textures;
-				if(optPoses.size())
-				{
-					// just take the last as reference
-					optRefId_ = optPoses.rbegin()->first;
-					optRefPose_ = new rtabmap::Transform(optPoses.rbegin()->second);
-				}
 				if(!optTexture_.empty())
 				{
 					LOGI("Open: Texture mesh: %dx%d.", optTexture_.cols, optTexture_.rows);
@@ -1128,12 +1113,6 @@ int RTABMapApp::Render()
 					mapToOdom_ = stats.mapCorrection();
 				}
 
-				std::map<int, rtabmap::Transform>::const_iterator iter = stats.poses().find(optRefId_);
-				if(iter != stats.poses().end() && !iter->second.isNull() && optRefPose_)
-				{
-					// adjust opt mesh pose
-					main_scene_.setCloudPose(g_optMeshId, opengl_world_T_rtabmap_world * iter->second * (*optRefPose_).inverse());
-				}
 				int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
 				int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
 				int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
@@ -2713,7 +2692,7 @@ bool RTABMapApp::exportMesh(
 						}
 						boost::mutex::scoped_lock  lock(rtabmapMutex_);
 
-						rtabmap_->getMemory()->saveOptimizedMesh(cloudMat, poses, polygons);
+						rtabmap_->getMemory()->saveOptimizedMesh(cloudMat, polygons);
 						success = true;
 					}
 				}
@@ -2734,7 +2713,7 @@ bool RTABMapApp::exportMesh(
 						}
 					}
 					boost::mutex::scoped_lock  lock(rtabmapMutex_);
-					rtabmap_->getMemory()->saveOptimizedMesh(cloudMat, poses, polygons, textureMesh->tex_coordinates, globalTextures);
+					rtabmap_->getMemory()->saveOptimizedMesh(cloudMat, polygons, textureMesh->tex_coordinates, globalTextures);
 					success = true;
 				}
 				else
@@ -2857,7 +2836,7 @@ bool RTABMapApp::exportMesh(
 				{
 					cv::Mat cloudMat = rtabmap::compressData2(rtabmap::util3d::laserScanFromPointCloud(*mergedClouds)); // for database
 					boost::mutex::scoped_lock  lock(rtabmapMutex_);
-					rtabmap_->getMemory()->saveOptimizedMesh(cloudMat, poses);
+					rtabmap_->getMemory()->saveOptimizedMesh(cloudMat);
 					success = true;
 				}
 			}
@@ -2895,12 +2874,6 @@ bool RTABMapApp::postExportation(bool visualize)
 	LOGI("postExportation(visualize=%d)", visualize?1:0);
 	optMesh_.reset(new pcl::TextureMesh);
 	optTexture_ = cv::Mat();
-	optRefId_ = 0;
-	if(optRefPose_)
-	{
-		delete optRefPose_;
-		optRefPose_ = 0;
-	}
 	exportedMeshUpdated_ = false;
 
 	if(visualize)
@@ -2914,22 +2887,14 @@ bool RTABMapApp::postExportation(bool visualize)
 		std::vector<std::vector<Eigen::Vector2f> > texCoords;
 #endif
 		cv::Mat textures;
-		std::map<int, rtabmap::Transform> optPoses;
 		if(rtabmap_ && rtabmap_->getMemory())
 		{
-			cloudMat = rtabmap_->getMemory()->loadOptimizedMesh(&optPoses, &polygons, &texCoords, &textures);
+			cloudMat = rtabmap_->getMemory()->loadOptimizedMesh(&polygons, &texCoords, &textures);
 			if(!cloudMat.empty())
 			{
 				LOGI("postExportation: Found optimized mesh! Visualizing it.");
 				optMesh_ = rtabmap::util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
 				optTexture_ = textures;
-
-				if(optPoses.size())
-				{
-					// just take the last as reference
-					optRefId_ = optPoses.rbegin()->first;
-					optRefPose_ = new rtabmap::Transform(optPoses.rbegin()->second);
-				}
 
 				boost::mutex::scoped_lock  lock(renderingMutex_);
 				visualizingMesh_ = true;

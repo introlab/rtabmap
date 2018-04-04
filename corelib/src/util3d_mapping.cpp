@@ -849,7 +849,7 @@ void rayTrace(const cv::Point2i & start, const cv::Point2i & end, cv::Mat & grid
 }
 
 //convert to gray scaled map
-cv::Mat convertMap2Image8U(const cv::Mat & map8S)
+cv::Mat convertMap2Image8U(const cv::Mat & map8S, bool pgmFormat)
 {
 	UASSERT(map8S.channels() == 1 && map8S.type() == CV_8S);
 	cv::Mat map8U = cv::Mat(map8S.rows, map8S.cols, CV_8U);
@@ -857,11 +857,11 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S)
 	{
 		for (int j = 0; j < map8S.cols; ++j)
 		{
-			char v = map8S.at<char>(i, j);
+			char v = pgmFormat?map8S.at<char>((map8S.rows-1)-i, j):map8S.at<char>(i, j);
 			unsigned char gray;
 			if(v == 0)
 			{
-				gray = 178;
+				gray = pgmFormat?254:178;
 			}
 			else if(v == 100)
 			{
@@ -869,16 +869,68 @@ cv::Mat convertMap2Image8U(const cv::Mat & map8S)
 			}
 			else if(v == -2)
 			{
-				gray = 200;
+				gray = pgmFormat?254:200;
 			}
 			else // -1
 			{
-				gray = 89;
+				gray = pgmFormat?205:89;
 			}
 			map8U.at<unsigned char>(i, j) = gray;
 		}
 	}
 	return map8U;
+}
+
+//convert gray scaled image to map
+cv::Mat convertImage8U2Map(const cv::Mat & map8U, bool pgmFormat)
+{
+	UASSERT_MSG(map8U.channels() == 1 && map8U.type() == CV_8U, uFormat("map8U.channels()=%d map8U.type()=%d", map8U.channels(), map8U.type()).c_str());
+	cv::Mat map8S = cv::Mat(map8U.rows, map8U.cols, CV_8S);
+	for (int i = 0; i < map8U.rows; ++i)
+	{
+		for (int j = 0; j < map8U.cols; ++j)
+		{
+			unsigned char v = pgmFormat?map8U.at<char>((map8U.rows-1)-i, j):map8U.at<char>(i, j);
+			char occupancy;
+			if(pgmFormat)
+			{
+				if(v >= 254)
+				{
+					occupancy = 0;
+				}
+				else if(v == 0)
+				{
+					occupancy = 100;
+				}
+				else // 205
+				{
+					occupancy = -1;
+				}
+			}
+			else
+			{
+				if(v == 178)
+				{
+					occupancy = 0;
+				}
+				else if(v == 0)
+				{
+					occupancy = 100;
+				}
+				else if(v == 200)
+				{
+					occupancy = -2;
+				}
+				else // 89
+				{
+					occupancy = -1;
+				}
+			}
+
+			map8S.at<char>(i, j) = occupancy;
+		}
+	}
+	return map8S;
 }
 
 cv::Mat erodeMap(const cv::Mat & map)

@@ -21,7 +21,16 @@
     <property name="spacing">
      <number>0</number>
     </property>
-    <property name="margin">
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
      <number>0</number>
     </property>
     <item>
@@ -52,8 +61,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>415</width>
-           <height>256</height>
+           <width>398</width>
+           <height>242</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
@@ -244,8 +253,8 @@
           <rect>
            <x>0</x>
            <y>0</y>
-           <width>415</width>
-           <height>256</height>
+           <width>397</width>
+           <height>242</height>
           </rect>
          </property>
          <layout class="QGridLayout" name="gridLayout_2" columnstretch="0,1">
@@ -425,7 +434,16 @@
       </item>
       <item row="1" column="0">
        <layout class="QHBoxLayout" name="horizontalLayout">
-        <property name="margin">
+        <property name="leftMargin">
+         <number>12</number>
+        </property>
+        <property name="topMargin">
+         <number>12</number>
+        </property>
+        <property name="rightMargin">
+         <number>12</number>
+        </property>
+        <property name="bottomMargin">
          <number>12</number>
         </property>
         <item>
@@ -481,7 +499,16 @@
       </item>
       <item row="1" column="1">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
-        <property name="margin">
+        <property name="leftMargin">
+         <number>12</number>
+        </property>
+        <property name="topMargin">
+         <number>12</number>
+        </property>
+        <property name="rightMargin">
+         <number>12</number>
+        </property>
+        <property name="bottomMargin">
          <number>12</number>
         </property>
         <item>
@@ -552,7 +579,7 @@
      <x>0</x>
      <y>0</y>
      <width>1547</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -583,12 +610,16 @@
     <addaction name="actionDatabase_recovery"/>
     <addaction name="separator"/>
     <addaction name="actionSave_config"/>
+    <addaction name="actionRestore_default_GUI_settings"/>
     <addaction name="separator"/>
     <addaction name="actionGenerate_3D_map_pcd"/>
     <addaction name="actionExport"/>
     <addaction name="actionExtract_images"/>
     <addaction name="menuExport_poses"/>
     <addaction name="menuExport_GPS"/>
+    <addaction name="separator"/>
+    <addaction name="actionExport_saved_2D_map"/>
+    <addaction name="actionImport_2D_map"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
@@ -609,7 +640,6 @@
     <addaction name="actionEdit_depth_image"/>
     <addaction name="separator"/>
     <addaction name="actionReset_all_changes"/>
-    <addaction name="actionRestore_default_GUI_settings"/>
     <addaction name="separator"/>
     <addaction name="actionView_3D_map"/>
    </widget>
@@ -1120,7 +1150,16 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_10">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -1174,8 +1213,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>310</width>
-          <height>222</height>
+          <width>318</width>
+          <height>219</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1336,8 +1375,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>280</width>
-          <height>915</height>
+          <width>282</width>
+          <height>845</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1844,8 +1883,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>201</width>
-          <height>126</height>
+          <width>205</width>
+          <height>117</height>
          </rect>
         </property>
         <attribute name="label">
@@ -1944,8 +1983,8 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>186</width>
-          <height>496</height>
+          <width>185</width>
+          <height>487</height>
          </rect>
         </property>
         <attribute name="label">
@@ -2047,7 +2086,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -2160,7 +2208,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -2291,7 +2348,16 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_7">
     <layout class="QVBoxLayout" name="verticalLayout_13">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -2309,7 +2375,16 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
     <layout class="QVBoxLayout" name="verticalLayout_7">
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -2354,7 +2429,16 @@
      <property name="spacing">
       <number>0</number>
      </property>
-     <property name="margin">
+     <property name="leftMargin">
+      <number>0</number>
+     </property>
+     <property name="topMargin">
+      <number>0</number>
+     </property>
+     <property name="rightMargin">
+      <number>0</number>
+     </property>
+     <property name="bottomMargin">
       <number>0</number>
      </property>
      <item>
@@ -2544,6 +2628,16 @@
   <action name="actionClose_database">
    <property name="text">
     <string>Close database</string>
+   </property>
+  </action>
+  <action name="actionExport_saved_2D_map">
+   <property name="text">
+    <string>Export saved 2D map...</string>
+   </property>
+  </action>
+  <action name="actionImport_2D_map">
+   <property name="text">
+    <string>Import 2D map...</string>
    </property>
   </action>
  </widget>

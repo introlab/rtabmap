@@ -112,6 +112,7 @@ CREATE TABLE Admin (
 	opt_cloud BLOB,          -- compressed data
 	opt_ids BLOB,            -- Node ids used to generate the optimized cloud/mesh
 	opt_poses BLOB,          -- compressed N*3x4 float 
+	opt_last_localization BLOB, -- 3x4 float
 	opt_polygons_size INTEGER, -- e.g., 3
 	opt_polygons BLOB,       -- compressed data [length_v0, i0,i1,i3, length_v1, i0,i1,i3]
 	opt_tex_coords BLOB,     -- compressed data [length_v0, u0,v0,u1,v1,u2,v2, length_v1, u0,v0,u1,v1,u2,v2]
@@ -119,6 +120,7 @@ CREATE TABLE Admin (
 	opt_map BLOB,            -- compressed CV_8SC1 occupancy grid
 	opt_map_x_min FLOAT,
 	opt_map_y_min FLOAT, 
+	opt_map_resolution FLOAT, 
 
 	time_enter DATE
 );

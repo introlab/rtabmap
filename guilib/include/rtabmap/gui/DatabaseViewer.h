@@ -93,6 +93,8 @@ private slots:
 	void selectEmptyColor();
 	void editDepthImage();
 	void generateGraph();
+	void exportSaved2DMap();
+	void import2DMap();
 	void exportDatabase();
 	void extractImages();
 	void exportPosesRaw();

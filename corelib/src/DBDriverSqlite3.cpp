@@ -4277,9 +4277,274 @@ cv::Mat DBDriverSqlite3::loadPreviewImageQuery() const
 	return image;
 }
 
+void DBDriverSqlite3::saveOptimizedPosesQuery(const std::map<int, Transform> & poses, const Transform & lastlocalizationPose) const
+{
+	UDEBUG("");
+	if(_ppDb && uStrNumCmp(_version, "0.17.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::string query;
+
+		// Update table Admin
+		query = uFormat("UPDATE Admin SET opt_ids=?, opt_poses=?, opt_last_localization=?, time_enter = DATETIME('NOW') WHERE version='%s';", _version.c_str());
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		int index = 1;
+
+		// opt ids and poses
+		cv::Mat compressedIds;
+		cv::Mat compressedPoses;
+		if(poses.empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			std::vector<int> serializedIds(poses.size());
+			std::vector<float> serializedPoses(poses.size()*12);
+			int i=0;
+			for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+			{
+				serializedIds[i] = iter->first;
+				memcpy(serializedPoses.data()+(12*i), iter->second.data(), 12*sizeof(float));
+				++i;
+			}
+
+			compressedIds = compressData2(cv::Mat(1,serializedIds.size(), CV_32SC1, serializedIds.data()));
+			compressedPoses = compressData2(cv::Mat(1,serializedPoses.size(), CV_32FC1, serializedPoses.data()));
+
+			rc = sqlite3_bind_blob(ppStmt, index++, compressedIds.data, compressedIds.cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+			rc = sqlite3_bind_blob(ppStmt, index++, compressedPoses.data, compressedPoses.cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		if(lastlocalizationPose.isNull())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			UDEBUG("lastlocalizationPose=%s", lastlocalizationPose.prettyPrint().c_str());
+			rc = sqlite3_bind_blob(ppStmt, index++, lastlocalizationPose.data(), lastlocalizationPose.size()*sizeof(float), SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		//execute query
+		rc=sqlite3_step(ppStmt);
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+std::map<int, Transform> DBDriverSqlite3::loadOptimizedPosesQuery(Transform * lastlocalizationPose) const
+{
+	UDEBUG("");
+	std::map<int, Transform> poses;
+	if(_ppDb && uStrNumCmp(_version, "0.17.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT opt_ids, opt_poses, opt_last_localization "
+			  << "FROM Admin "
+			  << "WHERE version='" << _version.c_str()
+			  <<"';";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		UASSERT_MSG(rc == SQLITE_ROW, uFormat("DB error (%s): Not found first Admin row: query=\"%s\"", _version.c_str(), query.str().c_str()).c_str());
+		if(rc == SQLITE_ROW)
+		{
+			const void * data = 0;
+			int dataSize = 0;
+			int index = 0;
+
+			//opt_poses
+			cv::Mat serializedIds;
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				serializedIds = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+				UDEBUG("serializedIds=%d", serializedIds.cols);
+			}
+
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				cv::Mat serializedPoses = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+				UDEBUG("serializedPoses=%d", serializedPoses.cols);
+
+				UASSERT(serializedIds.cols == serializedPoses.cols/12);
+				UASSERT(serializedPoses.type() == CV_32FC1);
+				UASSERT(serializedIds.type() == CV_32SC1);
+				for(int i=0; i<serializedIds.cols; ++i)
+				{
+					Transform t(serializedPoses.at<float>(i*12), serializedPoses.at<float>(i*12+1), serializedPoses.at<float>(i*12+2), serializedPoses.at<float>(i*12+3),
+							serializedPoses.at<float>(i*12+4), serializedPoses.at<float>(i*12+5), serializedPoses.at<float>(i*12+6), serializedPoses.at<float>(i*12+7),
+							serializedPoses.at<float>(i*12+8), serializedPoses.at<float>(i*12+9), serializedPoses.at<float>(i*12+10), serializedPoses.at<float>(i*12+11));
+					poses.insert(std::make_pair(serializedIds.at<int>(i), t));
+					UDEBUG("Optimized pose %d: %s", serializedIds.at<int>(i), t.prettyPrint().c_str());
+				}
+			}
+
+			data = sqlite3_column_blob(ppStmt, index); // ground_truth_pose
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(lastlocalizationPose)
+			{
+				if((unsigned int)dataSize == lastlocalizationPose->size()*sizeof(float) && data)
+				{
+					memcpy(lastlocalizationPose->data(), data, dataSize);
+				}
+				UDEBUG("lastlocalizationPose=%s", lastlocalizationPose->prettyPrint().c_str());
+			}
+
+			rc = sqlite3_step(ppStmt); // next result...
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+
+	}
+	return poses;
+}
+
+void DBDriverSqlite3::save2DMapQuery(const cv::Mat & map, float xMin, float yMin, float cellSize) const
+{
+	UDEBUG("");
+	if(_ppDb && uStrNumCmp(_version, "0.17.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::string query;
+
+		// Update table Admin
+		query = uFormat("UPDATE Admin SET opt_map=?, opt_map_x_min=?, opt_map_y_min=?, opt_map_resolution=?, time_enter = DATETIME('NOW') WHERE version='%s';", _version.c_str());
+		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		int index = 1;
+
+		// opt ids and poses
+		cv::Mat compressedMap;
+		if(map.empty())
+		{
+			rc = sqlite3_bind_null(ppStmt, index++);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+		else
+		{
+			compressedMap = compressData2(map);
+
+			rc = sqlite3_bind_blob(ppStmt, index++, compressedMap.data, compressedMap.cols, SQLITE_STATIC);
+			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		}
+
+		rc = sqlite3_bind_double(ppStmt, index++, xMin);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, yMin);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		rc = sqlite3_bind_double(ppStmt, index++, cellSize);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		//execute query
+		rc=sqlite3_step(ppStmt);
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		UDEBUG("Time=%fs", timer.ticks());
+	}
+}
+
+cv::Mat DBDriverSqlite3::load2DMapQuery(float & xMin, float & yMin, float & cellSize) const
+{
+	UDEBUG("");
+	cv::Mat map;
+	if(_ppDb && uStrNumCmp(_version, "0.17.0") >= 0)
+	{
+		UTimer timer;
+		timer.start();
+		int rc = SQLITE_OK;
+		sqlite3_stmt * ppStmt = 0;
+		std::stringstream query;
+
+		query << "SELECT  opt_map, opt_map_x_min, opt_map_y_min, opt_map_resolution "
+			  << "FROM Admin "
+			  << "WHERE version='" << _version.c_str()
+			  <<"';";
+
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Process the result if one
+		rc = sqlite3_step(ppStmt);
+		UASSERT_MSG(rc == SQLITE_ROW, uFormat("DB error (%s): Not found first Admin row: query=\"%s\"", _version.c_str(), query.str().c_str()).c_str());
+		if(rc == SQLITE_ROW)
+		{
+			const void * data = 0;
+			int dataSize = 0;
+			int index = 0;
+
+			//opt_map
+			data = sqlite3_column_blob(ppStmt, index);
+			dataSize = sqlite3_column_bytes(ppStmt, index++);
+			if(dataSize>0 && data)
+			{
+				map = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
+				UDEBUG("map=%d/%d", map.cols, map.rows);
+			}
+
+			xMin = sqlite3_column_double(ppStmt, index++);
+			UDEBUG("xMin=%f", xMin);
+			yMin = sqlite3_column_double(ppStmt, index++);
+			UDEBUG("yMin=%f", yMin);
+			cellSize = sqlite3_column_double(ppStmt, index++);
+			UDEBUG("cellSize=%f", cellSize);
+
+			rc = sqlite3_step(ppStmt); // next result...
+		}
+		UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+
+		// Finalize (delete) the statement
+		rc = sqlite3_finalize(ppStmt);
+		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+		ULOGGER_DEBUG("Time=%fs", timer.ticks());
+
+	}
+	return map;
+}
+
 void DBDriverSqlite3::saveOptimizedMeshQuery(
 			const cv::Mat & cloud,
-			const std::map<int, Transform> & poses,
 			const std::vector<std::vector<std::vector<unsigned int> > > & polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			const std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > & texCoords,
@@ -4298,7 +4563,7 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 		std::string query;
 
 		// Update table Admin
-		query = uFormat("UPDATE Admin SET opt_cloud=?, opt_ids=?, opt_poses=?, opt_polygons_size=?, opt_polygons=?, opt_tex_coords=?, opt_tex_materials=?, time_enter = DATETIME('NOW') WHERE version='%s';", _version.c_str());
+		query = uFormat("UPDATE Admin SET opt_cloud=?, opt_polygons_size=?, opt_polygons=?, opt_tex_coords=?, opt_tex_materials=?, time_enter = DATETIME('NOW') WHERE version='%s';", _version.c_str());
 		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
@@ -4336,39 +4601,9 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 			UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 			// opt ids and poses
-			cv::Mat compressedIds;
-			cv::Mat compressedPoses;
 			cv::Mat compressedPolygons;
 			cv::Mat compressedTexCoords;
 			cv::Mat compressedTextures;
-			if(poses.empty())
-			{
-				rc = sqlite3_bind_null(ppStmt, index++);
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-				rc = sqlite3_bind_null(ppStmt, index++);
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			}
-			else
-			{
-				std::vector<int> serializedIds(poses.size());
-				std::vector<float> serializedPoses(poses.size()*12);
-				int i=0;
-				for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-				{
-					serializedIds[i] = iter->first;
-					memcpy(serializedPoses.data()+(12*i), iter->second.data(), 12*sizeof(float));
-					++i;
-				}
-
-				compressedIds = compressData2(cv::Mat(1,serializedIds.size(), CV_32SC1, serializedIds.data()));
-				compressedPoses = compressData2(cv::Mat(1,serializedPoses.size(), CV_32FC1, serializedPoses.data()));
-
-				rc = sqlite3_bind_blob(ppStmt, index++, compressedIds.data, compressedIds.cols, SQLITE_STATIC);
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-				rc = sqlite3_bind_blob(ppStmt, index++, compressedPoses.data, compressedPoses.cols, SQLITE_STATIC);
-				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-			}
-
 			// polygons
 			if(polygons.empty())
 			{
@@ -4505,7 +4740,6 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 }
 
 cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
-			std::map<int, Transform> * poses,
 			std::vector<std::vector<std::vector<unsigned int> > > * polygons,
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
 			std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > * texCoords,
@@ -4524,7 +4758,7 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 		sqlite3_stmt * ppStmt = 0;
 		std::stringstream query;
 
-		query << "SELECT opt_cloud, opt_ids, opt_poses, opt_polygons_size, opt_polygons, opt_tex_coords, opt_tex_materials "
+		query << "SELECT opt_cloud, opt_polygons_size, opt_polygons, opt_tex_coords, opt_tex_materials "
 			  << "FROM Admin "
 			  << "WHERE version='" << _version.c_str()
 			  <<"';";
@@ -4558,29 +4792,6 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 			{
 				serializedIds = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
 				UDEBUG("serializedIds=%d", serializedIds.cols);
-			}
-
-			data = sqlite3_column_blob(ppStmt, index);
-			dataSize = sqlite3_column_bytes(ppStmt, index++);
-			if(dataSize>0 && data)
-			{
-				cv::Mat serializedPoses = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
-				UDEBUG("serializedPoses=%d", serializedPoses.cols);
-
-				if(poses)
-				{
-					UASSERT(serializedIds.cols == serializedPoses.cols/12);
-					UASSERT(serializedPoses.type() == CV_32FC1);
-					UASSERT(serializedIds.type() == CV_32SC1);
-					for(int i=0; i<serializedIds.cols; ++i)
-					{
-						Transform t(serializedPoses.at<float>(i*12), serializedPoses.at<float>(i*12+1), serializedPoses.at<float>(i*12+2), serializedPoses.at<float>(i*12+3),
-								serializedPoses.at<float>(i*12+4), serializedPoses.at<float>(i*12+5), serializedPoses.at<float>(i*12+6), serializedPoses.at<float>(i*12+7),
-								serializedPoses.at<float>(i*12+8), serializedPoses.at<float>(i*12+9), serializedPoses.at<float>(i*12+10), serializedPoses.at<float>(i*12+11));
-						poses->insert(std::make_pair(serializedIds.at<int>(i), t));
-						UDEBUG("Optimized pose %d: %s", serializedIds.at<int>(i), t.prettyPrint().c_str());
-					}
-				}
 			}
 
 			//opt_polygons_size
