@@ -188,6 +188,8 @@ RTABMapApp::RTABMapApp() :
 		visualizingMesh_(false),
 		exportedMeshUpdated_(false),
 		optMesh_(new pcl::TextureMesh),
+		optRefId_(0),
+		optRefPose_(0),
 		mapToOdom_(rtabmap::Transform::getIdentity())
 
 {
@@ -207,6 +209,10 @@ RTABMapApp::~RTABMapApp() {
 	if(logHandler_)
 	{
 		delete logHandler_;
+	}
+	if(optRefPose_)
+	{
+		delete optRefPose_;
 	}
 	{
 		boost::mutex::scoped_lock  lock(rtabmapMutex_);
@@ -315,6 +321,12 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	// Open visualization while we load (if there is an optimized mesh saved in database)
 	optMesh_.reset(new pcl::TextureMesh);
 	optTexture_ = cv::Mat();
+	optRefId_ = 0;
+	if(optRefPose_)
+	{
+		delete optRefPose_;
+		optRefPose_ = 0;
+	}
 	cv::Mat cloudMat;
 	std::vector<std::vector<std::vector<unsigned int> > > polygons;
 #if PCL_VERSION_COMPARE(>=, 1, 8, 0)
@@ -572,6 +584,14 @@ int RTABMapApp::openDatabase(const std::string & databasePath, bool databaseInMe
 	rtabmapEvents_.push_back(new rtabmap::RtabmapEvent(stats));
 
 	rtabmap_->setOptimizedPoses(poses);
+
+	// for optimized mesh
+	if(poses.size())
+	{
+		// just take the last as reference
+		optRefId_ = poses.rbegin()->first;
+		optRefPose_ = new rtabmap::Transform(poses.rbegin()->second);
+	}
 
 	if(camera_)
 	{
@@ -1109,6 +1129,12 @@ int RTABMapApp::Render()
 					mapToOdom_ = stats.mapCorrection();
 				}
 
+				std::map<int, rtabmap::Transform>::const_iterator iter = stats.poses().find(optRefId_);
+				if(iter != stats.poses().end() && !iter->second.isNull() && optRefPose_)
+				{
+					// adjust opt mesh pose
+					main_scene_.setCloudPose(g_optMeshId, opengl_world_T_rtabmap_world * iter->second * (*optRefPose_).inverse());
+				}
 				int fastMovement = (int)uValue(stats.data(), rtabmap::Statistics::kMemoryFast_movement(), 0.0f);
 				int loopClosure = (int)uValue(stats.data(), rtabmap::Statistics::kLoopAccepted_hypothesis_id(), 0.0f);
 				int rejected = (int)uValue(stats.data(), rtabmap::Statistics::kLoopRejectedHypothesis(), 0.0f);
@@ -2861,6 +2887,20 @@ bool RTABMapApp::exportMesh(
 		success = false;
 	}
 	exporting_ = false;
+
+	optRefId_ = 0;
+	if(optRefPose_)
+	{
+		delete optRefPose_;
+		optRefPose_ = 0;
+	}
+	if(success && poses.size())
+	{
+		// for optimized mesh
+		// just take the last as reference
+		optRefId_ = poses.rbegin()->first;
+		optRefPose_ = new rtabmap::Transform(poses.rbegin()->second);
+	}
 
 	return success;
 }
