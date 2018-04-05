@@ -208,10 +208,6 @@ RTABMapApp::~RTABMapApp() {
 	{
 		delete logHandler_;
 	}
-	if(optRefPose_)
-	{
-		delete optRefPose_;
-	}
 	{
 		boost::mutex::scoped_lock  lock(rtabmapMutex_);
 		if(rtabmapEvents_.size())
@@ -2940,10 +2936,9 @@ bool RTABMapApp::writeExportedMesh(const std::string & directory, const std::str
 	std::vector<std::vector<Eigen::Vector2f> > texCoords;
 #endif
 	cv::Mat textures;
-	std::map<int, rtabmap::Transform> optPoses;
 	if(rtabmap_ && rtabmap_->getMemory())
 	{
-		cloudMat = rtabmap_->getMemory()->loadOptimizedMesh(&optPoses, &polygons, &texCoords, &textures);
+		cloudMat = rtabmap_->getMemory()->loadOptimizedMesh(&polygons, &texCoords, &textures);
 		if(!cloudMat.empty())
 		{
 			LOGI("writeExportedMesh: Found optimized mesh!");
