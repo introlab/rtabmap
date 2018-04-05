@@ -4570,7 +4570,7 @@ void DBDriverSqlite3::saveOptimizedMeshQuery(
 		if(cloud.empty())
 		{
 			// set all fields to null
-			for(int i=1; i<=7; ++i)
+			for(int i=1; i<=5; ++i)
 			{
 				rc = sqlite3_bind_null(ppStmt, i);
 				UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
@@ -4783,16 +4783,6 @@ cv::Mat DBDriverSqlite3::loadOptimizedMeshQuery(
 				cloud = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
 			}
 			UDEBUG("Cloud=%d points", cloud.cols);
-
-			//opt_poses
-			cv::Mat serializedIds;
-			data = sqlite3_column_blob(ppStmt, index);
-			dataSize = sqlite3_column_bytes(ppStmt, index++);
-			if(dataSize>0 && data)
-			{
-				serializedIds = uncompressData(cv::Mat(1, dataSize, CV_8UC1, (void *)data));
-				UDEBUG("serializedIds=%d", serializedIds.cols);
-			}
 
 			//opt_polygons_size
 			int polygonSize = sqlite3_column_int(ppStmt, index++);
