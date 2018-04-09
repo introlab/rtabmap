@@ -640,10 +640,10 @@ pcl::texture_mapping::CameraVector createTextureCameras(
 				cam.depth = cv::Mat(depthIter->second, cv::Range(0, depthIter->second.rows), cv::Range(subWidth*i, subWidth*(i+1)));
 			}
 
-			UWARN("%f", cam.focal_length);
-			UWARN("%f", cam.height);
-			UWARN("%f", cam.width);
-			UWARN("cam.pose=%s", t.prettyPrint().c_str());
+			UDEBUG("%f", cam.focal_length);
+			UDEBUG("%f", cam.height);
+			UDEBUG("%f", cam.width);
+			UDEBUG("cam.pose=%s", t.prettyPrint().c_str());
 
 			cameras.push_back(cam);
 		}
@@ -1362,6 +1362,50 @@ double sqr(uchar v)
 	return double(v)*double(v);
 }
 
+cv::Mat mergeTextures(
+		pcl::TextureMesh & mesh,
+		const std::map<int, cv::Mat> & images,
+		const std::map<int, CameraModel> & calibrations,
+		const Memory * memory,
+		const DBDriver * dbDriver,
+		int textureSize,
+		int textureCount,
+		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels,
+		bool gainCompensation,
+		float gainBeta,
+		bool gainRGB,
+		bool blending,
+		int blendingDecimation,
+		int brightnessContrastRatioLow,
+		int brightnessContrastRatioHigh,
+		bool exposureFusion,
+		const ProgressState * state)
+{
+	std::map<int, std::vector<CameraModel> > calibVectors;
+	for(std::map<int, CameraModel>::const_iterator iter=calibrations.begin(); iter!=calibrations.end(); ++iter)
+	{
+		std::vector<CameraModel> m;
+		m.push_back(iter->second);
+		calibVectors.insert(std::make_pair(iter->first, m));
+	}
+	return mergeTextures(mesh,
+			images,
+			calibVectors,
+			memory,
+			dbDriver,
+			textureSize,
+			textureCount,
+			vertexToPixels,
+			gainCompensation,
+			gainBeta,
+			gainRGB,
+			blending,
+			blendingDecimation,
+			brightnessContrastRatioLow,
+			brightnessContrastRatioHigh,
+			exposureFusion,
+			state);
+}
 cv::Mat mergeTextures(
 		pcl::TextureMesh & mesh,
 		const std::map<int, cv::Mat> & images,

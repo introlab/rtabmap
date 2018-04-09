@@ -197,6 +197,24 @@ pcl::PolygonMesh::Ptr RTABMAP_EXP assemblePolygonMesh(
 cv::Mat RTABMAP_EXP mergeTextures(
 		pcl::TextureMesh & mesh,
 		const std::map<int, cv::Mat> & images, // raw or compressed, can be empty if memory or dbDriver should be used
+		const std::map<int, CameraModel> & calibrations, // Should match images
+		const Memory * memory = 0,             // Should be set if images are not set
+		const DBDriver * dbDriver = 0,         // Should be set if images and memory are not set
+		int textureSize = 4096,
+		int textureCount = 1,
+		const std::vector<std::map<int, pcl::PointXY> > & vertexToPixels = std::vector<std::map<int, pcl::PointXY> >(), // needed for parameters below
+		bool gainCompensation = true,
+		float gainBeta = 10.0f,
+		bool gainRGB = true,                 //Do gain compensation on each channel
+		bool blending = true,
+		int blendingDecimation = 0,          //0=auto depending on projected polygon size and texture size
+		int brightnessContrastRatioLow = 0,  //0=disabled, values between 0 and 100
+		int brightnessContrastRatioHigh = 0, //0=disabled, values between 0 and 100
+		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
+		const ProgressState * state = 0);
+cv::Mat RTABMAP_EXP mergeTextures(
+		pcl::TextureMesh & mesh,
+		const std::map<int, cv::Mat> & images, // raw or compressed, can be empty if memory or dbDriver should be used
 		const std::map<int, std::vector<CameraModel> > & calibrations, // Should match images
 		const Memory * memory = 0,             // Should be set if images are not set
 		const DBDriver * dbDriver = 0,         // Should be set if images and memory are not set
