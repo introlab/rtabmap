@@ -1582,8 +1582,8 @@ cv::Mat mergeTextures(
 						newCamIndex[t] = oi;
 						int u = oi%cols * emptyImage.cols;
 						int v = ((oi/cols) % rows ) * emptyImage.rows;
-						UASSERT(u < textureSize-emptyImage.cols);
-						UASSERT(v < textureSize-emptyImage.rows);
+						UASSERT_MSG(u < textureSize-emptyImage.cols, uFormat("u=%d textureSize=%d emptyImage.cols=%d", u, textureSize, emptyImage.cols).c_str());
+						UASSERT_MSG(v < textureSize-emptyImage.rows, uFormat("v=%d textureSize=%d emptyImage.rows=%d", v, textureSize, emptyImage.rows).c_str());
 						imageOrigin[t].x = u;
 						imageOrigin[t].y = v;
 						if(textures[t].first>=0)
