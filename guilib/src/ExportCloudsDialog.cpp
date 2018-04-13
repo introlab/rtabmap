@@ -54,6 +54,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/io/obj_io.h>
 #include <pcl/pcl_config.h>
 #include <pcl/surface/poisson.h>
+#include <pcl/common/common.h>
 
 #include <QPushButton>
 #include <QDir>
@@ -87,6 +88,10 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 	_ui->setupUi(this);
 
 	connect(_ui->buttonBox->button(QDialogButtonBox::RestoreDefaults), SIGNAL(clicked()), this, SLOT(restoreDefaults()));
+	QPushButton * loadSettingsButton = _ui->buttonBox->addButton("Load Settings", QDialogButtonBox::ActionRole);
+	QPushButton * saveSettingsButton = _ui->buttonBox->addButton("Save Settings", QDialogButtonBox::ActionRole);
+	connect(loadSettingsButton, SIGNAL(clicked()), this, SLOT(loadSettings()));
+	connect(saveSettingsButton, SIGNAL(clicked()), this, SLOT(saveSettings()));
 
 	restoreDefaults();
 	_ui->comboBox_upsamplingMethod->setItemData(1, 0, Qt::UserRole - 1); // disable DISTINCT_CLOUD
@@ -658,6 +663,34 @@ void ExportCloudsDialog::restoreDefaults()
 	updateMLSGrpVisibility();
 
 	this->update();
+}
+
+void ExportCloudsDialog::loadSettings()
+{
+	QString path = QFileDialog::getOpenFileName(this, tr("Load Settings"), _workingDirectory, tr("Config (*.ini)"));
+	if(path.size())
+	{
+		QSettings settings(path, QSettings::IniFormat);
+		settings.beginGroup("Gui");
+		settings.beginGroup(this->objectName());
+		this->loadSettings(settings);
+		settings.endGroup(); // "name"
+		settings.endGroup(); // Gui
+	}
+}
+
+void ExportCloudsDialog::saveSettings()
+{
+	QString path = QFileDialog::getSaveFileName(this, tr("Save Settings"), _workingDirectory, tr("Config (*.ini)"));
+	if(path.size())
+	{
+		QSettings settings(path, QSettings::IniFormat);
+		settings.beginGroup("Gui");
+		settings.beginGroup(this->objectName());
+		this->saveSettings(settings);
+		settings.endGroup(); // "name"
+		settings.endGroup(); // Gui
+	}
 }
 
 void ExportCloudsDialog::updateReconstructionFlavor()

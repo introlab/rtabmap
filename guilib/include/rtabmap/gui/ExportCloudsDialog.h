@@ -94,6 +94,8 @@ public slots:
 	void restoreDefaults();
 
 private slots:
+	void loadSettings();
+	void saveSettings();
 	void updateReconstructionFlavor();
 	void selectDistortionModel();
 	void updateMLSGrpVisibility();
