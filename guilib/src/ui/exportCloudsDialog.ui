@@ -23,9 +23,9 @@
       <property name="geometry">
        <rect>
         <x>0</x>
-        <y>-3986</y>
+        <y>-3009</y>
         <width>778</width>
-        <height>4680</height>
+        <height>4697</height>
        </rect>
       </property>
       <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2116,7 +2116,7 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
              <item row="0" column="1">
               <widget class="QLabel" name="label_172">
                <property name="text">
-                <string>Depth. Increasing the depth increase the output mesh size but it would be more precise (also longer to compute).</string>
+                <string>Depth. Lowering this parameter decreases reconstruction time, but geometry precision is lower. Minimum polygon size: map length / 2^depth), you can start tuning from depth of 8 or 9. 0 means that depth is chosen so that polygon size is just under 3 cm.</string>
                </property>
                <property name="wordWrap">
                 <bool>true</bool>
@@ -2196,13 +2196,6 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                </property>
               </widget>
              </item>
-             <item row="0" column="0">
-              <widget class="QSpinBox" name="spinBox_poisson_depth">
-               <property name="minimum">
-                <number>1</number>
-               </property>
-              </widget>
-             </item>
              <item row="8" column="1">
               <widget class="QLabel" name="label_178">
                <property name="text">
@@ -2210,6 +2203,13 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                </property>
                <property name="wordWrap">
                 <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QCheckBox" name="checkBox_poisson_manifold">
+               <property name="text">
+                <string/>
                </property>
               </widget>
              </item>
@@ -2233,8 +2233,8 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                </property>
               </widget>
              </item>
-             <item row="2" column="0">
-              <widget class="QCheckBox" name="checkBox_poisson_manifold">
+             <item row="1" column="0">
+              <widget class="QCheckBox" name="checkBox_poisson_outputPolygons">
                <property name="text">
                 <string/>
                </property>
@@ -2257,13 +2257,6 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
                </property>
               </widget>
              </item>
-             <item row="1" column="0">
-              <widget class="QCheckBox" name="checkBox_poisson_outputPolygons">
-               <property name="text">
-                <string/>
-               </property>
-              </widget>
-             </item>
              <item row="3" column="0">
               <widget class="QDoubleSpinBox" name="doubleSpinBox_poisson_pointWeight">
                <property name="decimals">
@@ -2278,6 +2271,13 @@ Guidelines: 4 times the voxel size, 0.025 for voxel=0.</string>
               <widget class="QSpinBox" name="spinBox_poisson_minDepth">
                <property name="minimum">
                 <number>1</number>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="0">
+              <widget class="QSpinBox" name="spinBox_poisson_depth">
+               <property name="minimum">
+                <number>0</number>
                </property>
               </widget>
              </item>

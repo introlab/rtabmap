@@ -2877,11 +2877,12 @@ void adjustNormalsToViewPoints(
 		const std::vector<int> & rawCameraIndices,
 		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr & cloud)
 {
+	UASSERT(rawCloud.get() && cloud.get());
+	UDEBUG("poses=%d, rawCloud=%d, rawCameraIndices=%d, cloud=%d", (int)poses.size(), (int)rawCloud->size(), (int)rawCameraIndices.size(), (int)cloud->size());
 	if(poses.size() && rawCloud->size() && rawCloud->size() == rawCameraIndices.size() && cloud->size())
 	{
 		pcl::search::KdTree<pcl::PointXYZ>::Ptr rawTree (new pcl::search::KdTree<pcl::PointXYZ>);
 		rawTree->setInputCloud (rawCloud);
-
 		for(unsigned int i=0; i<cloud->size(); ++i)
 		{
 			pcl::PointXYZ normal(cloud->points[i].normal_x, cloud->points[i].normal_y, cloud->points[i].normal_z);
@@ -2890,9 +2891,10 @@ void adjustNormalsToViewPoints(
 				std::vector<int> indices;
 				std::vector<float> dist;
 				rawTree->nearestKSearch(pcl::PointXYZ(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z), 1, indices, dist);
-				UASSERT(indices.size() == 1);
 				if(indices.size() && indices[0]>=0)
 				{
+					UASSERT_MSG(indices[0]<(int)rawCameraIndices.size(), uFormat("indices[0]=%d rawCameraIndices.size()=%d", indices[0], (int)rawCameraIndices.size()).c_str());
+					UASSERT(uContains(poses, rawCameraIndices[indices[0]]));
 					Transform p = poses.at(rawCameraIndices[indices[0]]);
 					pcl::PointXYZ viewpoint(p.x(), p.y(), p.z());
 					Eigen::Vector3f v = viewpoint.getVector3fMap() - cloud->points[i].getVector3fMap();
@@ -2910,7 +2912,7 @@ void adjustNormalsToViewPoints(
 				}
 				else
 				{
-					UWARN("Not found camera viewpoint for point %d", i);
+					UWARN("Not found camera viewpoint for point %d!?", i);
 				}
 			}
 		}

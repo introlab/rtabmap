@@ -623,7 +623,7 @@ void ExportCloudsDialog::restoreDefaults()
 
 	_ui->checkBox_poisson_outputPolygons->setChecked(false);
 	_ui->checkBox_poisson_manifold->setChecked(true);
-	_ui->spinBox_poisson_depth->setValue(9);
+	_ui->spinBox_poisson_depth->setValue(0);
 	_ui->spinBox_poisson_iso->setValue(8);
 	_ui->spinBox_poisson_solver->setValue(8);
 	_ui->spinBox_poisson_minDepth->setValue(5);
@@ -923,6 +923,7 @@ void ExportCloudsDialog::viewClouds(
 		}
 		viewer->setLighting(true);
 		viewer->setDefaultBackgroundColor(QColor(40, 40, 40, 255));
+		viewer->buildLocator(true);
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
@@ -939,6 +940,7 @@ void ExportCloudsDialog::viewClouds(
 
 		if(textureMeshes.size())
 		{
+			viewer->setPolygonPicking(true);
 			std::map<int, cv::Mat> images;
 			std::map<int, std::vector<CameraModel> > calibrations;
 			for(QMap<int, Signature>::const_iterator iter=cachedSignatures.constBegin(); iter!=cachedSignatures.constEnd(); ++iter)
@@ -1095,6 +1097,7 @@ void ExportCloudsDialog::viewClouds(
 		}
 		else if(meshes.size())
 		{
+			viewer->setPolygonPicking(true);
 			for(std::map<int, pcl::PolygonMesh::Ptr>::iterator iter = meshes.begin(); iter!=meshes.end(); ++iter)
 			{
 				_progressDialog->appendText(tr("Viewing the mesh %1 (%2 polygons)...").arg(iter->first).arg(iter->second->polygons.size()));
@@ -1574,6 +1577,11 @@ bool ExportCloudsDialog::getExportedClouds(
 						_ui->spinBox_randomPoints->value(),
 						(float)_ui->doubleSpinBox_dilationVoxelSize->value(),
 						_ui->spinBox_dilationSteps->value());
+
+				// make sure there are no nans
+				UDEBUG("NaNs filtering... size before = %d", cloudWithNormals->size());
+				cloudWithNormals = util3d::removeNaNNormalsFromPointCloud(cloudWithNormals);
+				UDEBUG("NaNs filtering... size after = %d", cloudWithNormals->size());
 
 				if(_ui->checkBox_assemble->isChecked())
 				{
@@ -2121,7 +2129,31 @@ bool ExportCloudsDialog::getExportedClouds(
 						poisson.setOutputPolygons(_ui->checkBox_poisson_outputPolygons->isEnabled()?_ui->checkBox_poisson_outputPolygons->isChecked():false);
 						poisson.setManifold(_ui->checkBox_poisson_manifold->isChecked());
 						poisson.setSamplesPerNode(_ui->doubleSpinBox_poisson_samples->value());
-						poisson.setDepth(_ui->spinBox_poisson_depth->value());
+						int depth = _ui->spinBox_poisson_depth->value();
+						if(depth == 0)
+						{
+							Eigen::Vector4f min,max;
+							pcl::getMinMax3D(*iter->second, min, max);
+							float mapLength = uMax3(max[0]-min[0], max[1]-min[1], max[2]-min[2]);
+							depth = 12;
+							for(int i=6; i<12; ++i)
+							{
+								if(mapLength/float(1<<i) < 0.03f)
+								{
+									depth = i;
+									break;
+								}
+							}
+							_progressDialog->appendText(tr("Poisson depth resolution chosen is %1, map size (m) = %2x%3x%4")
+									.arg(depth)
+									.arg(int(max[0]-min[0]))
+									.arg(int(max[1]-min[1]))
+									.arg(int(max[2]-min[2])));
+							QApplication::processEvents();
+							uSleep(100);
+							QApplication::processEvents();
+						}
+						poisson.setDepth(depth);
 						poisson.setIsoDivide(_ui->spinBox_poisson_iso->value());
 						poisson.setSolverDivide(_ui->spinBox_poisson_solver->value());
 						poisson.setMinDepth(_ui->spinBox_poisson_minDepth->value());

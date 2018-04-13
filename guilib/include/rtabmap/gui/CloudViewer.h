@@ -60,6 +60,8 @@ namespace pcl {
 
 class QMenu;
 class vtkProp;
+template <typename T> class vtkSmartPointer;
+class vtkOBBTree;
 
 namespace rtabmap {
 
@@ -190,21 +192,35 @@ public:
 	void addOrUpdateCoordinate(
 			const std::string & id,
 			const Transform & transform,
-			double scale);
+			double scale,
+			bool foreground=false);
 	bool updateCoordinatePose(
 			const std::string & id,
 			const Transform & transform);
 	void removeCoordinate(const std::string & id);
 	void removeAllCoordinates();
+	const std::set<std::string> & getAddedCoordinates() const {return _coordinates;}
 
 	void addOrUpdateLine(
 				const std::string & id,
 				const Transform & from,
 				const Transform & to,
 				const QColor & color,
-				bool arrow = false);
+				bool arrow = false,
+				bool foreground = false);
 	void removeLine(const std::string & id);
 	void removeAllLines();
+	const std::set<std::string> & getAddedLines() const {return _lines;}
+
+	void addOrUpdateSphere(
+				const std::string & id,
+				const Transform & pose,
+				float radius,
+				const QColor & color,
+				bool foreground = false);
+	void removeSphere(const std::string & id);
+	void removeAllSpheres();
+	const std::set<std::string> & getAddedSpheres() const {return _spheres;}
 
 	void addOrUpdateFrustum(
 			const std::string & id,
@@ -231,9 +247,11 @@ public:
 			const std::string & text,
 			const Transform & position,
 			double scale,
-			const QColor & color);
+			const QColor & color,
+			bool foreground = true);
 	void removeText(const std::string & id);
 	void removeAllTexts();
+	const std::set<std::string> & getAddedTexts() const {return _texts;}
 
 	bool isTrajectoryShown() const;
 	unsigned int getTrajectorySize() const;
@@ -260,6 +278,7 @@ public:
 	Transform getTargetPose() const;
 
 	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
+	void setPolygonPicking(bool enabled);
 	void setRenderingRate(double rate);
 	void setLighting(bool on);
 	void setShading(bool on);
@@ -295,6 +314,8 @@ public:
 	float getNormalsScale() const;
 	void setNormalsStep(int step);
 	void setNormalsScale(float scale);
+	void buildLocator(bool enable);
+	const std::map<std::string, vtkSmartPointer<vtkOBBTree> > & getLocators() const {return _locators;}
 
 public slots:
 	void setDefaultBackgroundColor(const QColor & color);
@@ -348,11 +369,13 @@ private:
     QAction * _aSetFlatShading;
     QAction * _aSetEdgeVisibility;
     QAction * _aBackfaceCulling;
+    QAction * _aPolygonPicking;
     QMenu * _menu;
     std::set<std::string> _graphes;
     std::set<std::string> _coordinates;
     std::set<std::string> _texts;
     std::set<std::string> _lines;
+    std::set<std::string> _spheres;
     QMap<std::string, Transform> _frustums;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
@@ -362,6 +385,8 @@ private:
     float _gridCellSize;
     int _normalsStep;
     float _normalsScale;
+    bool _buildLocator;
+    std::map<std::string, vtkSmartPointer<vtkOBBTree> > _locators;
     cv::Vec3d _lastCameraOrientation;
     cv::Vec3d _lastCameraPose;
     QMap<std::string, Transform> _addedClouds; // include cloud, scan, meshes
