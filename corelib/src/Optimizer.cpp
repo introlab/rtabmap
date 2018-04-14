@@ -279,11 +279,14 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 	UDEBUG("Incremental optimization... poses=%d comstraints=%d", (int)poses.size(), (int)constraints.size());
 	for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 	{
+		incGraph.insert(*iter);
 		bool hasLoopClosure = false;
 		for(std::multimap<int, Link>::iterator jter=constraintsCpy.lower_bound(iter->first); jter!=constraintsCpy.end() && jter->first==iter->first; ++jter)
 		{
+			UDEBUG("%d: %d -> %d type=%d", iter->first, jter->second.from(), jter->second.to(), jter->second.type());
 			if(jter->second.type() == Link::kNeighbor || jter->second.type() == Link::kNeighborMerged)
 			{
+				UASSERT(uContains(incGraph, iter->first));
 				incGraph.insert(std::make_pair(jter->second.to(), incGraph.at(iter->first) * jter->second.transform()));
 				incGraphLinks.insert(*jter);
 			}
@@ -316,6 +319,8 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 	if(!incGraph.empty() && incGraph.size() == poses.size())
 	{
 		UASSERT(incGraphLinks.size() == constraints.size());
+		UASSERT(uContains(poses, rootId) && uContains(incGraph, rootId));
+		incGraph.at(rootId) = poses.at(rootId);
 		return this->optimize(rootId, incGraph, incGraphLinks, intermediateGraphes, finalError, iterationsDone);
 	}
 

@@ -45,6 +45,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <yaml-cpp/yaml.h>
 #include <stdio.h>
 #include <signal.h>
+#include <fstream>
 
 using namespace rtabmap;
 

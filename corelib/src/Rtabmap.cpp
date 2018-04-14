@@ -2268,10 +2268,18 @@ bool Rtabmap::process(
 			
 			// if _optimizeFromGraphEnd parameter just changed state, don't use optimized poses as guess
 			float normMapCorrection = _mapCorrection.getNormSquared(); // use distance for identity detection
-			if((normMapCorrection > 0.001f && _optimizeFromGraphEnd) ||
-				(normMapCorrection < 0.001f && !_optimizeFromGraphEnd))
+			if((normMapCorrection > 0.000001f && _optimizeFromGraphEnd) ||
+				(normMapCorrection < 0.000001f && !_optimizeFromGraphEnd))
 			{
-				poses.clear();
+				for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end(); ++iter)
+				{
+					if(iter->second.type() != Link::kNeighbor && iter->second.type() != Link::kVirtualClosure)
+					{
+						UWARN("Optimization: clearing guess poses as %s may have changed state, now %s (normMapCorrection=%f)", Parameters::kRGBDOptimizeFromGraphEnd().c_str(), _optimizeFromGraphEnd?"true":"false", normMapCorrection);
+						poses.clear();
+						break;
+					}
+				}
 			}
 
 			std::multimap<int, Link> constraints;
@@ -3311,24 +3319,24 @@ std::map<int, Transform> Rtabmap::optimizeGraph(
 
 		if(!poses.empty() && optimizedPoses.empty() && guessPoses.empty())
 		{
-			UERROR("Optimization has failed, trying incremental optimization instead, this may take a while (poses=%d, links=%d)...", (int)poses.size(), (int)edgeConstraints.size());
+			UWARN("Optimization has failed, trying incremental optimization instead, this may take a while (poses=%d, links=%d)...", (int)poses.size(), (int)edgeConstraints.size());
 			optimizedPoses = _graphOptimizer->optimizeIncremental(fromId, poses, edgeConstraints, 0, error, iterationsDone);
 
 			if(optimizedPoses.empty())
 			{
 				if(!_graphOptimizer->isCovarianceIgnored() || _graphOptimizer->type() != Optimizer::kTypeTORO)
 				{
-					UERROR("Incremental optimization also failed. You may try changing parameters to %s=0 and %s=true.",
+					UWARN("Incremental optimization also failed. You may try changing parameters to %s=0 and %s=true.",
 							Parameters::kOptimizerStrategy().c_str(), Parameters::kOptimizerVarianceIgnored().c_str());
 				}
 				else
 				{
-					UERROR("Incremental optimization also failed.");
+					UWARN("Incremental optimization also failed.");
 				}
 			}
 			else
 			{
-				UERROR("Incremental optimization succeeded!");
+				UWARN("Incremental optimization succeeded!");
 			}
 		}
 	}
