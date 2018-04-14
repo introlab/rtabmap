@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UStl.h>
 #include <rtabmap/utilite/UConversion.h>
+#include <rtabmap/utilite/UMath.h>
 
 #include <pcl/common/common.h>
 #include <pcl/common/centroid.h>
@@ -133,7 +134,14 @@ void occupancy2DFromLaserScan(
 	}
 
 	// copy directly obstacles precise positions
-	occupied = scanHit.clone();
+	if(scanMaxRange > cellSize)
+	{
+		occupied = util3d::rangeFiltering(LaserScan::backwardCompatibility(scanHit), 0.0f, scanMaxRange).data().clone();
+	}
+	else
+	{
+		occupied = scanHit.clone();
+	}
 }
 
 /**
@@ -628,6 +636,7 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 
 		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
 		int j=0;
+		float scanMaxRangeSqr = scanMaxRange * scanMaxRange;
 		for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
 		{
 			const Transform & pose = poses.at(iter->first);
@@ -638,15 +647,20 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				viewpoint = kter->second;
 			}
 			cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize, ((pose.y()+viewpoint.y)-yMin)/cellSize);
+			cv::Point2f startf(pose.x()+viewpoint.x, pose.y()+viewpoint.y);
 
 			// Set obstacles first
 			for(int i=0; i<iter->second.first.cols; ++i)
 			{
 				const float * ptr = iter->second.first.ptr<float>(0, i);
-				cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
-				if(end!=start)
+				bool ignore = scanMaxRange>cellSize && uNormSquared(ptr[0]+cellSize, ptr[1]+cellSize) > scanMaxRangeSqr;
+				if(!ignore)
 				{
-					map.at<char>(end.y, end.x) = 100; // obstacle
+					cv::Point2i end((ptr[0]+startf.x-xMin)/cellSize, (ptr[1]+startf.y-yMin)/cellSize);
+					if(end!=start)
+					{
+						map.at<char>(end.y, end.x) = 100; // obstacle
+					}
 				}
 			}
 
@@ -654,7 +668,18 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			for(int i=0; i<iter->second.first.cols; ++i)
 			{
 				const float * ptr = iter->second.first.ptr<float>(0, i);
-				cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
+
+				cv::Vec2f v(ptr[0], ptr[1]);
+				if(scanMaxRange>cellSize)
+				{
+					float n = cv::norm(v);
+					if(n > scanMaxRange+cellSize)
+					{
+						v = (v/n) * scanMaxRange;
+					}
+				}
+
+				cv::Point2i end((v[0]+startf.x-xMin)/cellSize, (v[1]+startf.y-yMin)/cellSize);
 				if(end!=start)
 				{
 					if(localScans.size() > 1 || map.at<char>(end.y, end.x) != 0)
@@ -667,7 +692,18 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			for(int i=0; i<iter->second.second.cols; ++i)
 			{
 				const float * ptr = iter->second.second.ptr<float>(0, i);
-				cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
+
+				cv::Vec2f v(ptr[0], ptr[1]);
+				if(scanMaxRange>cellSize)
+				{
+					float n = cv::norm(v);
+					if(n > scanMaxRange+cellSize)
+					{
+						v = (v/n) * scanMaxRange;
+					}
+				}
+
+				cv::Point2i end((v[0]+startf.x-xMin)/cellSize, (v[1]+startf.y-yMin)/cellSize);
 				if(end!=start)
 				{
 					if(localScans.size() > 1 || map.at<char>(end.y, end.x) != 0)
@@ -712,10 +748,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						cv::Mat origin(2,1,CV_32F), endFirst(2,1,CV_32F), endLast(2,1,CV_32F);
 						origin.at<float>(0) = pose.x()+viewpoint.x;
 						origin.at<float>(1) = pose.y()+viewpoint.y;
-						endFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0];
-						endFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1];
-						endLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[0];
-						endLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[1];
+						endFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0]+origin.at<float>(0);
+						endFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1]+origin.at<float>(1);
+						endLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[0]+origin.at<float>(0);
+						endLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[1]+origin.at<float>(1);
 						//UWARN("origin = %f %f", origin.at<float>(0), origin.at<float>(1));
 						//UWARN("endFirst = %f %f", endFirst.at<float>(0), endFirst.at<float>(1));
 						//UWARN("endLast = %f %f", endLast.at<float>(0), endLast.at<float>(1));

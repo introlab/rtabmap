@@ -119,7 +119,6 @@ private:
 	float noiseFilteringRadius_;
 	int noiseFilteringMinNeighbors_;
 	bool scan2dUnknownSpaceFilled_;
-	double scan2dMaxUnknownSpaceFilledRange_;
 	bool rayTracing_;
 	bool fullUpdate_;
 	float minMapSize_;

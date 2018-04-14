@@ -226,6 +226,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.17.0
+		removedParameters_.insert(std::make_pair("Grid/Scan2dMaxFilledRange",     std::make_pair(false,  Parameters::kGridRangeMax())));
+
 		// 0.16.0
 		removedParameters_.insert(std::make_pair("Grid/ProjRayTracing",           std::make_pair(true,  Parameters::kGridRayTracing())));
 		removedParameters_.insert(std::make_pair("Grid/DepthMin",                 std::make_pair(true,  Parameters::kGridRangeMin())));

@@ -965,7 +965,6 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_noiseRadius->setObjectName(Parameters::kGridNoiseFilteringRadius().c_str());
 	_ui->groupBox_grid_normalsSegmentation->setObjectName(Parameters::kGridNormalsSegmentation().c_str());
 	_ui->checkBox_grid_unknownSpaceFilled->setObjectName(Parameters::kGridScan2dUnknownSpaceFilled().c_str());
-	_ui->doubleSpinBox_grid_unknownSpaceFilledMaxRange->setObjectName(Parameters::kGridScan2dMaxFilledRange().c_str());
 	_ui->spinBox_grid_scanDecimation->setObjectName(Parameters::kGridScanDecimation().c_str());
 
 	_ui->checkBox_grid_fullUpdate->setObjectName(Parameters::kGridGlobalFullUpdate().c_str());

@@ -68,7 +68,6 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	noiseFilteringRadius_(Parameters::defaultGridNoiseFilteringRadius()),
 	noiseFilteringMinNeighbors_(Parameters::defaultGridNoiseFilteringMinNeighbors()),
 	scan2dUnknownSpaceFilled_(Parameters::defaultGridScan2dUnknownSpaceFilled()),
-	scan2dMaxUnknownSpaceFilledRange_(Parameters::defaultGridScan2dMaxFilledRange()),
 	rayTracing_(Parameters::defaultGridRayTracing()),
 	fullUpdate_(Parameters::defaultGridGlobalFullUpdate()),
 	minMapSize_(Parameters::defaultGridGlobalMinSize()),
@@ -125,7 +124,6 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringRadius(), noiseFilteringRadius_);
 	Parameters::parse(parameters, Parameters::kGridNoiseFilteringMinNeighbors(), noiseFilteringMinNeighbors_);
 	Parameters::parse(parameters, Parameters::kGridScan2dUnknownSpaceFilled(), scan2dUnknownSpaceFilled_);
-	Parameters::parse(parameters, Parameters::kGridScan2dMaxFilledRange(), scan2dMaxUnknownSpaceFilledRange_);
 	Parameters::parse(parameters, Parameters::kGridRayTracing(), rayTracing_);
 	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
 	Parameters::parse(parameters, Parameters::kGridGlobalMinSize(), minMapSize_);
@@ -259,11 +257,20 @@ void OccupancyGrid::createLocalMap(
 				node.sensorData().laserScanRaw().localTransform().z());
 
 		LaserScan scan = node.sensorData().laserScanRaw();
-		if(cloudMinDepth_ > 0.0f || cloudMaxDepth_ > 0.0f)
+		if(cloudMinDepth_ > 0.0f)
 		{
-			scan = util3d::rangeFiltering(scan, cloudMinDepth_, cloudMaxDepth_);
+			scan = util3d::rangeFiltering(scan, cloudMinDepth_, 0.0f);
 		}
 
+		float maxRange = cloudMaxDepth_;
+		if(cloudMaxDepth_>0.0f && node.sensorData().laserScanRaw().maxRange()>0.0f)
+		{
+			maxRange = cloudMaxDepth_ < node.sensorData().laserScanRaw().maxRange()?cloudMaxDepth_:node.sensorData().laserScanRaw().maxRange();
+		}
+		else if(scan2dUnknownSpaceFilled_ && node.sensorData().laserScanRaw().maxRange()>0.0f)
+		{
+			maxRange = node.sensorData().laserScanRaw().maxRange();
+		}
 		util3d::occupancy2DFromLaserScan(
 				util3d::transformLaserScan(scan, node.sensorData().laserScanRaw().localTransform()).data(),
 				cv::Mat(),
@@ -272,7 +279,7 @@ void OccupancyGrid::createLocalMap(
 				obstacleCells,
 				cellSize_,
 				scan2dUnknownSpaceFilled_,
-				node.sensorData().laserScanRaw().maxRange()>scan2dMaxUnknownSpaceFilledRange_?scan2dMaxUnknownSpaceFilledRange_:node.sensorData().laserScanRaw().maxRange());
+				maxRange);
 
 		UDEBUG("ground=%d obstacles=%d channels=%d", emptyCells.cols, obstacleCells.cols, obstacleCells.cols?obstacleCells.channels():emptyCells.channels());
 	}
@@ -533,7 +540,7 @@ void OccupancyGrid::createLocalMap(
 					obstacleCells,
 					cellSize_,
 					false, // don't fill unknown space
-					0);
+					cloudMaxDepth_);
 		}
 	}
 	UDEBUG("ground=%d obstacles=%d empty=%d, channels=%d", groundCells.cols, obstacleCells.cols, emptyCells.cols, obstacleCells.cols?obstacleCells.channels():groundCells.channels());

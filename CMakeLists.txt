@@ -177,15 +177,9 @@ ELSE()
 FIND_PACKAGE(PCL 1.7 REQUIRED QUIET COMPONENTS common io kdtree search surface filters registration sample_consensus segmentation )
 ENDIF()
 if("${PCL_DEFINITIONS}" MATCHES "-march=native")
-  MESSAGE(WARNING "PCL definitions contain \"-march=native\", make sure \
-                  all libraries using Eigen are also compiled with that flag \
-                  to avoid some segmentation faults (with gdb referring to some \
-                  Eigen functions).")
+  MESSAGE(WARNING "PCL definitions contain \"-march=native\", make sure all libraries using Eigen are also compiled with that flag to avoid some segmentation faults (with gdb referring to some Eigen functions).")
 else()
-  MESSAGE(WARNING "PCL definitions don't contain \"-march=native\", make sure \
-                  all libraries using Eigen are also compiled without that flag \
-                  to avoid some segmentation faults (with gdb referring to some \
-                  Eigen functions).")
+  MESSAGE(WARNING "PCL definitions don't contain \"-march=native\", make sure all libraries using Eigen are also compiled without that flag to avoid some segmentation faults (with gdb referring to some Eigen functions).")
 endif()
 
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
