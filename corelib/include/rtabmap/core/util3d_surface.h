@@ -231,6 +231,8 @@ cv::Mat RTABMAP_EXP mergeTextures(
 		bool exposureFusion = false,         //Exposure fusion can be used only with OpenCV3
 		const ProgressState * state = 0);
 
+void RTABMAP_EXP fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh);
+
 cv::Mat RTABMAP_EXP computeNormals(
 		const cv::Mat & laserScan,
 		int searchK,

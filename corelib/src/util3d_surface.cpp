@@ -2043,6 +2043,45 @@ cv::Mat mergeTextures(
 	return globalTextures;
 }
 
+void fixTextureMeshForVisualization(pcl::TextureMesh & textureMesh)
+{
+	// VTK issue:
+	//  tex_coordinates should be linked to points, not
+	//  polygon vertices. Points linked to multiple different TCoords (different textures) should
+	//  be duplicated.
+	for (unsigned int t = 0; t < textureMesh.tex_coordinates.size(); ++t)
+	{
+		if(textureMesh.tex_polygons[t].size())
+		{
+			pcl::PointCloud<pcl::PointXYZ>::Ptr originalCloud(new pcl::PointCloud<pcl::PointXYZ>);
+			pcl::fromPCLPointCloud2(textureMesh.cloud, *originalCloud);
+
+			// make a cloud with as many points than polygon vertices
+			unsigned int nPoints = textureMesh.tex_coordinates[t].size();
+			UASSERT(nPoints == textureMesh.tex_polygons[t].size()*textureMesh.tex_polygons[t][0].vertices.size()); // assuming polygon size is constant!
+
+			pcl::PointCloud<pcl::PointXYZ>::Ptr newCloud(new pcl::PointCloud<pcl::PointXYZ>);
+			newCloud->resize(nPoints);
+
+			unsigned int oi = 0;
+			for (unsigned int i = 0; i < textureMesh.tex_polygons[t].size(); ++i)
+			{
+				pcl::Vertices & vertices = textureMesh.tex_polygons[t][i];
+
+				for(unsigned int j=0; j<vertices.vertices.size(); ++j)
+				{
+					UASSERT(oi < newCloud->size());
+					UASSERT_MSG(vertices.vertices[j] < originalCloud->size(), uFormat("%d vs %d", vertices.vertices[j], (int)originalCloud->size()).c_str());
+					newCloud->at(oi) = originalCloud->at(vertices.vertices[j]);
+					vertices.vertices[j] = oi; // new vertex index
+					++oi;
+				}
+			}
+			pcl::toPCLPointCloud2(*newCloud, textureMesh.cloud);
+		}
+	}
+}
+
 LaserScan computeNormals(
 		const LaserScan & laserScan,
 		int searchK,
