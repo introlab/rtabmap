@@ -621,6 +621,10 @@
     <addaction name="actionExport_saved_2D_map"/>
     <addaction name="actionImport_2D_map"/>
     <addaction name="separator"/>
+    <addaction name="actionView_optimized_mesh"/>
+    <addaction name="actionUpdate_optimized_mesh"/>
+    <addaction name="actionExport_optimized_mesh"/>
+    <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
@@ -2638,6 +2642,21 @@
   <action name="actionImport_2D_map">
    <property name="text">
     <string>Import 2D map...</string>
+   </property>
+  </action>
+  <action name="actionView_optimized_mesh">
+   <property name="text">
+    <string>View optimized mesh</string>
+   </property>
+  </action>
+  <action name="actionExport_optimized_mesh">
+   <property name="text">
+    <string>Export optimized mesh...</string>
+   </property>
+  </action>
+  <action name="actionUpdate_optimized_mesh">
+   <property name="text">
+    <string>Update optimized mesh...</string>
    </property>
   </action>
  </widget>

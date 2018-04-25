@@ -95,6 +95,9 @@ private slots:
 	void generateGraph();
 	void exportSaved2DMap();
 	void import2DMap();
+	void viewOptimizedMesh();
+	void exportOptimizedMesh();
+	void updateOptimizedMesh();
 	void exportDatabase();
 	void extractImages();
 	void exportPosesRaw();

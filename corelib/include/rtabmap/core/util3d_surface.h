@@ -175,6 +175,15 @@ pcl::TextureMesh::Ptr RTABMAP_EXP concatenateTextureMeshes(
 void RTABMAP_EXP concatenateTextureMaterials(
 		pcl::TextureMesh & mesh, const cv::Size & imageSize, int textureSize, int maxTextures, float & scale, std::vector<bool> * materialsKept=0);
 
+std::vector<std::vector<unsigned int> > RTABMAP_EXP convertPolygonsFromPCL(
+		const std::vector<pcl::Vertices> & polygons);
+std::vector<std::vector<std::vector<unsigned int> > > RTABMAP_EXP convertPolygonsFromPCL(
+		const std::vector<std::vector<pcl::Vertices> > & polygons);
+std::vector<pcl::Vertices> RTABMAP_EXP convertPolygonsToPCL(
+		const std::vector<std::vector<unsigned int> > & polygons);
+std::vector<std::vector<pcl::Vertices> > RTABMAP_EXP convertPolygonsToPCL(
+		const std::vector<std::vector<std::vector<unsigned int> > > & tex_polygons);
+
 pcl::TextureMesh::Ptr RTABMAP_EXP assembleTextureMesh(
 		const cv::Mat & cloudMat,
 		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,

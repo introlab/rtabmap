@@ -2285,6 +2285,45 @@ cv::Mat laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud,
 	return laserScan(cv::Range::all(), cv::Range(0,oi));
 }
 
+pcl::PCLPointCloud2::Ptr laserScanToPointCloud2(const LaserScan & laserScan, const Transform & transform)
+{
+	pcl::PCLPointCloud2::Ptr cloud(new pcl::PCLPointCloud2);
+	if(laserScan.isEmpty())
+	{
+		return cloud;
+	}
+
+	if(laserScan.format() == LaserScan::kXY || laserScan.format() == LaserScan::kXYZ)
+	{
+		pcl::toPCLPointCloud2(*laserScanToPointCloud(laserScan, transform), *cloud);
+	}
+	else if(laserScan.format() == LaserScan::kXYI || laserScan.format() == LaserScan::kXYZI)
+	{
+		pcl::toPCLPointCloud2(*laserScanToPointCloudI(laserScan, transform), *cloud);
+	}
+	else if(laserScan.format() == LaserScan::kXYNormal || laserScan.format() == LaserScan::kXYZNormal)
+	{
+		pcl::toPCLPointCloud2(*laserScanToPointCloudNormal(laserScan, transform), *cloud);
+	}
+	else if(laserScan.format() == LaserScan::kXYINormal || laserScan.format() == LaserScan::kXYZINormal)
+	{
+		pcl::toPCLPointCloud2(*laserScanToPointCloudINormal(laserScan, transform), *cloud);
+	}
+	else if(laserScan.format() == LaserScan::kXYZRGB)
+	{
+		pcl::toPCLPointCloud2(*laserScanToPointCloudRGB(laserScan, transform), *cloud);
+	}
+	else if(laserScan.format() == LaserScan::kXYZRGBNormal)
+	{
+		pcl::toPCLPointCloud2(*laserScanToPointCloudRGBNormal(laserScan, transform), *cloud);
+	}
+	else
+	{
+		UERROR("Unknown conversion from LaserScan format %d to PointCloud2.", laserScan.format());
+	}
+	return cloud;
+}
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr laserScanToPointCloud(const LaserScan & laserScan, const Transform & transform)
 {
 	pcl::PointCloud<pcl::PointXYZ>::Ptr output(new pcl::PointCloud<pcl::PointXYZ>);

@@ -222,6 +222,19 @@ public:
 	void removeAllSpheres();
 	const std::set<std::string> & getAddedSpheres() const {return _spheres;}
 
+	void addOrUpdateCube(
+				const std::string & id,
+				const Transform & pose, // center of the cube
+				float width,  // e.g., along x axis
+				float height, // e.g., along y axis
+				float depth,  // e.g., along z axis
+				const QColor & color,
+				bool wireframe = false,
+				bool foreground = false);
+	void removeCube(const std::string & id);
+	void removeAllCubes();
+	const std::set<std::string> & getAddedCubes() const {return _cubes;}
+
 	void addOrUpdateFrustum(
 			const std::string & id,
 			const Transform & transform,
@@ -314,7 +327,7 @@ public:
 	float getNormalsScale() const;
 	void setNormalsStep(int step);
 	void setNormalsScale(float scale);
-	void buildLocator(bool enable);
+	void buildPickingLocator(bool enable);
 	const std::map<std::string, vtkSmartPointer<vtkOBBTree> > & getLocators() const {return _locators;}
 
 public slots:
@@ -376,6 +389,7 @@ private:
     std::set<std::string> _texts;
     std::set<std::string> _lines;
     std::set<std::string> _spheres;
+    std::set<std::string> _cubes;
     QMap<std::string, Transform> _frustums;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;

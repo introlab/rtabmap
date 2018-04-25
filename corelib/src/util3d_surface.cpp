@@ -1196,6 +1196,51 @@ void concatenateTextureMaterials(pcl::TextureMesh & mesh, const cv::Size & image
 	}
 }
 
+std::vector<std::vector<unsigned int> > convertPolygonsFromPCL(const std::vector<pcl::Vertices> & polygons)
+{
+	std::vector<std::vector<unsigned int> > polygonsOut(polygons.size());
+	for(unsigned int p=0; p<polygons.size(); ++p)
+	{
+		polygonsOut[p] = polygons[p].vertices;
+	}
+	return polygonsOut;
+}
+std::vector<std::vector<std::vector<unsigned int> > > convertPolygonsFromPCL(const std::vector<std::vector<pcl::Vertices> > & tex_polygons)
+{
+	std::vector<std::vector<std::vector<unsigned int> > > polygonsOut(tex_polygons.size());
+	for(unsigned int t=0; t<tex_polygons.size(); ++t)
+	{
+		polygonsOut[t].resize(tex_polygons[t].size());
+		for(unsigned int p=0; p<tex_polygons[t].size(); ++p)
+		{
+			polygonsOut[t][p] = tex_polygons[t][p].vertices;
+		}
+	}
+	return polygonsOut;
+}
+std::vector<pcl::Vertices> convertPolygonsToPCL(const std::vector<std::vector<unsigned int> > & polygons)
+{
+	std::vector<pcl::Vertices> polygonsOut(polygons.size());
+	for(unsigned int p=0; p<polygons.size(); ++p)
+	{
+		polygonsOut[p].vertices = polygons[p];
+	}
+	return polygonsOut;
+}
+std::vector<std::vector<pcl::Vertices> > convertPolygonsToPCL(const std::vector<std::vector<std::vector<unsigned int> > > & tex_polygons)
+{
+	std::vector<std::vector<pcl::Vertices> > polygonsOut(tex_polygons.size());
+	for(unsigned int t=0; t<tex_polygons.size(); ++t)
+	{
+		polygonsOut[t].resize(tex_polygons[t].size());
+		for(unsigned int p=0; p<tex_polygons[t].size(); ++p)
+		{
+			polygonsOut[t][p].vertices = tex_polygons[t][p];
+		}
+	}
+	return polygonsOut;
+}
+
 pcl::TextureMesh::Ptr assembleTextureMesh(
 		const cv::Mat & cloudMat,
 		const std::vector<std::vector<std::vector<unsigned int> > > & polygons,

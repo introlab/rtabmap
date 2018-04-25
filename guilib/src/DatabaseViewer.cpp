@@ -82,6 +82,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/gui/RecoveryState.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
+#include <pcl/io/obj_io.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/common/transforms.h>
 #include <pcl/common/common.h>
@@ -248,6 +249,9 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->actionGPS_KML, SIGNAL(triggered()), this , SLOT(exportGPS_KML()));
 	connect(ui_->actionExport_saved_2D_map, SIGNAL(triggered()), this , SLOT(exportSaved2DMap()));
 	connect(ui_->actionImport_2D_map, SIGNAL(triggered()), this , SLOT(import2DMap()));
+	connect(ui_->actionView_optimized_mesh, SIGNAL(triggered()), this , SLOT(viewOptimizedMesh()));
+	connect(ui_->actionExport_optimized_mesh, SIGNAL(triggered()), this , SLOT(exportOptimizedMesh()));
+	connect(ui_->actionUpdate_optimized_mesh, SIGNAL(triggered()), this , SLOT(updateOptimizedMesh()));
 	connect(ui_->actionView_3D_map, SIGNAL(triggered()), this, SLOT(view3DMap()));
 	connect(ui_->actionGenerate_3D_map_pcd, SIGNAL(triggered()), this, SLOT(generate3DMap()));
 	connect(ui_->actionDetect_more_loop_closures, SIGNAL(triggered()), this, SLOT(detectMoreLoopClosures()));
@@ -276,6 +280,9 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	ui_->menuExport_GPS->setEnabled(false);
 	ui_->actionPoses_KML->setEnabled(false);
 	ui_->actionExport_saved_2D_map->setEnabled(false);
+	ui_->actionView_optimized_mesh->setEnabled(false);
+	ui_->actionExport_optimized_mesh->setEnabled(false);
+	ui_->actionUpdate_optimized_mesh->setEnabled(false);
 
 	ui_->horizontalSlider_A->setTracking(false);
 	ui_->horizontalSlider_B->setTracking(false);
@@ -938,6 +945,9 @@ bool DatabaseViewer::closeDatabase()
 		ui_->actionPoses_KML->setEnabled(false);
 		ui_->actionExport_saved_2D_map->setEnabled(false);
 		ui_->actionImport_2D_map->setEnabled(false);
+		ui_->actionView_optimized_mesh->setEnabled(false);
+		ui_->actionExport_optimized_mesh->setEnabled(false);
+		ui_->actionUpdate_optimized_mesh->setEnabled(false);
 		ui_->checkBox_showOptimized->setEnabled(false);
 		ui_->toolBox_statistics->clear();
 		databaseFileName_.clear();
@@ -1478,6 +1488,9 @@ void DatabaseViewer::updateIds()
 	ui_->actionPoses_KML->setEnabled(false);
 	ui_->actionExport_saved_2D_map->setEnabled(false);
 	ui_->actionImport_2D_map->setEnabled(false);
+	ui_->actionView_optimized_mesh->setEnabled(false);
+	ui_->actionExport_optimized_mesh->setEnabled(false);
+	ui_->actionUpdate_optimized_mesh->setEnabled(uStrNumCmp(dbDriver_->getDatabaseVersion(), "0.13.0") >= 0);
 	links_.clear();
 	linksAdded_.clear();
 	linksRefined_.clear();
@@ -1642,6 +1655,12 @@ void DatabaseViewer::updateIds()
 	bool hasMap = !dbDriver_->load2DMap(xMin, yMin, cellSize).empty();
 	ui_->actionExport_saved_2D_map->setEnabled(hasMap);
 	ui_->actionImport_2D_map->setEnabled(hasMap);
+
+	if(!dbDriver_->loadOptimizedMesh().empty())
+	{
+		ui_->actionView_optimized_mesh->setEnabled(true);
+		ui_->actionExport_optimized_mesh->setEnabled(true);
+	}
 
 	UINFO("Loaded %d ids, %d poses and %d links", (int)ids_.size(), (int)odomPoses_.size(), (int)links_.size());
 
@@ -2415,6 +2434,300 @@ void DatabaseViewer::import2DMap()
 				QMessageBox::warning(this, tr("Import 2D map"), tr("Cannot import %1 as its size doesn't match the current saved map. Import 2D Map action should only be used to modify the map saved in the database.").arg(path));
 			}
 		}
+	}
+}
+
+void DatabaseViewer::viewOptimizedMesh()
+{
+	if(!dbDriver_)
+	{
+		QMessageBox::warning(this, tr("Cannot view optimized mesh"), tr("A database must must loaded first...\nUse File->Open database."));
+		return;
+	}
+
+	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
+#else
+	std::vector<std::vector<Eigen::Vector2f> > texCoords;
+#endif
+	cv::Mat textures;
+	cv::Mat cloudMat = dbDriver_->loadOptimizedMesh(&polygons, &texCoords, &textures);
+	if(cloudMat.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot view optimized mesh"), tr("The database doesn't contain a saved optimized mesh."));
+	}
+	else
+	{
+		CloudViewer * viewer = new CloudViewer(this);
+		viewer->setWindowFlags(Qt::Window);
+		viewer->setAttribute(Qt::WA_DeleteOnClose);
+		viewer->buildPickingLocator(true);
+		if(!textures.empty())
+		{
+			pcl::TextureMeshPtr mesh = util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures, true);
+			util3d::fixTextureMeshForVisualization(*mesh);
+			viewer->setWindowTitle("Optimized Textured Mesh");
+			viewer->setPolygonPicking(true);
+			viewer->addCloudTextureMesh("mesh", mesh, textures);
+		}
+		else if(polygons.size() == 1)
+		{
+			pcl::PolygonMeshPtr mesh = util3d::assemblePolygonMesh(cloudMat, polygons.at(0));
+			viewer->setWindowTitle("Optimized Mesh");
+			viewer->setPolygonPicking(true);
+			viewer->addCloudMesh("mesh", mesh);
+		}
+		else
+		{
+			LaserScan scan = LaserScan::backwardCompatibility(cloudMat);
+			pcl::PCLPointCloud2::Ptr cloud = util3d::laserScanToPointCloud2(scan);
+			viewer->setWindowTitle("Optimized Point Cloud");
+			viewer->addCloud("mesh", cloud, Transform::getIdentity(), scan.hasRGB(), scan.hasNormals(), scan.hasIntensity());
+		}
+		viewer->show();
+	}
+}
+
+void DatabaseViewer::exportOptimizedMesh()
+{
+	if(!dbDriver_)
+	{
+		QMessageBox::warning(this, tr("Cannot export optimized mesh"), tr("A database must must loaded first...\nUse File->Open database."));
+		return;
+	}
+
+	std::vector<std::vector<std::vector<unsigned int> > > polygons;
+#if PCL_VERSION_COMPARE(>=, 1, 8, 0)
+	std::vector<std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f> > > texCoords;
+#else
+	std::vector<std::vector<Eigen::Vector2f> > texCoords;
+#endif
+	cv::Mat textures;
+	cv::Mat cloudMat = dbDriver_->loadOptimizedMesh(&polygons, &texCoords, &textures);
+	if(cloudMat.empty())
+	{
+		QMessageBox::warning(this, tr("Cannot export optimized mesh"), tr("The database doesn't contain a saved optimized mesh."));
+	}
+	else
+	{
+		QString name = QFileInfo(databaseFileName_.c_str()).baseName();
+
+		if(!textures.empty())
+		{
+			pcl::TextureMeshPtr mesh = util3d::assembleTextureMesh(cloudMat, polygons, texCoords, textures);
+			QString path = QFileDialog::getSaveFileName(
+					this,
+					tr("Save File"),
+					pathDatabase_+"/" + name + ".obj",
+					tr("Mesh (*.obj)"));
+
+			if(!path.isEmpty())
+			{
+				if(QFileInfo(path).suffix() == "")
+				{
+					path += ".obj";
+				}
+				QString baseName = QFileInfo(path).baseName();
+				if(mesh->tex_materials.size() == 1)
+				{
+					mesh->tex_materials.at(0).tex_file = baseName.toStdString() + ".png";
+					cv::imwrite((QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+baseName).toStdString() + ".png", textures);
+				}
+				else
+				{
+					for(unsigned int i=0; i<mesh->tex_materials.size(); ++i)
+					{
+						mesh->tex_materials.at(i).tex_file = (baseName+QDir::separator()+QString::number(i)+".png").toStdString();
+						UASSERT((i+1)*textures.rows <= (unsigned int)textures.cols);
+						cv::imwrite((QFileInfo(path).absoluteDir().absolutePath()+QDir::separator()+baseName+QDir::separator()+QString::number(i)+".png").toStdString(), textures(cv::Range::all(), cv::Range(i*textures.rows, (i+1)*textures.rows)));
+					}
+				}
+				pcl::io::saveOBJFile(path.toStdString(), *mesh);
+
+				QMessageBox::information(this, tr("Export Textured Mesh"), tr("Exported %1!").arg(path));
+			}
+		}
+		else if(polygons.size() == 1)
+		{
+			pcl::PolygonMeshPtr mesh = util3d::assemblePolygonMesh(cloudMat, polygons.at(0));
+			QString path = QFileDialog::getSaveFileName(
+					this,
+					tr("Save File"),
+					pathDatabase_+"/" + name + ".ply",
+					tr("Mesh (*.ply)"));
+
+			if(!path.isEmpty())
+			{
+				if(QFileInfo(path).suffix() == "")
+				{
+					path += ".ply";
+				}
+				pcl::io::savePLYFileBinary(path.toStdString(), *mesh);
+				QMessageBox::information(this, tr("Export Mesh"), tr("Exported %1!").arg(path));
+			}
+		}
+		else
+		{
+			QString path = QFileDialog::getSaveFileName(
+					this,
+					tr("Save File"),
+					pathDatabase_+"/" + name + ".ply",
+					tr("Point cloud data (*.ply *.pcd)"));
+
+			if(!path.isEmpty())
+			{
+				if(QFileInfo(path).suffix() == "")
+				{
+					path += ".ply";
+				}
+				bool success = false;
+				pcl::PCLPointCloud2::Ptr cloud = util3d::laserScanToPointCloud2(LaserScan::backwardCompatibility(cloudMat));
+				if(QFileInfo(path).suffix() == "pcd")
+				{
+					success = pcl::io::savePCDFile(path.toStdString(), *cloud) == 0;
+				}
+				else
+				{
+					success = pcl::io::savePLYFile(path.toStdString(), *cloud) == 0;
+				}
+				if(success)
+				{
+					QMessageBox::information(this, tr("Export Point Cloud"), tr("Exported %1!").arg(path));
+				}
+				else
+				{
+					QMessageBox::critical(this, tr("Export Point Cloud"), tr("Failed exporting %1!").arg(path));
+				}
+			}
+		}
+	}
+}
+
+void DatabaseViewer::updateOptimizedMesh()
+{
+	if(!ids_.size() || !dbDriver_)
+	{
+		QMessageBox::warning(this, tr("Cannot generate a graph"), tr("The database is empty..."));
+		return;
+	}
+
+	if(graphes_.empty())
+	{
+		this->updateGraphView();
+		if(graphes_.empty() || ui_->horizontalSlider_iterations->maximum() != (int)graphes_.size()-1)
+		{
+			QMessageBox::warning(this, tr("Cannot generate a graph"), tr("No graph in database?!"));
+			return;
+		}
+	}
+
+	std::map<int, Transform> optimizedPoses;
+	if(ui_->checkBox_alignScansCloudsWithGroundTruth->isChecked() && !groundTruthPoses_.empty())
+	{
+		optimizedPoses = groundTruthPoses_;
+	}
+	else
+	{
+		optimizedPoses = uValueAt(graphes_, ui_->horizontalSlider_iterations->value());
+	}
+	if(ui_->groupBox_posefiltering->isChecked())
+	{
+		optimizedPoses = graph::radiusPosesFiltering(optimizedPoses,
+				ui_->doubleSpinBox_posefilteringRadius->value(),
+				ui_->doubleSpinBox_posefilteringAngle->value()*CV_PI/180.0);
+	}
+	if(optimizedPoses.size() > 0)
+	{
+		exportDialog_->setDBDriver(dbDriver_);
+		exportDialog_->forceAssembling(true);
+		exportDialog_->setOkButton();
+
+		std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> clouds;
+		std::map<int, pcl::PolygonMesh::Ptr> meshes;
+		std::map<int, pcl::TextureMesh::Ptr> textureMeshes;
+		std::vector<std::map<int, pcl::PointXY> > textureVertexToPixels;
+
+		if(exportDialog_->getExportedClouds(
+				optimizedPoses,
+				updateLinksWithModifications(links_),
+				mapIds_,
+				QMap<int, Signature>(),
+				std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> >(),
+				std::map<int, LaserScan>(),
+				pathDatabase_,
+				ui_->parameters_toolbox->getParameters(),
+				clouds,
+				meshes,
+				textureMeshes,
+				textureVertexToPixels))
+		{
+			if(textureMeshes.size())
+			{
+				dbDriver_->saveOptimizedPoses(optimizedPoses, Transform());
+
+				cv::Mat globalTextures;
+				pcl::TextureMeshPtr textureMesh = textureMeshes.at(0);
+				if(textureMesh->tex_materials.size()>1)
+				{
+					globalTextures = util3d::mergeTextures(
+							*textureMesh,
+							std::map<int, cv::Mat>(),
+							std::map<int, std::vector<CameraModel> >(),
+							0,
+							dbDriver_,
+							exportDialog_->getTextureSize(),
+							exportDialog_->getMaxTextures(),
+							textureVertexToPixels,
+							exportDialog_->isGainCompensation(),
+							exportDialog_->getGainBeta(),
+							exportDialog_->isGainRGB(),
+							exportDialog_->isBlending(),
+							exportDialog_->getBlendingDecimation(),
+							exportDialog_->getTextureBrightnessConstrastRatioLow(),
+							exportDialog_->getTextureBrightnessConstrastRatioHigh(),
+							exportDialog_->isExposeFusion());
+				}
+				dbDriver_->saveOptimizedMesh(
+						util3d::laserScanFromPointCloud(textureMesh->cloud, false).data(),
+						util3d::convertPolygonsFromPCL(textureMesh->tex_polygons),
+						textureMesh->tex_coordinates,
+						globalTextures);
+				QMessageBox::information(this, tr("Update Optimized Textured Mesh"), tr("Updated!"));
+				ui_->actionView_optimized_mesh->setEnabled(true);
+				ui_->actionExport_optimized_mesh->setEnabled(true);
+				this->viewOptimizedMesh();
+			}
+			else if(meshes.size())
+			{
+				dbDriver_->saveOptimizedPoses(optimizedPoses, Transform());
+				std::vector<std::vector<std::vector<unsigned int> > > polygons(1);
+				polygons.at(0) = util3d::convertPolygonsFromPCL(meshes.at(0)->polygons);
+				dbDriver_->saveOptimizedMesh(util3d::laserScanFromPointCloud(meshes.at(0)->cloud, false).data(), polygons);
+				QMessageBox::information(this, tr("Update Optimized Mesh"), tr("Updated!"));
+				ui_->actionView_optimized_mesh->setEnabled(true);
+				ui_->actionExport_optimized_mesh->setEnabled(true);
+				this->viewOptimizedMesh();
+			}
+			else if(clouds.size())
+			{
+				dbDriver_->saveOptimizedPoses(optimizedPoses, Transform());
+				dbDriver_->saveOptimizedMesh(util3d::laserScanFromPointCloud(*clouds.at(0)));
+				QMessageBox::information(this, tr("Update Optimized PointCloud"), tr("Updated!"));
+				ui_->actionView_optimized_mesh->setEnabled(true);
+				ui_->actionExport_optimized_mesh->setEnabled(true);
+				this->viewOptimizedMesh();
+			}
+			else
+			{
+				QMessageBox::critical(this, tr("Update Optimized Mesh"), tr("Nothing to save!"));
+			}
+		}
+		exportDialog_->setProgressDialogToMax();
+	}
+	else
+	{
+		QMessageBox::critical(this, tr("Error"), tr("No neighbors found for node %1.").arg(ui_->spinBox_optimizationsFrom->value()));
 	}
 }
 

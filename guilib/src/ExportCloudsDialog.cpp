@@ -273,6 +273,24 @@ void ExportCloudsDialog::cancel()
 	_progressDialog->appendText(tr("Canceled!"));
 }
 
+void ExportCloudsDialog::forceAssembling(bool enabled)
+{
+	if(enabled)
+	{
+		_ui->checkBox_assemble->setChecked(true);
+		_ui->checkBox_assemble->setEnabled(false);
+	}
+	else
+	{
+		_ui->checkBox_assemble->setEnabled(true);
+	}
+}
+
+void ExportCloudsDialog::setProgressDialogToMax()
+{
+	_progressDialog->setValue(_progressDialog->maximumSteps());
+}
+
 void ExportCloudsDialog::saveSettings(QSettings & settings, const QString & group) const
 {
 	if(!group.isEmpty())
@@ -433,7 +451,10 @@ void ExportCloudsDialog::loadSettings(QSettings & settings, const QString & grou
 	_ui->doubleSpinBox_filteringRadius->setValue(settings.value("filtering_radius", _ui->doubleSpinBox_filteringRadius->value()).toDouble());
 	_ui->spinBox_filteringMinNeighbors->setValue(settings.value("filtering_min_neighbors", _ui->spinBox_filteringMinNeighbors->value()).toInt());
 
-	_ui->checkBox_assemble->setChecked(settings.value("assemble", _ui->checkBox_assemble->isChecked()).toBool());
+	if(_ui->checkBox_assemble->isEnabled())
+	{
+		_ui->checkBox_assemble->setChecked(settings.value("assemble", _ui->checkBox_assemble->isChecked()).toBool());
+	}
 	_ui->doubleSpinBox_voxelSize_assembled->setValue(settings.value("assemble_voxel", _ui->doubleSpinBox_voxelSize_assembled->value()).toDouble());
 	_ui->comboBox_frame->setCurrentIndex(settings.value("frame", _ui->comboBox_frame->currentIndex()).toInt());
 
@@ -956,7 +977,7 @@ void ExportCloudsDialog::viewClouds(
 		}
 		viewer->setLighting(true);
 		viewer->setDefaultBackgroundColor(QColor(40, 40, 40, 255));
-		viewer->buildLocator(true);
+		viewer->buildPickingLocator(true);
 
 		QVBoxLayout *layout = new QVBoxLayout();
 		layout->addWidget(viewer);
@@ -1185,6 +1206,60 @@ void ExportCloudsDialog::viewClouds(
 		_progressDialog->setAutoClose(false);
 	}
 	_progressDialog->setValue(_progressDialog->maximumSteps());
+}
+
+int ExportCloudsDialog::getTextureSize() const
+{
+	int textureSize = 1024;
+	if(_ui->comboBox_meshingTextureSize->currentIndex() > 0)
+	{
+		textureSize = 128 << _ui->comboBox_meshingTextureSize->currentIndex(); // start at 256
+	}
+	return textureSize;
+}
+int ExportCloudsDialog::getMaxTextures() const
+{
+	return _ui->spinBox_mesh_maxTextures->value();
+}
+bool ExportCloudsDialog::isGainCompensation() const
+{
+	return _ui->checkBox_gainCompensation->isChecked();
+}
+double ExportCloudsDialog::getGainBeta() const
+{
+	return _ui->doubleSpinBox_gainBeta->value();
+}
+bool ExportCloudsDialog::isGainRGB() const
+{
+	return _ui->checkBox_gainRGB->isChecked();
+}
+bool ExportCloudsDialog::isBlending() const
+{
+	return _ui->checkBox_blending->isChecked();
+}
+int ExportCloudsDialog::getBlendingDecimation() const
+{
+	int blendingDecimation = 0;
+	if(_ui->checkBox_blending->isChecked())
+	{
+		if(_ui->comboBox_blendingDecimation->currentIndex() > 0)
+		{
+			blendingDecimation = 1 << (_ui->comboBox_blendingDecimation->currentIndex()-1);
+		}
+	}
+	return blendingDecimation;
+}
+int ExportCloudsDialog::getTextureBrightnessConstrastRatioLow() const
+{
+	return _ui->spinBox_textureBrightnessContrastRatioLow->value();
+}
+int ExportCloudsDialog::getTextureBrightnessConstrastRatioHigh() const
+{
+	return _ui->spinBox_textureBrightnessContrastRatioHigh->value();
+}
+bool ExportCloudsDialog::isExposeFusion() const
+{
+	return _ui->checkBox_exposureFusion->isEnabled() && _ui->checkBox_exposureFusion->isChecked();
 }
 
 bool ExportCloudsDialog::removeDirRecursively(const QString & dirName)
@@ -2196,7 +2271,7 @@ bool ExportCloudsDialog::getExportedClouds(
 						poisson.reconstruct(*mesh);
 					}
 
-					_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(cloudsAdded).arg(clouds.size()));
+					_progressDialog->appendText(tr("Mesh %1 created with %2 polygons (%3/%4).").arg(iter->first).arg(mesh->polygons.size()).arg(cloudsAdded).arg(cloudsWithNormals.size()));
 					QApplication::processEvents();
 
 					if(mesh->polygons.size()>0)

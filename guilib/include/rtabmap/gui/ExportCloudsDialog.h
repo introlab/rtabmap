@@ -64,6 +64,10 @@ public:
 	void loadSettings(QSettings & settings, const QString & group = "");
 
 	void setDBDriver(const DBDriver * dbDriver) {_dbDriver = dbDriver;}
+	void forceAssembling(bool enabled);
+	void setProgressDialogToMax();
+	void setSaveButton();
+	void setOkButton();
 
 	void exportClouds(
 			const std::map<int, Transform> & poses,
@@ -84,6 +88,31 @@ public:
 			const std::map<int, LaserScan> & cachedScans,
 			const QString & workingDirectory,
 			const ParametersMap & parameters);
+
+	bool getExportedClouds(
+			const std::map<int, Transform> & poses,
+			const std::multimap<int, Link> & links,
+			const std::map<int, int> & mapIds,
+			const QMap<int, Signature> & cachedSignatures,
+			const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
+			const std::map<int, LaserScan> & cachedScans,
+			const QString & workingDirectory,
+			const ParametersMap & parameters,
+			std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
+			std::map<int, pcl::PolygonMesh::Ptr> & meshes,
+			std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
+			std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels);
+
+	int getTextureSize() const;
+	int getMaxTextures() const;
+	bool isGainCompensation() const;
+	double getGainBeta() const;
+	bool isGainRGB() const;
+	bool isBlending() const;
+	int getBlendingDecimation() const;
+	int getTextureBrightnessConstrastRatioLow() const;
+	int getTextureBrightnessConstrastRatioHigh() const;
+	bool isExposeFusion() const;
 
 	static bool removeDirRecursively(const QString & dirName);
 
@@ -109,25 +138,9 @@ private:
 			const std::map<int, LaserScan> & cachedScans,
 			const ParametersMap & parameters,
 			bool & has2dScans) const;
-	bool getExportedClouds(
-				const std::map<int, Transform> & poses,
-				const std::multimap<int, Link> & links,
-				const std::map<int, int> & mapIds,
-				const QMap<int, Signature> & cachedSignatures,
-				const std::map<int, std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::IndicesPtr> > & cachedClouds,
-				const std::map<int, LaserScan> & cachedScans,
-				const QString & workingDirectory,
-				const ParametersMap & parameters,
-				std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds,
-				std::map<int, pcl::PolygonMesh::Ptr> & meshes,
-				std::map<int, pcl::TextureMesh::Ptr> & textureMeshes,
-				std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels);
 	void saveClouds(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> & clouds, bool binaryMode = true);
 	void saveMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, const std::map<int, pcl::PolygonMesh::Ptr> & meshes, bool binaryMode = true);
 	void saveTextureMeshes(const QString & workingDirectory, const std::map<int, Transform> & poses, std::map<int, pcl::TextureMesh::Ptr> & textureMeshes, const QMap<int, Signature> & cachedSignatures, const std::vector<std::map<int, pcl::PointXY> > & textureVertexToPixels);
-
-	void setSaveButton();
-	void setOkButton();
 
 private:
 	Ui_ExportCloudsDialog * _ui;

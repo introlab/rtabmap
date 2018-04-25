@@ -82,6 +82,8 @@ class MyInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
 public:
 	MyInteractorStyle(CloudViewer * viewer) :
 		pcl::visualization::PCLVisualizerInteractorStyle(),
+		NumberOfClicks(0),
+		ResetPixelDistance(0),
 		pointsHolder_(new pcl::PointCloud<pcl::PointXYZRGB>),
 		viewer_(viewer)
 	{
@@ -239,7 +241,7 @@ protected:
 				this->NumberOfClicks = 1;
 			}
 
-			if(this->NumberOfClicks == 2)
+			if(this->NumberOfClicks >= 2)
 			{
 				this->NumberOfClicks = 0;
 				this->Interactor->GetPicker()->Pick(pickPosition[0], pickPosition[1],
@@ -352,8 +354,6 @@ private:
 	unsigned int NumberOfClicks;
 	int PreviousPosition[2];
 	int ResetPixelDistance;
-	vtkSmartPointer<vtkTextActor> textActor_;
-	vtkSmartPointer<vtkLine> lineActor_;
 	float PreviousMeasure[3];
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsHolder_;
 	CloudViewer * viewer_;
@@ -1727,6 +1727,68 @@ void CloudViewer::removeAllSpheres()
 	UASSERT(_spheres.empty());
 }
 
+void CloudViewer::addOrUpdateCube(
+			const std::string & id,
+			const Transform & pose,
+			float width,
+			float height,
+			float depth,
+			const QColor & color,
+			bool wireframe,
+			bool foreground)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	removeCube(id);
+
+	if(!pose.isNull())
+	{
+		_cubes.insert(id);
+
+		QColor c = Qt::gray;
+		if(color.isValid())
+		{
+			c = color;
+		}
+		_visualizer->addCube(Eigen::Vector3f(pose.x(), pose.y(), pose.z()), pose.getQuaternionf(), width, height, depth, id, foreground?2:1);
+		if(wireframe)
+		{
+			_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_REPRESENTATION, pcl::visualization::PCL_VISUALIZER_REPRESENTATION_WIREFRAME, id);
+		}
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, c.redF(), c.greenF(), c.blueF(), id);
+		_visualizer->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, c.alphaF(), id);
+	}
+}
+
+void CloudViewer::removeCube(const std::string & id)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	if(_cubes.find(id) != _cubes.end())
+	{
+		_visualizer->removeShape(id);
+		_cubes.erase(id);
+	}
+}
+
+void CloudViewer::removeAllCubes()
+{
+	std::set<std::string> cubes = _cubes;
+	for(std::set<std::string>::iterator iter = cubes.begin(); iter!=cubes.end(); ++iter)
+	{
+		this->removeCube(*iter);
+	}
+	UASSERT(_cubes.empty());
+}
+
 static const float frustum_vertices[] = {
     0.0f,  0.0f, 0.0f,
 	1.0f, 1.0f, 1.0f,
@@ -2706,7 +2768,7 @@ void CloudViewer::setNormalsScale(float scale)
 	}
 }
 
-void CloudViewer::buildLocator(bool enable)
+void CloudViewer::buildPickingLocator(bool enable)
 {
 	_buildLocator = enable;
 }

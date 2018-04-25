@@ -228,6 +228,7 @@ cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXY
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZINormal> & cloud, const Transform & transform = Transform(), bool filterNaNs = true);
 cv::Mat RTABMAP_EXP laserScan2dFromPointCloud(const pcl::PointCloud<pcl::PointXYZI> & cloud, const pcl::PointCloud<pcl::Normal> & normals, const Transform & transform = Transform(), bool filterNaNs = true);
 
+pcl::PCLPointCloud2::Ptr RTABMAP_EXP laserScanToPointCloud2(const LaserScan & laserScan, const Transform & transform = Transform());
 // For 2d laserScan, z is set to null.
 pcl::PointCloud<pcl::PointXYZ>::Ptr RTABMAP_EXP laserScanToPointCloud(const LaserScan & laserScan, const Transform & transform = Transform());
 // For laserScan without normals, normals are set to null.
