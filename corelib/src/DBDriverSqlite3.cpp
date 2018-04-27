@@ -4147,16 +4147,19 @@ void DBDriverSqlite3::addStatisticsQuery(const Statistics & statistics) const
 				}
 
 				cv::Mat compressedWmState;
-				if(uStrNumCmp(this->getDatabaseVersion(), "0.16.2") >= 0 && !statistics.wmState().empty())
+				if(uStrNumCmp(this->getDatabaseVersion(), "0.16.2") >= 0)
 				{
-					compressedWmState = compressData2(cv::Mat(1, statistics.wmState().size(), CV_32SC1, (void *)statistics.wmState().data()));
-					rc = sqlite3_bind_blob(ppStmt, index++, compressedWmState.data, compressedWmState.cols, SQLITE_STATIC);
-					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
-				}
-				else
-				{
-					rc = sqlite3_bind_null(ppStmt, index++);
-					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+					if(!statistics.wmState().empty())
+					{
+						compressedWmState = compressData2(cv::Mat(1, statistics.wmState().size(), CV_32SC1, (void *)statistics.wmState().data()));
+						rc = sqlite3_bind_blob(ppStmt, index++, compressedWmState.data, compressedWmState.cols, SQLITE_STATIC);
+						UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+					}
+					else
+					{
+						rc = sqlite3_bind_null(ppStmt, index++);
+						UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+					}
 				}
 
 				//step
