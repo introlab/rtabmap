@@ -2304,7 +2304,8 @@ bool Rtabmap::process(
 			else if(_memory->isIncremental() && // FIXME: not tested in localization mode, so do it only in mapping mode
 			  _optimizationMaxLinearError > 0.0f &&
 			  loopClosureLinksAdded.size() &&
-			  optimizationIterations > 0)
+			  optimizationIterations > 0 &&
+			  constraints.size())
 			{
 				const Link * maxLinearLink = 0;
 				for(std::multimap<int, Link>::iterator iter=constraints.begin(); iter!=constraints.end(); ++iter)
@@ -2329,34 +2330,34 @@ bool Rtabmap::process(
 				if(maxLinearLink)
 				{
 					UINFO("Max optimization error = %f m (link %d->%d, var=%f, %f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
-				}
 
-				float stddev = sqrt(maxLinearLink->transVariance());
-				maxLinearErrorRatio = maxLinearError/stddev;
-				if(maxLinearErrorRatio > _optimizationMaxLinearError)
-				{
-					UWARN("Rejecting all added loop closures (%d) in this "
-						  "iteration because a wrong loop closure has been "
-						  "detected after graph optimization, resulting in "
-						  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f, stddev=%f). The "
-						  "maximum error ratio parameter is %f of std deviation.",
-						  (int)loopClosureLinksAdded.size(),
-						  maxLinearErrorRatio,
-						  maxLinearLink->from(),
-						  maxLinearLink->to(),
-						  maxLinearLink->type(),
-						  maxLinearError,
-						  stddev,
-						  _optimizationMaxLinearError);
-					for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
+					float stddev = sqrt(maxLinearLink->transVariance());
+					maxLinearErrorRatio = maxLinearError/stddev;
+					if(maxLinearErrorRatio > _optimizationMaxLinearError)
 					{
-						_memory->removeLink(iter->first, iter->second);
-						UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+						UWARN("Rejecting all added loop closures (%d) in this "
+							  "iteration because a wrong loop closure has been "
+							  "detected after graph optimization, resulting in "
+							  "a maximum graph error ratio of %f (edge %d->%d, type=%d, abs error=%f, stddev=%f). The "
+							  "maximum error ratio parameter is %f of std deviation.",
+							  (int)loopClosureLinksAdded.size(),
+							  maxLinearErrorRatio,
+							  maxLinearLink->from(),
+							  maxLinearLink->to(),
+							  maxLinearLink->type(),
+							  maxLinearError,
+							  stddev,
+							  _optimizationMaxLinearError);
+						for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
+						{
+							_memory->removeLink(iter->first, iter->second);
+							UWARN("Loop closure %d->%d rejected!", iter->first, iter->second);
+						}
+						updateConstraints = false;
+						_loopClosureHypothesis.first = 0;
+						lastProximitySpaceClosureId = 0;
+						rejectedHypothesis = true;
 					}
-					updateConstraints = false;
-					_loopClosureHypothesis.first = 0;
-					lastProximitySpaceClosureId = 0;
-					rejectedHypothesis = true;
 				}
 			}
 
