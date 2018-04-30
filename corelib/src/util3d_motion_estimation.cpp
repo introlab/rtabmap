@@ -37,9 +37,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/common/common.h>
 
-#if CV_MAJOR_VERSION < 3
 #include "opencv/solvepnp.h"
-#endif
 
 namespace rtabmap
 {
@@ -344,11 +342,10 @@ void solvePnPRansac(
 	{
 		minInliersCount = 4;
 	}
-#if CV_MAJOR_VERSION < 3
-	cv3::solvePnPRansac( //use OpenCV3 version of solvePnPRansac in OpenCV2
-#else
-	cv::solvePnPRansac( // use directly version from OpenCV 3
-#endif
+
+	// Use OpenCV3 version of solvePnPRansac in OpenCV2.
+	// FIXME: we should use this version of solvePnPRansac in newer 3.3.1 too, which seems a lot less stable!?!? Why!?
+	cv3::solvePnPRansac(
 			objectPoints,
 			imagePoints,
 			cameraMatrix,

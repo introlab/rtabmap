@@ -96,9 +96,12 @@ IF(OpenCV_VERSION_MAJOR EQUAL 2)
 SET(SRC_FILES
     ${SRC_FILES}
     opencv/Orb.cpp
-    opencv/solvepnp.cpp
 )
 ENDIF(OpenCV_VERSION_MAJOR EQUAL 2)
+SET(SRC_FILES
+    ${SRC_FILES}
+    opencv/solvepnp.cpp
+)
 
 # to get includes in visual studio
 IF(MSVC)
