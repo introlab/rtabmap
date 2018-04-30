@@ -786,6 +786,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 	{
 		if(addedNodes_.find(iter->first) == addedNodes_.end())
 		{
+			UDEBUG("Pose %d not found in current added poses, it be added to map", iter->first);
 			poses.push_back(*iter);
 		}
 	}
@@ -836,6 +837,8 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 			if(uContains(cache_, iter->first))
 			{
 				const std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> & pair = cache_.at(iter->first);
+
+				UDEBUG("Adding grid %d: ground=%d obstacles=%d empty=%d", iter->first, pair.first.first.cols, pair.first.second.cols, pair.second.cols);
 
 				//ground
 				if(pair.first.first.cols)

@@ -662,6 +662,24 @@ Transform Rtabmap::getPose(int locationId) const
 	return Transform();
 }
 
+void Rtabmap::setInitialPose(const Transform & initialPose)
+{
+	if(_memory)
+	{
+		if(!_memory->isIncremental())
+		{
+			_lastLocalizationPose = initialPose;
+			_lastLocalizationNodeId = 0;
+			_mapCorrection.setIdentity();
+			_mapCorrectionBackup.setNull();
+		}
+		else
+		{
+			UWARN("Initial pose can only be set in localization mode (%s=false), ignoring it...", Parameters::kMemIncrementalMemory().c_str());
+		}
+	}
+}
+
 int Rtabmap::triggerNewMap()
 {
 	int mapId = -1;

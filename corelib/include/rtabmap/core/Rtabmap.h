@@ -129,6 +129,7 @@ public:
 	float getTimeThreshold() const {return _maxTimeAllowed;} // in ms
 	void setTimeThreshold(float maxTimeAllowed); // in ms
 
+	void setInitialPose(const Transform & initialPose);
 	int triggerNewMap();
 	bool labelLocation(int id, const std::string & label);
 	/**
