@@ -688,6 +688,9 @@ int Rtabmap::triggerNewMap()
 		std::map<int, int> reducedIds;
 		mapId = _memory->incrementMapId(&reducedIds);
 		UINFO("New map triggered, new map = %d", mapId);
+		_optimizedPoses.clear();
+		_constraints.clear();
+		_lastLocalizationNodeId = 0;
 
 		if(_bayesFilter)
 		{
