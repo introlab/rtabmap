@@ -179,7 +179,7 @@ ENDIF()
 if("${PCL_DEFINITIONS}" MATCHES "-march=native")
   MESSAGE(WARNING "PCL definitions contain \"-march=native\", make sure all libraries using Eigen are also compiled with that flag to avoid some segmentation faults (with gdb referring to some Eigen functions).")
 else()
-  MESSAGE(WARNING "PCL definitions don't contain \"-march=native\", make sure all libraries using Eigen are also compiled without that flag to avoid some segmentation faults (with gdb referring to some Eigen functions).")
+  MESSAGE(STATUS "PCL definitions don't contain \"-march=native\", make sure all libraries using Eigen are also compiled without that flag to avoid some segmentation faults (with gdb referring to some Eigen functions).")
 endif()
 
 FIND_PACKAGE(ZLIB REQUIRED QUIET)
@@ -273,12 +273,12 @@ IF(WITH_FREENECT2)
     ENDIF(freenect2_FOUND)
 ENDIF(WITH_FREENECT2)
 
-IF(WITH_K4W2)
+IF(WITH_K4W2 AND WIN32)
     FIND_PACKAGE(KinectSDK2 QUIET)
 	IF(KinectSDK2_FOUND)
        MESSAGE(STATUS "Found Kinect for Windows 2: ${KinectSDK2_INCLUDE_DIRS}")
     ENDIF(KinectSDK2_FOUND)
-ENDIF(WITH_K4W2)
+ENDIF(WITH_K4W2 AND WIN32)
 
 # IF PCL depends on OpenNI2 (already found), ignore WITH_OPENNI2
 IF(WITH_OPENNI2 OR OpenNI2_FOUND)
