@@ -24,6 +24,7 @@
   <!-- libproj-dev needed due to error in vtk6 (kinetic)-->
   <build_depend>proj</build_depend>
   <build_depend>octomap</build_depend>
+  <build_depend>libg2o</build_depend>
   
   <run_depend>qt_gui_cpp</run_depend>
   <run_depend>libpcl-all-dev</run_depend>
@@ -35,6 +36,7 @@
   <!-- <run_depend>libopenni2-dev</run_depend> -->
   <run_depend>cv_bridge</run_depend>
   <run_depend>octomap</run_depend>
+  <run_depend>libg2o</run_depend>
 
   <export>
 	 <build_type>cmake</build_type>
