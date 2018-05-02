@@ -25,7 +25,7 @@ RUN cd gtsam && \
     mkdir build && \
     cd build && \
     cmake -DMETIS_SHARED=ON -DGTSAM_BUILD_STATIC_LIBRARY=OFF -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j3 && \
+    make -j$(nproc) && \
     make install && \
     cd && \
     rm -r gtsam
@@ -37,7 +37,7 @@ RUN cd g2o && \
     mkdir build && \
     cd build && \
     cmake -DBUILD_LGPL_SHARED_LIBS=ON -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j3 && \
+    make -j$(nproc) && \
     make install && \
     cd && \
     rm -r g2o
@@ -48,7 +48,7 @@ RUN cd libnabo && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j3 && \
+    make -j$(nproc) && \
     make install && \
     cd && \
     rm -r libnabo
@@ -57,7 +57,7 @@ RUN cd libpointmatcher && \
     mkdir build && \
     cd build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    make -j3 && \
+    make -j$(nproc) && \
     make install && \
     cd && \
     rm -r libpointmatcher
