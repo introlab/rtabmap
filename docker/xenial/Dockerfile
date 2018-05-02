@@ -15,6 +15,50 @@ RUN apt-get update && apt-get install -y \
       libopenni2-dev \
       software-properties-common
 
+# GTSAM
+RUN git clone https://bitbucket.org/gtborg/gtsam.git
+RUN cd gtsam && \
+    git checkout 4.0.0-alpha2 && \
+    mkdir build && \
+    cd build && \
+    cmake -DMETIS_SHARED=ON -DGTSAM_BUILD_STATIC_LIBRARY=OFF -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j3 && \
+    make install && \
+    cd && \
+    rm -r gtsam
+
+# g2o
+RUN git clone https://github.com/RainerKuemmerle/g2o.git
+RUN cd g2o && \
+    git checkout 20170730_git && \
+    mkdir build && \
+    cd build && \
+    cmake -DBUILD_LGPL_SHARED_LIBS=ON -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j3 && \
+    make install && \
+    cd && \
+    rm -r g2o
+
+# libpointmatcher
+RUN git clone https://github.com/ethz-asl/libnabo.git
+RUN cd libnabo && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j3 && \
+    make install && \
+    cd && \
+    rm -r libnabo
+RUN git clone https://github.com/ethz-asl/libpointmatcher.git
+RUN cd libpointmatcher && \
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release .. && \
+    make -j3 && \
+    make install && \
+    cd && \
+    rm -r libpointmatcher
+
 # Clone source code
 WORKDIR /root/
 RUN git clone https://github.com/introlab/rtabmap.git
