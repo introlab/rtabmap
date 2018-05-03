@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
       libopenni2-dev \
       software-properties-common
 
+WORKDIR /root/
+
 # GTSAM
 RUN git clone https://bitbucket.org/gtborg/gtsam.git
 RUN cd gtsam && \
@@ -64,10 +66,7 @@ RUN cd libpointmatcher && \
     rm -r libpointmatcher
 
 # Clone source code
-WORKDIR /root/
-
 ARG CACHE_DATE=2016-01-01
-
 RUN git clone https://github.com/introlab/rtabmap.git
 
 # Build RTAB-Map project
