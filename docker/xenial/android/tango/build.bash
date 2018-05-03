@@ -35,7 +35,7 @@ mv TangoSDK_Ikariotikos_Java.jar rtabmap-tango/app/android/libs/.
 cd rtabmap-tango/build
 cmake -DANDROID_PREBUILD=ON ..
 make
-cd
+cd ../..
 
 # rtabmap
 mkdir rtabmap-tango/build/armeabi-v7a
@@ -43,7 +43,7 @@ cd rtabmap-tango/build/armeabi-v7a
 cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=$prefix/armeabi-v7a/sdk/native/jni -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ../..
 make
 
-cd
+cd ../../..
 mkdir rtabmap-tango/build/arm64-v8a
 cd rtabmap-tango/build/arm64-v8a
 cmake -DCMAKE_TOOLCHAIN_FILE=../../cmake_modules/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DBUILD_SHARED_LIBS=OFF -DBUILD_EXAMPLES=OFF -DBUILD_TOOLS=OFF -DCMAKE_BUILD_TYPE=Release -DOpenCV_DIR=$prefix/arm64-v8a/sdk/native/jni -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ../..

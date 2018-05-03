@@ -5,8 +5,8 @@ if [ $# -ne 1 ]; then
     exit 1
 fi
 
-apt-get update
-apt-get install -y git cmake g++ software-properties-common wget unzip zlib1g-dev qtbase5-dev libqt5x11extras5-dev libqt5svg5-dev qttools5-dev libxt-dev 
+sudo apt-get update
+sudo apt-get install -y git cmake g++ software-properties-common wget unzip zlib1g-dev qtbase5-dev libqt5x11extras5-dev libqt5svg5-dev qttools5-dev libxt-dev 
 
 prefix=$1
 pwd=$(pwd)
@@ -25,7 +25,7 @@ cd build
 cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
 make
 make install
-cd
+cd $pwd
 rm -r boost_1_59_0.tar.gz boost_1_59_0
 
 # eigen
@@ -38,7 +38,7 @@ cd build
 cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
 make
 make install
-cd
+cd $pwd
 rm -r 3.2.7.tar.gz eigen-eigen-b30b87236a1b
 
 # FLANN
@@ -51,7 +51,7 @@ cd build
 cmake -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
 make 
 make install
-cd
+cd $pwd
 rm -r flann-1.8.4-src.zip flann-1.8.4-src
 
 # GTSAM
@@ -66,19 +66,20 @@ cd build
 cmake -DMETIS_SHARED=ON -DGTSAM_BUILD_STATIC_LIBRARY=OFF -DGTSAM_BUILD_TESTS=OFF -DGTSAM_BUILD_EXAMPLES_ALWAYS=OFF -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
 make 
 make install
-cd
-rm -r gtsam
+cd $pwd
+rm -rf gtsam
 
 # g2o
 git clone https://github.com/RainerKuemmerle/g2o.git
 cd g2o
+git checkout a3f7706bdbb849b2808dc3e1b7aee189f63b498e
 mkdir build
 cd build
 cmake -DBUILD_LGPL_SHARED_LIBS=ON -DG2O_BUILD_APPS=OFF -DG2O_BUILD_EXAMPLES=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
 make
 make install
-cd
-rm -r g2o
+cd $pwd
+rm -rf g2o
 
 # VTK
 git clone https://github.com/Kitware/VTK.git
@@ -89,8 +90,8 @@ cd build
 cmake -DBUILD_EXAMPLES=OFF -DBUILD_TESTING=OFF -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DVTK_Group_Qt=ON -DVTK_QT_VERSION=5 -DCMAKE_INSTALL_PREFIX=$prefix ..
 make
 make install
-cd
-rm -r VTK
+cd $pwd
+rm -rf VTK
 
 # PCL
 git clone https://github.com/PointCloudLibrary/pcl.git
@@ -104,8 +105,8 @@ cd build
 cmake -DBUILD_apps=OFF -DBUILD_examples=OFF -DBUILD_tools=OFF -DBUILD_visualization=ON -DBUILD_tracking=OFF -DBUILD_people=OFF -DBUILD_global_tests=OFF -DWITH_QT=ON -DWITH_OPENGL=OFF -DWITH_VTK=ON -DPCL_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=$prefix ..
 make
 make install
-cd
-rm -r pcl
+cd $pwd
+rm -rf pcl
 
 # OpenCV
 git clone https://github.com/opencv/opencv_contrib.git
@@ -120,5 +121,5 @@ cd build
 cmake -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$prefix ..
 make
 make install
-cd
-rm -r opencv opencv_contrib
+cd $pwd
+rm -rf opencv opencv_contrib
