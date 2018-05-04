@@ -151,17 +151,17 @@ rm -rf pcl
 git clone https://github.com/opencv/opencv_contrib.git
 cd opencv_contrib
 git checkout tags/3.2.0
-cd
+cd $pwd
 git clone https://github.com/opencv/opencv.git
 cd opencv
 git checkout tags/3.2.0
 mkdir build
 cd build
-cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
+cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DWITH_CUDA=OFF -DCMAKE_INSTALL_PREFIX=$prefix/armeabi-v7a ..
 make
 make install
 rm -r *
-cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
+cmake -DCMAKE_TOOLCHAIN_FILE=$pwd/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DOPENCV_EXTRA_MODULES_PATH=$pwd/opencv_contrib/modules -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DBUILD_TESTS=OFF -DBUILD_PERF_TESTS=OFF -DWITH_CUDA=OFF -DCMAKE_INSTALL_PREFIX=$prefix/arm64-v8a ..
 make
 make install
 cd $pwd
