@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/util3d_filtering.h"
 #include "rtabmap/core/util3d_transforms.h"
 #include "rtabmap/core/RtabmapEvent.h"
+#include "rtabmap/core/OccupancyGrid.h"
 #endif
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UConversion.h"
@@ -242,6 +243,44 @@ protected slots:
 			cloudViewer_->setCloudPointSize("graph_nodes", 5);
 		}
 
+		//============================
+		// Update/add occupancy grid (when RGBD/CreateOccupancyGrid is true)
+		//============================
+		for(std::map<int, Transform>::const_reverse_iterator iter = stats.poses().rbegin(); iter!=stats.poses().rend(); ++iter)
+		{
+			int id = iter->first;
+			if(grid_.addedNodes().find(id) == grid_.addedNodes().end())
+			{
+				std::map<int, Signature>::const_iterator jter = stats.getSignatures().find(id);
+				if(jter != stats.getSignatures().end() && jter->second.sensorData().gridCellSize() > 0.0f)
+				{
+					cv::Mat groundCells, obstacleCells, emptyCells;
+					jter->second.sensorData().uncompressDataConst(0, 0, 0, 0, &groundCells, &obstacleCells, &emptyCells);
+					grid_.addToCache(id, groundCells, obstacleCells, emptyCells);
+				}
+			}
+			else
+			{
+				// Assume that older nodes are already added to map
+				break;
+			}
+		}
+		if(grid_.addedNodes().size() || grid_.cacheSize())
+		{
+			grid_.update(stats.poses());
+		}
+		if(grid_.addedNodes().size())
+		{
+			float xMin, yMin;
+			cv::Mat map8S = grid_.getMap(xMin, yMin);
+			if(!map8S.empty())
+			{
+				//convert to gray scaled map
+				cv::Mat map8U = util3d::convertMap2Image8U(map8S);
+				cloudViewer_->addOccupancyGridMap(map8U, grid_.getCellSize(), xMin, yMin, 0.75);
+			}
+		}
+
 		odometryCorrection_ = stats.mapCorrection();
 
 		cloudViewer_->update();
@@ -283,6 +322,7 @@ protected:
 	Transform odometryCorrection_;
 	bool processingStatistics_;
 	bool lastOdometryProcessed_;
+	OccupancyGrid grid_;
 };
 
 

@@ -163,9 +163,12 @@ int main(int argc, char * argv[])
 	OdometryThread odomThread(new OdometryF2M());
 
 
+	ParametersMap params;
+	//param.insert(ParametersPair(Parameters::kRGBDCreateOccupancyGrid(), "true")); // uncomment to create local occupancy grids
+
 	// Create RTAB-Map to process OdometryEvent
 	Rtabmap * rtabmap = new Rtabmap();
-	rtabmap->init();
+	rtabmap->init(params);
 	RtabmapThread rtabmapThread(rtabmap); // ownership is transfered
 
 	// Setup handlers
