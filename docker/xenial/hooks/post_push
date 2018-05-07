@@ -1,0 +1,3 @@
+#!/bin/bash 
+docker push $DOCKER_REPO:16.04
+docker push $DOCKER_REPO:latest
