@@ -2067,7 +2067,7 @@ void MainWindow::updateMapCloud(
 		{
 			std::map<int, Transform> posesInTmp = posesIn;
 			posesInTmp.erase(-1);
-			poses = rtabmap::graph::radiusPosesFiltering(posesIn, radius, angle);
+			poses = rtabmap::graph::radiusPosesFiltering(posesInTmp, radius, angle);
 		}
 		else
 		{
