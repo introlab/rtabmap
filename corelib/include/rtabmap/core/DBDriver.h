@@ -155,7 +155,7 @@ public:
 	void executeNoResult(const std::string & sql) const;
 
 	// Load objects
-	void load(VWDictionary * dictionary) const;
+	void load(VWDictionary * dictionary, bool lastStateOnly = true) const;
 	void loadLastNodes(std::list<Signature *> & signatures) const;
 	void loadSignatures(const std::list<int> & ids, std::list<Signature *> & signatures, std::set<int> * loadedFromTrash = 0);
 	void loadWords(const std::set<int> & wordIds, std::list<VisualWord *> & vws);
@@ -255,7 +255,7 @@ private:
 				cv::Mat * textures) const = 0;
 
 	// Load objects
-	virtual void loadQuery(VWDictionary * dictionary) const = 0;
+	virtual void loadQuery(VWDictionary * dictionary, bool lastStateOnly = true) const = 0;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const = 0;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const = 0;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const = 0;

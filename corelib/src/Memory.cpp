@@ -279,25 +279,32 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 			}
 
 			UDEBUG("load words %d", (int)wordIds.size());
-			if(wordIds.size())
+			if(_vwd->isIncremental())
 			{
-				std::list<VisualWord*> words;
-				_dbDriver->loadWords(wordIds, words);
-				for(std::list<VisualWord*>::iterator iter = words.begin(); iter!=words.end(); ++iter)
+				if(wordIds.size())
 				{
-					_vwd->addWord(*iter);
+					std::list<VisualWord*> words;
+					_dbDriver->loadWords(wordIds, words);
+					for(std::list<VisualWord*>::iterator iter = words.begin(); iter!=words.end(); ++iter)
+					{
+						_vwd->addWord(*iter);
+					}
+					// Get Last word id
+					int id = 0;
+					_dbDriver->getLastWordId(id);
+					_vwd->setLastWordId(id);
 				}
-				// Get Last word id
-				int id = 0;
-				_dbDriver->getLastWordId(id);
-				_vwd->setLastWordId(id);
+			}
+			else
+			{
+				_dbDriver->load(_vwd, false);
 			}
 		}
 		else
 		{
 			UDEBUG("load words");
 			// load the last dictionary
-			_dbDriver->load(_vwd);
+			_dbDriver->load(_vwd, _vwd->isIncremental());
 		}
 		UDEBUG("%d words loaded!", _vwd->getUnusedWordsSize());
 		_vwd->update();
@@ -649,7 +656,10 @@ void Memory::parseParameters(const ParametersMap & parameters)
 void Memory::preUpdate()
 {
 	_signaturesAdded = 0;
-	this->cleanUnusedWords();
+	if(_vwd->isIncremental())
+	{
+		this->cleanUnusedWords();
+	}
 	if(_vwd && !_parallelized)
 	{
 		//When parallelized, it is done in CreateSignature
@@ -1584,7 +1594,7 @@ std::map<int, float> Memory::computeLikelihood(const Signature * signature, cons
 				{
 					// "Inverted index" - Pour chaque endroit contenu dans chaque mot
 					vw = _vwd->getWord(*i);
-					UASSERT(vw!=0);
+					UASSERT_MSG(vw!=0, uFormat("Word %d not found in dictionary!?", *i).c_str());
 
 					const std::map<int, int> & refs = vw->getReferences();
 					nw = refs.size();
@@ -2055,7 +2065,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 		}
 
 		this->disableWordsRef(s->id());
-		if(!keepLinkedToGraph)
+		if(!keepLinkedToGraph && _vwd->isIncremental())
 		{
 			std::list<int> keys = uUniqueKeys(s->getWords());
 			for(std::list<int>::const_iterator i=keys.begin(); i!=keys.end(); ++i)
@@ -4217,25 +4227,22 @@ void Memory::disableWordsRef(int signatureId)
 
 void Memory::cleanUnusedWords()
 {
-	if(_vwd->isIncremental())
+	std::vector<VisualWord*> removedWords = _vwd->getUnusedWords();
+	UDEBUG("Removing %d words (dictionary size=%d)...", removedWords.size(), _vwd->getVisualWords().size());
+	if(removedWords.size())
 	{
-		std::vector<VisualWord*> removedWords = _vwd->getUnusedWords();
-		UDEBUG("Removing %d words (dictionary size=%d)...", removedWords.size(), _vwd->getVisualWords().size());
-		if(removedWords.size())
-		{
-			// remove them from the dictionary
-			_vwd->removeWords(removedWords);
+		// remove them from the dictionary
+		_vwd->removeWords(removedWords);
 
-			for(unsigned int i=0; i<removedWords.size(); ++i)
+		for(unsigned int i=0; i<removedWords.size(); ++i)
+		{
+			if(_dbDriver)
 			{
-				if(_dbDriver)
-				{
-					_dbDriver->asyncSave(removedWords[i]);
-				}
-				else
-				{
-					delete removedWords[i];
-				}
+				_dbDriver->asyncSave(removedWords[i]);
+			}
+			else
+			{
+				delete removedWords[i];
 			}
 		}
 	}
@@ -4268,6 +4275,11 @@ void Memory::enableWordsRef(const std::list<int> & signatureIds)
 				}
 			}
 		}
+	}
+
+	if(!_vwd->isIncremental() && oldWordIds.size())
+	{
+		UWARN("Dictionary is fixed, but some words retrieved have not been found!?");
 	}
 
 	UDEBUG("oldWordIds.size()=%d, getOldIds time=%fs", oldWordIds.size(), timer.ticks());

@@ -4171,11 +4171,11 @@ void PreferencesDialog::changeDictionaryPath()
 	QString path;
 	if(_ui->lineEdit_dictionaryPath->text().isEmpty())
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Dictionary"), this->getWorkingDirectory());
+		path = QFileDialog::getOpenFileName(this, tr("Dictionary"), this->getWorkingDirectory(), tr("Dictionary (*.txt *.db)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("Dictionary"), _ui->lineEdit_dictionaryPath->text());
+		path = QFileDialog::getOpenFileName(this, tr("Dictionary"), _ui->lineEdit_dictionaryPath->text(), tr("Dictionary (*.txt *.db)"));
 	}
 	if(!path.isEmpty())
 	{
@@ -4188,11 +4188,11 @@ void PreferencesDialog::changeOdometryORBSLAM2Vocabulary()
 	QString path;
 	if(_ui->lineEdit_OdomORBSLAM2VocPath->text().isEmpty())
 	{
-		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), this->getWorkingDirectory());
+		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), this->getWorkingDirectory(), tr("Vocabulary (*.txt)"));
 	}
 	else
 	{
-		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), _ui->lineEdit_OdomORBSLAM2VocPath->text());
+		path = QFileDialog::getOpenFileName(this, tr("ORBSLAM2 Vocabulary"), _ui->lineEdit_OdomORBSLAM2VocPath->text(),  tr("Vocabulary (*.txt)"));
 	}
 	if(!path.isEmpty())
 	{

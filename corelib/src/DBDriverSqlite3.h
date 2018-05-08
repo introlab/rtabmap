@@ -124,7 +124,7 @@ private:
 			cv::Mat * textures) const;
 
 	// Load objects
-	virtual void loadQuery(VWDictionary * dictionary) const;
+	virtual void loadQuery(VWDictionary * dictionary, bool lastStateOnly = true) const;
 	virtual void loadLastNodesQuery(std::list<Signature *> & signatures) const;
 	virtual void loadSignaturesQuery(const std::list<int> & ids, std::list<Signature *> & signatures) const;
 	virtual void loadWordsQuery(const std::set<int> & wordIds, std::list<VisualWord *> & vws) const;

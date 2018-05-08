@@ -3077,7 +3077,7 @@ void DBDriverSqlite3::loadLastNodesQuery(std::list<Signature *> & nodes) const
 	}
 }
 
-void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
+void DBDriverSqlite3::loadQuery(VWDictionary * dictionary, bool lastStateOnly) const
 {
 	ULOGGER_DEBUG("");
 	if(_ppDb && dictionary)
@@ -3087,26 +3087,25 @@ void DBDriverSqlite3::loadQuery(VWDictionary * dictionary) const
 		timer.start();
 		int rc = SQLITE_OK;
 		sqlite3_stmt * ppStmt = 0;
-		std::string query;
+		std::stringstream query;
 		std::list<VisualWord *> visualWords;
 
 		// Get the visual words
-		if(uStrNumCmp(_version, "0.11.11") >= 0)
+		query << "SELECT id, descriptor_size, descriptor FROM Word ";
+		if(lastStateOnly)
 		{
-			query = "SELECT id, descriptor_size, descriptor "
-					"FROM Word "
-					"WHERE time_enter >= (SELECT MAX(time_enter) FROM Info) "
-					"ORDER BY id;";
+			if(uStrNumCmp(_version, "0.11.11") >= 0)
+			{
+				query << "WHERE time_enter >= (SELECT MAX(time_enter) FROM Info) ";
+			}
+			else
+			{
+				query << "WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics) ";
+			}
 		}
-		else
-		{
-			query = "SELECT id, descriptor_size, descriptor "
-					"FROM Word "
-					"WHERE time_enter >= (SELECT MAX(time_enter) FROM Statistics) "
-					"ORDER BY id;";
-		}
+		query << "ORDER BY id;";
 
-		rc = sqlite3_prepare_v2(_ppDb, query.c_str(), -1, &ppStmt, 0);
+		rc = sqlite3_prepare_v2(_ppDb, query.str().c_str(), -1, &ppStmt, 0);
 		UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
 
 		// Process the result if one
