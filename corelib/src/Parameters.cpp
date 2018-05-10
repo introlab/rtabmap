@@ -136,7 +136,8 @@ ParametersMap Parameters::deserialize(const std::string & parameters)
 
 			}
 
-			if(Parameters::getDefaultParameters().find(key) == Parameters::getDefaultParameters().end())
+			if(oldIter==Parameters::getRemovedParameters().end() &&
+			   Parameters::getDefaultParameters().find(key) == Parameters::getDefaultParameters().end())
 			{
 				UWARN("Unknown parameter \"%s\"=\"%s\"! The parameter is still added to output map.", key.c_str(), value.c_str());
 			}

@@ -43,7 +43,13 @@ void showUsage()
 {
 	printf("\nUsage:\n"
 			"rtabmap-report [\"Statistic/Id\"] [--latex] [--kitti] [--scale] [--poses] path\n"
-			"  path               Directory containing rtabmap databases or path of a database.\n\n");
+			"  path               Directory containing rtabmap databases or path of a database.\n"
+			"  --latex            Print table formatted in LaTeX with results.\n"
+			"  --kitti            Compute error based on KITTI benchmark.\n"
+			"  --scale            Find the best scale for the map against the ground truth\n"
+			"                       and compute error based on the scaled path.\n"
+			"  --poses            Export poses to [path]_poses.txt, ground truth to [path]_gt.txt\n"
+			"                       and valid ground truth indices to [path]_indices.txt \n\n");
 	exit(1);
 }
 
@@ -53,6 +59,9 @@ int main(int argc, char * argv[])
 	{
 		showUsage();
 	}
+
+	ULogger::setType(ULogger::kTypeConsole);
+	ULogger::setLevel(ULogger::kWarning);
 
 	QApplication app(argc, argv);
 
@@ -161,7 +170,9 @@ int main(int argc, char * argv[])
 				ParametersMap params;
 				if(driver->openConnection(filePath))
 				{
+					ULogger::setLevel(ULogger::kError); // to suppress parameter warnings
 					params = driver->getLastParameters();
+					ULogger::setLevel(ULogger::kWarning);
 					std::set<int> ids;
 					driver->getAllNodeIds(ids);
 					std::map<int, std::pair<std::map<std::string, float>, double> > stats = driver->getAllStatistics();
@@ -294,114 +305,162 @@ int main(int argc, char * argv[])
 						optimizer->getConnectedGraph(firstId, odomPoses, graph::filterDuplicateLinks(links), posesOut, linksOut);
 
 						std::map<int, Transform> poses = optimizer->optimize(firstId, posesOut, linksOut);
-
-						std::map<int, Transform> groundTruth;
-						for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+						if(poses.empty())
 						{
-							if(gtPoses.find(iter->first) != gtPoses.end())
+							// try incremental optimization
+							UWARN("Optimization failed! Try incremental optimization...");
+							poses = optimizer->optimizeIncremental(firstId, posesOut, linksOut);
+							if(poses.empty())
 							{
-								groundTruth.insert(*gtPoses.find(iter->first));
-							}
-						}
-
-						for(float scale=outputScaled?0.900f:1.0f; scale<1.100f; scale+=0.001)
-						{
-							std::map<int, Transform> scaledPoses;
-							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-							{
-								Transform t = iter->second.clone();
-								t.x() *= scale;
-								t.y() *= scale;
-								t.z() *= scale;
-								scaledPoses.insert(std::make_pair(iter->first, t));
-							}
-							// compute RMSE statistics
-							float translational_rmse = 0.0f;
-							float translational_mean = 0.0f;
-							float translational_median = 0.0f;
-							float translational_std = 0.0f;
-							float translational_min = 0.0f;
-							float translational_max = 0.0f;
-							float rotational_rmse = 0.0f;
-							float rotational_mean = 0.0f;
-							float rotational_median = 0.0f;
-							float rotational_std = 0.0f;
-							float rotational_min = 0.0f;
-							float rotational_max = 0.0f;
-							Transform gtToMap = graph::calcRMSE(
-									groundTruth,
-									scaledPoses,
-									translational_rmse,
-									translational_mean,
-									translational_median,
-									translational_std,
-									translational_min,
-									translational_max,
-									rotational_rmse,
-									rotational_mean,
-									rotational_median,
-									rotational_std,
-									rotational_min,
-									rotational_max);
-
-							if(bestRMSE!=-1 && translational_rmse > bestRMSE)
-							{
-								break;
-							}
-							bestRMSE = translational_rmse;
-							bestRMSEAng = rotational_rmse;
-							bestScale = scale;
-							bestGtToMap = gtToMap;
-							if(!outputScaled)
-							{
-								// just did iteration without any scale, then exit
-								break;
-							}
-						}
-
-						for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
-						{
-							iter->second.x()*=bestScale;
-							iter->second.y()*=bestScale;
-							iter->second.z()*=bestScale;
-							iter->second = bestGtToMap * iter->second;
-						}
-
-						if(outputKittiError)
-						{
-							if(groundTruth.size() == poses.size())
-							{
-								// compute KITTI statistics
-								graph::calcKittiSequenceErrors(uValues(groundTruth), uValues(poses), kitti_t_err, kitti_r_err);
+								UERROR("Incremental optimization also failed! Only original RMSE will be shown.");
+								bestRMSE = rmse;
 							}
 							else
 							{
-								printf("Cannot compute KITTI statistics as optimized poses and ground truth don't have the same size (%d vs %d).\n",
-										(int)poses.size(), (int)groundTruth.size());
+								UWARN("Incremental optimization succeeded!");
 							}
 						}
 
-						if(outputPoses)
+						if(poses.size())
 						{
-							std::string dir = UDirectory::getDir(filePath);
-							std::string dbName = UFile::getName(filePath);
-							dbName = dbName.substr(0, dbName.size()-3); // remove db
-							std::string path = dir+UDirectory::separator()+dbName+"_poses.txt";
-							if(!graph::exportPoses(path, outputKittiError?2:0, poses))
+							std::map<int, Transform> groundTruth;
+							for(std::map<int, Transform>::const_iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 							{
-								printf("Could not export the poses to \"%s\"!?!\n", path.c_str());
-							}
-							if(groundTruth.size())
-							{
-								path = dir+UDirectory::separator()+dbName+"_gt.txt";
-								if(!graph::exportPoses(path, outputKittiError?2:0, groundTruth))
+								if(gtPoses.find(iter->first) != gtPoses.end())
 								{
-									printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
+									groundTruth.insert(*gtPoses.find(iter->first));
+								}
+							}
+
+							for(float scale=outputScaled?0.900f:1.0f; scale<1.100f; scale+=0.001)
+							{
+								std::map<int, Transform> scaledPoses;
+								for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+								{
+									Transform t = iter->second.clone();
+									t.x() *= scale;
+									t.y() *= scale;
+									t.z() *= scale;
+									scaledPoses.insert(std::make_pair(iter->first, t));
+								}
+								// compute RMSE statistics
+								float translational_rmse = 0.0f;
+								float translational_mean = 0.0f;
+								float translational_median = 0.0f;
+								float translational_std = 0.0f;
+								float translational_min = 0.0f;
+								float translational_max = 0.0f;
+								float rotational_rmse = 0.0f;
+								float rotational_mean = 0.0f;
+								float rotational_median = 0.0f;
+								float rotational_std = 0.0f;
+								float rotational_min = 0.0f;
+								float rotational_max = 0.0f;
+								Transform gtToMap = graph::calcRMSE(
+										groundTruth,
+										scaledPoses,
+										translational_rmse,
+										translational_mean,
+										translational_median,
+										translational_std,
+										translational_min,
+										translational_max,
+										rotational_rmse,
+										rotational_mean,
+										rotational_median,
+										rotational_std,
+										rotational_min,
+										rotational_max);
+
+								if(bestRMSE!=-1 && translational_rmse > bestRMSE)
+								{
+									break;
+								}
+								bestRMSE = translational_rmse;
+								bestRMSEAng = rotational_rmse;
+								bestScale = scale;
+								bestGtToMap = gtToMap;
+								if(!outputScaled)
+								{
+									// just did iteration without any scale, then exit
+									break;
+								}
+							}
+
+							for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
+							{
+								iter->second.x()*=bestScale;
+								iter->second.y()*=bestScale;
+								iter->second.z()*=bestScale;
+								iter->second = bestGtToMap * iter->second;
+							}
+
+							if(outputKittiError)
+							{
+								if(groundTruth.size() == poses.size())
+								{
+									// compute KITTI statistics
+									graph::calcKittiSequenceErrors(uValues(groundTruth), uValues(poses), kitti_t_err, kitti_r_err);
+								}
+								else
+								{
+									printf("Cannot compute KITTI statistics as optimized poses and ground truth don't have the same size (%d vs %d).\n",
+											(int)poses.size(), (int)groundTruth.size());
+								}
+							}
+
+							if(outputPoses)
+							{
+								std::string dir = UDirectory::getDir(filePath);
+								std::string dbName = UFile::getName(filePath);
+								dbName = dbName.substr(0, dbName.size()-3); // remove db
+								std::string path = dir+UDirectory::separator()+dbName+"_poses.txt";
+								if(!graph::exportPoses(path, outputKittiError?2:0, poses))
+								{
+									printf("Could not export the poses to \"%s\"!?!\n", path.c_str());
+								}
+								if(groundTruth.size())
+								{
+									// For missing ground truth poses, set them to null
+									std::vector<int> validIndices(poses.size(), 1);
+									int i=0;
+									for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter, ++i)
+									{
+										if(groundTruth.find(iter->first) == groundTruth.end())
+										{
+											groundTruth.insert(std::make_pair(iter->first, Transform()));
+											validIndices[i] = 0;
+										}
+									}
+									path = dir+UDirectory::separator()+dbName+"_gt.txt";
+									if(!graph::exportPoses(path, outputKittiError?2:0, groundTruth))
+									{
+										printf("Could not export the ground truth to \"%s\"!?!\n", path.c_str());
+									}
+									else
+									{
+										// save valid indices
+										path = dir+UDirectory::separator()+dbName+"_indices.txt";
+										FILE * file = 0;
+	#ifdef _MSC_VER
+										fopen_s(&file, path.c_str(), "w");
+	#else
+										file = fopen(path.c_str(), "w");
+	#endif
+										if(file)
+										{
+											// VERTEX3 id x y z phi theta psi
+											for(unsigned int k=0; k<validIndices.size(); ++k)
+											{
+												fprintf(file, "%d\n", validIndices[k]);
+											}
+											fclose(file);
+										}
+									}
 								}
 							}
 						}
 					}
-
 					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm) ang=%.1fdeg%s, slam: avg=%dms (max=%dms) loops=%d, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
 							fileName.c_str(),
 							(int)ids.size(),
