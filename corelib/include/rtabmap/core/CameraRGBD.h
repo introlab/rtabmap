@@ -39,8 +39,13 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <pcl/pcl_config.h>
 
 #ifdef HAVE_OPENNI
+#if __linux__ && __i386__ && __cplusplus >= 201103L
+#warning "Openni driver is not available on i386 when building with c++11 support"
+#else
+#define RTABMAP_OPENNI
 #include <pcl/io/openni_camera/openni_depth_image.h>
 #include <pcl/io/openni_camera/openni_image.h>
+#endif
 #endif
 
 #include <boost/signals2/connection.hpp>
@@ -102,7 +107,7 @@ public:
 			float imageRate = 0,
 			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraOpenni();
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
     void image_cb (
     		const boost::shared_ptr<openni_wrapper::Image>& rgb,
 			const boost::shared_ptr<openni_wrapper::DepthImage>& depth,

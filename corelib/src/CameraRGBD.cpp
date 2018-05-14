@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <rtabmap/utilite/UTimer.h>
 #include <rtabmap/utilite/UMath.h>
 
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 #include <pcl/io/openni_grabber.h>
 #include <pcl/io/oni_grabber.h>
 #include <pcl/io/openni_camera/openni_depth_image.h>
@@ -97,7 +97,7 @@ CameraOpenni::CameraOpenni(const std::string & deviceId, float imageRate, const 
 
 bool CameraOpenni::available() 
 {
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 	return true;
 #else
 	return false;
@@ -106,7 +106,7 @@ bool CameraOpenni::available()
 
 CameraOpenni::~CameraOpenni()
 {
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 	UDEBUG("");
 	if(connection_.connected())
 	{
@@ -122,7 +122,7 @@ CameraOpenni::~CameraOpenni()
 	}
 #endif
 }
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 void CameraOpenni::image_cb (
 		const boost::shared_ptr<openni_wrapper::Image>& rgb,
 		const boost::shared_ptr<openni_wrapper::DepthImage>& depth,
@@ -150,7 +150,7 @@ void CameraOpenni::image_cb (
 
 bool CameraOpenni::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 	if(interface_)
 	{
 		interface_->stop();
@@ -197,7 +197,7 @@ bool CameraOpenni::init(const std::string & calibrationFolder, const std::string
 
 bool CameraOpenni::isCalibrated() const
 {
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 	return true;
 #else
 	return false;
@@ -206,7 +206,7 @@ bool CameraOpenni::isCalibrated() const
 
 std::string CameraOpenni::getSerial() const
 {
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 	if(interface_)
 	{
 		return interface_->getName();
@@ -218,7 +218,7 @@ std::string CameraOpenni::getSerial() const
 SensorData CameraOpenni::captureImage(CameraInfo * info)
 {
 	SensorData data;
-#ifdef HAVE_OPENNI
+#ifdef RTABMAP_OPENNI
 	if(interface_ && interface_->isRunning())
 	{
 		if(!dataReady_.acquire(1, 5000))
