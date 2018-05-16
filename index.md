@@ -51,7 +51,7 @@
 This website uses Google Analytics. See their Privacy Policy [here](https://support.google.com/analytics/answer/6004245?hl=en).
 
 ## Author
-* [Mathieu Labbé](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php?title=Mathieu_Labbé&setlang=en)
+* [Mathieu Labbé](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php?title=Mathieu_Labbe&setlang=en)
     * [RTAB-Map's page at IntRoLab](http://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map)
     * [Papers](https://introlab.3it.usherbrooke.ca/mediawiki-introlab/index.php/RTAB-Map#Publications)
     * Similar projects: [Find-Object](http://introlab.github.io/find-object/)
