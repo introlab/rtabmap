@@ -54,12 +54,13 @@ install:
   - ECHO "Installed g2o:"
   - ps: "ls \"C:/Program Files/g2o\""
   - set PATH=%PATH%;C:\Program Files\g2o\bin
-    # GTSAM
+  # GTSAM
   - ps: wget 'https://dl.dropboxusercontent.com/s/lgz1cccs2o80eyk/GTSAM.exe?dl=0' -outfile GTSAM.exe
   - cmd: GTSAM.exe -o"C:\Program Files" -y
   - ECHO "Installed GTSAM:"
   - ps: "ls \"C:/Program Files/GTSAM\""
   - set PATH=%PATH%;C:\Program Files\GTSAM\bin
+  - set PATH=%PATH%;C:\Libraries\boost_1_67_0\lib64-msvc-14.0
   
 before_build:
   - cd c:\projects\rtabmap\build
