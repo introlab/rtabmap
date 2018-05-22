@@ -49,13 +49,13 @@ install:
   - ps: "ls \"C:/Program Files/zlib\""
   - set PATH=%PATH%;C:\Program Files\zlib\bin
   # g2o
-  - ps: wget 'https://www.dropbox.com/s/ht74s5pa21wokzw/g2o.exe?dl=0' -outfile g2o.exe
+  - ps: wget 'https://dl.dropboxusercontent.com/s/ht74s5pa21wokzw/g2o.exe?dl=0' -outfile g2o.exe
   - cmd: g2o.exe -o"C:\Program Files" -y
   - ECHO "Installed g2o:"
   - ps: "ls \"C:/Program Files/g2o\""
   - set PATH=%PATH%;C:\Program Files\g2o\bin
     # GTSAM
-  - ps: wget 'https://www.dropbox.com/s/lgz1cccs2o80eyk/GTSAM.exe?dl=0' -outfile GTSAM.exe
+  - ps: wget 'https://dl.dropboxusercontent.com/s/lgz1cccs2o80eyk/GTSAM.exe?dl=0' -outfile GTSAM.exe
   - cmd: GTSAM.exe -o"C:\Program Files" -y
   - ECHO "Installed GTSAM:"
   - ps: "ls \"C:/Program Files/GTSAM\""
