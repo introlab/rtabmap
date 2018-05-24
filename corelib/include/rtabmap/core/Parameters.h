@@ -186,6 +186,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(Rtabmap, StatisticLogged,              bool, false, "Logging enabled.");
     RTABMAP_PARAM(Rtabmap, StatisticLoggedHeaders,       bool, true,  "Add column header description to log files.");
     RTABMAP_PARAM(Rtabmap, StartNewMapOnLoopClosure,     bool, false, "Start a new map only if there is a global loop closure with a previous map.");
+    RTABMAP_PARAM(Rtabmap, StartNewMapOnGoodSignature,   bool, false, uFormat("Start a new map only if the first signature is not bad (i.e., has enough features, see %s).", kKpBadSignRatio().c_str()));
     RTABMAP_PARAM(Rtabmap, ImagesAlreadyRectified,       bool, true,  "Images are already rectified. By default RTAB-Map assumes that received images are rectified. If they are not, they can be rectified by RTAB-Map if this parameter is false.");
 
     // Hypotheses selection

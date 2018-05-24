@@ -249,6 +249,7 @@ private:
 	bool _optimizeFromGraphEnd;
 	float _optimizationMaxLinearError;
 	bool _startNewMapOnLoopClosure;
+	bool _startNewMapOnGoodSignature;
 	float _goalReachedRadius; // meters
 	bool _goalsSavedInUserData;
 	int _pathStuckIterations;

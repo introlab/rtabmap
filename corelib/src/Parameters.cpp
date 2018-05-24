@@ -796,17 +796,15 @@ void Parameters::readINI(const std::string & configFile, ParametersMap & paramet
 				key = uReplaceChar(key, '\\', '/'); // Ini files use \ by default for separators, so replace them
 
 				// look for old parameter name
-				bool addParameter = true;
 				std::map<std::string, std::pair<bool, std::string> >::const_iterator oldIter = Parameters::getRemovedParameters().find(key);
 				if(oldIter!=Parameters::getRemovedParameters().end())
 				{
-					addParameter = oldIter->second.first;
-					if(addParameter)
+					if(oldIter->second.first)
 					{
 						if(parameters.find(oldIter->second.second) == parameters.end())
 						{
 							key = oldIter->second.second;
-							UWARN("Parameter migration from \"%s\" to \"%s\" (value=%s, default=%s).",
+							UINFO("Parameter migration from \"%s\" to \"%s\" (value=%s, default=%s).",
 									oldIter->first.c_str(), oldIter->second.second.c_str(), iter->second, Parameters::getDefaultParameters().at(oldIter->second.second).c_str());
 						}
 					}
