@@ -50,6 +50,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <pcl/visualization/mouse_event.h>
 #include <pcl/visualization/point_picking_event.h>
+#include <pcl/visualization/interactor_style.h>
 #include <pcl/PCLPointCloud2.h>
 
 namespace pcl {
@@ -66,13 +67,39 @@ class vtkOBBTree;
 namespace rtabmap {
 
 class OctoMap;
+class CloudViewer;
+
+class RTABMAPGUI_EXP CloudViewerInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
+{
+public:
+    static CloudViewerInteractorStyle *New ();
+
+public:
+	CloudViewerInteractorStyle();
+	virtual void Rotate();
+protected:
+	virtual void OnMouseMove();
+	virtual void OnLeftButtonDown();
+
+protected:
+	friend class CloudViewer;
+	void setCloudViewer(CloudViewer * cloudViewer) {viewer_ = cloudViewer;}
+	CloudViewer * viewer_;
+
+private:
+	unsigned int NumberOfClicks;
+	int PreviousPosition[2];
+	int ResetPixelDistance;
+	float PreviousMeasure[3];
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsHolder_;
+};
 
 class RTABMAPGUI_EXP CloudViewer : public QVTKWidget
 {
 	Q_OBJECT
 
 public:
-	CloudViewer(QWidget * parent = 0);
+	CloudViewer(QWidget * parent = 0, CloudViewerInteractorStyle* style = CloudViewerInteractorStyle::New());
 	virtual ~CloudViewer();
 
 	void saveSettings(QSettings & settings, const QString & group = "") const;
