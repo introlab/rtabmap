@@ -1373,6 +1373,16 @@ std::string Memory::getDatabaseVersion() const
 	return version;
 }
 
+std::string Memory::getDatabaseUrl() const
+{
+	std::string url = "";
+	if(_dbDriver)
+	{
+		url = _dbDriver->getUrl();
+	}
+	return url;
+}
+
 double Memory::getDbSavingTime() const
 {
 	return _dbDriver?_dbDriver->getEmptyTrashesTime():0;
