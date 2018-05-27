@@ -1310,6 +1310,18 @@ CameraStereoVideo::CameraStereoVideo(
 {
 }
 
+CameraStereoVideo::CameraStereoVideo(
+	std::vector<int> device,
+	bool rectifyImages,
+	float imageRate,
+	const Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	rectifyImages_(rectifyImages),
+	src_(CameraVideo::kUsbDevice),
+	usbDevice_(device)
+{
+}
+
 CameraStereoVideo::~CameraStereoVideo()
 {
 	capture_.release();
@@ -1331,7 +1343,14 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 	if (src_ == CameraVideo::kUsbDevice)
 	{
 		ULOGGER_DEBUG("CameraStereoVideo: Usb device initialization on device %d", usbDevice_);
-		capture_.open(usbDevice_);
+		if(usbDevice_.size() == 1) {
+			capture_.open(usbDevice_[0]);
+		} else if(usbDevice_.size() == 2) {
+			capture_.open(usbDevice_[0]);
+			capture2_.open(usbDevice_[1]);
+		} else {
+			return false;
+		}
 	}
 	else if (src_ == CameraVideo::kVideoFile)
 	{
@@ -1415,7 +1434,7 @@ SensorData CameraStereoVideo::captureImage(CameraInfo * info)
 	{
 		cv::Mat leftImage;
 		cv::Mat rightImage;
-		if(path2_.empty())
+		if(path2_.empty() && !capture2_.isOpened())
 		{
 			if(!capture_.read(img))
 			{
