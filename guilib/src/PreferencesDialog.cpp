@@ -35,6 +35,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QtCore/QTimer>
 #include <QUrl>
 
+#include <QButtonGroup>
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
