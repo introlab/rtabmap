@@ -48,7 +48,7 @@ void showUsage()
 			"                                       5=Freenect2  (Kinect v2)\n"
 			"                                       6=DC1394     (Bumblebee2)\n"
 			"                                       7=FlyCapture2 (Bumblebee2)\n"
-			"  --device #     Device id\n"
+			"  --device #     Device id1,id2\n"
 			"  --debug        Debug log\n"
 			"  --stereo       Stereo\n\n");
 	exit(1);
@@ -62,7 +62,7 @@ int main(int argc, char * argv[])
 	ULogger::setPrintWhere(false);
 
 	int driver = -1;
-	int device = 0;
+	std::vector<int> device = {0};
 	bool stereo = false;
 	for(int i=1; i<argc; ++i)
 	{
@@ -88,8 +88,14 @@ int main(int argc, char * argv[])
 			++i;
 			if(i < argc)
 			{
-				device = std::atoi(argv[i]);
-				if(device < 0)
+				device.clear();
+				std::string arg(argv[i]);
+				std::istringstream deviceString(arg);
+				for (std::string line; std::getline(deviceString, line, ',');) {
+					device.push_back(std::stoi(line));
+				}
+
+				if(device.size() == 0)
 				{
 					showUsage();
 				}
@@ -126,7 +132,11 @@ int main(int argc, char * argv[])
 	}
 
 	UINFO("Using driver %d", driver);
-	UINFO("Using device %d", device);
+	UINFO("Using device:");
+	for(int i=0; i<device.size(); i++) {
+		printf("%d ", device[i]);
+	}
+	printf("\n");
 	UINFO("Stereo: %s", stereo?"true":"false");
 
 	QApplication app(argc, argv);
@@ -141,7 +151,7 @@ int main(int argc, char * argv[])
 		}
 		else
 		{
-			camera = new rtabmap::CameraVideo(device);
+			camera = new rtabmap::CameraVideo(device[0]);
 		}
 		dialog.setStereoMode(stereo);
 	}
