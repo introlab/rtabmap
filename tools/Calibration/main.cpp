@@ -50,7 +50,9 @@ void showUsage()
 			"                                       7=FlyCapture2 (Bumblebee2)\n"
 			"  --device #     Device id\n"
 			"  --debug        Debug log\n"
-			"  --stereo       Stereo\n\n");
+			"  --stereo       Stereo: assuming device provides \n"
+			"                 side-by-side stereo images, otherwise \n"
+			"                 add also \"--device_r #\" for the right device.\n\n");
 	exit(1);
 }
 
@@ -63,6 +65,7 @@ int main(int argc, char * argv[])
 
 	int driver = -1;
 	int device = 0;
+	int deviceRight = -1;
 	bool stereo = false;
 	for(int i=1; i<argc; ++i)
 	{
@@ -90,6 +93,23 @@ int main(int argc, char * argv[])
 			{
 				device = std::atoi(argv[i]);
 				if(device < 0)
+				{
+					showUsage();
+				}
+			}
+			else
+			{
+				showUsage();
+			}
+			continue;
+		}
+		if(strcmp(argv[i], "--device_r") == 0)
+		{
+			++i;
+			if(i < argc)
+			{
+				deviceRight = std::atoi(argv[i]);
+				if(deviceRight < 0)
 				{
 					showUsage();
 				}
@@ -128,6 +148,10 @@ int main(int argc, char * argv[])
 	UINFO("Using driver %d", driver);
 	UINFO("Using device %d", device);
 	UINFO("Stereo: %s", stereo?"true":"false");
+	if(stereo && deviceRight >= 0)
+	{
+		UINFO("Using right device %d", deviceRight);
+	}
 
 	QApplication app(argc, argv);
 	rtabmap::CalibrationDialog dialog(stereo, ".");
@@ -137,7 +161,16 @@ int main(int argc, char * argv[])
 	{
 		if(stereo)
 		{
-			camera = new rtabmap::CameraStereoVideo(device);
+			if(deviceRight>=0)
+			{
+				// left and right videos
+				camera = new rtabmap::CameraStereoVideo(device, deviceRight);
+			}
+			else
+			{
+				// side-by-side video
+				camera = new rtabmap::CameraStereoVideo(device);
+			}
 		}
 		else
 		{

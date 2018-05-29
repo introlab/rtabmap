@@ -226,6 +226,12 @@ public:
 			bool rectifyImages = false,
 			float imageRate = 0.0f,
 			const Transform & localTransform = Transform::getIdentity());
+	CameraStereoVideo(
+			int deviceLeft,
+			int deviceRight,
+			bool rectifyImages = false,
+			float imageRate = 0.0f,
+			const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraStereoVideo();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
@@ -245,6 +251,7 @@ private:
 	std::string cameraName_;
 	CameraVideo::Source src_;
 	int usbDevice_;
+	int usbDevice2_;
 };
 
 } // namespace rtabmap

@@ -1279,7 +1279,8 @@ CameraStereoVideo::CameraStereoVideo(
 		path_(path),
 		rectifyImages_(rectifyImages),
 		src_(CameraVideo::kVideoFile),
-		usbDevice_(0)
+		usbDevice_(0),
+		usbDevice2_(-1)
 {
 }
 
@@ -1294,7 +1295,8 @@ CameraStereoVideo::CameraStereoVideo(
 		path2_(pathRight),
 		rectifyImages_(rectifyImages),
 		src_(CameraVideo::kVideoFile),
-		usbDevice_(0)
+		usbDevice_(0),
+		usbDevice2_(-1)
 {
 }
 
@@ -1306,7 +1308,22 @@ CameraStereoVideo::CameraStereoVideo(
 	Camera(imageRate, localTransform),
 	rectifyImages_(rectifyImages),
 	src_(CameraVideo::kUsbDevice),
-	usbDevice_(device)
+	usbDevice_(device),
+	usbDevice2_(-1)
+{
+}
+
+CameraStereoVideo::CameraStereoVideo(
+	int deviceLeft,
+	int deviceRight,
+	bool rectifyImages,
+	float imageRate,
+	const Transform & localTransform) :
+	Camera(imageRate, localTransform),
+	rectifyImages_(rectifyImages),
+	src_(CameraVideo::kUsbDevice),
+	usbDevice_(deviceLeft),
+	usbDevice2_(deviceRight)
 {
 }
 
@@ -1330,20 +1347,27 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 
 	if (src_ == CameraVideo::kUsbDevice)
 	{
-		ULOGGER_DEBUG("CameraStereoVideo: Usb device initialization on device %d", usbDevice_);
 		capture_.open(usbDevice_);
+		if(usbDevice2_ < 0)
+		{
+			ULOGGER_DEBUG("CameraStereoVideo: Usb device initialization on device %d", usbDevice_);
+		}
+		else
+		{
+			ULOGGER_DEBUG("CameraStereoVideo: Usb device initialization on devices %d and %d", usbDevice_, usbDevice2_);
+			capture2_.open(usbDevice2_);
+		}
 	}
 	else if (src_ == CameraVideo::kVideoFile)
 	{
+		capture_.open(path_.c_str());
 		if(path2_.empty())
 		{
 			ULOGGER_DEBUG("CameraStereoVideo: filename=\"%s\"", path_.c_str());
-			capture_.open(path_.c_str());
 		}
 		else
 		{
 			ULOGGER_DEBUG("CameraStereoVideo: filenames=\"%s\" and \"%s\"", path_.c_str(), path2_.c_str());
-			capture_.open(path_.c_str());
 			capture2_.open(path2_.c_str());
 		}
 	}
@@ -1352,7 +1376,7 @@ bool CameraStereoVideo::init(const std::string & calibrationFolder, const std::s
 		ULOGGER_ERROR("CameraStereoVideo: Unknown source...");
 	}
 
-	if(!capture_.isOpened() || (!path2_.empty() && !capture2_.isOpened()))
+	if(!capture_.isOpened() || ((!path2_.empty() || usbDevice2_>=0) && !capture2_.isOpened()))
 	{
 		ULOGGER_ERROR("CameraStereoVideo: Failed to create a capture object!");
 		capture_.release();
@@ -1411,11 +1435,11 @@ SensorData CameraStereoVideo::captureImage(CameraInfo * info)
 	SensorData data;
 
 	cv::Mat img;
-	if(capture_.isOpened() && (path2_.empty() || capture2_.isOpened()))
+	if(capture_.isOpened() && ((path2_.empty() && usbDevice2_ < 0) || capture2_.isOpened()))
 	{
 		cv::Mat leftImage;
 		cv::Mat rightImage;
-		if(path2_.empty())
+		if(path2_.empty() && usbDevice2_ < 0)
 		{
 			if(!capture_.read(img))
 			{
