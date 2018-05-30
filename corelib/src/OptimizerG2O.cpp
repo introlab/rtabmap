@@ -47,6 +47,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "g2o/core/optimization_algorithm_levenberg.h"
 #include "g2o/core/robust_kernel_impl.h"
 #include "g2o/core/linear_solver.h"
+#include "g2o/core/eigen_types.h"
 
 #ifdef RTABMAP_G2O
 #include "g2o/types/sba/types_sba.h"
