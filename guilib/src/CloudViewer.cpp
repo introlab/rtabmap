@@ -1548,7 +1548,7 @@ void CloudViewer::addOrUpdateCoordinate(
 		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), id, foreground?2:1);
 #else
 		// Well, on older versions, just update the main coordinate
-		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), foreground?2:1);
+		_visualizer->addCoordinateSystem(scale, transform.toEigen3f(), 0);
 #endif
 	}
 }
