@@ -95,14 +95,23 @@ public:
 			double * finalError = 0,
 			int * iterationsDone = 0);
 
+	std::map<int, Transform> optimize(
+				int rootId,
+				const std::map<int, Transform> & poses,
+				const std::multimap<int, Link> & constraints,
+				std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+				double * finalError = 0,
+				int * iterationsDone = 0);
+
 	// inherited classes should implement one of these methods
 	virtual std::map<int, Transform> optimize(
-			int rootId,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & constraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
-			double * finalError = 0,
-			int * iterationsDone = 0);
+				int rootId,
+				const std::map<int, Transform> & poses,
+				const std::multimap<int, Link> & constraints,
+				cv::Mat & outputCovariance,
+				std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+				double * finalError = 0,
+				int * iterationsDone = 0);
 	virtual std::map<int, Transform> optimizeBA(
 			int rootId, // if negative, all other poses are fixed
 			const std::map<int, Transform> & poses,

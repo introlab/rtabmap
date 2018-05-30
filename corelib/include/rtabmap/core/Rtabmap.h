@@ -190,6 +190,7 @@ private:
 	void optimizeCurrentMap(int id,
 			bool lookInDatabase,
 			std::map<int, Transform> & optimizedPoses,
+			cv::Mat & covariance,
 			std::multimap<int, Link> * constraints = 0,
 			double * error = 0,
 			int * iterationsDone = 0) const;
@@ -198,6 +199,7 @@ private:
 			const std::set<int> & ids,
 			const std::map<int, Transform> & guessPoses,
 			bool lookInDatabase,
+			cv::Mat & covariance,
 			std::multimap<int, Link> * constraints = 0,
 			double * error = 0,
 			int * iterationsDone = 0) const;

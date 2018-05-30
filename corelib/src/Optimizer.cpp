@@ -331,7 +331,26 @@ std::map<int, Transform> Optimizer::optimizeIncremental(
 std::map<int, Transform> Optimizer::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
+		const std::multimap<int, Link> & edgeConstraints,
+		std::list<std::map<int, Transform> > * intermediateGraphes,
+		double * finalError,
+		int * iterationsDone)
+{
+	cv::Mat covariance;
+	return optimize(rootId,
+			poses,
+			edgeConstraints,
+			covariance,
+			intermediateGraphes,
+			finalError,
+			iterationsDone);
+}
+
+std::map<int, Transform> Optimizer::optimize(
+		int rootId,
+		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & constraints,
+		cv::Mat & outputCovariance,
 		std::list<std::map<int, Transform> > * intermediateGraphes,
 		double * finalError,
 		int * iterationsDone)

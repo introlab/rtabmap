@@ -64,12 +64,13 @@ public:
 	virtual void parseParameters(const ParametersMap & parameters);
 
 	virtual std::map<int, Transform> optimize(
-			int rootId,
-			const std::map<int, Transform> & poses,
-			const std::multimap<int, Link> & edgeConstraints,
-			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
-			double * finalError = 0,
-			int * iterationsDone = 0);
+				int rootId,
+				const std::map<int, Transform> & poses,
+				const std::multimap<int, Link> & edgeConstraints,
+				cv::Mat & outputCovariance,
+				std::list<std::map<int, Transform> > * intermediateGraphes = 0,
+				double * finalError = 0,
+				int * iterationsDone = 0);
 
 	virtual std::map<int, Transform> optimizeBA(
 			int rootId,

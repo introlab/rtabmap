@@ -79,6 +79,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
+		cv::Mat & outputCovariance,
 		std::list<std::map<int, Transform> > * intermediateGraphes,
 		double * finalError,
 		int * iterationsDone)
@@ -381,6 +382,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		UINFO("GTSAM optimizing end (%d iterations done, error=%f (initial=%f final=%f), time=%f s)",
 				optimizer->iterations(), optimizer->error(), graph.error(initialEstimate), graph.error(optimizer->values()), timer.ticks());
 
+		gtsam::Marginals marginals(graph, optimizer->values());
 		for(gtsam::Values::const_iterator iter=optimizer->values().begin(); iter!=optimizer->values().end(); ++iter)
 		{
 			if(iter->value.dim() > 1)
@@ -397,6 +399,42 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				}
 			}
 		}
+
+		// compute marginals
+		try {
+			UTimer t;
+			gtsam::Marginals marginals(graph, optimizer->values());
+			gtsam::Matrix info = marginals.marginalCovariance(optimizer->values().rbegin()->key);
+			UINFO("Computed marginals = %fs (key=%d)", t.ticks(), optimizer->values().rbegin()->key);
+			if(isSlam2d())
+			{
+				UASSERT(info.cols() == 3 && info.cols() == 3);
+				outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
+				outputCovariance.at<double>(0,0) = info(0,0); // x-x
+				outputCovariance.at<double>(0,1) = info(0,1); // x-y
+				outputCovariance.at<double>(0,5) = info(0,2); // x-theta
+				outputCovariance.at<double>(1,0) = info(1,0); // y-x
+				outputCovariance.at<double>(1,1) = info(1,1); // y-y
+				outputCovariance.at<double>(1,5) = info(1,2); // y-theta
+				outputCovariance.at<double>(5,0) = info(2,0); // theta-x
+				outputCovariance.at<double>(5,1) = info(2,1); // theta-y
+				outputCovariance.at<double>(5,5) = info(2,2); // theta-theta
+			}
+			else
+			{
+				UASSERT(info.cols() == 6 && info.cols() == 6);
+				Eigen::Matrix<double, 6, 6> mgtsam = Eigen::Matrix<double, 6, 6>::Identity();
+				mgtsam.block(3,3,3,3) = info.block(0,0,3,3); // cov rotation
+				mgtsam.block(0,0,3,3) = info.block(3,3,3,3); // cov translation
+				mgtsam.block(0,3,3,3) = info.block(0,3,3,3); // off diagonal
+				mgtsam.block(3,0,3,3) = info.block(3,0,3,3); // off diagonal
+				outputCovariance = cv::Mat(6,6,CV_64FC1);
+				memcpy(outputCovariance.data, mgtsam.data(), outputCovariance.total()*sizeof(double));
+			}
+		} catch(std::exception& e) {
+			cout << e.what() << endl;
+		}
+
 		delete optimizer;
 	}
 	else if(poses.size() == 1 || iterations() <= 0)

@@ -66,6 +66,7 @@ public:
 			int rootId,
 			const std::map<int, Transform> & poses,
 			const std::multimap<int, Link> & edgeConstraints,
+			cv::Mat & outputCovariance,
 			std::list<std::map<int, Transform> > * intermediateGraphes = 0,
 			double * finalError = 0,
 			int * iterationsDone = 0);

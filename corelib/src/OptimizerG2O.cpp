@@ -164,6 +164,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		int rootId,
 		const std::map<int, Transform> & poses,
 		const std::multimap<int, Link> & edgeConstraints,
+		cv::Mat & outputCovariance,
 		std::list<std::map<int, Transform> > * intermediateGraphes,
 		double * finalError,
 		int * iterationsDone)
@@ -659,6 +660,31 @@ std::map<int, Transform> OptimizerG2O::optimize(
 					UERROR("Vertex %d not found!?", iter->first);
 				}
 			}
+
+			g2o::VertexSE2* v = (g2o::VertexSE2*)optimizer.vertex(poses.rbegin()->first);
+			if(v)
+			{
+				UTimer t;
+				g2o::SparseBlockMatrix<g2o::MatrixXD> spinv;
+				optimizer.computeMarginals(spinv, v);
+				UINFO("Computed marginals = %fs (cols=%d rows=%d, v=%d id=%d)", t.ticks(), spinv.cols(), spinv.rows(), v->hessianIndex(), poses.rbegin()->first);
+				g2o::SparseBlockMatrix<g2o::MatrixXD>::SparseMatrixBlock * block = spinv.blockCols()[v->hessianIndex()].begin()->second;
+				UASSERT(block && block->cols() == 3 && block->cols() == 3);
+				outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
+				outputCovariance.at<double>(0,0) = (*block)(0,0); // x-x
+				outputCovariance.at<double>(0,1) = (*block)(0,1); // x-y
+				outputCovariance.at<double>(0,5) = (*block)(0,2); // x-theta
+				outputCovariance.at<double>(1,0) = (*block)(1,0); // y-x
+				outputCovariance.at<double>(1,1) = (*block)(1,1); // y-y
+				outputCovariance.at<double>(1,5) = (*block)(1,2); // y-theta
+				outputCovariance.at<double>(5,0) = (*block)(2,0); // theta-x
+				outputCovariance.at<double>(5,1) = (*block)(2,1); // theta-y
+				outputCovariance.at<double>(5,5) = (*block)(2,2); // theta-theta
+			}
+			else
+			{
+				UERROR("Vertex %d not found!? Cannot compute marginals...", poses.rbegin()->first);
+			}
 		}
 		else
 		{
@@ -675,6 +701,23 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					UERROR("Vertex %d not found!?", iter->first);
 				}
+			}
+
+			g2o::VertexSE3* v = (g2o::VertexSE3*)optimizer.vertex(poses.rbegin()->first);
+			if(v)
+			{
+				UTimer t;
+				g2o::SparseBlockMatrix<g2o::MatrixXD> spinv;
+				optimizer.computeMarginals(spinv, v);
+				UINFO("Computed marginals = %fs (cols=%d rows=%d, v=%d id=%d)", t.ticks(), spinv.cols(), spinv.rows(), v->hessianIndex(), poses.rbegin()->first);
+				g2o::SparseBlockMatrix<g2o::MatrixXD>::SparseMatrixBlock * block = spinv.blockCols()[v->hessianIndex()].begin()->second;
+				UASSERT(block && block->cols() == 6 && block->cols() == 6);
+				outputCovariance = cv::Mat(6,6,CV_64FC1);
+				memcpy(outputCovariance.data, block->data(), outputCovariance.total()*sizeof(double));
+			}
+			else
+			{
+				UERROR("Vertex %d not found!? Cannot compute marginals...", poses.rbegin()->first);
 			}
 		}
 	}

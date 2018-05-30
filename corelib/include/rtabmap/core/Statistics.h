@@ -183,6 +183,7 @@ public:
 	void setConstraints(const std::multimap<int, Link> & constraints) {_constraints = constraints;}
 	void setMapCorrection(const Transform & mapCorrection) {_mapCorrection = mapCorrection;}
 	void setLoopClosureTransform(const Transform & loopClosureTransform) {_loopClosureTransform = loopClosureTransform;}
+	void setLocalizationCovariance(const cv::Mat & covariance) {_localizationCovariance = covariance;}
 	void setWeights(const std::map<int, int> & weights) {_weights = weights;}
 	void setPosterior(const std::map<int, float> & posterior) {_posterior = posterior;}
 	void setLikelihood(const std::map<int, float> & likelihood) {_likelihood = likelihood;}
@@ -205,6 +206,7 @@ public:
 	const std::multimap<int, Link> & constraints() const {return _constraints;}
 	const Transform & mapCorrection() const {return _mapCorrection;}
 	const Transform & loopClosureTransform() const {return _loopClosureTransform;}
+	const cv::Mat & localizationCovariance() const {return _localizationCovariance;}
 	const std::map<int, int> & weights() const {return _weights;}
 	const std::map<int, float> & posterior() const {return _posterior;}
 	const std::map<int, float> & likelihood() const {return _likelihood;}
@@ -230,6 +232,7 @@ private:
 	std::multimap<int, Link> _constraints;
 	Transform _mapCorrection;
 	Transform _loopClosureTransform;
+	cv::Mat _localizationCovariance;
 
 	std::map<int, int> _weights;
 	std::map<int, float> _posterior;
