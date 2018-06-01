@@ -1094,7 +1094,7 @@ bool Rtabmap::process(
 		}
 		else if(signature->getWeight() >= 0)
 		{
-			if(_rgbdLinearUpdate > 0.0f && _rgbdAngularUpdate > 0.0f)
+			if(_rgbdLinearUpdate > 0.0f || _rgbdAngularUpdate > 0.0f)
 			{
 				//============================================================
 				// Minimum displacement required to add to Memory
@@ -1109,12 +1109,15 @@ bool Rtabmap::process(
 					{
 						float x,y,z, roll,pitch,yaw;
 						links.begin()->second.transform().getTranslationAndEulerAngles(x,y,z, roll,pitch,yaw);
-						bool isMoving = fabs(x) > _rgbdLinearUpdate ||
-										fabs(y) > _rgbdLinearUpdate ||
-										fabs(z) > _rgbdLinearUpdate ||
-										fabs(roll) > _rgbdAngularUpdate ||
-										fabs(pitch) > _rgbdAngularUpdate ||
-										fabs(yaw) > _rgbdAngularUpdate;
+						bool isMoving = (_rgbdLinearUpdate>0.0f && (
+											fabs(x) > _rgbdLinearUpdate ||
+											fabs(y) > _rgbdLinearUpdate ||
+											fabs(z) > _rgbdLinearUpdate))
+										||
+									    (_rgbdAngularUpdate>0.0f && (
+											fabs(roll) > _rgbdAngularUpdate ||
+											fabs(pitch) > _rgbdAngularUpdate ||
+											fabs(yaw) > _rgbdAngularUpdate));
 						if(!isMoving)
 						{
 							// This will disable global loop closure detection, only retrieval will be done.

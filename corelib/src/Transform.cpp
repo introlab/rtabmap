@@ -58,8 +58,15 @@ Transform::Transform(const cv::Mat & transformationMatrix)
 {
 	UASSERT(transformationMatrix.cols == 4 &&
 			transformationMatrix.rows == 3 &&
-			transformationMatrix.type() == CV_32FC1);
-	data_ = transformationMatrix;
+			(transformationMatrix.type() == CV_32FC1 || transformationMatrix.type() == CV_64FC1));
+	if(transformationMatrix.type() == CV_32FC1)
+	{
+		data_ = transformationMatrix;
+	}
+	else
+	{
+		transformationMatrix.convertTo(data_, CV_32F);
+	}
 }
 
 Transform::Transform(float x, float y, float z, float roll, float pitch, float yaw)

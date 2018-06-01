@@ -294,6 +294,20 @@ std::map<int, cv::Point3f> generateWords3DMono(
 					if(useCameraTransformGuess)
 					{
 						Transform t = (cameraModel.localTransform().inverse()*cameraTransform*cameraModel.localTransform()).inverse();
+
+						if(ULogger::level() == ULogger::kDebug)
+						{
+							UDEBUG("Guess = %s", t.prettyPrint().c_str());
+							UDEBUG("Epipolar = %s", Transform(P).prettyPrint().c_str());
+							Transform PT = Transform(P);
+							float scale = t.getNorm()/PT.getNorm();
+							UDEBUG("Scale= %f", scale);
+							PT.x()*=scale;
+							PT.y()*=scale;
+							PT.z()*=scale;
+							UDEBUG("Epipolar scaled= %s", PT.prettyPrint().c_str());
+						}
+
 						P = (cv::Mat_<double>(3,4) <<
 								(double)t.r11(), (double)t.r12(), (double)t.r13(), (double)t.x(),
 								(double)t.r21(), (double)t.r22(), (double)t.r23(), (double)t.y(),

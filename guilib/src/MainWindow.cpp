@@ -3416,35 +3416,42 @@ void MainWindow::createAndAddFeaturesToMap(int nodeId, const Transform & pose, i
 		int oi=0;
 		UASSERT(iter->getWords().size() == iter->getWords3().size());
 		std::multimap<int, cv::KeyPoint>::const_iterator kter=iter->getWords().begin();
+		float maxDepth = _preferencesDialog->getCloudMaxDepth(0);
+		UDEBUG("rgb.channels()=%d");
 		for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->getWords3().begin();
-				jter!=iter->getWords3().end(); ++jter, ++kter, ++oi)
+				jter!=iter->getWords3().end(); ++jter, ++kter)
 		{
-			(*cloud)[oi].x = jter->second.x;
-			(*cloud)[oi].y = jter->second.y;
-			(*cloud)[oi].z = jter->second.z;
-			int u = kter->second.pt.x+0.5;
-			int v = kter->second.pt.y+0.5;
-			if(!rgb.empty() &&
-				uIsInBounds(u, 0, rgb.cols-1) &&
-				uIsInBounds(v, 0, rgb.rows-1))
+			if(util3d::isFinite(jter->second) && (maxDepth == 0.0f || jter->second.z < maxDepth))
 			{
-				if(rgb.channels() == 1)
+				(*cloud)[oi].x = jter->second.x;
+				(*cloud)[oi].y = jter->second.y;
+				(*cloud)[oi].z = jter->second.z;
+				int u = kter->second.pt.x+0.5;
+				int v = kter->second.pt.y+0.5;
+				if(!rgb.empty() &&
+					uIsInBounds(u, 0, rgb.cols-1) &&
+					uIsInBounds(v, 0, rgb.rows-1))
 				{
-					(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = rgb.at<unsigned char>(v, u);
+					if(rgb.channels() == 1)
+					{
+						(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = rgb.at<unsigned char>(v, u);
+					}
+					else
+					{
+						cv::Vec3b bgr = rgb.at<cv::Vec3b>(v, u);
+						(*cloud)[oi].b = bgr.val[0];
+						(*cloud)[oi].g = bgr.val[1];
+						(*cloud)[oi].r = bgr.val[2];
+					}
 				}
 				else
 				{
-					cv::Vec3b bgr = rgb.at<cv::Vec3b>(v, u);
-					(*cloud)[oi].b = bgr.val[0];
-					(*cloud)[oi].g = bgr.val[1];
-					(*cloud)[oi].r = bgr.val[2];
+					(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
 				}
-			}
-			else
-			{
-				(*cloud)[oi].r = (*cloud)[oi].g = (*cloud)[oi].b = 255;
+				++oi;
 			}
 		}
+		cloud->resize(oi);
 		if(!_cloudViewer->addCloud(cloudName, cloud, pose, color))
 		{
 			UERROR("Adding features cloud %d to viewer failed!", nodeId);

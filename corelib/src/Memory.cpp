@@ -57,6 +57,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/Compression.h"
 #include "rtabmap/core/Graph.h"
 #include "rtabmap/core/Stereo.h"
+#include "rtabmap/core/OptimizerG2O.h"
 #include <pcl/io/pcd_io.h>
 #include <pcl/common/common.h>
 #include <rtabmap/core/OccupancyGrid.h>
@@ -93,6 +94,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_laserScanNormalK(Parameters::defaultMemLaserScanNormalK()),
 	_laserScanNormalRadius(Parameters::defaultMemLaserScanNormalRadius()),
 	_reextractLoopClosureFeatures(Parameters::defaultRGBDLoopClosureReextractFeatures()),
+	_localBundleOnLoopClosure(Parameters::defaultRGBDLocalBundleOnLoopClosure()),
 	_rehearsalMaxDistance(Parameters::defaultRGBDLinearUpdate()),
 	_rehearsalMaxAngle(Parameters::defaultRGBDAngularUpdate()),
 	_rehearsalWeightIgnoredWhileMoving(Parameters::defaultMemRehearsalWeightIgnoredWhileMoving()),
@@ -480,6 +482,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(params, Parameters::kMemLaserScanNormalK(), _laserScanNormalK);
 	Parameters::parse(params, Parameters::kMemLaserScanNormalRadius(), _laserScanNormalRadius);
 	Parameters::parse(params, Parameters::kRGBDLoopClosureReextractFeatures(), _reextractLoopClosureFeatures);
+	Parameters::parse(params, Parameters::kRGBDLocalBundleOnLoopClosure(), _localBundleOnLoopClosure);
 	Parameters::parse(params, Parameters::kRGBDLinearUpdate(), _rehearsalMaxDistance);
 	Parameters::parse(params, Parameters::kRGBDAngularUpdate(), _rehearsalMaxAngle);
 	Parameters::parse(params, Parameters::kMemRehearsalWeightIgnoredWhileMoving(), _rehearsalWeightIgnoredWhileMoving);
@@ -2469,6 +2472,140 @@ Transform Memory::computeTransform(
 				transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
 			}
 		}
+		else if(_localBundleOnLoopClosure &&
+				_registrationPipeline->isImageRequired() &&
+			   !_registrationPipeline->isScanRequired() &&
+			   !_registrationPipeline->isUserDataRequired() &&
+			   !tmpTo.getWordsDescriptors().empty() &&
+			   !tmpTo.getWords().empty() &&
+			   !tmpFrom.getWordsDescriptors().empty() &&
+			   !tmpFrom.getWords().empty() &&
+			   !tmpFrom.getWords3().empty())
+		{
+			std::multimap<int, cv::Point3f> words3DMap;
+			std::multimap<int, cv::KeyPoint> wordsMap;
+			std::multimap<int, cv::Mat> wordsDescriptorsMap;
+
+			const std::map<int, Link> & links = fromS.getLinks();
+			{
+				const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(fromS.getWords3());
+				for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
+				{
+					if(util3d::isFinite(jter->second))
+					{
+						words3DMap.insert(*jter);
+						wordsMap.insert(*fromS.getWords().find(jter->first));
+						wordsDescriptorsMap.insert(*fromS.getWordsDescriptors().find(jter->first));
+					}
+				}
+			}
+
+			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
+			{
+				int id = iter->first;
+				const Signature * s = this->getSignature(id);
+				const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(s->getWords3());
+				for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
+				{
+					if(util3d::isFinite(jter->second) && words3DMap.find(jter->first) == words3DMap.end())
+					{
+						words3DMap.insert(std::make_pair(jter->first, util3d::transformPoint(jter->second, iter->second.transform())));
+						wordsMap.insert(*s->getWords().find(jter->first));
+						wordsDescriptorsMap.insert(*s->getWordsDescriptors().find(jter->first));
+					}
+				}
+			}
+			Signature tmpFrom2(fromS.id());
+			tmpFrom2.setWords3(words3DMap);
+			tmpFrom2.setWords(wordsMap);
+			tmpFrom2.setWordsDescriptors(wordsDescriptorsMap);
+
+			transform = _registrationPipeline->computeTransformationMod(tmpFrom2, tmpTo, guess, info);
+
+			if(!transform.isNull() && info)
+			{
+				std::map<int, cv::Point3f> points3DMap = uMultimapToMapUnique(tmpFrom2.getWords3());
+				std::map<int, Transform> bundlePoses;
+				std::multimap<int, Link> bundleLinks;
+				std::map<int, CameraModel> bundleModels;
+				std::map<int, std::map<int, cv::Point3f> > wordReferences;
+
+				std::map<int, Link> links = fromS.getLinks();
+				links.insert(std::make_pair(toS.id(), Link(fromS.id(), toS.id(), Link::kGlobalClosure, transform, info->covariance.inv())));
+				links.insert(std::make_pair(fromS.id(), Link()));
+
+				for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
+				{
+					int id = iter->first;
+					const Signature * s = this->getSignature(id);
+					CameraModel model = s->sensorData().cameraModels()[0];
+					bundleModels.insert(std::make_pair(id, model));
+					Transform invLocalTransform = model.localTransform().inverse();
+					if(iter->second.isValid())
+					{
+						bundleLinks.insert(std::make_pair(iter->second.from(), iter->second));
+						bundlePoses.insert(std::make_pair(id, iter->second.transform()));
+					}
+					else
+					{
+						bundlePoses.insert(std::make_pair(id, Transform::getIdentity()));
+					}
+					const std::map<int,cv::KeyPoint> & words = uMultimapToMapUnique(s->getWords());
+					for(std::map<int, cv::KeyPoint>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
+					{
+						if(points3DMap.find(jter->first)!=points3DMap.end())
+						{
+							std::multimap<int, cv::Point3f>::const_iterator kter = s->getWords3().find(jter->first);
+							cv::Point3f pt3d = util3d::transformPoint(kter->second, invLocalTransform);
+							wordReferences.insert(std::make_pair(jter->first, std::map<int, cv::Point3f>()));
+							wordReferences.at(jter->first).insert(std::make_pair(id, cv::Point3f(jter->second.pt.x, jter->second.pt.y, pt3d.z)));
+						}
+					}
+				}
+
+				UDEBUG("sba...start");
+				// set root negative to fix all other poses
+				std::set<int> sbaOutliers;
+				UTimer bundleTimer;
+				OptimizerG2O sba;
+				UTimer bundleTime;
+				bundlePoses = sba.optimizeBA(-toS.id(), bundlePoses, bundleLinks, bundleModels, points3DMap, wordReferences, &sbaOutliers);
+				UDEBUG("sba...end");
+
+				UDEBUG("bundleTime=%fs (poses=%d wordRef=%d outliers=%d)", bundleTime, (int)bundlePoses.size(), (int)wordReferences.size(), (int)sbaOutliers.size());
+
+				UDEBUG("Local Bundle Adjustment Before: %s", transform.prettyPrint().c_str());
+				if(!bundlePoses.rbegin()->second.isNull())
+				{
+					if(sbaOutliers.size())
+					{
+						std::vector<int> newInliers(info->inliersIDs.size());
+						int oi=0;
+						for(unsigned int i=0; i<info->inliersIDs.size(); ++i)
+						{
+							if(sbaOutliers.find(info->inliersIDs[i]) == sbaOutliers.end())
+							{
+								newInliers[oi++] = info->inliersIDs[i];
+							}
+						}
+						newInliers.resize(oi);
+						UDEBUG("BA outliers ratio %f", float(sbaOutliers.size())/float(info->inliersIDs.size()));
+						info->inliers = (int)newInliers.size();
+						info->inliersIDs = newInliers;
+					}
+					if(info->inliers < _registrationPipeline->getMinVisualCorrespondences())
+					{
+						info->rejectedMsg = uFormat("Too low inliers after bundle adjustment: %d<%d", info->inliers, _registrationPipeline->getMinVisualCorrespondences());
+						transform.setNull();
+					}
+					else
+					{
+						transform = bundlePoses.rbegin()->second;
+					}
+				}
+				UDEBUG("Local Bundle Adjustment After : %s", transform.prettyPrint().c_str());
+			}
+		}
 		else
 		{
 			transform = _registrationPipeline->computeTransformationMod(tmpFrom, tmpTo, guess, info);
@@ -3880,10 +4017,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		}
 	}
 
+	bool triangulateWordsWithoutDepth = !_depthAsMask;
 	if(!pose.isNull() &&
 		data.cameraModels().size() == 1 &&
 		words.size() &&
-		words3D.size() == 0 &&
+		(words3D.size() == 0 || (triangulateWordsWithoutDepth && words.size() == words3D.size())) &&
+		_registrationPipeline->isImageRequired() &&
 		_signatures.size() &&
 		_signatures.rbegin()->second->mapId() == _idMapCount) // same map
 	{
@@ -3892,27 +4031,59 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
 		{
 			Transform cameraTransform = pose.inverse() * previousS->getPose();
+
+			Signature cpPrevious(-2);
+			std::map<int, cv::KeyPoint> uniqueWords = uMultimapToMapUnique(previousS->getWords());
+			std::map<int, cv::Mat> uniqueWordsDescriptors = uMultimapToMapUnique(previousS->getWordsDescriptors());
+			cpPrevious.sensorData().setCameraModels(previousS->sensorData().cameraModels());
+			cpPrevious.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
+			cpPrevious.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
+			Signature cpCurrent(-1);
+			uniqueWords = uMultimapToMapUnique(words);
+			uniqueWordsDescriptors = uMultimapToMapUnique(wordsDescriptors);
+			cpCurrent.sensorData().setCameraModels(data.cameraModels());
+			cpCurrent.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
+			cpCurrent.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
+			// This will force comparing descriptors between both images directly
+			Transform tmpt = _registrationPipeline->computeTransformation(cpCurrent, cpPrevious, cameraTransform);
+			UDEBUG("t=%s", tmpt.prettyPrint().c_str());
+
 			// compute 3D words by epipolar geometry with the previous signature
 			std::map<int, cv::Point3f> inliers = util3d::generateWords3DMono(
-					uMultimapToMapUnique(words),
-					uMultimapToMapUnique(previousS->getWords()),
+					uMultimapToMapUnique(cpCurrent.getWords()),
+					uMultimapToMapUnique(cpPrevious.getWords()),
 					data.cameraModels()[0],
 					cameraTransform);
 
+			UDEBUG("inliers=%d", (int)inliers.size());
+
 			// words3D should have the same size than words
 			float bad_point = std::numeric_limits<float>::quiet_NaN ();
+			UASSERT(words.size() == words3D.size());
+			int added3DPointsWithoutDepth = 0;
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
-				if(jter != inliers.end())
+				std::multimap<int, cv::Point3f>::iterator iter3D = words3D.find(iter->first);
+				if(iter3D == words3D.end())
 				{
-					words3D.insert(std::make_pair(iter->first, jter->second));
+					if(jter != inliers.end())
+					{
+						words3D.insert(std::make_pair(iter->first, jter->second));
+						++added3DPointsWithoutDepth;
+					}
+					else
+					{
+						words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
+					}
 				}
-				else
+				else if(!util3d::isFinite(iter3D->second) && jter != inliers.end())
 				{
-					words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
+					iter3D->second = jter->second;
+					++added3DPointsWithoutDepth;
 				}
 			}
+			UDEBUG("added3DPointsWithoutDepth=%d", added3DPointsWithoutDepth);
 
 			t = timer.ticks();
 			UASSERT(words3D.size() == words.size());

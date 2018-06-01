@@ -293,6 +293,7 @@ private:
 	int _laserScanNormalK;
 	int _laserScanNormalRadius;
 	bool _reextractLoopClosureFeatures;
+	bool _localBundleOnLoopClosure;
 	float _rehearsalMaxDistance;
 	float _rehearsalMaxAngle;
 	bool _rehearsalWeightIgnoredWhileMoving;
