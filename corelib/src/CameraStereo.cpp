@@ -855,7 +855,7 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	param.depth_mode=(sl::DEPTH_MODE)quality_;
 	param.coordinate_units=sl::UNIT_METER;
 	param.coordinate_system=(sl::COORDINATE_SYSTEM)sl::COORDINATE_SYSTEM_IMAGE ;
-	param.sdk_verbose=false;
+	param.sdk_verbose=true;
 	param.sdk_gpu_id=-1;
 	param.depth_minimum_distance=-1;
 	param.camera_disable_self_calib=!selfCalibration_;
@@ -877,7 +877,7 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 
 	if(r!=sl::ERROR_CODE::SUCCESS)
 	{
-		UERROR("Camera initialization failed: \"%s\"", errorCode2str(r).c_str());
+		UERROR("Camera initialization failed: \"%s\"", toString(r).c_str());
 		delete zed_;
 		zed_ = 0;
 		return false;
@@ -888,19 +888,26 @@ bool CameraStereoZed::init(const std::string & calibrationFolder, const std::str
 	      quality_, sl::UNIT_METER, sl::COORDINATE_SYSTEM_IMAGE , selfCalibration_?"true":"false");
 	UDEBUG("");
 
-	zed_->setConfidenceThreshold(confidenceThr_);
+	if(quality_!=sl::DEPTH_MODE_NONE)
+	{
+		zed_->setConfidenceThreshold(confidenceThr_);
+	}
 
 	if (computeOdometry_)
 	{
 		sl::TrackingParameters tparam;
 		tparam.enable_spatial_memory=false;
 		zed_->enableTracking(tparam);
+		if(r!=sl::ERROR_CODE::SUCCESS)
+		{
+			UERROR("Camera tracking initialization failed: \"%s\"", toString(r).c_str());
+		}
 	}
 
 	sl::CameraInformation infos = zed_->getCameraInformation();
 	sl::CalibrationParameters *stereoParams = &(infos.calibration_parameters );
 	sl::Resolution res = stereoParams->left_cam.image_size;
-				
+
 	stereoModel_ = StereoCameraModel(
 		stereoParams->left_cam.fx, 
 		stereoParams->left_cam.fy, 
@@ -1032,28 +1039,37 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 			if (computeOdometry_ && info)
 			{
 				sl::Pose pose;
-				zed_->getPosition(pose);
-				int trackingConfidence = pose.pose_confidence;
-				// FIXME What does pose_confidence == -1 mean?
-				if (trackingConfidence>0)
+				sl::TRACKING_STATE tracking_state = zed_->getPosition(pose);
+				if (tracking_state == sl::TRACKING_STATE_OK)
 				{
-					info->odomPose = zedPoseToTransform(pose);
-					if (!info->odomPose.isNull())
+					int trackingConfidence = pose.pose_confidence;
+					// FIXME What does pose_confidence == -1 mean?
+					if (trackingConfidence>0)
 					{
-						//transform x->forward, y->left, z->up
-						Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-						info->odomPose = opticalTransform * info->odomPose * opticalTransform.inverse();
-
-						if (lost_)
+						info->odomPose = zedPoseToTransform(pose);
+						if (!info->odomPose.isNull())
 						{
-							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
-							lost_ = false;
-							UDEBUG("Init %s (var=%f)", info->odomPose.prettyPrint().c_str(), 9999.0f);
+							//transform x->forward, y->left, z->up
+							Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+							info->odomPose = opticalTransform * info->odomPose * opticalTransform.inverse();
+
+							if (lost_)
+							{
+								info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // don't know transform with previous pose
+								lost_ = false;
+								UDEBUG("Init %s (var=%f)", info->odomPose.prettyPrint().c_str(), 9999.0f);
+							}
+							else
+							{
+								info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
+								UDEBUG("Run %s (var=%f)", info->odomPose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
+							}
 						}
 						else
 						{
-							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 1.0f / float(trackingConfidence);
-							UDEBUG("Run %s (var=%f)", info->odomPose.prettyPrint().c_str(), 1.0f / float(trackingConfidence));
+							info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
+							lost_ = true;
+							UWARN("ZED lost! (trackingConfidence=%d)", trackingConfidence);
 						}
 					}
 					else
@@ -1065,9 +1081,7 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 				}
 				else
 				{
-					info->odomCovariance = cv::Mat::eye(6, 6, CV_64FC1) * 9999.0f; // lost
-					lost_ = true;
-					UWARN("ZED lost! (trackingConfidence=%d)", trackingConfidence);
+					UWARN("Tracking not ok: state=\"%s\"", toString(tracking_state).c_str());
 				}
 			}
 		}
