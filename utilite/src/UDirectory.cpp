@@ -32,6 +32,7 @@
   #include <unistd.h>
   #include <stdlib.h>
   #include <string.h>
+  #include <pwd.h>
 #endif
 
 #include "rtabmap/utilite/UStl.h"
@@ -367,7 +368,22 @@ std::string UDirectory::homeDir()
 	path = profilePath;
 	#endif
 #else
-	path = getenv("HOME");
+	char * pathstr = getenv("HOME");
+	if(pathstr)
+	{
+		path = pathstr;
+	}
+	if(path.empty())
+	{
+		struct passwd *pw = getpwuid(getuid());
+		if(pw) {
+			path = pw->pw_dir;
+		}
+		if(path.empty())
+		{
+			UFATAL("Environment variable HOME is not set, cannot get home directory! Please set HOME environment variable to a valid directory.");
+		}
+	}
 #endif
 	return path;
 }
