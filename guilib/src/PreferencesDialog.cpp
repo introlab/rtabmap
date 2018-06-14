@@ -1622,7 +1622,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->spinBox_stereo_right_device->setValue(-1);
 		_ui->comboBox_stereoZed_resolution->setCurrentIndex(2);
 		_ui->comboBox_stereoZed_quality->setCurrentIndex(1);
-		_ui->checkbox_stereoZed_selfCalibration->setChecked(false);
+		_ui->checkbox_stereoZed_selfCalibration->setChecked(true);
 		_ui->comboBox_stereoZed_sensingMode->setCurrentIndex(0);
 		_ui->spinBox_stereoZed_confidenceThr->setValue(100);
 		_ui->checkbox_stereoZed_odom->setChecked(false);

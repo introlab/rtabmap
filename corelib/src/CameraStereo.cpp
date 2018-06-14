@@ -1000,16 +1000,17 @@ SensorData CameraStereoZed::captureImage(CameraInfo * info)
 	{
 		UTimer timer;
 		bool res = zed_->grab(rparam);
-		while (src_ == CameraVideo::kUsbDevice && res && timer.elapsed() < 2.0)
+		while (src_ == CameraVideo::kUsbDevice && res!=sl::SUCCESS && timer.elapsed() < 2.0)
 		{
 			// maybe there is a latency with the USB, try again in 10 ms (for the next 2 seconds)
 			uSleep(10);
 			res = zed_->grab(rparam);
 		}
-		if(!res)
+		if(res==sl::SUCCESS)
 		{
 			// get left image
-			sl::Mat tmp;zed_->retrieveImage(tmp,sl::VIEW_LEFT);
+			sl::Mat tmp;
+			zed_->retrieveImage(tmp,sl::VIEW_LEFT);
 			cv::Mat rgbaLeft = slMat2cvMat(tmp);
 
 			cv::Mat left;

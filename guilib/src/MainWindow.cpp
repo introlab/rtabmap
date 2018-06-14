@@ -874,13 +874,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 				}
 				else
 				{
-					// we receive too many odometry events! just send without data
-					SensorData data(cv::Mat(), cameraEvent->data().id(), cameraEvent->data().stamp());
-					data.setCameraModels(cameraEvent->data().cameraModels());
-					data.setStereoCameraModel(cameraEvent->data().stereoCameraModel());
-					data.setGroundTruth(cameraEvent->data().groundTruth());
-					OdometryEvent tmp(data, cameraEvent->info().odomPose, odomInfo);
-					emit odometryReceived(tmp, true);
+					// we receive too many odometry events! ignore them
 				}
 			}
 		}

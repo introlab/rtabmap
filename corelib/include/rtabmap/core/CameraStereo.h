@@ -123,7 +123,7 @@ public:
 			bool computeOdometry = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity(),
-			bool selfCalibration = false);
+			bool selfCalibration = true);
 	CameraStereoZed(
 			const std::string & svoFilePath,
 			int quality = 1,    // 0=NONE, 1=PERFORMANCE, 2=QUALITY
@@ -132,7 +132,7 @@ public:
 			bool computeOdometry = false,
 			float imageRate=0.0f,
 			const Transform & localTransform = Transform::getIdentity(),
-			bool selfCalibration = false);
+			bool selfCalibration = true);
 	virtual ~CameraStereoZed();
 
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
