@@ -48,6 +48,10 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
+#ifdef RTABMAP_REALSENSE2
+#include <librealsense2/rs.hpp>
+#endif
+
 #include <boost/signals2/connection.hpp>
 
 namespace openni
@@ -407,6 +411,54 @@ private:
 	std::pair<cv::Mat, cv::Mat> lastSyncFrames_;
 	UMutex dataMutex_;
 	USemaphore dataReady_;
+#endif
+};
+/////////////////////////
+// CameraRealSense
+/////////////////////////
+class slam_event_handler;
+class RTABMAP_EXP CameraRealSense2 :
+	public Camera
+{
+public:
+	static bool available();
+
+public:
+	// default local transform z in, x right, y down));
+	CameraRealSense2(
+		int deviceId = 0,
+		float imageRate = 0,
+		const Transform & localTransform = Transform::getIdentity());
+	virtual ~CameraRealSense2();
+
+	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
+	virtual bool isCalibrated() const;
+	virtual std::string getSerial() const;
+
+protected:
+	virtual SensorData captureImage(CameraInfo * info = 0);
+
+private:
+#ifdef RTABMAP_REALSENSE2
+
+	void alignFrame(const rs2_intrinsics& from_intrin,
+		const rs2_intrinsics& other_intrin,
+		rs2::frame from_image,
+		uint32_t output_image_bytes_per_pixel,
+		const rs2_extrinsics& from_to_other,
+		cv::Mat & registeredDepth);
+
+	rs2::context ctx_;
+	rs2::device dev_;
+	int deviceId_;
+	rs2::syncer syncer_;
+	float depth_scale_meters_;
+	rs2_intrinsics depthIntrinsics_;
+	rs2_intrinsics rgbIntrinsics_;
+	rs2_extrinsics depthToRGBExtrinsics_;
+	cv::Mat depthBuffer_;
+	cv::Mat rgbBuffer_;
+	CameraModel model_;
 #endif
 };
 

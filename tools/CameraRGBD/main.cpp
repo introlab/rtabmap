@@ -56,6 +56,7 @@ void showUsage()
 			"                                     8=ZED stereo\n"
 			"                                     9=RealSense\n"
 			"                                     10=Kinect for Windows 2 SDK\n"
+			"                                     11=RealSense2\n"
 			"  Options:\n"
 			"      -rate #.#                      Input rate Hz (default 0=inf)\n"
 			"      -save_stereo \"path\"            Save stereo images in a folder or a video file (side by side *.avi).\n"
@@ -152,9 +153,9 @@ int main(int argc, char * argv[])
 
 			// last
 			driver = atoi(argv[i]);
-			if(driver < 0 || driver > 10)
+			if(driver < 0 || driver > 11)
 			{
-				UERROR("driver should be between 0 and 10.");
+				UERROR("driver should be between 0 and 11.");
 				showUsage();
 			}
 		}
@@ -264,6 +265,15 @@ int main(int argc, char * argv[])
 			exit(-1);
 		}
 		camera = new rtabmap::CameraK4W2(0);
+	}
+	else if (driver == 11)
+	{
+		if (!rtabmap::CameraRealSense2::available())
+		{
+			UERROR("Not built with RealSense2 SDK support...");
+			exit(-1);
+		}
+		camera = new rtabmap::CameraRealSense2(0);
 	}
 	else
 	{

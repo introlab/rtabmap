@@ -185,6 +185,17 @@ IF(RealSense_FOUND)
 	)
 ENDIF(RealSense_FOUND)
 
+IF(realsense2_FOUND)
+	SET(INCLUDE_DIRS
+		${INCLUDE_DIRS}
+		${realsense2_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		realsense2
+	)
+ENDIF(realsense2_FOUND)
+
 IF(DC1394_FOUND)
 	SET(INCLUDE_DIRS
 		${INCLUDE_DIRS}
