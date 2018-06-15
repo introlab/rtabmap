@@ -33,5 +33,6 @@
         <file>images/zed.png</file>
         <file>images/r200.png</file>
         <file>images/zr300.png</file>
+        <file>images/d435.png</file>
     </qresource>
 </RCC>

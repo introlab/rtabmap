@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>1012</width>
-     <height>21</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -173,7 +173,7 @@
        </property>
        <property name="icon">
         <iconset resource="../GuiLib.qrc">
-         <normaloff>:/images/r200.png</normaloff>:/images/r200.png</iconset>
+         <normaloff>:/images/d435.png</normaloff>:/images/d435.png</iconset>
        </property>
        <addaction name="actionRealSense_R200"/>
       </widget>
@@ -187,12 +187,23 @@
        </property>
        <addaction name="actionRealSense_ZR300"/>
       </widget>
+      <widget class="QMenu" name="menuRealSense_D435">
+       <property name="title">
+        <string>RealSense D435</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../GuiLib.qrc">
+         <normaloff>:/images/d435.png</normaloff>:/images/d435.png</iconset>
+       </property>
+       <addaction name="actionRealSense2_D435"/>
+      </widget>
       <addaction name="menuKinect_for_Xbox_360"/>
       <addaction name="menuXtion_PRO_LIVE"/>
       <addaction name="menuSense_3D_scanner"/>
       <addaction name="menuKinect_v2"/>
       <addaction name="menuRealSense_R200"/>
       <addaction name="menuRealSense_ZR300"/>
+      <addaction name="menuRealSense_D435"/>
      </widget>
      <widget class="QMenu" name="menuStereo_camera">
       <property name="title">
@@ -1464,6 +1475,14 @@
    </property>
    <property name="text">
     <string>Kinect for Windows SDK v2</string>
+   </property>
+  </action>
+  <action name="actionRealSense2_D435">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>RealSense2</string>
    </property>
   </action>
  </widget>

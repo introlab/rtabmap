@@ -426,7 +426,7 @@ public:
 public:
 	// default local transform z in, x right, y down));
 	CameraRealSense2(
-		int deviceId = 0,
+		const std::string & deviceId = "",
 		float imageRate = 0,
 		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense2();
@@ -434,6 +434,9 @@ public:
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
+
+	// parameters are set during initialization
+	void setEmitterEnabled(bool enabled);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -450,7 +453,7 @@ private:
 
 	rs2::context ctx_;
 	rs2::device dev_;
-	int deviceId_;
+	std::string deviceId_;
 	rs2::syncer syncer_;
 	float depth_scale_meters_;
 	rs2_intrinsics depthIntrinsics_;
@@ -459,6 +462,8 @@ private:
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;
+
+	bool emitterEnabled_;
 #endif
 };
 

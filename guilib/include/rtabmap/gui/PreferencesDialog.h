@@ -92,6 +92,7 @@ public:
 		kSrcRealSense      = 6,
 		kSrcRGBDImages     = 7,
 		kSrcK4W2           = 8,
+		kSrcRealSense2     = 9,
 
 		kSrcStereo         = 100,
 		kSrcDC1394         = 100,

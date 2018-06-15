@@ -3229,14 +3229,15 @@ bool CameraRealSense2::available()
 }
 
 CameraRealSense2::CameraRealSense2(
-		int device,
+		const std::string & device,
 		float imageRate,
 		const rtabmap::Transform & localTransform) :
 	Camera(imageRate, localTransform)
 #ifdef RTABMAP_REALSENSE2
     ,
 	deviceId_(device),
-	depth_scale_meters_(1.0f)
+	depth_scale_meters_(1.0f),
+	emitterEnabled_(true)
 #endif
 {
 	UDEBUG("");
@@ -3247,6 +3248,7 @@ CameraRealSense2::~CameraRealSense2()
 	UDEBUG("");
 }
 
+#ifdef RTABMAP_REALSENSE2
 void CameraRealSense2::alignFrame(const rs2_intrinsics& from_intrin,
                                    const rs2_intrinsics& other_intrin,
                                    rs2::frame from_image,
@@ -3313,6 +3315,7 @@ void CameraRealSense2::alignFrame(const rs2_intrinsics& from_intrin,
         }
     }
 }
+#endif
 
 bool CameraRealSense2::init(const std::string & calibrationFolder, const std::string & cameraName)
 {
@@ -3328,7 +3331,6 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		return false;
 	}
 
-	int count = 0;
 	bool found=false;
 	for (auto&& dev : list)
 	{
@@ -3339,7 +3341,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		ss << std::hex << pid_str;
 		ss >> pid;
 		UINFO("Device with serial number %s was found with product ID=%d.", sn, (int)pid);
-		if (deviceId_ == 0 || deviceId_ == count)
+		if (deviceId_.empty() || deviceId_ == sn)
 		{
 			dev_ = dev;
 			found=true;
@@ -3349,7 +3351,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 
 	if (!found)
 	{
-		UERROR("The requested device %d is NOT found!", deviceId_);
+		UERROR("The requested device %s is NOT found!", deviceId_.c_str());
 		return false;
 	}
 
@@ -3384,6 +3386,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		if ("Stereo Module" == module_name)
 		{
 			sensors[1] = elem;
+			sensors[1].set_option(rs2_option::RS2_OPTION_EMITTER_ENABLED, emitterEnabled_);
 		}
 		else if ("Coded-Light Depth Sensor" == module_name)
 		{
@@ -3477,7 +3480,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	return true;
 
 #else
-	UERROR("CameraRealSense: RTAB-Map is not built with RealSense support!");
+	UERROR("CameraRealSense: RTAB-Map is not built with RealSense2 support!");
 	return false;
 #endif
 }
@@ -3495,16 +3498,29 @@ std::string CameraRealSense2::getSerial() const
 	return "NA";
 }
 
+void CameraRealSense2::setEmitterEnabled(bool enabled)
+{
+#ifdef RTABMAP_REALSENSE2
+	emitterEnabled_ = enabled;
+#endif
+}
+
 SensorData CameraRealSense2::captureImage(CameraInfo * info)
 {
 	SensorData data;
 #ifdef RTABMAP_REALSENSE2
 
 	try{
-		double stamp = UTimer::now();
 		auto frameset = syncer_.wait_for_frames(5000);
-		if (frameset.size())
+		UTimer timer;
+		while (frameset.size() != 2 && timer.elapsed() < 2.0)
 		{
+			// maybe there is a latency with the USB, try again in 10 ms (for the next 2 seconds)
+			frameset = syncer_.wait_for_frames(10);
+		}
+		if (frameset.size() == 2)
+		{
+			double stamp = UTimer::now();
 			UDEBUG("Frameset arrived.");
 			bool is_rgb_arrived = false;
 			bool is_depth_arrived = false;
@@ -3545,22 +3561,15 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 				UERROR("Not received depth and rgb");
 			}
 		}
+		else
+		{
+			UERROR("Missing frames (received %d)", (int)frameset.size());
+		}
 	}
 	catch(const std::exception& ex)
 	{
 		UERROR("An error has occurred during frame callback: %s", ex.what());
 	}
-
-	/*if(!dataReady_.acquire(1, 5000))
-	{
-		UWARN("Not received new frames since 5 seconds, end of stream reached!");
-	}
-	else
-	{
-		UScopeMutex s(dataMutex_);
-		data = data_;
-		data_ = SensorData();
-	}*/
 #else
 	UERROR("CameraRealSense2: RTAB-Map is not built with RealSense2 support!");
 #endif

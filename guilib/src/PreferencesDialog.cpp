@@ -255,44 +255,48 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #endif
 	if(!CameraOpenni::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcOpenNI_PCL - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if(!CameraFreenect::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcFreenect - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if(!CameraOpenNICV::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(2, 0, Qt::UserRole - 1);
-		_ui->comboBox_cameraRGBD->setItemData(3, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcOpenNI_CV - kSrcRGBD, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcOpenNI_CV_ASUS - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if(!CameraOpenNI2::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(4, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcOpenNI2 - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if(!CameraFreenect2::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(5, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcFreenect2 - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if (!CameraK4W2::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(8, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcK4W2 - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if (!CameraRealSense::available())
 	{
-		_ui->comboBox_cameraRGBD->setItemData(6, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense - kSrcRGBD, 0, Qt::UserRole - 1);
+	}
+	if (!CameraRealSense2::available())
+	{
+		_ui->comboBox_cameraRGBD->setItemData(kSrcRealSense2 - kSrcRGBD, 0, Qt::UserRole - 1);
 	}
 	if(!CameraStereoDC1394::available())
 	{
-		_ui->comboBox_cameraStereo->setItemData(0, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(kSrcDC1394 - kSrcStereo, 0, Qt::UserRole - 1);
 	}
 	if(!CameraStereoFlyCapture2::available())
 	{
-		_ui->comboBox_cameraStereo->setItemData(1, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(kSrcFlyCapture2 - kSrcStereo, 0, Qt::UserRole - 1);
 	}
 	if (!CameraStereoZed::available())
 	{
-		_ui->comboBox_cameraStereo->setItemData(4, 0, Qt::UserRole - 1);
+		_ui->comboBox_cameraStereo->setItemData(kSrcStereoZed - kSrcStereo, 0, Qt::UserRole - 1);
 	}
 	_ui->openni2_exposure->setEnabled(CameraOpenNI2::exposureGainAvailable());
 	_ui->openni2_gain->setEnabled(CameraOpenNI2::exposureGainAvailable());
@@ -560,6 +564,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_rs2_emitter, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceImagesStamps()));
 	connect(_ui->lineEdit_cameraImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1601,6 +1606,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_realsensePresetRGB->setCurrentIndex(0);
 		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
 		_ui->checkbox_realsenseOdom->setChecked(false);
+		_ui->checkbox_rs2_emitter->setChecked(true);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
@@ -1994,6 +2000,10 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
 	_ui->comboBox_realsensePresetDepth->setCurrentIndex(settings.value("presetDepth", _ui->comboBox_realsensePresetDepth->currentIndex()).toInt());
 	_ui->checkbox_realsenseOdom->setChecked(settings.value("odom", _ui->checkbox_realsenseOdom->isChecked()).toBool());
+	settings.endGroup(); // RealSense
+
+	settings.beginGroup("RealSense2");
+	_ui->checkbox_rs2_emitter->setChecked(settings.value("emitter", _ui->checkbox_rs2_emitter->isChecked()).toBool());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
@@ -2409,6 +2419,10 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("presetDepth",         _ui->comboBox_realsensePresetDepth->currentIndex());
 	settings.setValue("odom",                _ui->checkbox_realsenseOdom->isChecked());
 	settings.endGroup(); // RealSense
+
+	settings.beginGroup("RealSense2");
+	settings.setValue("emitter",                _ui->checkbox_rs2_emitter->isChecked());
+	settings.endGroup(); // RealSense2
 
 	settings.beginGroup("RGBDImages");
 	settings.setValue("path_rgb",            _ui->lineEdit_cameraRGBDImages_path_rgb->text());
@@ -4257,11 +4271,13 @@ void PreferencesDialog::updateSourceGrpVisibility()
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD ||
 			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD ||
-			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD));
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD ||
+			 _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2-kSrcRGBD));
 	_ui->groupBox_openni2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI2-kSrcRGBD);
 	_ui->groupBox_freenect2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcFreenect2-kSrcRGBD);
 	_ui->groupBox_k4w2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcK4W2 - kSrcRGBD);
 	_ui->groupBox_realsense->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense - kSrcRGBD);
+	_ui->groupBox_realsense2->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRealSense2 - kSrcRGBD);
 	_ui->groupBox_cameraRGBDImages->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcRGBDImages-kSrcRGBD);
 	_ui->groupBox_openni->setVisible(_ui->comboBox_sourceType->currentIndex() == 0 && _ui->comboBox_cameraRGBD->currentIndex() == kSrcOpenNI_PCL-kSrcRGBD);
 
@@ -4946,6 +4962,24 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->checkbox_realsenseOdom->isChecked(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
+		}
+	}
+	else if (driver == kSrcRealSense2)
+	{
+		if(useRawImages)
+		{
+			QMessageBox::warning(this, tr("Calibration"),
+					tr("Using raw images for \"RealSense\" driver is not yet supported. "
+						"Factory calibration loaded from RealSense2 is used."), QMessageBox::Ok);
+			return 0;
+		}
+		else
+		{
+			camera = new CameraRealSense2(
+				this->getSourceDevice().toStdString(),
+				this->getGeneralInputRate(),
+				this->getSourceLocalTransform());
+			((CameraRealSense2*)camera)->setEmitterEnabled(_ui->checkbox_rs2_emitter->isChecked());
 		}
 	}
 	else if(driver == kSrcRGBDImages)
