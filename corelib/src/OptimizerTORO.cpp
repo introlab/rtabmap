@@ -60,6 +60,7 @@ std::map<int, Transform> OptimizerTORO::optimize(
 		double * finalError,
 		int * iterationsDone)
 {
+	outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
 	std::map<int, Transform> optimizedPoses;
 #ifdef RTABMAP_TORO
 	UDEBUG("Optimizing graph (pose=%d constraints=%d)...", (int)poses.size(), (int)edgeConstraints.size());
@@ -315,7 +316,6 @@ std::map<int, Transform> OptimizerTORO::optimize(
 		}
 
 		// TORO doesn't compute marginals...
-		outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
 	}
 	else if(poses.size() == 1 || iterations() <= 0)
 	{

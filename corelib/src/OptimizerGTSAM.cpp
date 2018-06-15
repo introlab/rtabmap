@@ -84,6 +84,7 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 		double * finalError,
 		int * iterationsDone)
 {
+	outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
 	std::map<int, Transform> optimizedPoses;
 #ifdef RTABMAP_GTSAM
 
@@ -409,7 +410,6 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 			if(isSlam2d())
 			{
 				UASSERT(info.cols() == 3 && info.cols() == 3);
-				outputCovariance = cv::Mat::eye(6,6,CV_64FC1);
 				outputCovariance.at<double>(0,0) = info(0,0); // x-x
 				outputCovariance.at<double>(0,1) = info(0,1); // x-y
 				outputCovariance.at<double>(0,5) = info(0,2); // x-theta
@@ -428,7 +428,6 @@ std::map<int, Transform> OptimizerGTSAM::optimize(
 				mgtsam.block(0,0,3,3) = info.block(3,3,3,3); // cov translation
 				mgtsam.block(0,3,3,3) = info.block(0,3,3,3); // off diagonal
 				mgtsam.block(3,0,3,3) = info.block(3,0,3,3); // off diagonal
-				outputCovariance = cv::Mat(6,6,CV_64FC1);
 				memcpy(outputCovariance.data, mgtsam.data(), outputCovariance.total()*sizeof(double));
 			}
 		} catch(std::exception& e) {
