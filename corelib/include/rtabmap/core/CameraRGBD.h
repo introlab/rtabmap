@@ -437,6 +437,7 @@ public:
 
 	// parameters are set during initialization
 	void setEmitterEnabled(bool enabled);
+	void setIRDepthFormat(bool enabled);
 
 protected:
 	virtual SensorData captureImage(CameraInfo * info = 0);
@@ -464,6 +465,7 @@ private:
 	CameraModel model_;
 
 	bool emitterEnabled_;
+	bool irDepth_;
 #endif
 };
 

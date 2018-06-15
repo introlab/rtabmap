@@ -273,7 +273,7 @@ int main(int argc, char * argv[])
 			UERROR("Not built with RealSense2 SDK support...");
 			exit(-1);
 		}
-		camera = new rtabmap::CameraRealSense2(0);
+		camera = new rtabmap::CameraRealSense2();
 	}
 	else
 	{

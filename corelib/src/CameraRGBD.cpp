@@ -3237,7 +3237,8 @@ CameraRealSense2::CameraRealSense2(
     ,
 	deviceId_(device),
 	depth_scale_meters_(1.0f),
-	emitterEnabled_(true)
+	emitterEnabled_(true),
+	irDepth_(false)
 #endif
 {
 	UDEBUG("");
@@ -3268,6 +3269,8 @@ void CameraRealSense2::alignFrame(const rs2_intrinsics& from_intrin,
     auto p_from_frame = reinterpret_cast<const uint8_t*>(from_image.get_data());
     auto from_stream_type = from_image.get_profile().stream_type();
     float depth_units = ((from_stream_type == RS2_STREAM_DEPTH)?depth_scale_meters_:1.f);
+    UASSERT(from_stream_type == RS2_STREAM_DEPTH);
+    UASSERT_MSG(depth_units > 0.0f, uFormat("depth_scale_meters_=%f", depth_scale_meters_).c_str());
 #pragma omp parallel for schedule(dynamic)
     for (int from_y = 0; from_y < from_intrin.height; ++from_y)
     {
@@ -3387,13 +3390,20 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		{
 			sensors[1] = elem;
 			sensors[1].set_option(rs2_option::RS2_OPTION_EMITTER_ENABLED, emitterEnabled_);
+			if(irDepth_)
+			{
+				sensors[0] = elem;
+			}
 		}
 		else if ("Coded-Light Depth Sensor" == module_name)
 		{
 		}
 		else if ("RGB Camera" == module_name)
 		{
-			sensors[0] = elem;
+			if(!irDepth_)
+			{
+				sensors[0] = elem;
+			}
 		}
 		else if ("Wide FOV Camera" == module_name)
 		{
@@ -3414,6 +3424,7 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 	model_ = CameraModel();
 	rs2::stream_profile depthStreamProfile;
 	rs2::stream_profile rgbStreamProfile;
+	std::vector<std::vector<rs2::stream_profile> > profilesPerSensor(2);
 	 for (unsigned int i=0; i<sensors.size(); ++i)
 	 {
 		 UDEBUG("i=%d", (int)i);
@@ -3423,31 +3434,26 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		for (auto& profile : profiles)
 		{
 			auto video_profile = profile.as<rs2::video_stream_profile>();
-			if (video_profile.format() == (i==1?RS2_FORMAT_Z16:RS2_FORMAT_RGB8) &&
+			if (video_profile.format() == (i==1?RS2_FORMAT_Z16:irDepth_?RS2_FORMAT_Y8:RS2_FORMAT_RGB8) &&
 				video_profile.width()  == 640 &&
 				video_profile.height() == 480 &&
 				video_profile.fps()    == 30)
 			{
-				UDEBUG("");
-				sensors[i].open(profile);
+				profilesPerSensor[irDepth_?1:i].push_back(profile);
 				auto intrinsic = video_profile.get_intrinsics();
 				if(i==1)
 				{
 					depthBuffer_ = cv::Mat(cv::Size(640, 480), CV_16UC1, cv::Scalar(0));
-					auto depth_sensor = sensors[i].as<rs2::depth_sensor>();
-					depth_scale_meters_ = depth_sensor.get_depth_scale();
 					depthStreamProfile = profile;
 					depthIntrinsics_ = intrinsic;
 				}
 				else
 				{
-					rgbBuffer_ = cv::Mat(cv::Size(640, 480), CV_8UC3, cv::Scalar(0, 0, 0));
-					auto intrinsic = video_profile.get_intrinsics();
+					rgbBuffer_ = cv::Mat(cv::Size(640, 480), irDepth_?CV_8UC1:CV_8UC3, irDepth_?cv::Scalar(0):cv::Scalar(0, 0, 0));
 					model_ = CameraModel(camera_name, intrinsic.fx, intrinsic.fy, intrinsic.ppx, intrinsic.ppy, this->getLocalTransform(), 0, cv::Size(intrinsic.width, intrinsic.height));
 					rgbStreamProfile = profile;
 					rgbIntrinsics_ = intrinsic;
 				}
-				UDEBUG("");
 				added = true;
 				break;
 			}
@@ -3460,18 +3466,26 @@ bool CameraRealSense2::init(const std::string & calibrationFolder, const std::st
 		}
 	 }
 
-	 UDEBUG("");
 	 if(!model_.isValidForProjection())
 	 {
 		 UERROR("Calibration info not valid!");
 		 return false;
 	 }
-	 UDEBUG("");
 	 depthToRGBExtrinsics_ = depthStreamProfile.get_extrinsics_to(rgbStreamProfile);
 
 	 for (unsigned int i=0; i<sensors.size(); ++i)
 	 {
-		 sensors[i].start(syncer_);
+		 if(profilesPerSensor[i].size())
+		 {
+			 UINFO("Starting sensor %d with %d profiles", (int)i, (int)profilesPerSensor[i].size());
+			 sensors[i].open(profilesPerSensor[i]);
+			 if(i ==1)
+			 {
+				 auto depth_sensor = sensors[i].as<rs2::depth_sensor>();
+				 depth_scale_meters_ = depth_sensor.get_depth_scale();
+			 }
+			 sensors[i].start(syncer_);
+		 }
 	 }
 
 	uSleep(1000); // ignore the first frames
@@ -3505,6 +3519,13 @@ void CameraRealSense2::setEmitterEnabled(bool enabled)
 #endif
 }
 
+void CameraRealSense2::setIRDepthFormat(bool enabled)
+{
+#ifdef RTABMAP_REALSENSE2
+	irDepth_ = enabled;
+#endif
+}
+
 SensorData CameraRealSense2::captureImage(CameraInfo * info)
 {
 	SensorData data;
@@ -3530,7 +3551,7 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			{
 				auto f = (*it);
 				auto stream_type = f.get_profile().stream_type();
-				if (stream_type == RS2_STREAM_COLOR)
+				if (stream_type == RS2_STREAM_COLOR || stream_type == RS2_STREAM_INFRARED)
 				{
 					rgb_frame = f;
 					is_rgb_arrived = true;
@@ -3545,14 +3566,29 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 			if(is_rgb_arrived && is_depth_arrived)
 			{
 				auto from_image_frame = depth_frame.as<rs2::video_frame>();
-				cv::Mat depth(depthBuffer_.size(), depthBuffer_.type());
-				alignFrame(depthIntrinsics_, rgbIntrinsics_,
-						depth_frame, from_image_frame.get_bytes_per_pixel(),
-						depthToRGBExtrinsics_, depth);
+				cv::Mat depth;
+				if(irDepth_)
+				{
+					depth = cv::Mat(depthBuffer_.size(), depthBuffer_.type(), (void*)depth_frame.get_data()).clone();
+				}
+				else
+				{
+					depth = cv::Mat(depthBuffer_.size(), depthBuffer_.type());
+					alignFrame(depthIntrinsics_, rgbIntrinsics_,
+							depth_frame, from_image_frame.get_bytes_per_pixel(),
+							depthToRGBExtrinsics_, depth);
+				}
 
 				cv::Mat rgb = cv::Mat(rgbBuffer_.size(), rgbBuffer_.type(), (void*)rgb_frame.get_data());
 				cv::Mat bgr;
-				cv::cvtColor(rgb, bgr, CV_RGB2BGR);
+				if(rgb.channels() == 3)
+				{
+					cv::cvtColor(rgb, bgr, CV_RGB2BGR);
+				}
+				else
+				{
+					bgr = rgb.clone();
+				}
 
 				data = SensorData(bgr, depth, model_, this->getNextSeqID(), stamp);
 			}

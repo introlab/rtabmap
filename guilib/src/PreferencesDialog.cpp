@@ -565,6 +565,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_emitter, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_rs2_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
 	connect(_ui->toolButton_cameraImages_timestamps, SIGNAL(clicked()), this, SLOT(selectSourceImagesStamps()));
 	connect(_ui->lineEdit_cameraImages_timestamps, SIGNAL(textChanged(const QString &)), this, SLOT(makeObsoleteSourcePanel()));
@@ -1607,6 +1608,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
 		_ui->checkbox_realsenseOdom->setChecked(false);
 		_ui->checkbox_rs2_emitter->setChecked(true);
+		_ui->checkbox_rs2_irDepth->setChecked(false);
 		_ui->lineEdit_openniOniPath->clear();
 		_ui->lineEdit_openni2OniPath->clear();
 		_ui->lineEdit_cameraRGBDImages_path_rgb->setText("");
@@ -2004,6 +2006,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 
 	settings.beginGroup("RealSense2");
 	_ui->checkbox_rs2_emitter->setChecked(settings.value("emitter", _ui->checkbox_rs2_emitter->isChecked()).toBool());
+	_ui->checkbox_rs2_irDepth->setChecked(settings.value("irdepth", _ui->checkbox_rs2_irDepth->isChecked()).toBool());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RGBDImages");
@@ -2422,6 +2425,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 
 	settings.beginGroup("RealSense2");
 	settings.setValue("emitter",                _ui->checkbox_rs2_emitter->isChecked());
+	settings.setValue("irdepth",                _ui->checkbox_rs2_irDepth->isChecked());
 	settings.endGroup(); // RealSense2
 
 	settings.beginGroup("RGBDImages");
@@ -4980,6 +4984,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
 			((CameraRealSense2*)camera)->setEmitterEnabled(_ui->checkbox_rs2_emitter->isChecked());
+			((CameraRealSense2*)camera)->setIRDepthFormat(_ui->checkbox_rs2_irDepth->isChecked());
 		}
 	}
 	else if(driver == kSrcRGBDImages)
