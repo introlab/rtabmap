@@ -50,13 +50,13 @@ public:
 	ConsoleWidget(QWidget * parent = 0);
 	virtual ~ConsoleWidget();
 
-public slots:
+public Q_SLOTS:
 	void appendMsg(const QString & msg, int level = 1);
 
-signals:
+Q_SIGNALS:
 	void msgReceived(const QString &, int);
 
-private slots:
+private Q_SLOTS:
 	void flushConsole();
 	void updateTextEditBufferSize();
 

@@ -127,7 +127,7 @@ void MapVisibilityWidget::signalVisibility()
 {
 	QCheckBox * check = qobject_cast<QCheckBox*>(sender());
 	_mask.at(check->text().split('(').first().toInt()) = check->isChecked();
-	emit visibilityChanged(check->text().split('(').first().toInt(), check->isChecked());
+	Q_EMIT visibilityChanged(check->text().split('(').first().toInt(), check->isChecked());
 }
 
 void MapVisibilityWidget::selectAll(bool checked)

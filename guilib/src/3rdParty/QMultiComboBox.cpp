@@ -192,7 +192,7 @@ void QMultiComboBox::setItemChecked(int row, bool checked)
 	if (wasChecked != checked)
 	{
 		item->setCheckState(checked?Qt::Checked:Qt::Unchecked);
-		emit itemChanged();
+		Q_EMIT itemChanged();
 	}
 }
 
@@ -213,7 +213,7 @@ void QMultiComboBox::scanItemSelect(QListWidgetItem* item)
         }
         list[i]->setSelected(false);
     }
-    emit itemChanged();
+    Q_EMIT itemChanged();
 }
 
 void QMultiComboBox::initStyleOption(QStyleOptionComboBox *option) const

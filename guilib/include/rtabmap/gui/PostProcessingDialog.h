@@ -76,13 +76,13 @@ public:
 	void setSBAVariance(double variance);
 	void setSBAType(Optimizer::Type type);
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 
-public slots:
+public Q_SLOTS:
 	void restoreDefaults();
 
-private slots:
+private Q_SLOTS:
 	void updateVisibility();
 	void updateButtonBox();
 

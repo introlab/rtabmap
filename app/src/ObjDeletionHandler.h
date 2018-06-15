@@ -46,7 +46,7 @@ public:
 	}
 	virtual ~ObjDeletionHandler() {}
 
-signals:
+Q_SIGNALS:
 	void objDeletionEventReceived(int);
 
 protected:
@@ -55,7 +55,7 @@ protected:
 		if(event->getClassName().compare("UObjDeletedEvent") == 0 &&
 		   event->getCode() == _watchedId)
 		{
-			emit objDeletionEventReceived(_watchedId);
+			Q_EMIT objDeletionEventReceived(_watchedId);
 		}
 		return false;
 	}

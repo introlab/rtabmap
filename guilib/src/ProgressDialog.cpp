@@ -183,7 +183,7 @@ void ProgressDialog::closeEvent(QCloseEvent *event)
 void ProgressDialog::cancel()
 {
 	_canceled = true;
-	emit canceled();
+	Q_EMIT canceled();
 }
 
 }

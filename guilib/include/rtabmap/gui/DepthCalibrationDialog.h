@@ -62,13 +62,13 @@ public:
 			const QString & workingDirectory,
 			const ParametersMap & parameters);
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 
-public slots:
+public Q_SLOTS:
 	void restoreDefaults();
 
-private slots:
+private Q_SLOTS:
 	void saveModel();
 	void cancel();
 

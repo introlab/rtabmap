@@ -57,16 +57,16 @@ public:
 	void setCacheOn(bool on);
 	void clearCache();
 
-public slots:
+public Q_SLOTS:
 	void updateMenu(const QMenu * menu);
 
-signals:
+Q_SIGNALS:
 	void valueAdded(float);
 	void valueAdded(float, float);
 	void valuesChanged(const std::vector<float> &, const std::vector<float> &);
 	void plotRequested(const StatItem *, const QString &);
 
-private slots:
+private Q_SLOTS:
 	void preparePlotRequest();
 
 private:
@@ -102,18 +102,18 @@ public:
 	void closeFigures();
 	void setCacheOn(bool on);
 
-public slots:
+public Q_SLOTS:
 	void updateStat(const QString & statFullName, bool cacheOn);
 	void updateStat(const QString & statFullName, float y, bool cacheOn);
 	void updateStat(const QString & statFullName, float x, float y, bool cacheOn);
 	void updateStat(const QString & statFullName, const std::vector<float> & x, const std::vector<float> & y, bool cacheOn);
 	void clear();
 
-signals:
+Q_SIGNALS:
 	void menuChanged(const QMenu *);
 	void figuresSetupChanged();
 
-private slots:
+private Q_SLOTS:
 	void plot(const StatItem * stat, const QString & plotName = QString());
 	void figureDeleted(QObject * obj);
 

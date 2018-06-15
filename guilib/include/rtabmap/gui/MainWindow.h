@@ -109,7 +109,7 @@ public:
 
 	bool isDatabaseUpdated() const { return _databaseUpdated; }
 
-public slots:
+public Q_SLOTS:
 	virtual void processStats(const rtabmap::Statistics & stat);
 	void updateCacheFromDatabase(const QString & path);
 	void openDatabase(const QString & path);
@@ -124,7 +124,7 @@ protected:
 	virtual void keyPressEvent(QKeyEvent *event);
 	virtual bool eventFilter(QObject *obj, QEvent *event);
 
-protected slots:
+protected Q_SLOTS:
 	virtual void changeState(MainWindow::State state);
 	virtual void newDatabase();
 	virtual void openDatabase();
@@ -144,7 +144,7 @@ protected slots:
 	virtual void triggerNewMap();
 	virtual void deleteMemory();
 
-protected slots:
+protected Q_SLOTS:
 	void beep();
 	void cancelProgress();
 	void configGUIModified();
@@ -220,7 +220,7 @@ protected slots:
 	void updateNodeVisibility(int, bool);
 	void updateGraphView();
 
-signals:
+Q_SIGNALS:
 	void statsReceived(const rtabmap::Statistics &);
 	void statsProcessed();
 	void cameraInfoReceived(const rtabmap::CameraInfo &);

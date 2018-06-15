@@ -98,7 +98,7 @@ public:
 
 	virtual QSize sizeHint() const;
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 
 protected:
@@ -106,7 +106,7 @@ protected:
 	virtual void resizeEvent(QResizeEvent* event);
 	virtual void contextMenuEvent(QContextMenuEvent * e);
 
-private slots:
+private Q_SLOTS:
 	void sceneRectChanged(const QRectF &rect);
 
 private:

@@ -357,7 +357,7 @@ public:
 	void buildPickingLocator(bool enable);
 	const std::map<std::string, vtkSmartPointer<vtkOBBTree> > & getLocators() const {return _locators;}
 
-public slots:
+public Q_SLOTS:
 	void setDefaultBackgroundColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
 	void setCloudVisibility(const std::string & id, bool isVisible);
@@ -366,7 +366,7 @@ public slots:
 	void setCloudPointSize(const std::string & id, int size);
 	virtual void clear();
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 
 protected:

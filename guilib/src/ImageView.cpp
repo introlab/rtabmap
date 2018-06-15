@@ -608,32 +608,32 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	else if(action == _showFeatures)
 	{
 		this->setFeaturesShown(_showFeatures->isChecked());
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 	else if(action == _showImage)
 	{
 		this->setImageShown(_showImage->isChecked());
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 	else if(action == _showImageDepth)
 	{
 		this->setImageDepthShown(_showImageDepth->isChecked());
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 	else if(action == _showLines)
 	{
 		this->setLinesShown(_showLines->isChecked());
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 	else if(action == _graphicsViewMode)
 	{
 		this->setGraphicsViewMode(_graphicsViewMode->isChecked());
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 	else if(action == _graphicsViewScaled)
 	{
 		this->setGraphicsViewScaled(_graphicsViewScaled->isChecked());
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 	else if(action == _setAlpha)
 	{
@@ -642,7 +642,7 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		if(ok)
 		{
 			this->setAlpha(value);
-			emit configChanged();
+			Q_EMIT configChanged();
 		}
 	}
 	else if(action == _setFeaturesSize)
@@ -652,14 +652,14 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		if(ok)
 		{
 			this->setFeaturesSize(value);
-			emit configChanged();
+			Q_EMIT configChanged();
 		}
 	}
 
 	if(action == _showImage || action ==_showImageDepth)
 	{
 		this->updateOpacity();
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 }
 

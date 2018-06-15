@@ -169,7 +169,7 @@ void PdfPlotCurve::setData(const QMap<int, float> & dataMap, const QMap<int, int
 
 		//reset minMax, this will force the plot to update the axes
 		this->updateMinMax();
-		emit dataChanged(this);
+		Q_EMIT dataChanged(this);
 	}
 }
 

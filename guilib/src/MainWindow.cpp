@@ -818,7 +818,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		if(!_processingDownloadedMap)
 		{
 			_processingStatistics = true;
-			emit statsReceived(stats);
+			Q_EMIT statsReceived(stats);
 		}
 	}
 	else if(anEvent->getClassName().compare("RtabmapEventInit") == 0)
@@ -826,27 +826,27 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		if(!_recovering)
 		{
 			RtabmapEventInit * rtabmapEventInit = (RtabmapEventInit*)anEvent;
-			emit rtabmapEventInitReceived((int)rtabmapEventInit->getStatus(), rtabmapEventInit->getInfo().c_str());
+			Q_EMIT rtabmapEventInitReceived((int)rtabmapEventInit->getStatus(), rtabmapEventInit->getInfo().c_str());
 		}
 	}
 	else if(anEvent->getClassName().compare("RtabmapEvent3DMap") == 0)
 	{
 		RtabmapEvent3DMap * rtabmapEvent3DMap = (RtabmapEvent3DMap*)anEvent;
-		emit rtabmapEvent3DMapReceived(*rtabmapEvent3DMap);
+		Q_EMIT rtabmapEvent3DMapReceived(*rtabmapEvent3DMap);
 	}
 	else if(anEvent->getClassName().compare("RtabmapGlobalPathEvent") == 0)
 	{
 		RtabmapGlobalPathEvent * rtabmapGlobalPathEvent = (RtabmapGlobalPathEvent*)anEvent;
-		emit rtabmapGlobalPathEventReceived(*rtabmapGlobalPathEvent);
+		Q_EMIT rtabmapGlobalPathEventReceived(*rtabmapGlobalPathEvent);
 	}
 	else if(anEvent->getClassName().compare("RtabmapLabelErrorEvent") == 0)
 	{
 		RtabmapLabelErrorEvent * rtabmapLabelErrorEvent = (RtabmapLabelErrorEvent*)anEvent;
-		emit rtabmapLabelErrorReceived(rtabmapLabelErrorEvent->id(), QString(rtabmapLabelErrorEvent->label().c_str()));
+		Q_EMIT rtabmapLabelErrorReceived(rtabmapLabelErrorEvent->id(), QString(rtabmapLabelErrorEvent->label().c_str()));
 	}
 	else if(anEvent->getClassName().compare("RtabmapGoalStatusEvent") == 0)
 	{
-		emit rtabmapGoalStatusEventReceived(anEvent->getCode());
+		Q_EMIT rtabmapGoalStatusEventReceived(anEvent->getCode());
 	}
 	else if(anEvent->getClassName().compare("CameraEvent") == 0)
 	{
@@ -857,11 +857,11 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 			{
 				QMetaObject::invokeMethod(this, "beep");
 			}
-			emit noMoreImagesReceived();
+			Q_EMIT noMoreImagesReceived();
 		}
 		else
 		{
-			emit cameraInfoReceived(cameraEvent->info());
+			Q_EMIT cameraInfoReceived(cameraEvent->info());
 			if (_odomThread == 0 && _camera->camera()->odomProvided() && _preferencesDialog->isRGBDMode())
 			{
 				OdometryInfo odomInfo;
@@ -870,7 +870,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 				{
 					_processingOdometry = true; // if we receive too many odometry events!
 					OdometryEvent tmp(cameraEvent->data(), cameraEvent->info().odomPose, odomInfo);
-					emit odometryReceived(tmp, false);
+					Q_EMIT odometryReceived(tmp, false);
 				}
 				else
 				{
@@ -885,7 +885,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 		if(!_processingOdometry && !_processingStatistics)
 		{
 			_processingOdometry = true; // if we receive too many odometry events!
-			emit odometryReceived(*odomEvent, false);
+			Q_EMIT odometryReceived(*odomEvent, false);
 		}
 		else
 		{
@@ -895,7 +895,7 @@ bool MainWindow::handleEvent(UEvent* anEvent)
 			data.setStereoCameraModel(odomEvent->data().stereoCameraModel());
 			data.setGroundTruth(odomEvent->data().groundTruth());
 			OdometryEvent tmp(data, odomEvent->pose(), odomEvent->info().copyWithoutData());
-			emit odometryReceived(tmp, true);
+			Q_EMIT odometryReceived(tmp, true);
 		}
 	}
 	else if(anEvent->getClassName().compare("ULogEvent") == 0)
@@ -935,7 +935,7 @@ void MainWindow::processCameraInfo(const rtabmap::CameraInfo & info)
 	_ui->statsToolBox->updateStat("Camera/Time exposure compensation/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeStereoExposureCompensation*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("Camera/Time scan from depth/ms", _preferencesDialog->isTimeUsedInFigures()?info.stamp-_firstStamp:(float)info.id, info.timeScanFromDepth*1000.0f, _preferencesDialog->isCacheSavedInFigures());
 
-	emit(cameraInfoProcessed());
+	Q_EMIT(cameraInfoProcessed());
 }
 
 void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataIgnored)
@@ -1521,7 +1521,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 	_ui->statsToolBox->updateStat("GUI/Refresh odom/ms", _preferencesDialog->isTimeUsedInFigures()?odom.data().stamp()-_firstStamp:(float)odom.data().id(), time.elapsed()*1000.0, _preferencesDialog->isCacheSavedInFigures());
 	_processingOdometry = false;
 
-	emit(odometryProcessed());
+	Q_EMIT(odometryProcessed());
 }
 
 void MainWindow::processStats(const rtabmap::Statistics & stat)
@@ -1829,7 +1829,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			//Adjust thresholds
 			float value;
 			value = float(_preferencesDialog->getLoopThr());
-			emit(loopClosureThrChanged(value));
+			Q_EMIT(loopClosureThrChanged(value));
 		}
 		if(!stat.likelihood().empty() && _ui->dockWidget_likelihood->isVisible())
 		{
@@ -2017,7 +2017,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 
 	_processingStatistics = false;
 
-	emit(statsProcessed());
+	Q_EMIT(statsProcessed());
 }
 
 void MainWindow::updateMapCloud(
@@ -3811,7 +3811,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 	_progressDialog->setCancelButtonVisible(false);
 	_progressCanceled = false;
 
-	emit(rtabmapEvent3DMapProcessed());
+	Q_EMIT(rtabmapEvent3DMapProcessed());
 }
 
 void MainWindow::processRtabmapGlobalPathEvent(const rtabmap::RtabmapGlobalPathEvent & event)
@@ -4008,7 +4008,7 @@ void MainWindow::applyPrefSettings(const rtabmap::ParametersMap & parameters, bo
 
 	float value;
 	value = float(_preferencesDialog->getLoopThr());
-	emit(loopClosureThrChanged(value));
+	Q_EMIT(loopClosureThrChanged(value));
 }
 
 void MainWindow::drawKeypoints(const std::multimap<int, cv::KeyPoint> & refWords, const std::multimap<int, cv::KeyPoint> & loopWords)
@@ -4249,22 +4249,22 @@ void MainWindow::updateSelectSourceMenu()
 
 void MainWindow::changeImgRateSetting()
 {
-	emit imgRateChanged(_ui->doubleSpinBox_stats_imgRate->value());
+	Q_EMIT imgRateChanged(_ui->doubleSpinBox_stats_imgRate->value());
 }
 
 void MainWindow::changeDetectionRateSetting()
 {
-	emit detectionRateChanged(_ui->doubleSpinBox_stats_detectionRate->value());
+	Q_EMIT detectionRateChanged(_ui->doubleSpinBox_stats_detectionRate->value());
 }
 
 void MainWindow::changeTimeLimitSetting()
 {
-	emit timeLimitChanged((float)_ui->doubleSpinBox_stats_timeLimit->value());
+	Q_EMIT timeLimitChanged((float)_ui->doubleSpinBox_stats_timeLimit->value());
 }
 
 void MainWindow::changeMappingMode()
 {
-	emit mappingModeChanged(_ui->actionSLAM_mode->isChecked());
+	Q_EMIT mappingModeChanged(_ui->actionSLAM_mode->isChecked());
 }
 
 QString MainWindow::captureScreen(bool cacheInRAM, bool png)
@@ -4715,7 +4715,7 @@ void MainWindow::startDetection()
 	}
 
 	UDEBUG("");
-	emit stateChanged(kStartingDetection);
+	Q_EMIT stateChanged(kStartingDetection);
 
 	if(_camera != 0)
 	{
@@ -4723,7 +4723,7 @@ void MainWindow::startDetection()
 						     tr("RTAB-Map"),
 						     tr("A camera is running, stop it first."));
 		UWARN("_camera is not null... it must be stopped first");
-		emit stateChanged(kInitialized);
+		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
 
@@ -4734,7 +4734,7 @@ void MainWindow::startDetection()
 				 tr("RTAB-Map"),
 				 tr("No sources are selected. See Preferences->Source panel."));
 		UWARN("No sources are selected. See Preferences->Source panel.");
-		emit stateChanged(kInitialized);
+		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
 
@@ -4742,7 +4742,7 @@ void MainWindow::startDetection()
 	Camera * camera = _preferencesDialog->createCamera();
 	if(!camera)
 	{
-		emit stateChanged(kInitialized);
+		Q_EMIT stateChanged(kInitialized);
 		return;
 	}
 
@@ -4777,7 +4777,7 @@ void MainWindow::startDetection()
 		if(!camera->isCalibrated())
 		{
 			UWARN("Camera is not calibrated!");
-			emit stateChanged(kInitialized);
+			Q_EMIT stateChanged(kInitialized);
 			delete _camera;
 			_camera = 0;
 
@@ -4901,7 +4901,7 @@ void MainWindow::startDetection()
 	_cloudViewer->removeCloud("featuresOdom");
 	_cloudViewer->setBackgroundColor(_cloudViewer->getDefaultBackgroundColor());
 
-	emit stateChanged(kDetecting);
+	Q_EMIT stateChanged(kDetecting);
 }
 
 // Could not be in the main thread here! (see handleEvents())
@@ -4912,30 +4912,30 @@ void MainWindow::pauseDetection()
 		if(_state == kPaused && (QApplication::keyboardModifiers() & Qt::ShiftModifier))
 		{
 			// On Ctrl-click, start the camera and pause it automatically
-			emit stateChanged(kPaused);
+			Q_EMIT stateChanged(kPaused);
 			if(_preferencesDialog->getGeneralInputRate())
 			{
 				QTimer::singleShot(500.0/_preferencesDialog->getGeneralInputRate(), this, SLOT(pauseDetection()));
 			}
 			else
 			{
-				emit stateChanged(kPaused);
+				Q_EMIT stateChanged(kPaused);
 			}
 		}
 		else
 		{
-			emit stateChanged(kPaused);
+			Q_EMIT stateChanged(kPaused);
 		}
 	}
 	else if(_state == kMonitoring)
 	{
 		UINFO("Sending pause event!");
-		emit stateChanged(kMonitoringPaused);
+		Q_EMIT stateChanged(kMonitoringPaused);
 	}
 	else if(_state == kMonitoringPaused)
 	{
 		UINFO("Sending unpause event!");
-		emit stateChanged(kMonitoring);
+		Q_EMIT stateChanged(kMonitoring);
 	}
 }
 
@@ -4998,7 +4998,7 @@ void MainWindow::stopDetection()
 		_dataRecorder = 0;
 	}
 
-	emit stateChanged(kInitialized);
+	Q_EMIT stateChanged(kInitialized);
 }
 
 void MainWindow::notifyNoMoreImages()

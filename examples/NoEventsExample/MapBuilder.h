@@ -224,7 +224,7 @@ public:
 		cloudViewer_->update();
 	}
 
-protected slots:
+protected Q_SLOTS:
 	void pauseDetection()
 	{
 		paused_ = !paused_;

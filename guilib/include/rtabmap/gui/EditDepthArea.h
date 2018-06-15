@@ -55,7 +55,7 @@ public:
     void setPenWidth(int newWidth);
     int penWidth() const { return myPenWidth_; }
 
-public slots:
+public Q_SLOTS:
     void resetChanges();
 
 protected:

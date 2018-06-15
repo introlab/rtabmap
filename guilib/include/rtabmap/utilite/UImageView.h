@@ -21,7 +21,7 @@ public:
 	~UImageView() {}
 	void setBackgroundBrush(const QBrush & brush) {brush_ = brush;}
 
-public slots:
+public Q_SLOTS:
 	void setImage(const QImage & image)
 	{
 		pixmap_ = QPixmap::fromImage(image);

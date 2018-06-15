@@ -53,7 +53,7 @@ public:
 		const ParametersMap & parameters = ParametersMap());
 	virtual ~CameraViewer();
 
-public slots:
+public Q_SLOTS:
 	void showImage(const rtabmap::SensorData & data);
 protected:
 	virtual bool handleEvent(UEvent * event);

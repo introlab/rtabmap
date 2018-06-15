@@ -59,10 +59,10 @@ public:
 	bool isOdomExported() const;
 	bool isUserDataExported() const;
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 
-private slots:
+private Q_SLOTS:
 	void getPath();
 	void restoreDefaults();
 

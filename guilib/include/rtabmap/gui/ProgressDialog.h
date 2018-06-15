@@ -56,19 +56,19 @@ public:
 	void setCancelButtonVisible(bool visible);
 	bool isCanceled() const {return _canceled;}
 
-signals:
+Q_SIGNALS:
 	void canceled();
 
 protected:
 	virtual void closeEvent(QCloseEvent * event);
 
-public slots:
+public Q_SLOTS:
 	void appendText(const QString & text ,const QColor & color = Qt::black);
 	void incrementStep(int steps = 1);
 	void clear();
 	void resetProgress();
 
-private slots:
+private Q_SLOTS:
 	void closeDialog();
 	void cancel();
 

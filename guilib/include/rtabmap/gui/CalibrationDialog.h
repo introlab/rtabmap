@@ -70,7 +70,7 @@ public:
 
 	StereoCameraModel stereoCalibration(const CameraModel & left, const CameraModel & right, bool ignoreStereoRectification) const;
 
-public slots:
+public Q_SLOTS:
 	void setBoardWidth(int width);
 	void setBoardHeight(int height);
 	void setSquareSize(double size);
@@ -81,7 +81,7 @@ public slots:
 	void restart();
 	bool save();
 
-private slots:
+private Q_SLOTS:
 	void unlock();
 
 protected:

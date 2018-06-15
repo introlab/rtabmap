@@ -56,7 +56,7 @@ public:
 
 	const QString & path() const {return path_;}
 
-public slots:
+public Q_SLOTS:
 	void addData(const rtabmap::SensorData & data, const Transform & pose = Transform(), const cv::Mat & infMatrix = cv::Mat::eye(6,6,CV_64FC1));
 	void showImage(const cv::Mat & image, const cv::Mat & depth);
 protected:

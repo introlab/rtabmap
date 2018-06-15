@@ -145,11 +145,11 @@ public:
 	void setGPSGraphVisible(bool visible);
 	void setOrientationENU(bool enabled);
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 	void mapShownRequested();
 
-public slots:
+public Q_SLOTS:
 	void restoreDefaults();
 
 protected:

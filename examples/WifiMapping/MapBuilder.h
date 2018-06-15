@@ -85,7 +85,7 @@ public:
 		this->unregisterFromEventsManager();
 	}
 
-protected slots:
+protected Q_SLOTS:
 	virtual void pauseDetection()
 	{
 		UWARN("");

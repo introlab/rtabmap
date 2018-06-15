@@ -52,7 +52,7 @@ public:
 	void setCameraInfoDir(const QString & folder) {savingFolder_ = folder;}
 	const QString & cameraName() const {return cameraName_;}
 
-private slots:
+private Q_SLOTS:
 	void updateStereoView();
 	void updateSaveStatus();
 	void saveCalibration();

@@ -1904,7 +1904,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 		this->setGridMapVisible(!this->isGridMapVisible());
 		if(_gridMap->isVisible())
 		{
-			emit mapShownRequested();
+			 mapShownRequested();
 		}
 	}
 	else if(r == aShowHideOrigin)
@@ -1954,7 +1954,7 @@ void GraphViewer::contextMenuEvent(QContextMenuEvent * event)
 
 	if(r)
 	{
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 }
 

@@ -53,7 +53,7 @@ public:
 	const Signature & sA() const {return sA_;}
 	const Signature & sB() const {return sB_;}
 
-public slots:
+public Q_SLOTS:
 	void setDecimation(int decimation) {decimation_ = decimation;}
 	void setMaxDepth(int maxDepth) {maxDepth_ = maxDepth;}
 	void setMinDepth(int minDepth) {minDepth_ = minDepth;}

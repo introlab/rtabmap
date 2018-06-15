@@ -57,10 +57,10 @@ public:
 	double maxAngularSpeed() const;
 	double laplacianThreshold() const;
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 
-private slots:
+private Q_SLOTS:
 	void getPath();
 	void restoreDefaults();
 

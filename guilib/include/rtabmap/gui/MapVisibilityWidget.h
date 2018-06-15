@@ -50,14 +50,14 @@ public:
 protected:
 	virtual void showEvent(QShowEvent * event);
 
-private slots:
+private Q_SLOTS:
 	void signalVisibility();
 	void selectAll(bool);
 
 private:
 	void updateCheckBoxes();
 
-signals:
+Q_SIGNALS:
 	void visibilityChanged(int id, bool visible);
 
 private:

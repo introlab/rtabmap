@@ -80,7 +80,7 @@ protected:
 	virtual void closeEvent(QCloseEvent* event);
 	virtual bool eventFilter(QObject *obj, QEvent *event);
 
-private slots:
+private Q_SLOTS:
 	void writeSettings();
 	void restoreDefaultSettings();
 	void configModified();

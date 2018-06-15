@@ -91,7 +91,7 @@ void StatItem::addValue(float y)
 		_y.push_back(y);
 	}
 	_value->setText(QString::number(y, 'g', 3));
-	emit valueAdded(y);
+	Q_EMIT valueAdded(y);
 }
 
 void StatItem::addValue(float x, float y)
@@ -108,7 +108,7 @@ void StatItem::addValue(float x, float y)
 	}
 
 	_value->setText(QString::number(y, 'g', 3));
-	emit valueAdded(x,y);
+	Q_EMIT valueAdded(x,y);
 }
 
 void StatItem::setValues(const std::vector<float> & x, const std::vector<float> & y)
@@ -126,7 +126,7 @@ void StatItem::setValues(const std::vector<float> & x, const std::vector<float> 
 	{
 		_value->setText("*");
 	}
-	emit valuesChanged(x,y);
+	Q_EMIT valuesChanged(x,y);
 }
 
 QString StatItem::value() const
@@ -202,7 +202,7 @@ void StatItem::preparePlotRequest()
 	QAction * action = qobject_cast<QAction*>(sender());
 	if(action)
 	{
-		emit plotRequested(this, action->text());
+		Q_EMIT plotRequested(this, action->text());
 	}
 }
 
@@ -415,7 +415,7 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 			{
 				ULOGGER_WARN("Already added to the figure");
 			}
-			emit figuresSetupChanged();
+			Q_EMIT figuresSetupChanged();
 		}
 		else
 		{
@@ -479,9 +479,9 @@ void StatsToolBox::plot(const StatItem * stat, const QString & plotName)
 			delete curve;
 		}
 		figure->show();
-		emit figuresSetupChanged();
+		Q_EMIT figuresSetupChanged();
 
-		emit menuChanged(_plotMenu);
+		Q_EMIT menuChanged(_plotMenu);
 	}
 }
 
@@ -500,11 +500,11 @@ void StatsToolBox::figureDeleted(QObject * obj)
 				{
 					_plotMenu->removeAction(actions.at(i));
 					delete actions[i];
-					emit menuChanged(_plotMenu);
+					Q_EMIT menuChanged(_plotMenu);
 					break;
 				}
 			}
-			emit figuresSetupChanged();
+			Q_EMIT figuresSetupChanged();
 		}
 		else
 		{

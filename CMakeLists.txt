@@ -245,6 +245,7 @@ IF(WITH_QT)
                 SET(ADD_VTK_GUI_SUPPORT_QT_TO_CONF TRUE)
             ENDIF(value EQUAL -1)
         ENDIF()
+        ADD_DEFINITIONS(-DQT_NO_KEYWORDS) # To avoid conflicts with boost signals/foreach and Qt macros
     ENDIF(QT4_FOUND OR Qt5_FOUND)
 ENDIF(WITH_QT)
 

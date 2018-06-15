@@ -56,11 +56,11 @@ public:
     QVariant itemData(int row);
     void setItemChecked(int row, bool checked);
 
-signals:
+Q_SIGNALS:
     /// item changed
     void itemChanged();
 
-public slots:
+public Q_SLOTS:
 
     /// react on changes of the item checkbox
     void scanItemSelect(QListWidgetItem* item);

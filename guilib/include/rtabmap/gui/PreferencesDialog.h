@@ -277,11 +277,11 @@ public:
 	//
 	void setMonitoringState(bool monitoringState) {_monitoringState = monitoringState;}
 
-signals:
+Q_SIGNALS:
 	void settingsChanged(PreferencesDialog::PANEL_FLAGS);
 	void settingsChanged(rtabmap::ParametersMap);
 
-public slots:
+public Q_SLOTS:
 	void setInputRate(double value);
 	void setDetectionRate(double value);
 	void setTimeLimit(float value);
@@ -290,7 +290,7 @@ public slots:
 	void calibrate();
 	void calibrateSimple();
 
-private slots:
+private Q_SLOTS:
 	void closeDialog ( QAbstractButton * button );
 	void resetApply ( QAbstractButton * button );
 	void resetSettings(int panelNumber);

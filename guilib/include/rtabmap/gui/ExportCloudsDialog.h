@@ -116,13 +116,13 @@ public:
 
 	static bool removeDirRecursively(const QString & dirName);
 
-signals:
+Q_SIGNALS:
 	void configChanged();
 
-public slots:
+public Q_SLOTS:
 	void restoreDefaults();
 
-private slots:
+private Q_SLOTS:
 	void loadSettings();
 	void saveSettings();
 	void updateReconstructionFlavor();

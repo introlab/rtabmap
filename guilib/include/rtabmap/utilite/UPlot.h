@@ -143,7 +143,7 @@ public:
 	void getData(QMap<float,float> & data) const; // only call in Qt MainThread
 	void draw(QPainter * painter, const QRect & limits);
 
-public slots:
+public Q_SLOTS:
 	/**
 	 *
 	 * Clear curve's values.
@@ -218,7 +218,7 @@ public slots:
 	void setData(const QVector<float> & y);
 	void setData(const std::vector<float> & y);
 
-signals:
+Q_SIGNALS:
 	/**
 	 *
 	 *  emitted when data is changed.
@@ -269,7 +269,7 @@ public:
 	UPlotCurveThreshold(const QString & name, float thesholdValue, Qt::Orientation orientation = Qt::Horizontal, QObject * parent = 0);
 	virtual ~UPlotCurveThreshold();
 
-public slots:
+public Q_SLOTS:
 	/**
 	 * Set threshold value.
 	 */
@@ -354,12 +354,12 @@ public:
 	const UPlotCurve * curve() const {return _curve;}
 	QPixmap createSymbol(const QPen & pen, const QBrush & brush);
 
-signals:
+Q_SIGNALS:
 	void legendItemRemoved(const UPlotCurve *);
 	void moveUpRequest(UPlotLegendItem *);
 	void moveDownRequest(UPlotLegendItem *);
 
-private slots:
+private Q_SLOTS:
 	void updateStdDev();
 
 protected:
@@ -397,12 +397,12 @@ public:
 	void addItem(UPlotCurve * curve);
 	bool remove(const UPlotCurve * curve);
 
-private slots:
+private Q_SLOTS:
 	void removeLegendItem(const UPlotCurve * curve);
 	void moveUp(UPlotLegendItem * item);
 	void moveDown(UPlotLegendItem * item);
 
-signals:
+Q_SIGNALS:
 	void legendItemRemoved(const UPlotCurve * curve);
 	void legendItemToggled(const UPlotCurve * curve, bool toggled);
 	void legendItemMoved(const UPlotCurve * curve, int);
@@ -410,7 +410,7 @@ signals:
 protected:
 	virtual void contextMenuEvent(QContextMenuEvent * event);
 
-private slots:
+private Q_SLOTS:
 	void redirectToggled(bool);
 
 private:
@@ -531,7 +531,7 @@ public:
 	void setBackgroundColor(const QColor & color);
 	QRectF sceneRect() const;
 
-public slots:
+public Q_SLOTS:
 	/**
 	 *
 	 * Remove a curve. If UPlot is the parent of the curve, the curve is deleted.
@@ -545,7 +545,7 @@ public slots:
 	 */
 	void clearData();
 
-private slots:
+private Q_SLOTS:
 	void captureScreen();
 	void updateAxis(const UPlotCurve * curve);
 	void moveCurve(const UPlotCurve *, int index);

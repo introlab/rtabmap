@@ -65,7 +65,7 @@ public:
 		this->unregisterFromEventsManager();
 	}
 
-protected slots:
+protected Q_SLOTS:
 	virtual void processStatistics(const rtabmap::Statistics & stats)
 	{
 		processingStatistics_ = true;

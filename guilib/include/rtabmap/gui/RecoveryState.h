@@ -87,7 +87,7 @@ public:
 		return false;
 	}
 
-public slots:
+public Q_SLOTS:
 	void cancel()
 	{
 		setCanceled(true);

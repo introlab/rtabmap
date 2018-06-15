@@ -2199,12 +2199,12 @@ void PreferencesDialog::writeSettings(const QString & filePath)
 
 	if(_modifiedParameters.size())
 	{
-		emit settingsChanged(_modifiedParameters);
+		Q_EMIT settingsChanged(_modifiedParameters);
 	}
 
 	if(_obsoletePanels)
 	{
-		emit settingsChanged(_obsoletePanels);
+		Q_EMIT settingsChanged(_obsoletePanels);
 	}
 
 	for(ParametersMap::iterator iter = _modifiedParameters.begin(); iter!=_modifiedParameters.end(); ++iter)

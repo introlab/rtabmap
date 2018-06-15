@@ -2908,7 +2908,7 @@ void CloudViewer::keyPressEvent(QKeyEvent * event)
 
 		update();
 
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 	else
 	{
@@ -2966,7 +2966,7 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 	}
 	this->update();
 
-	emit configChanged();
+	Q_EMIT configChanged();
 }
 
 void CloudViewer::wheelEvent(QWheelEvent * event)
@@ -2978,7 +2978,7 @@ void CloudViewer::wheelEvent(QWheelEvent * event)
 		_visualizer->getCameras(cameras);
 		_lastCameraPose = cv::Vec3d(cameras.front().pos);
 	}
-	emit configChanged();
+	Q_EMIT configChanged();
 }
 
 void CloudViewer::contextMenuEvent(QContextMenuEvent * event)
@@ -2987,7 +2987,7 @@ void CloudViewer::contextMenuEvent(QContextMenuEvent * event)
 	if(a)
 	{
 		handleAction(a);
-		emit configChanged();
+		Q_EMIT configChanged();
 	}
 }
 
