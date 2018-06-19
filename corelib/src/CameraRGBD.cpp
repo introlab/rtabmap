@@ -2623,6 +2623,7 @@ CameraRealSense::CameraRealSense(
 	presetRGB_(presetRGB),
 	presetDepth_(presetDepth),
 	computeOdometry_(computeOdometry),
+	depthScaledToRGBSize_(false),
 	slam_(0)
 #endif
 {
@@ -3132,7 +3133,8 @@ SensorData CameraRealSense::captureImage(CameraInfo * info)
 		cv::Mat depth;
 		if (color_intrin.width % depth_intrin.width == 0 && color_intrin.height % depth_intrin.height == 0 &&
 			depth_intrin.width < color_intrin.width &&
-			depth_intrin.height < color_intrin.height)
+			depth_intrin.height < color_intrin.height &&
+			!depthScaledToRGBSize_)
 		{
 			//we can keep the depth image size as is
 			depth = cv::Mat::zeros(cv::Size(depth_intrin.width, depth_intrin.height), CV_16UC1);

@@ -386,6 +386,7 @@ public:
 		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense();
 
+	void setDepthScaledToRGBSize(bool enabled) {depthScaledToRGBSize_ = enabled;}
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
@@ -402,6 +403,7 @@ private:
 	int presetRGB_;
 	int presetDepth_;
 	bool computeOdometry_;
+	bool depthScaledToRGBSize_;
 
 	int motionSeq_[2];
 	rs::slam::slam * slam_;
@@ -414,7 +416,7 @@ private:
 #endif
 };
 /////////////////////////
-// CameraRealSense
+// CameraRealSense2
 /////////////////////////
 class slam_event_handler;
 class RTABMAP_EXP CameraRealSense2 :

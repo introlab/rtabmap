@@ -564,6 +564,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->comboBox_realsensePresetRGB, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->comboBox_realsensePresetDepth, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_realsenseOdom, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
+	connect(_ui->checkbox_realsenseDepthScaledToRGBSize, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_emitter, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 	connect(_ui->checkbox_rs2_irDepth, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteSourcePanel()));
 
@@ -1607,6 +1608,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->comboBox_realsensePresetRGB->setCurrentIndex(0);
 		_ui->comboBox_realsensePresetDepth->setCurrentIndex(2);
 		_ui->checkbox_realsenseOdom->setChecked(false);
+		_ui->checkbox_realsenseDepthScaledToRGBSize->setChecked(false);
 		_ui->checkbox_rs2_emitter->setChecked(true);
 		_ui->checkbox_rs2_irDepth->setChecked(false);
 		_ui->lineEdit_openniOniPath->clear();
@@ -2002,6 +2004,7 @@ void PreferencesDialog::readCameraSettings(const QString & filePath)
 	_ui->comboBox_realsensePresetRGB->setCurrentIndex(settings.value("presetRGB", _ui->comboBox_realsensePresetRGB->currentIndex()).toInt());
 	_ui->comboBox_realsensePresetDepth->setCurrentIndex(settings.value("presetDepth", _ui->comboBox_realsensePresetDepth->currentIndex()).toInt());
 	_ui->checkbox_realsenseOdom->setChecked(settings.value("odom", _ui->checkbox_realsenseOdom->isChecked()).toBool());
+	_ui->checkbox_realsenseDepthScaledToRGBSize->setChecked(settings.value("depthScaled", _ui->checkbox_realsenseDepthScaledToRGBSize->isChecked()).toBool());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RealSense2");
@@ -2421,6 +2424,7 @@ void PreferencesDialog::writeCameraSettings(const QString & filePath) const
 	settings.setValue("presetRGB",           _ui->comboBox_realsensePresetRGB->currentIndex());
 	settings.setValue("presetDepth",         _ui->comboBox_realsensePresetDepth->currentIndex());
 	settings.setValue("odom",                _ui->checkbox_realsenseOdom->isChecked());
+	settings.setValue("depthScaled",         _ui->checkbox_realsenseDepthScaledToRGBSize->isChecked());
 	settings.endGroup(); // RealSense
 
 	settings.beginGroup("RealSense2");
@@ -4966,6 +4970,7 @@ Camera * PreferencesDialog::createCamera(bool useRawImages, bool useColor)
 				_ui->checkbox_realsenseOdom->isChecked(),
 				this->getGeneralInputRate(),
 				this->getSourceLocalTransform());
+			((CameraRealSense*)camera)->setDepthScaledToRGBSize(_ui->checkbox_realsenseDepthScaledToRGBSize->isChecked());
 		}
 	}
 	else if (driver == kSrcRealSense2)

@@ -859,7 +859,8 @@ Transform OdometryORBSLAM2::computeTransform(
 		data.imageRaw().rows != data.depthOrRightRaw().rows ||
 		data.imageRaw().cols != data.depthOrRightRaw().cols)
 	{
-		UERROR("Not supported input!");
+		UERROR("Not supported input! RGB (%dx%d) and depth (%dx%d) should have the same size.",
+				data.imageRaw().cols, data.imageRaw().rows, data.depthOrRightRaw().cols, data.depthOrRightRaw().rows);
 		return t;
 	}
 
