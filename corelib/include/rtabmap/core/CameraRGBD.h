@@ -386,7 +386,11 @@ public:
 		const Transform & localTransform = Transform::getIdentity());
 	virtual ~CameraRealSense();
 
-	void setDepthScaledToRGBSize(bool enabled) {depthScaledToRGBSize_ = enabled;}
+	void setDepthScaledToRGBSize(bool enabled) {
+#ifdef RTABMAP_REALSENSE
+		depthScaledToRGBSize_ = enabled;
+#endif
+		}
 	virtual bool init(const std::string & calibrationFolder = ".", const std::string & cameraName = "");
 	virtual bool isCalibrated() const;
 	virtual std::string getSerial() const;
