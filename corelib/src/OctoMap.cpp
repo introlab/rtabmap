@@ -106,6 +106,8 @@ bool RtabmapColorOcTreeNode::createChild(unsigned int i) {
 
 RtabmapColorOcTree::RtabmapColorOcTree(double resolution)
 	: OccupancyOcTreeBase<RtabmapColorOcTreeNode>(resolution) {
+		    
+    static StaticMemberInitializer RtabmapColorOcTreeMemberInit;
 	RtabmapColorOcTreeMemberInit.ensureLinking();
 };
 

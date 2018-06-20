@@ -161,8 +161,6 @@ class RtabmapColorOcTree : public octomap::OccupancyOcTreeBase <RtabmapColorOcTr
          */
          void ensureLinking() {};
     };
-    /// static member to ensure static initialization (only once)
-    static StaticMemberInitializer RtabmapColorOcTreeMemberInit;
 
   };
 
