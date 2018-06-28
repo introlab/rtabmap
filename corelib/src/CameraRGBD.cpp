@@ -3536,10 +3536,10 @@ SensorData CameraRealSense2::captureImage(CameraInfo * info)
 	try{
 		auto frameset = syncer_.wait_for_frames(5000);
 		UTimer timer;
-		while (frameset.size() != 2 && timer.elapsed() < 2.0)
+		while (frameset.size() != 2 && timer.elapsed() < 2)
 		{
-			// maybe there is a latency with the USB, try again in 10 ms (for the next 2 seconds)
-			frameset = syncer_.wait_for_frames(10);
+			// maybe there is a latency with the USB, try again in 100 ms (for the next 2 seconds)
+			frameset = syncer_.wait_for_frames(100);
 		}
 		if (frameset.size() == 2)
 		{
