@@ -50,7 +50,8 @@ public:
 		kTypeViso2 = 3,
 		kTypeDVO = 4,
 		kTypeORBSLAM2 = 5,
-		kTypeOkvis = 6
+		kTypeOkvis = 6,
+		kTypeLOAM = 7
 	};
 
 public:

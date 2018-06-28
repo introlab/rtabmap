@@ -395,7 +395,7 @@ int main(int argc, char * argv[])
 	Parameters::parse(parameters, Parameters::kRtabmapCreateIntermediateNodes(), intermediateNodes);
 
 	// assuming source is 10 Hz
-	int mapUpdate = 10 / detectionRate;
+	int mapUpdate = detectionRate>0?10 / detectionRate:1;
 	if(mapUpdate < 1)
 	{
 		mapUpdate = 1;

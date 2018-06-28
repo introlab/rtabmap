@@ -68,6 +68,7 @@ SET(SRC_FILES
 	OdometryDVO.cpp
 	OdometryOkvis.cpp
 	OdometryORBSLAM2.cpp
+	OdometryLOAM.cpp
 	
 	IMUThread.cpp
 	
@@ -273,6 +274,17 @@ IF(libpointmatcher_FOUND)
 		${libpointmatcher_LIBRARIES}
 	)
 ENDIF(libpointmatcher_FOUND)
+
+IF(loam_velodyne_FOUND)
+	SET(INCLUDE_DIRS 
+		${INCLUDE_DIRS} 
+		${loam_velodyne_INCLUDE_DIRS}
+	)
+	SET(LIBRARIES
+		${LIBRARIES}
+		${loam_velodyne_LIBRARIES}
+	)
+ENDIF(loam_velodyne_FOUND)
 
 IF(ZED_FOUND)
 	SET(INCLUDE_DIRS

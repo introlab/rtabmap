@@ -177,6 +177,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_OKVIS
 	_ui->odom_strategy->setItemData(6, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_LOAM
+	_ui->odom_strategy->setItemData(7, 0, Qt::UserRole - 1);
+#endif
 
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
@@ -1097,6 +1100,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->lineEdit_OdomOkvisPath->setObjectName(Parameters::kOdomOKVISConfigPath().c_str());
 	connect(_ui->toolButton_OdomOkvisPath, SIGNAL(clicked()), this, SLOT(changeOdometryOKVISConfigPath()));
 
+	// Odometry LOAM
+	_ui->odom_loam_sensor->setObjectName(Parameters::kOdomLOAMSensor().c_str());
+	_ui->odom_loam_scan_period->setObjectName(Parameters::kOdomLOAMScanPeriod().c_str());
+	_ui->odom_loam_linvar->setObjectName(Parameters::kOdomLOAMLinVar().c_str());
+	_ui->odom_loam_angvar->setObjectName(Parameters::kOdomLOAMAngVar().c_str());
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());

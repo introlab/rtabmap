@@ -492,6 +492,12 @@ class RTABMAP_EXP Parameters
     // Odometry OKVIS
     RTABMAP_PARAM_STR(OdomOKVIS, ConfigPath,     "",  "Path of OKVIS config file.");
 
+    // Odometry LOAM
+    RTABMAP_PARAM(OdomLOAM, Sensor,     int,    2,    "Velodyne sensor: 0=VLP-16, 1=HDL-32, 2=HDL-64E");
+    RTABMAP_PARAM(OdomLOAM, ScanPeriod, float,  0.1,  "Scan period (s)");
+    RTABMAP_PARAM(OdomLOAM, LinVar,     float,  0.01,  "Linear output variance.");
+    RTABMAP_PARAM(OdomLOAM, AngVar,     float,  0.01,  "Angular output variance.");
+
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");
     RTABMAP_PARAM(Reg, Strategy,                 int, 0,        "0=Vis, 1=Icp, 2=VisIcp");
