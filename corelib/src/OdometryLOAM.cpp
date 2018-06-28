@@ -49,6 +49,7 @@ OdometryLOAM::OdometryLOAM(const ParametersMap & parameters) :
 	,scanPeriod_(Parameters::defaultOdomLOAMScanPeriod())
 	,linVar_(Parameters::defaultOdomLOAMLinVar())
 	,angVar_(Parameters::defaultOdomLOAMAngVar())
+	,localMapping_(Parameters::defaultOdomLOAMLocalMapping())
 	,lost_(false)
 #endif
 {
@@ -61,6 +62,7 @@ OdometryLOAM::OdometryLOAM(const ParametersMap & parameters) :
 	UASSERT(linVar_>0.0f);
 	Parameters::parse(parameters, Parameters::kOdomLOAMAngVar(), angVar_);
 	UASSERT(angVar_>0.0f);
+	Parameters::parse(parameters, Parameters::kOdomLOAMLocalMapping(), localMapping_);
 	if(velodyneType == 1)
 	{
 		scanMapper_ = loam::MultiScanMapper::Velodyne_HDL_32();
@@ -230,11 +232,14 @@ Transform OdometryLOAM::computeTransform(
 		laserOdometry_->updateIMU(imuTrans);
 		laserOdometry_->process();
 
-		laserMapping_->laserCloudCornerLast() = *laserOdometry_->lastCornerCloud();
-		laserMapping_->laserCloudSurfLast() = *laserOdometry_->lastSurfaceCloud();
-		laserMapping_->laserCloud() = *laserOdometry_->laserCloud();
-		laserMapping_->updateOdometry(laserOdometry_->transformSum());
-		laserMapping_->process(scanTime);
+		if(localMapping_)
+		{
+			laserMapping_->laserCloudCornerLast() = *laserOdometry_->lastCornerCloud();
+			laserMapping_->laserCloudSurfLast() = *laserOdometry_->lastSurfaceCloud();
+			laserMapping_->laserCloud() = *laserOdometry_->laserCloud();
+			laserMapping_->updateOdometry(laserOdometry_->transformSum());
+			laserMapping_->process(scanTime);
+		}
 
 		transformMaintenance_.updateOdometry(
 				laserOdometry_->transformSum().rot_x.rad(),

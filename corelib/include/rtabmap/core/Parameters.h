@@ -497,6 +497,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomLOAM, ScanPeriod, float,  0.1,  "Scan period (s)");
     RTABMAP_PARAM(OdomLOAM, LinVar,     float,  0.01,  "Linear output variance.");
     RTABMAP_PARAM(OdomLOAM, AngVar,     float,  0.01,  "Angular output variance.");
+    RTABMAP_PARAM(OdomLOAM, LocalMapping, bool,  true,  "Local mapping. It adds more time to compute odometry, but accuracy is significantly improved.");
 
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");

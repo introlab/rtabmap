@@ -65,6 +65,7 @@ private:
 	float scanPeriod_;
 	float linVar_;
 	float angVar_;
+	bool localMapping_;
 	bool lost_;
 #endif
 };

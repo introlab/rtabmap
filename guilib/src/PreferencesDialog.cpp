@@ -1105,6 +1105,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_loam_scan_period->setObjectName(Parameters::kOdomLOAMScanPeriod().c_str());
 	_ui->odom_loam_linvar->setObjectName(Parameters::kOdomLOAMLinVar().c_str());
 	_ui->odom_loam_angvar->setObjectName(Parameters::kOdomLOAMAngVar().c_str());
+	_ui->odom_loam_localMapping->setObjectName(Parameters::kOdomLOAMLocalMapping().c_str());
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());
