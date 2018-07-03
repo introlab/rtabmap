@@ -487,7 +487,7 @@ ELSEIF(G2O_FOUND OR GTSAM_FOUND OR ZED_FOUND OR ANDROID OR RealSense_FOUND OR re
         message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler if you want to use g2o or gtsam (set \"-DWITH_G2O=OFF -DWITH_GTSAM=OFF\" to build without g2o and gtsam).")
       ENDIF()
    ENDIF()
-ENDIF(G2O_FOUND OR GTSAM_FOUND OR ZED_FOUND OR ANDROID OR RealSense_FOUND OR realsense2_FOUND OR ORB_SLAM2_FOUND OR okvis_FOUND OR open_chisel_FOUND)
+ENDIF()
 
 ####### OSX BUNDLE CMAKE_INSTALL_PREFIX #######
 IF(APPLE AND BUILD_AS_BUNDLE)
