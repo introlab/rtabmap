@@ -339,6 +339,7 @@ private:
 	long _createdCloudsMemoryUsage;
 	std::set<int> _cachedEmptyClouds;
 	std::pair<int, std::pair<std::pair<pcl::PointCloud<pcl::PointXYZRGB>::Ptr, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr>, pcl::IndicesPtr> > _previousCloud; // used for subtraction
+	std::map<int, float> _cachedWordsCount;
 
 	std::map<int, LaserScan> _createdScans;
 

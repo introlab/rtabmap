@@ -822,7 +822,7 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 	}
 }
 
-void GraphViewer::updatePosterior(const std::map<int, float> & posterior)
+void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float fixedMax)
 {
 	//find max
 	float max = 0.0f;
@@ -835,6 +835,10 @@ void GraphViewer::updatePosterior(const std::map<int, float> & posterior)
 	}
 	if(max > 0.0f)
 	{
+		if(fixedMax > 0.0f && max < fixedMax)
+		{
+			max = fixedMax;
+		}
 		for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 		{
 			std::map<int,float>::const_iterator jter = posterior.find(iter.key());

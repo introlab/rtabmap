@@ -349,7 +349,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_notifyWhenNewGlobalPathIsReceived, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->spinBox_odomQualityWarnThr, SIGNAL(valueChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkBox_odom_onlyInliersShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
-	connect(_ui->checkBox_posteriorGraphView, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->radioButton_posteriorGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->radioButton_wordsGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->radioButton_nochangeGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->odom_registration, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_groundTruthAlign, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -1452,7 +1454,9 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_imageHighestHypShown->setChecked(false);
 		_ui->spinBox_odomQualityWarnThr->setValue(50);
 		_ui->checkBox_odom_onlyInliersShown->setChecked(false);
-		_ui->checkBox_posteriorGraphView->setChecked(true);
+		_ui->radioButton_posteriorGraphView->setChecked(true);
+		_ui->radioButton_wordsGraphView->setChecked(false);
+		_ui->radioButton_nochangeGraphView->setChecked(false);
 		_ui->checkbox_odomDisabled->setChecked(false);
 		_ui->checkbox_groundTruthAlign->setChecked(true);
 	}
@@ -1868,7 +1872,9 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_notifyWhenNewGlobalPathIsReceived->setChecked(settings.value("notifyNewGlobalPath", _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked()).toBool());
 	_ui->spinBox_odomQualityWarnThr->setValue(settings.value("odomQualityThr", _ui->spinBox_odomQualityWarnThr->value()).toInt());
 	_ui->checkBox_odom_onlyInliersShown->setChecked(settings.value("odomOnlyInliersShown", _ui->checkBox_odom_onlyInliersShown->isChecked()).toBool());
-	_ui->checkBox_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->checkBox_posteriorGraphView->isChecked()).toBool());
+	_ui->radioButton_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->radioButton_posteriorGraphView->isChecked()).toBool());
+	_ui->radioButton_wordsGraphView->setChecked(settings.value("wordsGraphView", _ui->radioButton_wordsGraphView->isChecked()).toBool());
+	_ui->radioButton_nochangeGraphView->setChecked(settings.value("nochangeGraphView", _ui->radioButton_nochangeGraphView->isChecked()).toBool());
 	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
 	_ui->odom_registration->setCurrentIndex(settings.value("odomRegistration", _ui->odom_registration->currentIndex()).toInt());
 	_ui->checkbox_groundTruthAlign->setChecked(settings.value("gtAlign", _ui->checkbox_groundTruthAlign->isChecked()).toBool());
@@ -2286,7 +2292,9 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("notifyNewGlobalPath",  _ui->checkBox_notifyWhenNewGlobalPathIsReceived->isChecked());
 	settings.setValue("odomQualityThr",       _ui->spinBox_odomQualityWarnThr->value());
 	settings.setValue("odomOnlyInliersShown", _ui->checkBox_odom_onlyInliersShown->isChecked());
-	settings.setValue("posteriorGraphView",   _ui->checkBox_posteriorGraphView->isChecked());
+	settings.setValue("posteriorGraphView",   _ui->radioButton_posteriorGraphView->isChecked());
+	settings.setValue("wordsGraphView",       _ui->radioButton_wordsGraphView->isChecked());
+	settings.setValue("nochangeGraphView",    _ui->radioButton_nochangeGraphView->isChecked());
 	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
 	settings.setValue("odomRegistration",     _ui->odom_registration->currentIndex());
 	settings.setValue("gtAlign",              _ui->checkbox_groundTruthAlign->isChecked());
@@ -4403,7 +4411,11 @@ bool PreferencesDialog::isOdomOnlyInliersShown() const
 }
 bool PreferencesDialog::isPosteriorGraphView() const
 {
-	return _ui->checkBox_posteriorGraphView->isChecked();
+	return _ui->radioButton_posteriorGraphView->isChecked();
+}
+bool PreferencesDialog::isWordsCountGraphView() const
+{
+	return _ui->radioButton_wordsGraphView->isChecked();
 }
 bool PreferencesDialog::isOdomDisabled() const
 {
@@ -5322,6 +5334,10 @@ bool PreferencesDialog::isSLAMMode() const
 bool PreferencesDialog::isRGBDMode() const
 {
 	return _ui->general_checkBox_activateRGBD->isChecked();
+}
+int PreferencesDialog::getKpMaxFeatures() const
+{
+	return _ui->surf_spinBox_wordsPerImageTarget->value();
 }
 
 /*** SETTERS ***/

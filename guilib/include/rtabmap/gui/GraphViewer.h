@@ -65,7 +65,7 @@ public:
 			const std::map<int, GPS> & gpsValues);
 	void updateReferentialPosition(const Transform & t);
 	void updateMap(const cv::Mat & map8U, float resolution, float xMin, float yMin);
-	void updatePosterior(const std::map<int, float> & posterior);
+	void updatePosterior(const std::map<int, float> & posterior, float fixedMax = 0.0f);
 	void updateLocalPath(const std::vector<int> & localPath);
 	void setGlobalPath(const std::vector<std::pair<int, Transform> > & globalPath);
 	void setCurrentGoalID(int id, const Transform & pose = Transform());

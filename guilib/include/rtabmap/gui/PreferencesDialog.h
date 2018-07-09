@@ -154,6 +154,7 @@ public:
 	int getOdomQualityWarnThr() const;
 	bool isOdomOnlyInliersShown() const;
 	bool isPosteriorGraphView() const;
+	bool isWordsCountGraphView() const;
 	int getOdomRegistrationApproach() const;
 	bool isOdomDisabled() const;
 	bool isGroundTruthAligned() const;
@@ -265,6 +266,7 @@ public:
 	float getDetectionRate() const;
 	bool isSLAMMode() const;
 	bool isRGBDMode() const;
+	int getKpMaxFeatures() const;
 
 	//specific
 	bool isStatisticsPublished() const;

@@ -1587,6 +1587,15 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					_cachedSignatures.insert(signature.id(), signature);
 					_cachedMemoryUsage += signature.sensorData().getMemoryUsed();
+					unsigned int count = 0;
+					for(std::multimap<int, cv::Point3f>::const_iterator jter=signature.getWords3().upper_bound(-1); jter!=signature.getWords3().end(); ++jter)
+					{
+						if(util3d::isFinite(jter->second))
+						{
+							++count;
+						}
+					}
+					_cachedWordsCount.insert(std::make_pair(signature.id(), (float)count));
 				}
 			}
 		}
@@ -1945,6 +1954,12 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->graphicsView_graphView->updatePosterior(stat.posterior());
 			}
+			else if(_preferencesDialog->isWordsCountGraphView() &&
+					_preferencesDialog->isRGBDMode() &&
+					_cachedWordsCount.size())
+			{
+				_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+			}
 			// update local path on the graph view
 			_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
 			if(stat.localPath().size() == 0)
@@ -2004,6 +2019,7 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 	{
 		_cachedSignatures.clear();
 		_cachedMemoryUsage = 0;
+		_cachedWordsCount.clear();
 	}
 	_ui->statsToolBox->updateStat("GUI/Cache Data Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _cachedMemoryUsage/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
 	_ui->statsToolBox->updateStat("GUI/Cache Clouds Size/MB", _preferencesDialog->isTimeUsedInFigures()?stat.stamp()-_firstStamp:stat.refImageId(), _createdCloudsMemoryUsage/(1024*1024), _preferencesDialog->isCacheSavedInFigures());
@@ -3766,6 +3782,15 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			{
 				_cachedSignatures.insert(iter->first, iter->second);
 				_cachedMemoryUsage += iter->second.sensorData().getMemoryUsed();
+				unsigned int count = 0;
+				for(std::multimap<int, cv::Point3f>::const_iterator jter=iter->second.getWords3().upper_bound(-1); jter!=iter->second.getWords3().end(); ++jter)
+				{
+					if(util3d::isFinite(jter->second))
+					{
+						++count;
+					}
+				}
+				_cachedWordsCount.insert(std::make_pair(iter->first, (float)count));
 				++addedSignatures;
 			}
 			_progressDialog->incrementStep();
@@ -3786,6 +3811,15 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 			QApplication::processEvents();
 			std::map<int, Transform> poses = event.getPoses();
 			this->updateMapCloud(poses, event.getConstraints(), mapIds, labels, groundTruth, true);
+
+			if( _ui->graphicsView_graphView->isVisible() &&
+			    _preferencesDialog->isWordsCountGraphView() &&
+				_preferencesDialog->isRGBDMode()&&
+				_cachedWordsCount.size())
+			{
+				_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+			}
+
 			_progressDialog->appendText("Updating the 3D map cloud... done.");
 		}
 		else
@@ -3800,6 +3834,7 @@ void MainWindow::processRtabmapEvent3DMap(const rtabmap::RtabmapEvent3DMap & eve
 		{
 			_cachedSignatures.clear();
 			_cachedMemoryUsage = 0;
+			_cachedWordsCount.clear();
 		}
 		if(_state != kMonitoring && _state != kDetecting)
 		{
@@ -6189,6 +6224,7 @@ void MainWindow::clearTheCache()
 {
 	_cachedSignatures.clear();
 	_cachedMemoryUsage = 0;
+	_cachedWordsCount.clear();
 	_cachedClouds.clear();
 	_createdCloudsMemoryUsage = 0;
 	_cachedEmptyClouds.clear();
