@@ -171,7 +171,7 @@ public:
 	int getPathStatus() const {return _pathStatus;} // -1=failed 0=idle/executing 1=success
 	void clearPath(int status); // -1=failed 0=idle/executing 1=success
 	bool computePath(int targetNode, bool global);
-	bool computePath(const Transform & targetPose); // only in current optimized map
+	bool computePath(const Transform & targetPose, float tolerance = -1.0f); // only in current optimized map, tolerance (m) < 0 means RGBD/LocalRadius, 0 means infinite
 	const std::vector<std::pair<int, Transform> > & getPath() const {return _path;}
 	std::vector<std::pair<int, Transform> > getPathNextPoses() const;
 	std::vector<int> getPathNextNodes() const;

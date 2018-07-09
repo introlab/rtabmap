@@ -4124,8 +4124,13 @@ bool Rtabmap::computePath(int targetNode, bool global)
 	return false;
 }
 
-bool Rtabmap::computePath(const Transform & targetPose)
+bool Rtabmap::computePath(const Transform & targetPose, float tolerance)
 {
+	if(tolerance < 0.0f)
+	{
+		tolerance = _localRadius;
+	}
+
 	UINFO("Planning a path to pose %s ", targetPose.prettyPrint().c_str());
 
 	this->clearPath(0);
@@ -4178,7 +4183,7 @@ bool Rtabmap::computePath(const Transform & targetPose)
 	}
 
 	int nearestId;
-	if(!_lastLocalizationPose.isNull() && _lastLocalizationPose.getDistance(targetPose) < _localRadius)
+	if(!_lastLocalizationPose.isNull() && _lastLocalizationPose.getDistance(targetPose) < tolerance)
 	{
 		// target can be reached from the current node
 		nearestId = currentNode;
@@ -4190,10 +4195,10 @@ bool Rtabmap::computePath(const Transform & targetPose)
 	UINFO("Nearest node found=%d ,%fs", nearestId, timer.ticks());
 	if(nearestId > 0)
 	{
-		if(_localRadius != 0.0f && targetPose.getDistance(nodes.at(nearestId)) > _localRadius)
+		if(tolerance != 0.0f && targetPose.getDistance(nodes.at(nearestId)) > tolerance)
 		{
 			UWARN("Cannot plan farther than %f m from the graph! (distance=%f m from node %d)",
-					_localRadius, targetPose.getDistance(nodes.at(nearestId)), nearestId);
+					tolerance, targetPose.getDistance(nodes.at(nearestId)), nearestId);
 		}
 		else
 		{
