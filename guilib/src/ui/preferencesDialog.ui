@@ -95,8 +95,8 @@
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>678</width>
-            <height>2811</height>
+            <width>673</width>
+            <height>2803</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
@@ -401,7 +401,7 @@
                        <item row="4" column="1">
                         <widget class="QLabel" name="label_478">
                          <property name="text">
-                          <string>Show visual word count on the graph view. Nodes are colorized from blue to red depending on the maximum visual features extracted (which is red). For RGB-D SLAM mode, it is the number of visual words with valid 3D position.</string>
+                          <string>Show 3D visual words count on the graph view. Nodes are colorized from blue to red depending on the maximum visual features extracted (which is red).</string>
                          </property>
                          <property name="wordWrap">
                           <bool>true</bool>
