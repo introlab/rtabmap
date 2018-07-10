@@ -80,7 +80,7 @@ install:
   - ps: "ls \"C:/Program Files/g2o\""
   - set PATH=%PATH%;C:\Program Files\g2o\bin
   # GTSAM
-  - ps: wget 'https://dl.dropboxusercontent.com/s/lgz1cccs2o80eyk/GTSAM.exe?dl=0' -outfile GTSAM.exe
+  - ps: wget 'https://dl.dropboxusercontent.com/s/0fpr6r4cgsqmvhf/GTSAM-4_0_0_alpha2-msvc140.exe?dl=0' -outfile GTSAM.exe
   - cmd: GTSAM.exe -o"C:\Program Files" -y
   - ECHO "Installed GTSAM:"
   - ps: "ls \"C:/Program Files/GTSAM\""
