@@ -3255,12 +3255,14 @@ CameraRealSense2::CameraRealSense2(
 
 CameraRealSense2::~CameraRealSense2()
 {
+#ifdef RTABMAP_REALSENSE2
 	delete ctx_;
 	delete dev_;
 	delete syncer_;
 	delete depthIntrinsics_;
 	delete rgbIntrinsics_;
 	delete depthToRGBExtrinsics_;
+#endif
 	UDEBUG("");
 }
 
