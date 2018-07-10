@@ -48,10 +48,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #endif
 #endif
 
-#ifdef RTABMAP_REALSENSE2
-#include <librealsense2/rs.hpp>
-#endif
-
 #include <boost/signals2/connection.hpp>
 
 namespace openni
@@ -82,6 +78,15 @@ namespace rs
 	class slam;
 	}
 }
+
+namespace rs2
+{
+	class context;
+	class device;
+	class syncer;
+}
+struct rs2_intrinsics;
+struct rs2_extrinsics;
 
 typedef struct _freenect_context freenect_context;
 typedef struct _freenect_device freenect_device;
@@ -450,22 +455,14 @@ protected:
 
 private:
 #ifdef RTABMAP_REALSENSE2
-
-	void alignFrame(const rs2_intrinsics& from_intrin,
-		const rs2_intrinsics& other_intrin,
-		rs2::frame from_image,
-		uint32_t output_image_bytes_per_pixel,
-		const rs2_extrinsics& from_to_other,
-		cv::Mat & registeredDepth);
-
-	rs2::context ctx_;
-	rs2::device dev_;
+	rs2::context * ctx_;
+	rs2::device * dev_;
 	std::string deviceId_;
-	rs2::syncer syncer_;
+	rs2::syncer * syncer_;
 	float depth_scale_meters_;
-	rs2_intrinsics depthIntrinsics_;
-	rs2_intrinsics rgbIntrinsics_;
-	rs2_extrinsics depthToRGBExtrinsics_;
+	rs2_intrinsics * depthIntrinsics_;
+	rs2_intrinsics * rgbIntrinsics_;
+	rs2_extrinsics * depthToRGBExtrinsics_;
 	cv::Mat depthBuffer_;
 	cv::Mat rgbBuffer_;
 	CameraModel model_;

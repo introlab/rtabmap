@@ -802,7 +802,16 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 			for(int j=0; j<dists.cols; ++j)
 			{
 				float d = dists.at<float>(i,j);
-				int id = uValue(_mapIndexId, (int)results.at<size_t>(i,j));
+				int index;
+				if (sizeof(size_t) == 8)
+				{
+					index = *((size_t*)&results.at<double>(i, j));
+				}
+				else
+				{
+					index = *((size_t*)&results.at<int>(i, j));
+				}
+				int id = uValue(_mapIndexId, index);
 				if(d >= 0.0f && id > 0)
 				{
 					fullResults.insert(std::pair<float, int>(d, id));
@@ -1150,7 +1159,17 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				for(int j=0; j<dists.cols; ++j)
 				{
 					float d = dists.at<float>(i,j);
-					int id = uValue(_mapIndexId, (int)results.at<size_t>(i,j));
+					int index;
+					UWARN("results elemSize1=%d", results.elemSize1());
+					if (sizeof(size_t) == 8)
+					{
+						index = *((size_t*)&results.at<double>(i, j));
+					}
+					else
+					{
+						index = *((size_t*)&results.at<int>(i, j));
+					}
+					int id = uValue(_mapIndexId, index);
 					if(d >= 0.0f && id > 0)
 					{
 						fullResults.insert(std::pair<float, int>(d, id));
