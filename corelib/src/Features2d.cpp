@@ -923,11 +923,6 @@ void ORB::parseParameters(const ParametersMap & parameters)
 		gpu_ = false;
 	}
 #endif
-	// if(gpu_)
-	// {
-	// 	UWARN("GPU version of ORB available but not implemented yet! Using CPU version instead...");
-	// }
-	// gpu_ = false;
 	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
 	{
 		UWARN("GPU version of ORB not available (no GPU found)! Using CPU version instead...");
@@ -945,7 +940,6 @@ void ORB::parseParameters(const ParametersMap & parameters)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-		// UWARN("Using GPU version of ORB!");
 		_gpuOrb = CV_ORB_GPU::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, fastThreshold_);
 #endif
 #endif
@@ -955,7 +949,6 @@ void ORB::parseParameters(const ParametersMap & parameters)
 #if CV_MAJOR_VERSION < 3
 		_orb = cv::Ptr<CV_ORB>(new CV_ORB(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, parameters));
 #else
-		// UWARN("Using CPU version of ORB!");
 		_orb = CV_ORB::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, fastThreshold_);
 #endif
 	}
@@ -986,7 +979,12 @@ std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, cons
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
 		cv::cuda::GpuMat d_image(imgRoi);
 		cv::cuda::GpuMat d_mask(maskRoi);
-		_gpuOrb->detectAndCompute(d_image, d_mask, keypoints, cv::cuda::GpuMat(), false);
+		try {
+			_gpuOrb->detectAndCompute(d_image, d_mask, keypoints, cv::cuda::GpuMat(), false);
+		} catch (cv::Exception& e) {
+			const char* err_msg = e.what();
+			UWARN("OpenCV exception caught: %s", err_msg);
+		}
 #endif
 #endif
 	}
@@ -1028,17 +1026,20 @@ cv::Mat ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyP
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-		// UFATAL("not implemented");
 		cv::cuda::GpuMat d_image(image);
 		cv::cuda::GpuMat d_descriptors;
-		_gpuOrb->detectAndCompute(d_image, cv::cuda::GpuMat(), keypoints, d_descriptors, true);
+		try {
+			_gpuOrb->detectAndCompute(d_image, cv::cuda::GpuMat(), keypoints, d_descriptors, true);
+		} catch (cv::Exception& e) {
+			const char* err_msg = e.what();
+			UWARN("OpenCV exception caught: %s", err_msg);
+		}
 		// Download descriptors
 		if (d_descriptors.empty())
 			descriptors = cv::Mat();
 		else
 		{
 			UASSERT(d_descriptors.type() == CV_32F || d_descriptors.type() == CV_8U);
-			// descriptors = cv::Mat(d_descriptors.size(), CV_32F);
 			d_descriptors.download(descriptors);
 		}
 #endif
