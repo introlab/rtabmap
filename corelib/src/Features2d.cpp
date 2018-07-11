@@ -923,11 +923,11 @@ void ORB::parseParameters(const ParametersMap & parameters)
 		gpu_ = false;
 	}
 #endif
-	if(gpu_)
+	if(gpu_ && cv::cuda::getCudaEnabledDeviceCount() == 0)
 	{
-		UWARN("GPU version of ORB available but not implemented yet! Using CPU version instead...");
+		UWARN("GPU version of ORB not available (no GPU found)! Using CPU version instead...");
+		gpu_ = false;
 	}
-	gpu_ = false;
 #endif
 	if(gpu_)
 	{
@@ -940,7 +940,7 @@ void ORB::parseParameters(const ParametersMap & parameters)
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
+		_gpuOrb = CV_ORB_GPU::create(this->getMaxFeatures(), scaleFactor_, nLevels_, edgeThreshold_, firstLevel_, WTA_K_, scoreType_, patchSize_, fastThreshold_);
 #endif
 #endif
 	}
@@ -977,7 +977,14 @@ std::vector<cv::KeyPoint> ORB::generateKeypointsImpl(const cv::Mat & image, cons
 #endif
 #else
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
+		cv::cuda::GpuMat d_image(imgRoi);
+		cv::cuda::GpuMat d_mask(maskRoi);
+		try {
+			_gpuOrb->detectAndCompute(d_image, d_mask, keypoints, cv::cuda::GpuMat(), false);
+		} catch (cv::Exception& e) {
+			const char* err_msg = e.what();
+			UWARN("OpenCV exception caught: %s", err_msg);
+		}
 #endif
 #endif
 	}
@@ -1018,10 +1025,23 @@ cv::Mat ORB::generateDescriptorsImpl(const cv::Mat & image, std::vector<cv::KeyP
 		UERROR("GPU version of ORB not available (OpenCV not built with gpu/cuda module)! Using CPU version instead...");
 #endif
 #else
-		cv::cuda::GpuMat imgGpu(image);
-		cv::cuda::GpuMat descriptorsGPU;
 #ifdef HAVE_OPENCV_CUDAFEATURES2D
-		UFATAL("not implemented");
+		cv::cuda::GpuMat d_image(image);
+		cv::cuda::GpuMat d_descriptors;
+		try {
+			_gpuOrb->detectAndCompute(d_image, cv::cuda::GpuMat(), keypoints, d_descriptors, true);
+		} catch (cv::Exception& e) {
+			const char* err_msg = e.what();
+			UWARN("OpenCV exception caught: %s", err_msg);
+		}
+		// Download descriptors
+		if (d_descriptors.empty())
+			descriptors = cv::Mat();
+		else
+		{
+			UASSERT(d_descriptors.type() == CV_32F || d_descriptors.type() == CV_8U);
+			d_descriptors.download(descriptors);
+		}
 #endif
 #endif
 	}
