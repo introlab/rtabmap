@@ -191,10 +191,17 @@ IF(realsense2_FOUND)
 		${INCLUDE_DIRS}
 		${realsense2_INCLUDE_DIRS}
 	)
-	SET(LIBRARIES
-		${LIBRARIES}
-		realsense2
-	)
+	IF(WIN32)
+	    SET(LIBRARIES
+			${LIBRARIES}
+			${RealSense2_LIBRARIES}
+		)
+	ELSE()
+		SET(LIBRARIES
+			${LIBRARIES}
+			realsense2
+		)
+	ENDIF()
 ENDIF(realsense2_FOUND)
 
 IF(DC1394_FOUND)
