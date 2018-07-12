@@ -1,6 +1,17 @@
 cmake_minimum_required(VERSION 2.8)
 
 FIND_PACKAGE(yaml-cpp QUIET)
+
+IF(NOT yaml-cpp_FOUND)
+   find_package(PkgConfig QUIET)
+   IF(PKG_CONFIG_FOUND)
+      pkg_check_modules(yaml_cpp REQUIRED yaml-cpp)
+      SET(YAML_CPP_LIBRARIES ${yaml_cpp_LIBRARIES})
+      SET(YAML_CPP_INCLUDE_DIRS ${yaml_cpp_INCLUDEDIR})
+      SET(yaml-cpp_FOUND ${yaml_cpp_FOUND})
+   ENDIF(PKG_CONFIG_FOUND)
+ENDIF(NOT yaml-cpp_FOUND)
+
 IF(yaml-cpp_FOUND)
 
 # inside rtabmap project (see below for external build)
@@ -21,6 +32,7 @@ SET(INCLUDE_DIRS
 	${RTABMap_INCLUDE_DIRS}
     ${OpenCV_INCLUDE_DIRS}
     ${PCL_INCLUDE_DIRS}
+    ${YAML_CPP_INCLUDE_DIRS}
 )
 
 SET(LIBRARIES
