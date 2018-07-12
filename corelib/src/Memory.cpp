@@ -336,7 +336,7 @@ void Memory::loadDataFromDb(bool postInitClosingEvents)
 		}
 		if(postInitClosingEvents) UEventsManager::post(new RtabmapEventInit(uFormat("Adding word references, done! (%d)", _vwd->getTotalActiveReferences())));
 
-		if(_vwd->getUnusedWordsSize())
+		if(_vwd->getUnusedWordsSize() && _vwd->isIncremental())
 		{
 			UWARN("_vwd->getUnusedWordsSize() must be empty... size=%d", _vwd->getUnusedWordsSize());
 		}

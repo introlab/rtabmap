@@ -586,6 +586,12 @@ void VWDictionary::clear(bool printWarningsIfNotEmpty)
 	_unusedWords.clear();
 	_flannIndex->release();
 	useDistanceL1_ = false;
+
+	if(!_incrementalDictionary)
+	{
+		// reload the fixed dictionary
+		this->setFixedDictionary(_dictionaryPath);
+	}
 }
 
 int VWDictionary::getNextId()
