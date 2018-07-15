@@ -51,7 +51,8 @@ public:
 		kTypeDVO = 4,
 		kTypeORBSLAM2 = 5,
 		kTypeOkvis = 6,
-		kTypeLOAM = 7
+		kTypeLOAM = 7,
+		kTypeMSCKF = 8
 	};
 
 public:

@@ -499,6 +499,34 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(OdomLOAM, AngVar,     float,  0.01,  "Angular output variance.");
     RTABMAP_PARAM(OdomLOAM, LocalMapping, bool,  true,  "Local mapping. It adds more time to compute odometry, but accuracy is significantly improved.");
 
+    // Odometry MSCKF_VIO
+    RTABMAP_PARAM(OdomMSCKF, GridRow,           int,  4,  "");
+    RTABMAP_PARAM(OdomMSCKF, GridCol,           int,  4,  "");
+    RTABMAP_PARAM(OdomMSCKF, GridMinFeatureNum, int,  2,  "");
+    RTABMAP_PARAM(OdomMSCKF, GridMaxFeatureNum, int,  4,  "");
+    RTABMAP_PARAM(OdomMSCKF, PyramidLevels,     int,  3,  "");
+    RTABMAP_PARAM(OdomMSCKF, PatchSize,         int,  31,  "");
+    RTABMAP_PARAM(OdomMSCKF, FastThreshold,     int,  20,  "");
+    RTABMAP_PARAM(OdomMSCKF, MaxIteration,      int,  30,  "");
+    RTABMAP_PARAM(OdomMSCKF, TrackPrecision,    double,  0.01,  "");
+    RTABMAP_PARAM(OdomMSCKF, RansacThreshold,   double,  3,  "");
+    RTABMAP_PARAM(OdomMSCKF, StereoThreshold,   double,  3,  "");
+    RTABMAP_PARAM(OdomMSCKF, PositionStdThreshold,    double,  8.0,  "");
+    RTABMAP_PARAM(OdomMSCKF, RotationThreshold,       double,  0.2618,  "");
+    RTABMAP_PARAM(OdomMSCKF, TranslationThreshold,    double,  0.4,  "");
+    RTABMAP_PARAM(OdomMSCKF, TrackingRateThreshold,   double,  0.5,  "");
+    RTABMAP_PARAM(OdomMSCKF, OptTranslationThreshold, double,  0.2,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseGyro,     double,  0.001,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseAcc,      double,  0.01,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseGyroBias, double,  0.001,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseAccBias,  double,  0.01,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseFeature,  double,  0.01,  "");
+    RTABMAP_PARAM(OdomMSCKF, InitCovVel,    double,  0.25,  "");
+    RTABMAP_PARAM(OdomMSCKF, InitCovGyroBias, double,  0.0001,  "");
+    RTABMAP_PARAM(OdomMSCKF, InitCovAccBias,  double,  0.01,  "");
+    RTABMAP_PARAM(OdomMSCKF, InitCovExRot,    double,  0.00030462,  "");
+    RTABMAP_PARAM(OdomMSCKF, InitCovExTrans,  double,  0.0001,  "");
+
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");
     RTABMAP_PARAM(Reg, Strategy,                 int, 0,        "0=Vis, 1=Icp, 2=VisIcp");

@@ -180,6 +180,9 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 #ifndef RTABMAP_LOAM
 	_ui->odom_strategy->setItemData(7, 0, Qt::UserRole - 1);
 #endif
+#ifndef RTABMAP_MSCKF_VIO
+	_ui->odom_strategy->setItemData(8, 0, Qt::UserRole - 1);
+#endif
 
 #ifndef RTABMAP_NONFREE
 		_ui->comboBox_detector_strategy->setItemData(0, 0, Qt::UserRole - 1);
@@ -1108,6 +1111,34 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->odom_loam_linvar->setObjectName(Parameters::kOdomLOAMLinVar().c_str());
 	_ui->odom_loam_angvar->setObjectName(Parameters::kOdomLOAMAngVar().c_str());
 	_ui->odom_loam_localMapping->setObjectName(Parameters::kOdomLOAMLocalMapping().c_str());
+
+	// Odometry MSCKF_VIO
+	_ui->OdomMSCKFGridRow->setObjectName(Parameters::kOdomMSCKFGridRow().c_str());
+	_ui->OdomMSCKFGridCol->setObjectName(Parameters::kOdomMSCKFGridCol().c_str());
+	_ui->OdomMSCKFGridMinFeatureNum->setObjectName(Parameters::kOdomMSCKFGridMinFeatureNum().c_str());
+	_ui->OdomMSCKFGridMaxFeatureNum->setObjectName(Parameters::kOdomMSCKFGridMaxFeatureNum().c_str());
+	_ui->OdomMSCKFPyramidLevels->setObjectName(Parameters::kOdomMSCKFPyramidLevels().c_str());
+	_ui->OdomMSCKFPatchSize->setObjectName(Parameters::kOdomMSCKFPatchSize().c_str());
+	_ui->OdomMSCKFFastThreshold->setObjectName(Parameters::kOdomMSCKFFastThreshold().c_str());
+	_ui->OdomMSCKFMaxIteration->setObjectName(Parameters::kOdomMSCKFMaxIteration().c_str());
+	_ui->OdomMSCKFTrackPrecision->setObjectName(Parameters::kOdomMSCKFTrackPrecision().c_str());
+	_ui->OdomMSCKFRansacThreshold->setObjectName(Parameters::kOdomMSCKFRansacThreshold().c_str());
+	_ui->OdomMSCKFStereoThreshold->setObjectName(Parameters::kOdomMSCKFStereoThreshold().c_str());
+	_ui->OdomMSCKFPositionStdThreshold->setObjectName(Parameters::kOdomMSCKFPositionStdThreshold().c_str());
+	_ui->OdomMSCKFRotationThreshold->setObjectName(Parameters::kOdomMSCKFRotationThreshold().c_str());
+	_ui->OdomMSCKFTranslationThreshold->setObjectName(Parameters::kOdomMSCKFTranslationThreshold().c_str());
+	_ui->OdomMSCKFTrackingRateThreshold->setObjectName(Parameters::kOdomMSCKFTrackingRateThreshold().c_str());
+	_ui->OdomMSCKFOptTranslationThreshold->setObjectName(Parameters::kOdomMSCKFOptTranslationThreshold().c_str());
+	_ui->OdomMSCKFNoiseGyro->setObjectName(Parameters::kOdomMSCKFNoiseGyro().c_str());
+	_ui->OdomMSCKFNoiseAcc->setObjectName(Parameters::kOdomMSCKFNoiseAcc().c_str());
+	_ui->OdomMSCKFNoiseGyroBias->setObjectName(Parameters::kOdomMSCKFNoiseGyroBias().c_str());
+	_ui->OdomMSCKFNoiseAccBias->setObjectName(Parameters::kOdomMSCKFNoiseAccBias().c_str());
+	_ui->OdomMSCKFNoiseFeature->setObjectName(Parameters::kOdomMSCKFNoiseFeature().c_str());
+	_ui->OdomMSCKFInitCovVel->setObjectName(Parameters::kOdomMSCKFInitCovVel().c_str());
+	_ui->OdomMSCKFInitCovGyroBias->setObjectName(Parameters::kOdomMSCKFInitCovGyroBias().c_str());
+	_ui->OdomMSCKFInitCovAccBias->setObjectName(Parameters::kOdomMSCKFInitCovAccBias().c_str());
+	_ui->OdomMSCKFInitCovExRot->setObjectName(Parameters::kOdomMSCKFInitCovExRot().c_str());
+	_ui->OdomMSCKFInitCovExTrans->setObjectName(Parameters::kOdomMSCKFInitCovExTrans().c_str());
 
 	//Stereo
 	_ui->stereo_winWidth->setObjectName(Parameters::kStereoWinWidth().c_str());

@@ -680,6 +680,18 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 						ignore = true;
 					}
 #endif
+#ifndef RTABMAP_LOAM
+					if(group.compare("OdomLOAM") == 0)
+					{
+						ignore = true;
+					}
+#endif
+#ifndef RTABMAP_MSCKF_VIO
+					if(group.compare("OdomMSCKF") == 0)
+					{
+						ignore = true;
+					}
+#endif
 					if(!ignore)
 					{
 						std::string str = "Param: " + iter->first + " = \"" + iter->second + "\"";
