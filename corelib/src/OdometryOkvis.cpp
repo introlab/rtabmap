@@ -304,6 +304,7 @@ Transform OdometryOkvis::computeTransform(
 
 				// non-hard coded parameters
 				parameters.imu.T_BS = okvis::kinematics::Transformation(lastImu_.localTransform().toEigen4d());
+				UINFO("Images are already rectified = %s", imagesAlreadyRectified()?"true":"false");
 				for(unsigned int i=0; i<models.size(); ++i)
 				{
 					okvis::cameras::NCameraSystem::DistortionType distType = okvis::cameras::NCameraSystem::NoDistortion;
@@ -468,7 +469,10 @@ Transform OdometryOkvis::computeTransform(
 				}*/
 			}
 		}
-		UINFO("Odom update time = %fs p=%s", timer.elapsed(), p.prettyPrint().c_str());
+		if(imageUpdated)
+		{
+			UINFO("Odom update time = %fs p=%s", timer.elapsed(), p.prettyPrint().c_str());
+		}
 	}
 #else
 	UERROR("RTAB-Map is not built with OKVIS support! Select another visual odometry approach.");

@@ -140,7 +140,7 @@ void IMUThread::mainLoop()
 		}
 		previousStamp_ = stamp;
 
-		IMU imu(gyr, cv::Mat(3,3,CV_64FC1), acc, cv::Mat(3,3,CV_64FC1), localTransform_);
+		IMU imu(gyr, cv::Mat(), acc, cv::Mat(), localTransform_);
 		this->post(new IMUEvent(imu, stamp));
 	}
 	else if(!this->isKilled())

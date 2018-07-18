@@ -54,6 +54,7 @@ private:
 	MsckfVioNoROS * msckf_;
 	IMU lastImu_;
 	ParametersMap parameters_;
+	Transform flipXY_;
 #endif
 };
 

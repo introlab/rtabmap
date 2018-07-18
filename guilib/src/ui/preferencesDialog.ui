@@ -94,16 +94,25 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1165</y>
-            <width>678</width>
-            <height>2909</height>
+            <y>-1144</y>
+            <width>681</width>
+            <height>2811</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_16">
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="margin">
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
             <number>0</number>
            </property>
            <item>
@@ -5044,7 +5053,16 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="margin">
+                       <property name="leftMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>0</number>
+                       </property>
+                       <property name="bottomMargin">
                         <number>0</number>
                        </property>
                        <item>
@@ -13388,7 +13406,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="title">
                            <string>MSCKF_VIO</string>
                           </property>
-                          <layout class="QVBoxLayout" name="verticalLayout_131" stretch="0,1">
+                          <layout class="QVBoxLayout" name="verticalLayout_131" stretch="0,0,0">
                            <item>
                             <widget class="QLabel" name="label_480">
                              <property name="text">
@@ -13406,715 +13424,706 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                             </widget>
                            </item>
                            <item>
-                            <layout class="QGridLayout" name="gridLayout_102" columnstretch="0,0">
-                             <item row="11" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFPositionStdThreshold">
-                               <property name="decimals">
-                                <number>2</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>99.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="12" column="1">
-                              <widget class="QLabel" name="label_487">
-                               <property name="text">
-                                <string>Rotation threshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="25" column="1">
-                              <widget class="QLabel" name="label_513">
-                               <property name="text">
-                                <string>Initial covariance extrinsic translation.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="6" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFFastThreshold"/>
-                             </item>
-                             <item row="4" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFPyramidLevels"/>
-                             </item>
-                             <item row="25" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovExTrans">
-                               <property name="decimals">
-                                <number>5</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="2" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFGridMinFeatureNum"/>
-                             </item>
-                             <item row="8" column="1">
-                              <widget class="QLabel" name="label_483">
-                               <property name="text">
-                                <string>Tracking precision.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="8" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFTrackPrecision">
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="15" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFOptTranslationThreshold">
-                               <property name="decimals">
-                                <number>3</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>99.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="13" column="1">
-                              <widget class="QLabel" name="label_488">
-                               <property name="text">
-                                <string>Translation threshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="0" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFGridRow">
-                               <property name="minimum">
-                                <number>1</number>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="17" column="1">
-                              <widget class="QLabel" name="label_492">
-                               <property name="text">
-                                <string>Noise acceleration.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="10" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFStereoThreshold">
-                               <property name="decimals">
-                                <number>1</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.000000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>99.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="13" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFTranslationThreshold">
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>99.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="5" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFPatchSize">
-                               <property name="minimum">
-                                <number>1</number>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="1" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFGridCol">
-                               <property name="minimum">
-                                <number>1</number>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="12" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFRotationThreshold">
-                               <property name="decimals">
-                                <number>6</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>99.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="18" column="1">
-                              <widget class="QLabel" name="label_493">
-                               <property name="text">
-                                <string>Noise gyro bias.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="11" column="1">
-                              <widget class="QLabel" name="label_486">
-                               <property name="text">
-                                <string>Position std threshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="16" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseGyro">
-                               <property name="decimals">
-                                <number>4</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="9" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFRansacThreshold">
-                               <property name="decimals">
-                                <number>1</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.000000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>99.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="20" column="1">
-                              <widget class="QLabel" name="label_507">
-                               <property name="text">
-                                <string>Noise feature.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="23" column="1">
-                              <widget class="QLabel" name="label_510">
-                               <property name="text">
-                                <string>Initial covariance acceleration bias.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="22" column="1">
-                              <widget class="QLabel" name="label_509">
-                               <property name="text">
-                                <string>Initial covariance gyro bias.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="24" column="1">
-                              <widget class="QLabel" name="label_511">
-                               <property name="text">
-                                <string>Initial covariance extrincic rotation.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="21" column="1">
-                              <widget class="QLabel" name="label_508">
-                               <property name="text">
-                                <string>Initial covariance velocity.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="3" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFGridMaxFeatureNum"/>
-                             </item>
-                             <item row="9" column="1">
-                              <widget class="QLabel" name="label_484">
-                               <property name="text">
-                                <string>Ransac treshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="14" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFTrackingRateThreshold">
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>99.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="10" column="1">
-                              <widget class="QLabel" name="label_485">
-                               <property name="text">
-                                <string>Stereo threshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="23" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovAccBias">
-                               <property name="decimals">
-                                <number>8</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="22" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovGyroBias">
-                               <property name="decimals">
-                                <number>5</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="24" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovExRot">
-                               <property name="decimals">
-                                <number>5</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="20" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseFeature">
-                               <property name="decimals">
-                                <number>4</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="17" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseAcc">
-                               <property name="decimals">
-                                <number>4</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="21" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovVel">
-                               <property name="decimals">
-                                <number>4</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="19" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseAccBias">
-                               <property name="decimals">
-                                <number>4</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="18" column="0">
-                              <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseGyroBias">
-                               <property name="decimals">
-                                <number>4</number>
-                               </property>
-                               <property name="minimum">
-                                <double>0.010000000000000</double>
-                               </property>
-                               <property name="maximum">
-                                <double>1.000000000000000</double>
-                               </property>
-                               <property name="singleStep">
-                                <double>0.100000000000000</double>
-                               </property>
-                               <property name="value">
-                                <double>0.500000000000000</double>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="19" column="1">
-                              <widget class="QLabel" name="label_494">
-                               <property name="text">
-                                <string>Noise acceleration bias.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="15" column="1">
-                              <widget class="QLabel" name="label_490">
-                               <property name="text">
-                                <string>Optimization translation threshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="16" column="1">
-                              <widget class="QLabel" name="label_491">
-                               <property name="text">
-                                <string>Noise gyro.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="14" column="1">
-                              <widget class="QLabel" name="label_489">
-                               <property name="text">
-                                <string>Tracking rate threshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="7" column="0">
-                              <widget class="QSpinBox" name="OdomMSCKFMaxIteration"/>
-                             </item>
-                             <item row="7" column="1">
-                              <widget class="QLabel" name="label_531">
-                               <property name="text">
-                                <string>Max iteration.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="6" column="1">
-                              <widget class="QLabel" name="label_532">
-                               <property name="text">
-                                <string>Fast threshold.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="5" column="1">
-                              <widget class="QLabel" name="label_533">
-                               <property name="text">
-                                <string>Patch size.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="4" column="1">
-                              <widget class="QLabel" name="label_534">
-                               <property name="text">
-                                <string>Pyramid levels.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="3" column="1">
-                              <widget class="QLabel" name="label_535">
-                               <property name="text">
-                                <string>Grid max feature num.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="2" column="1">
-                              <widget class="QLabel" name="label_536">
-                               <property name="text">
-                                <string>Grid min feature num.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="1" column="1">
-                              <widget class="QLabel" name="label_537">
-                               <property name="text">
-                                <string>Grid col.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                             <item row="0" column="1">
-                              <widget class="QLabel" name="label_538">
-                               <property name="text">
-                                <string>Grid row.</string>
-                               </property>
-                               <property name="wordWrap">
-                                <bool>true</bool>
-                               </property>
-                               <property name="textInteractionFlags">
-                                <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
-                               </property>
-                              </widget>
-                             </item>
-                            </layout>
+                            <widget class="QGroupBox" name="groupBox_7">
+                             <property name="title">
+                              <string>Image processing</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_103" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFGridRow">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_538">
+                                <property name="text">
+                                 <string>Grid row.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFGridCol">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_537">
+                                <property name="text">
+                                 <string>Grid col.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFGridMinFeatureNum"/>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_536">
+                                <property name="text">
+                                 <string>Grid min feature num.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFGridMaxFeatureNum"/>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_535">
+                                <property name="text">
+                                 <string>Grid max feature num.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFPyramidLevels"/>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_534">
+                                <property name="text">
+                                 <string>Pyramid levels.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFPatchSize">
+                                <property name="minimum">
+                                 <number>1</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_533">
+                                <property name="text">
+                                 <string>Patch size.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFFastThreshold"/>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_532">
+                                <property name="text">
+                                 <string>Fast threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFMaxIteration"/>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QLabel" name="label_531">
+                                <property name="text">
+                                 <string>Max iteration.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFTrackPrecision">
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_495">
+                                <property name="text">
+                                 <string>Tracking precision.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFRansacThreshold">
+                                <property name="decimals">
+                                 <number>1</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="1">
+                               <widget class="QLabel" name="label_496">
+                                <property name="text">
+                                 <string>Ransac treshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="10" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFStereoThreshold">
+                                <property name="decimals">
+                                 <number>1</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="10" column="1">
+                               <widget class="QLabel" name="label_497">
+                                <property name="text">
+                                 <string>Stereo threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QGroupBox" name="groupBox_28">
+                             <property name="title">
+                              <string>Odometry estimation</string>
+                             </property>
+                             <layout class="QGridLayout" name="gridLayout_102" columnstretch="0,1">
+                              <item row="0" column="0">
+                               <widget class="QSpinBox" name="OdomMSCKFMaxCamStateSize"/>
+                              </item>
+                              <item row="0" column="1">
+                               <widget class="QLabel" name="label_539">
+                                <property name="text">
+                                 <string>Max cam state size.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFPositionStdThreshold">
+                                <property name="decimals">
+                                 <number>2</number>
+                                </property>
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="1" column="1">
+                               <widget class="QLabel" name="label_486">
+                                <property name="text">
+                                 <string>Position std threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFRotationThreshold">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="2" column="1">
+                               <widget class="QLabel" name="label_487">
+                                <property name="text">
+                                 <string>Rotation threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFTranslationThreshold">
+                                <property name="minimum">
+                                 <double>0.000000000000000</double>
+                                </property>
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="3" column="1">
+                               <widget class="QLabel" name="label_488">
+                                <property name="text">
+                                 <string>Translation threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFTrackingRateThreshold">
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="4" column="1">
+                               <widget class="QLabel" name="label_489">
+                                <property name="text">
+                                 <string>Tracking rate threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFOptTranslationThreshold">
+                                <property name="decimals">
+                                 <number>3</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>99.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="5" column="1">
+                               <widget class="QLabel" name="label_490">
+                                <property name="text">
+                                 <string>Optimization translation threshold.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseGyro">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="6" column="1">
+                               <widget class="QLabel" name="label_491">
+                                <property name="text">
+                                 <string>Noise gyro.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseAcc">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="7" column="1">
+                               <widget class="QLabel" name="label_492">
+                                <property name="text">
+                                 <string>Noise acceleration.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseGyroBias">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="8" column="1">
+                               <widget class="QLabel" name="label_493">
+                                <property name="text">
+                                 <string>Noise gyro bias.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseAccBias">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="9" column="1">
+                               <widget class="QLabel" name="label_494">
+                                <property name="text">
+                                 <string>Noise acceleration bias.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="10" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFNoiseFeature">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="10" column="1">
+                               <widget class="QLabel" name="label_507">
+                                <property name="text">
+                                 <string>Noise feature.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovVel">
+                                <property name="decimals">
+                                 <number>4</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="11" column="1">
+                               <widget class="QLabel" name="label_508">
+                                <property name="text">
+                                 <string>Initial covariance velocity.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovGyroBias">
+                                <property name="decimals">
+                                 <number>5</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="12" column="1">
+                               <widget class="QLabel" name="label_509">
+                                <property name="text">
+                                 <string>Initial covariance gyro bias.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="13" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovAccBias">
+                                <property name="decimals">
+                                 <number>3</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="13" column="1">
+                               <widget class="QLabel" name="label_510">
+                                <property name="text">
+                                 <string>Initial covariance acceleration bias.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="14" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovExRot">
+                                <property name="decimals">
+                                 <number>8</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="14" column="1">
+                               <widget class="QLabel" name="label_511">
+                                <property name="text">
+                                 <string>Initial covariance extrincic rotation.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="15" column="0">
+                               <widget class="QDoubleSpinBox" name="OdomMSCKFInitCovExTrans">
+                                <property name="decimals">
+                                 <number>6</number>
+                                </property>
+                                <property name="maximum">
+                                 <double>1.000000000000000</double>
+                                </property>
+                                <property name="singleStep">
+                                 <double>0.100000000000000</double>
+                                </property>
+                                <property name="value">
+                                 <double>0.500000000000000</double>
+                                </property>
+                               </widget>
+                              </item>
+                              <item row="15" column="1">
+                               <widget class="QLabel" name="label_513">
+                                <property name="text">
+                                 <string>Initial covariance extrinsic translation.</string>
+                                </property>
+                                <property name="wordWrap">
+                                 <bool>true</bool>
+                                </property>
+                                <property name="textInteractionFlags">
+                                 <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                                </property>
+                               </widget>
+                              </item>
+                             </layout>
+                            </widget>
                            </item>
                           </layout>
                          </widget>
@@ -14127,7 +14136,7 @@ If set to false, classic RTAB-Map loop closure detection is done using only imag
                           <property name="sizeHint" stdset="0">
                            <size>
                             <width>20</width>
-                            <height>961</height>
+                            <height>0</height>
                            </size>
                           </property>
                          </spacer>
@@ -15073,7 +15082,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15153,7 +15171,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15265,7 +15292,16 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="margin">
+                        <property name="leftMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                         <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
                          <number>0</number>
                         </property>
                         <item>

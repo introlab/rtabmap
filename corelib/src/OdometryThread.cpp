@@ -119,9 +119,9 @@ void OdometryThread::mainLoop()
 		OdometryInfo info;
 		UDEBUG("Processing data...");
 		Transform pose = _odometry->process(data, &info);
-		UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
-		if(!data.imageRaw().empty() || pose.isNull())
+		if(!data.imageRaw().empty() || (pose.isNull() && data.imu().empty()))
 		{
+			UDEBUG("Odom pose = %s", pose.prettyPrint().c_str());
 			// a null pose notify that odometry could not be computed
 			this->post(new OdometryEvent(data, pose, info));
 		}
@@ -196,7 +196,7 @@ bool OdometryThread::getData(SensorData & data)
 		if(!_dataBuffer.empty() || !_imuBuffer.empty())
 		{
 			if(_dataBuffer.empty() ||
-				(!_dataBuffer.empty() && !_imuBuffer.empty() && _imuBuffer.front().stamp() <= _dataBuffer.front().stamp()))
+				(!_dataBuffer.empty() && !_imuBuffer.empty() && _imuBuffer.front().stamp() < _dataBuffer.front().stamp()))
 			{
 				data = _imuBuffer.front();
 				_imuBuffer.pop_front();

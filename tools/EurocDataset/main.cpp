@@ -61,7 +61,7 @@ void showUsage()
 			"  --quiet            Don't show log messages and iteration updates.\n"
 			"  --exposure_comp    Do exposure compensation between left and right images.\n"
 			"  --disp             Generate full disparity.\n"
-			"  --raw              Use raw images (not rectified, this only works with okvis odometry).\n"
+			"  --raw              Use raw images (not rectified, this only works with okvis and msckf odometry).\n"
 			"%s\n"
 			"Example:\n\n"
 			"   $ rtabmap-euroc_dataset \\\n"
@@ -276,7 +276,11 @@ int main(int argc, char * argv[])
 				!raw,
 				0.0f,
 				baseToImu*models[0].localTransform()), parameters);
-	std::cout<<baseToImu*models[0].localTransform()<<std::endl;
+	printf("baseToImu=%s\n", baseToImu.prettyPrint().c_str());
+	std::cout<<"baseToCam0:\n" << baseToImu*models[0].localTransform() << std::endl;
+	printf("baseToCam0=%s\n", (baseToImu*models[0].localTransform()).prettyPrint().c_str());
+	printf("imuToCam0=%s\n", models[0].localTransform().prettyPrint().c_str());
+	printf("imuToCam1=%s\n", models[1].localTransform().prettyPrint().c_str());
 	((CameraStereoImages*)cameraThread.camera())->setTimestamps(true, "", false);
 	if(exposureCompensation)
 	{
@@ -305,7 +309,7 @@ int main(int argc, char * argv[])
 	}
 
 	std::ifstream imu_file;
-	if(odomStrategy == Odometry::kTypeOkvis)
+	if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF)
 	{
 		// open the IMU file
 		std::string line;
@@ -326,6 +330,35 @@ int main(int argc, char * argv[])
 		imu_file.clear();
 		imu_file.seekg(0, std::ios::beg);
 		std::getline(imu_file, line);
+
+		if(odomStrategy == Odometry::kTypeMSCKF)
+		{
+			if(seq.compare("MH_01_easy") == 0)
+			{
+				printf("MH_01_easy detected with MSCFK odometry, ignoring first moving 440 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(440);
+			}
+			else if(seq.compare("MH_01_easy") == 0)
+			{
+				printf("MH_02_easy detected with MSCFK odometry, ignoring first moving 525 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(525);
+			}
+			else if(seq.compare("MH_03_medium") == 0)
+			{
+				printf("MH_03_medium detected with MSCFK odometry, ignoring first moving 210 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(210);
+			}
+			else if(seq.compare("MH_04_difficult") == 0)
+			{
+				printf("MH_04_difficult detected with MSCFK odometry, ignoring first moving 250 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(250);
+			}
+			else if(seq.compare("MH_05_difficult") == 0)
+			{
+				printf("MH_05_difficult detected with MSCFK odometry, ignoring first moving 310 images...\n");
+				((CameraStereoImages*)cameraThread.camera())->setStartIndex(310);
+			}
+		}
 	}
 
 
@@ -360,7 +393,7 @@ int main(int argc, char * argv[])
 		while(data.isValid() && g_forever)
 		{
 			UDEBUG("");
-			if(odomStrategy == Odometry::kTypeOkvis)
+			if(odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF)
 			{
 				// get all IMU measurements till then
 				double t_imu = start;
@@ -409,7 +442,8 @@ int main(int argc, char * argv[])
 			UDEBUG("");
 			Transform pose = odom->process(data, &odomInfo);
 			UDEBUG("");
-			if(odomStrategy == Odometry::kTypeOkvis && pose.isNull())
+			if((odomStrategy == Odometry::kTypeOkvis || odomStrategy == Odometry::kTypeMSCKF) &&
+				pose.isNull())
 			{
 				cameraInfo = CameraInfo();
 				timer.restart();

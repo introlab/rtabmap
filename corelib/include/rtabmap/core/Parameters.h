@@ -395,7 +395,7 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(GTSAM, Optimizer,       int, 1,          "0=Levenberg 1=GaussNewton 2=Dogleg");
 
     // Odometry
-    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2 4=DVO-SLAM 5=ORB_SLAM2 6=OKVIS");
+    RTABMAP_PARAM(Odom, Strategy,               int, 0,       "0=Frame-to-Map (F2M) 1=Frame-to-Frame (F2F) 2=Fovis 3=viso2 4=DVO-SLAM 5=ORB_SLAM2 6=OKVIS 7=LOAM 8=MSCKF_VIO");
     RTABMAP_PARAM(Odom, ResetCountdown,         int, 0,       "Automatically reset odometry after X consecutive images on which odometry cannot be computed (value=0 disables auto-reset).");
     RTABMAP_PARAM(Odom, Holonomic,              bool, true,   "If the robot is holonomic (strafing commands can be issued). If not, y value will be estimated from x and yaw values (y=x*tan(yaw)).");
     RTABMAP_PARAM(Odom, FillInfoData,           bool, true,   "Fill info with data (inliers/outliers features).");
@@ -501,31 +501,32 @@ class RTABMAP_EXP Parameters
 
     // Odometry MSCKF_VIO
     RTABMAP_PARAM(OdomMSCKF, GridRow,           int,  4,  "");
-    RTABMAP_PARAM(OdomMSCKF, GridCol,           int,  4,  "");
-    RTABMAP_PARAM(OdomMSCKF, GridMinFeatureNum, int,  2,  "");
+    RTABMAP_PARAM(OdomMSCKF, GridCol,           int,  5,  "");
+    RTABMAP_PARAM(OdomMSCKF, GridMinFeatureNum, int,  3,  "");
     RTABMAP_PARAM(OdomMSCKF, GridMaxFeatureNum, int,  4,  "");
     RTABMAP_PARAM(OdomMSCKF, PyramidLevels,     int,  3,  "");
-    RTABMAP_PARAM(OdomMSCKF, PatchSize,         int,  31,  "");
-    RTABMAP_PARAM(OdomMSCKF, FastThreshold,     int,  20,  "");
+    RTABMAP_PARAM(OdomMSCKF, PatchSize,         int,  15,  "");
+    RTABMAP_PARAM(OdomMSCKF, FastThreshold,     int,  10,  "");
     RTABMAP_PARAM(OdomMSCKF, MaxIteration,      int,  30,  "");
     RTABMAP_PARAM(OdomMSCKF, TrackPrecision,    double,  0.01,  "");
     RTABMAP_PARAM(OdomMSCKF, RansacThreshold,   double,  3,  "");
-    RTABMAP_PARAM(OdomMSCKF, StereoThreshold,   double,  3,  "");
+    RTABMAP_PARAM(OdomMSCKF, StereoThreshold,   double,  5,  "");
     RTABMAP_PARAM(OdomMSCKF, PositionStdThreshold,    double,  8.0,  "");
     RTABMAP_PARAM(OdomMSCKF, RotationThreshold,       double,  0.2618,  "");
     RTABMAP_PARAM(OdomMSCKF, TranslationThreshold,    double,  0.4,  "");
     RTABMAP_PARAM(OdomMSCKF, TrackingRateThreshold,   double,  0.5,  "");
-    RTABMAP_PARAM(OdomMSCKF, OptTranslationThreshold, double,  0.2,  "");
-    RTABMAP_PARAM(OdomMSCKF, NoiseGyro,     double,  0.001,  "");
-    RTABMAP_PARAM(OdomMSCKF, NoiseAcc,      double,  0.01,  "");
+    RTABMAP_PARAM(OdomMSCKF, OptTranslationThreshold, double,  0,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseGyro,     double,  0.005,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseAcc,      double,  0.05,  "");
     RTABMAP_PARAM(OdomMSCKF, NoiseGyroBias, double,  0.001,  "");
     RTABMAP_PARAM(OdomMSCKF, NoiseAccBias,  double,  0.01,  "");
-    RTABMAP_PARAM(OdomMSCKF, NoiseFeature,  double,  0.01,  "");
+    RTABMAP_PARAM(OdomMSCKF, NoiseFeature,  double,  0.035,  "");
     RTABMAP_PARAM(OdomMSCKF, InitCovVel,    double,  0.25,  "");
-    RTABMAP_PARAM(OdomMSCKF, InitCovGyroBias, double,  0.0001,  "");
+    RTABMAP_PARAM(OdomMSCKF, InitCovGyroBias, double,  0.01,  "");
     RTABMAP_PARAM(OdomMSCKF, InitCovAccBias,  double,  0.01,  "");
     RTABMAP_PARAM(OdomMSCKF, InitCovExRot,    double,  0.00030462,  "");
-    RTABMAP_PARAM(OdomMSCKF, InitCovExTrans,  double,  0.0001,  "");
+    RTABMAP_PARAM(OdomMSCKF, InitCovExTrans,  double,  0.000025,  "");
+    RTABMAP_PARAM(OdomMSCKF, MaxCamStateSize,  int,  20,  "");
 
     // Common registration parameters
     RTABMAP_PARAM(Reg, RepeatOnce,               bool, true,    "Do a second registration with the output of the first registration as guess. Only done if no guess was provided for the first registration (like on loop closure). It can be useful if the registration approach used can use a guess to get better matches.");

@@ -79,6 +79,7 @@ OdometryViewer::OdometryViewer(
 
 	cloudView_->setCameraTargetLocked();
 	cloudView_->setGridShown(true);
+	cloudView_->setFrustumShown(true);
 
 	QLabel * maxCloudsLabel = new QLabel("Max clouds", this);
 	QLabel * voxelLabel = new QLabel("Voxel", this);
@@ -297,6 +298,15 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 	{
 		lastOdomPose_ = odom.pose();
 		cloudView_->updateCameraTargetPosition(odom.pose());
+
+		if(odom.data().cameraModels().size() && !odom.data().cameraModels()[0].localTransform().isNull())
+		{
+			cloudView_->updateCameraFrustums(odom.pose(), odom.data().cameraModels());
+		}
+		else if(!odom.data().stereoCameraModel().localTransform().isNull())
+		{
+			cloudView_->updateCameraFrustum(odom.pose(), odom.data().stereoCameraModel());
+		}
 	}
 
 	if(scanShown_->isChecked())
@@ -391,7 +401,8 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 		}
 		else if(odom.info().type == (int)Odometry::kTypeF2F ||
 				odom.info().type == (int)Odometry::kTypeViso2 ||
-				odom.info().type == (int)Odometry::kTypeFovis)
+				odom.info().type == (int)Odometry::kTypeFovis ||
+				odom.info().type == (int)Odometry::kTypeMSCKF)
 		{
 			std::vector<cv::KeyPoint> kpts;
 			cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);

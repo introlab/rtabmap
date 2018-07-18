@@ -1324,7 +1324,8 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			}
 			else if(odom.info().type == (int)Odometry::kTypeF2F ||
 					odom.info().type == (int)Odometry::kTypeViso2 ||
-					odom.info().type == (int)Odometry::kTypeFovis)
+					odom.info().type == (int)Odometry::kTypeFovis ||
+					odom.info().type == (int)Odometry::kTypeMSCKF)
 			{
 				std::vector<cv::KeyPoint> kpts;
 				cv::KeyPoint::convert(odom.info().newCorners, kpts, 7);
@@ -1891,7 +1892,6 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_cloudViewer->updateCameraTargetPosition(poses.rbegin()->second);
 
-				Transform localTransform = Transform::getIdentity();
 				std::map<int, Signature>::const_iterator iter = stat.getSignatures().find(poses.rbegin()->first);
 				if(iter != stat.getSignatures().end())
 				{
@@ -4866,7 +4866,7 @@ void MainWindow::startDetection()
 					_preferencesDialog->getSourceDriver() == PreferencesDialog::kSrcImages) &&
 				   !_preferencesDialog->getIMUPath().isEmpty())
 				{
-					if(odomStrategy != Odometry::kTypeOkvis)
+					if(odomStrategy != Odometry::kTypeOkvis && odomStrategy != Odometry::kTypeMSCKF)
 					{
 						QMessageBox::warning(this, tr("Source IMU Path"),
 								tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);

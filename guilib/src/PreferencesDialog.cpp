@@ -1121,6 +1121,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->OdomMSCKFPatchSize->setObjectName(Parameters::kOdomMSCKFPatchSize().c_str());
 	_ui->OdomMSCKFFastThreshold->setObjectName(Parameters::kOdomMSCKFFastThreshold().c_str());
 	_ui->OdomMSCKFMaxIteration->setObjectName(Parameters::kOdomMSCKFMaxIteration().c_str());
+	_ui->OdomMSCKFMaxCamStateSize->setObjectName(Parameters::kOdomMSCKFMaxCamStateSize().c_str());
 	_ui->OdomMSCKFTrackPrecision->setObjectName(Parameters::kOdomMSCKFTrackPrecision().c_str());
 	_ui->OdomMSCKFRansacThreshold->setObjectName(Parameters::kOdomMSCKFRansacThreshold().c_str());
 	_ui->OdomMSCKFStereoThreshold->setObjectName(Parameters::kOdomMSCKFStereoThreshold().c_str());
@@ -5454,7 +5455,7 @@ void PreferencesDialog::testOdometry()
 	   this->getSourceDriver() == kSrcImages) &&
 	   !_ui->lineEdit_cameraImages_path_imu->text().isEmpty())
 	{
-		if(this->getOdomStrategy() != Odometry::kTypeOkvis)
+		if(this->getOdomStrategy() != Odometry::kTypeOkvis && this->getOdomStrategy() != Odometry::kTypeMSCKF)
 		{
 			QMessageBox::warning(this, tr("Source IMU Path"),
 					tr("IMU path is set but odometry chosen doesn't support IMU, ignoring IMU..."), QMessageBox::Ok);

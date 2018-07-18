@@ -535,7 +535,14 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		UDEBUG("Initial optimization...");
 		optimizer.initializeOptimization();
 
-		UASSERT(optimizer.verifyInformationMatrices());
+		UASSERT_MSG(optimizer.verifyInformationMatrices(),
+				"This error can be caused by (1) bad covariance matrix "
+				"set in odometry messages "
+				"(see requirements in g2o::OptimizableGraph::verifyInformationMatrices() function) "
+				"or that (2) PCL and g2o hadn't "
+				"been built both with or without \"-march=native\" compilation "
+				"flag (if one library is built with this flag and not the other, "
+				"this is causing Eigen to not work properly, resulting in segmentation faults).");
 
 		UINFO("g2o optimizing begin (max iterations=%d, robust=%d)", iterations(), isRobust()?1:0);
 		int it = 0;
@@ -734,10 +741,12 @@ std::map<int, Transform> OptimizerG2O::optimize(
 				{
 					UWARN("Computing marginals: vertex %d has negative hessian index (%d). Cannot compute last pose covariance.", poses.rbegin()->first, v->hessianIndex());
 				}
+#ifdef RTABMAP_G2O_CPP11
 				else
 				{
 					UWARN("Computing marginals: vertex %d has hessian not valid (%d > block size=%d). Cannot compute last pose covariance.", poses.rbegin()->first, v->hessianIndex(), (int)spinv.blockCols().size());
 				}
+#endif
 			}
 			else
 			{

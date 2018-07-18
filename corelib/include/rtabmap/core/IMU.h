@@ -34,9 +34,6 @@ public:
 			linearAccelerationCovariance_(linearAccelerationCovariance),
 			localTransform_(localTransform)
 	{
-		UASSERT(!orientationCovariance.empty() && orientationCovariance.cols == 3 && orientationCovariance.rows == 3 && orientationCovariance.type() == CV_64FC1);
-		UASSERT(!angularVelocityCovariance.empty() && angularVelocityCovariance.cols == 3 && angularVelocityCovariance.rows == 3 && angularVelocityCovariance.type() == CV_64FC1);
-		UASSERT(!linearAccelerationCovariance.empty() && linearAccelerationCovariance.cols == 3 && linearAccelerationCovariance.rows == 3 && linearAccelerationCovariance.type() == CV_64FC1);
 	}
 	IMU(const cv::Vec3d & angularVelocity,
 		const cv::Mat & angularVelocityCovariance,
@@ -49,8 +46,6 @@ public:
 			linearAccelerationCovariance_(linearAccelerationCovariance),
 			localTransform_(localTransform)
 	{
-		UASSERT(!angularVelocityCovariance.empty() && angularVelocityCovariance.cols == 3 && angularVelocityCovariance.rows == 3 && angularVelocityCovariance.type() == CV_64FC1);
-		UASSERT(!linearAccelerationCovariance.empty() && linearAccelerationCovariance.cols == 3 && linearAccelerationCovariance.rows == 3 && linearAccelerationCovariance.type() == CV_64FC1);
 	}
 
 	const cv::Vec4d & orientation() const {return orientation_;}
@@ -66,7 +61,7 @@ public:
 
 	bool empty() const
 	{
-		return orientationCovariance_.empty() && angularVelocityCovariance_.empty() && linearAccelerationCovariance_.empty();
+		return localTransform_.isNull();
 	}
 
 
