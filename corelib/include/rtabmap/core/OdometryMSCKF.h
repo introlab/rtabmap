@@ -55,6 +55,8 @@ private:
 	IMU lastImu_;
 	ParametersMap parameters_;
 	Transform flipXY_;
+	Transform previousPose_;
+	bool initGravity_;
 #endif
 };
 

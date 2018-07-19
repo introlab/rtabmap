@@ -54,8 +54,9 @@ private:
 #ifdef RTABMAP_ORB_SLAM2
 	ORBSLAM2System * orbslam2_;
 	bool firstFrame_;
-#endif
 	Transform originLocalTransform_;
+	Transform previousPose_;
+#endif
 
 };
 

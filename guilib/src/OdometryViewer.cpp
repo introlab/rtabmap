@@ -437,7 +437,9 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 				imageView_->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
 			}
 
-			if(odom.info().type == Odometry::kTypeF2M || odom.info().type == (int)Odometry::kTypeORBSLAM2)
+			if( odom.info().type == Odometry::kTypeF2M ||
+				odom.info().type == (int)Odometry::kTypeORBSLAM2 ||
+				odom.info().type == (int)Odometry::kTypeMSCKF)
 			{
 				if(imageView_->isFeaturesShown())
 				{

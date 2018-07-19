@@ -33,6 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
 #include "rtabmap/utilite/UDirectory.h"
+#include <pcl/common/transforms.h>
 
 #ifdef RTABMAP_ORB_SLAM2
 #include <System.h>
@@ -813,7 +814,8 @@ OdometryORBSLAM2::OdometryORBSLAM2(const ParametersMap & parameters) :
 #ifdef RTABMAP_ORB_SLAM2
     ,
 	orbslam2_(0),
-	firstFrame_(true)
+	firstFrame_(true),
+	previousPose_(Transform::getIdentity())
 #endif
 {
 #ifdef RTABMAP_ORB_SLAM2
@@ -841,6 +843,7 @@ void OdometryORBSLAM2::reset(const Transform & initialPose)
 	}
 	firstFrame_ = true;
 	originLocalTransform_.setNull();
+	previousPose_.setIdentity();
 #endif
 }
 
@@ -908,23 +911,29 @@ Transform OdometryORBSLAM2::computeTransform(
 		Tcw = ((ORB_SLAM2::Tracker*)orbslam2_->mpTracker)->GrabImageRGBD(data.imageRaw(), depth, data.stamp());
 	}
 
+	Transform previousPoseInv = previousPose_.inverse();
 	if(orbslam2_->mpTracker->mState == ORB_SLAM2::Tracking::LOST)
 	{
 		covariance = cv::Mat::eye(6,6,CV_64FC1)*9999.0f;
 	}
 	else if(Tcw.cols == 4 && Tcw.rows == 4)
 	{
-		t = Transform(cv::Mat(Tcw, cv::Range(0,3), cv::Range(0,4)));
+		Transform p = Transform(cv::Mat(Tcw, cv::Range(0,3), cv::Range(0,4)));
 
-		if(!t.isNull() && !t.isIdentity() && !localTransform.isIdentity() && !localTransform.isNull())
+		if(!p.isNull())
 		{
-			if(originLocalTransform_.isNull())
+			if(!localTransform.isNull())
 			{
-				originLocalTransform_ = localTransform;
+				if(originLocalTransform_.isNull())
+				{
+					originLocalTransform_ = localTransform;
+				}
+				// transform in base frame
+				p = originLocalTransform_ * p.inverse() * localTransform.inverse();
 			}
-			t = originLocalTransform_ * t.inverse() * localTransform.inverse();
-			t = this->getPose().inverse() * t;
+			t = previousPoseInv*p;
 		}
+		previousPose_ = p;
 
 		if(firstFrame_)
 		{
@@ -1004,10 +1013,12 @@ Transform OdometryORBSLAM2::computeTransform(
 			info->reg.matches = oi;
 
 			std::vector<ORB_SLAM2::MapPoint*> mapPoints = orbslam2_->mpMap->GetAllMapPoints();
+			Eigen::Affine3f fixRot = (this->getPose()*previousPoseInv*originLocalTransform_).toEigen3f();
 			for (unsigned int i = 0; i < mapPoints.size(); ++i)
 			{
-				cv::Mat pt = mapPoints[i]->GetWorldPos();
-				info->localMap.insert(std::make_pair(mapPoints[i]->mnId, util3d::transformPoint(cv::Point3f(pt), originLocalTransform_)));
+				cv::Point3f pt(mapPoints[i]->GetWorldPos());
+				pcl::PointXYZ ptt = pcl::transformPoint(pcl::PointXYZ(pt.x, pt.y, pt.z), fixRot);
+				info->localMap.insert(std::make_pair(mapPoints[i]->mnId, cv::Point3f(ptt.x, ptt.y, ptt.z)));
 			}
 		}
 	}

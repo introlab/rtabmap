@@ -133,7 +133,9 @@ OdometryOkvis::OdometryOkvis(const ParametersMap & parameters) :
 	okvisEstimator_(0),
 #endif
 	okvisParameters_(parameters),
-	imagesProcessed_(0)
+	imagesProcessed_(0),
+	previousPose_(Transform::getIdentity()),
+	initGravity_(false)
 {
 #ifdef RTABMAP_OKVIS
 	Parameters::parse(parameters, Parameters::kOdomOKVISConfigPath(), configFilename_);
@@ -160,17 +162,22 @@ void OdometryOkvis::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
 #ifdef RTABMAP_OKVIS
-	if(okvisEstimator_)
+	if(!initGravity_)
 	{
-		delete okvisEstimator_;
-		okvisEstimator_ = 0;
-	}
-	lastImu_ = IMU();
+		if(okvisEstimator_)
+		{
+			delete okvisEstimator_;
+			okvisEstimator_ = 0;
+		}
+		lastImu_ = IMU();
+		imagesProcessed_ = 0;
+		previousPose_.setIdentity();
 
-	delete okvisCallbackHandler_;
-	okvisCallbackHandler_ = new OkvisCallbackHandler();
+		delete okvisCallbackHandler_;
+		okvisCallbackHandler_ = new OkvisCallbackHandler();
+	}
+	initGravity_ = false;
 #endif
-	imagesProcessed_ = 0;
 }
 
 // return not null transform if odometry is correctly computed
@@ -452,8 +459,21 @@ Transform OdometryOkvis::computeTransform(
 		if(!p.isNull())
 		{
 			p = fixPos * p * fixRot;
+
+			if(this->getPose().rotation().isIdentity())
+			{
+				initGravity_ = true;
+				this->reset(this->getPose()*p.rotation());
+			}
+
+			if(previousPose_.isIdentity())
+			{
+				previousPose_ = p;
+			}
+
 			// make it incremental
-			t = this->getPose().inverse()*p;
+			t = previousPose_.inverse()*p;
+			previousPose_ = p;
 
 			if(info)
 			{

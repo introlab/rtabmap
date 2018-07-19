@@ -2361,7 +2361,7 @@ bool Rtabmap::process(
 				}
 				if(maxLinearLink)
 				{
-					UINFO("Max optimization error = %f m (link %d->%d, var=%f, %f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
+					UINFO("Max optimization error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
 
 					float stddev = sqrt(maxLinearLink->transVariance());
 					maxLinearErrorRatio = maxLinearError/stddev;

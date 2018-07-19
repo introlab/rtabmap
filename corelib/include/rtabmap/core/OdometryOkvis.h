@@ -59,6 +59,8 @@ private:
 	ParametersMap okvisParameters_;
 	IMU lastImu_; // only used for initialization
 	int imagesProcessed_;
+	Transform previousPose_;
+	bool initGravity_;
 };
 
 }

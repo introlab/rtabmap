@@ -2538,7 +2538,26 @@ Transform Memory::computeTransform(
 				{
 					int id = iter->first;
 					const Signature * s = this->getSignature(id);
-					CameraModel model = s->sensorData().cameraModels()[0];
+					CameraModel model;
+					if(s->sensorData().cameraModels().size() == 1 && s->sensorData().cameraModels().at(0).isValidForProjection())
+					{
+						model = s->sensorData().cameraModels()[0];
+					}
+					else if(s->sensorData().stereoCameraModel().isValidForProjection())
+					{
+						model = s->sensorData().stereoCameraModel().left();
+						// Set Tx for stereo BA
+						model = CameraModel(model.fx(),
+								model.fy(),
+								model.cx(),
+								model.cy(),
+								model.localTransform(),
+								-s->sensorData().stereoCameraModel().baseline()*model.fx());
+					}
+					else
+					{
+						UFATAL("no valid camera model to use local bundle adjustment on loop closure!");
+					}
 					bundleModels.insert(std::make_pair(id, model));
 					Transform invLocalTransform = model.localTransform().inverse();
 					if(iter->second.isValid())

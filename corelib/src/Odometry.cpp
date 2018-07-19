@@ -297,7 +297,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 							R(0,0), R(0,1), R(0,2), 0,
 							R(1,0), R(1,1), R(1,2), 0,
 							R(2,0), R(2,1), R(2,2), coefficients.values.at(3));
-					_pose *= rotation;
+					this->reset(rotation);
 					success = true;
 				}
 			}
@@ -316,7 +316,7 @@ Transform Odometry::process(SensorData & data, const Transform & guessIn, Odomet
 	Transform guess = dt>0.0 && guessFromMotion_ && !previousVelocityTransform_.isNull()?Transform::getIdentity():Transform();
 	if(!(dt>0.0 || (dt == 0.0 && previousVelocityTransform_.isNull())))
 	{
-		if(guessFromMotion_)
+		if(guessFromMotion_ && !data.imageRaw().empty())
 		{
 			UERROR("Guess from motion is set but dt is invalid! Odometry is then computed without guess. (dt=%f previous transform=%s)", dt, previousVelocityTransform_.prettyPrint().c_str());
 		}

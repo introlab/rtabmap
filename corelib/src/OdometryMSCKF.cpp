@@ -747,7 +747,9 @@ OdometryMSCKF::OdometryMSCKF(const ParametersMap & parameters) :
 imageProcessor_(0),
 msckf_(0),
 parameters_(parameters),
-flipXY_(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0)
+flipXY_(-1, 0, 0, 0, 0, -1, 0, 0, 0, 0, 1, 0),
+previousPose_(Transform::getIdentity()),
+initGravity_(false)
 #endif
 {
 }
@@ -771,17 +773,22 @@ void OdometryMSCKF::reset(const Transform & initialPose)
 {
 	Odometry::reset(initialPose);
 #ifdef RTABMAP_MSCKF_VIO
-	if(imageProcessor_)
+	if(!initGravity_)
 	{
-		delete imageProcessor_;
-		imageProcessor_ = 0;
+		if(imageProcessor_)
+		{
+			delete imageProcessor_;
+			imageProcessor_ = 0;
+		}
+		if(msckf_)
+		{
+			delete msckf_;
+			msckf_ = 0;
+		}
+		lastImu_ = IMU();
+		previousPose_.setIdentity();
 	}
-	if(msckf_)
-	{
-		delete msckf_;
-		msckf_ = 0;
-	}
-	lastImu_ = IMU();
+	initGravity_ = false;
 #endif
 }
 
@@ -898,10 +905,24 @@ Transform OdometryMSCKF::computeTransform(
 
 			if(!p.isNull())
 			{
-				// make it incremental
+				// pose in rtabmap/ros coordinates
 				p = flipXY_*p*lastImu_.localTransform();
-				Transform invCurrentPose = this->getPose().inverse();
-				t = invCurrentPose*p;
+
+				if(this->getPose().rotation().isIdentity())
+				{
+					initGravity_ = true;
+					this->reset(this->getPose()*p.rotation());
+				}
+
+				if(previousPose_.isIdentity())
+				{
+					previousPose_ = p;
+				}
+
+				// make it incremental
+				Transform previousPoseInv = previousPose_.inverse();
+				t = previousPoseInv*p;
+				previousPose_ = p;
 
 				if(info)
 				{
@@ -915,7 +936,7 @@ Transform OdometryMSCKF::computeTransform(
 					cv::Matx31f covWorldFrame(twistCov.at<double>(0, 0),
 											  twistCov.at<double>(1, 1),
 											  twistCov.at<double>(2, 2));
-					cv::Matx31f covBaseFrame = cv::Matx33f(invCurrentPose.rotationMatrix()) * covWorldFrame;
+					cv::Matx31f covBaseFrame = cv::Matx33f(previousPoseInv.rotationMatrix()) * covWorldFrame;
 					// we set only diagonal values as there is an issue with g2o and off-diagonal values
 					info->reg.covariance.at<double>(0, 0) = fabs(covBaseFrame.val[0])/10.0;
 					info->reg.covariance.at<double>(1, 1) = fabs(covBaseFrame.val[1])/10.0;
@@ -928,7 +949,7 @@ Transform OdometryMSCKF::computeTransform(
 					{
 						if(localMap.get() && localMap->size())
 						{
-							Eigen::Affine3f flip = flipXY_.toEigen3f();
+							Eigen::Affine3f flip = (this->getPose()*previousPoseInv*flipXY_).toEigen3f();
 							for(unsigned int i=0; i<localMap->size(); ++i)
 							{
 								pcl::PointXYZ pt = pcl::transformPoint(localMap->at(i), flip);
@@ -942,10 +963,12 @@ Transform OdometryMSCKF::computeTransform(
 							float fy = data.stereoCameraModel().left().fy();
 							float cx = data.stereoCameraModel().left().cx();
 							float cy = data.stereoCameraModel().left().cy();
+							info->reg.inliersIDs.resize(measurements->features.size());
 							for(unsigned int i=0; i<measurements->features.size(); ++i)
 							{
 								info->newCorners[i].x = measurements->features[i].u0*fx+cx;
 								info->newCorners[i].y = measurements->features[i].v0*fy+cy;
+								info->reg.inliersIDs[i] = i;
 							}
 						}
 					}
