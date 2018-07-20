@@ -941,6 +941,18 @@ Transform OdometryMSCKF::computeTransform(
 					info->reg.covariance.at<double>(0, 0) = fabs(covBaseFrame.val[0])/10.0;
 					info->reg.covariance.at<double>(1, 1) = fabs(covBaseFrame.val[1])/10.0;
 					info->reg.covariance.at<double>(2, 2) = fabs(covBaseFrame.val[2])/10.0;
+					if(info->reg.covariance.at<double>(0, 0) < 0.0001)
+					{
+						info->reg.covariance.at<double>(0, 0) = 0.0001;
+					}
+					if(info->reg.covariance.at<double>(1, 1) < 0.0001)
+					{
+						info->reg.covariance.at<double>(1, 1) = 0.0001;
+					}
+					if(info->reg.covariance.at<double>(2, 2) < 0.0001)
+					{
+						info->reg.covariance.at<double>(2, 2) = 0.0001;
+					}
 					info->reg.covariance.at<double>(3, 3) = msckf_vio::IMUState::gyro_noise*10.0;
 					info->reg.covariance.at<double>(4, 4) = info->reg.covariance.at<double>(3, 3);
 					info->reg.covariance.at<double>(5, 5) = info->reg.covariance.at<double>(3, 3);

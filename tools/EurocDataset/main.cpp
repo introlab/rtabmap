@@ -338,7 +338,7 @@ int main(int argc, char * argv[])
 				printf("MH_01_easy detected with MSCFK odometry, ignoring first moving 440 images...\n");
 				((CameraStereoImages*)cameraThread.camera())->setStartIndex(440);
 			}
-			else if(seq.compare("MH_01_easy") == 0)
+			else if(seq.compare("MH_02_easy") == 0)
 			{
 				printf("MH_02_easy detected with MSCFK odometry, ignoring first moving 525 images...\n");
 				((CameraStereoImages*)cameraThread.camera())->setStartIndex(525);
@@ -573,9 +573,12 @@ int main(int argc, char * argv[])
 		// Save trajectory
 		printf("Saving trajectory ...\n");
 		std::map<int, Transform> poses;
+		std::map<int, Transform> vo_poses;
 		std::multimap<int, Link> links;
 		std::map<int, Signature> signatures;
 		std::map<int, double> stamps;
+		rtabmap.getGraph(vo_poses, links, false, true);
+		links.clear();
 		rtabmap.getGraph(poses, links, true, true, &signatures);
 		for(std::map<int, Signature>::iterator iter=signatures.begin(); iter!=signatures.end(); ++iter)
 		{
@@ -624,6 +627,25 @@ int main(int argc, char * argv[])
 			float rotational_std = 0.0f;
 			float rotational_min = 0.0f;
 			float rotational_max = 0.0f;
+			// vo performance
+			graph::calcRMSE(
+					groundTruth,
+					vo_poses,
+					translational_rmse,
+					translational_mean,
+					translational_median,
+					translational_std,
+					translational_min,
+					translational_max,
+					rotational_rmse,
+					rotational_mean,
+					rotational_median,
+					rotational_std,
+					rotational_min,
+					rotational_max);
+			float translational_rmse_vo = translational_rmse;
+			float rotational_rmse_vo = rotational_rmse;
+			// SLAM performance
 			graph::calcRMSE(
 					groundTruth,
 					poses,
@@ -640,8 +662,8 @@ int main(int argc, char * argv[])
 					rotational_min,
 					rotational_max);
 
-			printf("   translational_rmse=   %f m\n", translational_rmse);
-			printf("   rotational_rmse=      %f deg\n", rotational_rmse);
+			printf("   translational_rmse=   %f m   (vo = %f m)\n", translational_rmse, translational_rmse_vo);
+			printf("   rotational_rmse=      %f deg (vo = %f def)\n", rotational_rmse, rotational_rmse_vo);
 
 			FILE * pFile = 0;
 			std::string pathErrors = output+"/"+outputName+"_rmse.txt";

@@ -2352,9 +2352,12 @@ bool Rtabmap::process(
 								fabs(iter->second.transform().x() - t.x()),
 								fabs(iter->second.transform().y() - t.y()),
 								fabs(iter->second.transform().z() - t.z()));
-						if(linearError > maxLinearError)
+						float stddev = sqrt(iter->second.transVariance());
+						float linearErrorRatio = linearError/stddev;
+						if(linearErrorRatio > maxLinearErrorRatio)
 						{
 							maxLinearError = linearError;
+							maxLinearErrorRatio = linearErrorRatio;
 							maxLinearLink = &iter->second;
 						}
 					}
@@ -2363,8 +2366,6 @@ bool Rtabmap::process(
 				{
 					UINFO("Max optimization error = %f m (link %d->%d, var=%f, ratio error/std=%f)", maxLinearError, maxLinearLink->from(), maxLinearLink->to(), maxLinearLink->transVariance(), maxLinearError/sqrt(maxLinearLink->transVariance()));
 
-					float stddev = sqrt(maxLinearLink->transVariance());
-					maxLinearErrorRatio = maxLinearError/stddev;
 					if(maxLinearErrorRatio > _optimizationMaxLinearError)
 					{
 						UWARN("Rejecting all added loop closures (%d) in this "
@@ -2378,7 +2379,7 @@ bool Rtabmap::process(
 							  maxLinearLink->to(),
 							  maxLinearLink->type(),
 							  maxLinearError,
-							  stddev,
+							  sqrt(maxLinearLink->transVariance()),
 							  _optimizationMaxLinearError);
 						for(std::list<std::pair<int, int> >::iterator iter=loopClosureLinksAdded.begin(); iter!=loopClosureLinksAdded.end(); ++iter)
 						{

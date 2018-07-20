@@ -293,6 +293,7 @@ int main(int argc, char * argv[])
 					float bestScale = 1.0f;
 					float bestRMSE = -1;
 					float bestRMSEAng = -1;
+					float bestVoRMSE = -1;
 					Transform bestGtToMap = Transform::getIdentity();
 					float kitti_t_err = 0.0f;
 					float kitti_r_err = 0.0f;
@@ -335,6 +336,8 @@ int main(int argc, char * argv[])
 							for(float scale=outputScaled?0.900f:1.0f; scale<1.100f; scale+=0.001)
 							{
 								std::map<int, Transform> scaledPoses;
+								std::map<int, Transform> scaledOdomPoses;
+
 								for(std::map<int, Transform>::iterator iter=poses.begin(); iter!=poses.end(); ++iter)
 								{
 									Transform t = iter->second.clone();
@@ -342,6 +345,13 @@ int main(int argc, char * argv[])
 									t.y() *= scale;
 									t.z() *= scale;
 									scaledPoses.insert(std::make_pair(iter->first, t));
+
+									UASSERT(posesOut.find(iter->first)!=posesOut.end());
+									t = posesOut.at(iter->first).clone();
+									t.x() *= scale;
+									t.y() *= scale;
+									t.z() *= scale;
+									scaledOdomPoses.insert(std::make_pair(iter->first, t));
 								}
 								// compute RMSE statistics
 								float translational_rmse = 0.0f;
@@ -356,6 +366,24 @@ int main(int argc, char * argv[])
 								float rotational_std = 0.0f;
 								float rotational_min = 0.0f;
 								float rotational_max = 0.0f;
+
+								graph::calcRMSE(
+										groundTruth,
+										scaledOdomPoses,
+										translational_rmse,
+										translational_mean,
+										translational_median,
+										translational_std,
+										translational_min,
+										translational_max,
+										rotational_rmse,
+										rotational_mean,
+										rotational_median,
+										rotational_std,
+										rotational_min,
+										rotational_max);
+								float translational_rmse_vo = translational_rmse;
+
 								Transform gtToMap = graph::calcRMSE(
 										groundTruth,
 										scaledPoses,
@@ -377,6 +405,7 @@ int main(int argc, char * argv[])
 									break;
 								}
 								bestRMSE = translational_rmse;
+								bestVoRMSE = translational_rmse_vo;
 								bestRMSEAng = rotational_rmse;
 								bestScale = scale;
 								bestGtToMap = gtToMap;
@@ -461,12 +490,13 @@ int main(int argc, char * argv[])
 							}
 						}
 					}
-					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm) ang=%.1fdeg%s, slam: avg=%dms (max=%dms) loops=%d, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
+					printf("   %s (%d, s=%.3f):\terror lin=%.3fm (max=%.3fm, odom=%.3fm) ang=%.1fdeg%s, slam: avg=%dms (max=%dms) loops=%d, odom: avg=%dms (max=%dms), camera: avg=%dms, %smap=%dMB\n",
 							fileName.c_str(),
 							(int)ids.size(),
 							bestScale,
 							bestRMSE,
 							maxRMSE,
+							bestVoRMSE,
 							bestRMSEAng,
 							!outputKittiError?"":uFormat(", KITTI: t_err=%.2f%% r_err=%.2f deg/100m", kitti_t_err, kitti_r_err*100).c_str(),
 							(int)uMean(slamTime), (int)uMax(slamTime),
