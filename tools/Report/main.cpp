@@ -333,6 +333,7 @@ int main(int argc, char * argv[])
 								}
 							}
 
+							outputScaled = outputScaled && groundTruth.size();
 							for(float scale=outputScaled?0.900f:1.0f; scale<1.100f; scale+=0.001)
 							{
 								std::map<int, Transform> scaledPoses;
