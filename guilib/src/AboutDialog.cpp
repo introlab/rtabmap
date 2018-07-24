@@ -87,6 +87,8 @@ AboutDialog::AboutDialog(QWidget * parent) :
 	_ui->label_freenect2_license->setEnabled(CameraFreenect2::available());
 	_ui->label_realsense->setText(CameraRealSense::available() ? "Yes" : "No");
 	_ui->label_realsense_license->setEnabled(CameraRealSense::available());
+	_ui->label_realsense2->setText(CameraRealSense2::available() ? "Yes" : "No");
+	_ui->label_realsense2_license->setEnabled(CameraRealSense2::available());
 	_ui->label_dc1394->setText(CameraStereoDC1394::available()?"Yes":"No");
 	_ui->label_dc1394_license->setEnabled(CameraStereoDC1394::available());
 	_ui->label_flycapture2->setText(CameraStereoFlyCapture2::available()?"Yes":"No");
@@ -136,6 +138,30 @@ AboutDialog::AboutDialog(QWidget * parent) :
 #else
 	_ui->label_orbslam2->setText("No");
 	_ui->label_orbslam2_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_OKVIS
+	_ui->label_okvis->setText("Yes");
+	_ui->label_okvis_license->setEnabled(true);
+#else
+	_ui->label_okvis->setText("No");
+	_ui->label_okvis_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_LOAM
+	_ui->label_loam->setText("Yes");
+	_ui->label_loam_license->setEnabled(true);
+#else
+	_ui->label_loam->setText("No");
+	_ui->label_loam_license->setEnabled(false);
+#endif
+
+#ifdef RTABMAP_MSCKF_VIO
+	_ui->label_msckf->setText("Yes");
+	_ui->label_msckf_license->setEnabled(true);
+#else
+	_ui->label_msckf->setText("No");
+	_ui->label_msckf_license->setEnabled(false);
 #endif
 
 }
