@@ -354,6 +354,7 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	connect(_ui->checkBox_odom_onlyInliersShown, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->radioButton_posteriorGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->radioButton_wordsGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
+	connect(_ui->radioButton_localizationsGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->radioButton_nochangeGraphView, SIGNAL(toggled(bool)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->checkbox_odomDisabled, SIGNAL(stateChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
 	connect(_ui->odom_registration, SIGNAL(currentIndexChanged(int)), this, SLOT(makeObsoleteGeneralPanel()));
@@ -1488,6 +1489,7 @@ void PreferencesDialog::resetSettings(QGroupBox * groupBox)
 		_ui->checkBox_odom_onlyInliersShown->setChecked(false);
 		_ui->radioButton_posteriorGraphView->setChecked(true);
 		_ui->radioButton_wordsGraphView->setChecked(false);
+		_ui->radioButton_localizationsGraphView->setChecked(false);
 		_ui->radioButton_nochangeGraphView->setChecked(false);
 		_ui->checkbox_odomDisabled->setChecked(false);
 		_ui->checkbox_groundTruthAlign->setChecked(true);
@@ -1906,6 +1908,7 @@ void PreferencesDialog::readGuiSettings(const QString & filePath)
 	_ui->checkBox_odom_onlyInliersShown->setChecked(settings.value("odomOnlyInliersShown", _ui->checkBox_odom_onlyInliersShown->isChecked()).toBool());
 	_ui->radioButton_posteriorGraphView->setChecked(settings.value("posteriorGraphView", _ui->radioButton_posteriorGraphView->isChecked()).toBool());
 	_ui->radioButton_wordsGraphView->setChecked(settings.value("wordsGraphView", _ui->radioButton_wordsGraphView->isChecked()).toBool());
+	_ui->radioButton_localizationsGraphView->setChecked(settings.value("localizationsGraphView", _ui->radioButton_localizationsGraphView->isChecked()).toBool());
 	_ui->radioButton_nochangeGraphView->setChecked(settings.value("nochangeGraphView", _ui->radioButton_nochangeGraphView->isChecked()).toBool());
 	_ui->checkbox_odomDisabled->setChecked(settings.value("odomDisabled", _ui->checkbox_odomDisabled->isChecked()).toBool());
 	_ui->odom_registration->setCurrentIndex(settings.value("odomRegistration", _ui->odom_registration->currentIndex()).toInt());
@@ -2326,6 +2329,7 @@ void PreferencesDialog::writeGuiSettings(const QString & filePath) const
 	settings.setValue("odomOnlyInliersShown", _ui->checkBox_odom_onlyInliersShown->isChecked());
 	settings.setValue("posteriorGraphView",   _ui->radioButton_posteriorGraphView->isChecked());
 	settings.setValue("wordsGraphView",       _ui->radioButton_wordsGraphView->isChecked());
+	settings.setValue("localizationsGraphView", _ui->radioButton_localizationsGraphView->isChecked());
 	settings.setValue("nochangeGraphView",    _ui->radioButton_nochangeGraphView->isChecked());
 	settings.setValue("odomDisabled",         _ui->checkbox_odomDisabled->isChecked());
 	settings.setValue("odomRegistration",     _ui->odom_registration->currentIndex());
@@ -4448,6 +4452,10 @@ bool PreferencesDialog::isPosteriorGraphView() const
 bool PreferencesDialog::isWordsCountGraphView() const
 {
 	return _ui->radioButton_wordsGraphView->isChecked();
+}
+bool PreferencesDialog::isLocalizationsCountGraphView() const
+{
+	return _ui->radioButton_localizationsGraphView->isChecked();
 }
 bool PreferencesDialog::isOdomDisabled() const
 {

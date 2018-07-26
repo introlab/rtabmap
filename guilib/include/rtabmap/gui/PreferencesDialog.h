@@ -155,6 +155,7 @@ public:
 	bool isOdomOnlyInliersShown() const;
 	bool isPosteriorGraphView() const;
 	bool isWordsCountGraphView() const;
+	bool isLocalizationsCountGraphView() const;
 	int getOdomRegistrationApproach() const;
 	bool isOdomDisabled() const;
 	bool isGroundTruthAligned() const;

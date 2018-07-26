@@ -67,6 +67,8 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Loop, Optimization_max_error_ratio, );
 	RTABMAP_STATS(Loop, Optimization_error, );
 	RTABMAP_STATS(Loop, Optimization_iterations, );
+	RTABMAP_STATS(Loop, Linear_variance,);
+	RTABMAP_STATS(Loop, Angular_variance,);
 
 	RTABMAP_STATS(Proximity, Time_detections,);
 	RTABMAP_STATS(Proximity, Space_last_detection_id,);

@@ -1739,6 +1739,10 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			}
 			_refIds.push_back(stat.refImageId());
 			_loopClosureIds.push_back(matchId);
+			if(matchId > 0)
+			{
+				_cachedLocalizationsCount[matchId] += 1.0f;
+			}
 
 			//update image views
 			{
@@ -1956,11 +1960,18 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				_ui->graphicsView_graphView->updatePosterior(stat.posterior());
 			}
-			else if(_preferencesDialog->isWordsCountGraphView() &&
-					_preferencesDialog->isRGBDMode() &&
-					_cachedWordsCount.size())
+			else if(_preferencesDialog->isRGBDMode())
 			{
-				_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+				if(_preferencesDialog->isWordsCountGraphView() &&
+						_cachedWordsCount.size())
+				{
+					_ui->graphicsView_graphView->updatePosterior(_cachedWordsCount, (float)_preferencesDialog->getKpMaxFeatures());
+				}
+				else if(_preferencesDialog->isLocalizationsCountGraphView() &&
+						_cachedLocalizationsCount.size())
+				{
+					_ui->graphicsView_graphView->updatePosterior(_cachedLocalizationsCount, 1.0f);
+				}
 			}
 			// update local path on the graph view
 			_ui->graphicsView_graphView->updateLocalPath(stat.localPath());
@@ -6268,6 +6279,7 @@ void MainWindow::clearTheCache()
 	_ui->label_stats_loopClosuresRejected->setText("0");
 	_refIds.clear();
 	_loopClosureIds.clear();
+	_cachedLocalizationsCount.clear();
 	_ui->label_refId->clear();
 	_ui->label_matchId->clear();
 	_ui->graphicsView_graphView->clearAll();

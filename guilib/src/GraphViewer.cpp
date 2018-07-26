@@ -822,30 +822,28 @@ void GraphViewer::updateMap(const cv::Mat & map8U, float resolution, float xMin,
 	}
 }
 
-void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float fixedMax)
+void GraphViewer::updatePosterior(const std::map<int, float> & posterior, float max)
 {
 	//find max
-	float max = 0.0f;
-	for(std::map<int, float>::const_iterator iter = posterior.begin(); iter!=posterior.end(); ++iter)
+	if(max <= 0.0f)
 	{
-		if(iter->first > 0 && iter->second>max)
+		for(std::map<int, float>::const_iterator iter = posterior.begin(); iter!=posterior.end(); ++iter)
 		{
-			max = iter->second;
+			if(iter->first > 0 && iter->second>max)
+			{
+				max = iter->second;
+			}
 		}
 	}
 	if(max > 0.0f)
 	{
-		if(fixedMax > 0.0f && max < fixedMax)
-		{
-			max = fixedMax;
-		}
 		for(QMap<int, NodeItem*>::iterator iter = _nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 		{
 			std::map<int,float>::const_iterator jter = posterior.find(iter.key());
 			if(jter != posterior.end())
 			{
-				//UDEBUG("id=%d max=%f hyp=%f color = %f", iter.key(), max, jter->second, (1-jter->second/max)*240.0f/360.0f);
-				iter.value()->setColor(QColor::fromHsvF((1-jter->second/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
+				float v = jter->second>max?max:jter->second;
+				iter.value()->setColor(QColor::fromHsvF((1-v/max)*240.0f/360.0f, 1, 1, 1)); //0=red 240=blue
 			}
 			else
 			{

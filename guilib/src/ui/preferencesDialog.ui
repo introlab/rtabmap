@@ -94,8 +94,8 @@
           <property name="geometry">
            <rect>
             <x>0</x>
-            <y>-1144</y>
-            <width>681</width>
+            <y>0</y>
+            <width>678</width>
             <height>2811</height>
            </rect>
           </property>
@@ -103,16 +103,7 @@
            <property name="spacing">
             <number>0</number>
            </property>
-           <property name="leftMargin">
-            <number>0</number>
-           </property>
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
+           <property name="margin">
             <number>0</number>
            </property>
            <item>
@@ -126,7 +117,7 @@
                 <enum>QFrame::Raised</enum>
                </property>
                <property name="currentIndex">
-                <number>18</number>
+                <number>0</number>
                </property>
                <widget class="QWidget" name="page_22">
                 <layout class="QVBoxLayout" name="verticalLayout_29" stretch="0,1">
@@ -310,6 +301,49 @@
                      </layout>
                     </item>
                     <item>
+                     <widget class="QGroupBox" name="groupBox_2">
+                      <property name="title">
+                       <string>Save/Load Settings</string>
+                      </property>
+                      <layout class="QHBoxLayout" name="horizontalLayout_9">
+                       <item>
+                        <widget class="QPushButton" name="pushButton_loadConfig">
+                         <property name="text">
+                          <string>Load settings (*.ini) ...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="pushButton_saveConfig">
+                         <property name="text">
+                          <string>Save settings (*.ini) ...</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <widget class="QPushButton" name="pushButton_resetConfig">
+                         <property name="text">
+                          <string>Reset all settings</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_4">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>40</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
                      <widget class="QGroupBox" name="groupBox_5">
                       <property name="title">
                        <string>Loop Closure Detection</string>
@@ -384,7 +418,16 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="1">
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_29">
+                      <property name="title">
+                       <string>Graph View</string>
+                      </property>
+                      <layout class="QGridLayout" name="gridLayout_104" columnstretch="0,1">
+                       <item row="0" column="1">
                         <widget class="QLabel" name="label_222">
                          <property name="text">
                           <string>Show loop closure hypotheses on the graph view. Nodes are colorized from blue to red depending on the highest hypothesis (which is red). Posterior hypotheses should be published. </string>
@@ -397,8 +440,8 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="3" column="0">
-                        <widget class="QRadioButton" name="radioButton_posteriorGraphView">
+                       <item row="1" column="0">
+                        <widget class="QRadioButton" name="radioButton_wordsGraphView">
                          <property name="text">
                           <string/>
                          </property>
@@ -407,7 +450,17 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="1">
+                       <item row="0" column="0">
+                        <widget class="QRadioButton" name="radioButton_posteriorGraphView">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
                         <widget class="QLabel" name="label_478">
                          <property name="text">
                           <string>Show 3D visual words count on the graph view. Nodes are colorized from blue to red depending on the maximum visual features extracted (which is red).</string>
@@ -420,24 +473,14 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="4" column="0">
-                        <widget class="QRadioButton" name="radioButton_wordsGraphView">
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="5" column="0">
+                       <item row="3" column="0">
                         <widget class="QRadioButton" name="radioButton_nochangeGraphView">
                          <property name="text">
                           <string/>
                          </property>
                         </widget>
                        </item>
-                       <item row="5" column="1">
+                       <item row="3" column="1">
                         <widget class="QLabel" name="label_479">
                          <property name="text">
                           <string>No change of graph color.</string>
@@ -450,7 +493,38 @@
                          </property>
                         </widget>
                        </item>
+                       <item row="2" column="1">
+                        <widget class="QLabel" name="label_481">
+                         <property name="text">
+                          <string>Show nodes on which loop closures or localizations happened in red.</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                         <property name="textInteractionFlags">
+                          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByMouse</set>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
+                        <widget class="QRadioButton" name="radioButton_localizationsGraphView">
+                         <property name="text">
+                          <string/>
+                         </property>
+                         <property name="checked">
+                          <bool>false</bool>
+                         </property>
+                        </widget>
+                       </item>
                       </layout>
+                      <zorder>radioButton_posteriorGraphView</zorder>
+                      <zorder>radioButton_wordsGraphView</zorder>
+                      <zorder>label_478</zorder>
+                      <zorder>label_222</zorder>
+                      <zorder>label_479</zorder>
+                      <zorder>radioButton_nochangeGraphView</zorder>
+                      <zorder>label_481</zorder>
+                      <zorder>radioButton_localizationsGraphView</zorder>
                      </widget>
                     </item>
                     <item>
@@ -505,49 +579,6 @@ Show a yellow background when the number of odometry inliers goes under this thr
                           <number>50</number>
                          </property>
                         </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_2">
-                      <property name="title">
-                       <string>Save/Load Settings</string>
-                      </property>
-                      <layout class="QHBoxLayout" name="horizontalLayout_9">
-                       <item>
-                        <widget class="QPushButton" name="pushButton_loadConfig">
-                         <property name="text">
-                          <string>Load settings (*.ini) ...</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="pushButton_saveConfig">
-                         <property name="text">
-                          <string>Save settings (*.ini) ...</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="pushButton_resetConfig">
-                         <property name="text">
-                          <string>Reset all settings</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <spacer name="horizontalSpacer_4">
-                         <property name="orientation">
-                          <enum>Qt::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>40</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
                        </item>
                       </layout>
                      </widget>
@@ -5053,16 +5084,7 @@ when using the file type, logs are saved in LogRtabmap.txt (located in the worki
                        <string>Directory of images (optional settings)</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_93">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
+                       <property name="margin">
                         <number>0</number>
                        </property>
                        <item>
@@ -15082,16 +15104,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15171,16 +15184,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>
@@ -15292,16 +15296,7 @@ Lower the ratio -&gt; higher the precision. 0 means disabled, matching the neare
                         <property name="spacing">
                          <number>0</number>
                         </property>
-                        <property name="leftMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="topMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="rightMargin">
-                         <number>0</number>
-                        </property>
-                        <property name="bottomMargin">
+                        <property name="margin">
                          <number>0</number>
                         </property>
                         <item>

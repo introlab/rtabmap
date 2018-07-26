@@ -1902,6 +1902,8 @@ bool Rtabmap::process(
 	std::list<std::pair<int, int> > loopClosureLinksAdded;
 	int loopClosureVisualInliers = 0; // for statistics
 	int loopClosureVisualMatches = 0;
+	float loopClosureLinearVariance = 0.0f;
+	float loopClosureAngularVariance = 0.0f;
 	if(_loopClosureHypothesis.first>0)
 	{
 		//Compute transform if metric data are present
@@ -1913,6 +1915,11 @@ bool Rtabmap::process(
 			transform = _memory->computeTransform(_loopClosureHypothesis.first, signature->id(), Transform(), &info);
 			loopClosureVisualInliers = info.inliers;
 			loopClosureVisualMatches = info.matches;
+			if(info.covariance.cols == 6 && info.covariance.rows == 6 && info.covariance.type() == CV_64FC1)
+			{
+				loopClosureLinearVariance = info.covariance.at<double>(0,0);
+				loopClosureAngularVariance = info.covariance.at<double>(3,3);
+			}
 			rejectedHypothesis = transform.isNull();
 			if(rejectedHypothesis)
 			{
@@ -2038,19 +2045,18 @@ bool Rtabmap::process(
 									_memory->addLink(Link(signature->id(), nearestId, Link::kGlobalClosure, transform, info.covariance.inv()));
 									loopClosureLinksAdded.push_back(std::make_pair(signature->id(), nearestId));
 
-									if(loopClosureVisualInliers == 0)
-									{
-										loopClosureVisualInliers = info.inliers;
-									}
-									if(loopClosureVisualMatches == 0)
-									{
-										loopClosureVisualMatches = info.matches;
-									}
-
 									if(_loopClosureHypothesis.first == 0)
 									{
 										++proximityDetectionsAddedVisually;
 										lastProximitySpaceClosureId = nearestId;
+
+										loopClosureVisualInliers = info.inliers;
+										loopClosureVisualMatches = info.matches;
+										if(info.covariance.cols == 6 && info.covariance.rows == 6 && info.covariance.type() == CV_64FC1)
+										{
+											loopClosureLinearVariance = info.covariance.at<double>(0,0);
+											loopClosureAngularVariance = info.covariance.at<double>(3,3);
+										}
 									}
 								}
 								else
@@ -2468,6 +2474,8 @@ bool Rtabmap::process(
 			statistics_.addStatistic(Statistics::kLoopHypothesis_ratio(), hypothesisRatio);
 			statistics_.addStatistic(Statistics::kLoopVisual_inliers(), loopClosureVisualInliers);
 			statistics_.addStatistic(Statistics::kLoopVisual_matches(), loopClosureVisualMatches);
+			statistics_.addStatistic(Statistics::kLoopLinear_variance(), loopClosureLinearVariance);
+			statistics_.addStatistic(Statistics::kLoopAngular_variance(), loopClosureAngularVariance);
 			statistics_.addStatistic(Statistics::kLoopLast_id(), _memory->getLastGlobalLoopClosureId());
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error(), maxLinearError);
 			statistics_.addStatistic(Statistics::kLoopOptimization_max_error_ratio(), maxLinearErrorRatio);
