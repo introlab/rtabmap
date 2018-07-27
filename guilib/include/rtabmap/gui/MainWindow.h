@@ -112,7 +112,7 @@ public:
 public Q_SLOTS:
 	virtual void processStats(const rtabmap::Statistics & stat);
 	void updateCacheFromDatabase(const QString & path);
-	void openDatabase(const QString & path);
+	void openDatabase(const QString & path, const rtabmap::ParametersMap & overridedParameters = rtabmap::ParametersMap());
 	void updateParameters(const rtabmap::ParametersMap & parameters);
 
 protected:

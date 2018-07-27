@@ -2398,6 +2398,7 @@ Transform Memory::computeTransform(
 		RegistrationInfo * info,
 		bool useKnownCorrespondencesIfPossible) const
 {
+	UDEBUG("");
 	Transform transform;
 
 	// make sure we have all data needed
@@ -2489,6 +2490,7 @@ Transform Memory::computeTransform(
 			const std::map<int, Link> & links = fromS.getLinks();
 			{
 				const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(fromS.getWords3());
+				UDEBUG("fromS.getWords3()=%d  uniques=%d", (int)fromS.getWords3().size(), (int)words3.size());
 				for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
 				{
 					if(util3d::isFinite(jter->second))
@@ -2499,6 +2501,7 @@ Transform Memory::computeTransform(
 					}
 				}
 			}
+			UDEBUG("words3DMap=%d", (int)words3DMap.size());
 
 			for(std::map<int, Link>::const_iterator iter=links.begin(); iter!=links.end(); ++iter)
 			{
@@ -2507,7 +2510,9 @@ Transform Memory::computeTransform(
 				const std::map<int, cv::Point3f> & words3 = uMultimapToMapUnique(s->getWords3());
 				for(std::map<int, cv::Point3f>::const_iterator jter=words3.begin(); jter!=words3.end(); ++jter)
 				{
-					if(util3d::isFinite(jter->second) && words3DMap.find(jter->first) == words3DMap.end())
+					if( jter->first > 0 &&
+						util3d::isFinite(jter->second) &&
+					    words3DMap.find(jter->first) == words3DMap.end())
 					{
 						words3DMap.insert(std::make_pair(jter->first, util3d::transformPoint(jter->second, iter->second.transform())));
 						wordsMap.insert(*s->getWords().find(jter->first));
@@ -2515,6 +2520,7 @@ Transform Memory::computeTransform(
 					}
 				}
 			}
+			UDEBUG("words3DMap=%d", (int)words3DMap.size());
 			Signature tmpFrom2(fromS.id());
 			tmpFrom2.setWords3(words3DMap);
 			tmpFrom2.setWords(wordsMap);
@@ -2537,7 +2543,15 @@ Transform Memory::computeTransform(
 				for(std::map<int, Link>::iterator iter=links.begin(); iter!=links.end(); ++iter)
 				{
 					int id = iter->first;
-					const Signature * s = this->getSignature(id);
+					const Signature * s;
+					if(id == tmpTo.id())
+					{
+						s = &tmpTo; // reuse matched words
+					}
+					else
+					{
+						s = this->getSignature(id);
+					}
 					CameraModel model;
 					if(s->sensorData().cameraModels().size() == 1 && s->sensorData().cameraModels().at(0).isValidForProjection())
 					{
@@ -2572,7 +2586,8 @@ Transform Memory::computeTransform(
 					const std::map<int,cv::KeyPoint> & words = uMultimapToMapUnique(s->getWords());
 					for(std::map<int, cv::KeyPoint>::const_iterator jter=words.begin(); jter!=words.end(); ++jter)
 					{
-						if(points3DMap.find(jter->first)!=points3DMap.end())
+						if(points3DMap.find(jter->first)!=points3DMap.end() &&
+							(id == tmpTo.id() || jter->first > 0))
 						{
 							std::multimap<int, cv::Point3f>::const_iterator kter = s->getWords3().find(jter->first);
 							cv::Point3f pt3d = util3d::transformPoint(kter->second, invLocalTransform);
@@ -3990,11 +4005,12 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				allWordIds[quantizedToRawIndices[i]] = *iter;
 				++i;
 			}
+			int negIndex = -1;
 			for(i=0; i<(int)allWordIds.size(); ++i)
 			{
 				if(allWordIds[i] < 0)
 				{
-					allWordIds[i] = -1*(i+1);
+					allWordIds[i] = negIndex--;
 				}
 			}
 			wordIds = uVectorToList(allWordIds);
@@ -4087,14 +4103,26 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			UDEBUG("inliers=%d", (int)inliers.size());
 
 			// words3D should have the same size than words
+			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			UASSERT(words.size() == words3D.size());
 			int added3DPointsWithoutDepth = 0;
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
 				std::multimap<int, cv::Point3f>::iterator iter3D = words3D.find(iter->first);
-				UASSERT(iter3D!=words3D.end());
-				if(!util3d::isFinite(iter3D->second) && jter != inliers.end())
+				if(iter3D == words3D.end())
+				{
+					if(jter != inliers.end())
+					{
+						words3D.insert(std::make_pair(iter->first, jter->second));
+						++added3DPointsWithoutDepth;
+					}
+					else
+					{
+						words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
+					}
+				}
+				else if(!util3d::isFinite(iter3D->second) && jter != inliers.end())
 				{
 					iter3D->second = jter->second;
 					++added3DPointsWithoutDepth;

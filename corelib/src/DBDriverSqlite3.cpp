@@ -3957,7 +3957,7 @@ void DBDriverSqlite3::saveQuery(const std::list<VisualWord *> & words) const
 
 					//execute query
 					rc=sqlite3_step(ppStmt);
-					UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());
+					UASSERT_MSG(rc == SQLITE_DONE, uFormat("DB error (%s): %s (word=%d)", _version.c_str(), sqlite3_errmsg(_ppDb), w->id()).c_str());
 
 					rc = sqlite3_reset(ppStmt);
 					UASSERT_MSG(rc == SQLITE_OK, uFormat("DB error (%s): %s", _version.c_str(), sqlite3_errmsg(_ppDb)).c_str());

@@ -4511,7 +4511,7 @@ void MainWindow::openDatabase()
 	}
 }
 
-void MainWindow::openDatabase(const QString & path)
+void MainWindow::openDatabase(const QString & path, const ParametersMap & overridedParameters)
 {
 	if(_state != MainWindow::kIdle)
 	{
@@ -4546,6 +4546,8 @@ void MainWindow::openDatabase(const QString & path)
 				{
 					parameters.insert(*iter);
 				}
+
+				uInsert(parameters, overridedParameters);
 
 				ParametersMap currentParameters = _preferencesDialog->getAllParameters();
 				ParametersMap differentParameters;

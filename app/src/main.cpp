@@ -85,11 +85,7 @@ int main(int argc, char* argv[])
     
     if(!database.empty())
     {
-    	mainWindow->openDatabase(database.c_str());
-    }
-    if(parameters.size())
-    {
-    	mainWindow->updateParameters(parameters);
+    	mainWindow->openDatabase(database.c_str(), parameters);
     }
 
 	// Now wait for application to finish

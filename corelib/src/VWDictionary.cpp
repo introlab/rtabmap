@@ -154,7 +154,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 					driver->load(this, false);
 					for(std::map<int, VisualWord*>::iterator iter=_visualWords.begin(); iter!=_visualWords.end(); ++iter)
 					{
-						iter->second->setSaved(false);
+						iter->second->setSaved(true);
 					}
 					_incrementalDictionary = _visualWords.size()==0;
 					driver->closeConnection(false);
@@ -222,6 +222,7 @@ void VWDictionary::setFixedDictionary(const std::string & dictionaryPath)
 								}
 
 								VisualWord * vw = new VisualWord(id, descriptor, 0);
+								vw->setSaved(true);
 								_visualWords.insert(_visualWords.end(), std::pair<int, VisualWord*>(id, vw));
 								_notIndexedWords.insert(_notIndexedWords.end(), id);
 								_unusedWords.insert(_unusedWords.end(), std::pair<int, VisualWord*>(id, vw));

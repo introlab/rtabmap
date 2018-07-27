@@ -1051,16 +1051,31 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		UDEBUG("fill 3D points to g2o...");
 		const int stepVertexId = poses.rbegin()->first+1;
+		int negVertexOffset = stepVertexId;
+		if(wordReferences.size() && wordReferences.rbegin()->first>0)
+		{
+			negVertexOffset += wordReferences.rbegin()->first;
+		}
+		UDEBUG("stepVertexId=%d, negVertexOffset=%d", stepVertexId, negVertexOffset);
 		std::list<g2o::OptimizableGraph::Edge*> edges;
 		for(std::map<int, std::map<int, cv::Point3f> >::const_iterator iter = wordReferences.begin(); iter!=wordReferences.end(); ++iter)
 		{
-			if(points3DMap.find(iter->first) != points3DMap.end())
+			int id = iter->first;
+			if(points3DMap.find(id) != points3DMap.end())
 			{
-				cv::Point3f pt3d = points3DMap.at(iter->first);
+				cv::Point3f pt3d = points3DMap.at(id);
 				g2o::VertexSBAPointXYZ* vpt3d = new g2o::VertexSBAPointXYZ();
 
 				vpt3d->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
-				vpt3d->setId(stepVertexId + iter->first);
+				if(id<0)
+				{
+					vpt3d->setId(negVertexOffset + id*-1);
+				}
+				else
+				{
+					vpt3d->setId(stepVertexId + id);
+				}
+				UASSERT(vpt3d->id() > 0);
 				vpt3d->setMarginalized(true);
 				optimizer.addVertex(vpt3d);
 
@@ -1218,7 +1233,15 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 						UDEBUG("Ignoring edge (%d<->%d) d=%f var=%f kernel=%f chi2=%f", (*iter)->vertex(0)->id()-stepVertexId, (*iter)->vertex(1)->id(), d, 1.0/((g2o::EdgeProjectP2SC*)(*iter))->information()(0,0), (*iter)->robustKernel()->delta(), (*iter)->chi2());
 #endif
 
-						cv::Point3f pt3d = points3DMap.at((*iter)->vertex(0)->id()-stepVertexId);
+						cv::Point3f pt3d;
+						if((*iter)->vertex(0)->id() > negVertexOffset)
+						{
+							pt3d = points3DMap.at(negVertexOffset - (*iter)->vertex(0)->id());
+						}
+						else
+						{
+							pt3d = points3DMap.at((*iter)->vertex(0)->id()-stepVertexId);
+						}
 						((g2o::VertexSBAPointXYZ*)(*iter)->vertex(0))->setEstimate(Eigen::Vector3d(pt3d.x, pt3d.y, pt3d.z));
 
 						if(outliers)
@@ -1294,7 +1317,17 @@ std::map<int, Transform> OptimizerG2O::optimizeBA(
 
 		for(std::map<int, cv::Point3f>::iterator iter = points3DMap.begin(); iter!=points3DMap.end(); ++iter)
 		{
-			const g2o::VertexSBAPointXYZ* v = (const g2o::VertexSBAPointXYZ*)optimizer.vertex(stepVertexId + iter->first);
+			const g2o::VertexSBAPointXYZ* v;
+			int id = iter->first;
+			if(id<0)
+			{
+				v = (const g2o::VertexSBAPointXYZ*)optimizer.vertex(negVertexOffset + id*-1);
+			}
+			else
+			{
+				v = (const g2o::VertexSBAPointXYZ*)optimizer.vertex(stepVertexId + id);
+			}
+
 			if(v)
 			{
 				cv::Point3f p(v->estimate()[0], v->estimate()[1], v->estimate()[2]);
