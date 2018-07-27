@@ -3990,6 +3990,13 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 				allWordIds[quantizedToRawIndices[i]] = *iter;
 				++i;
 			}
+			for(i=0; i<(int)allWordIds.size(); ++i)
+			{
+				if(allWordIds[i] < 0)
+				{
+					allWordIds[i] = -1*(i+1);
+				}
+			}
 			wordIds = uVectorToList(allWordIds);
 		}
 
@@ -4049,22 +4056,25 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 		Signature * previousS = _signatures.rbegin()->second;
 		if(previousS->getWords().size() > 8 && words.size() > 8 && !previousS->getPose().isNull())
 		{
+			UDEBUG("Previous pose(%d) = %s", previousS->id(), previousS->getPose().prettyPrint().c_str());
+			UDEBUG("Current pose(%d) = %s", id, pose.prettyPrint().c_str());
 			Transform cameraTransform = pose.inverse() * previousS->getPose();
 
-			Signature cpPrevious(-2);
+			Signature cpPrevious(2);
+			// IDs should be unique so that registration doesn't override them
 			std::map<int, cv::KeyPoint> uniqueWords = uMultimapToMapUnique(previousS->getWords());
 			std::map<int, cv::Mat> uniqueWordsDescriptors = uMultimapToMapUnique(previousS->getWordsDescriptors());
 			cpPrevious.sensorData().setCameraModels(previousS->sensorData().cameraModels());
 			cpPrevious.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
 			cpPrevious.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
-			Signature cpCurrent(-1);
+			Signature cpCurrent(1);
 			uniqueWords = uMultimapToMapUnique(words);
 			uniqueWordsDescriptors = uMultimapToMapUnique(wordsDescriptors);
 			cpCurrent.sensorData().setCameraModels(data.cameraModels());
 			cpCurrent.setWords(std::multimap<int, cv::KeyPoint>(uniqueWords.begin(), uniqueWords.end()));
 			cpCurrent.setWordsDescriptors(std::multimap<int, cv::Mat>(uniqueWordsDescriptors.begin(), uniqueWordsDescriptors.end()));
 			// This will force comparing descriptors between both images directly
-			Transform tmpt = _registrationPipeline->computeTransformation(cpCurrent, cpPrevious, cameraTransform);
+			Transform tmpt = _registrationPipeline->computeTransformationMod(cpCurrent, cpPrevious, cameraTransform);
 			UDEBUG("t=%s", tmpt.prettyPrint().c_str());
 
 			// compute 3D words by epipolar geometry with the previous signature
@@ -4077,32 +4087,21 @@ Signature * Memory::createSignature(const SensorData & inputData, const Transfor
 			UDEBUG("inliers=%d", (int)inliers.size());
 
 			// words3D should have the same size than words
-			float bad_point = std::numeric_limits<float>::quiet_NaN ();
 			UASSERT(words.size() == words3D.size());
 			int added3DPointsWithoutDepth = 0;
 			for(std::multimap<int, cv::KeyPoint>::const_iterator iter=words.begin(); iter!=words.end(); ++iter)
 			{
 				std::map<int, cv::Point3f>::iterator jter=inliers.find(iter->first);
 				std::multimap<int, cv::Point3f>::iterator iter3D = words3D.find(iter->first);
-				if(iter3D == words3D.end())
-				{
-					if(jter != inliers.end())
-					{
-						words3D.insert(std::make_pair(iter->first, jter->second));
-						++added3DPointsWithoutDepth;
-					}
-					else
-					{
-						words3D.insert(std::make_pair(iter->first, cv::Point3f(bad_point,bad_point,bad_point)));
-					}
-				}
-				else if(!util3d::isFinite(iter3D->second) && jter != inliers.end())
+				UASSERT(iter3D!=words3D.end());
+				if(!util3d::isFinite(iter3D->second) && jter != inliers.end())
 				{
 					iter3D->second = jter->second;
 					++added3DPointsWithoutDepth;
 				}
 			}
 			UDEBUG("added3DPointsWithoutDepth=%d", added3DPointsWithoutDepth);
+			if(stats) stats->addStatistic(Statistics::kMemoryTriangulated_points(), (float)added3DPointsWithoutDepth);
 
 			t = timer.ticks();
 			UASSERT(words3D.size() == words.size());

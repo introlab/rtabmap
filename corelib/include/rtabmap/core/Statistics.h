@@ -106,6 +106,7 @@ class RTABMAP_EXP Statistics
 	RTABMAP_STATS(Memory, Odometry_variance_lin,);
 	RTABMAP_STATS(Memory, Distance_travelled, m);
 	RTABMAP_STATS(Memory, RAM_usage, MB);
+	RTABMAP_STATS(Memory, Triangulated_points, );
 
 	RTABMAP_STATS(Timing, Memory_update, ms);
 	RTABMAP_STATS(Timing, Neighbor_link_refining, ms);

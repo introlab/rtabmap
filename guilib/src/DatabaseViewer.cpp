@@ -4283,7 +4283,7 @@ void DatabaseViewer::updateWordsMatching()
 			QList<int> ids =  wordsA.uniqueKeys();
 			for(int i=0; i<ids.size(); ++i)
 			{
-				if(wordsA.count(ids[i]) == 1 && wordsB.count(ids[i]) == 1)
+				if(ids[i] > 0 && wordsA.count(ids[i]) == 1 && wordsB.count(ids[i]) == 1)
 				{
 					// PINK features
 					ui_->graphicsView_A->setFeatureColor(ids[i], Qt::magenta);

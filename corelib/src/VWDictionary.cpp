@@ -601,21 +601,18 @@ int VWDictionary::getNextId()
 
 void VWDictionary::addWordRef(int wordId, int signatureId)
 {
-	if(signatureId > 0)
+	VisualWord * vw = 0;
+	vw = uValue(_visualWords, wordId, vw);
+	if(vw)
 	{
-		VisualWord * vw = 0;
-		vw = uValue(_visualWords, wordId, vw);
-		if(vw)
-		{
-			vw->addRef(signatureId);
-			_totalActiveReferences += 1;
+		vw->addRef(signatureId);
+		_totalActiveReferences += 1;
 
-			_unusedWords.erase(vw->id());
-		}
-		else
-		{
-			UERROR("Not found word %d (dict size=%d)", wordId, (int)_visualWords.size());
-		}
+		_unusedWords.erase(vw->id());
+	}
+	else
+	{
+		UERROR("Not found word %d (dict size=%d)", wordId, (int)_visualWords.size());
 	}
 }
 
@@ -636,8 +633,6 @@ void VWDictionary::removeAllWordRef(int wordId, int signatureId)
 std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 							   int signatureId)
 {
-	UASSERT(signatureId > 0);
-
 	UDEBUG("id=%d descriptors=%d", signatureId, descriptorsIn.rows);
 	UTimer timer;
 	std::list<int> wordIds;
@@ -818,7 +813,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 					index = *((size_t*)&results.at<int>(i, j));
 				}
 				int id = uValue(_mapIndexId, index);
-				if(d >= 0.0f && id > 0)
+				if(d >= 0.0f && id != 0)
 				{
 					fullResults.insert(std::pair<float, int>(d, id));
 				}
@@ -834,7 +829,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 			{
 				float d = matches.at(i).at(j).distance;
 				int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
-				if(d >= 0.0f && id > 0)
+				if(d >= 0.0f && id != 0)
 				{
 					fullResults.insert(std::pair<float, int>(d, id));
 				}
@@ -857,7 +852,7 @@ std::list<int> VWDictionary::addNewWords(const cv::Mat & descriptorsIn,
 			{
 				float d = matchesNewWords.at(0).at(j).distance;
 				int id = newWordsId[matchesNewWords.at(0).at(j).trainIdx];
-				if(d >= 0.0f && id > 0)
+				if(d >= 0.0f && id != 0)
 				{
 					fullResults.insert(std::pair<float, int>(d, id));
 				}
@@ -1176,7 +1171,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 						index = *((size_t*)&results.at<int>(i, j));
 					}
 					int id = uValue(_mapIndexId, index);
-					if(d >= 0.0f && id > 0)
+					if(d >= 0.0f && id != 0)
 					{
 						fullResults.insert(std::pair<float, int>(d, id));
 					}
@@ -1188,7 +1183,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					float d = matches.at(i).at(j).distance;
 					int id = uValue(_mapIndexId, matches.at(i).at(j).trainIdx);
-					if(d >= 0.0f && id > 0)
+					if(d >= 0.0f && id != 0)
 					{
 						fullResults.insert(std::pair<float, int>(d, id));
 					}
@@ -1202,7 +1197,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					float d = matchesNotIndexed.at(i).at(j).distance;
 					int id = uValue(mapIndexIdNotIndexed, matchesNotIndexed.at(i).at(j).trainIdx);
-					if(d >= 0.0f && id > 0)
+					if(d >= 0.0f && id != 0)
 					{
 						fullResults.insert(std::pair<float, int>(d, id));
 					}
