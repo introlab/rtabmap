@@ -786,7 +786,7 @@ void OccupancyGrid::update(const std::map<int, Transform> & posesIn)
 	{
 		if(addedNodes_.find(iter->first) == addedNodes_.end())
 		{
-			UDEBUG("Pose %d not found in current added poses, it be added to map", iter->first);
+			UDEBUG("Pose %d not found in current added poses, it will be added to map", iter->first);
 			poses.push_back(*iter);
 		}
 	}

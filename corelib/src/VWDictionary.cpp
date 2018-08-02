@@ -1162,7 +1162,7 @@ std::vector<int> VWDictionary::findNN(const cv::Mat & queryIn) const
 				{
 					float d = dists.at<float>(i,j);
 					int index;
-					UWARN("results elemSize1=%d", results.elemSize1());
+
 					if (sizeof(size_t) == 8)
 					{
 						index = *((size_t*)&results.at<double>(i, j));

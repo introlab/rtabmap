@@ -53,6 +53,7 @@ public:
 	bool isMapFrameProjection() const {return projMapFrame_;}
 	const std::map<int, Transform> & addedNodes() const {return addedNodes_;}
 	int cacheSize() const {return (int)cache_.size();}
+	const std::map<int, std::pair<std::pair<cv::Mat, cv::Mat>, cv::Mat> > & getCache() const {return cache_;}
 
 	template<typename PointT>
 	typename pcl::PointCloud<PointT>::Ptr segmentCloud(
