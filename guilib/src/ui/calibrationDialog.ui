@@ -17,7 +17,16 @@
    <property name="spacing">
     <number>0</number>
    </property>
-   <property name="margin">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
     <number>0</number>
    </property>
    <item>
@@ -145,12 +154,21 @@
          <rect>
           <x>0</x>
           <y>0</y>
-          <width>353</width>
+          <width>413</width>
           <height>816</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout">
-         <property name="margin">
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
           <number>0</number>
          </property>
          <item>
@@ -172,7 +190,7 @@
             <item row="3" column="0">
              <widget class="QLabel" name="label_15">
               <property name="toolTip">
-               <string>Number of inner squares on the board</string>
+               <string/>
               </property>
               <property name="text">
                <string>Square size</string>
@@ -228,7 +246,7 @@
             <item row="0" column="0">
              <widget class="QLabel" name="label_21">
               <property name="toolTip">
-               <string>Number of inner squares on the board</string>
+               <string/>
               </property>
               <property name="text">
                <string>Download</string>
@@ -264,7 +282,7 @@
             <item row="4" column="0">
              <widget class="QLabel" name="label_22">
               <property name="toolTip">
-               <string>Number of inner squares on the board</string>
+               <string>If &gt; 1, image is scaled down to help board detection on high definition images</string>
               </property>
               <property name="text">
                <string>Max scale</string>
