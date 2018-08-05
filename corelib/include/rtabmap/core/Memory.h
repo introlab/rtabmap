@@ -302,6 +302,7 @@ private:
 	int _visMaxFeatures;
 	int _visCorType;
 	bool _imagesAlreadyRectified;
+	bool _covOffDiagonalIgnored;
 
 	int _idCount;
 	int _idMapCount;

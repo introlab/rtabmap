@@ -535,7 +535,7 @@ std::map<int, Transform> OptimizerG2O::optimize(
 		UDEBUG("Initial optimization...");
 		optimizer.initializeOptimization();
 
-		UASSERT_MSG(optimizer.verifyInformationMatrices(),
+		UASSERT_MSG(optimizer.verifyInformationMatrices(true),
 				"This error can be caused by (1) bad covariance matrix "
 				"set in odometry messages "
 				"(see requirements in g2o::OptimizableGraph::verifyInformationMatrices() function) "

@@ -103,6 +103,7 @@ Memory::Memory(const ParametersMap & parameters) :
 	_visMaxFeatures(Parameters::defaultVisMaxFeatures()),
 	_visCorType(Parameters::defaultVisCorType()),
 	_imagesAlreadyRectified(Parameters::defaultRtabmapImagesAlreadyRectified()),
+	_covOffDiagonalIgnored(Parameters::defaultMemCovOffDiagIgnored()),
 	_idCount(kIdStart),
 	_idMapCount(kIdStart),
 	_lastSignature(0),
@@ -499,6 +500,7 @@ void Memory::parseParameters(const ParametersMap & parameters)
 		uInsert(params, ParametersPair(Parameters::kVisCorType(), "0"));
 	}
 	Parameters::parse(params, Parameters::kRtabmapImagesAlreadyRectified(), _imagesAlreadyRectified);
+	Parameters::parse(params, Parameters::kMemCovOffDiagIgnored(), _covOffDiagonalIgnored);
 
 
 	UASSERT_MSG(_maxStMemSize >= 0, uFormat("value=%d", _maxStMemSize).c_str());
@@ -811,7 +813,21 @@ void Memory::addSignatureToStm(Signature * signature, const cv::Mat & covariance
 				   !_signatures.at(*_stMem.rbegin())->getPose().isNull())
 				{
 					UASSERT(covariance.cols == 6 && covariance.rows == 6 && covariance.type() == CV_64FC1);
-					cv::Mat infMatrix = covariance.inv();
+					cv::Mat infMatrix;
+					if(_covOffDiagonalIgnored)
+					{
+						infMatrix = cv::Mat::zeros(6,6,CV_64FC1);
+						infMatrix.at<double>(0,0) = 1.0 / covariance.at<double>(0,0);
+						infMatrix.at<double>(1,1) = 1.0 / covariance.at<double>(1,1);
+						infMatrix.at<double>(2,2) = 1.0 / covariance.at<double>(2,2);
+						infMatrix.at<double>(3,3) = 1.0 / covariance.at<double>(3,3);
+						infMatrix.at<double>(4,4) = 1.0 / covariance.at<double>(4,4);
+						infMatrix.at<double>(5,5) = 1.0 / covariance.at<double>(5,5);
+					}
+					else
+					{
+						infMatrix = covariance.inv();
+					}
 					if((uIsFinite(covariance.at<double>(0,0)) && covariance.at<double>(0,0)>0.0) &&
 						!(uIsFinite(infMatrix.at<double>(0,0)) && infMatrix.at<double>(0,0)>0.0))
 					{
