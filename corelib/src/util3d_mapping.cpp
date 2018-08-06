@@ -574,6 +574,8 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float scanMaxRange)
 {
 	UDEBUG("poses=%d, scans = %d scanMaxRange=%f", poses.size(), scans.size(), scanMaxRange);
+
+	// local scans contain end points of each ray in map frame (pose+localTransform)
 	std::map<int, std::pair<cv::Mat, cv::Mat> > localScans;
 
 	pcl::PointCloud<pcl::PointXYZ> minMax;
@@ -629,12 +631,14 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 		float xMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.x?scanMaxRange:max.x) + margin;
 		float yMax = (unknownSpaceFilled && scanMaxRange > 0 && scanMaxRange > max.y?scanMaxRange:max.y) + margin;
 
-		//UWARN("map min=(%fm, %fm) max=(%fm,%fm) (margin=%fm, cellSize=%fm, scan range=%f, min=[%fm,%fm] max=[%fm,%fm])",
-		//		xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);
+		UDEBUG("map min=(%fm, %fm) max=(%fm,%fm) (margin=%fm, cellSize=%fm, scan range=%f, min=[%fm,%fm] max=[%fm,%fm])",
+				xMin, yMin, xMax, yMax, margin, cellSize, scanMaxRange, min.x, min.y, max.x, max.y);
 
 		UTimer timer;
 
 		map = cv::Mat::ones((yMax - yMin) / cellSize, (xMax - xMin) / cellSize, CV_8S)*-1;
+		UDEBUG("map size = %dx%d", map.cols, map.rows);
+
 		int j=0;
 		float scanMaxRangeSqr = scanMaxRange * scanMaxRange;
 		for(std::map<int, std::pair<cv::Mat, cv::Mat> >::iterator iter = localScans.begin(); iter!=localScans.end(); ++iter)
@@ -647,16 +651,15 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 				viewpoint = kter->second;
 			}
 			cv::Point2i start(((pose.x()+viewpoint.x)-xMin)/cellSize, ((pose.y()+viewpoint.y)-yMin)/cellSize);
-			cv::Point2f startf(pose.x()+viewpoint.x, pose.y()+viewpoint.y);
 
 			// Set obstacles first
 			for(int i=0; i<iter->second.first.cols; ++i)
 			{
 				const float * ptr = iter->second.first.ptr<float>(0, i);
-				bool ignore = scanMaxRange>cellSize && uNormSquared(ptr[0]+cellSize, ptr[1]+cellSize) > scanMaxRangeSqr;
+				bool ignore = scanMaxRange>cellSize && uNormSquared(ptr[0]-(pose.x()+viewpoint.x)+cellSize, ptr[1]-(pose.y()+viewpoint.y)+cellSize) > scanMaxRangeSqr;
 				if(!ignore)
 				{
-					cv::Point2i end((ptr[0]+startf.x-xMin)/cellSize, (ptr[1]+startf.y-yMin)/cellSize);
+					cv::Point2i end((ptr[0]-xMin)/cellSize, (ptr[1]-yMin)/cellSize);
 					if(end!=start)
 					{
 						map.at<char>(end.y, end.x) = 100; // obstacle
@@ -669,17 +672,20 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			{
 				const float * ptr = iter->second.first.ptr<float>(0, i);
 
-				cv::Vec2f v(ptr[0], ptr[1]);
+				cv::Vec2f pt(ptr[0], ptr[1]);
 				if(scanMaxRange>cellSize)
 				{
+					cv::Vec2f v(pt[0]-(pose.x()+viewpoint.x), pt[1]-(pose.y()+viewpoint.y));
 					float n = cv::norm(v);
 					if(n > scanMaxRange+cellSize)
 					{
 						v = (v/n) * scanMaxRange;
+						pt[0] = pose.x()+viewpoint.x + v[0];
+						pt[1] = pose.y()+viewpoint.y + v[1];
 					}
 				}
 
-				cv::Point2i end((v[0]+startf.x-xMin)/cellSize, (v[1]+startf.y-yMin)/cellSize);
+				cv::Point2i end((pt[0]-xMin)/cellSize, (pt[1]-yMin)/cellSize);
 				if(end!=start)
 				{
 					if(localScans.size() > 1 || map.at<char>(end.y, end.x) != 0)
@@ -693,17 +699,20 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 			{
 				const float * ptr = iter->second.second.ptr<float>(0, i);
 
-				cv::Vec2f v(ptr[0], ptr[1]);
+				cv::Vec2f pt(ptr[0], ptr[1]);
 				if(scanMaxRange>cellSize)
 				{
+					cv::Vec2f v(pt[0]-(pose.x()+viewpoint.x), pt[1]-(pose.y()+viewpoint.y));
 					float n = cv::norm(v);
 					if(n > scanMaxRange+cellSize)
 					{
 						v = (v/n) * scanMaxRange;
+						pt[0] = pose.x()+viewpoint.x + v[0];
+						pt[1] = pose.y()+viewpoint.y + v[1];
 					}
 				}
 
-				cv::Point2i end((v[0]+startf.x-xMin)/cellSize, (v[1]+startf.y-yMin)/cellSize);
+				cv::Point2i end((pt[0]-xMin)/cellSize, (pt[1]-yMin)/cellSize);
 				if(end!=start)
 				{
 					if(localScans.size() > 1 || map.at<char>(end.y, end.x) != 0)
@@ -748,10 +757,10 @@ cv::Mat create2DMap(const std::map<int, Transform> & poses,
 						cv::Mat origin(2,1,CV_32F), endFirst(2,1,CV_32F), endLast(2,1,CV_32F);
 						origin.at<float>(0) = pose.x()+viewpoint.x;
 						origin.at<float>(1) = pose.y()+viewpoint.y;
-						endFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0]+origin.at<float>(0);
-						endFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1]+origin.at<float>(1);
-						endLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[0]+origin.at<float>(0);
-						endLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[1]+origin.at<float>(1);
+						endFirst.at<float>(0) = iter->second.first.ptr<float>(0,0)[0];
+						endFirst.at<float>(1) = iter->second.first.ptr<float>(0,0)[1];
+						endLast.at<float>(0) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[0];
+						endLast.at<float>(1) = iter->second.first.ptr<float>(0,iter->second.first.cols-1)[1];
 						//UWARN("origin = %f %f", origin.at<float>(0), origin.at<float>(1));
 						//UWARN("endFirst = %f %f", endFirst.at<float>(0), endFirst.at<float>(1));
 						//UWARN("endLast = %f %f", endLast.at<float>(0), endLast.at<float>(1));
