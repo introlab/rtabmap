@@ -120,14 +120,8 @@ CameraImages::CameraImages(const std::string & path,
 CameraImages::~CameraImages()
 {
 	UDEBUG("");
-	if(_dir)
-	{
-		delete _dir;
-	}
-	if(_scanDir)
-	{
-		delete _scanDir;
-	}
+	delete _dir;
+	delete _scanDir;
 }
 
 bool CameraImages::init(const std::string & calibrationFolder, const std::string & cameraName)

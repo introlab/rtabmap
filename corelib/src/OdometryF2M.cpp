@@ -147,10 +147,7 @@ OdometryF2M::~OdometryF2M()
 	bundleLinks_.clear();
 	bundleModels_.clear();
 	bundlePoseReferences_.clear();
-	if(sba_)
-	{
-		delete sba_;
-	}
+	delete sba_;
 	delete regPipeline_;
 	UDEBUG("");
 }

@@ -49,10 +49,7 @@ KeypointItem::KeypointItem(int id, const cv::KeyPoint & kpt, float depth, const 
 
 KeypointItem::~KeypointItem()
 {
-	if(_placeHolder)
-	{
-		delete _placeHolder;
-	}
+	delete _placeHolder;
 }
 
 void KeypointItem::setColor(const QColor & color)

@@ -60,26 +60,11 @@ OdometryFovis::OdometryFovis(const ParametersMap & parameters) :
 OdometryFovis::~OdometryFovis()
 {
 #ifdef RTABMAP_FOVIS
-	if(fovis_)
-	{
-		delete fovis_;
-	}
-	if(rect_)
-	{
-		delete rect_;
-	}
-	if(stereoCalib_)
-	{
-		delete stereoCalib_;
-	}
-	if(depthImage_)
-	{
-		delete depthImage_;
-	}
-	if(stereoDepth_)
-	{
-		delete stereoDepth_;
-	}
+	delete fovis_;
+	delete rect_;
+	delete stereoCalib_;
+	delete depthImage_;
+	delete stereoDepth_;
 #endif
 }
 

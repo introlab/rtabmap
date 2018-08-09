@@ -361,10 +361,7 @@ CameraStereoDC1394::CameraStereoDC1394(float imageRate, const Transform & localT
 CameraStereoDC1394::~CameraStereoDC1394()
 {
 #ifdef RTABMAP_DC1394
-	if(device_)
-	{
-		delete device_;
-	}
+	delete device_;
 #endif
 }
 
@@ -829,10 +826,7 @@ CameraStereoZed::CameraStereoZed(
 CameraStereoZed::~CameraStereoZed()
 {
 #ifdef RTABMAP_ZED
-	if(zed_)
-	{
-		delete zed_;
-	}
+	delete zed_;
 #endif
 }
 
@@ -1150,10 +1144,7 @@ CameraStereoImages::CameraStereoImages(
 CameraStereoImages::~CameraStereoImages()
 {
 	UDEBUG("");
-	if(camera2_)
-	{
-		delete camera2_;
-	}
+	delete camera2_;
 	UDEBUG("");
 }
 

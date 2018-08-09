@@ -73,10 +73,7 @@ Registration::Registration(const ParametersMap & parameters, Registration * chil
 
 Registration::~Registration()
 {
-	if(child_)
-	{
-		delete child_;
-	}
+	delete child_;
 }
 void Registration::parseParameters(const ParametersMap & parameters)
 {

@@ -758,14 +758,8 @@ OdometryMSCKF::~OdometryMSCKF()
 {
 	UDEBUG("");
 #ifdef RTABMAP_MSCKF_VIO
-	if(imageProcessor_)
-	{
-		delete imageProcessor_;
-	}
-	if(msckf_)
-	{
-		delete msckf_;
-	}
+	delete imageProcessor_;
+	delete msckf_;
 #endif
 }
 

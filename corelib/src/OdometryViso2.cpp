@@ -71,10 +71,7 @@ OdometryViso2::OdometryViso2(const ParametersMap & parameters) :
 OdometryViso2::~OdometryViso2()
 {
 #ifdef RTABMAP_VISO2
-	if(viso2_)
-	{
-		delete viso2_;
-	}
+	delete viso2_;
 #endif
 }
 

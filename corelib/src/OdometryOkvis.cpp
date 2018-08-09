@@ -150,10 +150,7 @@ OdometryOkvis::~OdometryOkvis()
 {
 	UDEBUG("");
 #ifdef RTABMAP_OKVIS
-	if(okvisEstimator_)
-	{
-		delete okvisEstimator_;
-	}
+	delete okvisEstimator_;
 	delete okvisCallbackHandler_;
 #endif
 }

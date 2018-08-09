@@ -252,10 +252,7 @@ ExportCloudsDialog::ExportCloudsDialog(QWidget *parent) :
 ExportCloudsDialog::~ExportCloudsDialog()
 {
 	delete _ui;
-	if(_compensator)
-	{
-		delete _compensator;
-	}
+	delete _compensator;
 }
 
 void ExportCloudsDialog::updateMLSGrpVisibility()

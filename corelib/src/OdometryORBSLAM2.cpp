@@ -737,10 +737,7 @@ public:
 	virtual ~ORBSLAM2System()
 	{
 		shutdown();
-		if(mpVocabulary)
-		{
-			delete mpVocabulary;
-		}
+		delete mpVocabulary;
 	}
 
 	void shutdown()

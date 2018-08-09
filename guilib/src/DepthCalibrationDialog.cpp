@@ -94,10 +94,7 @@ DepthCalibrationDialog::DepthCalibrationDialog(QWidget *parent) :
 DepthCalibrationDialog::~DepthCalibrationDialog()
 {
 	delete _ui;
-	if(_model)
-	{
-		delete _model;
-	}
+	delete _model;
 }
 
 void DepthCalibrationDialog::saveSettings(QSettings & settings, const QString & group) const

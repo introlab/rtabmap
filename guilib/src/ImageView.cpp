@@ -58,10 +58,7 @@ public:
 	}
 	virtual ~LineItem()
 	{
-		if(_placeHolder)
-		{
-			delete _placeHolder;
-		}
+		delete _placeHolder;
 	}
 
 	void setColor(const QColor & color);

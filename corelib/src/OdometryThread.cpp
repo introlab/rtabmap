@@ -51,10 +51,7 @@ OdometryThread::~OdometryThread()
 {
 	this->unregisterFromEventsManager();
 	this->join(true);
-	if(_odometry)
-	{
-		delete _odometry;
-	}
+	delete _odometry;
 	UDEBUG("");
 }
 

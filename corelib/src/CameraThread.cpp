@@ -73,14 +73,8 @@ CameraThread::~CameraThread()
 {
 	UDEBUG("");
 	join(true);
-	if(_camera)
-	{
-		delete _camera;
-	}
-	if(_distortionModel)
-	{
-		delete _distortionModel;
-	}
+	delete _camera;
+	delete _distortionModel;
 	delete _stereoDense;
 }
 

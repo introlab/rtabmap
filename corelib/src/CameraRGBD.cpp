@@ -1422,21 +1422,9 @@ CameraFreenect2::~CameraFreenect2()
 		dev_->close();
 		//deleted in freenect2_ destructor (Freeenect2Impl::clearDevices())
 	}
-	if(listener_)
-	{
-		delete listener_;
-	}
-
-	if(reg_)
-	{
-		delete reg_;
-		reg_ = 0;
-	}
-
-	if(freenect2_)
-	{
-		delete freenect2_;
-	}
+	delete listener_;
+	delete reg_;
+	delete freenect2_;
 	UDEBUG("");
 #endif
 }

@@ -419,15 +419,9 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 DatabaseViewer::~DatabaseViewer()
 {
 	delete ui_;
-	if(dbDriver_)
-	{
-		delete dbDriver_;
-	}
+	delete dbDriver_;
 #ifdef RTABMAP_OCTOMAP
-	if(octomap_)
-	{
-		delete octomap_;
-	}
+	delete octomap_;
 #endif
 }
 

@@ -55,18 +55,9 @@ OdometryDVO::OdometryDVO(const ParametersMap & parameters) :
 OdometryDVO::~OdometryDVO()
 {
 #ifdef RTABMAP_DVO
-	if(dvo_)
-	{
-		delete dvo_;
-	}
-	if(reference_)
-	{
-		delete reference_;
-	}
-	if(camera_)
-	{
-		delete camera_;
-	}
+	delete dvo_;
+	delete reference_;
+	delete camera_;
 #endif
 }
 

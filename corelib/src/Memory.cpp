@@ -430,26 +430,11 @@ Memory::~Memory()
 	{
 		UWARN("Please call Memory::close() before");
 	}
-	if(_feature2D)
-	{
-		delete _feature2D;
-	}
-	if(_vwd)
-	{
-		delete _vwd;
-	}
-	if(_registrationPipeline)
-	{
-		delete _registrationPipeline;
-	}
-	if(_registrationIcpMulti)
-	{
-		delete _registrationIcpMulti;
-	}
-	if(_occupancy)
-	{
-		delete _occupancy;
-	}
+	delete _feature2D;
+	delete _vwd;
+	delete _registrationPipeline;
+	delete _registrationIcpMulti;
+	delete _occupancy;
 }
 
 void Memory::parseParameters(const ParametersMap & parameters)

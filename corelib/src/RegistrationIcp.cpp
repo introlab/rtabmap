@@ -389,10 +389,7 @@ RegistrationIcp::RegistrationIcp(const ParametersMap & parameters, Registration 
 RegistrationIcp::~RegistrationIcp()
 {
 #ifdef RTABMAP_POINTMATCHER
-	if(_libpointmatcherICP)
-	{
-		delete (PM::ICP*)_libpointmatcherICP;
-	}
+	delete (PM::ICP*)_libpointmatcherICP;
 #endif
 }
 
