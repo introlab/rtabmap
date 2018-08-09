@@ -978,6 +978,7 @@ bool DatabaseViewer::closeDatabase()
 		ui_->label_constraint->clear();
 		ui_->label_constraint_opt->clear();
 		ui_->label_variance->clear();
+		ui_->lineEdit_covariance->clear();
 
 		ui_->horizontalSlider_A->setEnabled(false);
 		ui_->horizontalSlider_A->setMaximum(0);
@@ -4447,8 +4448,11 @@ void DatabaseViewer::updateConstraintView(
 				 link.type()==Link::kUserClosure?"User link":
 				 link.type()==Link::kVirtualClosure?"Virtual link":"Undefined"));
 	ui_->label_variance->setText(QString("%1, %2")
-			.arg(sqrt(link.rotVariance()))
-			.arg(sqrt(link.transVariance())));
+			.arg(sqrt(link.transVariance()))
+			.arg(sqrt(link.rotVariance())));
+	std::stringstream out;
+	out << link.infMatrix().inv();
+	ui_->lineEdit_covariance->setText(out.str().c_str());
 	ui_->label_constraint->setText(QString("%1").arg(t.prettyPrint().c_str()).replace(" ", "\n"));
 	if(graphes_.size() &&
 	   (int)graphes_.size()-1 == ui_->horizontalSlider_iterations->maximum())
