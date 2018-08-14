@@ -514,7 +514,15 @@ void Parameters::parse(const ParametersMap & parameters, ParametersMap & paramet
 
 const char * Parameters::showUsage()
 {
-	return  "Logger options:\n"
+	return  "RTAB-Map options:\n"
+			"   --help                         Show usage.\n"
+			"   --version                      Show version of rtabmap and its dependencies.\n"
+			"   --params                       Show all parameters with their default value and description\n"
+			"   --\"parameter name\" \"value\"     Overwrite a specific RTAB-Map's parameter :\n"
+			"                                    --SURF/HessianThreshold 150\n"
+			"                                   For parameters in table format, add ',' between values :\n"
+			"                                    --Kp/RoiRatios 0,0,0.1,0\n"
+			"Logger options:\n"
 			"   --nolog              Disable logger\n"
 			"   --logconsole         Set logger console type\n"
 			"   --logfile \"path\"     Set logger file type\n"
@@ -526,12 +534,6 @@ const char * Parameters::showUsage()
 			"   --logtime \"bool\"     Print time when logging\n"
 			"   --logwhere \"bool\"    Print where when logging\n"
 			"   --logthread \"bool\"   Print thread id when logging\n"
-			"RTAB-Map options:\n"
-			"   --params                       Show all parameters with their default value and description\n"
-			"   --\"parameter name\" \"value\"     Overwrite a specific RTAB-Map's parameter :\n"
-			"                                    --SURF/HessianThreshold 150\n"
-			"                                   For parameters in table format, add ',' between values :\n"
-			"                                    --Kp/RoiRatios 0,0,0.1,0\n"
 			;
 }
 
@@ -545,7 +547,188 @@ ParametersMap Parameters::parseArguments(int argc, char * argv[], bool onlyParam
 		bool checkParameters = onlyParameters;
 		if(!checkParameters)
 		{
-			if(strcmp(argv[i], "--nolog") == 0)
+			if(strcmp(argv[i], "--help") == 0)
+			{
+				std::cout << showUsage() << std::endl;
+				exit(0);
+			}
+			else if(strcmp(argv[i], "--version") == 0)
+			{
+				std::string str = "RTAB-Map:";
+
+				int spacing = 30;
+				std::cout << str << std::setw(spacing - str.size()) << RTABMAP_VERSION << std::endl;
+				str = "OpenCV:";
+#ifdef RTABMAP_OPENCV3
+				std::cout << str << std::setw(spacing - str.size()) << "3" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "2" << std::endl;
+#endif
+				str = "With OpenCV nonfree:";
+#ifdef RTABMAP_NONFREE
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With TORO:";
+#ifdef RTABMAP_TORO
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With g2o:";
+#ifdef RTABMAP_G2O
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With GTSAM:";
+#ifdef RTABMAP_GTSAM
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Vertigo:";
+#ifdef RTABMAP_VERTIGO
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With CVSBA:";
+#ifdef RTABMAP_CVSBA
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With OpenNI2:";
+#ifdef RTABMAP_OPENNI2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Freenect:";
+#ifdef RTABMAP_FREENECT
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Freenect2:";
+#ifdef RTABMAP_FREENECT2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With K4W2:";
+#ifdef RTABMAP_K4W2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With DC1394:";
+#ifdef RTABMAP_DC1394
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With FlyCapture2:";
+#ifdef RTABMAP_FLYCAPTURE2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With ZED:";
+#ifdef RTABMAP_ZED
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With RealSense:";
+#ifdef RTABMAP_REALSENSE
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With RealSense SLAM:";
+#ifdef RTABMAP_REALSENSE_SLAM
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With RealSense2:";
+#ifdef RTABMAP_REALSENSE2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With libpointmatcher:";
+#ifdef RTABMAP_POINTMATCHER
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With octomap:";
+#ifdef RTABMAP_OCTOMAP
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With cpu-tsdf:";
+#ifdef RTABMAP_CPUTSDF
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With open chisel:";
+#ifdef RTABMAP_OPENCHISEL
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With LOAM:";
+#ifdef RTABMAP_LOAM
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With FOVIS:";
+#ifdef RTABMAP_FOVIS
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With Viso2:";
+#ifdef RTABMAP_VISO2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With DVO:";
+#ifdef RTABMAP_DVO
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With ORB_SLAM2:";
+#ifdef RTABMAP_ORB_SLAM2
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With OKVIS:";
+#ifdef RTABMAP_OKVIS
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				str = "With MSCKF_VIO:";
+#ifdef RTABMAP_MSCKF_VIO
+				std::cout << str << std::setw(spacing - str.size()) << "true" << std::endl;
+#else
+				std::cout << str << std::setw(spacing - str.size()) << "false" << std::endl;
+#endif
+				exit(0);
+			}
+			else if(strcmp(argv[i], "--nolog") == 0)
 			{
 				ULogger::setType(ULogger::kTypeNoLog);
 			}
