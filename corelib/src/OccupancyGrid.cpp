@@ -75,10 +75,10 @@ OccupancyGrid::OccupancyGrid(const ParametersMap & parameters) :
 	footprintRadius_(Parameters::defaultGridGlobalFootprintRadius()),
 	updateError_(Parameters::defaultGridGlobalUpdateError()),
 	occupancyThr_(Parameters::defaultGridGlobalOccupancyThr()),
-	probHit_(Parameters::defaultGridGlobalProbHit()),
-	probMiss_(Parameters::defaultGridGlobalProbMiss()),
-	probClampingMin_(Parameters::defaultGridGlobalProbClampingMin()),
-	probClampingMax_(Parameters::defaultGridGlobalProbClampingMax()),
+	probHit_(logodds(Parameters::defaultGridGlobalProbHit())),
+	probMiss_(logodds(Parameters::defaultGridGlobalProbMiss())),
+	probClampingMin_(logodds(Parameters::defaultGridGlobalProbClampingMin())),
+	probClampingMax_(logodds(Parameters::defaultGridGlobalProbClampingMax())),
 	xMin_(0.0f),
 	yMin_(0.0f),
 	cloudAssembling_(false),
@@ -137,18 +137,25 @@ void OccupancyGrid::parseParameters(const ParametersMap & parameters)
 	Parameters::parse(parameters, Parameters::kGridGlobalUpdateError(), updateError_);
 
 	Parameters::parse(parameters, Parameters::kGridGlobalOccupancyThr(), occupancyThr_);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbHit(), probHit_);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbMiss(), probMiss_);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), probClampingMin_);
-	Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), probClampingMax_);
-	probHit_ = logodds(probHit_);
-	UASSERT(probHit_ >= 0.0f);
-	probMiss_ = logodds(probMiss_);
-	UASSERT(probMiss_ <= 0.0f);
-	probClampingMin_ = logodds(probClampingMin_);
-	probClampingMax_ = logodds(probClampingMax_);
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbHit(), probHit_))
+	{
+		probHit_ = logodds(probHit_);
+		UASSERT_MSG(probHit_ >= 0.0f, uFormat("probHit_=%f",probHit_).c_str());
+	}
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbMiss(), probMiss_))
+	{
+		probMiss_ = logodds(probMiss_);
+		UASSERT_MSG(probMiss_ <= 0.0f, uFormat("probMiss_=%f",probMiss_).c_str());
+	}
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), probClampingMin_))
+	{
+		probClampingMin_ = logodds(probClampingMin_);
+	}
+	if(Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), probClampingMax_))
+	{
+		probClampingMax_ = logodds(probClampingMax_);
+	}
 	UASSERT(probClampingMax_ > probClampingMin_);
-
 
 	UASSERT(minMapSize_ >= 0.0f);
 
