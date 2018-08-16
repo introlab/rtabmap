@@ -227,6 +227,9 @@ const std::map<std::string, std::pair<bool, std::string> > & Parameters::getRemo
 	{
 		// removed parameters
 
+		// 0.17.5
+		removedParameters_.insert(std::make_pair("Grid/OctoMapOccupancyThr",     std::make_pair(true,  Parameters::kGridGlobalOccupancyThr())));
+
 		// 0.17.0
 		removedParameters_.insert(std::make_pair("Grid/Scan2dMaxFilledRange",     std::make_pair(false,  Parameters::kGridRangeMax())));
 

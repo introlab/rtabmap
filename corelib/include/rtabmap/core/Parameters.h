@@ -678,7 +678,11 @@ class RTABMAP_EXP Parameters
     RTABMAP_PARAM(GridGlobal, MinSize,              float,  0.0,     "Minimum map size (m).");
     RTABMAP_PARAM(GridGlobal, Eroded,               bool,   false,   "Erode obstacle cells.");
     RTABMAP_PARAM(GridGlobal, MaxNodes,             int,    0,       "Maximum nodes assembled in the map starting from the last node (0=unlimited).");
-    RTABMAP_PARAM(GridGlobal, OctoMapOccupancyThr,  float,  0.5,     "OctoMap occupancy threshold (value between 0 and 1).");
+    RTABMAP_PARAM(GridGlobal, OccupancyThr,         float,  0.5,     "Occupancy threshold (value between 0 and 1).");
+    RTABMAP_PARAM(GridGlobal, ProbHit,              float,  0.7,     "Probability of a hit (value between 0.5 and 1).");
+    RTABMAP_PARAM(GridGlobal, ProbMiss,             float,  0.4,     "Probability of a miss (value between 0 and 0.5).");
+    RTABMAP_PARAM(GridGlobal, ProbClampingMin,      float,  0.1192,  "Probability clamping minimum (value between 0 and 1).");
+    RTABMAP_PARAM(GridGlobal, ProbClampingMax,      float,  0.971,   "Probability clamping maximum (value between 0 and 1).");
 
 public:
     virtual ~Parameters();

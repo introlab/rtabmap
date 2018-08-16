@@ -994,7 +994,11 @@ PreferencesDialog::PreferencesDialog(QWidget * parent) :
 	_ui->doubleSpinBox_grid_minMapSize->setObjectName(Parameters::kGridGlobalMinSize().c_str());
 	_ui->spinBox_grid_maxNodes->setObjectName(Parameters::kGridGlobalMaxNodes().c_str());
 	_ui->doubleSpinBox_grid_footprintRadius->setObjectName(Parameters::kGridGlobalFootprintRadius().c_str());
-	_ui->doubleSpinBox_grid_octomapOccThr->setObjectName(Parameters::kGridGlobalOctoMapOccupancyThr().c_str());
+	_ui->doubleSpinBox_grid_occThr->setObjectName(Parameters::kGridGlobalOccupancyThr().c_str());
+	_ui->doubleSpinBox_grid_probHit->setObjectName(Parameters::kGridGlobalProbHit().c_str());
+	_ui->doubleSpinBox_grid_probMiss->setObjectName(Parameters::kGridGlobalProbMiss().c_str());
+	_ui->doubleSpinBox_grid_clampingMin->setObjectName(Parameters::kGridGlobalProbClampingMin().c_str());
+	_ui->doubleSpinBox_grid_clampingMax->setObjectName(Parameters::kGridGlobalProbClampingMax().c_str());
 	_ui->checkBox_grid_erode->setObjectName(Parameters::kGridGlobalEroded().c_str());
 
 	//Odometry

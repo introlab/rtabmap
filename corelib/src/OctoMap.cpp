@@ -276,11 +276,30 @@ OctoMap::OctoMap(const ParametersMap & parameters) :
 	minValues_[0] = minValues_[1] = minValues_[2] = 0.0;
 	maxValues_[0] = maxValues_[1] = maxValues_[2] = 0.0;
 
-	float occupancyThr = Parameters::defaultGridGlobalOctoMapOccupancyThr();
-	Parameters::parse(parameters, Parameters::kGridGlobalOctoMapOccupancyThr(), occupancyThr);
+	float occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
+	float probHit = Parameters::defaultGridGlobalProbHit();
+	float probMiss = Parameters::defaultGridGlobalProbMiss();
+	float clampingMin = Parameters::defaultGridGlobalProbClampingMin();
+	float clampingMax = Parameters::defaultGridGlobalProbClampingMax();
+	Parameters::parse(parameters, Parameters::kGridGlobalOccupancyThr(), occupancyThr);
+	Parameters::parse(parameters, Parameters::kGridGlobalProbHit(), probHit);
+	Parameters::parse(parameters, Parameters::kGridGlobalProbMiss(), probMiss);
+	Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMin(), clampingMin);
+	Parameters::parse(parameters, Parameters::kGridGlobalProbClampingMax(), clampingMax);
 
 	octree_ = new RtabmapColorOcTree(cellSize);
+	if(occupancyThr <= 0.0f)
+	{
+		UWARN("Cannot set %s to null for OctoMap, using default value %f instead.",
+				Parameters::kGridGlobalOccupancyThr().c_str(),
+				Parameters::defaultGridGlobalOccupancyThr());
+		occupancyThr = Parameters::defaultGridGlobalOccupancyThr();
+	}
 	octree_->setOccupancyThres(occupancyThr);
+	octree_->setProbHit(probHit);
+	octree_->setProbMiss(probMiss);
+	octree_->setClampingThresMin(clampingMin);
+	octree_->setClampingThresMax(clampingMax);
 	Parameters::parse(parameters, Parameters::kGridGlobalFullUpdate(), fullUpdate_);
 	Parameters::parse(parameters, Parameters::kGridGlobalUpdateError(), updateError_);
 	Parameters::parse(parameters, Parameters::kGridRangeMax(), rangeMax_);
