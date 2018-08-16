@@ -64,11 +64,16 @@ public:
 		QGraphicsEllipseItem(QRectF(-radius*100.0f,-radius*100.0f,radius*100.0f*2.0f,radius*100.0f*2.0f)),
 		_id(id),
 		_mapId(mapId),
-		_pose(pose)
+		_pose(pose),
+		_line(0)
 	{
 		this->setPos(-pose.y()*100.0f,-pose.x()*100.0f);
 		this->setBrush(pen().color());
 		this->setAcceptHoverEvents(true);
+		float r,p,yaw;
+		pose.getEulerAngles(r, p, yaw);
+		radius*=100.0f;
+		_line = new QGraphicsLineItem(0,0,-radius*sin(yaw),-radius*cos(yaw), this);
 	}
 	virtual ~NodeItem() {}
 
@@ -80,6 +85,17 @@ public:
 		QBrush b = this->brush();
 		b.setColor(color);
 		this->setBrush(b);
+
+		_line->setPen(QPen(QColor(255-color.red(), 255-color.green(), 255-color.blue())));
+	}
+
+	void setRadius(float radius)
+	{
+		float r,p,yaw;
+		_pose.getEulerAngles(r, p, yaw);
+		radius*=100.0f;
+		this->setRect(-radius, -radius, radius*2.0f, radius*2.0f);
+		_line->setLine(0,0,-radius*sin(yaw),-radius*cos(yaw));
 	}
 
 	int id() const {return _id;};
@@ -105,6 +121,7 @@ private:
 	int _id;
 	int _mapId;
 	Transform _pose;
+	QGraphicsLineItem * _line;
 };
 
 class NodeGPSItem: public NodeItem
@@ -1170,15 +1187,15 @@ void GraphViewer::setNodeRadius(float radius)
 	_nodeRadius = radius;
 	for(QMap<int, NodeItem*>::iterator iter=_nodeItems.begin(); iter!=_nodeItems.end(); ++iter)
 	{
-		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
+		iter.value()->setRadius(_nodeRadius);
 	}
 	for(QMap<int, NodeItem*>::iterator iter=_gtNodeItems.begin(); iter!=_gtNodeItems.end(); ++iter)
 	{
-		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
+		iter.value()->setRadius(_nodeRadius);
 	}
 	for(QMap<int, NodeItem*>::iterator iter=_gpsNodeItems.begin(); iter!=_gpsNodeItems.end(); ++iter)
 	{
-		iter.value()->setRect(-_nodeRadius*100.0f, -_nodeRadius*100.0f, _nodeRadius*100.0f*2.0f, _nodeRadius*100.0f*2.0f);
+		iter.value()->setRadius(_nodeRadius);
 	}
 }
 void GraphViewer::setLinkWidth(float width)
