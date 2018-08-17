@@ -418,7 +418,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 				odomImageShow_ = imageView_->isImageShown();
 				odomImageDepthShow_ = imageView_->isImageDepthShown();
 			}
-			imageView_->setImageDepth(uCvMat2QImage(odom.data().imageRaw()));
+			imageView_->setImageDepth(odom.data().imageRaw());
 			imageView_->setImageShown(true);
 			imageView_->setImageDepthShown(true);
 		}
@@ -434,7 +434,7 @@ void OdometryViewer::processData(const rtabmap::OdometryEvent & odom)
 			imageView_->setImage(uCvMat2QImage(odom.data().imageRaw()));
 			if(imageView_->isImageDepthShown())
 			{
-				imageView_->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
+				imageView_->setImageDepth(odom.data().depthOrRightRaw());
 			}
 
 			if( odom.info().type == Odometry::kTypeF2M ||

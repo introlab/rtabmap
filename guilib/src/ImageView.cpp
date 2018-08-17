@@ -38,6 +38,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <QVBoxLayout>
 #include <QGraphicsRectItem>
 #include "rtabmap/utilite/ULogger.h"
+#include "rtabmap/utilite/UCv2Qt.h"
 #include "rtabmap/gui/KeypointItem.h"
 #include "rtabmap/core/util2d.h"
 
@@ -198,6 +199,24 @@ ImageView::ImageView(QWidget * parent) :
 	group->addAction(_graphicsViewScaled);
 	group->addAction(_graphicsViewScaledToHeight);
 	group->addAction(_graphicsViewNoScaling);
+	QMenu * colorMap = _menu->addMenu("Depth color map");
+	_colorMapWhiteToBlack = colorMap->addAction(tr("White to black"));
+	_colorMapWhiteToBlack->setCheckable(true);
+	_colorMapWhiteToBlack->setChecked(true);
+	_colorMapBlackToWhite = colorMap->addAction(tr("Black to white"));
+	_colorMapBlackToWhite->setCheckable(true);
+	_colorMapBlackToWhite->setChecked(false);
+	_colorMapRedToBlue = colorMap->addAction(tr("Red to blue"));
+	_colorMapRedToBlue->setCheckable(true);
+	_colorMapRedToBlue->setChecked(false);
+	_colorMapBlueToRed = colorMap->addAction(tr("Blue to red"));
+	_colorMapBlueToRed->setCheckable(true);
+	_colorMapBlueToRed->setChecked(false);
+	group = new QActionGroup(this);
+	group->addAction(_colorMapWhiteToBlack);
+	group->addAction(_colorMapBlackToWhite);
+	group->addAction(_colorMapRedToBlue);
+	group->addAction(_colorMapBlueToRed);
 	_setAlpha = _menu->addAction(tr("Set transparency..."));
 	_saveImage = _menu->addAction(tr("Save picture..."));
 	_saveImage->setEnabled(false);
@@ -224,6 +243,8 @@ void ImageView::saveSettings(QSettings & settings, const QString & group) const
 	settings.setValue("bg_color", this->getDefaultBackgroundColor());
 	settings.setValue("graphics_view", this->isGraphicsViewMode());
 	settings.setValue("graphics_view_scale", this->isGraphicsViewScaled());
+	settings.setValue("graphics_view_scale_to_height", this->isGraphicsViewScaledToHeight());
+	settings.setValue("colormap", _colorMapWhiteToBlack->isChecked()?0:_colorMapBlackToWhite->isChecked()?1:_colorMapRedToBlue->isChecked()?2:3);
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -245,6 +266,12 @@ void ImageView::loadSettings(QSettings & settings, const QString & group)
 	this->setDefaultBackgroundColor(settings.value("bg_color", this->getDefaultBackgroundColor()).value<QColor>());
 	this->setGraphicsViewMode(settings.value("graphics_view", this->isGraphicsViewMode()).toBool());
 	this->setGraphicsViewScaled(settings.value("graphics_view_scale", this->isGraphicsViewScaled()).toBool());
+	this->setGraphicsViewScaledToHeight(settings.value("graphics_view_scale_to_height", this->isGraphicsViewScaledToHeight()).toBool());
+	int colorMap = settings.value("colormap", 0).toInt();
+	_colorMapWhiteToBlack->setChecked(colorMap==0);
+	_colorMapBlackToWhite->setChecked(colorMap==1);
+	_colorMapRedToBlue->setChecked(colorMap==2);
+	_colorMapBlueToRed->setChecked(colorMap==3);
 	if(!group.isEmpty())
 	{
 		settings.endGroup();
@@ -689,6 +716,11 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 		this->setGraphicsViewScaledToHeight(_graphicsViewScaledToHeight->isChecked());
 		Q_EMIT configChanged();
 	}
+	else if(action == _colorMapBlackToWhite || action == _colorMapWhiteToBlack || action == _colorMapRedToBlue || action == _colorMapBlueToRed)
+	{
+		this->setImageDepth(_imageDepthCv);
+		Q_EMIT configChanged();
+	}
 	else if(action == _setAlpha)
 	{
 		bool ok = false;
@@ -860,6 +892,25 @@ void ImageView::setImage(const QImage & image)
 	{
 		this->update();
 	}
+}
+
+void ImageView::setImageDepth(const cv::Mat & imageDepth)
+{
+	_imageDepthCv = imageDepth;
+	uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack;
+	if(_colorMapBlackToWhite->isChecked())
+	{
+		colorMap = uCvQtDepthBlackToWhite;
+	}
+	else if(_colorMapRedToBlue->isChecked())
+	{
+		colorMap = uCvQtDepthRedToBlue;
+	}
+	else if(_colorMapBlueToRed->isChecked())
+	{
+		colorMap = uCvQtDepthBlueToRed;
+	}
+	setImageDepth(uCvMat2QImage(_imageDepthCv, true, colorMap));
 }
 
 void ImageView::setImageDepth(const QImage & imageDepth)

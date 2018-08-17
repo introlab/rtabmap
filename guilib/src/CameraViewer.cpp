@@ -136,7 +136,7 @@ void CameraViewer::showImage(const rtabmap::SensorData & data)
 	}
 	if(!data.depthOrRightRaw().empty())
 	{
-		imageView_->setImageDepth(uCvMat2QImage(util2d::decimate(data.depthOrRightRaw(), validDecimationValue_)));
+		imageView_->setImageDepth(util2d::decimate(data.depthOrRightRaw(), validDecimationValue_));
 	}
 
 	if(!data.depthOrRightRaw().empty() &&

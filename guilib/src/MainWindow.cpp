@@ -1352,7 +1352,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 				_odomImageShow = _ui->imageView_odometry->isImageShown();
 				_odomImageDepthShow = _ui->imageView_odometry->isImageDepthShown();
 			}
-			_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().imageRaw()));
+			_ui->imageView_odometry->setImageDepth(odom.data().imageRaw());
 			_ui->imageView_odometry->setImageShown(true);
 			_ui->imageView_odometry->setImageDepthShown(true);
 		}
@@ -1368,7 +1368,7 @@ void MainWindow::processOdometry(const rtabmap::OdometryEvent & odom, bool dataI
 			_ui->imageView_odometry->setImage(uCvMat2QImage(odom.data().imageRaw()));
 			if(_ui->imageView_odometry->isImageDepthShown() && !odom.data().depthOrRightRaw().empty())
 			{
-				_ui->imageView_odometry->setImageDepth(uCvMat2QImage(odom.data().depthOrRightRaw()));
+				_ui->imageView_odometry->setImageDepth(odom.data().depthOrRightRaw());
 			}
 
 			if( odom.info().type == (int)Odometry::kTypeF2M ||
@@ -1748,31 +1748,23 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 			{
 				UCvMat2QImageThread qimageThread(signature.sensorData().imageRaw());
 				UCvMat2QImageThread qimageLoopThread(loopSignature.sensorData().imageRaw());
-				UCvMat2QImageThread qdepthThread(signature.sensorData().depthOrRightRaw());
-				UCvMat2QImageThread qdepthLoopThread(loopSignature.sensorData().depthOrRightRaw());
 				qimageThread.start();
-				qdepthThread.start();
 				qimageLoopThread.start();
-				qdepthLoopThread.start();
 				qimageThread.join();
-				qdepthThread.join();
 				qimageLoopThread.join();
-				qdepthLoopThread.join();
 				QImage img = qimageThread.getQImage();
 				QImage lcImg = qimageLoopThread.getQImage();
-				QImage depth = qdepthThread.getQImage();
-				QImage lcDepth = qdepthLoopThread.getQImage();
 				UDEBUG("time= %d ms", time.restart());
 
 				if(!img.isNull())
 				{
 					_ui->imageView_source->setImage(img);
 				}
-				if(!depth.isNull())
+				if(!signature.sensorData().depthOrRightRaw().empty())
 				{
-					_ui->imageView_source->setImageDepth(depth);
+					_ui->imageView_source->setImageDepth(signature.sensorData().depthOrRightRaw());
 				}
-				if(img.isNull() && depth.isNull())
+				if(img.isNull() && signature.sensorData().depthOrRightRaw().empty())
 				{
 					QRect sceneRect;
 					if(signature.sensorData().cameraModels().size())
@@ -1796,9 +1788,9 @@ void MainWindow::processStats(const rtabmap::Statistics & stat)
 				{
 					_ui->imageView_loopClosure->setImage(lcImg);
 				}
-				if(!lcDepth.isNull())
+				if(!loopSignature.sensorData().depthOrRightRaw().empty())
 				{
-					_ui->imageView_loopClosure->setImageDepth(lcDepth);
+					_ui->imageView_loopClosure->setImageDepth(loopSignature.sensorData().depthOrRightRaw());
 				}
 				if(_ui->imageView_loopClosure->sceneRect().isNull())
 				{

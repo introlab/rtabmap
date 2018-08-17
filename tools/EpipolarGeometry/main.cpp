@@ -83,7 +83,7 @@ public:
 		view1_->setImageDepthShown(true);
 
 		view1_->setImage(uCvMat2QImage(image1));
-		view1_->setImageDepth(uCvMat2QImage(image2));
+		view1_->setImageDepth(image2);
 
 		drawKeypoints(words1, words2, status);
 	}

@@ -3431,7 +3431,7 @@ void DatabaseViewer::update(int value,
 		{
 			//image
 			QImage img;
-			QImage imgDepth;
+			cv::Mat imgDepth;
 			if(dbDriver_)
 			{
 				SensorData data;
@@ -3451,7 +3451,7 @@ void DatabaseViewer::update(int value,
 							depth = util2d::fillDepthHoles(depth, ui_->spinBox_mesh_fillDepthHoles->value(), float(ui_->spinBox_mesh_depthError->value())/100.0f);
 						}
 					}
-					imgDepth = uCvMat2QImage(depth);
+					imgDepth = depth;
 				}
 
 				std::list<int> ids;
@@ -3931,12 +3931,13 @@ void DatabaseViewer::update(int value,
 				ULOGGER_DEBUG("Image is empty");
 			}
 
-			if(!imgDepth.isNull())
+			if(!imgDepth.empty())
 			{
 				view->setImageDepth(imgDepth);
 				if(img.isNull())
 				{
-					rect = imgDepth.rect();
+					rect.setWidth(imgDepth.cols);
+					rect.setHeight(imgDepth.rows);
 				}
 			}
 			else
@@ -4223,7 +4224,7 @@ void DatabaseViewer::updateStereo(const SensorData * data)
 		ui_->graphicsView_stereo->setImageDepthShown(true);
 
 		ui_->graphicsView_stereo->setImage(uCvMat2QImage(data->imageRaw()));
-		ui_->graphicsView_stereo->setImageDepth(uCvMat2QImage(data->depthOrRightRaw()));
+		ui_->graphicsView_stereo->setImageDepth(data->depthOrRightRaw());
 
 		// Draw lines between corresponding features...
 		for(unsigned int i=0; i<kpts.size(); ++i)

@@ -21,10 +21,18 @@
 #define UCV2QT_H_
 
 #include <QtGui/QImage>
+#include <QtGui/QColor>
 #include <opencv2/core/core.hpp>
 #include <rtabmap/utilite/UMath.h>
 #include <rtabmap/utilite/UThread.h>
 #include <stdio.h>
+
+enum uCvQtDepthColorMap{
+	uCvQtDepthWhiteToBlack,
+	uCvQtDepthBlackToWhite,
+	uCvQtDepthRedToBlue,
+	uCvQtDepthBlueToRed
+};
 
 /**
  * Convert a cv::Mat image to a QImage. Support 
@@ -33,7 +41,7 @@
  * @param isBgr if 3 channels, it is BGR or RGB order.
  * @return the QImage
  */
-inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true)
+inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true, uCvQtDepthColorMap colorMap = uCvQtDepthWhiteToBlack)
 {
 	QImage qtemp;
 	if(!image.empty() && image.depth() == CV_8U)
@@ -66,7 +74,8 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true)
 			// mono grayscale
 			qtemp = QImage(image.data, image.cols, image.rows, image.cols, QImage::Format_Indexed8).copy();
 			QVector<QRgb> my_table;
-			for(int i = 0; i < 256; i++) my_table.push_back(qRgb(i,i,i));
+			for(int i = 0; i < 256; i++)
+				my_table.push_back(qRgb(i,i,i));
 			qtemp.setColorTable(my_table);
 		}
 		else
@@ -113,11 +122,26 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true)
 						*p = 0;
 					}
 				}
+				if(*p!=0 && (colorMap == uCvQtDepthBlackToWhite || colorMap == uCvQtDepthRedToBlue))
+				{
+					*p = 255-*p;
+				}
 			}
 		}
 
 		QVector<QRgb> my_table;
-		for(int i = 0; i < 256; i++) my_table.push_back(qRgb(i,i,i));
+		my_table.reserve(256);
+		if(colorMap == uCvQtDepthRedToBlue || colorMap == uCvQtDepthBlueToRed)
+		{
+			my_table.push_back(qRgb(0,0,0));
+			for(int i = 1; i < 256; i++)
+				my_table.push_back(QColor::fromHsv(i, 255, 255, 255).rgb());
+		}
+		else
+		{
+			for(int i = 0; i < 256; i++)
+				my_table.push_back(qRgb(i,i,i));
+		}
 		qtemp.setColorTable(my_table);
     }
 	else if(image.depth() == CV_16U && image.channels()==1)
@@ -160,11 +184,26 @@ inline QImage uCvMat2QImage(const cv::Mat & image, bool isBgr = true)
 						*p = 0;
 					}
 				}
+				if(*p!=0 && (colorMap == uCvQtDepthBlackToWhite || colorMap == uCvQtDepthRedToBlue))
+				{
+					*p = 255-*p;
+				}
 			}
 		}
 
 		QVector<QRgb> my_table;
-		for(int i = 0; i < 256; i++) my_table.push_back(qRgb(i,i,i));
+		my_table.reserve(256);
+		if(colorMap == uCvQtDepthRedToBlue || colorMap == uCvQtDepthBlueToRed)
+		{
+			my_table.push_back(qRgb(0,0,0));
+			for(int i = 1; i < 256; i++)
+				my_table.push_back(QColor::fromHsv(i, 255, 255, 255).rgb());
+		}
+		else
+		{
+			for(int i = 0; i < 256; i++)
+				my_table.push_back(qRgb(i,i,i));
+		}
 		qtemp.setColorTable(my_table);
 	}
 	else if(!image.empty() && image.depth() != CV_8U)

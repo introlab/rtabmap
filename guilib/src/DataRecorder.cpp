@@ -157,7 +157,7 @@ void DataRecorder::showImage(const cv::Mat & image, const cv::Mat & depth)
 {
 	processingImages_ = true;
 	imageView_->setImage(uCvMat2QImage(image));
-	imageView_->setImageDepth(uCvMat2QImage(depth));
+	imageView_->setImageDepth(depth);
 	label_->setText(tr("Images=%1 (~%2 MB)").arg(count_).arg(totalSizeKB_/1000));
 	processingImages_ = false;
 }
