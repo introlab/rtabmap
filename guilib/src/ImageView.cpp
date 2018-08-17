@@ -718,7 +718,8 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	}
 	else if(action == _colorMapBlackToWhite || action == _colorMapWhiteToBlack || action == _colorMapRedToBlue || action == _colorMapBlueToRed)
 	{
-		this->setImageDepth(_imageDepthCv);
+		if(!_imageDepthCv.empty())
+			this->setImageDepth(_imageDepthCv);
 		Q_EMIT configChanged();
 	}
 	else if(action == _setAlpha)
