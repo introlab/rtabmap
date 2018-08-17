@@ -183,10 +183,21 @@ ImageView::ImageView(QWidget * parent) :
 	_graphicsViewMode = _menu->addAction(tr("Graphics view"));
 	_graphicsViewMode->setCheckable(true);
 	_graphicsViewMode->setChecked(false);
-	_graphicsViewScaled = _menu->addAction(tr("Scale image"));
+	_scaleMenu = _menu->addMenu("Scale image");
+	_scaleMenu->setEnabled(false);
+	_graphicsViewScaled = _scaleMenu->addAction(tr("Fit in view"));
 	_graphicsViewScaled->setCheckable(true);
 	_graphicsViewScaled->setChecked(true);
-	_graphicsViewScaled->setEnabled(false);
+	_graphicsViewScaledToHeight = _scaleMenu->addAction(tr("Fit height"));
+	_graphicsViewScaledToHeight->setCheckable(true);
+	_graphicsViewScaledToHeight->setChecked(false);
+	_graphicsViewNoScaling = _scaleMenu->addAction(tr("No scale"));
+	_graphicsViewNoScaling->setCheckable(true);
+	_graphicsViewNoScaling->setChecked(false);
+	QActionGroup * group = new QActionGroup(this);
+	group->addAction(_graphicsViewScaled);
+	group->addAction(_graphicsViewScaledToHeight);
+	group->addAction(_graphicsViewNoScaling);
 	_setAlpha = _menu->addAction(tr("Set transparency..."));
 	_saveImage = _menu->addAction(tr("Save picture..."));
 	_saveImage->setEnabled(false);
@@ -268,6 +279,11 @@ bool ImageView::isGraphicsViewMode() const
 bool ImageView::isGraphicsViewScaled() const
 {
 	return _graphicsViewScaled->isChecked();
+}
+
+bool ImageView::isGraphicsViewScaledToHeight() const
+{
+	return _graphicsViewScaledToHeight->isChecked();
 }
 
 const QColor & ImageView::getDefaultBackgroundColor() const
@@ -362,7 +378,7 @@ void ImageView::setGraphicsViewMode(bool on)
 {
 	_graphicsViewMode->setChecked(on);
 	_graphicsView->setVisible(on);
-	_graphicsViewScaled->setEnabled(on);
+	_scaleMenu->setEnabled(on);
 
 	if(on)
 	{
@@ -402,6 +418,12 @@ void ImageView::setGraphicsViewMode(bool on)
 		{
 			_graphicsView->fitInView(_graphicsView->sceneRect(), Qt::KeepAspectRatio);
 		}
+		else if(_graphicsViewScaledToHeight->isChecked())
+		{
+			QRectF rect = _graphicsView->sceneRect();
+			rect.setWidth(1);
+			_graphicsView->fitInView(rect, Qt::KeepAspectRatio);
+		}
 		else
 		{
 			_graphicsView->resetTransform();
@@ -420,6 +442,27 @@ void ImageView::setGraphicsViewScaled(bool scaled)
 	if(scaled)
 	{
 		_graphicsView->fitInView(_graphicsView->sceneRect(), Qt::KeepAspectRatio);
+	}
+	else
+	{
+		_graphicsView->resetTransform();
+	}
+
+	if(!_graphicsView->isVisible())
+	{
+		this->update();
+	}
+}
+
+void ImageView::setGraphicsViewScaledToHeight(bool scaled)
+{
+	_graphicsViewScaledToHeight->setChecked(scaled);
+
+	if(scaled)
+	{
+		QRectF rect = _graphicsView->sceneRect();
+		rect.setWidth(1);
+		_graphicsView->fitInView(rect, Qt::KeepAspectRatio);
 	}
 	else
 	{
@@ -566,9 +609,18 @@ void ImageView::paintEvent(QPaintEvent *event)
 void ImageView::resizeEvent(QResizeEvent* event)
 {
 	QWidget::resizeEvent(event);
-	if(_graphicsView->isVisible() && _graphicsViewScaled->isChecked())
+	if(_graphicsView->isVisible())
 	{
-		_graphicsView->fitInView(_graphicsView->sceneRect(), Qt::KeepAspectRatio);
+		if(_graphicsViewScaled->isChecked())
+		{
+			_graphicsView->fitInView(_graphicsView->sceneRect(), Qt::KeepAspectRatio);
+		}
+		else if(_graphicsViewScaledToHeight->isChecked())
+		{
+			QRectF rect = _graphicsView->sceneRect();
+			rect.setWidth(1);
+			_graphicsView->fitInView(rect, Qt::KeepAspectRatio);
+		}
 	}
 }
 
@@ -630,6 +682,11 @@ void ImageView::contextMenuEvent(QContextMenuEvent * e)
 	else if(action == _graphicsViewScaled)
 	{
 		this->setGraphicsViewScaled(_graphicsViewScaled->isChecked());
+		Q_EMIT configChanged();
+	}
+	else if(action == _graphicsViewScaledToHeight || action == _graphicsViewNoScaling)
+	{
+		this->setGraphicsViewScaledToHeight(_graphicsViewScaledToHeight->isChecked());
 		Q_EMIT configChanged();
 	}
 	else if(action == _setAlpha)
@@ -932,6 +989,12 @@ void ImageView::setSceneRect(const QRectF & rect)
 	if(_graphicsViewScaled->isChecked())
 	{
 		_graphicsView->fitInView(_graphicsView->sceneRect(), Qt::KeepAspectRatio);
+	}
+	else if(_graphicsViewScaledToHeight->isChecked())
+	{
+		QRectF rect = _graphicsView->sceneRect();
+		rect.setWidth(1);
+		_graphicsView->fitInView(rect, Qt::KeepAspectRatio);
 	}
 	else
 	{

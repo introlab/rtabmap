@@ -64,6 +64,7 @@ public:
 	int getFeaturesSize() const {return _featuresSize;}
 	bool isGraphicsViewMode() const;
 	bool isGraphicsViewScaled() const;
+	bool isGraphicsViewScaledToHeight() const;
 	const QColor & getDefaultBackgroundColor() const;
 	const QColor & getBackgroundColor() const;
 
@@ -75,6 +76,7 @@ public:
 	void setLinesShown(bool shown);
 	void setGraphicsViewMode(bool on);
 	void setGraphicsViewScaled(bool scaled);
+	void setGraphicsViewScaledToHeight(bool scaled);
 	void setDefaultBackgroundColor(const QColor & color);
 	void setBackgroundColor(const QColor & color);
 
@@ -129,6 +131,9 @@ private:
 	QAction * _setFeaturesSize;
 	QAction * _graphicsViewMode;
 	QAction * _graphicsViewScaled;
+	QAction * _graphicsViewScaledToHeight;
+	QAction * _graphicsViewNoScaling;
+	QMenu * _scaleMenu;
 
 	QGraphicsView * _graphicsView;
 	QMultiMap<int, rtabmap::KeypointItem *> _features;

@@ -348,6 +348,8 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(updateConstraintView()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(update3dView()));
+	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(updateConstraintView()));
+	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(update3dView()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(editingFinished()), this, SLOT(updateGraphView()));
@@ -373,6 +375,7 @@ DatabaseViewer::DatabaseViewer(const QString & ini, QWidget * parent) :
 	// Graph view
 	connect(ui_->doubleSpinBox_gainCompensationRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_voxelSize, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
+	connect(ui_->spinBox_decimation, SIGNAL(valueChanged(int)), this, SLOT(configModified()));
 	connect(ui_->groupBox_posefiltering, SIGNAL(clicked(bool)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringRadius, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
 	connect(ui_->doubleSpinBox_posefilteringAngle, SIGNAL(valueChanged(double)), this, SLOT(configModified()));
@@ -496,7 +499,7 @@ void DatabaseViewer::readSettings()
 	settings.beginGroup("optimization");
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(settings.value("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value()).toDouble());
 	ui_->doubleSpinBox_voxelSize->setValue(settings.value("voxelSize", ui_->doubleSpinBox_voxelSize->value()).toDouble());
-
+	ui_->spinBox_decimation->setValue(settings.value("decimation", ui_->spinBox_decimation->value()).toInt());
 	settings.endGroup();
 
 	settings.beginGroup("grid");
@@ -577,6 +580,7 @@ void DatabaseViewer::writeSettings()
 	settings.beginGroup("optimization");
 	settings.setValue("gainCompensationRadius", ui_->doubleSpinBox_gainCompensationRadius->value());
 	settings.setValue("voxelSize", ui_->doubleSpinBox_voxelSize->value());
+	settings.setValue("decimation", ui_->spinBox_decimation->value());
 	settings.endGroup();
 
 	// save Grid settings
@@ -660,6 +664,7 @@ void DatabaseViewer::restoreDefaultSettings()
 	ui_->doubleSpinBox_optimizationScale->setValue(1.0);
 	ui_->doubleSpinBox_gainCompensationRadius->setValue(0.0);
 	ui_->doubleSpinBox_voxelSize->setValue(0.0);
+	ui_->spinBox_decimation->setValue(1);
 
 	ui_->groupBox_posefiltering->setChecked(false);
 	ui_->doubleSpinBox_posefilteringRadius->setValue(0.1);
@@ -3588,7 +3593,7 @@ void DatabaseViewer::update(int value,
 											data.imageRaw(),
 											depth,
 											data.cameraModels()[0],
-											1,0,0,indices.get());
+											ui_->spinBox_decimation->value(),0,0,indices.get());
 									if(indices->size())
 									{
 										cloud = util3d::transformPointCloud(cloud, data.cameraModels()[0].localTransform());
@@ -3597,7 +3602,7 @@ void DatabaseViewer::update(int value,
 								}
 								else
 								{
-									cloud = util3d::cloudRGBFromSensorData(data, 1, 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
+									cloud = util3d::cloudRGBFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
 								}
 								if(indices->size())
 								{
@@ -3665,7 +3670,7 @@ void DatabaseViewer::update(int value,
 							{
 								pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
 								pcl::IndicesPtr indices(new std::vector<int>);
-								cloud = util3d::cloudFromSensorData(data, 1, 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
+								cloud = util3d::cloudFromSensorData(data, ui_->spinBox_decimation->value(), 0, 0, indices.get(), ui_->parameters_toolbox->getParameters());
 								if(indices->size())
 								{
 									if(ui_->doubleSpinBox_voxelSize->value() > 0.0)
@@ -4572,11 +4577,11 @@ void DatabaseViewer::updateConstraintView(
 			pcl::IndicesPtr indicesTo(new std::vector<int>);
 			if(!dataFrom.imageRaw().empty() && !dataFrom.depthOrRightRaw().empty())
 			{
-				cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, 1, 0, 0, indicesFrom.get(), ui_->parameters_toolbox->getParameters());
+				cloudFrom=util3d::cloudRGBFromSensorData(dataFrom, ui_->spinBox_decimation->value(), 0, 0, indicesFrom.get(), ui_->parameters_toolbox->getParameters());
 			}
 			if(!dataTo.imageRaw().empty() && !dataTo.depthOrRightRaw().empty())
 			{
-				cloudTo=util3d::cloudRGBFromSensorData(dataTo, 1, 0, 0, indicesTo.get(), ui_->parameters_toolbox->getParameters());
+				cloudTo=util3d::cloudRGBFromSensorData(dataTo, ui_->spinBox_decimation->value(), 0, 0, indicesTo.get(), ui_->parameters_toolbox->getParameters());
 			}
 
 			if(cloudTo.get() && indicesTo->size())
