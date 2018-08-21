@@ -32,6 +32,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Transform.h"
 #include "rtabmap/core/StereoCameraModel.h"
+#include "rtabmap/gui/CloudViewerInteractorStyle.h"
 
 #include <QVTKWidget.h>
 #include <pcl/pcl_base.h>
@@ -48,9 +49,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <opencv2/opencv.hpp>
 #include <set>
 
-#include <pcl/visualization/mouse_event.h>
-#include <pcl/visualization/point_picking_event.h>
-#include <pcl/visualization/interactor_style.h>
 #include <pcl/PCLPointCloud2.h>
 
 namespace pcl {
@@ -67,32 +65,6 @@ class vtkOBBTree;
 namespace rtabmap {
 
 class OctoMap;
-class CloudViewer;
-
-class RTABMAPGUI_EXP CloudViewerInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
-{
-public:
-    static CloudViewerInteractorStyle *New ();
-
-public:
-	CloudViewerInteractorStyle();
-	virtual void Rotate();
-protected:
-	virtual void OnMouseMove();
-	virtual void OnLeftButtonDown();
-
-protected:
-	friend class CloudViewer;
-	void setCloudViewer(CloudViewer * cloudViewer) {viewer_ = cloudViewer;}
-	CloudViewer * viewer_;
-
-private:
-	unsigned int NumberOfClicks;
-	int PreviousPosition[2];
-	int ResetPixelDistance;
-	float PreviousMeasure[3];
-	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsHolder_;
-};
 
 class RTABMAPGUI_EXP CloudViewer : public QVTKWidget
 {

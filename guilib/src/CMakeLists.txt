@@ -84,6 +84,8 @@ SET(SRC_FILES
 	./DatabaseViewer.cpp
 	./utilite/UPlot.cpp
 	./CloudViewer.cpp
+	./CloudViewerCellPicker.cpp
+	./CloudViewerInteractorStyle.cpp
 	./OdometryViewer.cpp
 	./LoopClosureViewer.cpp
 	./DataRecorder.cpp

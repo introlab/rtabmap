@@ -1,0 +1,49 @@
+/*
+ * CloudViewerInteractorStyl.h
+ *
+ *  Created on: Aug 21, 2018
+ *      Author: mathieu
+ */
+
+#ifndef GUILIB_SRC_CLOUDVIEWERINTERACTORSTYLE_H_
+#define GUILIB_SRC_CLOUDVIEWERINTERACTORSTYLE_H_
+
+#include "rtabmap/gui/RtabmapGuiExp.h" // DLL export/import defines
+
+#include <pcl/visualization/mouse_event.h>
+#include <pcl/visualization/point_picking_event.h>
+#include <pcl/visualization/interactor_style.h>
+#include <pcl/point_types.h>
+
+namespace rtabmap {
+
+class CloudViewer;
+
+class RTABMAPGUI_EXP CloudViewerInteractorStyle: public pcl::visualization::PCLVisualizerInteractorStyle
+{
+public:
+    static CloudViewerInteractorStyle *New ();
+
+public:
+	CloudViewerInteractorStyle();
+	virtual void Rotate();
+protected:
+	virtual void OnMouseMove();
+	virtual void OnLeftButtonDown();
+
+protected:
+	friend class CloudViewer;
+	void setCloudViewer(CloudViewer * cloudViewer) {viewer_ = cloudViewer;}
+	CloudViewer * viewer_;
+
+private:
+	unsigned int NumberOfClicks;
+	int PreviousPosition[2];
+	int ResetPixelDistance;
+	float PreviousMeasure[3];
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsHolder_;
+};
+
+} /* namespace rtabmap */
+
+#endif /* GUILIB_SRC_CLOUDVIEWERINTERACTORSTYLE_H_ */
