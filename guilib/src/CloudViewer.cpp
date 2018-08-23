@@ -636,6 +636,7 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
 	if(_visualizer->addPolygonMesh<pcl::PointXYZ>(cloud, polygons, id, 1))
 	{
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetAmbient(0.5);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
@@ -669,6 +670,7 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
 	if(_visualizer->addPolygonMesh<pcl::PointXYZRGB>(cloud, polygons, id, 1))
 	{
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetAmbient(0.5);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
@@ -702,6 +704,7 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d points and %d polygons", id.c_str(), (int)cloud->size(), (int)polygons.size());
 	if(_visualizer->addPolygonMesh<pcl::PointXYZRGBNormal>(cloud, polygons, id, 1))
 	{
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetAmbient(0.5);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
@@ -734,6 +737,7 @@ bool CloudViewer::addCloudMesh(
 	UDEBUG("Adding %s with %d polygons", id.c_str(), (int)mesh->polygons.size());
 	if(_visualizer->addPolygonMesh(*mesh, id, 1))
 	{
+		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetAmbient(0.5);
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 		_visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetBackfaceCulling(_aBackfaceCulling->isChecked());
@@ -1180,6 +1184,7 @@ bool CloudViewer::addTextureMesh (
   // Save the viewpoint transformation matrix to the global actor map
   (*_visualizer->getCloudActorMap())[id].viewpoint_transformation_ = transformation;
 
+  _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetAmbient(0.5);
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetLighting(_aSetLighting->isChecked());
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetInterpolation(_aSetFlatShading->isChecked()?VTK_FLAT:VTK_PHONG);
   _visualizer->getCloudActorMap()->find(id)->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
