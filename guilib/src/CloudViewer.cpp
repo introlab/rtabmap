@@ -70,6 +70,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vtkTextActor.h>
 #include <vtkOBBTree.h>
 #include <vtkObjectFactory.h>
+#include <vtkQuad.h>
 #include <opencv/vtkImageMatSource.h>
 
 #ifdef RTABMAP_OCTOMAP
@@ -1507,6 +1508,148 @@ void CloudViewer::removeAllCubes()
 		this->removeCube(*iter);
 	}
 	UASSERT(_cubes.empty());
+}
+
+void CloudViewer::addOrUpdateQuad(
+		const std::string & id,
+		const Transform & pose,
+		float width,
+		float height,
+		const QColor & color,
+		bool foreground)
+{
+	addOrUpdateQuad(id, pose, width/2.0f, width/2.0f, height/2.0f, height/2.0f, color, foreground);
+}
+
+void CloudViewer::addOrUpdateQuad(
+		const std::string & id,
+		const Transform & pose,
+		float widthLeft,
+		float widthRight,
+		float heightBottom,
+		float heightTop,
+		const QColor & color,
+		bool foreground)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	removeQuad(id);
+
+	if(!pose.isNull())
+	{
+		_quads.insert(id);
+
+		QColor c = Qt::gray;
+		if(color.isValid())
+		{
+			c = color;
+		}
+
+		// Create four points (must be in counter clockwise order)
+		double p0[3] = {0.0, -widthLeft, heightTop};
+		double p1[3] = {0.0, -widthLeft, -heightBottom};
+		double p2[3] = {0.0, widthRight, -heightBottom};
+		double p3[3] = {0.0, widthRight, heightTop};
+
+		// Add the points to a vtkPoints object
+		vtkSmartPointer<vtkPoints> points =
+				vtkSmartPointer<vtkPoints>::New();
+		points->InsertNextPoint(p0);
+		points->InsertNextPoint(p1);
+		points->InsertNextPoint(p2);
+		points->InsertNextPoint(p3);
+
+		// Create a quad on the four points
+		vtkSmartPointer<vtkQuad> quad =
+				vtkSmartPointer<vtkQuad>::New();
+		quad->GetPointIds()->SetId(0,0);
+		quad->GetPointIds()->SetId(1,1);
+		quad->GetPointIds()->SetId(2,2);
+		quad->GetPointIds()->SetId(3,3);
+
+		// Create a cell array to store the quad in
+		vtkSmartPointer<vtkCellArray> quads =
+				vtkSmartPointer<vtkCellArray>::New();
+		quads->InsertNextCell(quad);
+
+		// Create a polydata to store everything in
+		vtkSmartPointer<vtkPolyData> polydata =
+				vtkSmartPointer<vtkPolyData>::New();
+
+		// Add the points and quads to the dataset
+		polydata->SetPoints(points);
+		polydata->SetPolys(quads);
+
+		// Setup actor and mapper
+		vtkSmartPointer<vtkPolyDataMapper> mapper =
+				vtkSmartPointer<vtkPolyDataMapper>::New();
+#if VTK_MAJOR_VERSION <= 5
+		mapper->SetInput(polydata);
+#else
+		mapper->SetInputData(polydata);
+#endif
+
+		vtkSmartPointer<vtkLODActor> actor =
+				vtkSmartPointer<vtkLODActor>::New();
+		actor->SetMapper(mapper);
+		actor->GetProperty()->SetColor(c.redF(), c.greenF(), c.blueF());
+
+		//_visualizer->addActorToRenderer (actor, viewport);
+		// Add it to all renderers
+		_visualizer->getRendererCollection()->InitTraversal ();
+		vtkRenderer* renderer = NULL;
+		int i = 0;
+		while ((renderer = _visualizer->getRendererCollection()->GetNextItem ()) != NULL)
+		{
+			if ((foreground?2:1) == i)               // add the actor only to the specified viewport
+			{
+				renderer->AddActor (actor);
+			}
+			++i;
+		}
+
+		// Save the pointer/ID pair to the global actor map
+		(*_visualizer->getCloudActorMap())[id].actor = actor;
+
+		// Save the viewpoint transformation matrix to the global actor map
+		vtkSmartPointer<vtkMatrix4x4> transformation = vtkSmartPointer<vtkMatrix4x4>::New ();
+		pcl::visualization::PCLVisualizer::convertToVtkMatrix (pose.toEigen3f().matrix (), transformation);
+		(*_visualizer->getCloudActorMap())[id].viewpoint_transformation_ = transformation;
+		(*_visualizer->getCloudActorMap())[id].actor->SetUserMatrix (transformation);
+		(*_visualizer->getCloudActorMap())[id].actor->Modified ();
+
+		(*_visualizer->getCloudActorMap())[id].actor->GetProperty()->SetLighting(false);
+		_visualizer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, c.alphaF(), id);
+	}
+}
+
+void CloudViewer::removeQuad(const std::string & id)
+{
+	if(id.empty())
+	{
+		UERROR("id should not be empty!");
+		return;
+	}
+
+	if(_quads.find(id) != _quads.end())
+	{
+		_visualizer->removeShape(id);
+		_quads.erase(id);
+	}
+}
+
+void CloudViewer::removeAllQuads()
+{
+	std::set<std::string> quads = _quads;
+	for(std::set<std::string>::iterator iter = quads.begin(); iter!=quads.end(); ++iter)
+	{
+		this->removeQuad(*iter);
+	}
+	UASSERT(_quads.empty());
 }
 
 static const float frustum_vertices[] = {

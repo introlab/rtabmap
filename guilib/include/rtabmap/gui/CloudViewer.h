@@ -234,6 +234,26 @@ public:
 	void removeAllCubes();
 	const std::set<std::string> & getAddedCubes() const {return _cubes;}
 
+	void addOrUpdateQuad(
+			const std::string & id,
+			const Transform & pose,
+			float width,
+			float height,
+			const QColor & color,
+			bool foreground = false);
+	void addOrUpdateQuad(
+			const std::string & id,
+			const Transform & pose,
+			float widthLeft,
+			float widthRight,
+			float heightBottom,
+			float heightTop,
+			const QColor & color,
+			bool foreground = false);
+	void removeQuad(const std::string & id);
+	void removeAllQuads();
+	const std::set<std::string> & getAddedQuads() const {return _quads;}
+
 	void addOrUpdateFrustum(
 			const std::string & id,
 			const Transform & transform,
@@ -389,6 +409,7 @@ private:
     std::set<std::string> _lines;
     std::set<std::string> _spheres;
     std::set<std::string> _cubes;
+    std::set<std::string> _quads;
     QMap<std::string, Transform> _frustums;
     pcl::PointCloud<pcl::PointXYZ>::Ptr _trajectory;
     unsigned int _maxTrajectorySize;
