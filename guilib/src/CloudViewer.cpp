@@ -2087,6 +2087,28 @@ Transform CloudViewer::getTargetPose() const
 	return _lastPose;
 }
 
+std::string CloudViewer::getIdByActor(vtkProp * actor) const
+{
+	pcl::visualization::CloudActorMapPtr cloudActorMap = _visualizer->getCloudActorMap();
+	for(pcl::visualization::CloudActorMap::iterator iter=cloudActorMap->begin(); iter!=cloudActorMap->end(); ++iter)
+	{
+		if(iter->second.actor.GetPointer() == actor)
+		{
+			return iter->first;
+		}
+	}
+
+	pcl::visualization::ShapeActorMapPtr shapeActorMap = _visualizer->getShapeActorMap();
+	for(pcl::visualization::ShapeActorMap::iterator iter=shapeActorMap->begin(); iter!=shapeActorMap->end(); ++iter)
+	{
+		if(iter->second.GetPointer() == actor)
+		{
+			return iter->first;
+		}
+	}
+	return std::string();
+}
+
 void CloudViewer::setBackfaceCulling(bool enabled, bool frontfaceCulling)
 {
 	_aBackfaceCulling->setChecked(enabled);
@@ -2160,6 +2182,24 @@ void CloudViewer::setEdgeVisibility(bool visible)
 		iter->second.actor->GetProperty()->SetEdgeVisibility(_aSetEdgeVisibility->isChecked());
 	}
 	this->update();
+}
+
+void CloudViewer::setInteractorLayer(int layer)
+{
+	_visualizer->getRendererCollection()->InitTraversal ();
+	vtkRenderer* renderer = NULL;
+	int i =0;
+	while ((renderer = _visualizer->getRendererCollection()->GetNextItem ()) != NULL)
+	{
+		if(i==layer)
+		{
+			_visualizer->getInteractorStyle()->SetDefaultRenderer(renderer);
+			_visualizer->getInteractorStyle()->SetCurrentRenderer(renderer);
+			return;
+		}
+		++i;
+	}
+	UWARN("Could not set layer %d to interactor (layers=%d).", layer, _visualizer->getRendererCollection()->GetNumberOfItems());
 }
 
 void CloudViewer::getCameraPosition(

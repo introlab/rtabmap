@@ -308,6 +308,7 @@ public:
 	const QColor & getDefaultBackgroundColor() const;
 	const QColor & getBackgroundColor() const;
 	Transform getTargetPose() const;
+	std::string getIdByActor(vtkProp * actor) const;
 
 	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
 	void setPolygonPicking(bool enabled);
@@ -315,6 +316,7 @@ public:
 	void setLighting(bool on);
 	void setShading(bool on);
 	void setEdgeVisibility(bool visible);
+	void setInteractorLayer(int layer);
 	double getRenderingRate() const;
 
 	void getCameraPosition(

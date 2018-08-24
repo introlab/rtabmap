@@ -23,6 +23,7 @@ class RTABMAPGUI_EXP CloudViewerInteractorStyle: public pcl::visualization::PCLV
 {
 public:
     static CloudViewerInteractorStyle *New ();
+    vtkTypeMacro(CloudViewerInteractorStyle, pcl::visualization::PCLVisualizerInteractorStyle);
 
 public:
 	CloudViewerInteractorStyle();

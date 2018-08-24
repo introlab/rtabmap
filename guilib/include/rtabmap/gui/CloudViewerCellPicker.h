@@ -18,6 +18,7 @@ class RTABMAPGUI_EXP CloudViewerCellPicker : public vtkCellPicker {
 public:
 public:
     static CloudViewerCellPicker *New ();
+    vtkTypeMacro(CloudViewerCellPicker, vtkCellPicker);
 	CloudViewerCellPicker();
 	virtual ~CloudViewerCellPicker();
 
