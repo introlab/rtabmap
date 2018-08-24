@@ -2098,6 +2098,8 @@ std::string CloudViewer::getIdByActor(vtkProp * actor) const
 		}
 	}
 
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+	// getShapeActorMap() not available in version < 1.7.2
 	pcl::visualization::ShapeActorMapPtr shapeActorMap = _visualizer->getShapeActorMap();
 	for(pcl::visualization::ShapeActorMap::iterator iter=shapeActorMap->begin(); iter!=shapeActorMap->end(); ++iter)
 	{
@@ -2106,6 +2108,7 @@ std::string CloudViewer::getIdByActor(vtkProp * actor) const
 			return iter->first;
 		}
 	}
+#endif
 	return std::string();
 }
 
