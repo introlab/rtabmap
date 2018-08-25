@@ -2105,11 +2105,95 @@ std::string CloudViewer::getIdByActor(vtkProp * actor) const
 	{
 		if(iter->second.GetPointer() == actor)
 		{
-			return iter->first;
+			std::string id = iter->first;
+			while(id.back() == '*')
+			{
+				id.erase(id.size()-1);
+			}
+
+			return id;
 		}
 	}
 #endif
 	return std::string();
+}
+
+QColor CloudViewer::getColor(const std::string & id)
+{
+	QColor color;
+	pcl::visualization::CloudActorMap::iterator iter = _visualizer->getCloudActorMap()->find(id);
+	if(iter != _visualizer->getCloudActorMap()->end())
+	{
+		double r,g,b,a;
+		iter->second.actor->GetProperty()->GetColor(r,g,b);
+		a = iter->second.actor->GetProperty()->GetOpacity();
+		color.setRgbF(r, g, b, a);
+	}
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+	// getShapeActorMap() not available in version < 1.7.2
+	else
+	{
+		std::string idLayer1 = id+"*";
+		std::string idLayer2 = id+"**";
+		pcl::visualization::ShapeActorMap::iterator iter = _visualizer->getShapeActorMap()->find(id);
+		if(iter == _visualizer->getShapeActorMap()->end())
+		{
+			iter = _visualizer->getShapeActorMap()->find(idLayer1);
+			if(iter == _visualizer->getShapeActorMap()->end())
+			{
+				iter = _visualizer->getShapeActorMap()->find(idLayer2);
+			}
+		}
+		if(iter != _visualizer->getShapeActorMap()->end())
+		{
+			vtkActor * actor = vtkActor::SafeDownCast(iter->second);
+			if(actor)
+			{
+				double r,g,b,a;
+				actor->GetProperty()->GetColor(r,g,b);
+				a = actor->GetProperty()->GetOpacity();
+				color.setRgbF(r, g, b, a);
+			}
+		}
+	}
+#endif
+	return color;
+}
+
+void CloudViewer::setColor(const std::string & id, const QColor & color)
+{
+	pcl::visualization::CloudActorMap::iterator iter = _visualizer->getCloudActorMap()->find(id);
+	if(iter != _visualizer->getCloudActorMap()->end())
+	{
+		iter->second.actor->GetProperty()->SetColor(color.redF(),color.greenF(),color.blueF());
+		iter->second.actor->GetProperty()->SetOpacity(color.alphaF());
+	}
+#if PCL_VERSION_COMPARE(>=, 1, 7, 2)
+	// getShapeActorMap() not available in version < 1.7.2
+	else
+	{
+		std::string idLayer1 = id+"*";
+		std::string idLayer2 = id+"**";
+		pcl::visualization::ShapeActorMap::iterator iter = _visualizer->getShapeActorMap()->find(id);
+		if(iter == _visualizer->getShapeActorMap()->end())
+		{
+			iter = _visualizer->getShapeActorMap()->find(idLayer1);
+			if(iter == _visualizer->getShapeActorMap()->end())
+			{
+				iter = _visualizer->getShapeActorMap()->find(idLayer2);
+			}
+		}
+		if(iter != _visualizer->getShapeActorMap()->end())
+		{
+			vtkActor * actor = vtkActor::SafeDownCast(iter->second);
+			if(actor)
+			{
+				actor->GetProperty()->SetColor(color.redF(),color.greenF(),color.blueF());
+				actor->GetProperty()->SetOpacity(color.alphaF());
+			}
+		}
+	}
+#endif
 }
 
 void CloudViewer::setBackfaceCulling(bool enabled, bool frontfaceCulling)

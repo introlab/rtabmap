@@ -309,6 +309,8 @@ public:
 	const QColor & getBackgroundColor() const;
 	Transform getTargetPose() const;
 	std::string getIdByActor(vtkProp * actor) const;
+	QColor getColor(const std::string & id);
+	void setColor(const std::string & id, const QColor & color);
 
 	void setBackfaceCulling(bool enabled, bool frontfaceCulling);
 	void setPolygonPicking(bool enabled);
