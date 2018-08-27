@@ -27,7 +27,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/DBReader.h"
 #include "rtabmap/core/DBDriver.h"
-#include "DBDriverSqlite3.h"
 
 #include <rtabmap/utilite/ULogger.h>
 #include <rtabmap/utilite/UFile.h>
@@ -131,7 +130,7 @@ bool DBReader::init(
 
 	rtabmap::ParametersMap parameters;
 	parameters.insert(rtabmap::ParametersPair(rtabmap::Parameters::kDbSqlite3InMemory(), "false"));
-	_dbDriver = new DBDriverSqlite3(parameters);
+	_dbDriver = DBDriver::create(parameters);
 	if(!_dbDriver)
 	{
 		UERROR("Driver doesn't exist.");

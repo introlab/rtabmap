@@ -31,7 +31,9 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/core/RtabmapExp.h" // DLL export/import defines
 #include "rtabmap/core/DBDriver.h"
 #include <opencv2/features2d/features2d.hpp>
-#include "sqlite3/sqlite3.h"
+
+typedef struct sqlite3_stmt sqlite3_stmt;
+typedef struct sqlite3 sqlite3;
 
 namespace rtabmap {
 
@@ -48,7 +50,7 @@ public:
 	void setSynchronous(int synchronous);
 	void setTempStore(int tempStore);
 
-private:
+protected:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false);
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "");
 	virtual bool isConnectedQuery() const;
@@ -175,10 +177,12 @@ private:
 	void loadLinksQuery(std::list<Signature *> & signatures) const;
 	int loadOrSaveDb(sqlite3 *pInMemory, const std::string & fileName, int isSave) const;
 
-private:
+protected:
 	sqlite3 * _ppDb;
-	long _memoryUsedEstimate;
 	std::string _version;
+
+private:
+	long _memoryUsedEstimate;
 	bool _dbInMemory;
 	unsigned int _cacheSize;
 	int _journalMode;

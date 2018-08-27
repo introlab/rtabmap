@@ -29,12 +29,12 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/VisualWord.h"
+#include "rtabmap/core/DBDriverSqlite3.h"
 #include "rtabmap/utilite/UConversion.h"
 #include "rtabmap/utilite/UMath.h"
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UTimer.h"
 #include "rtabmap/utilite/UStl.h"
-#include "DBDriverSqlite3.h"
 
 namespace rtabmap {
 

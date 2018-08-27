@@ -179,7 +179,6 @@ public:
 protected:
 	DBDriver(const ParametersMap & parameters = ParametersMap());
 
-private:
 	virtual bool connectDatabaseQuery(const std::string & url, bool overwritten = false) = 0;
 	virtual void disconnectDatabaseQuery(bool save = true, const std::string & outputUrl = "") = 0;
 	virtual bool isConnectedQuery() const = 0;

@@ -25,7 +25,8 @@ ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "DBDriverSqlite3.h"
+#include "rtabmap/core/DBDriverSqlite3.h"
+#include "sqlite3/sqlite3.h"
 
 #include "rtabmap/core/Signature.h"
 #include "rtabmap/core/VisualWord.h"
@@ -42,8 +43,8 @@ namespace rtabmap {
 DBDriverSqlite3::DBDriverSqlite3(const ParametersMap & parameters) :
 	DBDriver(parameters),
 	_ppDb(0),
-	_memoryUsedEstimate(0),
 	_version("0.0.0"),
+	_memoryUsedEstimate(0),
 	_dbInMemory(Parameters::defaultDbSqlite3InMemory()),
 	_cacheSize(Parameters::defaultDbSqlite3CacheSize()),
 	_journalMode(Parameters::defaultDbSqlite3JournalMode()),
