@@ -91,17 +91,17 @@ void CloudViewerInteractorStyle::setOrthoMode(bool enabled)
 		return;
 	}
 
-	vtkSmartPointer<vtkCamera> cam = CurrentRenderer->GetActiveCamera ();
-	UASSERT(cam.Get());
-	cam->SetParallelProjection (enabled);
+	vtkCamera *camera = CurrentRenderer->GetActiveCamera ();
+	UASSERT(camera);
+	camera->SetParallelProjection (enabled);
 	if(enabled)
 	{
 		double x,y,z;
-		cam->GetFocalPoint(x, y, z);
-		cam->SetPosition(x, y, z+(cam->GetDistance()<=5?5:cam->GetDistance()));
-		cam->SetViewUp(1, 0, 0);
+		camera->GetFocalPoint(x, y, z);
+		camera->SetPosition(x, y, z+(camera->GetDistance()<=5?5:camera->GetDistance()));
+		camera->SetViewUp(1, 0, 0);
 	}
-	CurrentRenderer->SetActiveCamera (cam);
+	CurrentRenderer->SetActiveCamera (camera);
 	orthoMode_ = enabled;
 }
 
