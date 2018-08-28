@@ -32,6 +32,8 @@ CloudViewerInteractorStyle::CloudViewerInteractorStyle() :
 {
 	PreviousPosition[0] = PreviousPosition[1] = 0;
 	PreviousMeasure[0] = PreviousMeasure[1] =  PreviousMeasure[2] = 0.0f;
+
+	this->MotionFactor = 5;
 }
 
 void CloudViewerInteractorStyle::Rotate()
