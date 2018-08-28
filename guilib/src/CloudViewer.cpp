@@ -85,6 +85,7 @@ CloudViewer::CloudViewer(QWidget *parent, CloudViewerInteractorStyle * style) :
 		_aFollowCamera(0),
 		_aResetCamera(0),
 		_aLockViewZ(0),
+		_aCameraOrtho(0),
 		_aShowTrajectory(0),
 		_aSetTrajectorySize(0),
 		_aClearTrajectory(0),
@@ -224,6 +225,9 @@ void CloudViewer::createMenu()
 	_aLockViewZ = new QAction("Lock view Z", this);
 	_aLockViewZ->setCheckable(true);
 	_aLockViewZ->setChecked(true);
+	_aCameraOrtho = new QAction("Ortho mode", this);
+	_aCameraOrtho->setCheckable(true);
+	_aCameraOrtho->setChecked(false);
 	_aResetCamera = new QAction("Reset position", this);
 	_aShowTrajectory= new QAction("Show trajectory", this);
 	_aShowTrajectory->setCheckable(true);
@@ -267,6 +271,7 @@ void CloudViewer::createMenu()
 	cameraMenu->addAction(freeCamera);
 	cameraMenu->addSeparator();
 	cameraMenu->addAction(_aLockViewZ);
+	cameraMenu->addAction(_aCameraOrtho);
 	cameraMenu->addAction(_aResetCamera);
 	QActionGroup * group = new QActionGroup(this);
 	group->addAction(_aLockCamera);
@@ -358,6 +363,7 @@ void CloudViewer::saveSettings(QSettings & settings, const QString & group) cons
 	settings.setValue("camera_target_follow", this->isCameraTargetFollow());
 	settings.setValue("camera_free", this->isCameraFree());
 	settings.setValue("camera_lockZ", this->isCameraLockZ());
+	settings.setValue("camera_ortho", this->isCameraOrtho());
 
 	settings.setValue("bg_color", this->getDefaultBackgroundColor());
 	settings.setValue("rendering_rate", this->getRenderingRate());
@@ -404,6 +410,7 @@ void CloudViewer::loadSettings(QSettings & settings, const QString & group)
 		this->setCameraFree();
 	}
 	this->setCameraLockZ(settings.value("camera_lockZ", this->isCameraLockZ()).toBool());
+	this->setCameraOrtho(settings.value("camera_ortho", this->isCameraOrtho()).toBool());
 
 	this->setDefaultBackgroundColor(settings.value("bg_color", this->getDefaultBackgroundColor()).value<QColor>());
 	
@@ -2025,7 +2032,14 @@ void CloudViewer::resetCamera()
 	{
 		// reset relative to last current pose
 		cv::Point3f pt = util3d::transformPoint(cv::Point3f(_lastPose.x(), _lastPose.y(), _lastPose.z()), ( _lastPose.rotation()*Transform(-1, 0, 0)).translation());
-		if(_aLockViewZ->isChecked())
+		if(_aCameraOrtho->isChecked())
+		{
+			_visualizer->setCameraPosition(
+					_lastPose.x(), _lastPose.y(), _lastPose.z()+5,
+					_lastPose.x(), _lastPose.y(), _lastPose.z(),
+					1, 0, 0, 1);
+		}
+		else if(_aLockViewZ->isChecked())
 		{
 			_visualizer->setCameraPosition(
 					pt.x, pt.y, pt.z,
@@ -2039,6 +2053,13 @@ void CloudViewer::resetCamera()
 					_lastPose.x(), _lastPose.y(), _lastPose.z(),
 					_lastPose.r31(), _lastPose.r32(), _lastPose.r33(), 1);
 		}
+	}
+	else if(_aCameraOrtho->isChecked())
+	{
+		_visualizer->setCameraPosition(
+				0, 0, 5,
+				0, 0, 0,
+				1, 0, 0, 1);
 	}
 	else
 	{
@@ -2371,7 +2392,7 @@ void CloudViewer::updateCameraTargetPosition(const Transform & pose)
 			std::vector<pcl::visualization::Camera> cameras;
 			_visualizer->getCameras(cameras);
 
-			if(_aLockCamera->isChecked())
+			if(_aLockCamera->isChecked() || _aCameraOrtho->isChecked())
 			{
 				//update camera position
 				Eigen::Vector3f diff = pos - Eigen::Vector3f(_lastPose.x(), _lastPose.y(), _lastPose.z());
@@ -2599,6 +2620,17 @@ void CloudViewer::setCameraLockZ(bool enabled)
 	_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
 	_aLockViewZ->setChecked(enabled);
 }
+void CloudViewer::setCameraOrtho(bool enabled)
+{
+	_lastCameraOrientation= _lastCameraPose = cv::Vec3f(0,0,0);
+	CloudViewerInteractorStyle * interactor = CloudViewerInteractorStyle::SafeDownCast(this->GetInteractor()->GetInteractorStyle());
+	if(interactor)
+	{
+		interactor->setOrthoMode(enabled);
+		this->update();
+	}
+	_aCameraOrtho->setChecked(enabled);
+}
 bool CloudViewer::isCameraTargetLocked() const
 {
 	return _aLockCamera->isChecked();
@@ -2614,6 +2646,10 @@ bool CloudViewer::isCameraFree() const
 bool CloudViewer::isCameraLockZ() const
 {
 	return _aLockViewZ->isChecked();
+}
+bool CloudViewer::isCameraOrtho() const
+{
+	return _aCameraOrtho->isChecked();
 }
 double CloudViewer::getRenderingRate() const
 {
@@ -2934,7 +2970,7 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 	QVTKWidget::mouseMoveEvent(event);
 
 	// camera view up z locked?
-	if(_aLockViewZ->isChecked())
+	if(_aLockViewZ->isChecked() && !_aCameraOrtho->isChecked())
 	{
 		std::vector<pcl::visualization::Camera> cameras;
 		_visualizer->getCameras(cameras);
@@ -2955,6 +2991,18 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 			_lastCameraOrientation = newCameraOrientation;
 			_lastCameraPose = cv::Vec3d(cameras.front().pos);
 		}
+		else
+		{
+			if(cameras.front().view[2] == 0)
+			{
+				cameras.front().pos[0] -= 0.00001*cameras.front().view[0];
+				cameras.front().pos[1] -= 0.00001*cameras.front().view[1];
+			}
+			else
+			{
+				cameras.front().pos[0] -= 0.00001;
+			}
+		}
 		cameras.front().view[0] = 0;
 		cameras.front().view[1] = 0;
 		cameras.front().view[2] = 1;
@@ -2973,7 +3021,7 @@ void CloudViewer::mouseMoveEvent(QMouseEvent * event)
 void CloudViewer::wheelEvent(QWheelEvent * event)
 {
 	QVTKWidget::wheelEvent(event);
-	if(_aLockViewZ->isChecked())
+	if(_aLockViewZ->isChecked() && !_aCameraOrtho->isChecked())
 	{
 		std::vector<pcl::visualization::Camera> cameras;
 		_visualizer->getCameras(cameras);
@@ -3111,6 +3159,10 @@ void CloudViewer::handleAction(QAction * a)
 		{
 			this->update();
 		}
+	}
+	else if(a == _aCameraOrtho)
+	{
+		this->setCameraOrtho(_aCameraOrtho->isChecked());
 	}
 	else if(a == _aSetLighting)
 	{

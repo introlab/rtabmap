@@ -329,6 +329,7 @@ public:
 	bool isCameraTargetFollow() const;
 	bool isCameraFree() const;
 	bool isCameraLockZ() const;
+	bool isCameraOrtho() const;
 	bool isGridShown() const;
 	unsigned int getGridCellCount() const;
 	float getGridCellSize() const;
@@ -341,6 +342,7 @@ public:
 	void setCameraTargetFollow(bool enabled = true);
 	void setCameraFree();
 	void setCameraLockZ(bool enabled = true);
+	void setCameraOrtho(bool enabled = true);
 	void setGridShown(bool shown);
 	void setNormalsShown(bool shown);
 	void setGridCellCount(unsigned int count);
@@ -387,6 +389,7 @@ private:
     QAction * _aFollowCamera;
     QAction * _aResetCamera;
     QAction * _aLockViewZ;
+    QAction * _aCameraOrtho;
     QAction * _aShowTrajectory;
     QAction * _aSetTrajectorySize;
     QAction * _aClearTrajectory;

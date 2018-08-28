@@ -11,6 +11,7 @@
 
 #include "rtabmap/utilite/ULogger.h"
 #include "rtabmap/utilite/UConversion.h"
+#include "rtabmap/utilite/UMath.h"
 
 #include <vtkRenderer.h>
 #include <vtkRenderWindow.h>
@@ -28,7 +29,8 @@ CloudViewerInteractorStyle::CloudViewerInteractorStyle() :
 	viewer_(0),
 	NumberOfClicks(0),
 	ResetPixelDistance(0),
-	pointsHolder_(new pcl::PointCloud<pcl::PointXYZRGB>)
+	pointsHolder_(new pcl::PointCloud<pcl::PointXYZRGB>),
+	orthoMode_(false)
 {
 	PreviousPosition[0] = PreviousPosition[1] = 0;
 	PreviousMeasure[0] = PreviousMeasure[1] =  PreviousMeasure[2] = 0.0f;
@@ -46,7 +48,7 @@ void CloudViewerInteractorStyle::Rotate()
 	vtkRenderWindowInteractor *rwi = this->Interactor;
 
 	int dx = rwi->GetEventPosition()[0] - rwi->GetLastEventPosition()[0];
-	int dy = rwi->GetEventPosition()[1] - rwi->GetLastEventPosition()[1];
+	int dy = orthoMode_?0:rwi->GetEventPosition()[1] - rwi->GetLastEventPosition()[1];
 
 	int *size = this->CurrentRenderer->GetRenderWindow()->GetSize();
 
@@ -58,9 +60,16 @@ void CloudViewerInteractorStyle::Rotate()
 
 	vtkCamera *camera = this->CurrentRenderer->GetActiveCamera();
 	UASSERT(camera);
-	camera->Azimuth(rxf);
-	camera->Elevation(ryf);
-	camera->OrthogonalizeViewUp();
+	if(!orthoMode_)
+	{
+		camera->Azimuth(rxf);
+		camera->Elevation(ryf);
+		camera->OrthogonalizeViewUp();
+	}
+	else
+	{
+		camera->Roll(-rxf);
+	}
 
 	if (this->AutoAdjustCameraClippingRange)
 	{
@@ -73,6 +82,27 @@ void CloudViewerInteractorStyle::Rotate()
 	}
 
 	//rwi->Render();
+}
+
+void CloudViewerInteractorStyle::setOrthoMode(bool enabled)
+{
+	if (this->CurrentRenderer == NULL)
+	{
+		return;
+	}
+
+	vtkSmartPointer<vtkCamera> cam = CurrentRenderer->GetActiveCamera ();
+	UASSERT(cam.Get());
+	cam->SetParallelProjection (enabled);
+	if(enabled)
+	{
+		double x,y,z;
+		cam->GetFocalPoint(x, y, z);
+		cam->SetPosition(x, y, z+(cam->GetDistance()<=5?5:cam->GetDistance()));
+		cam->SetViewUp(1, 0, 0);
+	}
+	CurrentRenderer->SetActiveCamera (cam);
+	orthoMode_ = enabled;
 }
 
 void CloudViewerInteractorStyle::OnMouseMove()

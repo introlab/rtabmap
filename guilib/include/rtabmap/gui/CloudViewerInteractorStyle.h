@@ -28,6 +28,7 @@ public:
 public:
 	CloudViewerInteractorStyle();
 	virtual void Rotate();
+	void setOrthoMode(bool enabled);
 protected:
 	virtual void OnMouseMove();
 	virtual void OnLeftButtonDown();
@@ -43,6 +44,7 @@ private:
 	int ResetPixelDistance;
 	float PreviousMeasure[3];
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointsHolder_;
+	bool orthoMode_;
 };
 
 } /* namespace rtabmap */
