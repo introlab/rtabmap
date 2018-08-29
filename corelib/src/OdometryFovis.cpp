@@ -33,7 +33,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "rtabmap/utilite/UStl.h"
 
 #ifdef RTABMAP_FOVIS
-#include <fovis.hpp>
+#include <libfovis/fovis.hpp>
 #endif
 
 namespace rtabmap {
