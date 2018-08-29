@@ -2126,7 +2126,7 @@ void Memory::moveToTrash(Signature * s, bool keepLinkedToGraph, std::list<int> *
 			_lastGlobalLoopClosureId = 0;
 		}
 
-		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph) &&
+		if(	(_notLinkedNodesKeptInDb || keepLinkedToGraph || s->isSaved()) &&
 			_dbDriver &&
 			s->id()>0 &&
 			(_incrementalMemory || s->isSaved()))

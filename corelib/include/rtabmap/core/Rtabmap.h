@@ -153,7 +153,8 @@ public:
 	void parseParameters(const ParametersMap & parameters);
 	const ParametersMap & getParameters() const {return _parameters;}
 	void setWorkingDirectory(std::string path);
-	void rejectLoopClosure(int oldId, int newId);
+	void rejectLastLoopClosure();
+	void deleteLastLocation();
 	void setOptimizedPoses(const std::map<int, Transform> & poses);
 	void get3DMap(std::map<int, Signature> & signatures,
 			std::map<int, Transform> & poses,

@@ -3017,21 +3017,111 @@ void Rtabmap::setWorkingDirectory(std::string path)
 	}
 }
 
-void Rtabmap::rejectLoopClosure(int oldId, int newId)
+void Rtabmap::rejectLastLoopClosure()
 {
-	UDEBUG("_loopClosureHypothesis.first=%d", _loopClosureHypothesis.first);
-	if(_loopClosureHypothesis.first)
+	if(_memory && _memory->getStMem().find(getLastLocationId())!=_memory->getStMem().end())
 	{
-		_loopClosureHypothesis.first = 0;
-		if(_memory)
+		std::map<int, Link> links = _memory->getLinks(getLastLocationId(), false);
+		bool linksRemoved = false;
+		for(std::map<int, Link>::iterator iter = links.begin(); iter!=links.end(); ++iter)
 		{
-			_memory->removeLink(oldId, newId);
+			if(iter->second.type() == Link::kGlobalClosure ||
+				iter->second.type() == Link::kLocalSpaceClosure ||
+				iter->second.type() == Link::kLocalTimeClosure ||
+				iter->second.type() == Link::kUserClosure)
+			{
+				_memory->removeLink(iter->second.from(), iter->second.to());
+				std::multimap<int, Link>::iterator jter = graph::findLink(_constraints, iter->second.from(), iter->second.to(), true);
+				if(jter!=_constraints.end())
+				{
+					_constraints.erase(jter);
+					// second time if link is also inverted
+					jter = graph::findLink(_constraints, iter->second.from(), iter->second.to(), true);
+					if(jter!=_constraints.end())
+					{
+						_constraints.erase(jter);
+					}
+				}
+				linksRemoved = true;
+			}
 		}
-		if(uContains(statistics_.data(), rtabmap::Statistics::kLoopRejectedHypothesis()))
+
+		if(linksRemoved)
 		{
-			statistics_.addStatistic(rtabmap::Statistics::kLoopRejectedHypothesis(), 1.0f);
+			_loopClosureHypothesis.first = 0;
+
+			// we have to re-optimize the graph without the rejected links
+			if(_memory->isIncremental() && _optimizedPoses.size())
+			{
+				UINFO("Update graph");
+				std::map<int, Transform> poses = _optimizedPoses;
+				std::multimap<int, Link> constraints;
+				cv::Mat covariance;
+				optimizeCurrentMap(getLastLocationId(), false, poses, covariance, &constraints);
+
+				if(poses.empty())
+				{
+					UWARN("Graph optimization failed after removing loop closure links from last location!");
+				}
+				else
+				{
+					UINFO("Updated local map (old size=%d, new size=%d)", (int)_optimizedPoses.size(), (int)poses.size());
+					_optimizedPoses = poses;
+					_constraints = constraints;
+					_mapCorrection = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()) * _memory->getLastWorkingSignature()->getPose().inverse();
+				}
+			}
 		}
-		statistics_.setLoopClosureId(0);
+	}
+}
+
+void Rtabmap::deleteLastLocation()
+{
+	if(_memory && _memory->getStMem().size())
+	{
+		int lastId = *_memory->getStMem().rbegin();
+		_memory->deleteLocation(lastId);
+		// we have to re-optimize the graph without the deleted location
+		if(_memory->isIncremental() && _optimizedPoses.size())
+		{
+			UINFO("Update graph");
+			_optimizedPoses.erase(lastId);
+			std::map<int, Transform> poses = _optimizedPoses;
+			//remove all constraints with last localization id
+			for(std::multimap<int, Link>::iterator iter=_constraints.begin(); iter!=_constraints.end();)
+			{
+				if(iter->second.from() == lastId || iter->second.to() == lastId)
+				{
+					_constraints.erase(iter++);
+				}
+				else
+				{
+					++iter;
+				}
+			}
+
+			if(poses.empty())
+			{
+				_mapCorrection.setIdentity();
+			}
+			else
+			{
+				std::multimap<int, Link> constraints;
+				cv::Mat covariance;
+				optimizeCurrentMap(_memory->getLastWorkingSignature()->id(), false, poses, covariance, &constraints);
+
+				if(poses.empty())
+				{
+					UWARN("Graph optimization failed after deleting the last location!");
+				}
+				else
+				{
+					_optimizedPoses = poses;
+					_constraints = constraints;
+					_mapCorrection = _optimizedPoses.at(_memory->getLastWorkingSignature()->id()) * _memory->getLastWorkingSignature()->getPose().inverse();
+				}
+			}
+		}
 	}
 }
 
